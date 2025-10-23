@@ -778,6 +778,10 @@ export interface ViewTransitionOptions {
 }
 
 // TODO where is this used? can we remove this?
+/**
+ * Convert an unknown error into a minimal, serializable object.
+ * Includes name and message (and stack in development).
+ */
 export function defaultSerializeError(err: unknown) {
   if (err instanceof Error) {
     const obj = {
@@ -797,6 +801,7 @@ export function defaultSerializeError(err: unknown) {
   }
 }
 
+/** Options for configuring trailing-slash behavior. */
 export const trailingSlashOptions = {
   always: 'always',
   never: 'never',
@@ -806,6 +811,10 @@ export const trailingSlashOptions = {
 export type TrailingSlashOption =
   (typeof trailingSlashOptions)[keyof typeof trailingSlashOptions]
 
+/**
+ * Compute whether path, href or hash changed between previous and current
+ * resolved locations in router state.
+ */
 export function getLocationChangeInfo(routerState: {
   resolvedLocation?: ParsedLocation
   location: ParsedLocation
@@ -2517,8 +2526,10 @@ export class RouterCore<
   }
 }
 
+/** Error thrown when search parameter validation fails. */
 export class SearchParamError extends Error {}
 
+/** Error thrown when path parameter parsing/validation fails. */
 export class PathParamError extends Error {}
 
 const normalize = (str: string) =>
@@ -2527,9 +2538,10 @@ function comparePaths(a: string, b: string) {
   return normalize(a) === normalize(b)
 }
 
-// A function that takes an import() argument which is a function and returns a new function that will
-// proxy arguments from the caller to the imported function, retaining all type
-// information along the way
+/**
+ * Lazily import a module function and forward arguments to it, retaining
+ * parameter and return types for the selected export key.
+ */
 export function lazyFn<
   T extends Record<string, (...args: Array<any>) => any>,
   TKey extends keyof T = 'default',
@@ -2542,6 +2554,7 @@ export function lazyFn<
   }
 }
 
+/** Create an initial RouterState from a parsed location. */
 export function getInitialRouterState(
   location: ParsedLocation,
 ): RouterState<any> {
@@ -2587,6 +2600,10 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
+/**
+ * Build the matched route chain and extract params for a pathname.
+ * Falls back to the root route if no specific route is found.
+ */
 export function getMatchedRoutes<TRouteLike extends RouteLike>({
   pathname,
   routePathname,
