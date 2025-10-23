@@ -3142,14 +3142,14 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: 1.9.9
+        version: 1.9.9
       vite:
         specifier: ^7.1.7
-        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+        version: 7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-tsconfig-paths:
         specifier: ^5.1.4
-        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -3174,7 +3174,7 @@ importers:
         version: 5.9.2
       vite-plugin-solid:
         specifier: ^2.11.9
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-start/server-functions:
     dependencies:
@@ -4867,7 +4867,7 @@ importers:
         version: 19.0.3(@types/react@19.0.8)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.3.4(vite@7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 4.3.4(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.3)
@@ -4882,10 +4882,10 @@ importers:
         version: 5.8.2
       vite:
         specifier: ^7.1.7
-        version: 7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-dts:
         specifier: 4.0.3
-        version: 4.0.3(@types/node@22.10.2)(rollup@4.52.5)(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 4.0.3(@types/node@22.10.2)(rollup@4.52.5)(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/react/router-monorepo-react-query/packages/post-feature:
     dependencies:
@@ -24063,17 +24063,6 @@ snapshots:
       - rollup
       - supports-color
 
-  '@vitejs/plugin-react@4.3.4(vite@7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
-    dependencies:
-      '@babel/core': 7.27.4
-      '@babel/plugin-transform-react-jsx-self': 7.25.9(@babel/core@7.27.4)
-      '@babel/plugin-transform-react-jsx-source': 7.25.9(@babel/core@7.27.4)
-      '@types/babel__core': 7.20.5
-      react-refresh: 0.14.2
-      vite: 7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-    transitivePeerDependencies:
-      - supports-color
-
   '@vitejs/plugin-react@4.3.4(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
       '@babel/core': 7.27.4
@@ -30001,26 +29990,6 @@ snapshots:
       - tsx
       - yaml
 
-  vite-plugin-dts@4.0.3(@types/node@22.10.2)(rollup@4.52.5)(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
-    dependencies:
-      '@microsoft/api-extractor': 7.47.4(@types/node@22.10.2)
-      '@rollup/pluginutils': 5.1.4(rollup@4.52.5)
-      '@volar/typescript': 2.4.11
-      '@vue/language-core': 2.0.29(typescript@5.8.2)
-      compare-versions: 6.1.1
-      debug: 4.4.3
-      kolorist: 1.8.0
-      local-pkg: 0.5.1
-      magic-string: 0.30.19
-      typescript: 5.8.2
-      vue-tsc: 2.0.29(typescript@5.8.2)
-    optionalDependencies:
-      vite: 7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-    transitivePeerDependencies:
-      - '@types/node'
-      - rollup
-      - supports-color
-
   vite-plugin-dts@4.0.3(@types/node@22.10.2)(rollup@4.52.5)(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
     dependencies:
       '@microsoft/api-extractor': 7.47.4(@types/node@22.10.2)
@@ -30102,6 +30071,17 @@ snapshots:
       - supports-color
       - typescript
 
+  vite-tsconfig-paths@5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
+    dependencies:
+      debug: 4.4.0
+      globrex: 0.1.2
+      tsconfck: 3.1.4(typescript@5.9.2)
+    optionalDependencies:
+      vite: 7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
   vite-tsconfig-paths@5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
     dependencies:
       debug: 4.4.0
@@ -30146,6 +30126,10 @@ snapshots:
       terser: 5.37.0
       tsx: 4.20.3
       yaml: 2.8.1
+
+  vitefu@1.1.1(vite@7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
+    optionalDependencies:
+      vite: 7.1.7(@types/node@22.10.2)(jiti@1.21.7)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
 
   vitefu@1.1.1(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
     optionalDependencies:
