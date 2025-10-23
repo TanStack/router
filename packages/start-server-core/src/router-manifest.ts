@@ -1,6 +1,7 @@
 import { rootRouteId } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
+import type { RouterManagedTag } from '@tanstack/router-core'
 
 /**
  * @description Returns the router manifest that should be sent to the client.
@@ -43,13 +44,17 @@ export async function getStartManifest() {
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).map(([k, v]) => {
         const { preloads, assets } = v
-        return [
-          k,
-          {
-            preloads,
-            assets,
-          },
-        ]
+        const result = {} as {
+          preloads?: Array<string>
+          assets?: Array<RouterManagedTag>
+        }
+        if (preloads) {
+          result['preloads'] = preloads
+        }
+        if (assets) {
+          result['assets'] = assets
+        }
+        return [k, result]
       }),
     ),
   }
