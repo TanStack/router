@@ -5,8 +5,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  solid-js: 1.9.9
   vite-plugin-dts: 4.0.3
+  solid-js: 1.9.9
   react: ^19.0.0
   react-dom: ^19.0.0
   '@types/react': ^19.0.8
@@ -2397,7 +2397,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
+        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -2443,7 +2443,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
+        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -15611,14 +15611,6 @@ packages:
     resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
 
-  jiti@2.4.2:
-    resolution: {integrity: sha512-rg9zJN+G4n2nfJl5MW3BMygZX56zKPNVEYYqq7adpmMh4Jn2QNEwhvQlFy6jPVdcod7txZtKHWnyZiA3a0zP7A==}
-    hasBin: true
-
-  jiti@2.6.0:
-    resolution: {integrity: sha512-VXe6RjJkBPj0ohtqaO8vSWP3ZhAKo66fKrFNCll4BTcwljPLz03pCbaNKfzGP5MbrCYcbJ7v0nOYYwUzTEIdXQ==}
-    hasBin: true
-
   jiti@2.6.1:
     resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
     hasBin: true
@@ -22892,7 +22884,7 @@ snapshots:
     dependencies:
       '@jridgewell/remapping': 2.3.5
       enhanced-resolve: 5.18.3
-      jiti: 2.6.0
+      jiti: 2.6.1
       lightningcss: 1.30.1
       magic-string: 0.30.19
       source-map-js: 1.2.1
@@ -22912,7 +22904,7 @@ snapshots:
     dependencies:
       '@ampproject/remapping': 2.3.0
       enhanced-resolve: 5.18.1
-      jiti: 2.4.2
+      jiti: 2.6.1
       lightningcss: 1.29.2
       magic-string: 0.30.17
       source-map-js: 1.2.1
@@ -24618,7 +24610,7 @@ snapshots:
       dotenv: 17.2.2
       exsolve: 1.0.7
       giget: 2.0.0
-      jiti: 2.6.0
+      jiti: 2.6.1
       ohash: 2.0.11
       pathe: 2.0.3
       perfect-debounce: 2.0.0
@@ -26760,10 +26752,6 @@ snapshots:
 
   jiti@1.21.7: {}
 
-  jiti@2.4.2: {}
-
-  jiti@2.6.0: {}
-
   jiti@2.6.1: {}
 
   jju@1.4.0: {}
@@ -27126,7 +27114,7 @@ snapshots:
       get-port-please: 3.2.0
       h3: 1.15.4
       http-shutdown: 1.2.2
-      jiti: 2.6.0
+      jiti: 2.6.1
       mlly: 1.8.0
       node-forge: 1.3.1
       pathe: 1.1.2
@@ -27611,7 +27599,7 @@ snapshots:
       hookable: 5.5.3
       httpxy: 0.1.7
       ioredis: 5.8.0
-      jiti: 2.6.0
+      jiti: 2.6.1
       klona: 2.0.6
       knitwork: 1.2.0
       listhen: 1.9.0
@@ -29634,7 +29622,7 @@ snapshots:
     dependencies:
       citty: 0.1.6
       defu: 6.1.4
-      jiti: 2.6.0
+      jiti: 2.6.1
       knitwork: 1.2.0
       scule: 1.3.0
 
