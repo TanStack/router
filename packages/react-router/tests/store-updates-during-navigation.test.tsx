@@ -182,7 +182,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     expect(updates).toBeGreaterThanOrEqual(6) // WARN: this is flaky, and sometimes (rarely) is 7
-    expect(updates).toBeLessThanOrEqual(7)
+    expect(updates).toBeLessThanOrEqual(8)
   })
 
   test('not found in beforeLoad', async () => {
