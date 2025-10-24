@@ -1,3 +1,5 @@
+import { pathToFileURL } from 'node:url'
+import * as fs from 'node:fs'
 import { joinPaths } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
@@ -5,6 +7,7 @@ import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
 import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
+import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
@@ -250,6 +253,8 @@ export function TanStackStartVitePluginCore(
               consumer: 'server',
               build: {
                 ssr: true,
+                // Generate manifest to determine entry filename during preview
+                manifest: true,
                 rollupOptions: {
                   input:
                     viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
@@ -354,6 +359,57 @@ export function TanStackStartVitePluginCore(
       getConfig,
     }),
     devServerPlugin({ getConfig }),
+    {
+      name: 'tanstack-start:core:preview-server',
+      configurePreviewServer(server) {
+        // Fallback: Load server build and create Node.js SSR middleware
+        // This runs after runtime plugins (e.g., Cloudflare) have set up their middleware,
+        // so it will only handle requests that weren't already handled.
+
+        return () => {
+          // Cache the server build to avoid re-importing on every request
+          let serverBuild: any = null
+
+          server.middlewares.use(async (req, res, next) => {
+            try {
+              // Lazy load server build on first request
+              if (!serverBuild) {
+                // Read manifest to find entry filename
+                const serverOutputDir = server.config.build.outDir
+                const manifestPath = join(
+                  serverOutputDir,
+                  '.vite',
+                  'manifest.json',
+                )
+                const manifest = JSON.parse(
+                  fs.readFileSync(manifestPath, 'utf-8'),
+                ) as vite.Manifest
+                const entryItem = Object.values(manifest).find(
+                  (item) => item.isEntry === true,
+                )
+                if (!entryItem || !entryItem.file) {
+                  throw new Error(
+                    `Could not find server entry in manifest: ${manifestPath}`,
+                  )
+                }
+                const serverEntryPath = join(serverOutputDir, entryItem.file)
+                const imported = await import(
+                  pathToFileURL(serverEntryPath).toString()
+                )
+
+                serverBuild = imported.default
+              }
+
+              const request = new NodeRequest({ req, res })
+              const response = await serverBuild.fetch(request)
+              return sendNodeResponse(res, response)
+            } catch (error) {
+              next(error)
+            }
+          })
+        }
+      },
+    },
     {
       name: 'tanstack-start:core:capture-bundle',
       applyToEnvironment(e) {
