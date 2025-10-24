@@ -222,12 +222,11 @@ export type ParsePathnameCache = LRUCache<string, ReadonlyArray<Segment>>
 export const parsePathname = (
   pathname?: string,
   cache?: ParsePathnameCache,
-  basePathValues?: boolean,
 ): ReadonlyArray<Segment> => {
   if (!pathname) return []
   const cached = cache?.get(pathname)
   if (cached) return cached
-  const parsed = baseParsePathname(pathname, basePathValues)
+  const parsed = baseParsePathname(pathname)
   cache?.set(pathname, parsed)
   return parsed
 }
@@ -257,10 +256,7 @@ const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
  * - `/foo/[$]{$foo} - Dynamic route with a static prefix of `$`
  * - `/foo/{$foo}[$]` - Dynamic route with a static suffix of `$`
  */
-function baseParsePathname(
-  pathname: string,
-  basePathValues?: boolean,
-): ReadonlyArray<Segment> {
+function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
   pathname = cleanPath(pathname)
 
   const segments: Array<Segment> = []
