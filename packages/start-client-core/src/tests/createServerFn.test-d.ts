@@ -62,30 +62,31 @@ test('createServerFn with validator', () => {
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
 })
 
+interface ValidatorInput {
+  input: string
+}
+interface ValidatorOutput {
+  value: {
+    a: string
+  }
+}
+
 test('createServerFn with standard validator', () => {
-  interface SyncInput {
-    input: string
-  }
-  interface SyncOutput {
-    value: {
-      a: string
-    }
-  }
   interface SyncValidator {
     readonly '~standard': {
       types?: {
-        input: SyncInput
-        output: SyncOutput
+        input: ValidatorInput
+        output: ValidatorOutput
       }
       validate: (input: unknown) => {
-        value: SyncOutput
+        value: ValidatorOutput
       }
     }
   }
   const validator: SyncValidator = {
     ['~standard']: {
       validate: (input: unknown) => ({
-        value: { value: { a: (input as SyncInput).input } },
+        value: { value: { a: (input as ValidatorInput).input } },
       }),
     },
   }
@@ -119,22 +120,14 @@ test('createServerFn with standard validator', () => {
 })
 
 test('createServerFn with async standard validator', () => {
-  interface AsyncInput {
-    input: string
-  }
-  interface AsyncOutput {
-    value: {
-      a: string
-    }
-  }
   interface AsyncValidator {
     readonly '~standard': {
       types?: {
-        input: AsyncInput
-        output: AsyncOutput
+        input: ValidatorInput
+        output: ValidatorOutput
       }
       validate: (input: unknown) => Promise<{
-        value: AsyncOutput
+        value: ValidatorOutput
       }>
     }
   }
@@ -142,7 +135,7 @@ test('createServerFn with async standard validator', () => {
     ['~standard']: {
       validate: (input: unknown) =>
         Promise.resolve({
-          value: { value: { a: (input as AsyncInput).input } },
+          value: { value: { a: (input as ValidatorInput).input } },
         }),
     },
   }
