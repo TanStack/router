@@ -46,6 +46,7 @@ export const Route = createFileRoute('/posts/$postId')({
 ```
 
 Notes:
+
 - `ErrorComponent` is a simple built-in UI you can replace.
 - Call `reset()` to retry rendering the route after fixing state.
 - Use `beforeLoad`/`loader` to throw errors that will be caught.
