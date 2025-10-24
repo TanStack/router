@@ -1,4 +1,5 @@
 import { describe, expectTypeOf, test } from 'vitest'
+import { z } from 'zod'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
 import { TSS_SERVER_FUNCTION } from '../constants'
@@ -48,6 +49,76 @@ test('createServerFn with validator', () => {
       context: undefined
       data: {
         a: string
+      }
+      signal: AbortSignal
+    }>()
+  })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: { input: string }
+    headers?: HeadersInit
+    signal?: AbortSignal
+  }>()
+
+  expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
+})
+
+test('createServerFn with standard validator', () => {
+  const schema = z
+    .object({ input: z.string() })
+    .transform(({ input }) => ({ value: { a: input } }))
+
+  const fnAfterValidator = createServerFn({
+    method: 'GET',
+  }).inputValidator(schema)
+
+  expectTypeOf(fnAfterValidator).toHaveProperty('handler')
+  expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+
+  const fn = fnAfterValidator.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET'
+      context: undefined
+      data: {
+        value: { a: string }
+      }
+      signal: AbortSignal
+    }>()
+  })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: { input: string }
+    headers?: HeadersInit
+    signal?: AbortSignal
+  }>()
+
+  expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
+})
+
+test('createServerFn with async standard validator', () => {
+  const schema = z
+    .object({
+      input: z
+        .string()
+        .refine(async (val) => Promise.resolve(val !== 'invalid')),
+    })
+    .transform(({ input }) => ({ value: { a: input } }))
+
+  const fnAfterValidator = createServerFn({
+    method: 'GET',
+  }).inputValidator(schema)
+
+  expectTypeOf(fnAfterValidator).toHaveProperty('handler')
+  expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+
+  const fn = fnAfterValidator.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET'
+      context: undefined
+      data: {
+        value: { a: string }
       }
       signal: AbortSignal
     }>()
