@@ -84,7 +84,7 @@ export function lazyRouteComponent<
     return <Dynamic component={comp} {...props} />
   }
 
-    ; (lazyComp as any).preload = load
+  ;(lazyComp as any).preload = load
 
   return lazyComp as any
 }
