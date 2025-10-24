@@ -98,6 +98,10 @@
               "to": "framework/react/guide/middleware"
             },
             {
+              "label": "Error Boundaries",
+              "to": "framework/react/guide/error-boundaries"
+            },
+            {
               "label": "Server Routes",
               "to": "framework/react/guide/server-routes"
             },
@@ -189,6 +193,10 @@
             {
               "label": "Middleware",
               "to": "framework/solid/guide/middleware"
+            },
+            {
+              "label": "Error Boundaries",
+              "to": "framework/solid/guide/error-boundaries"
             },
             {
               "label": "Server Routes",
