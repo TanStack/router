@@ -472,6 +472,22 @@ describe('interpolatePath', () => {
         params: {},
         expectedResult: '/hello/prefixsuffix',
       },
+      {
+        name: 'splat route with empty splat',
+        path: '/hello/$',
+        params: {
+          _splat: '',
+        },
+        expectedResult: '/hello',
+      },
+      {
+        name: 'splat route with undefined splat',
+        path: '/hello/$',
+        params: {
+          _splat: undefined,
+        },
+        expectedResult: '/hello',
+      },
     ])('$name', ({ path, params, expectedResult }) => {
       const result = interpolatePath({
         path,

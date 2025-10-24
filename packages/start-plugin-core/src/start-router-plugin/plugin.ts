@@ -222,7 +222,7 @@ export function tanStackStartRouter(
         ...routerConfig,
         codeSplittingOptions: {
           ...routerConfig.codeSplittingOptions,
-          deleteNodes: ['ssr', 'server'],
+          deleteNodes: ['ssr', 'server', 'headers'],
           addHmr: true,
         },
         plugin: {

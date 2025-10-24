@@ -1,6 +1,6 @@
 import { joinPaths } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
-import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
+import { TanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
 import { join } from 'pathe'
@@ -326,11 +326,11 @@ export function TanStackStartVitePluginCore(
       },
     },
     tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
-    // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
+    // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPlugin
     startCompilerPlugin(corePluginOpts.framework),
     createServerFnPlugin(corePluginOpts.framework),
 
-    TanStackServerFnPluginEnv({
+    TanStackServerFnPlugin({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
       manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,

@@ -34,6 +34,7 @@ import {
   removeLastSegmentFromPath,
   removeLayoutSegments,
   removeLeadingUnderscores,
+  removeTrailingSlash,
   removeUnderscores,
   replaceBackslash,
   resetRegex,
@@ -1244,6 +1245,13 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           )
         : removeUnderscores(removeLayoutSegments(node.path))) ?? '',
     )
+
+    if (
+      node._fsRouteType === 'layout' ||
+      node._fsRouteType === 'pathless_layout'
+    ) {
+      node.cleanedPath = removeTrailingSlash(node.cleanedPath)
+    }
 
     if (
       !node.isVirtual &&

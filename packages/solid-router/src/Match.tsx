@@ -96,7 +96,12 @@ export const Match = (props: { matchId: string }) => {
       <matchContext.Provider value={() => props.matchId}>
         <Dynamic
           component={ResolvedSuspenseBoundary()}
-          fallback={<Dynamic component={PendingComponent()} />}
+          fallback={
+            // Don't show fallback on server when using no-ssr mode to avoid hydration mismatch
+            router.isServer || resolvedNoSsr ? undefined : (
+              <Dynamic component={PendingComponent()} />
+            )
+          }
         >
           <Dynamic
             component={ResolvedCatchBoundary()}

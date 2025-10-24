@@ -138,6 +138,14 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction,
     })
 
+    if (compiledReferenceRoute === null) {
+      if (debug) {
+        console.info(
+          `No changes made to route "${id}", skipping code-splitting.`,
+        )
+      }
+      return null
+    }
     if (debug) {
       logDiff(code, compiledReferenceRoute.code)
       console.log('Output:\n', compiledReferenceRoute.code + '\n\n')

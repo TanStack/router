@@ -21,6 +21,7 @@ export interface Segment {
   readonly hasStaticAfter?: boolean
 }
 
+/** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
   return cleanPath(
     paths
@@ -31,23 +32,28 @@ export function joinPaths(paths: Array<string | undefined>) {
   )
 }
 
+/** Remove repeated slashes from a path string. */
 export function cleanPath(path: string) {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')
 }
 
+/** Trim leading slashes (except preserving root '/'). */
 export function trimPathLeft(path: string) {
   return path === '/' ? path : path.replace(/^\/{1,}/, '')
 }
 
+/** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
   return path === '/' ? path : path.replace(/\/{1,}$/, '')
 }
 
+/** Trim both leading and trailing slashes. */
 export function trimPath(path: string) {
   return trimPathRight(trimPathLeft(path))
 }
 
+/** Remove a trailing slash from value when appropriate for comparisons. */
 export function removeTrailingSlash(value: string, basepath: string): string {
   if (value?.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
     return value.slice(0, -1)
@@ -59,6 +65,10 @@ export function removeTrailingSlash(value: string, basepath: string): string {
 // see the usage in the isActive under useLinkProps
 // /sample/path1 = /sample/path1/
 // /sample/path1/some <> /sample/path1
+/**
+ * Compare two pathnames for exact equality after normalizing trailing slashes
+ * relative to the provided `basepath`.
+ */
 export function exactPathTest(
   pathName1: string,
   pathName2: string,
@@ -148,6 +158,10 @@ function segmentToString(segment: Segment): string {
   return value
 }
 
+/**
+ * Resolve a destination path against a base, honoring trailing-slash policy
+ * and supporting relative segments (`.`/`..`) and absolute `to` values.
+ */
 export function resolvePath({
   base,
   to,
@@ -201,6 +215,10 @@ export function resolvePath({
 
 export type ParsePathnameCache = LRUCache<string, ReadonlyArray<Segment>>
 
+/**
+ * Parse a pathname into an array of typed segments used by the router's
+ * matcher. Results are optionally cached via an LRU cache.
+ */
 export const parsePathname = (
   pathname?: string,
   cache?: ParsePathnameCache,
@@ -367,6 +385,13 @@ type InterPolatePathResult = {
   usedParams: Record<string, unknown>
   isMissingParams: boolean // true if any params were not available when being looked up in the params object
 }
+/**
+ * Interpolate params and wildcards into a route path template.
+ *
+ * - Encodes params safely (configurable allowed characters)
+ * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
+ * - Optionally leaves placeholders or wildcards in place
+ */
 export function interpolatePath({
   path,
   params,
@@ -409,8 +434,8 @@ export function interpolatePath({
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
 
-        // Check if _splat parameter is missing
-        if (!('_splat' in params)) {
+        // Check if _splat parameter is missing. _splat could be missing if undefined or an empty string or some other falsy value.
+        if (!params._splat) {
           isMissingParams = true
           // For missing splat parameters, just return the prefix and suffix without the wildcard
           if (leaveWildcards) {
@@ -493,6 +518,10 @@ function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
   return encoded
 }
 
+/**
+ * Match a pathname against a route destination and return extracted params
+ * or `undefined`. Uses the same parsing as the router for consistency.
+ */
 export function matchPathname(
   currentPathname: string,
   matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
@@ -508,6 +537,7 @@ export function matchPathname(
   return pathParams ?? {}
 }
 
+/** Low-level matcher that compares two path strings and extracts params. */
 export function matchByPath(
   from: string,
   {

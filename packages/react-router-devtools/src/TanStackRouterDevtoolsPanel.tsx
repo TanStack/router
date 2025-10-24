@@ -3,7 +3,7 @@ import { TanStackRouterDevtoolsPanelCore } from '@tanstack/router-devtools-core'
 import React, { useEffect, useRef, useState } from 'react'
 import type { AnyRouter } from '@tanstack/react-router'
 
-export interface DevtoolsPanelOptions {
+export interface TanStackRouterDevtoolsPanelOptions {
   /**
    * The standard React style object used to style a component with inline styles
    */
@@ -34,9 +34,9 @@ export interface DevtoolsPanelOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export const TanStackRouterDevtoolsPanel: React.FC<DevtoolsPanelOptions> = (
-  props,
-): React.ReactElement | null => {
+export const TanStackRouterDevtoolsPanel: React.FC<
+  TanStackRouterDevtoolsPanelOptions
+> = (props): React.ReactElement | null => {
   const { router: propsRouter, ...rest } = props
   const hookRouter = useRouter({ warn: false })
   const activeRouter = propsRouter ?? hookRouter

@@ -56,7 +56,7 @@ export function Board({ boardId }: { boardId: string }) {
 
   return (
     <div
-      className="flex-grow min-h-0 flex flex-col overflow-x-scroll"
+      className="grow min-h-0 flex flex-col overflow-x-scroll"
       ref={scrollContainerRef}
       style={{ backgroundColor: board.color }}
     >
@@ -82,7 +82,7 @@ export function Board({ boardId }: { boardId: string }) {
         />
       </h1>
 
-      <div className="flex flex-grow min-h-0 h-full items-start px-8 pb-4 w-fit">
+      <div className="flex grow min-h-0 h-full items-start px-8 pb-4 w-fit">
         {columns.map((col, index) => {
           return (
             <ColumnComponent
@@ -110,7 +110,7 @@ export function Board({ boardId }: { boardId: string }) {
       </div>
 
       {/* trolling you to add some extra margin to the right of the container with a whole dang div */}
-      <div data-lol className="w-8 h-1 flex-shrink-0" />
+      <div data-lol className="w-8 h-1 shrink-0" />
     </div>
   )
 }

@@ -6,7 +6,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 
 export const useTags = () => {
   const router = useRouter()
-
+  const nonce = router.options.ssr?.nonce
   const routeMeta = useRouterState({
     select: (state) => {
       return state.matches.map((match) => match.meta!).filter(Boolean)
@@ -44,6 +44,7 @@ export const useTags = () => {
             tag: 'meta',
             attrs: {
               ...m,
+              nonce,
             },
           })
         }
@@ -54,10 +55,19 @@ export const useTags = () => {
       resultMeta.push(title)
     }
 
+    if (nonce) {
+      resultMeta.push({
+        tag: 'meta',
+        attrs: {
+          property: 'csp-nonce',
+          content: nonce,
+        },
+      })
+    }
     resultMeta.reverse()
 
     return resultMeta
-  }, [routeMeta])
+  }, [routeMeta, nonce])
 
   const links = useRouterState({
     select: (state) => {
@@ -69,6 +79,7 @@ export const useTags = () => {
           tag: 'link',
           attrs: {
             ...link,
+            nonce,
           },
         })) satisfies Array<RouterManagedTag>
 
@@ -88,6 +99,7 @@ export const useTags = () => {
               attrs: {
                 ...asset.attrs,
                 suppressHydrationWarning: true,
+                nonce,
               },
             }) satisfies RouterManagedTag,
         )
@@ -112,6 +124,7 @@ export const useTags = () => {
                 attrs: {
                   rel: 'modulepreload',
                   href: preload,
+                  nonce,
                 },
               })
             }),
@@ -133,6 +146,7 @@ export const useTags = () => {
         tag: 'style',
         attrs,
         children,
+        nonce,
       })),
     structuralSharing: true as any,
   })
@@ -148,6 +162,7 @@ export const useTags = () => {
         tag: 'script',
         attrs: {
           ...script,
+          nonce,
         },
         children,
       })),

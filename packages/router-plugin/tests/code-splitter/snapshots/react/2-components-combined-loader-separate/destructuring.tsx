@@ -1,11 +1,11 @@
-import thing from 'thing';
+import thing from 'thing'
+
 export function test() {
   const {
     foo: {
-      bar: {
-        destructured
-      }
-    }
-  } = thing;
-  return destructured;
+      bar: { destructured },
+    },
+  } = thing
+
+  return destructured
 }

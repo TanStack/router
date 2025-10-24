@@ -14,4 +14,4 @@ Choose one of the following options to start building a _new_ TanStack Start pro
 
 ## Next Steps
 
-Unless you chose to build a project from scratch, you can now move on to the [Routing](../routing) guide to learn how to use TanStack Start!
+Unless you chose to build a project from scratch, you can now move on to the [Routing](../guide/routing) guide to learn how to use TanStack Start!

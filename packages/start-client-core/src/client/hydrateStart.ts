@@ -1,10 +1,12 @@
 import { hydrate } from '@tanstack/router-core/ssr/client'
 
+// eslint-disable-next-line import/no-duplicates
+import { startInstance } from '#tanstack-start-entry'
+// eslint-disable-next-line import/no-duplicates
+import { getRouter } from '#tanstack-router-entry'
 import { ServerFunctionSerializationAdapter } from './ServerFunctionSerializationAdapter'
 import type { AnyStartInstanceOptions } from '../createStart'
 import type { AnyRouter, AnySerializationAdapter } from '@tanstack/router-core'
-import { startInstance } from '#tanstack-start-entry'
-import { getRouter } from '#tanstack-router-entry'
 
 export async function hydrateStart(): Promise<AnyRouter> {
   const router = await getRouter()

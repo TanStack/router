@@ -255,9 +255,11 @@ describe('server function compilation', () => {
       const defaultExportFn_1 = createServerRpc("test_ts--defaultExportFn_1", function defaultExportFn() {
         return 'hello';
       });
+      const defaultExportFn = defaultExportFn_1;
       const namedExportFn_1 = createServerRpc("test_ts--namedExportFn_1", function namedExportFn() {
         return 'hello';
       });
+      const namedExportFn = namedExportFn_1;
       const exportedArrowFunction_wrapper = createServerRpc("test_ts--exportedArrowFunction_wrapper", () => {
         return 'hello';
       });
@@ -274,8 +276,9 @@ describe('server function compilation', () => {
       function unusedFn() {
         return 'hello';
       }
+      const namedDefaultExport = 'namedDefaultExport';
+      export default namedDefaultExport;
       const usedButNotExported = 'usedButNotExported';
-      const namedExportFn = namedExportFn_1;
       export { namedFunction_createServerFn_namedFunction, namedGeneratorFunction_createServerFn_namedGeneratorFunction, arrowFunction_createServerFn, anonymousFunction_createServerFn, anonymousGeneratorFunction_createServerFn, multipleDirectives_multipleDirectives, iife_1, defaultExportFn_1, namedExportFn_1, exportedArrowFunction_wrapper, namedExportConst_1, namedExportConstGenerator_1 };"
     `,
     )
@@ -552,6 +555,7 @@ describe('server function compilation', () => {
       const useServer_1 = createServerRpc("test_ts--useServer_1", function useServer() {
         return usedInUseServer();
       });
+      const useServer = useServer_1;
       function notExported() {
         return 'hello';
       }
@@ -561,7 +565,7 @@ describe('server function compilation', () => {
       const defaultExport_1 = createServerRpc("test_ts--defaultExport_1", function defaultExport() {
         return 'hello';
       });
-      const useServer = useServer_1;
+      const defaultExport = defaultExport_1;
       export { useServer_1, defaultExport_1 };"
     `)
   })
@@ -642,6 +646,7 @@ describe('server function compilation', () => {
       const myServerFn_createServerFn_handler = createServerRpc("test_ts--myServerFn_createServerFn_handler", opts => {
         return myServerFn.__executeServer(opts);
       });
+      const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler, myFunc);
       const myFunc2 = () => {
         return myServerFn({
           data: 'hello 2 from the server'
@@ -650,7 +655,6 @@ describe('server function compilation', () => {
       const myServerFn2_createServerFn_handler = createServerRpc("test_ts--myServerFn2_createServerFn_handler", opts => {
         return myServerFn2.__executeServer(opts);
       });
-      const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler, myFunc);
       const myServerFn2 = createServerFn().handler(myServerFn2_createServerFn_handler, myFunc2);
       export { myServerFn_createServerFn_handler, myServerFn2_createServerFn_handler };"
     `)
@@ -901,6 +905,71 @@ describe('server function compilation', () => {
       });
       const asyncGenerator = asyncGenerator_1;
       export { asyncGenerator_1 };"
+    `)
+  })
+
+  test('server function references exported value', () => {
+    const code = `
+
+      import z from "zod";
+
+      export const zExampleSchema = z.object({
+        name: z.string(),
+        age: z.number(),
+      });
+
+      export const namedFunction = createServerFn(() => {
+        'use server'
+        zExampleSchema.safeParse({ name: 'test', age: 123 })
+        return 'hello'
+      })
+    `
+
+    const client = compileDirectives({ ...clientConfig, code })
+    const ssr = compileDirectives({ ...ssrConfig, code })
+    const server = compileDirectives({
+      ...serverConfig,
+      code,
+      filename:
+        ssr.directiveFnsById[Object.keys(ssr.directiveFnsById)[0]!]!
+          .extractedFilename,
+    })
+
+    expect(client.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createClientRpc } from "my-rpc-lib-client";
+      import z from "zod";
+      export const zExampleSchema = z.object({
+        name: z.string(),
+        age: z.number()
+      });
+      const namedFunction_createServerFn = createClientRpc("test_ts--namedFunction_createServerFn");
+      export const namedFunction = createServerFn(namedFunction_createServerFn);"
+    `)
+    expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createSsrRpc } from "my-rpc-lib-server";
+      import z from "zod";
+      export const zExampleSchema = z.object({
+        name: z.string(),
+        age: z.number()
+      });
+      const namedFunction_createServerFn = createSsrRpc("test_ts--namedFunction_createServerFn");
+      export const namedFunction = createServerFn(namedFunction_createServerFn);"
+    `)
+    expect(server.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createServerRpc } from "my-rpc-lib-server";
+      import z from "zod";
+      const zExampleSchema = z.object({
+        name: z.string(),
+        age: z.number()
+      });
+      const namedFunction_createServerFn = createServerRpc("test_ts--namedFunction_createServerFn", () => {
+        zExampleSchema.safeParse({
+          name: 'test',
+          age: 123
+        });
+        return 'hello';
+      });
+      export { namedFunction_createServerFn };"
     `)
   })
 })

@@ -22,6 +22,7 @@ import { Route as DeadCodePreserveRouteImport } from './routes/dead-code-preserv
 import { Route as ConsistentRouteImport } from './routes/consistent'
 import { Route as AbortSignalRouteImport } from './routes/abort-signal'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PrimitivesIndexRouteImport } from './routes/primitives/index'
 import { Route as MiddlewareIndexRouteImport } from './routes/middleware/index'
 import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-redirect/index'
 import { Route as FactoryIndexRouteImport } from './routes/factory/index'
@@ -97,6 +98,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrimitivesIndexRoute = PrimitivesIndexRouteImport.update({
+  id: '/primitives/',
+  path: '/primitives/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MiddlewareIndexRoute = MiddlewareIndexRouteImport.update({
   id: '/middleware/',
   path: '/middleware/',
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
+  '/primitives': typeof PrimitivesIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
 export interface FileRoutesByTo {
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
+  '/primitives': typeof PrimitivesIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
 export interface FileRoutesById {
@@ -217,6 +225,7 @@ export interface FileRoutesById {
   '/factory/': typeof FactoryIndexRoute
   '/formdata-redirect/': typeof FormdataRedirectIndexRoute
   '/middleware/': typeof MiddlewareIndexRoute
+  '/primitives/': typeof PrimitivesIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
 export interface FileRouteTypes {
@@ -243,6 +252,7 @@ export interface FileRouteTypes {
     | '/factory'
     | '/formdata-redirect'
     | '/middleware'
+    | '/primitives'
     | '/formdata-redirect/target/$name'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -267,6 +277,7 @@ export interface FileRouteTypes {
     | '/factory'
     | '/formdata-redirect'
     | '/middleware'
+    | '/primitives'
     | '/formdata-redirect/target/$name'
   id:
     | '__root__'
@@ -291,6 +302,7 @@ export interface FileRouteTypes {
     | '/factory/'
     | '/formdata-redirect/'
     | '/middleware/'
+    | '/primitives/'
     | '/formdata-redirect/target/$name'
   fileRoutesById: FileRoutesById
 }
@@ -316,6 +328,7 @@ export interface RootRouteChildren {
   FactoryIndexRoute: typeof FactoryIndexRoute
   FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
   MiddlewareIndexRoute: typeof MiddlewareIndexRoute
+  PrimitivesIndexRoute: typeof PrimitivesIndexRoute
   FormdataRedirectTargetNameRoute: typeof FormdataRedirectTargetNameRoute
 }
 
@@ -412,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/primitives/': {
+      id: '/primitives/'
+      path: '/primitives'
+      fullPath: '/primitives'
+      preLoaderRoute: typeof PrimitivesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/': {
       id: '/middleware/'
       path: '/middleware'
@@ -500,6 +520,7 @@ const rootRouteChildren: RootRouteChildren = {
   FactoryIndexRoute: FactoryIndexRoute,
   FormdataRedirectIndexRoute: FormdataRedirectIndexRoute,
   MiddlewareIndexRoute: MiddlewareIndexRoute,
+  PrimitivesIndexRoute: PrimitivesIndexRoute,
   FormdataRedirectTargetNameRoute: FormdataRedirectTargetNameRoute,
 }
 export const routeTree = rootRouteImport

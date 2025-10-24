@@ -1,8 +1,14 @@
 /// <reference types="vite/client" />
-import { createRootRoute, Link, Outlet } from '@tanstack/solid-router'
-import appCss from '~/styles/app.css?url'
-import * as Solid from 'solid-js'
+import {
+  HeadContent,
+  Link,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/solid-router'
+import { HydrationScript } from 'solid-js/web'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import type * as Solid from 'solid-js'
+import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -11,15 +17,22 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
-function RootDocument({ children }: { children: Solid.JSX.Element }) {
+function RootDocument(props: { children: Solid.JSX.Element }) {
   return (
-    <>
-      <div>
-        <Link to="/">Index</Link>
-        <Link to="/about">About</Link>
-      </div>
-      {children}
-      <TanStackRouterDevtools position="bottom-right" />
-    </>
+    <html>
+      <head>
+        <HydrationScript />
+      </head>
+      <body>
+        <HeadContent />
+        <div>
+          <Link to="/">Index</Link>
+          <Link to="/about">About</Link>
+        </div>
+        {props.children}
+        <TanStackRouterDevtools position="bottom-right" />
+        <Scripts />
+      </body>
+    </html>
   )
 }
