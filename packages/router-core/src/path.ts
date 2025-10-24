@@ -22,6 +22,7 @@ export interface Segment {
 }
 
 /** Join path segments, cleaning duplicate slashes between parts. */
+/** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
   return cleanPath(
     paths
@@ -33,21 +34,25 @@ export function joinPaths(paths: Array<string | undefined>) {
 }
 
 /** Remove repeated slashes from a path string. */
+/** Remove repeated slashes from a path string. */
 export function cleanPath(path: string) {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')
 }
 
 /** Trim leading slashes (except preserving root '/'). */
+/** Trim leading slashes (except preserving root '/'). */
 export function trimPathLeft(path: string) {
   return path === '/' ? path : path.replace(/^\/{1,}/, '')
 }
 
 /** Trim trailing slashes (except preserving root '/'). */
+/** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
   return path === '/' ? path : path.replace(/\/{1,}$/, '')
 }
 
+/** Trim both leading and trailing slashes. */
 /** Trim both leading and trailing slashes. */
 export function trimPath(path: string) {
   return trimPathRight(trimPathLeft(path))
@@ -65,6 +70,10 @@ export function removeTrailingSlash(value: string, basepath: string): string {
 // see the usage in the isActive under useLinkProps
 // /sample/path1 = /sample/path1/
 // /sample/path1/some <> /sample/path1
+/**
+ * Compare two pathnames for exact equality after normalizing trailing slashes
+ * relative to the provided `basepath`.
+ */
 /**
  * Compare two pathnames for exact equality after normalizing trailing slashes
  * relative to the provided `basepath`.
@@ -215,6 +224,10 @@ export function resolvePath({
 
 export type ParsePathnameCache = LRUCache<string, ReadonlyArray<Segment>>
 
+/**
+ * Parse a pathname into an array of typed segments used by the router's
+ * matcher. Results are optionally cached via an LRU cache.
+ */
 /**
  * Parse a pathname into an array of typed segments used by the router's
  * matcher. Results are optionally cached via an LRU cache.
@@ -388,6 +401,10 @@ type InterPolatePathResult = {
  * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
  * - Optionally leaves placeholders or wildcards in place
  */
+/**
+ * Interpolate params and wildcards into a route path template.
+ * Encodes safely and supports optional params and custom decode char maps.
+ */
 export function interpolatePath({
   path,
   params,
@@ -518,6 +535,10 @@ function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
  * Match a pathname against a route destination and return extracted params
  * or `undefined`. Uses the same parsing as the router for consistency.
  */
+/**
+ * Match a pathname against a route destination and return extracted params
+ * or `undefined`. Uses the same parsing as the router for consistency.
+ */
 export function matchPathname(
   currentPathname: string,
   matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
@@ -533,6 +554,7 @@ export function matchPathname(
   return pathParams ?? {}
 }
 
+/** Low-level matcher that compares two path strings and extracts params. */
 /** Low-level matcher that compares two path strings and extracts params. */
 export function matchByPath(
   from: string,
