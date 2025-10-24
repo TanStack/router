@@ -244,6 +244,7 @@ export function createStartHandler<TRegister = Register>(
                 getRouter,
                 request,
                 executeRouter,
+                context,
               })
 
               return response
@@ -343,6 +344,7 @@ async function handleServerRoutes({
   getRouter,
   request,
   executeRouter,
+  context,
 }: {
   getRouter: () => Awaitable<AnyRouter>
   request: Request
@@ -351,6 +353,7 @@ async function handleServerRoutes({
   }: {
     serverContext: any
   }) => Promise<Response>
+  context: any
 }) {
   const router = await getRouter()
   let url = new URL(request.url)
@@ -410,7 +413,7 @@ async function handleServerRoutes({
 
   const ctx = await executeMiddleware(middlewares, {
     request,
-    context: {},
+    context,
     params: routeParams,
     pathname,
   })
