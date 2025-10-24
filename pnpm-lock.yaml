@@ -8146,10 +8146,6 @@ importers:
       tiny-warning:
         specifier: ^1.0.3
         version: 1.0.3
-    devDependencies:
-      zod:
-        specifier: ^3.24.2
-        version: 3.25.57
 
   packages/start-plugin-core:
     dependencies:

@@ -1,5 +1,4 @@
 import { describe, expectTypeOf, test } from 'vitest'
-import { z } from 'zod'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
 import { TSS_SERVER_FUNCTION } from '../constants'
@@ -64,13 +63,36 @@ test('createServerFn with validator', () => {
 })
 
 test('createServerFn with standard validator', () => {
-  const schema = z
-    .object({ input: z.string() })
-    .transform(({ input }) => ({ value: { a: input } }))
+  interface SyncInput {
+    input: string
+  }
+  interface SyncOutput {
+    value: {
+      a: string
+    }
+  }
+  interface SyncValidator {
+    readonly '~standard': {
+      types?: {
+        input: SyncInput
+        output: SyncOutput
+      }
+      validate: (input: unknown) => {
+        value: SyncOutput
+      }
+    }
+  }
+  const validator: SyncValidator = {
+    ['~standard']: {
+      validate: (input: unknown) => ({
+        value: { value: { a: (input as SyncInput).input } },
+      }),
+    },
+  }
 
   const fnAfterValidator = createServerFn({
     method: 'GET',
-  }).inputValidator(schema)
+  }).inputValidator(validator)
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
@@ -97,17 +119,37 @@ test('createServerFn with standard validator', () => {
 })
 
 test('createServerFn with async standard validator', () => {
-  const schema = z
-    .object({
-      input: z
-        .string()
-        .refine(async (val) => Promise.resolve(val !== 'invalid')),
-    })
-    .transform(({ input }) => ({ value: { a: input } }))
+  interface AsyncInput {
+    input: string
+  }
+  interface AsyncOutput {
+    value: {
+      a: string
+    }
+  }
+  interface AsyncValidator {
+    readonly '~standard': {
+      types?: {
+        input: AsyncInput
+        output: AsyncOutput
+      }
+      validate: (input: unknown) => Promise<{
+        value: AsyncOutput
+      }>
+    }
+  }
+  const validator: AsyncValidator = {
+    ['~standard']: {
+      validate: async (input: unknown) =>
+        Promise.resolve({
+          value: { value: { a: (input as AsyncInput).input } },
+        }),
+    },
+  }
 
   const fnAfterValidator = createServerFn({
     method: 'GET',
-  }).inputValidator(schema)
+  }).inputValidator(validator)
 
   expectTypeOf(fnAfterValidator).toHaveProperty('handler')
   expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
