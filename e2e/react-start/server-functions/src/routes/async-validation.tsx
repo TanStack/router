@@ -9,7 +9,7 @@ export const Route = createFileRoute('/async-validation')({
 
 const asyncValidationSchema = z
   .object({ value: z.string() })
-  .refine(async (data) => Promise.resolve(data.value !== 'invalid'))
+  .refine((data) => Promise.resolve(data.value !== 'invalid'))
 
 const asyncValidationServerFn = createServerFn()
   .inputValidator(asyncValidationSchema)

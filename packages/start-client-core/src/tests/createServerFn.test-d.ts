@@ -140,7 +140,7 @@ test('createServerFn with async standard validator', () => {
   }
   const validator: AsyncValidator = {
     ['~standard']: {
-      validate: async (input: unknown) =>
+      validate: (input: unknown) =>
         Promise.resolve({
           value: { value: { a: (input as AsyncInput).input } },
         }),
