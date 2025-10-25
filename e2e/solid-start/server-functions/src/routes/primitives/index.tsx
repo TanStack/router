@@ -1,4 +1,4 @@
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import { For, Show } from 'solid-js'
@@ -50,7 +50,7 @@ interface TestProps<T> extends PrimitiveComponentProps<T> {
   method: 'get' | 'post'
 }
 function Test<T>(props: TestProps<T>) {
-  const query = createQuery(() => ({
+  const query = useQuery(() => ({
     queryKey: [props.data.type, props.method],
     queryFn: async () => {
       const result = await props.serverFn[props.method]({
