@@ -88,6 +88,11 @@ function Home() {
         <li>
           <Link to="/factory">Server Functions Factory E2E tests</Link>
         </li>
+        <li>
+          <Link to="/middleware/unhandled-exception">
+            Server Functions Middleware Unhandled Exception E2E tests
+          </Link>
+        </li>
       </ul>
     </div>
   )

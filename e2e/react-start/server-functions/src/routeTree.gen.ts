@@ -27,6 +27,7 @@ import { Route as MiddlewareIndexRouteImport } from './routes/middleware/index'
 import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-redirect/index'
 import { Route as FactoryIndexRouteImport } from './routes/factory/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
+import { Route as MiddlewareUnhandledExceptionRouteImport } from './routes/middleware/unhandled-exception'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
@@ -123,6 +124,12 @@ const CookiesIndexRoute = CookiesIndexRouteImport.update({
   path: '/cookies/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MiddlewareUnhandledExceptionRoute =
+  MiddlewareUnhandledExceptionRouteImport.update({
+    id: '/middleware/unhandled-exception',
+    path: '/middleware/unhandled-exception',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MiddlewareSendServerFnRoute = MiddlewareSendServerFnRouteImport.update({
   id: '/middleware/send-serverFn',
   path: '/middleware/send-serverFn',
@@ -170,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
@@ -195,6 +203,7 @@ export interface FileRoutesByTo {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
@@ -221,6 +230,7 @@ export interface FileRoutesById {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/cookies/': typeof CookiesIndexRoute
   '/factory/': typeof FactoryIndexRoute
   '/formdata-redirect/': typeof FormdataRedirectIndexRoute
@@ -248,6 +258,7 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/unhandled-exception'
     | '/cookies'
     | '/factory'
     | '/formdata-redirect'
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/unhandled-exception'
     | '/cookies'
     | '/factory'
     | '/formdata-redirect'
@@ -298,6 +310,7 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/unhandled-exception'
     | '/cookies/'
     | '/factory/'
     | '/formdata-redirect/'
@@ -324,6 +337,7 @@ export interface RootRouteChildren {
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
+  MiddlewareUnhandledExceptionRoute: typeof MiddlewareUnhandledExceptionRoute
   CookiesIndexRoute: typeof CookiesIndexRoute
   FactoryIndexRoute: typeof FactoryIndexRoute
   FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
@@ -460,6 +474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CookiesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/unhandled-exception': {
+      id: '/middleware/unhandled-exception'
+      path: '/middleware/unhandled-exception'
+      fullPath: '/middleware/unhandled-exception'
+      preLoaderRoute: typeof MiddlewareUnhandledExceptionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/send-serverFn': {
       id: '/middleware/send-serverFn'
       path: '/middleware/send-serverFn'
@@ -516,6 +537,7 @@ const rootRouteChildren: RootRouteChildren = {
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
+  MiddlewareUnhandledExceptionRoute: MiddlewareUnhandledExceptionRoute,
   CookiesIndexRoute: CookiesIndexRoute,
   FactoryIndexRoute: FactoryIndexRoute,
   FormdataRedirectIndexRoute: FormdataRedirectIndexRoute,
