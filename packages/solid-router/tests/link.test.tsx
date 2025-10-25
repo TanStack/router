@@ -675,8 +675,7 @@ describe('Link', () => {
     expect(pageZero).toBeInTheDocument()
   })
 
-  // TODO - THIS WORKS IN REACT
-  test.skip('when navigation to . from /posts while updating search from /', async () => {
+  test('when navigation to . from /posts while updating search from /', async () => {
     const RootComponent = () => {
       return (
         <>
@@ -774,12 +773,13 @@ describe('Link', () => {
 
     fireEvent.click(updateSearchLink)
 
+    const updatedPage = await screen.findByTestId('current-page')
+    const updatedFilter = await screen.findByTestId('current-filter')
+
     // Verify search was updated
     expect(window.location.pathname).toBe('/posts')
     expect(window.location.search).toBe('?page=2&filter=inactive')
 
-    const updatedPage = await screen.findByTestId('current-page')
-    const updatedFilter = await screen.findByTestId('current-filter')
     expect(updatedPage).toHaveTextContent('Page: 2')
     expect(updatedFilter).toHaveTextContent('Filter: inactive')
   })
@@ -1627,8 +1627,7 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/posts/id1')
   })
 
-  // TODO - THIS WORKS IN REACT
-  test.skip('when navigating from /posts/$postId to "/"', async () => {
+  test('when navigating from /posts/$postId to "/"', async () => {
     const rootRoute = createRootRoute({
       component: () => {
         return (
@@ -1745,8 +1744,9 @@ describe('Link', () => {
 
     fireEvent.click(homeLink)
 
-    expect(window.location.pathname).toBe('/')
     const homeHeading = await screen.findByTestId('home-heading')
+
+    expect(window.location.pathname).toBe('/')
     expect(homeHeading).toBeInTheDocument()
 
     expect(consoleWarnSpy).not.toHaveBeenCalled()
@@ -6346,8 +6346,7 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
 })
 
 describe('rewrite', () => {
-  // TODO - THIS WORKS IN REACT
-  test.skip('renders hard link when rewrite points to different origin', async () => {
+  test('renders hard link when rewrite points to different origin', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,

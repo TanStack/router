@@ -260,7 +260,7 @@ export function useLinkProps<
       propsSafeToSpread,
       {
         ref,
-        href: externalLink,
+        href: externalLink(),
       },
       Solid.splitProps(local, [
         'target',
