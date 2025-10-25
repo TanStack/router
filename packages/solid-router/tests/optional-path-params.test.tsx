@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 import {
   Link,
   Outlet,
@@ -701,21 +707,27 @@ describe('Solid Router - Optional Path Parameters', () => {
       )
 
       const addCategoryBtn = await screen.findByTestId('add-category')
-      const removeCategoryBtn = await screen.findByTestId('remove-category')
 
       // Add category
       fireEvent.click(addCategoryBtn)
-      expect(await screen.findByTestId('params')).toHaveTextContent(
-        JSON.stringify({ category: 'tech' }),
-      )
+      await waitFor(() => {
+        expect(screen.getByTestId('params')).toHaveTextContent(
+          JSON.stringify({ category: 'tech' }),
+        )
+      })
       expect(router.state.location.pathname).toBe('/posts/tech')
 
-      // Remove category
+      // Remove category - get fresh reference after navigation
+      const removeCategoryBtn = await screen.findByTestId('remove-category')
       fireEvent.click(removeCategoryBtn)
-      expect(await screen.findByTestId('params')).toHaveTextContent(
-        JSON.stringify({}),
-      )
-      expect(router.state.location.pathname).toBe('/posts')
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/posts')
+      })
+      await waitFor(() => {
+        expect(screen.getByTestId('params')).toHaveTextContent(
+          JSON.stringify({}),
+        )
+      })
     })
   })
 
