@@ -326,7 +326,7 @@ test('raw response', async ({ page }) => {
 })
 
 test.describe('formdata redirect modes', () => {
-  for (const mode of ['submit', 'action']) {
+  for (const mode of ['js', 'no-js']) {
     test(`Server function can redirect when sending formdata: mode = ${mode}`, async ({
       page,
     }) => {
