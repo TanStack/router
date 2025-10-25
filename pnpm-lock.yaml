@@ -2511,7 +2511,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
+        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -2557,7 +2557,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
+        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -12678,11 +12678,6 @@ packages:
 
   '@tanstack/solid-query@5.72.0':
     resolution: {integrity: sha512-zQ27dZEakN05hZB9C+qTKgtBU3N7Li3rx++nUOd4K5LtrTMjiIEp2FEbYoGe9B0Pn9tF5CIthc9fknl/qBVI5g==}
-    peerDependencies:
-      solid-js: 1.9.9
-
-  '@tanstack/solid-query@5.90.6':
-    resolution: {integrity: sha512-Ma5A3uQ2rqVCznR8FniNLHWYDFLtveVb2b+JMD1F+x3TgRTevVlGfiUfpL1KaFVWJMUX3ASvCB+aUQpeIBRDvA==}
     peerDependencies:
       solid-js: 1.9.9
 
@@ -23424,11 +23419,6 @@ snapshots:
   '@tanstack/solid-query@5.90.6(solid-js@1.9.9)':
     dependencies:
       '@tanstack/query-core': 5.90.5
-      solid-js: 1.9.9
-
-  '@tanstack/solid-query@5.90.6(solid-js@1.9.9)':
-    dependencies:
-      '@tanstack/query-core': 5.66.0
       solid-js: 1.9.9
 
   '@tanstack/solid-store@0.7.0(solid-js@1.9.9)':
