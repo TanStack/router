@@ -402,8 +402,7 @@ test('reproducer #4245', async () => {
   expect(fooLink3).toBeInTheDocument()
 })
 
-// TODO - THIS WORKS IN REACT
-test.skip('reproducer #4546', async () => {
+test('reproducer #4546', async () => {
   const rootRoute = createRootRoute({
     component: () => {
       return (
@@ -575,6 +574,8 @@ test.skip('reproducer #4546', async () => {
   fireEvent.click(idLink)
 
   {
+    // Wait for navigation to complete before checking values
+    await screen.findByText('$id route')
     const headerCounter = await screen.findByTestId('header-counter')
     expect(headerCounter).toHaveTextContent('2')
 
@@ -588,6 +589,8 @@ test.skip('reproducer #4546', async () => {
   fireEvent.click(indexLink)
 
   {
+    // Wait for navigation to complete before checking values
+    await screen.findByText('Index route')
     const headerCounter = await screen.findByTestId('header-counter')
     expect(headerCounter).toHaveTextContent('3')
 
@@ -601,6 +604,8 @@ test.skip('reproducer #4546', async () => {
   fireEvent.click(invalidateRouterButton)
 
   {
+    // Wait for router to invalidate and reload
+    await new Promise((resolve) => setTimeout(resolve, 50))
     const headerCounter = await screen.findByTestId('header-counter')
     expect(headerCounter).toHaveTextContent('4')
 
@@ -614,6 +619,8 @@ test.skip('reproducer #4546', async () => {
   fireEvent.click(idLink)
 
   {
+    // Wait for navigation to complete before checking values
+    await screen.findByText('$id route')
     const headerCounter = await screen.findByTestId('header-counter')
     expect(headerCounter).toHaveTextContent('5')
 
