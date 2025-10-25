@@ -1,7 +1,7 @@
-import { render } from 'solid-js/web';
+import { render } from 'solid-js/web'
 
-import { tanstackRouterBrowserTracingIntegration } from '@sentry/solid/tanstackrouter';
-import * as Sentry from '@sentry/solid';
+import { tanstackRouterBrowserTracingIntegration } from '@sentry/solid/tanstackrouter'
+import * as Sentry from '@sentry/solid'
 
 import {
   Link,
@@ -86,7 +86,7 @@ Sentry.init({
   sendClientReports: false,
 })
 
-const rootElement = document.getElementById('app');
+const rootElement = document.getElementById('app')
 if (rootElement) {
-  render(() => <RouterProvider router={router} />, rootElement);
+  render(() => <RouterProvider router={router} />, rootElement)
 }
