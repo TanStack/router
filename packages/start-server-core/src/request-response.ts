@@ -136,8 +136,16 @@ export function setResponseHeaders(
   headers: TypedHeaders<ResponseHeaderMap>,
 ): void {
   const event = getH3Event()
-  for (const [name, value] of Object.entries(headers)) {
-    event.res.headers.set(name, value)
+  const addedHeaderNames: Record<string, true> = {}
+  for (const [name, value] of headers.entries()) {
+    const found = addedHeaderNames[name] ?? false
+    if (!found) {
+      addedHeaderNames[name] = true
+    }
+    // If header already existed in h3 event headers, it will be replaced.
+    // However, headers object in this invocation might have multiple instances of the same header name (.append() was used), let's allow the duplicates.
+    const method = found ? 'append' : 'set'
+    event.res.headers[method](name, value)
   }
 }
 
