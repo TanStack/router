@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
@@ -88,6 +89,12 @@ import { Route as RelativeLinkPathPathIndexRouteImport } from './routes/relative
 import { Route as RelativeLinkNestedDeepIndexRouteImport } from './routes/relative/link/nested/deep/index'
 import { Route as ParamsPsNamedFooBarBazRouteImport } from './routes/params-ps/named/$foo/$bar.$baz'
 
+const Char45824Char54620Char48124Char44397Route =
+  Char45824Char54620Char48124Char44397RouteImport.update({
+    id: '/대한민국',
+    path: '/대한민국',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const RemountDepsRoute = RemountDepsRouteImport.update({
   id: '/remountDeps',
   path: '/remountDeps',
@@ -514,6 +521,7 @@ export interface FileRoutesByFullPath {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
   '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
@@ -589,6 +597,7 @@ export interface FileRoutesByTo {
   '/editing-b': typeof EditingBRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
   '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
@@ -663,6 +672,7 @@ export interface FileRoutesById {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
   '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
@@ -744,6 +754,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/대한민국'
     | '/non-nested/named'
     | '/non-nested/path'
     | '/non-nested/prefix'
@@ -819,6 +830,7 @@ export interface FileRouteTypes {
     | '/editing-b'
     | '/notRemountDeps'
     | '/remountDeps'
+    | '/대한민국'
     | '/non-nested/named'
     | '/non-nested/path'
     | '/non-nested/prefix'
@@ -892,6 +904,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/대한민국'
     | '/non-nested/named'
     | '/non-nested/path'
     | '/non-nested/prefix'
@@ -973,6 +986,7 @@ export interface RootRouteChildren {
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
+  Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
   ParamsPsNonNestedRouteRoute: typeof ParamsPsNonNestedRouteRouteWithChildren
   RelativeLinkRouteRoute: typeof RelativeLinkRouteRouteWithChildren
   RelativeUseNavigateRouteRoute: typeof RelativeUseNavigateRouteRouteWithChildren
@@ -995,6 +1009,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/remountDeps': {
       id: '/remountDeps'
       path: '/remountDeps'
@@ -1884,6 +1905,8 @@ const rootRouteChildren: RootRouteChildren = {
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
   RemountDepsRoute: RemountDepsRoute,
+  Char45824Char54620Char48124Char44397Route:
+    Char45824Char54620Char48124Char44397Route,
   ParamsPsNonNestedRouteRoute: ParamsPsNonNestedRouteRouteWithChildren,
   RelativeLinkRouteRoute: RelativeLinkRouteRouteWithChildren,
   RelativeUseNavigateRouteRoute: RelativeUseNavigateRouteRouteWithChildren,
