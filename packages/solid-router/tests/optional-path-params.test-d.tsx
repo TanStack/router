@@ -14,9 +14,11 @@ test('when creating a route with optional parameters', () => {
     routeTree: rootRoute.addChildren([usersRoute]),
   })
 
-  expectTypeOf(usersRoute.useParams<typeof router>()).toEqualTypeOf<Accessor<{
-    tab?: string
-  }>>()
+  expectTypeOf(usersRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      tab?: string
+    }>
+  >()
 })
 
 test('when creating a route with mixed optional and required parameters', () => {
@@ -30,10 +32,12 @@ test('when creating a route with mixed optional and required parameters', () => 
     routeTree: rootRoute.addChildren([usersRoute]),
   })
 
-  expectTypeOf(usersRoute.useParams<typeof router>()).toEqualTypeOf<Accessor<{
-    id: string
-    tab?: string
-  }>>()
+  expectTypeOf(usersRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      id: string
+      tab?: string
+    }>
+  >()
 })
 
 test('when creating a route with optional param with prefix and suffix', () => {
@@ -47,9 +51,11 @@ test('when creating a route with optional param with prefix and suffix', () => {
     routeTree: rootRoute.addChildren([filesRoute]),
   })
 
-  expectTypeOf(filesRoute.useParams<typeof router>()).toEqualTypeOf<Accessor<{
-    name?: string
-  }>>()
+  expectTypeOf(filesRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      name?: string
+    }>
+  >()
 })
 
 test('when creating Link with optional parameters', () => {
@@ -63,10 +69,12 @@ test('when creating Link with optional parameters', () => {
     routeTree: rootRoute.addChildren([postsRoute]),
   })
 
-  expectTypeOf(postsRoute.useParams<typeof router>()).toEqualTypeOf<Accessor<{
-    category?: string
-    slug?: string
-  }>>()
+  expectTypeOf(postsRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      category?: string
+      slug?: string
+    }>
+  >()
 })
 
 test('when using optional parameters in loaders', () => {
@@ -84,9 +92,11 @@ test('when using optional parameters in loaders', () => {
     routeTree: rootRoute.addChildren([postsRoute]),
   })
 
-  expectTypeOf(postsRoute.useLoaderData<typeof router>()).toEqualTypeOf<Accessor<{
-    category?: string
-  }>>()
+  expectTypeOf(postsRoute.useLoaderData<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      category?: string
+    }>
+  >()
 })
 
 test('when using optional parameters in beforeLoad', () => {
@@ -104,9 +114,11 @@ test('when using optional parameters in beforeLoad', () => {
     routeTree: rootRoute.addChildren([postsRoute]),
   })
 
-  expectTypeOf(postsRoute.useParams<typeof router>()).toEqualTypeOf<Accessor<{
-    category?: string
-  }>>()
+  expectTypeOf(postsRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      category?: string
+    }>
+  >()
 })
 
 test('when using params.parse with optional parameters', () => {
@@ -134,9 +146,11 @@ test('when using params.parse with optional parameters', () => {
   })
 
   // Note: Type inference for params.parse is still complex - this represents current working behavior
-  expectTypeOf(postsRoute.useParams<typeof router>()).toMatchTypeOf<Accessor<{
-    page?: number | undefined
-  }>>()
+  expectTypeOf(postsRoute.useParams<typeof router>()).toMatchTypeOf<
+    Accessor<{
+      page?: number | undefined
+    }>
+  >()
 })
 
 test('when nesting routes with optional parameters', () => {
@@ -154,10 +168,12 @@ test('when nesting routes with optional parameters', () => {
     routeTree: rootRoute.addChildren([postsRoute.addChildren([postRoute])]),
   })
 
-  expectTypeOf(postRoute.useParams<typeof router>()).toEqualTypeOf<Accessor<{
-    category?: string
-    postId: string
-  }>>()
+  expectTypeOf(postRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      category?: string
+      postId: string
+    }>
+  >()
 })
 
 test('when combining optional parameters with wildcards', () => {
@@ -171,10 +187,12 @@ test('when combining optional parameters with wildcards', () => {
     routeTree: rootRoute.addChildren([docsRoute]),
   })
 
-  expectTypeOf(docsRoute.useParams<typeof router>()).toEqualTypeOf<Accessor<{
-    version?: string
-    _splat?: string
-  }>>()
+  expectTypeOf(docsRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      version?: string
+      _splat?: string
+    }>
+  >()
 })
 
 test('when using ResolveOptionalParams utility type', () => {
@@ -200,13 +218,15 @@ test('complex scenario with optional parameters only', () => {
     routeTree: rootRoute.addChildren([complexRoute]),
   })
 
-  expectTypeOf(complexRoute.useParams<typeof router>()).toEqualTypeOf<Accessor<{
-    env?: string
-    version?: string
-    id: string
-    tab?: string
-    _splat?: string
-  }>>()
+  expectTypeOf(complexRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      env?: string
+      version?: string
+      id: string
+      tab?: string
+      _splat?: string
+    }>
+  >()
 })
 
 test('edge case - all optional parameters', () => {
@@ -220,9 +240,11 @@ test('edge case - all optional parameters', () => {
     routeTree: rootRoute.addChildren([allOptionalRoute]),
   })
 
-  expectTypeOf(allOptionalRoute.useParams<typeof router>()).toEqualTypeOf<Accessor<{
-    category?: string
-    subcategory?: string
-    item?: string
-  }>>()
+  expectTypeOf(allOptionalRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      category?: string
+      subcategory?: string
+      item?: string
+    }>
+  >()
 })

@@ -1669,7 +1669,9 @@ describe('statusCode reset on navigation', () => {
 
         await router.navigate({ to: '/loader-throws-not-found' })
         await waitFor(() => expect(router.state.statusCode).toBe(404))
-        expect(await screen.findByTestId('not-found-component')).toBeInTheDocument()
+        expect(
+          await screen.findByTestId('not-found-component'),
+        ).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
 
@@ -1708,7 +1710,9 @@ describe('statusCode reset on navigation', () => {
 
         await router.navigate({ to: '/beforeload-throws-not-found' })
         await waitFor(() => expect(router.state.statusCode).toBe(404))
-        expect(await screen.findByTestId('not-found-component')).toBeInTheDocument()
+        expect(
+          await screen.findByTestId('not-found-component'),
+        ).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
 

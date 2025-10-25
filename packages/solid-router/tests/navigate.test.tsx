@@ -876,7 +876,7 @@ describe('router.navigate navigation using optional path parameters - function s
   })
 
   it('should navigate from "/posts/tech" to "/posts" by setting category to undefined in function', async () => {
-    const { router} = createOptionalParamTestRouter(
+    const { router } = createOptionalParamTestRouter(
       createMemoryHistory({ initialEntries: ['/posts/tech'] }),
     )
 
