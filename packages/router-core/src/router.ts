@@ -581,6 +581,7 @@ export type SubscribeFn = <TType extends keyof RouterEvents>(
 export interface MatchRoutesOpts {
   preload?: boolean
   throwOnError?: boolean
+  /** @internal */
   _buildLocation?: boolean
   dest?: BuildNextOptions
 }
@@ -1013,14 +1014,14 @@ export class RouterCore<
 
     if (!this.__store && this.latestLocation) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
-        onUpdate: () => {
-          this.__store.state = {
-            ...this.state,
-            cachedMatches: this.state.cachedMatches.filter(
-              (d) => !['redirected'].includes(d.status),
-            ),
-          }
-        },
+        // onUpdate: () => {
+        //   this.__store.state = {
+        //     ...this.state,
+        //     cachedMatches: this.state.cachedMatches.filter(
+        //       (d) => !['redirected'].includes(d.status),
+        //     ),
+        //   }
+        // },
       })
 
       setupScrollRestoration(this)
