@@ -8,12 +8,12 @@ export const Route = createFileRoute('/async-validation')({
 })
 
 const asyncValidationSchema = z
-  .object({ value: z.string() })
-  .refine((data) => Promise.resolve(data.value !== 'invalid'))
+  .string()
+  .refine((data) => Promise.resolve(data !== 'invalid'))
 
 const asyncValidationServerFn = createServerFn()
   .inputValidator(asyncValidationSchema)
-  .handler(({ data }) => data.value)
+  .handler(({ data }) => data)
 
 function RouteComponent() {
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>(
@@ -26,9 +26,7 @@ function RouteComponent() {
     setResult(undefined)
 
     try {
-      const serverFnResult = await asyncValidationServerFn({
-        data: { value },
-      })
+      const serverFnResult = await asyncValidationServerFn({ data: value })
       setResult(serverFnResult)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'unknown')

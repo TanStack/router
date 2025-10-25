@@ -62,31 +62,22 @@ test('createServerFn with validator', () => {
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
 })
 
-interface ValidatorInput {
-  input: string
-}
-interface ValidatorOutput {
-  value: {
-    a: string
-  }
-}
-
 test('createServerFn with standard validator', () => {
   interface SyncValidator {
     readonly '~standard': {
       types?: {
-        input: ValidatorInput
-        output: ValidatorOutput
+        input: string
+        output: string
       }
       validate: (input: unknown) => {
-        value: ValidatorOutput
+        value: string
       }
     }
   }
   const validator: SyncValidator = {
     ['~standard']: {
       validate: (input: unknown) => ({
-        value: { value: { a: (input as ValidatorInput).input } },
+        value: input as string,
       }),
     },
   }
@@ -103,15 +94,13 @@ test('createServerFn with standard validator', () => {
     expectTypeOf(options).toEqualTypeOf<{
       method: 'GET'
       context: undefined
-      data: {
-        value: { a: string }
-      }
+      data: string
       signal: AbortSignal
     }>()
   })
 
   expectTypeOf(fn).parameter(0).toEqualTypeOf<{
-    data: { input: string }
+    data: string
     headers?: HeadersInit
     signal?: AbortSignal
   }>()
@@ -123,11 +112,11 @@ test('createServerFn with async standard validator', () => {
   interface AsyncValidator {
     readonly '~standard': {
       types?: {
-        input: ValidatorInput
-        output: ValidatorOutput
+        input: string
+        output: string
       }
       validate: (input: unknown) => Promise<{
-        value: ValidatorOutput
+        value: string
       }>
     }
   }
@@ -135,7 +124,7 @@ test('createServerFn with async standard validator', () => {
     ['~standard']: {
       validate: (input: unknown) =>
         Promise.resolve({
-          value: { value: { a: (input as ValidatorInput).input } },
+          value: input as string,
         }),
     },
   }
@@ -152,15 +141,13 @@ test('createServerFn with async standard validator', () => {
     expectTypeOf(options).toEqualTypeOf<{
       method: 'GET'
       context: undefined
-      data: {
-        value: { a: string }
-      }
+      data: string
       signal: AbortSignal
     }>()
   })
 
   expectTypeOf(fn).parameter(0).toEqualTypeOf<{
-    data: { input: string }
+    data: string
     headers?: HeadersInit
     signal?: AbortSignal
   }>()
