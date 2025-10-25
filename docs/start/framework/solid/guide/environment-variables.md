@@ -102,8 +102,8 @@ TanStack Start automatically loads environment files in this order:
 > When using the Cloudflare Vite plugin, set `CLOUDFLARE_ENV` to ensure Wrangler loads the correct environment
 >
 > ```bash
->  # .env.development
->  CLOUDFLARE_ENV=development
+> # .env.development
+> CLOUDFLARE_ENV=development
 > ```
 >
 > Otherwise, the variables defined in your `.env.<environment>` files may not be read or injected into `process.env`
