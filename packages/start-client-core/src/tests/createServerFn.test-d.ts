@@ -62,6 +62,99 @@ test('createServerFn with validator', () => {
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
 })
 
+test('createServerFn with standard validator', () => {
+  interface SyncValidator {
+    readonly '~standard': {
+      types?: {
+        input: string
+        output: string
+      }
+      validate: (input: unknown) => {
+        value: string
+      }
+    }
+  }
+  const validator: SyncValidator = {
+    ['~standard']: {
+      validate: (input: unknown) => ({
+        value: input as string,
+      }),
+    },
+  }
+
+  const fnAfterValidator = createServerFn({
+    method: 'GET',
+  }).inputValidator(validator)
+
+  expectTypeOf(fnAfterValidator).toHaveProperty('handler')
+  expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+
+  const fn = fnAfterValidator.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET'
+      context: undefined
+      data: string
+      signal: AbortSignal
+    }>()
+  })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: string
+    headers?: HeadersInit
+    signal?: AbortSignal
+  }>()
+
+  expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
+})
+
+test('createServerFn with async standard validator', () => {
+  interface AsyncValidator {
+    readonly '~standard': {
+      types?: {
+        input: string
+        output: string
+      }
+      validate: (input: unknown) => Promise<{
+        value: string
+      }>
+    }
+  }
+  const validator: AsyncValidator = {
+    ['~standard']: {
+      validate: (input: unknown) =>
+        Promise.resolve({
+          value: input as string,
+        }),
+    },
+  }
+
+  const fnAfterValidator = createServerFn({
+    method: 'GET',
+  }).inputValidator(validator)
+
+  expectTypeOf(fnAfterValidator).toHaveProperty('handler')
+  expectTypeOf(fnAfterValidator).toHaveProperty('middleware')
+  expectTypeOf(fnAfterValidator).not.toHaveProperty('inputValidator')
+
+  const fn = fnAfterValidator.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET'
+      context: undefined
+      data: string
+      signal: AbortSignal
+    }>()
+  })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<{
+    data: string
+    headers?: HeadersInit
+    signal?: AbortSignal
+  }>()
+
+  expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
+})
+
 test('createServerFn with middleware and context', () => {
   const middleware1 = createMiddleware({ type: 'function' }).server(
     ({ next }) => {

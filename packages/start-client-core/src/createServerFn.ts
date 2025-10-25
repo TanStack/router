@@ -663,17 +663,14 @@ export const applyMiddleware = async (
   } as any)
 }
 
-export function execValidator(
+export async function execValidator(
   validator: AnyValidator,
   input: unknown,
-): unknown {
+): Promise<unknown> {
   if (validator == null) return {}
 
   if ('~standard' in validator) {
-    const result = validator['~standard'].validate(input)
-
-    if (result instanceof Promise)
-      throw new Error('Async validation not supported')
+    const result = await validator['~standard'].validate(input)
 
     if (result.issues)
       throw new Error(JSON.stringify(result.issues, undefined, 2))

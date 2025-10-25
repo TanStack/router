@@ -20,6 +20,7 @@ import { Route as HeadersRouteImport } from './routes/headers'
 import { Route as EnvOnlyRouteImport } from './routes/env-only'
 import { Route as DeadCodePreserveRouteImport } from './routes/dead-code-preserve'
 import { Route as ConsistentRouteImport } from './routes/consistent'
+import { Route as AsyncValidationRouteImport } from './routes/async-validation'
 import { Route as AbortSignalRouteImport } from './routes/abort-signal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PrimitivesIndexRouteImport } from './routes/primitives/index'
@@ -86,6 +87,11 @@ const DeadCodePreserveRoute = DeadCodePreserveRouteImport.update({
 const ConsistentRoute = ConsistentRouteImport.update({
   id: '/consistent',
   path: '/consistent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AsyncValidationRoute = AsyncValidationRouteImport.update({
+  id: '/async-validation',
+  path: '/async-validation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AbortSignalRoute = AbortSignalRouteImport.update({
@@ -155,6 +161,7 @@ const FormdataRedirectTargetNameRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/abort-signal': typeof AbortSignalRoute
+  '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/abort-signal': typeof AbortSignalRoute
+  '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/abort-signal': typeof AbortSignalRoute
+  '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -233,6 +242,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/abort-signal'
+    | '/async-validation'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/abort-signal'
+    | '/async-validation'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/abort-signal'
+    | '/async-validation'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -309,6 +321,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AbortSignalRoute: typeof AbortSignalRoute
+  AsyncValidationRoute: typeof AsyncValidationRoute
   ConsistentRoute: typeof ConsistentRoute
   DeadCodePreserveRoute: typeof DeadCodePreserveRoute
   EnvOnlyRoute: typeof EnvOnlyRoute
@@ -411,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsistentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/async-validation': {
+      id: '/async-validation'
+      path: '/async-validation'
+      fullPath: '/async-validation'
+      preLoaderRoute: typeof AsyncValidationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/abort-signal': {
       id: '/abort-signal'
       path: '/abort-signal'
@@ -501,6 +521,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AbortSignalRoute: AbortSignalRoute,
+  AsyncValidationRoute: AsyncValidationRoute,
   ConsistentRoute: ConsistentRoute,
   DeadCodePreserveRoute: DeadCodePreserveRoute,
   EnvOnlyRoute: EnvOnlyRoute,
