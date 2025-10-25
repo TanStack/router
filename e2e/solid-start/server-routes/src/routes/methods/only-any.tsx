@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import { For } from 'solid-js'
 
 export const Route = createFileRoute('/methods/only-any')({
@@ -19,7 +19,7 @@ const HttpMethods = [
 type HttpMethods = (typeof HttpMethods)[number]
 
 function Test(props: { method: HttpMethods }) {
-  const query = createQuery(() => ({
+  const query = useQuery(() => ({
     queryKey: [props.method],
     queryFn: async () => {
       const response = await fetch(`/api/only-any`, {
