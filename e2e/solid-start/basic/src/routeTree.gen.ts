@@ -32,6 +32,7 @@ import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
+import { Route as NotFoundViaHeadRouteImport } from './routes/not-found/via-head'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
 import { Route as ApiUsersRouteImport } from './routes/api/users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
@@ -163,6 +164,11 @@ const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
   path: '/via-loader',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
+const NotFoundViaHeadRoute = NotFoundViaHeadRouteImport.update({
+  id: '/via-head',
+  path: '/via-head',
+  getParentRoute: () => NotFoundRouteRoute,
+} as any)
 const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
   id: '/via-beforeLoad',
   path: '/via-beforeLoad',
@@ -252,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/api/users': typeof ApiUsersRouteWithChildren
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
@@ -285,6 +292,7 @@ export interface FileRoutesByTo {
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/api/users': typeof ApiUsersRouteWithChildren
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -324,6 +332,7 @@ export interface FileRoutesById {
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
@@ -363,6 +372,7 @@ export interface FileRouteTypes {
     | '/대한민국'
     | '/api/users'
     | '/not-found/via-beforeLoad'
+    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
@@ -396,6 +406,7 @@ export interface FileRouteTypes {
     | '/대한민국'
     | '/api/users'
     | '/not-found/via-beforeLoad'
+    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/search-params/default'
@@ -434,6 +445,7 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2'
     | '/api/users'
     | '/not-found/via-beforeLoad'
+    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
@@ -640,6 +652,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof NotFoundViaLoaderRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
+    '/not-found/via-head': {
+      id: '/not-found/via-head'
+      path: '/via-head'
+      fullPath: '/not-found/via-head'
+      preLoaderRoute: typeof NotFoundViaHeadRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
     '/not-found/via-beforeLoad': {
       id: '/not-found/via-beforeLoad'
       path: '/via-beforeLoad'
@@ -743,12 +762,14 @@ declare module '@tanstack/solid-router' {
 
 interface NotFoundRouteRouteChildren {
   NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
+  NotFoundViaHeadRoute: typeof NotFoundViaHeadRoute
   NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
   NotFoundIndexRoute: typeof NotFoundIndexRoute
 }
 
 const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
   NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
+  NotFoundViaHeadRoute: NotFoundViaHeadRoute,
   NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
   NotFoundIndexRoute: NotFoundIndexRoute,
 }
