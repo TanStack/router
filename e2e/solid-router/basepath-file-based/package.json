@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-solid-router-e2e-react-basepath-file-based",
+  "name": "tanstack-router-e2e-solid-basepath-file-based",
   "private": true,
   "type": "module",
   "scripts": {
