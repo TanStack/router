@@ -74,7 +74,6 @@ export type {
   RequiredFetcher,
 } from './createServerFn'
 export {
-  applyMiddleware,
   execValidator,
   flattenMiddlewares,
   executeMiddleware,
