@@ -474,3 +474,12 @@ test('primitives', async ({ page }) => {
     await expect(page.getByTestId(`result-${suffix}`)).toContainText(expected)
   }
 })
+
+test('redirect in server function on direct navigation', async ({ page }) => {
+  // Test direct navigation to a route with a server function that redirects
+  await page.goto('/redirect-test')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test/target')
+})
