@@ -421,14 +421,14 @@ export function useLinkProps<
         ]),
         disabled: !!local.disabled,
         target: local.target,
-        ...((() => {
+        ...(() => {
           const s = resolvedStyle()
           return Object.keys(s).length ? { style: s } : {}
-        })()),
-        ...((() => {
+        })(),
+        ...(() => {
           const c = resolvedClassName()
           return c ? { class: c } : {}
-        })()),
+        })(),
         ...(local.disabled && {
           role: 'link',
           'aria-disabled': true,
