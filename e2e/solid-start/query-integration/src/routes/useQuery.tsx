@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/solid-query'
 import { createFileRoute } from '@tanstack/solid-router'
+import { useQuery } from '@tanstack/solid-query'
 import { makeQueryOptions } from '~/queryOptions'
 
 const qOptions = makeQueryOptions('useQuery')
@@ -9,10 +9,11 @@ export const Route = createFileRoute('/useQuery')({
     await context.queryClient.ensureQueryData(qOptions)
   },
   component: RouteComponent,
+  ssr: true,
 })
 
 function RouteComponent() {
-  const query = useQuery(() => qOptions)
+  const query = useQuery(() => ({ ...qOptions, gcTime: 0 }))
   return (
     <div>
       <div>
