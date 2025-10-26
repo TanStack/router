@@ -5,6 +5,7 @@ import { For, Show } from 'solid-js'
 import { z } from 'zod'
 export const Route = createFileRoute('/primitives/')({
   component: RouteComponent,
+  ssr: 'data-only',
 })
 
 function stringify(data: any) {
