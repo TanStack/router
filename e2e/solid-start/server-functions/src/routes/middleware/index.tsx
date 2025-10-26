@@ -7,9 +7,7 @@ export const Route = createFileRoute('/middleware/')({
 function RouteComponent() {
   return (
     <div class="p-8">
-      <h1 class="font-bold text-lg">
-        Server functions middleware E2E tests
-      </h1>
+      <h1 class="font-bold text-lg">Server functions middleware E2E tests</h1>
       <ul class="list-disc p-4">
         <li>
           <Route.Link

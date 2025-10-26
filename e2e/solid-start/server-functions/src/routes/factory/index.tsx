@@ -139,7 +139,9 @@ function Test(props: TestCase) {
         It should return{' '}
         <code>
           <pre data-testid={`expected-fn-result-${props.expected.name}`}>
-            {props.type === 'serverFn' ? JSON.stringify(props.expected) : 'localFn'}
+            {props.type === 'serverFn'
+              ? JSON.stringify(props.expected)
+              : 'localFn'}
           </pre>
         </code>
       </div>
@@ -173,9 +175,7 @@ function Test(props: TestCase) {
 function RouteComponent() {
   return (
     <div class="p-2 m-2 grid gap-2" data-testid="factory-route-component">
-      <h1 class="font-bold text-lg">
-        Server functions middleware E2E tests
-      </h1>
+      <h1 class="font-bold text-lg">Server functions middleware E2E tests</h1>
       <For each={Object.entries(functions)}>
         {([name, testCase]) => <Test {...testCase} />}
       </For>
