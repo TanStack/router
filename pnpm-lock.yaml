@@ -2227,11 +2227,11 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-query':
-        specifier: ^5.71.9
-        version: 5.72.2(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
+        version: 5.72.2(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -2273,11 +2273,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^5.71.9
-        version: 5.72.2(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
+        version: 5.72.2(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3200,8 +3200,8 @@ importers:
   e2e/solid-start/server-routes:
     dependencies:
       '@tanstack/solid-query':
-        specifier: ^5.71.9
-        version: 5.72.2(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -6821,11 +6821,11 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-query':
-        specifier: ^5.71.9
-        version: 5.72.2(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
+        version: 5.72.2(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: ^1.133.31
         version: link:../../../packages/solid-router
@@ -6864,11 +6864,11 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-query':
-        specifier: ^5.71.9
-        version: 5.72.2(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
+        version: 5.72.2(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: ^1.133.31
         version: link:../../../packages/solid-router
@@ -12672,11 +12672,6 @@ packages:
 
   '@tanstack/solid-query@5.72.0':
     resolution: {integrity: sha512-zQ27dZEakN05hZB9C+qTKgtBU3N7Li3rx++nUOd4K5LtrTMjiIEp2FEbYoGe9B0Pn9tF5CIthc9fknl/qBVI5g==}
-    peerDependencies:
-      solid-js: 1.9.9
-
-  '@tanstack/solid-query@5.72.2':
-    resolution: {integrity: sha512-ty4J5q+DIPEs7xB01TqkTfx0wYkcccJaofb378Nq/HfWoQ/0300A8TM7CU7YotJUmVWA3qwBHnJLChXlNzX4ow==}
     peerDependencies:
       solid-js: 1.9.9
 
@@ -23386,10 +23381,10 @@ snapshots:
       '@tanstack/solid-query': 5.72.0(solid-js@1.9.9)
       solid-js: 1.9.9
 
-  '@tanstack/solid-query-devtools@5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)':
+  '@tanstack/solid-query-devtools@5.72.2(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)':
     dependencies:
       '@tanstack/query-devtools': 5.72.2
-      '@tanstack/solid-query': 5.72.2(solid-js@1.9.9)
+      '@tanstack/solid-query': 5.90.6(solid-js@1.9.9)
       solid-js: 1.9.9
 
   '@tanstack/solid-query-devtools@5.90.4(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)':
@@ -23399,11 +23394,6 @@ snapshots:
       solid-js: 1.9.9
 
   '@tanstack/solid-query@5.72.0(solid-js@1.9.9)':
-    dependencies:
-      '@tanstack/query-core': 5.90.5
-      solid-js: 1.9.9
-
-  '@tanstack/solid-query@5.72.2(solid-js@1.9.9)':
     dependencies:
       '@tanstack/query-core': 5.90.5
       solid-js: 1.9.9
