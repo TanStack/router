@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/solid-router": "^1.133.30",
-    "@tanstack/solid-router-devtools": "^1.133.30",
+    "@tanstack/solid-router": "^1.133.31",
+    "@tanstack/solid-router-devtools": "^1.133.31",
     "compression": "^1.7.5",
     "express": "^4.21.2",
     "get-port": "^7.1.0",
