@@ -16,23 +16,20 @@ export const Route = createFileRoute('/loader-fetchQuery/$type')({
   context: ({ params }) => ({
     queryOptions: makeQueryOptions(`loader-fetchQuery-${params.type}`),
   }),
-  loader: async ({ context, params }) => {
-    await context.queryClient.ensureQueryData(context.queryOptions)
+  
+  loader: ({ context, params }) => {
+    const queryPromise = context.queryClient.fetchQuery(context.queryOptions)
     if (params.type === 'sync') {
-      return context.queryClient.getQueryData(
-        context.queryOptions.queryKey,
-      ) as string
+      return queryPromise
     }
-    return undefined as any
   },
+  ssr: 'data-only',
 })
 
 function RouteComponent() {
-  const params = Route.useParams()
   const loaderData = Route.useLoaderData()
-  const query = useQuery(() => {
-    return makeQueryOptions(`loader-fetchQuery-${params().type}`)
-  })
+  const context = Route.useRouteContext()
+  const query = useQuery(() => context().queryOptions)
 
   return (
     <div>
