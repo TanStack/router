@@ -16,7 +16,7 @@ export const Route = createFileRoute('/loader-fetchQuery/$type')({
   context: ({ params }) => ({
     queryOptions: makeQueryOptions(`loader-fetchQuery-${params.type}`),
   }),
-  
+
   loader: ({ context, params }) => {
     const queryPromise = context.queryClient.fetchQuery(context.queryOptions)
     if (params.type === 'sync') {
