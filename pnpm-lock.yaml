@@ -2511,7 +2511,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
+        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -2557,7 +2557,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
+        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -3132,12 +3132,18 @@ importers:
 
   e2e/solid-start/server-functions:
     dependencies:
+      '@tanstack/solid-query':
+        specifier: ^5.90.6
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
+      '@tanstack/solid-router-ssr-query':
+        specifier: workspace:*
+        version: link:../../../packages/solid-router-ssr-query
       '@tanstack/solid-start':
         specifier: workspace:*
         version: link:../../../packages/solid-start

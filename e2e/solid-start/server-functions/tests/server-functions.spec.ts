@@ -4,6 +4,20 @@ import { test } from '@tanstack/router-e2e-utils'
 import { PORT } from '../playwright.config'
 import type { Page } from '@playwright/test'
 
+test('Server function URLs correctly include constant ids', async ({
+  page,
+}) => {
+  for (const currentPage of ['/submit-post-formdata', '/formdata-redirect']) {
+    await page.goto(currentPage)
+    await page.waitForLoadState('networkidle')
+
+    const form = page.locator('form')
+    const actionUrl = await form.getAttribute('action')
+
+    expect(actionUrl).toMatch(/^\/_serverFn\/constant_id/)
+  }
+})
+
 test('invoking a server function with custom response status code', async ({
   page,
 }) => {
@@ -309,4 +323,154 @@ test('raw response', async ({ page }) => {
   await page.waitForLoadState('networkidle')
 
   await expect(page.getByTestId('response')).toContainText(expectedValue)
+})
+
+test.describe('formdata redirect modes', () => {
+  for (const mode of ['js', 'no-js']) {
+    test(`Server function can redirect when sending formdata: mode = ${mode}`, async ({
+      page,
+    }) => {
+      await page.goto('/formdata-redirect?mode=' + mode)
+
+      await page.waitForLoadState('networkidle')
+      const expected =
+        (await page
+          .getByTestId('expected-submit-post-formdata-server-fn-result')
+          .textContent()) || ''
+      expect(expected).not.toBe('')
+
+      await page.getByTestId('test-submit-post-formdata-fn-calls-btn').click()
+
+      await page.waitForLoadState('networkidle')
+
+      await expect(
+        page.getByTestId('formdata-redirect-target-name'),
+      ).toContainText(expected)
+
+      expect(page.url().endsWith(`/formdata-redirect/target/${expected}`))
+    })
+  }
+})
+
+test.describe('middleware', () => {
+  test.describe('client middleware should have access to router context via the router instance', () => {
+    async function runTest(page: Page) {
+      await page.waitForLoadState('networkidle')
+
+      const expected =
+        (await page.getByTestId('expected-server-fn-result').textContent()) ||
+        ''
+      expect(expected).not.toBe('')
+
+      await page.getByTestId('btn-serverFn').click()
+      await page.waitForLoadState('networkidle')
+      await expect(page.getByTestId('serverFn-loader-result')).toContainText(
+        expected,
+      )
+      await expect(page.getByTestId('serverFn-client-result')).toContainText(
+        expected,
+      )
+    }
+
+    test('direct visit', async ({ page }) => {
+      await page.goto('/middleware/client-middleware-router')
+      await runTest(page)
+    })
+
+    test('client navigation', async ({ page }) => {
+      await page.goto('/middleware')
+      await page.getByTestId('client-middleware-router-link').click()
+      await runTest(page)
+    })
+  })
+
+  test('server function in combination with request middleware', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/request-middleware')
+
+    await page.waitForLoadState('networkidle')
+
+    async function checkEqual(prefix: string) {
+      const requestParam = await page
+        .getByTestId(`${prefix}-data-request-param`)
+        .textContent()
+      expect(requestParam).not.toBe('')
+      const requestFunc = await page
+        .getByTestId(`${prefix}-data-request-func`)
+        .textContent()
+      expect(requestParam).toBe(requestFunc)
+    }
+
+    await checkEqual('loader')
+
+    await page.getByTestId('client-call-button').click()
+    await page.waitForLoadState('networkidle')
+
+    await checkEqual('client')
+  })
+})
+
+test('factory', async ({ page }) => {
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  const buttons = await page
+    .locator('[data-testid^="btn-fn-"]')
+    .elementHandles()
+  for (const button of buttons) {
+    const testId = await button.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('Button is missing data-testid')
+    }
+
+    const suffix = testId.replace('btn-fn-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-fn-result-${suffix}`).textContent()) ||
+      ''
+    expect(expected).not.toBe('')
+
+    await button.click()
+
+    await expect(page.getByTestId(`fn-result-${suffix}`)).toContainText(
+      expected,
+    )
+
+    await expect(page.getByTestId(`fn-comparison-${suffix}`)).toContainText(
+      'equal',
+    )
+  }
+})
+
+test('primitives', async ({ page }) => {
+  await page.goto('/primitives')
+
+  await page.waitForLoadState('networkidle')
+
+  // Wait for client-side hydration to complete
+  await expect(page.locator('[data-testid^="expected-"]').first()).toBeVisible()
+
+  const testCases = await page
+    .locator('[data-testid^="expected-"]')
+    .elementHandles()
+  expect(testCases.length).not.toBe(0)
+
+  for (const testCase of testCases) {
+    const testId = await testCase.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('testcase is missing data-testid')
+    }
+
+    const suffix = testId.replace('expected-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-${suffix}`).textContent()) || ''
+    expect(expected).not.toBe('')
+
+    await expect(page.getByTestId(`result-${suffix}`)).toContainText(expected)
+  }
 })
