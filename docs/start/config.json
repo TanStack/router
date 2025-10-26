@@ -327,6 +327,10 @@
               "to": "framework/solid/examples/start-basic-static"
             },
             {
+              "label": "Basic + Supabase",
+              "to": "framework/solid/examples/start-basic-supabase"
+            },
+            {
               "label": "Cloudflare Vite Plugin",
               "to": "framework/solid/examples/start-basic-cloudflare"
             },

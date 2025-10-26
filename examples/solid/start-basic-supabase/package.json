@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-solid-start-example-supabase-basic",
+  "name": "tanstack-solid-start-example-basic-supabase",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -22,7 +22,7 @@
     "redaxios": "^0.5.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.6",
+    "@tailwindcss/postcss": "^4.1.15",
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.1.6",
     "typescript": "^5.7.2",

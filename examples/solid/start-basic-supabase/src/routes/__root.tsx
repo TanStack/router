@@ -103,40 +103,40 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
         <HydrationScript />
       </head>
       <body>
-      <HeadContent />
-      <div class="p-2 flex gap-2 text-lg">
-        <Link
-          to="/"
-          activeProps={{
-            class: 'font-bold',
-          }}
-          activeOptions={{ exact: true }}
-        >
-          Home
-        </Link>{' '}
-        <Link
-          to="/posts"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Posts
-        </Link>
-        <div class="ml-auto">
-          {user ? (
-            <>
-              <span class="mr-2">{user.email}</span>
-              <Link to="/logout">Logout</Link>
-            </>
-          ) : (
-            <Link to="/login">Login</Link>
-          )}
+        <HeadContent />
+        <div class="p-2 flex gap-2 text-lg">
+          <Link
+            to="/"
+            activeProps={{
+              class: 'font-bold',
+            }}
+            activeOptions={{ exact: true }}
+          >
+            Home
+          </Link>{' '}
+          <Link
+            to="/posts"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Posts
+          </Link>
+          <div class="ml-auto">
+            {user ? (
+              <>
+                <span class="mr-2">{user.email}</span>
+                <Link to="/logout">Logout</Link>
+              </>
+            ) : (
+              <Link to="/login">Login</Link>
+            )}
+          </div>
         </div>
-      </div>
-      <hr />
-      {children}
-      <TanStackRouterDevtools position="bottom-right" />
-      <Scripts />
+        <hr />
+        {children}
+        <TanStackRouterDevtools position="bottom-right" />
+        <Scripts />
       </body>
     </html>
   )
