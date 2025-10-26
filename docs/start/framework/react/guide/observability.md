@@ -488,6 +488,122 @@ While TanStack Start provides built-in observability patterns, external tools of
 - **[PostHog](https://posthog.com/)** - Product analytics with error tracking
 - **[Mixpanel](https://mixpanel.com/)** - Event tracking and user analytics
 
+### New Relic Integration
+
+[New Relic](https://newrelic.com/) is a popular application performance monitoring tool. Here's how to integrate it with TanStack Start.
+
+#### SSR
+
+To enable New Relic for server-side rendering, you will need to do the following:
+
+Create a new integration on New Relic of type `Node`. You will be given a license key that we will use below.
+
+```js
+// newrelic.js - New Relic agent configuration
+exports.config = {
+  app_name: ['YourTanStackApp'], // Your application name in New Relic
+  license_key: 'YOUR_NEW_RELIC_LICENSE_KEY', // Your New Relic license key
+  agent_enabled: true,
+  distributed_tracing: { enabled: true },
+  span_events: { enabled: true },
+  transaction_events: { enabled: true },
+  // Additional default settings
+}
+```
+
+```tsx
+// server.tsx
+import newrelic from 'newrelic' // Make sure this is the first import
+import {
+  createStartHandler,
+  defaultStreamHandler,
+  defineHandlerCallback,
+} from '@tanstack/react-start/server'
+
+const customHandler = defineHandlerCallback(async (ctx) => {
+  // We do this so that transactions are grouped under the route ID instead of unique URLs
+  const matches = ctx.router?.state?.matches ?? []
+  const leaf = matches[matches.length - 1]
+  const routeId = leaf?.routeId ?? new URL(ctx.request.url).pathname
+
+  newrelic.setControllerName(routeId, ctx.request.method ?? 'GET')
+  newrelic.addCustomAttributes({
+    'route.id': routeId,
+    'http.method': ctx.request.method,
+    'http.path': new URL(ctx.request.url).pathname,
+    // Any other custom attributes you want to add
+  })
+
+  return defaultStreamHandler(ctx)
+})
+
+export default {
+  fetch(request: Request) {
+    const handler = createStartHandler(customHandler)
+    return handler(request)
+  },
+}
+```
+
+```bash
+node -r newrelic .output/server/index.mjs
+```
+
+#### Server Functions and Server Routes
+
+If you want to add monitoring for server functions and server routes, you will need to follow the steps above, and then add the following:
+
+```ts
+// newrelic-middleware.ts
+import newrelic from 'newrelic'
+import { createMiddleware } from '@tanstack/react-start'
+
+export const nrTransactionMiddleware = createMiddleware().server(
+  async ({ request, next }) => {
+    const reqPath = new URL(request.url).pathname
+    newrelic.setControllerName(reqPath, request.method ?? 'GET')
+    return await next()
+  },
+)
+```
+
+```ts
+// start.ts
+import { createStart } from '@tanstack/react-start'
+import { nrTransactionMiddleware } from './newrelic-middleware'
+
+export const startInstance = createStart(() => {
+  return {
+    requestMiddleware: [nrTransactionMiddleware],
+  }
+})
+```
+
+#### SPA & Browser
+
+Create a new integration on New Relic of type `React`.
+
+After you set it up, you will have to add the integration script that New Relic provides you with to your root route.
+
+```tsx
+// __root.tsx
+export const Route = createRootRoute({
+  head: () => ({
+    scripts: [
+      {
+        id: 'new-relic',
+
+        // either copy/paste your New Relic integration script here
+        children: `...`,
+
+        // or you can create it in your public folder and then reference it here
+        src: '/newrelic.js',
+      },
+    ],
+  }),
+})
+```
+
 ### OpenTelemetry Integration (Experimental)
 
 [OpenTelemetry](https://opentelemetry.io/) is the industry standard for observability. Here's an experimental approach to integrate it with TanStack Start:
