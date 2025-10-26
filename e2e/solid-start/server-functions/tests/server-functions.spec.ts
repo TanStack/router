@@ -448,6 +448,11 @@ test('factory', async ({ page }) => {
 test('primitives', async ({ page }) => {
   await page.goto('/primitives')
 
+  await page.waitForLoadState('networkidle')
+
+  // Wait for client-side hydration to complete
+  await expect(page.locator('[data-testid^="expected-"]').first()).toBeVisible()
+
   const testCases = await page
     .locator('[data-testid^="expected-"]')
     .elementHandles()
