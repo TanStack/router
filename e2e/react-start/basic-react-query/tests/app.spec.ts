@@ -38,7 +38,6 @@ test('Navigating to a not-found route', async ({ page }) => {
 test('Manual Suspense boundaries should transition on navigation', async ({
   page,
 }) => {
-
   // Navigate to the suspense transition test page
   await page.goto('/suspense-transition')
 

@@ -20,7 +20,6 @@ export const Route = createFileRoute('/suspense-transition')({
 })
 
 function SuspenseTransitionComponent() {
-
   return (
     <div class="p-2">
       <h1 data-testid="suspense-transition-title">Suspense Transition Test</h1>
@@ -48,10 +47,16 @@ function Result() {
   return (
     <div class="mt-2 border p-4">
       {/* This manual Suspense boundary should transition, not immediately show fallback */}
-      <Suspense fallback={<div data-testid="suspense-fallback">Loading...</div>}>
+      <Suspense
+        fallback={<div data-testid="suspense-fallback">Loading...</div>}
+      >
         <div data-testid="suspense-content">
-          <div>n: <span data-testid="n-value">{search().n}</span></div>
-          <div>double: <span data-testid="double-value">{doubleQuery.data}</span></div>
+          <div>
+            n: <span data-testid="n-value">{search().n}</span>
+          </div>
+          <div>
+            double: <span data-testid="double-value">{doubleQuery.data}</span>
+          </div>
         </div>
       </Suspense>
     </div>
