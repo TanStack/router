@@ -98,6 +98,35 @@ function Analytics() {
 }
 ```
 
+#### useHydrated Hook
+
+For more granular control over hydration-dependent behavior, use the `useHydrated` hook. It returns a boolean indicating whether the client has been hydrated:
+
+```tsx
+import { useHydrated } from '@tanstack/react-router'
+
+function InteractiveButton() {
+  const hydrated = useHydrated()
+  
+  return (
+    <button 
+      type="button" 
+      disabled={!hydrated} 
+      onClick={doSomethingCustom}
+    >
+      {hydrated ? 'Click me' : 'Loading...'}
+    </button>
+  )
+}
+```
+
+**Behavior:**
+- **During SSR**: Always returns `false`
+- **First client render**: Returns `false`
+- **After hydration**: Returns `true` (and stays `true` for all subsequent renders)
+
+This is useful when you need to conditionally enable features that depend on client-side JavaScript being loaded, such as interactive elements, animations, or browser APIs.
+
 ### Environment-Specific Implementations
 
 ```tsx
