@@ -490,7 +490,13 @@ While TanStack Start provides built-in observability patterns, external tools of
 
 ### New Relic Integration
 
-[New Relic](https://newrelic.com/) is a popular application performance monitoring tool. Here's how to integrate it with TanStack Start:
+[New Relic](https://newrelic.com/) is a popular application performance monitoring tool. Here's how to integrate it with TanStack Start.
+
+#### SSR
+
+To enable New Relic for server-side rendering, you will need to do the following:
+
+Create a new integration on New Relic of type `Node`. You will be given a license key that we will use below.
 
 ```js
 // newrelic.js - New Relic agent configuration
@@ -537,6 +543,62 @@ export default {
 
 ```bash
 node -r newrelic .output/server/index.mjs
+```
+
+#### Server Functions and Server Routes
+
+If you want to add monitoring for server functions and server routes, you will need to follow the steps above, and then add the following:
+
+```ts
+// newrelic-middleware.ts
+import newrelic from 'newrelic';
+import { createMiddleware } from "@tanstack/react-start";
+
+export const nrTransactionMiddleware = createMiddleware().server(async ({ 
+    request, 
+    next 
+}) => {
+    const reqPath = new URL(request.url).pathname;
+    newrelic.setControllerName(reqPath, request.method ?? 'GET');
+    return await next();
+});
+```
+
+```ts
+// start.ts
+import { createStart } from "@tanstack/react-start";
+import { nrTransactionMiddleware } from "./newrelic-middleware";
+
+export const startInstance = createStart(() => {
+    return {
+        requestMiddleware: [nrTransactionMiddleware],
+    };
+});
+```
+
+#### SPA & Browser
+
+Create a new integration on New Relic of type `Browser`.
+
+After you set it up, you will have to add the integration script that New Relic provides you with to your root route.
+
+```tsx
+// __root.tsx
+export const Route = createRootRoute({
+    head: () => ({
+      scripts: [
+          {
+              id: "new-relic",
+              
+              // either copy/paste your New Relic integration script here
+              children: `...`,
+
+              // or you can create it in your public folder and then reference it here
+              src: "/newrelic.js",
+          },
+      ],
+    }),
+});
 ```
 
 ### OpenTelemetry Integration (Experimental)
