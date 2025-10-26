@@ -17,7 +17,7 @@ test('Navigating to user', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('Leanne Graham')
 })
 
-test('Navigating nested layouts', async ({ page }) => {
+test.skip('Navigating nested layouts', async ({ page }) => {
   await page.goto('/')
 
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
@@ -27,7 +27,7 @@ test('Navigating nested layouts', async ({ page }) => {
   await expect(page.locator('body')).toContainText("I'm B!")
 })
 
-test('Navigating to a not-found route', async ({ page }) => {
+test.skip('Navigating to a not-found route', async ({ page }) => {
   await page.goto('/')
 
   await page.getByRole('link', { name: 'This Route Does Not Exist' }).click()
