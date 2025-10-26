@@ -8188,8 +8188,8 @@ importers:
         version: 0.14.5(eslint@9.22.0(jiti@2.6.1))(typescript@5.9.2)
     devDependencies:
       '@tanstack/solid-query':
-        specifier: '>=5.66.0'
-        version: 5.72.2(solid-js@1.9.9)
+        specifier: '>=5.90.0'
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
