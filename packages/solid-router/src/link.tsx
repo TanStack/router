@@ -327,7 +327,7 @@ export function useLinkProps<
 
   const handleEnter = (e: MouseEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
 
     if (preload()) {
       if (eventTarget.preloadTimeout) {
@@ -343,7 +343,7 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       clearTimeout(eventTarget.preloadTimeout)
@@ -572,7 +572,9 @@ export const Link: LinkComponent<'a'> = (props) => {
         get isActive() {
           return (linkProps as any)['data-status'] === 'active'
         },
-        isTransitioning: false,
+        get isTransitioning() {
+          return (linkProps as any)['data-transitioning'] === 'transitioning'
+        },
       })
     }
 
