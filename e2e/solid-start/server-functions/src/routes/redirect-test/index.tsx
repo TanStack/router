@@ -3,9 +3,11 @@ import { createFileRoute, redirect } from '@tanstack/solid-router'
 import { createServerFn, useServerFn } from '@tanstack/solid-start'
 import { Suspense } from 'solid-js'
 
-const $redirectServerFn = createServerFn({ method: 'GET' }).handler(async () => {
-  throw redirect({ to: '/redirect-test/target' })
-})
+const $redirectServerFn = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    throw redirect({ to: '/redirect-test/target' })
+  },
+)
 
 export const Route = createFileRoute('/redirect-test/')({
   component: RouteComponent,

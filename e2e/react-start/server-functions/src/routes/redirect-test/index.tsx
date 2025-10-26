@@ -3,9 +3,11 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { Suspense } from 'react'
 
-const $redirectServerFn = createServerFn({ method: 'GET' }).handler(async () => {
-  throw redirect({ to: '/redirect-test/target' })
-})
+const $redirectServerFn = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    throw redirect({ to: '/redirect-test/target' })
+  },
+)
 
 export const Route = createFileRoute('/redirect-test/')({
   component: RouteComponent,
