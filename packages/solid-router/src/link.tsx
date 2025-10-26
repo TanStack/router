@@ -421,7 +421,7 @@ export function useLinkProps<
         ]),
         disabled: !!local.disabled,
         target: local.target,
-        ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
+        ...(Object.keys(resolvedStyle()).length && { style: resolvedStyle() }),
         ...(resolvedClassName() && { class: resolvedClassName() }),
         ...(local.disabled && {
           role: 'link',
