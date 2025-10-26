@@ -5,15 +5,14 @@ import { makeQueryOptions } from '~/queryOptions'
 const qOptions = makeQueryOptions('useQuery')
 
 export const Route = createFileRoute('/useQuery')({
-  loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(qOptions)
-  },
+  loader: ({ context }) => context.queryClient.ensureQueryData(qOptions),
   component: RouteComponent,
-  ssr: true,
+  ssr: 'data-only',
 })
 
 function RouteComponent() {
-  const query = useQuery(() => ({ ...qOptions, gcTime: 0 }))
+  const query = useQuery(() => qOptions)
+
   return (
     <div>
       <div>
