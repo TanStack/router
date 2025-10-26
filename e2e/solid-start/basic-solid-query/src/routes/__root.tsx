@@ -109,12 +109,26 @@ function RootDocument(props: { children?: any }) {
             Users
           </Link>{' '}
           <Link
+            to="/layout-a"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Layout
+          </Link>{' '}
+          <Link
             to="/deferred"
             activeProps={{
               class: 'font-bold',
             }}
           >
             Deferred
+          </Link>{' '}
+          <Link
+            // @ts-expect-error
+            to="/this-route-does-not-exist"
+          >
+            This Route Does Not Exist
           </Link>
         </div>
         <hr />
