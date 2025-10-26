@@ -555,29 +555,28 @@ If you want to add monitoring for server functions and server routes, you will n
 
 ```ts
 // newrelic-middleware.ts
-import newrelic from 'newrelic';
-import { createMiddleware } from "@tanstack/react-start";
+import newrelic from 'newrelic'
+import { createMiddleware } from '@tanstack/react-start'
 
-export const nrTransactionMiddleware = createMiddleware().server(async ({ 
-    request, 
-    next 
-}) => {
-    const reqPath = new URL(request.url).pathname;
-    newrelic.setControllerName(reqPath, request.method ?? 'GET');
-    return await next();
-});
+export const nrTransactionMiddleware = createMiddleware().server(
+  async ({ request, next }) => {
+    const reqPath = new URL(request.url).pathname
+    newrelic.setControllerName(reqPath, request.method ?? 'GET')
+    return await next()
+  },
+)
 ```
 
 ```ts
 // start.ts
-import { createStart } from "@tanstack/react-start";
-import { nrTransactionMiddleware } from "./newrelic-middleware";
+import { createStart } from '@tanstack/react-start'
+import { nrTransactionMiddleware } from './newrelic-middleware'
 
 export const startInstance = createStart(() => {
-    return {
-        requestMiddleware: [nrTransactionMiddleware],
-    };
-});
+  return {
+    requestMiddleware: [nrTransactionMiddleware],
+  }
+})
 ```
 
 #### SPA & Browser
@@ -589,20 +588,20 @@ After you set it up, you will have to add the integration script that New Relic 
 ```tsx
 // __root.tsx
 export const Route = createRootRoute({
-    head: () => ({
-      scripts: [
-          {
-              id: "new-relic",
-              
-              // either copy/paste your New Relic integration script here
-              children: `...`,
+  head: () => ({
+    scripts: [
+      {
+        id: 'new-relic',
 
-              // or you can create it in your public folder and then reference it here
-              src: "/newrelic.js",
-          },
-      ],
-    }),
-});
+        // either copy/paste your New Relic integration script here
+        children: `...`,
+
+        // or you can create it in your public folder and then reference it here
+        src: '/newrelic.js',
+      },
+    ],
+  }),
+})
 ```
 
 ### OpenTelemetry Integration (Experimental)
