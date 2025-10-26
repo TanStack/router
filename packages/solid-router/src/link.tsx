@@ -259,7 +259,7 @@ export function useLinkProps<
     return Solid.mergeProps(
       propsSafeToSpread,
       {
-        ref,
+        ref: mergeRefs(setRef, _options().ref),
         href: externalLink(),
       },
       Solid.splitProps(local, [
