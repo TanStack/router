@@ -13,7 +13,7 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/solid-query": "^5.71.9",
+    "@tanstack/solid-query": "^5.90.0",
     "@tanstack/solid-query-devtools": "^5.71.9",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
