@@ -488,6 +488,57 @@ While TanStack Start provides built-in observability patterns, external tools of
 - **[PostHog](https://posthog.com/)** - Product analytics with error tracking
 - **[Mixpanel](https://mixpanel.com/)** - Event tracking and user analytics
 
+### New Relic Integration
+
+[New Relic](https://newrelic.com/) is a popular application performance monitoring tool. Here's how to integrate it with TanStack Start:
+
+```js
+// newrelic.js - New Relic agent configuration
+exports.config = {
+  app_name: ['YourTanStackApp'],             // Your application name in New Relic
+  license_key: 'YOUR_NEW_RELIC_LICENSE_KEY', // Your New Relic license key
+  agent_enabled: true,
+  distributed_tracing: { enabled: true },
+  span_events: { enabled: true },
+  transaction_events: { enabled: true },
+  // Additional default settings
+}
+```
+
+```tsx
+// server.tsx 
+import newrelic from 'newrelic'; // Make sure this is the first import
+import { createStartHandler, defaultStreamHandler, defineHandlerCallback } from '@tanstack/react-start/server';
+
+const customHandler = defineHandlerCallback(async (ctx) => {
+  // We do this so that transactions are grouped under the route ID instead of unique URLs
+  const matches = ctx.router?.state?.matches ?? [];
+  const leaf = matches[matches.length - 1];
+  const routeId = leaf?.routeId ?? new URL(ctx.request.url).pathname;
+
+  newrelic.setControllerName(routeId, ctx.request.method ?? 'GET')
+  newrelic.addCustomAttributes({
+    'route.id': routeId,
+    'http.method': ctx.request.method,
+    'http.path': new URL(ctx.request.url).pathname,
+    // Any other custom attributes you want to add
+  })
+
+  return defaultStreamHandler(ctx)
+})
+
+export default {
+  fetch(request: Request) {
+    const handler = createStartHandler(customHandler)
+    return handler(request)
+  },
+}
+```
+
+```bash
+node -r newrelic .output/server/index.mjs
+```
+
 ### OpenTelemetry Integration (Experimental)
 
 [OpenTelemetry](https://opentelemetry.io/) is the industry standard for observability. Here's an experimental approach to integrate it with TanStack Start:
