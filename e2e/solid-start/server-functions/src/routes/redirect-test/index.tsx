@@ -9,6 +9,7 @@ const $redirectServerFn = createServerFn({ method: 'GET' }).handler(async () => 
 
 export const Route = createFileRoute('/redirect-test/')({
   component: RouteComponent,
+  ssr: 'data-only',
 })
 
 function RouteComponent() {
