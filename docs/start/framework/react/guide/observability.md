@@ -501,7 +501,7 @@ Create a new integration on New Relic of type `Node`. You will be given a licens
 ```js
 // newrelic.js - New Relic agent configuration
 exports.config = {
-  app_name: ['YourTanStackApp'],             // Your application name in New Relic
+  app_name: ['YourTanStackApp'], // Your application name in New Relic
   license_key: 'YOUR_NEW_RELIC_LICENSE_KEY', // Your New Relic license key
   agent_enabled: true,
   distributed_tracing: { enabled: true },
@@ -512,15 +512,19 @@ exports.config = {
 ```
 
 ```tsx
-// server.tsx 
-import newrelic from 'newrelic'; // Make sure this is the first import
-import { createStartHandler, defaultStreamHandler, defineHandlerCallback } from '@tanstack/react-start/server';
+// server.tsx
+import newrelic from 'newrelic' // Make sure this is the first import
+import {
+  createStartHandler,
+  defaultStreamHandler,
+  defineHandlerCallback,
+} from '@tanstack/react-start/server'
 
 const customHandler = defineHandlerCallback(async (ctx) => {
   // We do this so that transactions are grouped under the route ID instead of unique URLs
-  const matches = ctx.router?.state?.matches ?? [];
-  const leaf = matches[matches.length - 1];
-  const routeId = leaf?.routeId ?? new URL(ctx.request.url).pathname;
+  const matches = ctx.router?.state?.matches ?? []
+  const leaf = matches[matches.length - 1]
+  const routeId = leaf?.routeId ?? new URL(ctx.request.url).pathname
 
   newrelic.setControllerName(routeId, ctx.request.method ?? 'GET')
   newrelic.addCustomAttributes({
