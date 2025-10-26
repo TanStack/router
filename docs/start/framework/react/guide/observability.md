@@ -582,7 +582,7 @@ export const startInstance = createStart(() => {
 
 #### SPA & Browser
 
-Create a new integration on New Relic of type `Browser`.
+Create a new integration on New Relic of type `React`.
 
 After you set it up, you will have to add the integration script that New Relic provides you with to your root route.
 
