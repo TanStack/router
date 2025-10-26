@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/react-router": "^1.133.28",
-    "@tanstack/react-router-devtools": "^1.133.28",
-    "@tanstack/router-plugin": "^1.133.29",
+    "@tanstack/react-router": "^1.133.32",
+    "@tanstack/react-router-devtools": "^1.133.32",
+    "@tanstack/router-plugin": "^1.133.32",
     "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
