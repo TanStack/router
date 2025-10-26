@@ -407,8 +407,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -459,8 +459,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1192,8 +1192,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -1384,8 +1384,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -2800,11 +2800,11 @@ importers:
   e2e/solid-start/basic-solid-query:
     dependencies:
       '@tanstack/solid-query':
-        specifier: ^5.66.0
-        version: 5.72.2(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.66.0
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.4(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -2965,11 +2965,11 @@ importers:
   e2e/solid-start/query-integration:
     dependencies:
       '@tanstack/solid-query':
-        specifier: ^5.66.0
-        version: 5.72.2(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.66.0
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.4(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -3778,8 +3778,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -3827,8 +3827,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4274,8 +4274,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4329,8 +4329,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4743,8 +4743,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -5605,8 +5605,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -5867,8 +5867,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -6310,8 +6310,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -6600,8 +6600,8 @@ importers:
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
       '@tanstack/react-query-devtools':
-        specifier: ^5.66.0
-        version: 5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
+        specifier: ^5.90.0
+        version: 5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7413,11 +7413,11 @@ importers:
   examples/solid/start-basic-solid-query:
     dependencies:
       '@tanstack/solid-query':
-        specifier: ^5.66.0
-        version: 5.72.2(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.6(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.66.0
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
+        specifier: ^5.90.0
+        version: 5.90.4(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: ^1.133.31
         version: link:../../../packages/solid-router
@@ -12617,6 +12617,9 @@ packages:
   '@tanstack/query-devtools@5.72.2':
     resolution: {integrity: sha512-mMKnGb+iOhVBcj6jaerCFRpg8pACStdG8hmUBHPtToeZzs4ctjBUL1FajqpVn2WaMxnq8Wya+P3Q5tPFNM9jQw==}
 
+  '@tanstack/query-devtools@5.90.1':
+    resolution: {integrity: sha512-GtINOPjPUH0OegJExZ70UahT9ykmAhmtNVcmtdnOZbxLwT7R5OmRztR5Ahe3/Cu7LArEmR6/588tAycuaWb1xQ==}
+
   '@tanstack/react-devtools@0.7.0':
     resolution: {integrity: sha512-HJH+oNBYQotgsKWAQqvkY8KnfQbbZptHbrkPGVaIwj393vVFGT1BuXMYy+rlmOYxczyerb90ltRFgsQyUtJTuw==}
     engines: {node: '>=18'}
@@ -12628,6 +12631,12 @@ packages:
 
   '@tanstack/react-query-devtools@5.67.2':
     resolution: {integrity: sha512-cmj2DxBc+/9btQ66n5xI8wTtAma2BLVa403K7zIYiguzJ/kV201jnGensYqJeu1Rd8uRMLLRM74jLVMLDWNRJA==}
+    peerDependencies:
+      '@tanstack/react-query': 5.66.0
+      react: ^19.0.0
+
+  '@tanstack/react-query-devtools@5.90.2':
+    resolution: {integrity: sha512-vAXJzZuBXtCQtrY3F/yUNJCV4obT/A/n81kb3+YqLbro5Z2+phdAbceO+deU3ywPw8B42oyJlp4FhO0SoivDFQ==}
     peerDependencies:
       '@tanstack/react-query': 5.66.0
       react: ^19.0.0
@@ -12655,6 +12664,12 @@ packages:
       '@tanstack/solid-query': ^5.72.2
       solid-js: 1.9.9
 
+  '@tanstack/solid-query-devtools@5.90.4':
+    resolution: {integrity: sha512-ygyAiXZ+NR1tw33jVibpjiWB1IoAQWCeqSLmO/6PoSWrI9yDTwaPNAXheniEMrO6/a/vTQq2tB4N+FPNjhGaNw==}
+    peerDependencies:
+      '@tanstack/solid-query': ^5.90.4
+      solid-js: 1.9.9
+
   '@tanstack/solid-query@5.72.0':
     resolution: {integrity: sha512-zQ27dZEakN05hZB9C+qTKgtBU3N7Li3rx++nUOd4K5LtrTMjiIEp2FEbYoGe9B0Pn9tF5CIthc9fknl/qBVI5g==}
     peerDependencies:
@@ -12662,6 +12677,11 @@ packages:
 
   '@tanstack/solid-query@5.72.2':
     resolution: {integrity: sha512-ty4J5q+DIPEs7xB01TqkTfx0wYkcccJaofb378Nq/HfWoQ/0300A8TM7CU7YotJUmVWA3qwBHnJLChXlNzX4ow==}
+    peerDependencies:
+      solid-js: 1.9.9
+
+  '@tanstack/solid-query@5.90.6':
+    resolution: {integrity: sha512-Ma5A3uQ2rqVCznR8FniNLHWYDFLtveVb2b+JMD1F+x3TgRTevVlGfiUfpL1KaFVWJMUX3ASvCB+aUQpeIBRDvA==}
     peerDependencies:
       solid-js: 1.9.9
 
@@ -23315,6 +23335,8 @@ snapshots:
 
   '@tanstack/query-devtools@5.72.2': {}
 
+  '@tanstack/query-devtools@5.90.1': {}
+
   '@tanstack/react-devtools@0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.9)':
     dependencies:
       '@tanstack/devtools': 0.6.14(csstype@3.1.3)(solid-js@1.9.9)
@@ -23331,6 +23353,12 @@ snapshots:
   '@tanstack/react-query-devtools@5.67.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@tanstack/query-devtools': 5.67.2
+      '@tanstack/react-query': 5.66.0(react@19.0.0)
+      react: 19.0.0
+
+  '@tanstack/react-query-devtools@5.90.2(@tanstack/react-query@5.66.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@tanstack/query-devtools': 5.90.1
       '@tanstack/react-query': 5.66.0(react@19.0.0)
       react: 19.0.0
 
@@ -23364,12 +23392,23 @@ snapshots:
       '@tanstack/solid-query': 5.72.2(solid-js@1.9.9)
       solid-js: 1.9.9
 
+  '@tanstack/solid-query-devtools@5.90.4(@tanstack/solid-query@5.90.6(solid-js@1.9.9))(solid-js@1.9.9)':
+    dependencies:
+      '@tanstack/query-devtools': 5.90.1
+      '@tanstack/solid-query': 5.90.6(solid-js@1.9.9)
+      solid-js: 1.9.9
+
   '@tanstack/solid-query@5.72.0(solid-js@1.9.9)':
     dependencies:
       '@tanstack/query-core': 5.66.0
       solid-js: 1.9.9
 
   '@tanstack/solid-query@5.72.2(solid-js@1.9.9)':
+    dependencies:
+      '@tanstack/query-core': 5.66.0
+      solid-js: 1.9.9
+
+  '@tanstack/solid-query@5.90.6(solid-js@1.9.9)':
     dependencies:
       '@tanstack/query-core': 5.66.0
       solid-js: 1.9.9

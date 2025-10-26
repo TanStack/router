@@ -11,7 +11,7 @@
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.6",
     "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/react-query": "^5.66.0",
+    "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-router": "^1.133.32",
     "@tanstack/react-router-devtools": "^1.133.32",
     "postcss": "^8.5.1",
