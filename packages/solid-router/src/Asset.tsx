@@ -42,11 +42,11 @@ function Script({
 }): JSX.Element | null {
   const router = useRouter()
 
-  // On client: use createEffect to dynamically inject executable scripts
+  // On client: use onMount to dynamically inject executable scripts
   // The JSX below renders for hydration, but won't execute
-  // This effect creates a new script that will execute
+  // onMount runs after hydration, so we create a new script that will execute
   if (!router.isServer) {
-    createEffect(() => {
+    onMount(() => {
       if (attrs?.src) {
         const normSrc = (() => {
           try {
@@ -56,8 +56,9 @@ function Script({
             return attrs.src
           }
         })()
+        // Exclude SSR scripts from existence check - they won't execute
         const existingScript = Array.from(
-          document.querySelectorAll('script[src]'),
+          document.querySelectorAll('script[src]:not([data-ssr])'),
         ).find((el) => (el as HTMLScriptElement).src === normSrc)
 
         if (existingScript) {
@@ -90,8 +91,9 @@ function Script({
         const typeAttr =
           typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
         const nonceAttr = nonce || (typeof attrs?.nonce === 'string' ? attrs.nonce : undefined)
+        // Exclude SSR scripts from existence check - they won't execute
         const existingScript = Array.from(
-          document.querySelectorAll('script:not([src])'),
+          document.querySelectorAll('script:not([src]):not([data-ssr])'),
         ).find((el) => {
           if (!(el instanceof HTMLScriptElement)) return false
           const sType = el.getAttribute('type') ?? 'text/javascript'
@@ -137,12 +139,13 @@ function Script({
   }
 
   // Render script tags for both server and client (hydration)
+  // Add data-ssr attribute to mark server-rendered scripts
   if (attrs?.src && typeof attrs.src === 'string') {
-    return <script {...attrs} nonce={nonce} />
+    return <script {...attrs} nonce={nonce} data-ssr="true" />
   }
 
   if (typeof children === 'string') {
-    return <script {...attrs} innerHTML={children} nonce={nonce} />
+    return <script {...attrs} innerHTML={children} nonce={nonce} data-ssr="true" />
   }
 
   return null
