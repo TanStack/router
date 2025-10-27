@@ -22,31 +22,25 @@ export interface ClientOnlyFn<TArgs extends Array<any>, TClient>
 }
 
 type AnyFn = (...args: Array<any>) => any
-export interface ServerOnlyFnWithType<TArgs extends Array<any>, TReturnType>
-  extends IsomorphicFn<TArgs, TReturnType> {
+export interface ClientImplRequired<TArgs extends Array<any>, TReturnType> {
   client: (
     clientImpl: (...args: TArgs) => TReturnType,
   ) => IsomorphicFn<TArgs, TReturnType, TReturnType>
 }
 
-export interface ClientOnlyFnWithType<TArgs extends Array<any>, TReturnType>
-  extends IsomorphicFn<TArgs, TReturnType, TReturnType> {
+export interface ServerImplRequired<TArgs extends Array<any>, TReturnType> {
   server: (
     serverImpl: (...args: TArgs) => TReturnType,
   ) => IsomorphicFn<TArgs, TReturnType, TReturnType>
 }
 
 export interface IsomorphicFnWithType<TArgs extends Array<any>, TReturnType> {
-  server: (serverImpl: (...args: TArgs) => TReturnType) => {
-    client: (
-      clientImpl: (...args: TArgs) => TReturnType,
-    ) => IsomorphicFn<TArgs, TReturnType, TReturnType>
-  }
-  client: (clientImpl: (...args: TArgs) => TReturnType) => {
-    server: (
-      serverImpl: (...args: TArgs) => TReturnType,
-    ) => IsomorphicFn<TArgs, TReturnType, TReturnType>
-  }
+  server: (
+    serverImpl: (...args: TArgs) => TReturnType,
+  ) => ClientImplRequired<TArgs, TReturnType>
+  client: (
+    clientImpl: (...args: TArgs) => TReturnType,
+  ) => ServerImplRequired<TArgs, TReturnType>
 }
 
 export interface IsomorphicFnBase extends IsomorphicFn {
