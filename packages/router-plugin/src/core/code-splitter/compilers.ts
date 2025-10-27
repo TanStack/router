@@ -264,10 +264,21 @@ export function compileCodeSplitReferenceRoute(
 
                           if (shouldSplit) {
                             removeIdentifierLiteral(path, value)
+                          } else if (
+                            opts.targetFramework === 'solid' &&
+                            isExported
+                          ) {
+                            // For Solid, wrap exported component references in getter functions
+                            // to avoid temporal dead zone issues with export function declarations
+                            const componentName = value.name
+                            prop.value = template.expression(
+                              `() => ${componentName}`,
+                            )()
+                            modified = true
                           }
                         }
 
-                        if (!shouldSplit) {
+                        if (!shouldSplit && opts.targetFramework !== 'solid') {
                           return
                         }
 
@@ -440,7 +451,11 @@ export function compileCodeSplitReferenceRoute(
     console.warn(warningMessage)
 
     // append this warning to the file using a template
-    if (process.env.NODE_ENV !== 'production') {
+    // Skip inline warning for Solid as it interferes with module evaluation order
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      opts.targetFramework !== 'solid'
+    ) {
       const warningTemplate = template.statement(
         `console.warn(${JSON.stringify(warningMessage)})`,
       )()
