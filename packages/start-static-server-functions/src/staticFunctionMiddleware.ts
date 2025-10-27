@@ -1,5 +1,3 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
 import {
   createMiddleware,
   getDefaultSerovalPlugins,
@@ -53,11 +51,11 @@ const jsonToFilenameSafeString = (json: any) => {
   const sortedKeysReplacer = (key: string, value: any) =>
     value && typeof value === 'object' && !Array.isArray(value)
       ? Object.keys(value)
-          .sort()
-          .reduce((acc: any, curr: string) => {
-            acc[curr] = value[curr]
-            return acc
-          }, {})
+        .sort()
+        .reduce((acc: any, curr: string) => {
+          acc[curr] = value[curr]
+          return acc
+        }, {})
       : value
 
   // Convert JSON to string with sorted keys
@@ -82,6 +80,10 @@ async function addItemToCache({
   response: StaticCachedResult
 }): Promise<void> {
   {
+    // Dynamic imports to avoid bundling Node.js modules in the client
+    const fs = await import('node:fs/promises')
+    const path = await import('node:path')
+
     const hash = jsonToFilenameSafeString(data)
     const url = await getStaticCacheUrl({ functionId, hash })
     const clientUrl = process.env.TSS_CLIENT_OUTPUT_DIR!
