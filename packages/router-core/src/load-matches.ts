@@ -437,7 +437,7 @@ const executeBeforeLoad = (
     ...inner.router.options.additionalContext,
   }
 
-  const updateContext = async (beforeLoadContext: any) => {
+  const updateContext = (beforeLoadContext: any) => {
     if (beforeLoadContext === undefined) {
       batch(() => {
         pending()
