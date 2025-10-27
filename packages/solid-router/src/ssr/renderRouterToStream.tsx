@@ -21,12 +21,14 @@ export const renderRouterToStream = async ({
 
   const docType = Solid.ssr('<!DOCTYPE html>')
 
-  const serializationAdapters = (router.options as any)?.serializationAdapters || (router.options.ssr as any)?.serializationAdapters
+  const serializationAdapters =
+    (router.options as any)?.serializationAdapters ||
+    (router.options.ssr as any)?.serializationAdapters
   const serovalPlugins = serializationAdapters?.map((adapter: any) => {
     const plugin = makeSsrSerovalPlugin(adapter, { didRun: false })
     return plugin
   })
-  
+
   const stream = Solid.renderToStream(
     () => (
       <>

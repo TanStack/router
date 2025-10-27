@@ -22,9 +22,8 @@ export const Route = createFileRoute('/server-function/custom-error')({
 
 function RouteComponent() {
   const [validResponse, setValidResponse] = createSignal<any>(null)
-  const [invalidResponse, setInvalidResponse] = createSignal<CustomError | null>(
-    null,
-  )
+  const [invalidResponse, setInvalidResponse] =
+    createSignal<CustomError | null>(null)
 
   return (
     <div>

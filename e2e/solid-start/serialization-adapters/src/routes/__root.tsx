@@ -8,14 +8,14 @@ import {
   useRouterState,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import { HydrationScript } from 'solid-js/web';
-import type {JSX} from 'solid-js';
+import { HydrationScript } from 'solid-js/web'
+import type { JSX } from 'solid-js'
 import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
-    {
+      {
         charset: 'utf-8',
       },
       {

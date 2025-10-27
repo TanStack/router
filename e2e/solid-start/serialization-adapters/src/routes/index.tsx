@@ -1,8 +1,8 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/')({
-    component: Home,
-    errorComponent: (e)=><div>{e.error.message} </div>,
+  component: Home,
+  errorComponent: (e) => <div>{e.error.message} </div>,
 })
 
 function Home() {

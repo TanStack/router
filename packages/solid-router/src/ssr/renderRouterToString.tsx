@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js/web'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
-import type {AnyRouter} from '@tanstack/router-core';
+import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 
 export const renderRouterToString = async ({
@@ -13,8 +13,9 @@ export const renderRouterToString = async ({
   children: () => JSXElement
 }) => {
   try {
-
-    const serializationAdapters = (router.options as any)?.serializationAdapters || (router.options.ssr as any)?.serializationAdapters
+    const serializationAdapters =
+      (router.options as any)?.serializationAdapters ||
+      (router.options.ssr as any)?.serializationAdapters
     const serovalPlugins = serializationAdapters?.map((adapter: any) => {
       const plugin = makeSsrSerovalPlugin(adapter, { didRun: false })
       return plugin
