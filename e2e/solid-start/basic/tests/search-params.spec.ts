@@ -63,7 +63,7 @@ test.describe('/search-params/default', () => {
   test('Directly visiting the route with search param set', async ({
     page,
   }) => {
-    const response = await page.goto('/search-params/default/?default=d2')
+    const response = await page.goto('/search-params/default?default=d2')
     expectNoRedirect(response)
 
     await expect(page.getByTestId('search-default')).toContainText('d2')
