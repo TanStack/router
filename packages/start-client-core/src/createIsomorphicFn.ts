@@ -21,7 +21,6 @@ export interface ClientOnlyFn<TArgs extends Array<any>, TClient>
   ) => IsomorphicFn<TArgs, TServer, TClient>
 }
 
-type AnyFn = (...args: Array<any>) => any
 export interface ClientImplRequired<TArgs extends Array<any>, TReturnType> {
   client: (
     clientImpl: (...args: TArgs) => TReturnType,
@@ -44,10 +43,9 @@ export interface IsomorphicFnWithType<TArgs extends Array<any>, TReturnType> {
 }
 
 export interface IsomorphicFnBase extends IsomorphicFn {
-  $withType: <TFn extends AnyFn>() => IsomorphicFnWithType<
-    Parameters<TFn>,
-    ReturnType<TFn>
-  >
+  $withType: <
+    TFn extends (...args: Array<any>) => any,
+  >() => IsomorphicFnWithType<Parameters<TFn>, ReturnType<TFn>>
   server: <TArgs extends Array<any>, TServer>(
     serverImpl: (...args: TArgs) => TServer,
   ) => ServerOnlyFn<TArgs, TServer>
