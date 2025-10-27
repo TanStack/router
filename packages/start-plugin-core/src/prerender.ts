@@ -89,8 +89,7 @@ export async function prerender({
     path: string,
     options?: RequestInit,
     maxRedirects: number = 5,
-    wasRedirected: boolean = false,
-  ): Promise<{ response: Response; wasRedirected: boolean; finalPath: string }> {
+  ): Promise<Response> {
     const url = new URL(`http://localhost${path}`)
     const response = await serverEntrypoint.fetch(new Request(url, options))
 
@@ -98,17 +97,13 @@ export async function prerender({
       const location = response.headers.get('location')!
       if (location.startsWith('http://localhost') || location.startsWith('/')) {
         const newUrl = location.replace('http://localhost', '')
-        return localFetch(newUrl, options, maxRedirects - 1, true)
+        return localFetch(newUrl, options, maxRedirects - 1)
       } else {
         logger.warn(`Skipping redirect to external location: ${location}`)
       }
     }
 
-    return {
-      response,
-      wasRedirected,
-      finalPath: path,
-    }
+    return response
   }
 
   try {
@@ -141,7 +136,6 @@ export async function prerender({
   async function prerenderPages({ outputDir }: { outputDir: string }) {
     const seen = new Set<string>()
     const prerendered = new Set<string>()
-    const writtenFiles = new Set<string>()
     const retriesByPath = new Map<string, number>()
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
@@ -186,7 +180,7 @@ export async function prerender({
           // Fetch the route
           const encodedRoute = encodeURI(page.path)
 
-          const { response: res, wasRedirected, finalPath } = await localFetch(
+          const res = await localFetch(
             withBase(encodedRoute, routerBasePath),
             {
               headers: {
@@ -205,14 +199,8 @@ export async function prerender({
             })
           }
 
-          // Use the final path (after redirects) for determining output location
-          const pathForOutput = wasRedirected ? finalPath : page.path
-          if (wasRedirected) {
-            logger.info(`Page ${page.path} redirected to ${finalPath}, using final path for output`)
-          }
-
           const cleanPagePath = (
-            prerenderOptions.outputPath || pathForOutput
+            prerenderOptions.outputPath || page.path
           ).split(/[?#]/)[0]!
 
           // Guess route type and populate fileName
@@ -251,20 +239,12 @@ export async function prerender({
 
           const filepath = path.join(outputDir, filename)
 
-          // Skip writing if this file path has already been written
-          // This prevents URLs with different query params from overwriting each other
-          if (writtenFiles.has(filename)) {
-            logger.info(`Skipping write for ${page.path} - file ${filename} already written`)
-            return
-          }
-
           await fsp.mkdir(path.dirname(filepath), {
             recursive: true,
           })
 
           await fsp.writeFile(filepath, html)
 
-          writtenFiles.add(filename)
           prerendered.add(page.path)
 
           const newPage = await prerenderOptions.onSuccess?.({ page, html })
