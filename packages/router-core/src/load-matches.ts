@@ -388,23 +388,7 @@ const executeBeforeLoad = (
     }))
   }
 
-  const resolve = async () => {
-    // Execute head during SSR
-    if (inner.router.isServer) {
-      try {
-        const headResult = executeHead(inner, matchId, route)
-        if (headResult) {
-          const head = await headResult
-          inner.updateMatch(matchId, (prev) => ({
-            ...prev,
-            ...head,
-          }))
-        }
-      } catch (err) {
-        console.error('Error executing head:', err)
-      }
-    }
-
+  const resolve = () => {
     match._nonReactive.beforeLoadPromise?.resolve()
     match._nonReactive.beforeLoadPromise = undefined
     inner.updateMatch(matchId, (prev) => ({
@@ -415,9 +399,9 @@ const executeBeforeLoad = (
 
   // if there is no `beforeLoad` option, skip everything, batch update the store, return early
   if (!route.options.beforeLoad) {
-    batch(async () => {
+    batch(() => {
       pending()
-      await resolve()
+      resolve()
     })
     return
   }
@@ -455,9 +439,9 @@ const executeBeforeLoad = (
 
   const updateContext = async (beforeLoadContext: any) => {
     if (beforeLoadContext === undefined) {
-      batch(async () => {
+      batch(() => {
         pending()
-        await resolve()
+        resolve()
       })
       return
     }
@@ -466,7 +450,7 @@ const executeBeforeLoad = (
       handleSerialError(inner, index, beforeLoadContext, 'BEFORE_LOAD')
     }
 
-    batch(async () => {
+    batch(() => {
       pending()
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
@@ -476,7 +460,7 @@ const executeBeforeLoad = (
           ...beforeLoadContext,
         },
       }))
-      await resolve()
+      resolve()
     })
   }
 
@@ -880,6 +864,25 @@ export async function loadMatches(arg: {
   }
 
   try {
+    // Execute head functions first
+    for (let i = 0; i < inner.matches.length; i++) {
+      const { id: matchId, routeId } = inner.matches[i]!
+      const route = inner.router.looseRoutesById[routeId]!
+      
+      try {
+        const headResult = executeHead(inner, matchId, route)
+        if (headResult) {
+          const head = await headResult
+          inner.updateMatch(matchId, (prev) => ({
+            ...prev,
+            ...head,
+          }))
+        }
+      } catch (err) {
+        console.warn('Error executing head during SSR:', err)
+      }
+    }
+
     // Execute all beforeLoads one by one
     for (let i = 0; i < inner.matches.length; i++) {
       const beforeLoad = handleBeforeLoad(inner, i)
