@@ -14,3 +14,4 @@ function abstractedClientFn() {
 const clientOnlyFnAbstracted = abstractedClientFn;
 const serverThenClientFnAbstracted = abstractedClientFn;
 const clientThenServerFnAbstracted = abstractedClientFn;
+const withTypeRestriction = () => 'client';

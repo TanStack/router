@@ -21,7 +21,36 @@ export interface ClientOnlyFn<TArgs extends Array<any>, TClient>
   ) => IsomorphicFn<TArgs, TServer, TClient>
 }
 
+type AnyFn = (...args: Array<any>) => any
+export interface ServerOnlyFnWithType<TArgs extends Array<any>, TReturnType>
+  extends IsomorphicFn<TArgs, TReturnType> {
+  client: (
+    clientImpl: (...args: TArgs) => TReturnType,
+  ) => IsomorphicFn<TArgs, TReturnType, TReturnType>
+}
+
+export interface ClientOnlyFnWithType<TArgs extends Array<any>, TReturnType>
+  extends IsomorphicFn<TArgs, TReturnType, TReturnType> {
+  server: (
+    serverImpl: (...args: TArgs) => TReturnType,
+  ) => IsomorphicFn<TArgs, TReturnType, TReturnType>
+}
+
+export interface IsomorphicFnWithType<TArgs extends Array<any>, TReturnType>
+  extends IsomorphicFn<TArgs, TReturnType> {
+  server: (
+    serverImpl: (...args: TArgs) => TReturnType,
+  ) => ServerOnlyFnWithType<TArgs, TReturnType>
+  client: (
+    clientImpl: (...args: TArgs) => TReturnType,
+  ) => ClientOnlyFnWithType<TArgs, TReturnType>
+}
+
 export interface IsomorphicFnBase extends IsomorphicFn {
+  $withType: <TFn extends AnyFn>() => IsomorphicFnWithType<
+    Parameters<TFn>,
+    ReturnType<TFn>
+  >
   server: <TArgs extends Array<any>, TServer>(
     serverImpl: (...args: TArgs) => TServer,
   ) => ServerOnlyFn<TArgs, TServer>
@@ -35,7 +64,9 @@ export interface IsomorphicFnBase extends IsomorphicFn {
 // therefore we must return a dummy function that allows calling `server` and `client` method chains.
 export function createIsomorphicFn(): IsomorphicFnBase {
   return {
+    $withType: () => {},
     server: () => ({ client: () => () => {} }),
     client: () => ({ server: () => () => {} }),
   } as any
 }
+
