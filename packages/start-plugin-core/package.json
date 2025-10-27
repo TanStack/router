@@ -61,10 +61,10 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
-    "@babel/code-frame": "7.26.2",
-    "@babel/core": "^7.26.8",
-    "@babel/types": "^7.26.8",
-    "@rolldown/pluginutils": "1.0.0-beta.40",
+    "@babel/code-frame": "7.27.1",
+    "@babel/core": "^7.28.5",
+    "@babel/types": "^7.28.5",
+    "@rolldown/pluginutils": "1.0.0-beta.44",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-plugin": "workspace:*",
@@ -72,16 +72,16 @@
     "@tanstack/server-functions-plugin": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
-    "babel-dead-code-elimination": "^1.0.9",
-    "cheerio": "^1.0.0",
+    "babel-dead-code-elimination": "^1.0.10",
+    "cheerio": "^1.1.2",
     "exsolve": "^1.0.7",
     "pathe": "^2.0.3",
-    "srvx": "^0.8.2",
+    "srvx": "^0.9.1",
     "tinyglobby": "^0.2.15",
-    "ufo": "^1.5.4",
+    "ufo": "^1.6.1",
     "vitefu": "^1.1.1",
     "xmlbuilder2": "^3.1.1",
-    "zod": "^3.24.2"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/babel__code-frame": "^7.0.6",

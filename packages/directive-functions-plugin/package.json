@@ -66,9 +66,9 @@
   },
   "dependencies": {
     "@babel/code-frame": "7.27.1",
-    "@babel/core": "^7.27.7",
-    "@babel/traverse": "^7.27.7",
-    "@babel/types": "^7.27.7",
+    "@babel/core": "^7.28.5",
+    "@babel/traverse": "^7.28.5",
+    "@babel/types": "^7.28.5",
     "@tanstack/router-utils": "workspace:*",
     "babel-dead-code-elimination": "^1.0.10",
     "pathe": "^2.0.3",
@@ -77,8 +77,8 @@
   "devDependencies": {
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
-    "@types/babel__traverse": "^7.20.7",
-    "dedent": "^1.6.0",
+    "@types/babel__traverse": "^7.28.0",
+    "dedent": "^1.7.0",
     "vite": "^7.1.7"
   },
   "peerDependencies": {
