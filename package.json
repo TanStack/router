@@ -72,7 +72,7 @@
   "pnpm": {
     "overrides": {
       "vite-plugin-dts": "4.0.3",
-      "solid-js": "1.9.9",
+      "solid-js": "1.9.10",
       "react": "$react",
       "react-dom": "$react-dom",
       "@types/react": "$@types/react",
