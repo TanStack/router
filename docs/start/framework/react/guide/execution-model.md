@@ -105,18 +105,13 @@ For more granular control over hydration-dependent behavior, use the `useHydrate
 ```tsx
 import { useHydrated } from '@tanstack/react-router'
 
-function InteractiveButton() {
+function TimeZoneDisplay() {
   const hydrated = useHydrated()
+  const timeZone = hydrated 
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone 
+    : 'UTC'
   
-  return (
-    <button 
-      type="button" 
-      disabled={!hydrated} 
-      onClick={doSomethingCustom}
-    >
-      {hydrated ? 'Click me' : 'Loading...'}
-    </button>
-  )
+  return <div>Your timezone: {timeZone}</div>
 }
 ```
 
@@ -125,7 +120,7 @@ function InteractiveButton() {
 - **First client render**: Returns `false`
 - **After hydration**: Returns `true` (and stays `true` for all subsequent renders)
 
-This is useful when you need to conditionally enable features that depend on client-side JavaScript being loaded, such as interactive elements, animations, or browser APIs.
+This is useful when you need to conditionally render content based on client-side data (like browser timezone, locale, or localStorage) while providing a sensible fallback for server rendering.
 
 ### Environment-Specific Implementations
 
