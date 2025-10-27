@@ -103,12 +103,12 @@ test('createIsomorphicFn with type', () => {
   const noServerImpl = createIsomorphicFn()
     .$withType<(a: string) => string>()
     .client((a) => 'data')
-    expectTypeOf(noServerImpl).not.toBeFunction()
+  expectTypeOf(noServerImpl).not.toBeFunction()
 
-    // Missing server implementation
+  // Missing server implementation
   const noClientImpl = createIsomorphicFn()
-  .$withType<(a: string) => string>()
-  .server((a) => 'data')
+    .$withType<(a: string) => string>()
+    .server((a) => 'data')
   expectTypeOf(noClientImpl).not.toBeFunction()
 
   const _invalidFnReturn = createIsomorphicFn()
