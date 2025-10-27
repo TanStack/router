@@ -290,6 +290,15 @@ test.describe('params operations + prefix/suffix', () => {
         params: { '*': 'foo', _splat: 'foo' },
         destHeadingId: 'ParamsWildcardSplatSuffix',
       },
+      {
+        id: 'l-to-wildcard-escaped',
+        pathname: `/params-ps/wildcard/test[s%5C/.%5C/parameter%25!${encodeURIComponent('🚀')}]`,
+        params: {
+          _splat: 'test[s\\/.\\/parameter%!🚀]',
+          '*': 'test[s\\/.\\/parameter%!🚀]',
+        },
+        destHeadingId: 'ParamsWildcardSplat',
+      },
     ] satisfies Array<{
       id: string
       pathname: string

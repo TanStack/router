@@ -51,6 +51,15 @@ function RouteComponent() {
         </li>
         <li>
           <Link
+            data-testid="l-to-wildcard-escaped"
+            to="/params-ps/wildcard/$"
+            params={{ _splat: 'test[s\\/.\\/parameter%!🚀]' }}
+          >
+            /params-ps/wildcard/$ with escaped params
+          </Link>
+        </li>
+        <li>
+          <Link
             data-testid="l-to-wildcard-prefixfoo"
             to="/params-ps/wildcard/prefix{$}"
             params={{ _splat: 'foo' }}
