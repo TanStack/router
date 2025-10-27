@@ -2,6 +2,10 @@ import { useQuery } from '@tanstack/solid-query'
 import { ErrorComponent, Link, createFileRoute } from '@tanstack/solid-router'
 import { postQueryOptions } from '~/utils/posts'
 
+export function PostErrorComponent({ error }: { error: any }) {
+  return <ErrorComponent error={error} />
+}
+
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ context, params }) => {
     await context.queryClient.ensureQueryData(postQueryOptions(params.postId))
@@ -9,10 +13,6 @@ export const Route = createFileRoute('/posts/$postId')({
   errorComponent: PostErrorComponent,
   component: PostComponent,
 })
-
-export function PostErrorComponent({ error }: { error: any }) {
-  return <ErrorComponent error={error} />
-}
 
 function PostComponent() {
   const params = Route.useParams()
