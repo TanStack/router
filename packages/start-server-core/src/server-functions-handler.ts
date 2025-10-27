@@ -106,7 +106,7 @@ export const handleServerAction = async ({
           // By default the payload is the search params
           let payload: any = search.payload
           // If there's a payload, we should try to parse it
-          payload = payload ? parsePayload(JSON.parse(payload)) : payload
+          payload = payload ? parsePayload(JSON.parse(payload)) : {}
           payload.context = { ...context, ...payload.context }
           // Send it through!
           return await action(payload, signal)
@@ -116,16 +116,15 @@ export const handleServerAction = async ({
           throw new Error('expected POST method')
         }
 
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('expected application/json content type')
+        let jsonPayload
+        if (contentType?.includes('application/json')) {
+          jsonPayload = await request.json()
         }
-
-        const jsonPayload = await request.json()
 
         // If this POST request was created by createServerFn,
         // its payload  will be the only argument
         if (isCreateServerFn) {
-          const payload = parsePayload(jsonPayload)
+          const payload = jsonPayload ? parsePayload(jsonPayload) : {}
           payload.context = { ...payload.context, ...context }
           return await action(payload, signal)
         }

@@ -1,0 +1,29 @@
+{
+  "name": "tanstack-router-solid-example-kitchen-sink-solid-query",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "vite build && tsc --noEmit",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.15",
+    "@tanstack/solid-query": "^5.72.0",
+    "@tanstack/solid-query-devtools": "^5.72.0",
+    "@tanstack/solid-router": "^1.133.31",
+    "@tanstack/solid-router-devtools": "^1.133.31",
+    "immer": "^10.1.1",
+    "postcss": "^8.5.1",
+    "redaxios": "^0.5.1",
+    "solid-js": "^1.9.9",
+    "tailwindcss": "^4.1.15",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^6.1.0",
+    "vite-plugin-solid": "^2.11.10"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "tanstack-start-example-basic-solid-query",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "start": "vite start"
+  },
+  "dependencies": {
+    "@tanstack/solid-query": "^5.90.0",
+    "@tanstack/solid-query-devtools": "^5.90.0",
+    "@tanstack/solid-router": "^1.133.31",
+    "@tanstack/solid-router-devtools": "^1.133.31",
+    "@tanstack/solid-router-ssr-query": "^1.133.33",
+    "@tanstack/solid-start": "^1.133.32",
+    "redaxios": "^0.5.1",
+    "solid-js": "^1.9.9",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.15",
+    "@types/node": "^22.5.4",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^4.1.15",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-plugin-solid": "^2.11.10",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

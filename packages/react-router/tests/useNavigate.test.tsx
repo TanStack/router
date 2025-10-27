@@ -10,6 +10,8 @@ import {
 } from '@testing-library/react'
 
 import { z } from 'zod'
+
+import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   Navigate,
   Outlet,
@@ -2518,24 +2520,6 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
 
-    test('should navigate to a parent link based on active location', async () => {
-      const router = setupRouter()
-
-      render(<RouterProvider router={router} />)
-
-      await act(async () => {
-        history.push(`${basepath}/param/foo/a/b`)
-      })
-
-      const relativeLink = await screen.findByTestId('link-to-previous')
-
-      // Click the link and ensure the new location
-      fireEvent.click(relativeLink)
-      await router.latestLoadPromise
-
-      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
-    })
-
     test('should navigate to same route with different params', async () => {
       const router = setupRouter()
 
@@ -2555,3 +2539,124 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
     })
   },
 )
+
+describe('splat routes with empty splat', () => {
+  test.each(Object.values(trailingSlashOptions))(
+    'should handle empty _splat parameter with trailingSlash: %s',
+    async (trailingSlash) => {
+      const tail = trailingSlash === 'always' ? '/' : ''
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: function IndexComponent() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>Index Route</h1>
+              <button
+                data-testid="splat-btn-with-empty-splat"
+                onClick={() =>
+                  navigate({
+                    to: '/splat/$',
+                    params: { _splat: '' },
+                  })
+                }
+                type="button"
+              >
+                Navigate to splat with empty _splat
+              </button>
+              <button
+                data-testid="splat-btn-with-undefined-splat"
+                onClick={() =>
+                  navigate({
+                    to: '/splat/$',
+                    params: { _splat: undefined },
+                  })
+                }
+                type="button"
+              >
+                Navigate to splat with undefined _splat
+              </button>
+              <button
+                data-testid="splat-btn-with-no-splat"
+                onClick={() =>
+                  navigate({
+                    to: '/splat/$',
+                    params: {},
+                  })
+                }
+                type="button"
+              >
+                Navigate to splat with no _splat
+              </button>
+            </>
+          )
+        },
+      })
+
+      const splatRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'splat/$',
+        component: () => {
+          return <h1>Splat Route</h1>
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, splatRoute]),
+        history,
+        trailingSlash,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      // Navigate with empty _splat
+      const splatBtnWithEmptySplat = await screen.findByTestId(
+        'splat-btn-with-empty-splat',
+      )
+
+      await act(async () => {
+        fireEvent.click(splatBtnWithEmptySplat)
+      })
+
+      expect(window.location.pathname).toBe(`/splat${tail}`)
+      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+
+      // Navigate back to index
+      await act(async () => {
+        history.push('/')
+      })
+
+      // Navigate with undefined _splat
+      const splatBtnWithUndefinedSplat = await screen.findByTestId(
+        'splat-btn-with-undefined-splat',
+      )
+
+      await act(async () => {
+        fireEvent.click(splatBtnWithUndefinedSplat)
+      })
+
+      expect(window.location.pathname).toBe(`/splat${tail}`)
+      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+
+      // Navigate back to index
+      await act(async () => {
+        history.push('/')
+      })
+
+      // Navigate with no _splat
+      const splatBtnWithNoSplat = await screen.findByTestId(
+        'splat-btn-with-no-splat',
+      )
+
+      await act(async () => {
+        fireEvent.click(splatBtnWithNoSplat)
+      })
+
+      expect(window.location.pathname).toBe(`/splat${tail}`)
+      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+    },
+  )
+})

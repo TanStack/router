@@ -42,6 +42,9 @@ const router = createRouter({
 })
 ```
 
+> [!TIP]
+> `MyRouterContext` only needs to contain content that will be passed directly to `createRouter` below. All other context added in `beforeLoad` will be inferred.
+
 ## Passing the initial Router Context
 
 The router context is passed to the router at instantiation time. You can pass the initial router context to the router via the `context` option:

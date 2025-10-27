@@ -21,13 +21,26 @@ export async function prerender({
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
 
-  // If prerender is enabled but no pages are provided, default to prerendering the root page
-  if (startConfig.prerender?.enabled && !startConfig.pages.length) {
-    startConfig.pages = [
-      {
-        path: '/',
-      },
-    ]
+  // If prerender is enabled
+  if (startConfig.prerender?.enabled) {
+    // default to root page if no pages are defined
+    let pages = startConfig.pages.length ? startConfig.pages : [{ path: '/' }]
+
+    if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
+      // merge discovered static pages with user-defined pages
+      const pagesMap = new Map(pages.map((item) => [item.path, item]))
+      const discoveredPages = globalThis.TSS_PRERENDABLE_PATHS || []
+
+      for (const page of discoveredPages) {
+        if (!pagesMap.has(page.path)) {
+          pagesMap.set(page.path, page)
+        }
+      }
+
+      pages = Array.from(pagesMap.values())
+    }
+
+    startConfig.pages = pages
   }
 
   const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
@@ -69,9 +82,28 @@ export async function prerender({
     pathToFileURL(fullEntryFilePath).toString()
   )
 
-  function localFetch(path: string, options?: RequestInit): Promise<Response> {
+  const isRedirectResponse = (res: Response) => {
+    return res.status >= 300 && res.status < 400 && res.headers.get('location')
+  }
+  async function localFetch(
+    path: string,
+    options?: RequestInit,
+    maxRedirects: number = 5,
+  ): Promise<Response> {
     const url = new URL(`http://localhost${path}`)
-    return serverEntrypoint.fetch(new Request(url, options))
+    const response = await serverEntrypoint.fetch(new Request(url, options))
+
+    if (isRedirectResponse(response) && maxRedirects > 0) {
+      const location = response.headers.get('location')!
+      if (location.startsWith('http://localhost') || location.startsWith('/')) {
+        const newUrl = location.replace('http://localhost', '')
+        return localFetch(newUrl, options, maxRedirects - 1)
+      } else {
+        logger.warn(`Skipping redirect to external location: ${location}`)
+      }
+    }
+
+    return response
   }
 
   try {
@@ -103,6 +135,7 @@ export async function prerender({
 
   async function prerenderPages({ outputDir }: { outputDir: string }) {
     const seen = new Set<string>()
+    const prerendered = new Set<string>()
     const retriesByPath = new Map<string, number>()
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
@@ -113,7 +146,7 @@ export async function prerender({
 
     await queue.start()
 
-    return Array.from(seen)
+    return Array.from(prerendered)
 
     function addCrawlPageTask(page: Page) {
       // Was the page already seen?
@@ -147,13 +180,20 @@ export async function prerender({
           // Fetch the route
           const encodedRoute = encodeURI(page.path)
 
-          const res = await localFetch(withBase(encodedRoute, routerBasePath), {
-            headers: {
-              ...prerenderOptions.headers,
+          const res = await localFetch(
+            withBase(encodedRoute, routerBasePath),
+            {
+              headers: {
+                ...(prerenderOptions.headers ?? {}),
+              },
             },
-          })
+            prerenderOptions.maxRedirects,
+          )
 
           if (!res.ok) {
+            if (isRedirectResponse(res)) {
+              logger.warn(`Max redirects reached for ${page.path}`)
+            }
             throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
               cause: res,
             })
@@ -174,7 +214,8 @@ export async function prerender({
             : cleanPagePath
 
           const htmlPath =
-            cleanPagePath.endsWith('/') || prerenderOptions.autoSubfolderIndex
+            cleanPagePath.endsWith('/') ||
+            (prerenderOptions.autoSubfolderIndex ?? true)
               ? joinURL(cleanPagePath, 'index.html')
               : cleanPagePath + '.html'
 
@@ -192,6 +233,8 @@ export async function prerender({
           })
 
           await fsp.writeFile(filepath, html)
+
+          prerendered.add(page.path)
 
           const newPage = await prerenderOptions.onSuccess?.({ page, html })
 
@@ -253,10 +296,18 @@ export async function writeBundleToDisk({
   bundle: Rollup.OutputBundle
   outDir: string
 }) {
+  const createdDirs = new Set<string>()
+
   for (const [fileName, asset] of Object.entries(bundle)) {
     const fullPath = path.join(outDir, fileName)
+    const dir = path.dirname(fullPath)
     const content = asset.type === 'asset' ? asset.source : asset.code
-    await fsp.mkdir(path.dirname(fullPath), { recursive: true })
+
+    if (!createdDirs.has(dir)) {
+      await fsp.mkdir(dir, { recursive: true })
+      createdDirs.add(dir)
+    }
+
     await fsp.writeFile(fullPath, content)
   }
 }

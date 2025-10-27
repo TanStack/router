@@ -306,6 +306,12 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   return out
 })
 
+/**
+ * Render the next child match in the route tree. Typically used inside
+ * a route component to render nested routes.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/outletComponent
+ */
 export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()
   const matchId = React.useContext(matchContext)

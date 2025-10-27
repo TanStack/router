@@ -18,11 +18,16 @@ export default mergeConfig(
   config,
   tanstackViteConfig({
     srcDir: './src',
-    entry: ['./src/index.tsx', './src/createServerRpc.ts'],
+    entry: [
+      './src/index.tsx',
+      './src/createServerRpc.ts',
+      './src/fake-start-server-fn-manifest.ts',
+    ],
     externalDeps: [
       ...Object.values(VIRTUAL_MODULES),
       '#tanstack-start-entry',
       '#tanstack-router-entry',
+      '#tanstack-start-server-fn-manifest',
     ],
     cjs: false,
   }),
