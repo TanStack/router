@@ -82,6 +82,7 @@ export {
   TSS_SERVER_FUNCTION,
   X_TSS_SERIALIZED,
   X_TSS_RAW_RESPONSE,
+  X_TSS_CONTEXT,
 } from './constants'
 
 export type * from './serverRoute'

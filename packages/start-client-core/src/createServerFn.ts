@@ -1,9 +1,9 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
+import { isRedirect, parseRedirect } from '@tanstack/router-core'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
-import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
   AnyValidator,
   Constrain,
@@ -15,6 +15,7 @@ import type {
   ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
+import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -120,6 +121,11 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             context: {},
           })
 
+          const redirect = parseRedirect(result.error)
+          if (redirect) {
+            throw redirect
+          }
+
           if (result.error) throw result.error
           return result.result
         },
@@ -143,14 +149,18 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               request: startContext.request,
             }
 
-            return executeMiddleware(resolvedMiddleware, 'server', ctx).then(
-              (d) => ({
-                // Only send the result and sendContext back to the client
-                result: d.result,
-                error: d.error,
-                context: d.sendContext,
-              }),
-            )
+            const result = await executeMiddleware(
+              resolvedMiddleware,
+              'server',
+              ctx,
+            ).then((d) => ({
+              // Only send the result and sendContext back to the client
+              result: d.result,
+              error: d.error,
+              context: d.sendContext,
+            }))
+
+            return result
           },
         },
       ) as any
@@ -254,6 +264,22 @@ export async function executeMiddleware(
           ...ctx,
           next: userNext as any,
         } as any)
+
+        // If result is NOT a ctx object, we need to return it as
+        // the { result }
+        if (isRedirect(result)) {
+          return {
+            ...ctx,
+            error: result,
+          }
+        }
+
+        if (result instanceof Response) {
+          return {
+            ...ctx,
+            result,
+          }
+        }
 
         if (!(result as any)) {
           throw new Error(

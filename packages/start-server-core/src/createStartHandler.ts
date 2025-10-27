@@ -245,7 +245,6 @@ export function createStartHandler<TRegister = Register>(
         [...middlewares, requestHandlerMiddleware],
         {
           request,
-
           context: requestOpts?.context || {},
         },
       )
@@ -254,7 +253,7 @@ export function createStartHandler<TRegister = Register>(
 
       if (isRedirect(response)) {
         if (isResolvedRedirect(response)) {
-          if (request.headers.get('x-tsr-redirect') === 'manual') {
+          if (request.headers.get('x-tsr-createServerFn') === 'true') {
             return Response.json(
               {
                 ...response.options,
@@ -295,7 +294,7 @@ export function createStartHandler<TRegister = Register>(
         const router = await getRouter()
         const redirect = router.resolveRedirect(response)
 
-        if (request.headers.get('x-tsr-redirect') === 'manual') {
+        if (request.headers.get('x-tsr-createServerFn') === 'true') {
           return Response.json(
             {
               ...response.options,
