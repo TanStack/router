@@ -18,7 +18,7 @@ function expectRedirect(response: Response | null, endsWith: string) {
 function expectNoRedirect(response: Response | null) {
   expect(response).not.toBeNull()
   const request = response!.request()
-  expect(request.redirectedFrom()?.redirectedTo() === request).toBeTruthy()
+  expect(request.redirectedFrom()).toBeNull()
 }
 
 test.describe('/search-params/loader-throws-redirect', () => {
