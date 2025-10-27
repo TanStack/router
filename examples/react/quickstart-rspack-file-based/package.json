@@ -10,7 +10,7 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/react-router": "^1.133.32",
-    "@tanstack/react-router-devtools": "^1.133.32",
+    "@tanstack/react-router-devtools": "^1.133.34",
     "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
