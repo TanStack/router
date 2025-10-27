@@ -107,15 +107,16 @@ import { useHydrated } from '@tanstack/react-router'
 
 function TimeZoneDisplay() {
   const hydrated = useHydrated()
-  const timeZone = hydrated 
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone 
+  const timeZone = hydrated
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
     : 'UTC'
-  
+
   return <div>Your timezone: {timeZone}</div>
 }
 ```
 
 **Behavior:**
+
 - **During SSR**: Always returns `false`
 - **First client render**: Returns `false`
 - **After hydration**: Returns `true` (and stays `true` for all subsequent renders)
