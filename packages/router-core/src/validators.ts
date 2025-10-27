@@ -104,11 +104,9 @@ export type ResolveValidatorInput<TValidator> =
         ? ResolveValidatorInputFn<TValidator['parse']>
         : ResolveValidatorInputFn<TValidator>
 
-export type ResolveValidatorOutputFn<TValidator> = TValidator extends (
-  ...args: any
-) => infer TSchema
-  ? TSchema
-  : AnySchema
+export type ResolveValidatorOutputFn<TValidator> = Awaited<
+  TValidator extends (...args: any) => infer TSchema ? TSchema : AnySchema
+>
 
 export type ResolveValidatorOutput<TValidator> = unknown extends TValidator
   ? TValidator
