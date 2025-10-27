@@ -53,11 +53,11 @@ const jsonToFilenameSafeString = (json: any) => {
   const sortedKeysReplacer = (key: string, value: any) =>
     value && typeof value === 'object' && !Array.isArray(value)
       ? Object.keys(value)
-        .sort()
-        .reduce((acc: any, curr: string) => {
-          acc[curr] = value[curr]
-          return acc
-        }, {})
+          .sort()
+          .reduce((acc: any, curr: string) => {
+            acc[curr] = value[curr]
+            return acc
+          }, {})
       : value
 
   // Convert JSON to string with sorted keys
