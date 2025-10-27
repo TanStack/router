@@ -275,10 +275,11 @@ export function compileCodeSplitReferenceRoute(
                               `() => ${componentName}`,
                             )()
                             modified = true
+                            return
                           }
                         }
 
-                        if (!shouldSplit && opts.targetFramework !== 'solid') {
+                        if (!shouldSplit) {
                           return
                         }
 
