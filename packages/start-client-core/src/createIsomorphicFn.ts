@@ -36,14 +36,17 @@ export interface ClientOnlyFnWithType<TArgs extends Array<any>, TReturnType>
   ) => IsomorphicFn<TArgs, TReturnType, TReturnType>
 }
 
-export interface IsomorphicFnWithType<TArgs extends Array<any>, TReturnType>
-  extends IsomorphicFn<TArgs, TReturnType> {
-  server: (
-    serverImpl: (...args: TArgs) => TReturnType,
-  ) => ServerOnlyFnWithType<TArgs, TReturnType>
-  client: (
-    clientImpl: (...args: TArgs) => TReturnType,
-  ) => ClientOnlyFnWithType<TArgs, TReturnType>
+export interface IsomorphicFnWithType<TArgs extends Array<any>, TReturnType> {
+  server: (serverImpl: (...args: TArgs) => TReturnType) => {
+    client: (
+      clientImpl: (...args: TArgs) => TReturnType,
+    ) => IsomorphicFn<TArgs, TReturnType, TReturnType>
+  }
+  client: (clientImpl: (...args: TArgs) => TReturnType) => {
+    server: (
+      serverImpl: (...args: TArgs) => TReturnType,
+    ) => IsomorphicFn<TArgs, TReturnType, TReturnType>
+  }
 }
 
 export interface IsomorphicFnBase extends IsomorphicFn {
@@ -63,10 +66,12 @@ export interface IsomorphicFnBase extends IsomorphicFn {
 // if we use `createIsomorphicFn` in this library itself, vite tries to execute it before the transformer runs
 // therefore we must return a dummy function that allows calling `server` and `client` method chains.
 export function createIsomorphicFn(): IsomorphicFnBase {
-  return {
-    $withType: () => {},
+  const baseFns = {
     server: () => ({ client: () => () => {} }),
     client: () => ({ server: () => () => {} }),
+  }
+  return {
+    $withType: () => baseFns,
+    ...baseFns,
   } as any
 }
-
