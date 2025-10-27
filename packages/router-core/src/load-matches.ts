@@ -467,16 +467,21 @@ const executeBeforeLoad = (
       pending()
       return beforeLoadContext
         .catch(async (err) => {
-          await loadRouteChunk(route)
+          if (!isRedirect(err)) {
+            await loadRouteChunk(route)
+          }
           handleSerialError(inner, index, err, 'BEFORE_LOAD')
         })
         .then(updateContext)
     }
   } catch (err) {
     pending()
-    return loadRouteChunk(route).then(() => {
-      handleSerialError(inner, index, err, 'BEFORE_LOAD')
-    })
+    if (!isRedirect(err)) {
+      return loadRouteChunk(route).then(() => {
+        handleSerialError(inner, index, err, 'BEFORE_LOAD')
+      })
+    }
+    return handleSerialError(inner, index, err, 'BEFORE_LOAD')
   }
 
   updateContext(beforeLoadContext)
