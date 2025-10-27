@@ -868,22 +868,24 @@ export async function loadMatches(arg: {
   }
 
   try {
-    // Execute head functions first
-    for (let i = 0; i < inner.matches.length; i++) {
-      const { id: matchId, routeId } = inner.matches[i]!
-      const route = inner.router.looseRoutesById[routeId]!
-      
-      try {
-        const headResult = executeHead(inner, matchId, route)
-        if (headResult) {
-          const head = await headResult
-          inner.updateMatch(matchId, (prev) => ({
-            ...prev,
-            ...head,
-          }))
+    // Execute head functions first during SSR
+    if (inner.router.isServer) {
+      for (let i = 0; i < inner.matches.length; i++) {
+        const { id: matchId, routeId } = inner.matches[i]!
+        const route = inner.router.looseRoutesById[routeId]!
+        
+        try {
+          const headResult = executeHead(inner, matchId, route)
+          if (headResult) {
+            const head = await headResult
+            inner.updateMatch(matchId, (prev) => ({
+              ...prev,
+              ...head,
+            }))
+          }
+        } catch (err) {
+          console.warn('Error executing head during SSR:', err)
         }
-      } catch (err) {
-        console.warn('Error executing head during SSR:', err)
       }
     }
 
