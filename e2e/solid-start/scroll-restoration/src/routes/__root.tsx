@@ -63,9 +63,9 @@ function RootComponent() {
     <html>
       <head>
         <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <Nav type="header" />
         <hr />
         <Outlet />

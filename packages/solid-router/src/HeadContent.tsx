@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js'
-import { MetaProvider } from '@solidjs/meta'
 import { For } from 'solid-js'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -183,17 +182,21 @@ export const useTags = () => {
 
 /**
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
- * When using full document hydration (hydrating from `<html>`), this component should be rendered in the `<body>`
- * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
- * The component uses portals internally to render content into the `<head>` element.
+ * It should be rendered in the `<head>` of your document.
+ */
+/**
+ * Render route-managed head tags (title, meta, links, styles, head scripts).
+ * Place inside the document head of your app shell.
+ * @link https://tanstack.com/router/latest/docs/framework/solid/guide/document-head-management
  */
 export function HeadContent() {
   const tags = useTags()
-
+  const router = useRouter()
+  const nonce = router.options.ssr?.nonce
   return (
-    <MetaProvider>
-      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
-    </MetaProvider>
+    <For each={tags()}>
+      {(tag) => <Asset {...tag} nonce={nonce} />}
+    </For>
   )
 }
 
