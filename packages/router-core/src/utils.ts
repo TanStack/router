@@ -488,3 +488,57 @@ export function findLast<T>(
   }
   return undefined
 }
+
+const DECODE_IGNORE_LIST = [
+  '%',
+  '\\',
+  '/',
+  ';',
+  ':',
+  '@',
+  '&',
+  '=',
+  '+',
+  '$',
+  ',',
+].map((c) => encodeURIComponent(c))
+
+export function decodePathSegment(
+  part: string,
+  decodeIgnore: Array<string> = DECODE_IGNORE_LIST,
+  startIndex = 0,
+) {
+  function decode(part: string) {
+    try {
+      return decodeURIComponent(part)
+    } catch {
+      // if the decoding fails, try to decode the various parts leaving the malformed tags in place
+      return part.replaceAll(/%../g, (match) => {
+        try {
+          return decodeURIComponent(match)
+        } catch {
+          return match
+        }
+      })
+    }
+  }
+
+  if (part === '' || !part.match(/%../g)) return part
+
+  for (let i = startIndex; i < decodeIgnore.length; i++) {
+    const char = decodeIgnore[i]
+
+    if (char && part.includes(char)) {
+      const partsToDecode = part.split(char)
+      const partsToJoin: Array<string> = []
+
+      for (const partToDecode of partsToDecode) {
+        partsToJoin.push(decodePathSegment(partToDecode, decodeIgnore, i + 1))
+      }
+
+      return partsToJoin.join(char)
+    }
+  }
+
+  return decode(part)
+}

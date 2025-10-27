@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { deepEqual, isPlainArray, replaceEqualDeep } from '../src/utils'
+import {
+  decodePathSegment,
+  deepEqual,
+  isPlainArray,
+  replaceEqualDeep,
+} from '../src/utils'
 
 describe('replaceEqualDeep', () => {
   it('should return the same object if the input objects are equal', () => {
@@ -490,5 +495,86 @@ describe('deepEqual', () => {
       // @ts-expect-error
       delete Object.prototype.x
     })
+  })
+})
+
+describe('decodePathSegment', () => {
+  it('should decode a path segment with no ignored items existing', () => {
+    const itemsToCheck = ['%25', '%5C']
+    const stringToCheck =
+      'https://mozilla.org/?x=%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
+    const expectedResult = 'https://mozilla.org/?x=шеллы'
+
+    const result = decodePathSegment(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment with one ignored character and one ignored item existing', () => {
+    const itemsToCheck = ['%25']
+    const stringToCheck =
+      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
+    const expectedResult = 'https://mozilla.org/?x=%25ше\\ллы'
+
+    const result = decodePathSegment(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment with multiple ignored characters and first ignored item existing', () => {
+    const itemsToCheck = ['%25', '%5C']
+    let stringToCheck =
+      'https://mozilla.org/?x=%25%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
+    let expectedResult = 'https://mozilla.org/?x=%25шеллы'
+
+    let result = decodePathSegment(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+
+    stringToCheck = 'https://mozilla.org/?x=%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
+    expectedResult = 'https://mozilla.org/?x=ше%5Cллы'
+
+    result = decodePathSegment(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment with multiple ignored characters and other ignored item existing', () => {
+    const itemsToCheck = ['%25', '%5C']
+    let stringToCheck =
+      'https://mozilla.org/?x=%5C%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
+    let expectedResult = 'https://mozilla.org/?x=%5Cшеллы'
+
+    let result = decodePathSegment(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+
+    stringToCheck = 'https://mozilla.org/?x=%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
+    expectedResult = 'https://mozilla.org/?x=ше%5Cллы'
+
+    result = decodePathSegment(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment with multiple ignored characters and multiple ignored items existing', () => {
+    const itemsToCheck = ['%25', '%5C']
+    const stringToCheck =
+      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
+    const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы'
+
+    const result = decodePathSegment(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment, ignoring `%` and `\\` by default, with multiple ignored items existing', () => {
+    const stringToCheck =
+      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
+    const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы'
+
+    const result = decodePathSegment(stringToCheck)
+
+    expect(result).toBe(expectedResult)
   })
 })
