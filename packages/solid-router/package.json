@@ -98,24 +98,24 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@solid-devtools/logger": "^0.9.4",
-    "@solid-primitives/refs": "^1.0.8",
+    "@solid-devtools/logger": "^0.9.11",
+    "@solid-primitives/refs": "^1.1.2",
     "@solidjs/meta": "^0.29.4",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
-    "@tanstack/solid-store": "0.7.0",
-    "isbot": "^5.1.22",
+    "@tanstack/solid-store": "0.8.0",
+    "isbot": "^5.1.31",
     "tiny-invariant": "^1.3.3",
     "tiny-warning": "^1.0.3"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "^6.9.1",
     "combinate": "^1.1.11",
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "^1.9.9",
     "vite-plugin-solid": "^2.11.10",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "peerDependencies": {
     "solid-js": "^1.9.9"
