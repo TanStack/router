@@ -71,6 +71,7 @@
   },
   "pnpm": {
     "overrides": {
+      "jiti": "2.6.1",
       "vite-plugin-dts": "4.0.3",
       "solid-js": "1.9.9",
       "react": "$react",

@@ -31,13 +31,13 @@ export function tanstackStart(
         return {
           optimizeDeps:
             environmentName === VITE_ENVIRONMENT_NAMES.client ||
-            (environmentName === VITE_ENVIRONMENT_NAMES.server &&
-              // This indicates that the server environment has opted in to dependency optimization
-              options.optimizeDeps?.noDiscovery === false)
+              (environmentName === VITE_ENVIRONMENT_NAMES.server &&
+                // This indicates that the server environment has opted in to dependency optimization
+                options.optimizeDeps?.noDiscovery === false)
               ? {
-                  // As `@tanstack/solid-start` depends on `@tanstack/solid-router`, we should exclude both.
-                  exclude: ['@tanstack/solid-start', '@tanstack/solid-router'],
-                }
+                // As `@tanstack/solid-start` depends on `@tanstack/solid-router`, we should exclude both.
+                exclude: ['@tanstack/solid-start', '@tanstack/solid-router', '@tanstack/start-static-server-functions'],
+              }
               : undefined,
         }
       },
