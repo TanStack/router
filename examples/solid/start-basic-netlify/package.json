@@ -12,7 +12,7 @@
     "@tanstack/solid-router": "^1.133.31",
     "@tanstack/solid-router-devtools": "^1.133.31",
     "@tanstack/solid-start": "^1.133.32",
-    "solid-js": "^1.9.9"
+    "solid-js": "^1.9.10"
   },
   "devDependencies": {
     "@netlify/vite-plugin-tanstack-start": "^1.1.4",

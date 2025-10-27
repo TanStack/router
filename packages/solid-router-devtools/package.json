@@ -70,11 +70,11 @@
     "vite": "^7.1.7"
   },
   "devDependencies": {
-    "solid-js": "^1.9.9",
+    "solid-js": "^1.9.10",
     "vite-plugin-solid": "^2.11.10"
   },
   "peerDependencies": {
     "@tanstack/solid-router": "workspace:^",
-    "solid-js": "^1.9.9"
+    "solid-js": "^1.9.10"
   }
 }
