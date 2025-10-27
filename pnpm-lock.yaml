@@ -8432,6 +8432,12 @@ importers:
 
   packages/start-static-server-functions:
     dependencies:
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../react-start
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../solid-start
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
