@@ -883,7 +883,7 @@ export async function loadMatches(arg: {
     }
     await Promise.all(inner.matchPromises)
 
-    // Execute head functions first during SSR
+    // Execute head functions during SSR
     if (inner.router.isServer) {
       for (let i = 0; i < inner.matches.length; i++) {
         const { id: matchId, routeId } = inner.matches[i]!
