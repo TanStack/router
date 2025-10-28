@@ -50,7 +50,7 @@ const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
   )
 }
 
-const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
+const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError, matchId: string) => {
   // Find the route that should handle the not found error
   // First check if a specific route is requested to show the error
   let routeCursor =
@@ -63,6 +63,13 @@ const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
     }
     // Update the error to point to the error handling route
     err.routeId = routeCursor.id
+
+    if (inner.router.isServer) {
+      const loadPromise = loadRouteChunk(routeCursor)
+      if (loadPromise) {
+        loadPromise.then(() => (routeCursor.options.notFoundComponent)?.preload?.())
+      }
+    }
   }
 
   // Ensure a NotFoundComponent exists on the route
@@ -83,6 +90,7 @@ const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
 
   // Find the match for this route
   const matchForRoute = inner.matches.find((m) => m.routeId === routeCursor.id)
+
 
   invariant(matchForRoute, 'Could not find match for route: ' + routeCursor.id)
 
@@ -136,7 +144,7 @@ const handleRedirectAndNotFound = (
     err = inner.router.resolveRedirect(err)
     throw err
   } else {
-    _handleNotFound(inner, err)
+    _handleNotFound(inner, err, match?.id ?? '')
     throw err
   }
 }
@@ -526,9 +534,16 @@ const executeHead = (
   if (!match) {
     return
   }
+  
+  // Skip if already executed with the same loaderData
+  if (match._nonReactive.headExecuted && match._nonReactive.lastHeadLoaderData === match.loaderData) {
+    return
+  }
+  
   if (!route.options.head && !route.options.scripts && !route.options.headers) {
     return
   }
+  
   const assetContext = {
     matches: inner.matches,
     match,
@@ -545,6 +560,10 @@ const executeHead = (
     const links = headFnContent?.links
     const headScripts = headFnContent?.scripts
     const styles = headFnContent?.styles
+
+    // Mark as executed with current loaderData
+    match._nonReactive.headExecuted = true
+    match._nonReactive.lastHeadLoaderData = match.loaderData
 
     return {
       meta,
@@ -868,10 +887,30 @@ export async function loadMatches(arg: {
   }
 
   try {
-  
-
     // Execute all beforeLoads one by one
     for (let i = 0; i < inner.matches.length; i++) {
+      // Execute head before beforeLoad for SSR to ensure head content is available before beforeLoad errors
+      if (inner.router.isServer) {
+        const { id: matchId, routeId } = inner.matches[i]!
+        const route = inner.router.looseRoutesById[routeId]!
+        try {
+          const headResult = executeHead(inner, matchId, route)
+          if (headResult && isPromise(headResult)) {
+            await headResult.then(head => {
+              if (head) {
+                inner.updateMatch(matchId, (prev) => ({
+                  ...prev,
+                  ...head,
+                }))
+              }
+            })
+          }
+        } catch (err) {
+          // Don't let head execution errors break beforeLoad execution
+          console.warn('Error executing head before beforeLoad:', err)
+        }
+      }
+      
       const beforeLoad = handleBeforeLoad(inner, i)
       if (isPromise(beforeLoad)) await beforeLoad
     }
@@ -883,7 +922,6 @@ export async function loadMatches(arg: {
     }
     await Promise.all(inner.matchPromises)
 
-    // Execute head functions during SSR
     if (inner.router.isServer) {
       for (let i = 0; i < inner.matches.length; i++) {
         const { id: matchId, routeId } = inner.matches[i]!
@@ -903,6 +941,7 @@ export async function loadMatches(arg: {
         }
       }
     }
+
 
     const readyPromise = triggerOnReady(inner)
     if (isPromise(readyPromise)) await readyPromise

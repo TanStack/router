@@ -148,6 +148,8 @@ export interface RouteMatch<
     displayPendingPromise?: Promise<void>
     minPendingPromise?: ControlledPromise<void>
     dehydrated?: boolean
+    headExecuted?: boolean
+    lastHeadLoaderData?: TLoaderData
   }
   loaderData?: TLoaderData
   /** @internal */
