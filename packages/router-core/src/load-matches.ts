@@ -896,15 +896,12 @@ export async function loadMatches(arg: {
         const route = inner.router.looseRoutesById[routeId]!
         try {
           const headResult = executeHead(inner, matchId, route)
-          if (headResult && isPromise(headResult)) {
-            await headResult.then(head => {
-              if (head) {
-                inner.updateMatch(matchId, (prev) => ({
-                  ...prev,
-                  ...head,
-                }))
-              }
-            })
+          if (headResult) {
+            const head = await headResult
+            inner.updateMatch(matchId, (prev) => ({
+              ...prev,
+              ...head,
+            }))
           }
         } catch (err) {
           // Don't let head execution errors break beforeLoad execution
