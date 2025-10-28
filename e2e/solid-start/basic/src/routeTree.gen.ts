@@ -23,6 +23,7 @@ import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as TransitionIndexRouteImport } from './routes/transition/index'
+import { Route as TransitionSimpleIndexRouteImport } from './routes/transition-simple/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
@@ -116,6 +117,11 @@ const UsersIndexRoute = UsersIndexRouteImport.update({
 const TransitionIndexRoute = TransitionIndexRouteImport.update({
   id: '/transition/',
   path: '/transition/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransitionSimpleIndexRoute = TransitionSimpleIndexRouteImport.update({
+  id: '/transition-simple/',
+  path: '/transition-simple/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
@@ -268,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/posts/': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/transition-simple': typeof TransitionSimpleIndexRoute
   '/transition': typeof TransitionIndexRoute
   '/users/': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -301,6 +308,7 @@ export interface FileRoutesByTo {
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
+  '/transition-simple': typeof TransitionSimpleIndexRoute
   '/transition': typeof TransitionIndexRoute
   '/users': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/transition-simple/': typeof TransitionSimpleIndexRoute
   '/transition/': typeof TransitionIndexRoute
   '/users/': typeof UsersIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
@@ -382,6 +391,7 @@ export interface FileRouteTypes {
     | '/posts/'
     | '/redirect'
     | '/search-params/'
+    | '/transition-simple'
     | '/transition'
     | '/users/'
     | '/layout-a'
@@ -415,6 +425,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/redirect'
     | '/search-params'
+    | '/transition-simple'
     | '/transition'
     | '/users'
     | '/layout-a'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/posts/'
     | '/redirect/'
     | '/search-params/'
+    | '/transition-simple/'
     | '/transition/'
     | '/users/'
     | '/_layout/_layout-2/layout-a'
@@ -486,6 +498,7 @@ export interface RootRouteChildren {
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   RedirectIndexRoute: typeof RedirectIndexRoute
+  TransitionSimpleIndexRoute: typeof TransitionSimpleIndexRoute
   TransitionIndexRoute: typeof TransitionIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
 }
@@ -588,6 +601,13 @@ declare module '@tanstack/solid-router' {
       path: '/transition'
       fullPath: '/transition'
       preLoaderRoute: typeof TransitionIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transition-simple/': {
+      id: '/transition-simple/'
+      path: '/transition-simple'
+      fullPath: '/transition-simple'
+      preLoaderRoute: typeof TransitionSimpleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search-params/': {
@@ -896,6 +916,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiUsersRoute: ApiUsersRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   RedirectIndexRoute: RedirectIndexRoute,
+  TransitionSimpleIndexRoute: TransitionSimpleIndexRoute,
   TransitionIndexRoute: TransitionIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }

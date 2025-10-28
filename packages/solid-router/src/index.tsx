@@ -295,6 +295,8 @@ export {
   createTransitionAwareResource,
 } from './createTransitionAwareResource'
 
+export { TransitionSuspense } from './TransitionSuspense'
+
 export {
   useElementScrollRestoration,
   ScrollRestoration,
