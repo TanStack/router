@@ -43,7 +43,10 @@ export const useTags = () => {
         } else {
           const attribute = m.name ?? m.property
           if (attribute) {
-            if (metaByAttribute[attribute] && shouldDeduplicateMetaTag(attribute)) {
+            if (
+              metaByAttribute[attribute] &&
+              shouldDeduplicateMetaTag(attribute)
+            ) {
               continue
             } else {
               metaByAttribute[attribute] = true
