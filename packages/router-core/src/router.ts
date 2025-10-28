@@ -2,6 +2,7 @@ import { Store, batch } from '@tanstack/store'
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import {
   createControlledPromise,
+  decodePathSegment,
   deepEqual,
   findLast,
   functionalUpdate,
@@ -1670,16 +1671,18 @@ export class RouterCore<
         }
       }
 
-      const nextPathname = interpolatePath({
-        // Use the original template path for interpolation
-        // This preserves the original parameter syntax including optional parameters
-        path: nextTo,
-        params: nextParams,
-        leaveWildcards: false,
-        leaveParams: opts.leaveParams,
-        decodeCharMap: this.pathParamsDecodeCharMap,
-        parseCache: this.parsePathnameCache,
-      }).interpolatedPath
+      const nextPathname = decodePathSegment(
+        interpolatePath({
+          // Use the original template path for interpolation
+          // This preserves the original parameter syntax including optional parameters
+          path: nextTo,
+          params: nextParams,
+          leaveWildcards: false,
+          leaveParams: opts.leaveParams,
+          decodeCharMap: this.pathParamsDecodeCharMap,
+          parseCache: this.parsePathnameCache,
+        }).interpolatedPath,
+      )
 
       // Resolve the next search
       let nextSearch = fromSearch

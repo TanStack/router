@@ -1,4 +1,4 @@
-import { last } from './utils'
+import { decodePathSegment, last } from './utils'
 import type { LRUCache } from './lru-cache'
 import type { MatchLocation } from './RouterProvider'
 import type { AnyPathParams } from './route'
@@ -358,12 +358,7 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
       // Handle regular pathname segment
       return {
         type: SEGMENT_TYPE_PATHNAME,
-        value: part.includes('%25')
-          ? part
-              .split('%25')
-              .map((segment) => decodeURI(segment))
-              .join('%25')
-          : decodeURI(part),
+        value: decodePathSegment(part),
       }
     }),
   )
