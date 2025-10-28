@@ -74,7 +74,7 @@ You can use those settings either at a user level or only for a single workspace
 
 ## Configuration
 
-When using the TanStack Router Plugin with Vite for File-based routing, it comes with some sane defaults that should work for most projects:
+When using the TanStack Router Plugin with Vite for File-based routing, it comes with some same defaults that should work for most projects:
 
 ```json
 {
