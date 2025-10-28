@@ -513,7 +513,7 @@ export function decodePathSegment(
       return decodeURIComponent(part)
     } catch {
       // if the decoding fails, try to decode the various parts leaving the malformed tags in place
-      return part.replaceAll(/%../g, (match) => {
+      return part.replaceAll(/%[0-9A-Fa-f]{2}/g, (match) => {
         try {
           return decodeURIComponent(match)
         } catch {
