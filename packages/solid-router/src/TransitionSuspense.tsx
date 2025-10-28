@@ -1,5 +1,6 @@
-import { Show, Suspense, createMemo, type JSX } from 'solid-js'
+import {  Show, Suspense, createMemo } from 'solid-js'
 import { useRouter } from './useRouter'
+import type {JSX} from 'solid-js';
 
 interface TransitionSuspenseProps {
   fallback?: JSX.Element
