@@ -7,7 +7,7 @@ const qOptions = makeQueryOptions('useQuery')
 export const Route = createFileRoute('/useQuery')({
   loader: ({ context }) => context.queryClient.ensureQueryData(qOptions),
   component: RouteComponent,
-  ssr: 'data-only',
+  ssr: true,
 })
 
 function RouteComponent() {
