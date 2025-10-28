@@ -54,10 +54,10 @@ export function Matches() {
 
   return (
     <OptionalWrapper>
+      <Transitioner />
       <ResolvedSuspense
         fallback={PendingComponent ? <PendingComponent /> : null}
       >
-        <Transitioner />
         <MatchesInner />
       </ResolvedSuspense>
     </OptionalWrapper>

@@ -53,9 +53,7 @@ export function Transitioner() {
 
   router.startTransition = (fn: () => void | Promise<void>) => {
     setIsTransitioning(true)
-    // Use Solid's useTransition to prevent Suspense boundaries from showing fallback
-    // This keeps old content visible during navigation until new content is ready
-    solidStartTransition(() => {
+    try {
       // Execute the function and handle promise if it's async
       const result = fn()
       if (result instanceof Promise) {
@@ -65,7 +63,10 @@ export function Transitioner() {
       } else {
         setIsTransitioning(false)
       }
-    })
+    } catch (err) {
+      setIsTransitioning(false)
+      throw err
+    }
   }
 
   // Subscribe to location changes
@@ -98,8 +99,8 @@ export function Transitioner() {
   Solid.createRenderEffect(() => {
     Solid.untrack(() => {
       if (
-        // if we are hydrating from SSR, loading is triggered in ssr-client
-        (typeof window !== 'undefined' && router.ssr) ||
+        // if we are hydrating from SSR and already have matches, loading was triggered in ssr-client
+        (typeof window !== 'undefined' && router.ssr && router.state.matches.length > 0) ||
         (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
       ) {
         return
