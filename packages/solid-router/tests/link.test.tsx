@@ -6579,11 +6579,11 @@ describe('encoded and unicode paths', () => {
 
       render(() => <RouterProvider router={router} />)
 
-      window.history.replaceState(null, 'root', browsePath)
+      history.push(browsePath)
 
       await validate()
 
-      window.history.replaceState(null, 'root', '/')
+      history.push('/')
 
       const link = await screen.findByTestId('link-to-path')
 
