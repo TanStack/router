@@ -939,11 +939,11 @@ export class RouterCore<
   startTransition: StartTransitionFn = (fn) => fn()
 
   /**
-   * Internal flag set before history updates to enable early transition detection.
-   * Framework-specific implementations can check this flag when reactive signals update.
+   * Hook called before history updates. Framework adapters can use this to
+   * set transition state before reactive signals update.
    * @internal
    */
-  __isNavigating?: boolean
+  onBeforeHistoryUpdate?: () => void
 
   isShell() {
     return !!this.options.isShell
@@ -1909,8 +1909,8 @@ export class RouterCore<
 
       this.shouldViewTransition = viewTransition
 
-      // Set internal flag before history updates to enable early transition detection
-      this.__isNavigating = true
+      // Call hook before history updates so frameworks can set transition state early
+      this.onBeforeHistoryUpdate?.()
 
       this.history[next.replace ? 'replace' : 'push'](
         nextHistory.publicHref,

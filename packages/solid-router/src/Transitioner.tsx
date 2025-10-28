@@ -21,6 +21,7 @@ export function Transitioner() {
 
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   const [isPending, solidStartTransition] = Solid.useTransition()
+  const [isNavigating, setIsNavigating] = Solid.createSignal(false)
 
   // Track pending state changes
   const hasPendingMatches = useRouterState({
@@ -39,11 +40,16 @@ export function Transitioner() {
   // Combined transition state - checks multiple sources:
   // - isTransitioning: set when startTransition is called
   // - isPending: from Solid's useTransition
-  // - __isNavigating: set before history updates to catch early signal changes
-  const isInTransition = () => isTransitioning() || isPending() || !!router.__isNavigating
+  // - isNavigating: set before history updates to catch early signal changes
+  const isInTransition = () => isTransitioning() || isPending() || isNavigating()
 
   // Store the transition state accessor on the router so it can be accessed
   router.isTransitioning = isInTransition
+
+  // Set up hook to be called before history updates
+  router.onBeforeHistoryUpdate = () => {
+    setIsNavigating(true)
+  }
 
   router.startTransition = (fn: () => void | Promise<void>) => {
     setIsTransitioning(true)
@@ -55,11 +61,9 @@ export function Transitioner() {
       if (result instanceof Promise) {
         result.finally(() => {
           setIsTransitioning(false)
-          router.__isNavigating = false
         })
       } else {
         setIsTransitioning(false)
-        router.__isNavigating = false
       }
     })
   }
@@ -136,6 +140,21 @@ export function Transitioner() {
             type: 'onBeforeRouteMount',
             ...getLocationChangeInfo(router.state),
           })
+        }
+      },
+    ),
+  )
+
+  // Track isPending changes to reset isNavigating when transition completes
+  const previousIsPending = usePrevious(isPending)
+  Solid.createRenderEffect(
+    Solid.on(
+      [isPending, previousIsPending],
+      ([isPending, previousIsPending]) => {
+        // Reset isNavigating when Solid's transition completes
+        // This ensures we wait for all resources to finish loading
+        if (previousIsPending.previous && !isPending) {
+          setIsNavigating(false)
         }
       },
     ),

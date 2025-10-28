@@ -28,10 +28,11 @@ declare module '@tanstack/router-core' {
      */
     isTransitioning?: Accessor<boolean>
     /**
-     * Internal flag set before history updates to enable early transition detection.
+     * Hook called before history updates. Framework adapters can use this to
+     * set transition state before reactive signals update.
      * @internal
      */
-    __isNavigating?: boolean
+    onBeforeHistoryUpdate?: () => void
   }
 
   export interface RouterOptionsExtensions {
