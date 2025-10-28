@@ -4,7 +4,7 @@ test('transitions should keep old values visible during navigation', async ({
   page,
 }) => {
   // Navigate to the transition test route
-  await page.goto('/transition-test')
+  await page.goto('/transition')
 
   // Wait for initial values to load
   await expect(page.getByTestId('n-value')).toContainText('n: 1')

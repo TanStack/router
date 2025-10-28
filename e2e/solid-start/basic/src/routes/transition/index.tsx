@@ -21,6 +21,7 @@ function Home() {
         class="border bg-gray-50 px-3 py-1"
         from="/transition"
         search={(s) => ({ n: s.n + 1 })}
+        startTransition
       >
         Increase
       </Link>
