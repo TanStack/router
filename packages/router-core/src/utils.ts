@@ -489,26 +489,28 @@ export function findLast<T>(
   return undefined
 }
 
-const DECODE_IGNORE_LIST = new Map([
-  ['%', '%25'],
-  ['\\', '%5C'],
-  ['/', '%2F'],
-  [';', '%3B'],
-  [':', '%3A'],
-  ['@', '%40'],
-  ['&', '%26'],
-  ['=', '%3D'],
-  ['+', '%2B'],
-  ['$', '%24'],
-  [',', '%2C'],
-])
+const DECODE_IGNORE_LIST = Array.from(
+  new Map([
+    ['%', '%25'],
+    ['\\', '%5C'],
+    ['/', '%2F'],
+    [';', '%3B'],
+    [':', '%3A'],
+    ['@', '%40'],
+    ['&', '%26'],
+    ['=', '%3D'],
+    ['+', '%2B'],
+    ['$', '%24'],
+    [',', '%2C'],
+  ]).values(),
+)
 
 export function decodePathSegment(
   part: string,
-  decodeIgnore: Array<string> = Array.from(DECODE_IGNORE_LIST.values()),
+  decodeIgnore: Array<string> = DECODE_IGNORE_LIST,
   startIndex = 0,
 ): string {
-  function decode(part: string) {
+  function decode(part: string): string {
     try {
       return decodeURIComponent(part)
     } catch {
