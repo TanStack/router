@@ -150,6 +150,7 @@ export interface RouteMatch<
     dehydrated?: boolean
     headExecuted?: boolean
     lastHeadLoaderData?: TLoaderData
+    lastHeadContext?: TAllContext
   }
   loaderData?: TLoaderData
   /** @internal */

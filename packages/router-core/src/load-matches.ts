@@ -536,7 +536,7 @@ const executeHead = (
   }
   
   // Skip if already executed with the same loaderData
-  if (match._nonReactive.headExecuted && match._nonReactive.lastHeadLoaderData === match.loaderData) {
+  if (match._nonReactive.headExecuted && match._nonReactive.lastHeadLoaderData === match.loaderData && match._nonReactive.lastHeadContext === match.context) {
     return
   }
   
@@ -564,6 +564,7 @@ const executeHead = (
     // Mark as executed with current loaderData
     match._nonReactive.headExecuted = true
     match._nonReactive.lastHeadLoaderData = match.loaderData
+    match._nonReactive.lastHeadContext = match.context
 
     return {
       meta,
