@@ -40,7 +40,6 @@ import {
   sleep,
 } from './utils'
 import type { RouterHistory } from '../src'
-import React from 'react'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
