@@ -570,11 +570,33 @@ describe('decodePathSegment', () => {
 
   it('should decode a path segment, ignoring `%` and `\\` by default, with multiple ignored items existing', () => {
     const stringToCheck =
-      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
-    const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы'
+      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B%2F'
+    const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы%2F'
 
     const result = decodePathSegment(stringToCheck)
 
     expect(result).toBe(expectedResult)
+  })
+
+  it('should handle malformed percent-encodings gracefully', () => {
+    const stringToCheck = 'path%ZZ%D1%88test%5C%C3%A9'
+    // Malformed sequences should remain as-is, valid ones decoded
+    const result = decodePathSegment(stringToCheck)
+    expect(result).toBe(`path%ZZ%D1%88test%5Cé`)
+  })
+
+  it('should return empty string unchanged', () => {
+    expect(decodePathSegment('')).toBe('')
+  })
+
+  it('should return strings without encoding unchanged', () => {
+    const stringToCheck = 'plain-text-path'
+    expect(decodePathSegment(stringToCheck)).toBe(stringToCheck)
+  })
+
+  it('should handle consecutive ignored characters', () => {
+    const stringToCheck = 'test%25%25end'
+    const expectedResult = 'test%25%25end'
+    expect(decodePathSegment(stringToCheck)).toBe(expectedResult)
   })
 })
