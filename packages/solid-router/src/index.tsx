@@ -290,11 +290,6 @@ export {
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type { RouterProps } from './RouterProvider'
 
-export {
-  useIsTransitioning,
-  createTransitionAwareResource,
-} from './createTransitionAwareResource'
-
 export { TransitionSuspense } from './TransitionSuspense'
 
 export {

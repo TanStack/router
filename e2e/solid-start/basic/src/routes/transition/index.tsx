@@ -1,9 +1,5 @@
-import {
-  Link,
-  createFileRoute,
-  createTransitionAwareResource,
-} from '@tanstack/solid-router'
-import { Suspense } from 'solid-js'
+import { Link, createFileRoute, TransitionSuspense } from '@tanstack/solid-router'
+import { createResource } from 'solid-js'
 import { z } from 'zod'
 
 export const Route = createFileRoute('/transition/')({
@@ -34,9 +30,9 @@ function Home() {
 function Result() {
   const searchQuery = Route.useSearch()
 
-  // Use createTransitionAwareResource instead of createResource
-  // This automatically keeps old values visible during navigation
-  const [doubleQuery] = createTransitionAwareResource(
+  // Use regular createResource (not createTransitionAwareResource!)
+  // TransitionSuspense makes it work seamlessly with transitions
+  const [doubleQuery] = createResource(
     () => searchQuery().n,
     async (n) => {
       await new Promise((r) => setTimeout(r, 1000))
@@ -46,11 +42,11 @@ function Result() {
 
   return (
     <div class="mt-2">
-      {/* Regular Suspense works great with createTransitionAwareResource! */}
-      <Suspense fallback="Loading...">
+      {/* TransitionSuspense keeps old values visible during navigation */}
+      <TransitionSuspense fallback="Loading...">
         <div data-testid="n-value">n: {searchQuery().n}</div>
         <div data-testid="double-value">double: {doubleQuery()}</div>
-      </Suspense>
+      </TransitionSuspense>
     </div>
   )
 }
