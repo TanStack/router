@@ -50,7 +50,7 @@ const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
   )
 }
 
-const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError, matchId: string) => {
+const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
   // Find the route that should handle the not found error
   // First check if a specific route is requested to show the error
   let routeCursor =
@@ -144,7 +144,7 @@ const handleRedirectAndNotFound = (
     err = inner.router.resolveRedirect(err)
     throw err
   } else {
-    _handleNotFound(inner, err, match?.id ?? '')
+    _handleNotFound(inner, err)
     throw err
   }
 }
