@@ -488,8 +488,7 @@ test('redirect in server function called in query during SSR', async ({
   page,
 }) => {
   // Test direct navigation to a route with a server function that redirects
-  // when called inside a query without ssr: 'data-only'
-  // This reproduces the issue from the bug report
+  // when called inside a query with ssr: true
   await page.goto('/redirect-test-ssr')
 
   // Should redirect to target page
