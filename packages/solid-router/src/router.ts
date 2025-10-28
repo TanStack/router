@@ -12,9 +12,28 @@ import type {
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
-import type { JSX } from 'solid-js'
+import type { Accessor, JSX } from 'solid-js'
 
 declare module '@tanstack/router-core' {
+  export interface RouterCore<
+    TRouteTree extends AnyRoute,
+    TTrailingSlashOption extends TrailingSlashOption,
+    TDefaultStructuralSharingOption extends boolean,
+    TRouterHistory extends RouterHistory,
+    TDehydrated extends Record<string, any>,
+  > {
+    /**
+     * A function that returns whether the router is currently transitioning
+     * Used by createTransitionAwareResource to keep old content visible during navigation
+     */
+    isTransitioning?: Accessor<boolean>
+    /**
+     * Internal flag set before history updates to enable early transition detection.
+     * @internal
+     */
+    __isNavigating?: boolean
+  }
+
   export interface RouterOptionsExtensions {
     /**
      * The default `component` a route should use if no component is provided.

@@ -22,6 +22,7 @@ import { Route as SearchParamsRouteRouteImport } from './routes/search-params/ro
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
+import { Route as TransitionIndexRouteImport } from './routes/transition/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
@@ -111,6 +112,11 @@ const UsersIndexRoute = UsersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => UsersRoute,
+} as any)
+const TransitionIndexRoute = TransitionIndexRouteImport.update({
+  id: '/transition/',
+  path: '/transition/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
   id: '/',
@@ -262,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/posts/': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/transition': typeof TransitionIndexRoute
   '/users/': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
+  '/transition': typeof TransitionIndexRoute
   '/users': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
@@ -334,6 +342,7 @@ export interface FileRoutesById {
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/transition/': typeof TransitionIndexRoute
   '/users/': typeof UsersIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/posts/'
     | '/redirect'
     | '/search-params/'
+    | '/transition'
     | '/users/'
     | '/layout-a'
     | '/layout-b'
@@ -405,6 +415,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/redirect'
     | '/search-params'
+    | '/transition'
     | '/users'
     | '/layout-a'
     | '/layout-b'
@@ -444,6 +455,7 @@ export interface FileRouteTypes {
     | '/posts/'
     | '/redirect/'
     | '/search-params/'
+    | '/transition/'
     | '/users/'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
@@ -474,6 +486,7 @@ export interface RootRouteChildren {
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   RedirectIndexRoute: typeof RedirectIndexRoute
+  TransitionIndexRoute: typeof TransitionIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
 }
 
@@ -569,6 +582,13 @@ declare module '@tanstack/solid-router' {
       fullPath: '/users/'
       preLoaderRoute: typeof UsersIndexRouteImport
       parentRoute: typeof UsersRoute
+    }
+    '/transition/': {
+      id: '/transition/'
+      path: '/transition'
+      fullPath: '/transition'
+      preLoaderRoute: typeof TransitionIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/search-params/': {
       id: '/search-params/'
@@ -876,6 +896,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiUsersRoute: ApiUsersRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   RedirectIndexRoute: RedirectIndexRoute,
+  TransitionIndexRoute: TransitionIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }
 export const routeTree = rootRouteImport

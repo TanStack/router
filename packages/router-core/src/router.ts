@@ -938,6 +938,13 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
+  /**
+   * Internal flag set before history updates to enable early transition detection.
+   * Framework-specific implementations can check this flag when reactive signals update.
+   * @internal
+   */
+  __isNavigating?: boolean
+
   isShell() {
     return !!this.options.isShell
   }
@@ -1901,6 +1908,9 @@ export class RouterCore<
         hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true
 
       this.shouldViewTransition = viewTransition
+
+      // Set internal flag before history updates to enable early transition detection
+      this.__isNavigating = true
 
       this.history[next.replace ? 'replace' : 'push'](
         nextHistory.publicHref,
