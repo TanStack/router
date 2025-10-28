@@ -29,8 +29,8 @@ interface ShouldBlockFnLocation<...> {
 }
 
 type ShouldBlockFnArgs = {
-  current: ShouldBlockFnLocation
-  next: ShouldBlockFnLocation
+  current: ShouldBlockFnLocation | undefined
+  next: ShouldBlockFnLocation | undefined
   action: HistoryAction
 }
 ```
@@ -52,6 +52,12 @@ type ShouldBlockFnArgs = {
 - Optional - defaults to `false`
 - Type: `boolean`
 - Specify if the resolver returned by the hook should be used or whether your `shouldBlockFn` function itself resolves the blocking
+
+### `options.throwOnUnknownRoute` option
+
+- Optional - defaults to `true`
+- Type: `boolean`
+- Specify if the hook should throw an exception when either the current or next locations is unkown
 
 ### `options.blockerFn` option (⚠️ deprecated)
 
@@ -120,7 +126,7 @@ function MyComponent() {
       {/* ... */}
       {status === 'blocked' && (
         <div>
-          <p>You are navigating to {next.pathname}</p>
+          <p>You are navigating to {next?.pathname ?? 'Unknown Path'}</p>
           <p>Are you sure you want to leave?</p>
           <button onClick={proceed}>Yes</button>
           <button onClick={reset}>No</button>
@@ -138,7 +144,7 @@ import { useBlocker } from '@tanstack/react-router'
 function MyComponent() {
   const { proceed, reset, status } = useBlocker({
     shouldBlockFn: ({ next }) => {
-      return !next.pathname.includes('step/')
+      return next && !next.pathname.includes('step/')
     },
     withResolver: true,
   })
@@ -170,7 +176,7 @@ function MyComponent() {
 
   useBlocker({
     shouldBlockFn: ({ next }) => {
-      if (next.pathname.includes('step/')) {
+      if (next?.pathname.includes('step/')) {
         return false
       }
 
@@ -195,10 +201,10 @@ function MyComponent() {
   const { proceed, reset, status } = useBlocker({
     shouldBlockFn: ({ current, next }) => {
       if (
-        current.routeId === '/editor-1' &&
-        next.fullPath === '/foo/$id' &&
-        next.params.id === '123' &&
-        next.search.hello === 'world'
+        current?.routeId === '/editor-1' &&
+        next?.fullPath === '/foo/$id' &&
+        next?.params.id === '123' &&
+        next?.search.hello === 'world'
       ) {
         return true
       }
