@@ -10,7 +10,7 @@ export function getRouter() {
         experimental_prefetchInRender: true,
       },
     },
-  });
+  })
   const router = createRouter({
     routeTree,
     context: { queryClient },
