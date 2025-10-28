@@ -1,6 +1,6 @@
 import { createFileRoute, notFound, useRouteContext } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/not-found/via-loaders')({
+export const Route = createFileRoute('/not-found/via-loader-with-context')({
   beforeLoad: () => {
     return {
         fool: 'of a Took'
@@ -9,14 +9,11 @@ export const Route = createFileRoute('/not-found/via-loaders')({
   loader: () => {
     throw notFound()
   },
-  head: () => {
-    throw notFound()
-  },
   component: RouteComponent,
   notFoundComponent: () => {
     const context = useRouteContext({ strict: false })
     return (
-        <div data-testid="via-loaders-notFound-component" data-server={typeof window}>
+        <div data-testid="via-loader-with-context-notFound-component" data-server={typeof window}>
         {`Hello you fool ${context.fool}`}
         </div>
     )
@@ -25,8 +22,8 @@ export const Route = createFileRoute('/not-found/via-loaders')({
 
 function RouteComponent() {
   return (
-    <div data-testid="via-loaders-route-component" data-server={typeof window}>
-      Hello "/not-found/via-loaders"!
+    <div data-testid="via-loader-with-context-route-component" data-server={typeof window}>
+      Hello "/not-found/via-loader-with-context"!
     </div>
   )
 }

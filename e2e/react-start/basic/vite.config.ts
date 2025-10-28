@@ -22,7 +22,7 @@ const prerenderConfiguration = {
       '/not-found/via-beforeLoad',
       '/not-found/via-head',
       '/not-found/via-loader',
-      '/not-found/via-loaders',
+      '/not-found/via-loader-with-context',
     ].some((p) => page.path.includes(p)),
   maxRedirects: 100,
 }

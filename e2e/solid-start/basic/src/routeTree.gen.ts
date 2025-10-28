@@ -31,7 +31,7 @@ import { Route as SearchParamsLoaderThrowsRedirectRouteImport } from './routes/s
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
-import { Route as NotFoundViaLoadersRouteImport } from './routes/not-found/via-loaders'
+import { Route as NotFoundViaLoaderWithContextRouteImport } from './routes/not-found/via-loader-with-context'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
 import { Route as NotFoundViaHeadRouteImport } from './routes/not-found/via-head'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
@@ -160,11 +160,12 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
-const NotFoundViaLoadersRoute = NotFoundViaLoadersRouteImport.update({
-  id: '/via-loaders',
-  path: '/via-loaders',
-  getParentRoute: () => NotFoundRouteRoute,
-} as any)
+const NotFoundViaLoaderWithContextRoute =
+  NotFoundViaLoaderWithContextRouteImport.update({
+    id: '/via-loader-with-context',
+    path: '/via-loader-with-context',
+    getParentRoute: () => NotFoundRouteRoute,
+  } as any)
 const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
@@ -266,7 +267,7 @@ export interface FileRoutesByFullPath {
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
-  '/not-found/via-loaders': typeof NotFoundViaLoadersRoute
+  '/not-found/via-loader-with-context': typeof NotFoundViaLoaderWithContextRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -301,7 +302,7 @@ export interface FileRoutesByTo {
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
-  '/not-found/via-loaders': typeof NotFoundViaLoadersRoute
+  '/not-found/via-loader-with-context': typeof NotFoundViaLoaderWithContextRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
@@ -342,7 +343,7 @@ export interface FileRoutesById {
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
-  '/not-found/via-loaders': typeof NotFoundViaLoadersRoute
+  '/not-found/via-loader-with-context': typeof NotFoundViaLoaderWithContextRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -383,7 +384,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad'
     | '/not-found/via-head'
     | '/not-found/via-loader'
-    | '/not-found/via-loaders'
+    | '/not-found/via-loader-with-context'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -418,7 +419,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad'
     | '/not-found/via-head'
     | '/not-found/via-loader'
-    | '/not-found/via-loaders'
+    | '/not-found/via-loader-with-context'
     | '/posts/$postId'
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
@@ -458,7 +459,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad'
     | '/not-found/via-head'
     | '/not-found/via-loader'
-    | '/not-found/via-loaders'
+    | '/not-found/via-loader-with-context'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -657,11 +658,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof PostsRoute
     }
-    '/not-found/via-loaders': {
-      id: '/not-found/via-loaders'
-      path: '/via-loaders'
-      fullPath: '/not-found/via-loaders'
-      preLoaderRoute: typeof NotFoundViaLoadersRouteImport
+    '/not-found/via-loader-with-context': {
+      id: '/not-found/via-loader-with-context'
+      path: '/via-loader-with-context'
+      fullPath: '/not-found/via-loader-with-context'
+      preLoaderRoute: typeof NotFoundViaLoaderWithContextRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
     '/not-found/via-loader': {
@@ -783,7 +784,7 @@ interface NotFoundRouteRouteChildren {
   NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
   NotFoundViaHeadRoute: typeof NotFoundViaHeadRoute
   NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
-  NotFoundViaLoadersRoute: typeof NotFoundViaLoadersRoute
+  NotFoundViaLoaderWithContextRoute: typeof NotFoundViaLoaderWithContextRoute
   NotFoundIndexRoute: typeof NotFoundIndexRoute
 }
 
@@ -791,7 +792,7 @@ const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
   NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
   NotFoundViaHeadRoute: NotFoundViaHeadRoute,
   NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
-  NotFoundViaLoadersRoute: NotFoundViaLoadersRoute,
+  NotFoundViaLoaderWithContextRoute: NotFoundViaLoaderWithContextRoute,
   NotFoundIndexRoute: NotFoundIndexRoute,
 }
 

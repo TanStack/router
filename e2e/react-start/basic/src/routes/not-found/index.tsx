@@ -38,11 +38,11 @@ export const Route = createFileRoute('/not-found/')({
         <div className="mb-2">
           <Link
             from={Route.fullPath}
-            to="./via-loaders"
+            to="./via-loader-with-context"
             preload={preload}
-            data-testid="via-loaders"
+            data-testid="via-loader-with-context"
           >
-            via-loaders
+            via-loader-with-context
           </Link>
         </div>
       </div>
