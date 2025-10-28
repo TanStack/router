@@ -1,6 +1,12 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/not-found/via-head')({
+  beforeLoad: () => {
+    throw notFound()
+  },
+  loader: () => {
+    throw notFound()
+  },
   head: () => {
     throw notFound()
   },

@@ -35,6 +35,16 @@ export const Route = createFileRoute('/not-found/')({
             via-head
           </Link>
         </div>
+        <div className="mb-2">
+          <Link
+            from={Route.fullPath}
+            to="./via-loaders"
+            preload={preload}
+            data-testid="via-loaders"
+          >
+            via-loaders
+          </Link>
+        </div>
       </div>
     )
   },

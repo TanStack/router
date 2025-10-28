@@ -868,6 +868,21 @@ export async function loadMatches(arg: {
   }
 
   try {
+  
+
+    // Execute all beforeLoads one by one
+    for (let i = 0; i < inner.matches.length; i++) {
+      const beforeLoad = handleBeforeLoad(inner, i)
+      if (isPromise(beforeLoad)) await beforeLoad
+    }
+
+    // Execute all loaders in parallel
+    const max = inner.firstBadMatchIndex ?? inner.matches.length
+    for (let i = 0; i < max; i++) {
+      inner.matchPromises.push(loadRouteMatch(inner, i))
+    }
+    await Promise.all(inner.matchPromises)
+
     // Execute head functions first during SSR
     if (inner.router.isServer) {
       for (let i = 0; i < inner.matches.length; i++) {
@@ -888,19 +903,6 @@ export async function loadMatches(arg: {
         }
       }
     }
-
-    // Execute all beforeLoads one by one
-    for (let i = 0; i < inner.matches.length; i++) {
-      const beforeLoad = handleBeforeLoad(inner, i)
-      if (isPromise(beforeLoad)) await beforeLoad
-    }
-
-    // Execute all loaders in parallel
-    const max = inner.firstBadMatchIndex ?? inner.matches.length
-    for (let i = 0; i < max; i++) {
-      inner.matchPromises.push(loadRouteMatch(inner, i))
-    }
-    await Promise.all(inner.matchPromises)
 
     const readyPromise = triggerOnReady(inner)
     if (isPromise(readyPromise)) await readyPromise
