@@ -6526,7 +6526,7 @@ describe('encoded and unicode paths', () => {
     },
   ]
 
-  test.each(Object.values(testCases))(
+  test.each(testCases)(
     'should handle encoded, decoded paths with unicode characters correctly - $name',
     async ({ path, browsePath, expectedPath, params }) => {
       async function validate() {
@@ -6553,6 +6553,12 @@ describe('encoded and unicode paths', () => {
         },
       })
 
+      const pathRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path,
+        component: PathRouteComponent,
+      })
+
       function PathRouteComponent() {
         const params = pathRoute.useParams()
         return (
@@ -6567,12 +6573,6 @@ describe('encoded and unicode paths', () => {
           </div>
         )
       }
-
-      const pathRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path,
-        component: PathRouteComponent,
-      })
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, pathRoute]),
