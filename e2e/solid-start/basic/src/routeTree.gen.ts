@@ -31,6 +31,7 @@ import { Route as SearchParamsLoaderThrowsRedirectRouteImport } from './routes/s
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as NotFoundViaLoadersRouteImport } from './routes/not-found/via-loaders'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
 import { Route as NotFoundViaHeadRouteImport } from './routes/not-found/via-head'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
@@ -159,6 +160,11 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
+const NotFoundViaLoadersRoute = NotFoundViaLoadersRouteImport.update({
+  id: '/via-loaders',
+  path: '/via-loaders',
+  getParentRoute: () => NotFoundRouteRoute,
+} as any)
 const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
@@ -260,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
+  '/not-found/via-loaders': typeof NotFoundViaLoadersRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
+  '/not-found/via-loaders': typeof NotFoundViaLoadersRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
@@ -334,6 +342,7 @@ export interface FileRoutesById {
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
+  '/not-found/via-loaders': typeof NotFoundViaLoadersRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -374,6 +383,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad'
     | '/not-found/via-head'
     | '/not-found/via-loader'
+    | '/not-found/via-loaders'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad'
     | '/not-found/via-head'
     | '/not-found/via-loader'
+    | '/not-found/via-loaders'
     | '/posts/$postId'
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
@@ -447,6 +458,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad'
     | '/not-found/via-head'
     | '/not-found/via-loader'
+    | '/not-found/via-loaders'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -645,6 +657,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof PostsRoute
     }
+    '/not-found/via-loaders': {
+      id: '/not-found/via-loaders'
+      path: '/via-loaders'
+      fullPath: '/not-found/via-loaders'
+      preLoaderRoute: typeof NotFoundViaLoadersRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
     '/not-found/via-loader': {
       id: '/not-found/via-loader'
       path: '/via-loader'
@@ -764,6 +783,7 @@ interface NotFoundRouteRouteChildren {
   NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
   NotFoundViaHeadRoute: typeof NotFoundViaHeadRoute
   NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
+  NotFoundViaLoadersRoute: typeof NotFoundViaLoadersRoute
   NotFoundIndexRoute: typeof NotFoundIndexRoute
 }
 
@@ -771,6 +791,7 @@ const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
   NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
   NotFoundViaHeadRoute: NotFoundViaHeadRoute,
   NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
+  NotFoundViaLoadersRoute: NotFoundViaLoadersRoute,
   NotFoundIndexRoute: NotFoundIndexRoute,
 }
 

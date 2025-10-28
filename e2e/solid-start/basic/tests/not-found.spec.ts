@@ -25,7 +25,7 @@ test.describe('not-found', () => {
 
   test.describe('throw notFound()', () => {
     const navigationTestMatrix = combinate({
-      thrower: ['beforeLoad', 'head', 'loader'] as const,
+      thrower: ['beforeLoad', 'head', 'loader', 'loaders'] as const,
       preload: [false, true] as const,
     })
 
@@ -54,7 +54,7 @@ test.describe('not-found', () => {
       })
     })
     const directVisitTestMatrix = combinate({
-      thrower: ['beforeLoad', 'head', 'loader'] as const,
+      thrower: ['beforeLoad', 'head', 'loader', 'loaders'] as const,
     })
 
     directVisitTestMatrix.forEach(({ thrower }) => {
