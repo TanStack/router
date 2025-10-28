@@ -6553,7 +6553,7 @@ describe('encoded and unicode paths', () => {
         },
       })
 
-      function pathRouteComponent() {
+      function PathRouteComponent() {
         const params = pathRoute.useParams()
         return (
           <div>
@@ -6571,7 +6571,7 @@ describe('encoded and unicode paths', () => {
       const pathRoute = createRoute({
         getParentRoute: () => rootRoute,
         path,
-        component: pathRouteComponent,
+        component: PathRouteComponent,
       })
 
       const router = createRouter({

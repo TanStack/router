@@ -367,7 +367,7 @@ test.describe('params operations + prefix/suffix', () => {
       },
       {
         id: 'l-to-wildcard-escaped',
-        pathname: `/params-ps/wildcard/test[s%5C/.%5C/parameter%25!${encodeURIComponent('🚀')}]`,
+        pathname: `/params-ps/wildcard/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80]`,
         params: {
           _splat: 'test[s\\/.\\/parameter%!🚀]',
           '*': 'test[s\\/.\\/parameter%!🚀]',
