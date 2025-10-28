@@ -11,7 +11,7 @@ const $redirectServerFn = createServerFn({ method: 'GET' }).handler(
 
 export const Route = createFileRoute('/redirect-test-ssr/')({
   component: RouteComponent,
-  // NOTE: No 'ssr: data-only' - this should cause the issue
+  ssr: true,
 })
 
 function RouteComponent() {

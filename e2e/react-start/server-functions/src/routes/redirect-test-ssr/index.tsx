@@ -11,7 +11,7 @@ const $redirectServerFn = createServerFn({ method: 'GET' }).handler(
 
 export const Route = createFileRoute('/redirect-test-ssr/')({
   component: RouteComponent,
-  // NOTE: No SSR options set - should work fine in React
+  ssr: true,
 })
 
 function RouteComponent() {
