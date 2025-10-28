@@ -16,7 +16,7 @@ export const Route = createFileRoute('/not-found/via-loaders')({
   notFoundComponent: () => {
     const context = useRouteContext({ strict: false })
     return (
-        <div data-testid="via-head-route-component" data-server={typeof window}>
+        <div data-testid="via-loaders-notFound-component" data-server={typeof window}>
         {`Hello you fool ${context.fool}`}
         </div>
     )
@@ -25,7 +25,7 @@ export const Route = createFileRoute('/not-found/via-loaders')({
 
 function RouteComponent() {
   return (
-    <div data-testid="via-head-route-component" data-server={typeof window}>
+    <div data-testid="via-loaders-route-component" data-server={typeof window}>
       Hello "/not-found/via-loaders"!
     </div>
   )
