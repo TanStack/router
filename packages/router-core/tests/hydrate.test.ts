@@ -28,20 +28,22 @@ describe('hydrate', () => {
     const rootRoute = createRootRoute({})
 
     const indexRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
-        component: () => 'Index',
-        notFoundComponent: () => 'Not Found',
-        head: mockHead,
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => 'Index',
+      notFoundComponent: () => 'Not Found',
+      head: mockHead,
     })
 
     const otherRoute = createRoute({
-        getParentRoute: () => indexRoute,
-        path: '/other',
-        component: () => 'Other',
+      getParentRoute: () => indexRoute,
+      path: '/other',
+      component: () => 'Other',
     })
 
-    const routeTree = rootRoute.addChildren([indexRoute.addChildren([otherRoute])])
+    const routeTree = rootRoute.addChildren([
+      indexRoute.addChildren([otherRoute]),
+    ])
 
     mockRouter = createRouter({ routeTree, history, isServer: true })
   })
@@ -53,7 +55,7 @@ describe('hydrate', () => {
 
   it('should throw error if window.$_TSR is not available', async () => {
     await expect(hydrate(mockRouter)).rejects.toThrow(
-      'Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!'
+      'Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
     )
   })
 
@@ -67,7 +69,7 @@ describe('hydrate', () => {
     } as any
 
     await expect(hydrate(mockRouter)).rejects.toThrow(
-      'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!'
+      'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
     )
   })
 
@@ -85,10 +87,8 @@ describe('hydrate', () => {
     }
 
     mockRouter.options.serializationAdapters = [mockSerializer]
-    
-    const mockMatches = [
-      { id: '/', routeId: '/', index: 0, _nonReactive: {} },
-    ]
+
+    const mockMatches = [{ id: '/', routeId: '/', index: 0, _nonReactive: {} }]
     mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
     mockRouter.state.matches = mockMatches
 
@@ -109,7 +109,9 @@ describe('hydrate', () => {
     await hydrate(mockRouter)
 
     expect(mockWindow.$_TSR!.t).toBeInstanceOf(Map)
-    expect(mockWindow.$_TSR!.t?.get('testAdapter')).toBe(mockSerializer.fromSerializable)
+    expect(mockWindow.$_TSR!.t?.get('testAdapter')).toBe(
+      mockSerializer.fromSerializable,
+    )
     expect(mockBuffer[0]).toHaveBeenCalled()
     expect(mockBuffer[1]).toHaveBeenCalled()
     expect(mockWindow.$_TSR!.initialized).toBe(true)
@@ -214,10 +216,10 @@ describe('hydrate', () => {
 
   it('should handle errors during route context hydration', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockHead.mockImplementation(() => { 
-      throw notFound() 
+    mockHead.mockImplementation(() => {
+      throw notFound()
     })
-    
+
     const mockMatches = [
       { id: '/', routeId: '/', index: 0, ssr: true, _nonReactive: {} },
     ]
@@ -248,8 +250,11 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    expect(consoleSpy).toHaveBeenCalledWith('Error during route context hydration:', { 'isNotFound': true })
-    
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Error during route context hydration:',
+      { isNotFound: true },
+    )
+
     consoleSpy.mockRestore()
   })
 })
