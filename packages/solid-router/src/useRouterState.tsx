@@ -55,8 +55,10 @@ export function useRouterState<
   })
   const router = opts?.router || contextRouter
 
-  return useStore(router.__store, (state) => {
-    if (opts?.select) return opts.select(state)
+  return useStore(
+    router.__store,
+    (state) => {
+      if (opts?.select) return opts.select(state)
 
       return state
     },
