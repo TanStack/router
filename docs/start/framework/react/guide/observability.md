@@ -519,6 +519,7 @@ import {
   defaultStreamHandler,
   defineHandlerCallback,
 } from '@tanstack/react-start/server'
+import type { ServerEntry } from '@tanstack/react-start/server-entry'
 
 const customHandler = defineHandlerCallback(async (ctx) => {
   // We do this so that transactions are grouped under the route ID instead of unique URLs
@@ -538,11 +539,11 @@ const customHandler = defineHandlerCallback(async (ctx) => {
 })
 
 export default {
-  fetch(request: Request) {
+  fetch(request) {
     const handler = createStartHandler(customHandler)
     return handler(request)
   },
-}
+} satisfies ServerEntry
 ```
 
 ```bash
