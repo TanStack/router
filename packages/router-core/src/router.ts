@@ -938,6 +938,13 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
+  /**
+   * Can be overridden by framework implementations to wrap batch operations
+   * in framework-specific transition APIs (e.g., Solid's startTransition).
+   * This allows state updates to be wrapped without modifying the async flow.
+   */
+  wrapBatch: (fn: () => void) => void = (fn) => fn()
+
   isShell() {
     return !!this.options.isShell
   }
@@ -2099,35 +2106,38 @@ export class RouterCore<
                 let enteringMatches!: Array<AnyRouteMatch>
                 let stayingMatches!: Array<AnyRouteMatch>
 
-                batch(() => {
-                  this.__store.setState((s) => {
-                    const previousMatches = s.matches
-                    const newMatches = s.pendingMatches || s.matches
+                // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
+                this.wrapBatch(() => {
+                  batch(() => {
+                    this.__store.setState((s) => {
+                      const previousMatches = s.matches
+                      const newMatches = s.pendingMatches || s.matches
 
-                    exitingMatches = previousMatches.filter(
-                      (match) => !newMatches.some((d) => d.id === match.id),
-                    )
-                    enteringMatches = newMatches.filter(
-                      (match) =>
-                        !previousMatches.some((d) => d.id === match.id),
-                    )
-                    stayingMatches = previousMatches.filter((match) =>
-                      newMatches.some((d) => d.id === match.id),
-                    )
+                      exitingMatches = previousMatches.filter(
+                        (match) => !newMatches.some((d) => d.id === match.id),
+                      )
+                      enteringMatches = newMatches.filter(
+                        (match) =>
+                          !previousMatches.some((d) => d.id === match.id),
+                      )
+                      stayingMatches = previousMatches.filter((match) =>
+                        newMatches.some((d) => d.id === match.id),
+                      )
 
-                    return {
-                      ...s,
-                      isLoading: false,
-                      loadedAt: Date.now(),
-                      matches: newMatches,
-                      pendingMatches: undefined,
-                      cachedMatches: [
-                        ...s.cachedMatches,
-                        ...exitingMatches.filter((d) => d.status !== 'error'),
-                      ],
-                    }
+                      return {
+                        ...s,
+                        isLoading: false,
+                        loadedAt: Date.now(),
+                        matches: newMatches,
+                        pendingMatches: undefined,
+                        cachedMatches: [
+                          ...s.cachedMatches,
+                          ...exitingMatches.filter((d) => d.status !== 'error'),
+                        ],
+                      }
+                    })
+                    this.clearExpiredCache()
                   })
-                  this.clearExpiredCache()
                 })
 
                 //

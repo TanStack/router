@@ -21,6 +21,7 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TransitionIndexRouteImport } from './routes/transition/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RelativeIndexRouteImport } from './routes/relative/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
@@ -156,6 +157,11 @@ const NonNestedRouteRoute = NonNestedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransitionIndexRoute = TransitionIndexRouteImport.update({
+  id: '/transition/',
+  path: '/transition/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
@@ -600,6 +606,7 @@ export interface FileRoutesByFullPath {
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/transition': typeof TransitionIndexRoute
   '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
   '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
   '/non-nested/prefix/prefix{$baz}': typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren
@@ -684,6 +691,7 @@ export interface FileRoutesByTo {
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
+  '/transition': typeof TransitionIndexRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/params-ps/non-nested/$foo': typeof ParamsPsNonNestedFooRouteRouteWithChildren
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
@@ -771,6 +779,7 @@ export interface FileRoutesById {
   '/redirect/': typeof RedirectIndexRoute
   '/relative/': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/transition/': typeof TransitionIndexRoute
   '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
   '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
   '/non-nested/prefix/prefix{$baz}': typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren
@@ -860,6 +869,7 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/relative'
     | '/search-params/'
+    | '/transition'
     | '/non-nested/named/$baz'
     | '/non-nested/path/baz'
     | '/non-nested/prefix/prefix{$baz}'
@@ -944,6 +954,7 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/relative'
     | '/search-params'
+    | '/transition'
     | '/params-ps/named/$foo'
     | '/params-ps/non-nested/$foo'
     | '/insidelayout'
@@ -1030,6 +1041,7 @@ export interface FileRouteTypes {
     | '/redirect/'
     | '/relative/'
     | '/search-params/'
+    | '/transition/'
     | '/non-nested/named/$baz'
     | '/non-nested/path/baz'
     | '/non-nested/prefix/prefix{$baz}'
@@ -1112,6 +1124,7 @@ export interface RootRouteChildren {
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   RelativeIndexRoute: typeof RelativeIndexRoute
+  TransitionIndexRoute: typeof TransitionIndexRoute
   ParamsPsNamedFooRouteRoute: typeof ParamsPsNamedFooRouteRouteWithChildren
   groupSubfolderInsideRoute: typeof groupSubfolderInsideRoute
   ParamsPsNamedPrefixChar123fooChar125Route: typeof ParamsPsNamedPrefixChar123fooChar125Route
@@ -1214,6 +1227,13 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transition/': {
+      id: '/transition/'
+      path: '/transition'
+      fullPath: '/transition'
+      preLoaderRoute: typeof TransitionIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search-params/': {
@@ -2104,6 +2124,7 @@ const rootRouteChildren: RootRouteChildren = {
   ParamsPsIndexRoute: ParamsPsIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   RelativeIndexRoute: RelativeIndexRoute,
+  TransitionIndexRoute: TransitionIndexRoute,
   ParamsPsNamedFooRouteRoute: ParamsPsNamedFooRouteRouteWithChildren,
   groupSubfolderInsideRoute: groupSubfolderInsideRoute,
   ParamsPsNamedPrefixChar123fooChar125Route:
