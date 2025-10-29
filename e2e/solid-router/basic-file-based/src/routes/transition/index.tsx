@@ -1,4 +1,3 @@
-
 import { Link, createFileRoute } from '@tanstack/solid-router'
 import { Suspense, createResource } from 'solid-js'
 import { z } from 'zod'
