@@ -237,7 +237,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 
   recurseRoutes([routeTree])
 
-  const flatRoutes = sortRoutes(order.map((id) => routesById[id]!))
+  const flatRoutes = sortRoutes(order.sort().map((id) => routesById[id]!))
 
   return { routesById, routesByPath, flatRoutes }
 }
