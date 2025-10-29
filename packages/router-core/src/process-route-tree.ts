@@ -201,6 +201,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 }): ProcessRouteTreeResult<TRouteLike> {
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
+  const order = [] as Array<string>
 
   const recurseRoutes = (childRoutes: Array<TRouteLike>) => {
     childRoutes.forEach((childRoute, i) => {
@@ -214,6 +215,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
       )
 
       routesById[childRoute.id] = childRoute
+      order.push(childRoute.id)
 
       if (!childRoute.isRoot && childRoute.path) {
         const trimmedFullPath = trimPathRight(childRoute.fullPath)
@@ -235,7 +237,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 
   recurseRoutes([routeTree])
 
-  const flatRoutes = sortRoutes(Object.values(routesById))
+  const flatRoutes = sortRoutes(order.map((id) => routesById[id]!))
 
   return { routesById, routesByPath, flatRoutes }
 }
