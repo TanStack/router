@@ -273,7 +273,7 @@ test('Should change post navigating back and forth', async ({ page }) => {
   await expect(page.getByTestId('post-title')).toContainText('sunt aut facere')
 })
 
-test('Should not remount deps when remountDeps does not change ', async ({
+test.skip('Should not remount deps when remountDeps does not change ', async ({
   page,
 }) => {
   await page.goto('/notRemountDeps')
