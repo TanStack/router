@@ -216,8 +216,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       match.headScripts = headFnContent?.scripts
       match.styles = headFnContent?.styles
       match.scripts = scripts
-    }),
-  )
+    })
+  ).catch((err) => {
+    console.error('Error during route context hydration:', err)
+  })
 
   const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
   const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
