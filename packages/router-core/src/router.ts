@@ -2102,9 +2102,9 @@ export class RouterCore<
 
                 // Commit the pending matches. If a previous match was
                 // removed, place it in the cachedMatches
-                let exitingMatches!: Array<AnyRouteMatch>
-                let enteringMatches!: Array<AnyRouteMatch>
-                let stayingMatches!: Array<AnyRouteMatch>
+                let exitingMatches: Array<AnyRouteMatch> = []
+                let enteringMatches: Array<AnyRouteMatch> = []
+                let stayingMatches: Array<AnyRouteMatch> = []
 
                 // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
                 this.wrapBatch(() => {
