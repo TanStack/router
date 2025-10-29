@@ -15,16 +15,64 @@ import appCss from '../styles/app.css?url'
 import { seo } from '../utils/seo'
 import { getSupabaseServerClient } from '../utils/supabase'
 
+/**
+ * ⚠️ IMPORTANT: Server Function Serialization Requirements
+ *
+ * Server functions in TanStack Start can ONLY return serializable data.
+ * This means data that can be converted to JSON and sent to the client.
+ *
+ * Supabase's `data.user` object contains NON-serializable properties:
+ * - Functions (e.g., user.toString, internal methods)
+ * - Complex metadata objects with circular references
+ * - Internal Supabase client state
+ *
+ * ❌ WRONG - This will cause "Cannot serialize function" errors:
+ * ```
+ * return data.user  // Contains functions and complex objects
+ * ```
+ *
+ * ✅ CORRECT - Extract only primitive values:
+ * ```
+ * return {
+ *   email: data.user.email,  // string ✅
+ *   id: data.user.id,        // string ✅
+ *   role: data.user.role,    // string ✅
+ * }
+ * ```
+ *
+ * What's serializable?
+ * - ✅ Primitives: string, number, boolean, null
+ * - ✅ Plain objects: { key: value }
+ * - ✅ Arrays: [1, 2, 3]
+ * - ❌ Functions, class instances, undefined
+ * - ❌ Date objects (convert to ISO string: date.toISOString())
+ *
+ * Learn more:
+ * - Server Functions: https://tanstack.com/router/latest/docs/framework/react/start/server-functions
+ * - Supabase SSR: https://supabase.com/docs/guides/auth/server-side-rendering
+ */
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   const supabase = getSupabaseServerClient()
-  const { data, error: _error } = await supabase.auth.getUser()
+  const { data, error } = await supabase.auth.getUser()
+
+  // Always handle errors explicitly - don't suppress them
+  if (error) {
+    console.error('[fetchUser] Supabase auth error:', error.message)
+    return null
+  }
 
   if (!data.user?.email) {
     return null
   }
 
+  // IMPORTANT: Only return serializable fields from the user object
+  // Add more fields here as needed (all must be primitives or plain objects)
   return {
     email: data.user.email,
+    // You can safely add more primitive fields:
+    // id: data.user.id,
+    // role: data.user.role,
+    // name: data.user.user_metadata?.name ?? null,
   }
 })
 
