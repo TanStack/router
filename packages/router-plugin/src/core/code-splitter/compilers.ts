@@ -628,6 +628,23 @@ export function compileCodeSplitVirtualRoute(
               if (t.isIdentifier(splitNode.id)) {
                 splitMeta.localExporterIdent = splitNode.id.name
                 splitMeta.shouldRemoveNode = false
+              } else if (t.isObjectPattern(splitNode.id) && t.isIdentifier(splitKey.node)) {
+                const matchingProperty = splitNode.id.properties.find((prop) => {
+                  return (
+                    t.isObjectProperty(prop) &&
+                    t.isIdentifier(prop.value) &&
+                    prop.value.name === splitKey.node.name
+                  )
+                })
+
+                if (!matchingProperty) {
+                  throw new Error(
+                    `Unable to locate the "${splitKey.node.name}" binding while splitting "${SPLIT_TYPE}".`,
+                  )
+                }
+
+                splitMeta.localExporterIdent = splitKey.node.name
+                splitMeta.shouldRemoveNode = false
               } else {
                 throw new Error(
                   `Unexpected splitNode type ☝️: ${splitNode.type}`,
@@ -731,13 +748,75 @@ export function compileCodeSplitVirtualRoute(
 
             if (path.node.declaration) {
               if (t.isVariableDeclaration(path.node.declaration)) {
+                const specifiers = path.node.declaration.declarations.flatMap(
+                  (decl) => {
+                    if (!t.isVariableDeclarator(decl)) {
+                      return []
+                    }
+
+                    const identifiers: Array<t.Identifier> = []
+
+                    const collectIdentifiers = (
+                      node: t.Node | null | undefined,
+                    ) => {
+                      if (!node) {
+                        return
+                      }
+
+                      if (t.isIdentifier(node)) {
+                        identifiers.push(node)
+                        return
+                      }
+
+                      if (t.isAssignmentPattern(node)) {
+                        collectIdentifiers(node.left)
+                        return
+                      }
+
+                      if (t.isRestElement(node)) {
+                        collectIdentifiers(node.argument)
+                        return
+                      }
+
+                      if (t.isObjectPattern(node)) {
+                        node.properties.forEach((prop) => {
+                          if (t.isObjectProperty(prop)) {
+                            collectIdentifiers(prop.value as t.Node)
+                          } else if (t.isRestElement(prop)) {
+                            collectIdentifiers(prop.argument)
+                          }
+                        })
+                        return
+                      }
+
+                      if (t.isArrayPattern(node)) {
+                        node.elements.forEach((element) => {
+                          if (!element) {
+                            return
+                          }
+                          collectIdentifiers(element as t.Node)
+                        })
+                      }
+                    }
+
+                    collectIdentifiers(decl.id)
+
+                    return identifiers.map((identifier) =>
+                      t.importSpecifier(
+                        t.identifier(identifier.name),
+                        t.identifier(identifier.name),
+                      ),
+                    )
+                  },
+                )
+
+                if (specifiers.length === 0) {
+                  path.remove()
+                  return
+                }
+
                 const importDecl = t.importDeclaration(
-                  path.node.declaration.declarations.map((decl) =>
-                    t.importSpecifier(
-                      t.identifier((decl.id as any).name),
-                      t.identifier((decl.id as any).name),
-                    ),
-                  ),
+                  specifiers,
                   t.stringLiteral(
                     removeSplitSearchParamFromFilename(opts.filename),
                   ),
@@ -943,6 +1022,38 @@ function resolveIdentifier(path: any, node: any): t.Node | undefined {
 function removeIdentifierLiteral(path: babel.NodePath, node: t.Identifier) {
   const binding = path.scope.getBinding(node.name)
   if (binding) {
+    if (
+      t.isVariableDeclarator(binding.path.node) &&
+      t.isObjectPattern(binding.path.node.id)
+    ) {
+      const objectPattern = binding.path.node.id
+      objectPattern.properties = objectPattern.properties.filter((prop) => {
+        if (!t.isObjectProperty(prop)) {
+          return true
+        }
+
+        if (t.isIdentifier(prop.value) && prop.value.name === node.name) {
+          return false
+        }
+
+        if (
+          t.isAssignmentPattern(prop.value) &&
+          t.isIdentifier(prop.value.left) &&
+          prop.value.left.name === node.name
+        ) {
+          return false
+        }
+
+        return true
+      })
+
+      if (objectPattern.properties.length === 0) {
+        binding.path.remove()
+      }
+
+      return
+    }
+
     binding.path.remove()
   }
 }
