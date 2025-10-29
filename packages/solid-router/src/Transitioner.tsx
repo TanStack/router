@@ -20,6 +20,7 @@ export function Transitioner() {
   }
 
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
@@ -34,10 +35,24 @@ export function Transitioner() {
   const isPagePending = () => isLoading() || hasPendingMatches()
   const previousIsPagePending = usePrevious(isPagePending)
 
+  // Wrap batch operations with Solid's startTransition
+  // This ensures state updates that trigger re-renders happen within a transition,
+  // which prevents Suspense boundaries from showing fallbacks immediately
+  router.wrapBatch = (fn: () => void) => {
+    Solid.startTransition(() => {
+      fn()
+    })
+  }
+
+  // Track transitioning state but don't wrap the async work in startTransition
+  // The wrapBatch hook above handles wrapping the state updates
   router.startTransition = async (fn: () => void | Promise<void>) => {
     setIsTransitioning(true)
-    await fn()
-    setIsTransitioning(false)
+    try {
+      await fn()
+    } finally {
+      setIsTransitioning(false)
+    }
   }
 
   // Subscribe to location changes
