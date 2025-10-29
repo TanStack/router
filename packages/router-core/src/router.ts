@@ -118,22 +118,22 @@ export type RegisteredConfigType<TRegister, TKey> = TRegister extends {
   config: infer TConfig
 }
   ? TConfig extends {
-      '~types': infer TTypes
-    }
-    ? TKey extends keyof TTypes
-      ? TTypes[TKey]
-      : unknown
-    : unknown
+    '~types': infer TTypes
+  }
+  ? TKey extends keyof TTypes
+  ? TTypes[TKey]
+  : unknown
+  : unknown
   : unknown
 
 export type DefaultRemountDepsFn<TRouteTree extends AnyRoute> = (
   opts: MakeRemountDepsOptionsUnion<TRouteTree>,
 ) => any
 
-export interface DefaultRouterOptionsExtensions {}
+export interface DefaultRouterOptionsExtensions { }
 
 export interface RouterOptionsExtensions
-  extends DefaultRouterOptionsExtensions {}
+  extends DefaultRouterOptionsExtensions { }
 
 export type SSROption = boolean | 'data-only'
 
@@ -423,8 +423,8 @@ export interface RouterOptions<
    * @default false
    */
   scrollRestoration?:
-    | boolean
-    | ((opts: { location: ParsedLocation }) => boolean)
+  | boolean
+  | ((opts: { location: ParsedLocation }) => boolean)
 
   /**
    * A function that will be called to get the key for the scroll restoration cache.
@@ -591,12 +591,12 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
 
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends InferRouterContext<TRouteTree>
-    ? {
-        context?: InferRouterContext<TRouteTree>
-      }
-    : {
-        context: InferRouterContext<TRouteTree>
-      }
+  ? {
+    context?: InferRouterContext<TRouteTree>
+  }
+  : {
+    context: InferRouterContext<TRouteTree>
+  }
 
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
@@ -768,14 +768,14 @@ export type AnyRouter = RouterCore<any, any, any, any, any>
 
 export interface ViewTransitionOptions {
   types:
-    | Array<string>
-    | ((locationChangeInfo: {
-        fromLocation?: ParsedLocation
-        toLocation: ParsedLocation
-        pathChanged: boolean
-        hrefChanged: boolean
-        hashChanged: boolean
-      }) => Array<string> | false)
+  | Array<string>
+  | ((locationChangeInfo: {
+    fromLocation?: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+    hrefChanged: boolean
+    hashChanged: boolean
+  }) => Array<string> | false)
 }
 
 // TODO where is this used? can we remove this?
@@ -791,7 +791,7 @@ export function defaultSerializeError(err: unknown) {
     }
 
     if (process.env.NODE_ENV === 'development') {
-      ;(obj as any).stack = err.stack
+      ; (obj as any).stack = err.stack
     }
 
     return obj
@@ -838,12 +838,12 @@ export type CreateRouterFn = <
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
     : RouterConstructorOptions<
-        TRouteTree,
-        TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
-        TRouterHistory,
-        TDehydrated
-      >,
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >,
 ) => RouterCore<
   TRouteTree,
   TTrailingSlashOption,
@@ -938,13 +938,6 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
-  /**
-   * Can be overridden by framework implementations to wrap batch operations
-   * in framework-specific transition APIs (e.g., Solid's startTransition).
-   * This allows state updates to be wrapped without modifying the async flow.
-   */
-  wrapBatch: (fn: () => void) => void = (fn) => fn()
-
   isShell() {
     return !!this.options.isShell
   }
@@ -980,11 +973,11 @@ export class RouterCore<
 
     this.pathParamsDecodeCharMap = this.options.pathParamsAllowedCharacters
       ? new Map(
-          this.options.pathParamsAllowedCharacters.map((char) => [
-            encodeURIComponent(char),
-            char,
-          ]),
-        )
+        this.options.pathParamsAllowedCharacters.map((char) => [
+          encodeURIComponent(char),
+          char,
+        ]),
+      )
       : undefined
 
     if (
@@ -1257,7 +1250,7 @@ export class RouterCore<
       foundRoute
         ? foundRoute.path !== '/' && routeParams['**']
         : // Or if we didn't find a route and we have left over path
-          trimPathRight(next.pathname)
+        trimPathRight(next.pathname)
     ) {
       // If the user has defined an (old) 404 route, use it
       if (this.options.notFoundRoute) {
@@ -1432,9 +1425,9 @@ export class RouterCore<
       } else {
         const status =
           route.options.loader ||
-          route.options.beforeLoad ||
-          route.lazyFn ||
-          routeNeedsPreload(route)
+            route.options.beforeLoad ||
+            route.lazyFn ||
+            routeNeedsPreload(route)
             ? 'pending'
             : 'success'
 
@@ -1652,9 +1645,9 @@ export class RouterCore<
           : (dest.params ?? true) === true
             ? fromParams
             : Object.assign(
-                fromParams,
-                functionalUpdate(dest.params as any, fromParams),
-              )
+              fromParams,
+              functionalUpdate(dest.params as any, fromParams),
+            )
 
       // Interpolate the path first to get the actual resolved path, then match against that
       const interpolatedNextTo = interpolatePath({
@@ -1851,7 +1844,7 @@ export class RouterCore<
         '__hashScrollIntoViewOptions',
       ] as const
       ignoredProps.forEach((prop) => {
-        ;(next.state as any)[prop] = this.latestLocation.state[prop]
+        ; (next.state as any)[prop] = this.latestLocation.state[prop]
       })
       const isEqual = deepEqual(next.state, this.latestLocation.state)
       ignoredProps.forEach((prop) => {
@@ -1974,7 +1967,7 @@ export class RouterCore<
       try {
         new URL(`${href}`)
         reloadDocument = true
-      } catch {}
+      } catch { }
     }
 
     if (reloadDocument) {
@@ -2107,7 +2100,7 @@ export class RouterCore<
                 let stayingMatches: Array<AnyRouteMatch> = []
 
                 // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
-                this.wrapBatch(() => {
+                this.startTransition(() => {
                   batch(() => {
                     this.__store.setState((s) => {
                       const previousMatches = s.matches
@@ -2140,18 +2133,18 @@ export class RouterCore<
                   })
                 })
 
-                //
-                ;(
-                  [
-                    [exitingMatches, 'onLeave'],
-                    [enteringMatches, 'onEnter'],
-                    [stayingMatches, 'onStay'],
-                  ] as const
-                ).forEach(([matches, hook]) => {
-                  matches.forEach((match) => {
-                    this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+                  //
+                  ; (
+                    [
+                      [exitingMatches, 'onLeave'],
+                      [enteringMatches, 'onEnter'],
+                      [stayingMatches, 'onStay'],
+                    ] as const
+                  ).forEach(([matches, hook]) => {
+                    matches.forEach((match) => {
+                      this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+                    })
                   })
-                })
               })
             },
           })
@@ -2246,11 +2239,11 @@ export class RouterCore<
         const resolvedViewTransitionTypes =
           typeof shouldViewTransition.types === 'function'
             ? shouldViewTransition.types(
-                getLocationChangeInfo({
-                  resolvedLocation: prevLocation,
-                  location: next,
-                }),
-              )
+              getLocationChangeInfo({
+                resolvedLocation: prevLocation,
+                location: next,
+              }),
+            )
             : shouldViewTransition.types
 
         if (resolvedViewTransitionTypes === false) {
@@ -2479,9 +2472,9 @@ export class RouterCore<
       ...location,
       to: location.to
         ? this.resolvePathWithBase(
-            (location.from || '') as string,
-            location.to as string,
-          )
+          (location.from || '') as string,
+          location.to as string,
+        )
         : undefined,
       params: location.params || {},
       leaveParams: true,
@@ -2540,10 +2533,10 @@ export class RouterCore<
 }
 
 /** Error thrown when search parameter validation fails. */
-export class SearchParamError extends Error {}
+export class SearchParamError extends Error { }
 
 /** Error thrown when path parameter parsing/validation fails. */
-export class PathParamError extends Error {}
+export class PathParamError extends Error { }
 
 const normalize = (str: string) =>
   str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str

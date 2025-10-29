@@ -35,39 +35,15 @@ export function Transitioner() {
   const isPagePending = () => isLoading() || hasPendingMatches()
   const previousIsPagePending = usePrevious(isPagePending)
 
-  // Wrap batch operations with Solid's startTransition
-  // This ensures state updates that trigger re-renders happen within a transition,
-  // which prevents Suspense boundaries from showing fallbacks immediately
-  router.wrapBatch = (fn: () => void) => {
-    // Only use startTransition if we're in a real browser (not jsdom) AND transitioning
-    // Check for window.navigator.userAgent to distinguish real browser from jsdom test environment
-    const isRealBrowser =
-      typeof window !== 'undefined' &&
-      typeof window.navigator !== 'undefined' &&
-      typeof window.navigator.userAgent === 'string' &&
-      !window.navigator.userAgent.includes('jsdom')
-
-    if (isRealBrowser && !router.isServer && isTransitioning()) {
-      // Solid's startTransition executes the callback synchronously
-      // but marks state updates as transitions
-      Solid.startTransition(() => {
-        fn()
-      })
-    } else {
-      // Fallback for SSR/tests/non-transitions: execute directly
-      fn()
-    }
-  }
-
-  // Track transitioning state but don't wrap the async work in startTransition
-  // The wrapBatch hook above handles wrapping the state updates
-  router.startTransition = async (fn: () => void | Promise<void>) => {
+  router.startTransition = (fn: () => void | Promise<void>) => {
     setIsTransitioning(true)
-    try {
-      await fn()
-    } finally {
-      setIsTransitioning(false)
-    }
+    Solid.startTransition(async () => {
+      try {
+        await fn()
+      } finally {
+        setIsTransitioning(false)
+      }
+    })
   }
 
   // Subscribe to location changes
