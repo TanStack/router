@@ -15,7 +15,10 @@ test('transitions should keep old values visible during navigation', async ({
 
   // Poll the body text during the transition
   const pollInterval = setInterval(async () => {
-    const text = await page.locator('body').textContent().catch(() => '')
+    const text = await page
+      .locator('body')
+      .textContent()
+      .catch(() => '')
     if (text) bodyTexts.push(text)
   }, 50)
 
@@ -42,7 +45,7 @@ test('transitions should keep old values visible during navigation', async ({
   if (hasLoadingText) {
     throw new Error(
       'FAILED: "Loading..." appeared during navigation. ' +
-        'Solid Router should use transitions to keep old values visible.'
+        'Solid Router should use transitions to keep old values visible.',
     )
   }
 })
