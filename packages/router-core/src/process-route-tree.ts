@@ -10,17 +10,17 @@ import {
 import type { Segment } from './path'
 import type { RouteLike } from './route'
 
-const SLASH_SCORE = 7500
-const STATIC_SEGMENT_SCORE = 10000
-const REQUIRED_PARAM_BASE_SCORE = 5000
-const OPTIONAL_PARAM_BASE_SCORE = 4000
-const WILDCARD_PARAM_BASE_SCORE = 2500
-const STATIC_AFTER_DYNAMIC_BONUS_SCORE = 2000
-const BOTH_PRESENCE_BASE_SCORE = 500
-const PREFIX_PRESENCE_BASE_SCORE = 200
-const SUFFIX_PRESENCE_BASE_SCORE = 100
-const PREFIX_LENGTH_SCORE_MULTIPLIER = 2
-const SUFFIX_LENGTH_SCORE_MULTIPLIER = 1
+const SLASH_SCORE = 0.75
+const STATIC_SEGMENT_SCORE = 1
+const REQUIRED_PARAM_BASE_SCORE = 0.5
+const OPTIONAL_PARAM_BASE_SCORE = 0.4
+const WILDCARD_PARAM_BASE_SCORE = 0.25
+const STATIC_AFTER_DYNAMIC_BONUS_SCORE = 0.2
+const BOTH_PRESENCE_BASE_SCORE = 0.05
+const PREFIX_PRESENCE_BASE_SCORE = 0.02
+const SUFFIX_PRESENCE_BASE_SCORE = 0.01
+const PREFIX_LENGTH_SCORE_MULTIPLIER = 0.0002
+const SUFFIX_LENGTH_SCORE_MULTIPLIER = 0.0001
 
 function handleParam(segment: Segment, baseScore: number) {
   if (segment.prefixSegment && segment.suffixSegment) {
@@ -201,16 +201,15 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 }): ProcessRouteTreeResult<TRouteLike> {
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
-  const order = [] as Array<string>
+  const order: Array<string> = []
 
   const recurseRoutes = (childRoutes: Array<TRouteLike>) => {
-    childRoutes.forEach((childRoute, i) => {
+    for (let i = 0; i < childRoutes.length; i++) {
+      const childRoute = childRoutes[i]!
       initRoute?.(childRoute, i)
 
-      const existingRoute = routesById[childRoute.id]
-
       invariant(
-        !existingRoute,
+        !(childRoute.id in routesById),
         `Duplicate routes found with id: ${String(childRoute.id)}`,
       )
 
@@ -232,7 +231,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
       if (children?.length) {
         recurseRoutes(children)
       }
-    })
+    }
   }
 
   recurseRoutes([routeTree])
