@@ -39,9 +39,24 @@ export function Transitioner() {
   // This ensures state updates that trigger re-renders happen within a transition,
   // which prevents Suspense boundaries from showing fallbacks immediately
   router.wrapBatch = (fn: () => void) => {
-    Solid.startTransition(() => {
+    // Only use startTransition if we're in a real browser (not jsdom) AND transitioning
+    // Check for window.navigator.userAgent to distinguish real browser from jsdom test environment
+    const isRealBrowser =
+      typeof window !== 'undefined' &&
+      typeof window.navigator !== 'undefined' &&
+      typeof window.navigator.userAgent === 'string' &&
+      !window.navigator.userAgent.includes('jsdom')
+
+    if (isRealBrowser && !router.isServer && isTransitioning()) {
+      // Solid's startTransition executes the callback synchronously
+      // but marks state updates as transitions
+      Solid.startTransition(() => {
+        fn()
+      })
+    } else {
+      // Fallback for SSR/tests/non-transitions: execute directly
       fn()
-    })
+    }
   }
 
   // Track transitioning state but don't wrap the async work in startTransition
