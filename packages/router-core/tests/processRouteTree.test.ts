@@ -440,7 +440,7 @@ describe('processRouteTree', () => {
     )
   })
 
-  describe('#5635 - sort result is independant of initial route order', () => {
+  describe('#5635 - sort result is independent of initial route order', () => {
     const routes = [
       '/_breadcrumbsLayout/$accountId/vulnerabilities/settings/ticket-lifecycle/automations/{-$id}/{-$ruleIndex}/audit/$automationId/',
       '/_breadcrumbsLayout/$accountId/assets/settings/rule-set/create/$ruleIndex/',
