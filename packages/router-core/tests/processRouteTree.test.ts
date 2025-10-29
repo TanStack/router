@@ -442,9 +442,9 @@ describe('processRouteTree', () => {
 
   describe.only('foo', () => {
     const routes = [
-      "/_breadcrumbsLayout/$accountId/vulnerabilities/settings/ticket-lifecycle/automations/{-$id}/{-$ruleIndex}/audit/$automationId/",
-      "/_breadcrumbsLayout/$accountId/assets/settings/rule-set/create/$ruleIndex/",
-      "/_breadcrumbsLayout/$accountId/assets/settings/rule-set/create",
+      '/_breadcrumbsLayout/$accountId/vulnerabilities/settings/ticket-lifecycle/automations/{-$id}/{-$ruleIndex}/audit/$automationId/',
+      '/_breadcrumbsLayout/$accountId/assets/settings/rule-set/create/$ruleIndex/',
+      '/_breadcrumbsLayout/$accountId/assets/settings/rule-set/create',
     ]
     it.each([
       [0, 1, 2],
