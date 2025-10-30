@@ -222,7 +222,6 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   const match = () => matchState().match
 
-  // Compute the component key once
   const componentKey = () => matchState().key ?? matchState().match.id
 
   const out = () => {
