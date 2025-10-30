@@ -331,7 +331,9 @@ export const MatchInner = (props: { matchId: string }): any => {
           throw match().error
         }}
       </Solid.Match>
-      <Solid.Match when={match().status === 'success'}>{keyedOut()}</Solid.Match>
+      <Solid.Match when={match().status === 'success'}>
+        {keyedOut()}
+      </Solid.Match>
     </Solid.Switch>
   )
 }
