@@ -63,7 +63,8 @@ export const Match = (props: { matchId: string }) => {
     (!route().isRoot ||
       route().options.wrapInSuspense ||
       resolvedNoSsr ||
-      matchState()._displayPending) &&
+      matchState()._displayPending ||
+      PendingComponent()) &&
     (route().options.wrapInSuspense ??
       PendingComponent() ??
       ((route().options.errorComponent as any)?.preload || resolvedNoSsr))
