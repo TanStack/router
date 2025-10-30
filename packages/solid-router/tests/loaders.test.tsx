@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -551,14 +557,9 @@ test('reproducer #4546', async () => {
 
   render(() => <RouterProvider router={router} />)
 
-  const indexLink = await screen.findByTestId('link-to-index')
-  expect(indexLink).toBeInTheDocument()
-
-  const idLink = await screen.findByTestId('link-to-id')
-  expect(idLink).toBeInTheDocument()
-
-  const invalidateRouterButton = await screen.findByTestId('invalidate-router')
-  expect(invalidateRouterButton).toBeInTheDocument()
+  expect(await screen.findByTestId('link-to-index')).toBeInTheDocument()
+  expect(await screen.findByTestId('link-to-id')).toBeInTheDocument()
+  expect(await screen.findByTestId('invalidate-router')).toBeInTheDocument()
 
   {
     const headerCounter = await screen.findByTestId('header-counter')
@@ -571,7 +572,7 @@ test('reproducer #4546', async () => {
     expect(loaderData).toHaveTextContent('1')
   }
 
-  fireEvent.click(idLink)
+  fireEvent.click(await screen.findByTestId('link-to-id'))
 
   {
     // Wait for navigation to complete before checking values
@@ -586,7 +587,11 @@ test('reproducer #4546', async () => {
     expect(loaderData).toHaveTextContent('2')
   }
 
-  fireEvent.click(indexLink)
+  await waitFor(async () => {
+    const el = await screen.findByTestId('link-to-index')
+    expect(el.isConnected).toBe(true)
+  })
+  fireEvent.click(await screen.findByTestId('link-to-index'))
 
   {
     // Wait for navigation to complete before checking values
@@ -601,7 +606,11 @@ test('reproducer #4546', async () => {
     expect(loaderData).toHaveTextContent('3')
   }
 
-  fireEvent.click(invalidateRouterButton)
+  await waitFor(async () => {
+    const el = await screen.findByTestId('invalidate-router')
+    expect(el.isConnected).toBe(true)
+  })
+  fireEvent.click(await screen.findByTestId('invalidate-router'))
 
   {
     // Wait for router to invalidate and reload
@@ -616,7 +625,11 @@ test('reproducer #4546', async () => {
     expect(loaderData).toHaveTextContent('4')
   }
 
-  fireEvent.click(idLink)
+  await waitFor(async () => {
+    const el = await screen.findByTestId('link-to-id')
+    expect(el.isConnected).toBe(true)
+  })
+  fireEvent.click(await screen.findByTestId('link-to-id'))
 
   {
     // Wait for navigation to complete before checking values

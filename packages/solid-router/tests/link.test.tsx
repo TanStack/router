@@ -5676,23 +5676,32 @@ describe('relative links to current route', () => {
 
       render(() => <RouterProvider router={router} />)
 
-      const postButton = await screen.findByTestId('posts-link')
-      fireEvent.click(postButton)
+      // Query element right before use to get fresh DOM reference
+      fireEvent.click(await screen.findByTestId('posts-link'))
 
       await waitFor(() => {
         expect(window.location.pathname).toBe(`/post${tail}`)
       })
 
-      const searchButton = await screen.findByTestId('search-link')
-      fireEvent.click(searchButton)
+      // Query element right before use and ensure it's connected to DOM
+      // With stable contexts, old elements may be removed but cached by testing library
+      await waitFor(async () => {
+        const searchEl = await screen.findByTestId('search-link')
+        expect(searchEl.isConnected).toBe(true)
+      })
+      fireEvent.click(await screen.findByTestId('search-link'))
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
         expect(router.state.location.search).toEqual({ param1: 'value1' })
       })
 
-      const searchButton2 = await screen.findByTestId('search2-link')
-      fireEvent.click(searchButton2)
+      // Query element right before use and ensure it's connected to DOM
+      await waitFor(async () => {
+        const el = await screen.findByTestId('search2-link')
+        expect(el.isConnected).toBe(true)
+      })
+      fireEvent.click(await screen.findByTestId('search2-link'))
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
@@ -5756,26 +5765,28 @@ describe('relative links to current route', () => {
 
       render(() => <RouterProvider router={router} />)
 
-      const postButton = await screen.findByTestId('posts-link')
-
-      fireEvent.click(postButton)
+      fireEvent.click(await screen.findByTestId('posts-link'))
 
       await waitFor(() => {
         expect(window.location.pathname).toBe(`/post${tail}`)
       })
 
-      const searchButton = await screen.findByTestId('search-link')
-
-      fireEvent.click(searchButton)
+      await waitFor(async () => {
+        const el = await screen.findByTestId('search-link')
+        expect(el.isConnected).toBe(true)
+      })
+      fireEvent.click(await screen.findByTestId('search-link'))
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
         expect(router.state.location.search).toEqual({ param1: 'value1' })
       })
 
-      const searchButton2 = await screen.findByTestId('search2-link')
-
-      fireEvent.click(searchButton2)
+      await waitFor(async () => {
+        const el = await screen.findByTestId('search2-link')
+        expect(el.isConnected).toBe(true)
+      })
+      fireEvent.click(await screen.findByTestId('search2-link'))
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
@@ -5876,25 +5887,23 @@ describe('relative links to current route', () => {
 
       render(() => <RouterProvider router={router} />)
 
-      const postsButton = await screen.findByTestId('posts-link')
-
-      fireEvent.click(postsButton)
+      fireEvent.click(await screen.findByTestId('posts-link'))
 
       await waitFor(() => {
         expect(window.location.pathname).toEqual(`/posts${tail}`)
       })
 
-      const firstPostButton = await screen.findByTestId('first-post-link')
-
-      fireEvent.click(firstPostButton)
+      fireEvent.click(await screen.findByTestId('first-post-link'))
 
       await waitFor(() => {
         expect(window.location.pathname).toEqual(`/posts/id1${tail}`)
       })
 
-      const secondPostButton = await screen.findByTestId('second-post-link')
-
-      fireEvent.click(secondPostButton)
+      await waitFor(async () => {
+        const el = await screen.findByTestId('second-post-link')
+        expect(el.isConnected).toBe(true)
+      })
+      fireEvent.click(await screen.findByTestId('second-post-link'))
 
       await waitFor(() => {
         expect(window.location.pathname).toEqual(`/posts/id2${tail}`)
@@ -5955,26 +5964,28 @@ describe('relative links to from route', () => {
 
       render(() => <RouterProvider router={router} />)
 
-      const postButton = await screen.findByTestId('posts-link')
-
-      fireEvent.click(postButton)
+      fireEvent.click(await screen.findByTestId('posts-link'))
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
       })
 
-      const searchButton = await screen.findByTestId('search-link')
-
-      fireEvent.click(searchButton)
+      await waitFor(async () => {
+        const el = await screen.findByTestId('search-link')
+        expect(el.isConnected).toBe(true)
+      })
+      fireEvent.click(await screen.findByTestId('search-link'))
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
         expect(router.state.location.search).toEqual({ param1: 'value1' })
       })
 
-      const homeBtn = await screen.findByTestId('home-link')
-
-      fireEvent.click(homeBtn)
+      await waitFor(async () => {
+        const el = await screen.findByTestId('home-link')
+        expect(el.isConnected).toBe(true)
+      })
+      fireEvent.click(await screen.findByTestId('home-link'))
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/`)

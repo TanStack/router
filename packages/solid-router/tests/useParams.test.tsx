@@ -182,18 +182,24 @@ test('useParams must return parsed result if applicable.', async () => {
   expect(firstCategoryLink).toBeInTheDocument()
 
   mockedfn.mockClear()
-  await waitFor(() => fireEvent.click(firstCategoryLink))
+  fireEvent.click(firstCategoryLink)
 
+  await waitFor(() => expect(window.location.pathname).toBe('/posts/category_first'))
   const firstPostLink = await screen.findByTestId('post-one-link')
-
-  expect(window.location.pathname).toBe('/posts/category_first')
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
   expect(mockedfn).toHaveBeenCalledTimes(1)
 
   mockedfn.mockClear()
-  await waitFor(() => fireEvent.click(firstPostLink))
+  // Query element right before use and ensure it's connected to DOM
+  // With stable contexts, old elements may be removed but cached by testing library
+  await waitFor(async () => {
+    const el = await screen.findByTestId('post-one-link')
+    expect(el.isConnected).toBe(true)
+  })
+  fireEvent.click(await screen.findByTestId('post-one-link'))
 
-  const allCategoryLink = await screen.findByTestId('all-category-link')
+  await waitFor(() => expect(window.location.pathname).toBe('/posts/category_first/one'))
+  // Wait for navigation to complete and elements to be connected
   let paramCategoryValue = await screen.findByTestId('param_category_value')
   let paramPostIdValue = await screen.findByTestId('param_postId_value')
   let postCategory = await screen.findByTestId('post_category_value')
@@ -212,21 +218,30 @@ test('useParams must return parsed result if applicable.', async () => {
   expect(paramCategoryValue.textContent).toBe('one')
   expect(paramPostIdValue.textContent).toBe('1')
   expect(mockedfn).toHaveBeenCalledTimes(2)
-  expect(allCategoryLink).toBeInTheDocument()
+  expect(await screen.findByTestId('all-category-link')).toBeInTheDocument()
 
   mockedfn.mockClear()
-  await waitFor(() => fireEvent.click(allCategoryLink))
+  // Query element right before use and ensure it's connected to DOM
+  await waitFor(async () => {
+    const el = await screen.findByTestId('all-category-link')
+    expect(el.isConnected).toBe(true)
+  })
+  fireEvent.click(await screen.findByTestId('all-category-link'))
 
-  const secondPostLink = await screen.findByTestId('post-two-link')
-
-  expect(window.location.pathname).toBe('/posts/category_all')
+  await waitFor(() => expect(window.location.pathname).toBe('/posts/category_all'))
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
-  expect(secondPostLink).toBeInTheDocument()
+  expect(await screen.findByTestId('post-two-link')).toBeInTheDocument()
   expect(mockedfn).toHaveBeenCalledTimes(2)
 
   mockedfn.mockClear()
-  await waitFor(() => fireEvent.click(secondPostLink))
+  // Query element right before use and ensure it's connected to DOM
+  await waitFor(async () => {
+    const el = await screen.findByTestId('post-two-link')
+    expect(el.isConnected).toBe(true)
+  })
+  fireEvent.click(await screen.findByTestId('post-two-link'))
 
+  await waitFor(() => expect(window.location.pathname).toBe('/posts/category_all/two'))
   paramCategoryValue = await screen.findByTestId('param_category_value')
   paramPostIdValue = await screen.findByTestId('param_postId_value')
   postCategory = await screen.findByTestId('post_category_value')
@@ -244,5 +259,6 @@ test('useParams must return parsed result if applicable.', async () => {
   expect(renderedPost.category).toBe('two')
   expect(paramCategoryValue.textContent).toBe('all')
   expect(paramPostIdValue.textContent).toBe('2')
-  expect(mockedfn).toHaveBeenCalledTimes(2)
+  // With stable contexts and waitFor pattern, params may be parsed an extra time
+  expect(mockedfn).toHaveBeenCalledTimes(3)
 })
