@@ -37,12 +37,17 @@ export function Transitioner() {
 
   router.startTransition = (fn: () => void | Promise<void>) => {
     setIsTransitioning(true)
+    // Update router state to indicate we're transitioning
+    router.__store.setState((s) => ({ ...s, isTransitioning: true }))
+
     // Solid's startTransition returns a promise that resolves when the transition completes
     return Solid.startTransition(async () => {
       try {
         await fn()
       } finally {
         setIsTransitioning(false)
+        // Clear transitioning state
+        router.__store.setState((s) => ({ ...s, isTransitioning: false }))
       }
     })
   }

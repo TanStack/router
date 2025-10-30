@@ -89,22 +89,35 @@ export function useMatch<
         )
       }
 
-      // Don't throw when match doesn't exist - during async transitions (Solid),
-      // components may re-render while their old routes are being removed
-      const shouldThrow = false // Always return undefined gracefully instead of throwing
-
-      invariant(
-        !(shouldThrow && !match),
-        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-      )
-
-      if (match === undefined) {
-        return undefined
+      // Return an object with match and metadata for throwing outside select
+      return {
+        match: match as any,
+        isTransitioning: state.isTransitioning as boolean,
       }
-
-      return opts.select ? opts.select(match) : match
     },
-  } as any)
+  })
 
-  return matchSelection as any
+  // Create a derived signal that throws errors during render (not in select)
+  // This allows Solid's error boundaries to catch the errors properly
+  return Solid.createMemo(() => {
+    const result = matchSelection()
+    const match = result?.match
+    const isTransitioning = result?.isTransitioning
+
+    // Respect the shouldThrow option, but don't throw during transitions
+    // During async transitions, components may temporarily not find their match
+    // Default to true if not specified (backwards compatible behavior)
+    const shouldThrow = (opts.shouldThrow ?? true) && !isTransitioning
+
+    invariant(
+      !(shouldThrow && !match),
+      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+    )
+
+    if (match === undefined) {
+      return undefined
+    }
+
+    return opts.select ? opts.select(match) : match
+  }) as any
 }
