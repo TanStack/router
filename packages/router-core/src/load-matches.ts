@@ -369,7 +369,23 @@ const executeBeforeLoad = (
   const parentMatchContext =
     parentMatch?.context ?? inner.router.options.context ?? undefined
 
-  const context = { ...parentMatchContext, ...match.__routeContext }
+  // Context for beforeLoad function - always fresh, never includes previous __beforeLoadContext
+  const beforeLoadFnInputContext = {
+    ...parentMatchContext,
+    ...match.__routeContext,
+  }
+
+  // Context for component during pending - includes previous __beforeLoadContext if match was successful
+  // This preserves context from preloads/previous navigations during the pending state,
+  // but only for the component, not for beforeLoad itself
+  const pendingContext =
+    match.__beforeLoadContext && match.status === 'success'
+      ? {
+          ...match.__beforeLoadContext,
+          ...parentMatchContext,
+          ...match.__routeContext,
+        }
+      : beforeLoadFnInputContext
 
   let isPending = false
   const pending = () => {
@@ -380,7 +396,7 @@ const executeBeforeLoad = (
       isFetching: 'beforeLoad',
       fetchCount: prev.fetchCount + 1,
       abortController,
-      context,
+      context: pendingContext,
     }))
   }
 
@@ -420,7 +436,7 @@ const executeBeforeLoad = (
     abortController,
     params,
     preload,
-    context,
+    context: beforeLoadFnInputContext,
     location: inner.location,
     navigate: (opts: any) =>
       inner.router.navigate({

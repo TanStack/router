@@ -3128,4 +3128,176 @@ describe('useRouteContext in the component', () => {
 
     expect(content).toBeInTheDocument()
   })
+
+  test("reproducer #4998 - on navigate (with preload), route component isn't rendered with undefined context if beforeLoad is pending", async () => {
+    const beforeLoad = vi.fn()
+    const select = vi.fn()
+    let resolved = 0
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link to="/foo">To foo</Link>,
+    })
+    const fooRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      beforeLoad: async (...args) => {
+        beforeLoad(...args)
+        await sleep(WAIT_TIME)
+        resolved += 1
+        return { foo: resolved }
+      },
+      component: () => {
+        fooRoute.useRouteContext({ select })
+        return <h1>Foo index page</h1>
+      },
+      pendingComponent: () => 'loading',
+    })
+    const routeTree = rootRoute.addChildren([indexRoute, fooRoute])
+    const router = createRouter({
+      routeTree,
+      history,
+      defaultPreload: 'intent',
+      defaultPendingMs: 0,
+    })
+
+    render(<RouterProvider router={router} />)
+    const linkToFoo = await screen.findByText('To foo')
+
+    fireEvent.focus(linkToFoo)
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(resolved).toBe(0)
+
+    await sleep(WAIT_TIME)
+
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(resolved).toBe(1)
+    expect(beforeLoad).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        cause: 'preload',
+        preload: true,
+      }),
+    )
+
+    expect(select).not.toHaveBeenCalled()
+
+    fireEvent.click(linkToFoo)
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
+    expect(resolved).toBe(1)
+
+    await screen.findByText('Foo index page')
+
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
+    expect(beforeLoad).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        cause: 'enter',
+        preload: false,
+      }),
+    )
+    expect(select).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        foo: 1,
+      }),
+    )
+    expect(select).not.toHaveBeenCalledWith({})
+
+    await sleep(WAIT_TIME)
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
+    expect(resolved).toBe(2)
+
+    // ensure the context has been updated once the beforeLoad has resolved
+    expect(select).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        foo: 2,
+      }),
+    )
+
+    // the route component will be rendered multiple times, ensure it always has the context
+    expect(select).not.toHaveBeenCalledWith({})
+  })
+
+  test('beforeLoad receives fresh context on second run, not stale preloaded context', async () => {
+    const beforeLoadContextSpy = vi.fn()
+    let resolved = 0
+    const rootRoute = createRootRoute({
+      beforeLoad: () => {
+        return { rootValue: 'root' }
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link to="/foo">To foo</Link>,
+    })
+    const fooRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      beforeLoad: async ({ context }) => {
+        // Capture what context beforeLoad receives
+        beforeLoadContextSpy(context)
+        await sleep(WAIT_TIME)
+        resolved += 1
+        return { foo: resolved }
+      },
+      component: () => <h1>Foo page</h1>,
+      pendingComponent: () => 'loading',
+    })
+    const routeTree = rootRoute.addChildren([indexRoute, fooRoute])
+    const router = createRouter({
+      routeTree,
+      history,
+      defaultPreload: 'intent',
+      defaultPendingMs: 0,
+    })
+
+    render(<RouterProvider router={router} />)
+    const linkToFoo = await screen.findByText('To foo')
+
+    // Preload foo by hovering
+    fireEvent.focus(linkToFoo)
+    await sleep(WAIT_TIME)
+
+    expect(resolved).toBe(1)
+    // First call during preload - should receive parent context only
+    expect(beforeLoadContextSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        rootValue: 'root',
+      }),
+    )
+    // Should NOT have foo in context yet
+    expect(beforeLoadContextSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.not.objectContaining({
+        foo: expect.anything(),
+      }),
+    )
+
+    beforeLoadContextSpy.mockClear()
+
+    // Navigate to foo
+    fireEvent.click(linkToFoo)
+    await screen.findByText('Foo page')
+    await sleep(WAIT_TIME)
+
+    expect(resolved).toBe(2)
+    // Second call during navigation - should receive parent context only, NOT the preloaded foo context
+    expect(beforeLoadContextSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        rootValue: 'root',
+      }),
+    )
+    // Should NOT receive the previous foo value from preload
+    expect(beforeLoadContextSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.not.objectContaining({
+        foo: expect.anything(),
+      }),
+    )
+  })
 })
