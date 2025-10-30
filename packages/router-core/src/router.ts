@@ -2142,7 +2142,9 @@ export class RouterCore<
                     ] as const
                   ).forEach(([matches, hook]) => {
                     matches.forEach((match) => {
-                      this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+                      this.looseRoutesById[match.routeId]!.options[hook]?.(
+                        match,
+                      )
                     })
                   })
                 })
