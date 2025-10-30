@@ -393,6 +393,11 @@ describe('Link', () => {
       // navigate to /?foo=bar
       fireEvent.click(indexFooBarLink)
 
+      // Wait for navigation to complete
+      await waitFor(() => {
+        expect(indexFooBarLink).toHaveClass('active')
+      })
+
       expect(indexExactLink).toHaveClass('inactive')
       expect(indexExactLink).not.toHaveClass('active')
       expect(indexExactLink).toHaveAttribute('href', '/')
@@ -777,11 +782,15 @@ describe('Link', () => {
     const updatedFilter = await screen.findByTestId('current-filter')
 
     // Verify search was updated
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
     expect(window.location.pathname).toBe('/posts')
-    expect(window.location.search).toBe('?page=2&filter=inactive')
 
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    await waitFor(() => {
+      expect(updatedPage).toHaveTextContent('Page: 2')
+      expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    })
   })
 
   test('when navigation to . from /posts while updating search from / and using base path', async () => {
@@ -888,13 +897,17 @@ describe('Link', () => {
 
     await screen.findByTestId('current-page')
     // Verify search was updated
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
     expect(window.location.pathname).toBe('/Dashboard/posts')
-    expect(window.location.search).toBe('?page=2&filter=inactive')
 
     const updatedPage = await screen.findByTestId('current-page')
     const updatedFilter = await screen.findByTestId('current-filter')
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    await waitFor(() => {
+      expect(updatedPage).toHaveTextContent('Page: 2')
+      expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    })
   })
 
   test('when navigating to /posts with invalid search', async () => {

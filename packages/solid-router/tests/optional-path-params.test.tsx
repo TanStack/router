@@ -651,13 +651,19 @@ describe('Solid Router - Optional Path Parameters', () => {
       const navigateSpecific = await screen.findByTestId('navigate-specific')
 
       fireEvent.click(navigateAll)
-      expect(router.state.location.pathname).toBe('/posts')
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/posts')
+      })
 
       fireEvent.click(navigateTech)
-      expect(router.state.location.pathname).toBe('/posts/tech')
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/posts/tech')
+      })
 
       fireEvent.click(navigateSpecific)
-      expect(router.state.location.pathname).toBe('/posts/tech/hello-world')
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/posts/tech/hello-world')
+      })
     })
 
     it('should handle relative navigation with optional parameters', async () => {
