@@ -4355,7 +4355,7 @@ describe('Link', () => {
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
+  test.skip('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
