@@ -24,22 +24,30 @@ import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
 
-  // Use the stable match context created in Matches.tsx with createRoot
-  // This prevents stale value access during async transitions
-  const matchContextState = useMatchContextState()
+  // Query match data reactively using useRouterState
+  // This ensures we get updates when the match changes
+  const matchState = useRouterState({
+    select: (s) => {
+      // Check current matches first
+      let match = s.matches.find((d) => d.id === props.matchId)
 
-  const matchState = Solid.createMemo(() => {
-    const ctx = matchContextState?.()
-    if (!ctx) return undefined
+      // During async transitions, old components may re-render after their match
+      // has been moved to cachedMatches. Check there as a fallback.
+      if (!match) {
+        match = s.cachedMatches.find((d) => d.id === props.matchId)
+      }
 
-    const match = ctx.getMatchData()
-    if (!match) return undefined
+      // Return undefined gracefully if match doesn't exist (component is unmounting)
+      if (!match) {
+        return undefined
+      }
 
-    return {
-      routeId: match.routeId,
-      ssr: match.ssr,
-      _displayPending: match._displayPending,
-    }
+      return {
+        routeId: match.routeId,
+        ssr: match.ssr,
+        _displayPending: match._displayPending,
+      }
+    },
   })
 
   // Early return if no match data
@@ -199,40 +207,46 @@ function OnRendered() {
 export const MatchInner = (props: { matchId: string }): any => {
   const router = useRouter()
 
-  // Use the stable match context created in Matches.tsx with createRoot
-  const matchContextState = useMatchContextState()
+  const matchState = useRouterState({
+    select: (s) => {
+      // Check current matches first
+      let match = s.matches.find((d) => d.id === props.matchId)
 
-  const matchState = Solid.createMemo(() => {
-    const ctx = matchContextState?.()
-    if (!ctx) return undefined
+      // During async transitions, old components may re-render after their match
+      // has been moved to cachedMatches. Check there as a fallback.
+      if (!match) {
+        match = s.cachedMatches.find((d) => d.id === props.matchId)
+      }
 
-    const match = ctx.getMatchData()
-    if (!match) return undefined
+      if (!match) {
+        return undefined
+      }
 
-    const routeId = match.routeId as string
+      const routeId = match.routeId as string
 
-    const remountFn =
-      (router.routesById[routeId] as AnyRoute).options.remountDeps ??
-      router.options.defaultRemountDeps
-    const remountDeps = remountFn?.({
-      routeId,
-      loaderDeps: match.loaderDeps,
-      params: match._strictParams,
-      search: match._strictSearch,
-    })
-    const key = remountDeps ? JSON.stringify(remountDeps) : undefined
+      const remountFn =
+        (router.routesById[routeId] as AnyRoute).options.remountDeps ??
+        router.options.defaultRemountDeps
+      const remountDeps = remountFn?.({
+        routeId,
+        loaderDeps: match.loaderDeps,
+        params: match._strictParams,
+        search: match._strictSearch,
+      })
+      const key = remountDeps ? JSON.stringify(remountDeps) : undefined
 
-    return {
-      key,
-      routeId,
-      match: {
-        id: match.id,
-        status: match.status,
-        error: match.error,
-        _forcePending: match._forcePending,
-        _displayPending: match._displayPending,
-      },
-    }
+      return {
+        key,
+        routeId,
+        match: {
+          id: match.id,
+          status: match.status,
+          error: match.error,
+          _forcePending: match._forcePending,
+          _displayPending: match._displayPending,
+        },
+      }
+    },
   })
 
   if (!matchState()) {
@@ -360,31 +374,39 @@ export const MatchInner = (props: { matchId: string }): any => {
 
 export const Outlet = () => {
   const router = useRouter()
+  const matchId = Solid.useContext(matchContext)
 
-  // Use the stable match context
+  // Use the stable match context for the outlet function
   const matchContextState = useMatchContextState()
 
-  const routeId = Solid.createMemo(() => {
-    const ctx = matchContextState?.()
-    if (!ctx) return undefined
-
-    const match = ctx.getMatchData()
-    return match?.routeId as string | undefined
+  const routeId = useRouterState({
+    select: (s) => {
+      // Check matches first, then cachedMatches
+      let match = s.matches.find((d) => d.id === matchId())
+      if (!match) {
+        match = s.cachedMatches.find((d) => d.id === matchId())
+      }
+      return match?.routeId as string
+    },
   })
 
-  const route = () => {
-    const id = routeId()
-    return id ? router.routesById[id]! : undefined
-  }
+  const route = () => router.routesById[routeId()]!
 
-  const parentGlobalNotFound = Solid.createMemo(() => {
-    const ctx = matchContextState?.()
-    if (!ctx) return undefined
+  const parentGlobalNotFound = useRouterState({
+    select: (s) => {
+      // Check matches first, then cachedMatches
+      let parentMatch = s.matches.find((d) => d.id === matchId())
+      if (!parentMatch) {
+        parentMatch = s.cachedMatches.find((d) => d.id === matchId())
+      }
 
-    const match = ctx.getMatchData()
-    if (!match) return undefined
+      // Return undefined gracefully if not found
+      if (!parentMatch) {
+        return undefined
+      }
 
-    return match.globalNotFound
+      return parentMatch.globalNotFound
+    },
   })
 
   // Use the outlet function from the context instead of manually rendering Match
@@ -394,13 +416,13 @@ export const Outlet = () => {
   })
 
   return (
-    <Solid.Switch>
-      <Solid.Match when={parentGlobalNotFound()}>
+    <>
+      <Solid.Show when={parentGlobalNotFound()}>
         {renderRouteNotFound(router, route(), undefined)}
-      </Solid.Match>
-      <Solid.Match when={outlet()}>
+      </Solid.Show>
+      <Solid.Show when={!parentGlobalNotFound() && outlet()}>
         {(outletFn) => <>{outletFn()()}</>}
-      </Solid.Match>
-    </Solid.Switch>
+      </Solid.Show>
+    </>
   )
 }

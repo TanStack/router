@@ -33,8 +33,6 @@ import type {
 type MatchContextState = {
   matchId: string
   outlet: () => any
-  // Provide stable accessor to match data, isolated in createRoot scope
-  getMatchData: () => AnyRouteMatch | undefined
 }
 
 // Context to provide the stable match context state
@@ -125,24 +123,9 @@ function MatchesInner() {
             Solid.createRoot((dispose) => {
               disposers[i] = dispose
 
-              // Create stable accessor to match data inside this isolated scope
-              // This prevents stale value access during async transitions
-              const getMatchData = Solid.createMemo(() => {
-                const currentMatches = router.state.matches
-                let match = currentMatches.find((m) => m.id === nextMatch!.id)
-
-                // Fallback to cachedMatches during transitions
-                if (!match) {
-                  match = router.state.cachedMatches.find((m) => m.id === nextMatch!.id)
-                }
-
-                return match
-              })
-
               nextContexts[i] = {
                 matchId: nextMatch!.id,
                 outlet: createOutlet(() => matchContextStates()[i + 1]),
-                getMatchData,
               }
             })
           }
