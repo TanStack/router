@@ -108,11 +108,11 @@ export function Transitioner() {
     ),
   )
 
-  Solid.createRenderEffect(
+  Solid.createComputed(
     Solid.on(
       [isPagePending, previousIsPagePending],
       ([isPagePending, previousIsPagePending]) => {
-        // emit onBeforeRouteMount
+        // emit onBeforeRouteMount - using createComputed to run before component render effects
         if (previousIsPagePending.previous && !isPagePending) {
           router.emit({
             type: 'onBeforeRouteMount',
