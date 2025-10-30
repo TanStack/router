@@ -57,12 +57,16 @@ export function compileStartOutputFactory(
     // find referenced identifiers *before* we transform anything
     const refIdents = doDce ? findReferencedIdentifiers(ast) : undefined
 
+    const validImportSources = [
+      `@tanstack/${framework}-start`,
+      '@tanstack/start-client-core',
+    ]
     babel.traverse(ast, {
       Program: {
         enter(programPath) {
           programPath.traverse({
             ImportDeclaration: (path) => {
-              if (path.node.source.value !== `@tanstack/${framework}-start`) {
+              if (!validImportSources.includes(path.node.source.value)) {
                 return
               }
 
