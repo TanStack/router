@@ -5677,15 +5677,13 @@ describe('relative links to current route', () => {
       render(() => <RouterProvider router={router} />)
 
       const postButton = await screen.findByTestId('posts-link')
-      const searchButton = await screen.findByTestId('search-link')
-      const searchButton2 = await screen.findByTestId('search2-link')
-
       fireEvent.click(postButton)
 
       await waitFor(() => {
         expect(window.location.pathname).toBe(`/post${tail}`)
       })
 
+      const searchButton = await screen.findByTestId('search-link')
       fireEvent.click(searchButton)
 
       await waitFor(() => {
@@ -5693,6 +5691,7 @@ describe('relative links to current route', () => {
         expect(router.state.location.search).toEqual({ param1: 'value1' })
       })
 
+      const searchButton2 = await screen.findByTestId('search2-link')
       fireEvent.click(searchButton2)
 
       await waitFor(() => {
