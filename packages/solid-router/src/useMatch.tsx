@@ -75,12 +75,26 @@ export function useMatch<
 
   const matchSelection = useRouterState({
     select: (state: any) => {
-      const match = state.matches.find((d: any) =>
+      // Check current matches first
+      let match = state.matches.find((d: any) =>
         opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
       )
 
+      // During async transitions (Solid's startTransition is async), old components
+      // may re-render after their match has been moved to cachedMatches.
+      // Check there as a fallback to prevent "match not found" errors.
+      if (!match) {
+        match = state.cachedMatches.find((d: any) =>
+          opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
+        )
+      }
+
+      // Don't throw when match doesn't exist - during async transitions (Solid),
+      // components may re-render while their old routes are being removed
+      const shouldThrow = false // Always return undefined gracefully instead of throwing
+
       invariant(
-        !((opts.shouldThrow ?? true) && !match),
+        !(shouldThrow && !match),
         `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
       )
 

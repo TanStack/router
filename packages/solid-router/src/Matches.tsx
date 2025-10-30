@@ -6,10 +6,12 @@ import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
+import { MatchAccessorContext } from './matchAccessorContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
 import type {
   AnyRoute,
+  AnyRouteMatch,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -26,6 +28,24 @@ import type {
   RouterState,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
+
+// Similar to @solidjs/router's RouteContext
+type MatchContextState = {
+  matchId: string
+  outlet: () => any
+  // Provide stable accessor to match data, isolated in createRoot scope
+  getMatchData: () => AnyRouteMatch | undefined
+}
+
+// Context to provide the stable match context state
+const matchContextStateContext = Solid.createContext<
+  Solid.Accessor<MatchContextState | undefined>
+>()
+
+// Hook to access the stable match context state
+export function useMatchContextState() {
+  return Solid.useContext(matchContextStateContext)
+}
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
@@ -66,26 +86,97 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = useRouterState({
-    select: (s) => {
-      return s.matches[0]?.id
-    },
+
+  const matches = useRouterState({
+    select: (s) => s.matches,
   })
 
   const resetKey = useRouterState({
     select: (s) => s.loadedAt,
   })
 
+  // Track disposers for each match context, similar to @solidjs/router
+  const disposers: Array<() => void> = []
+
+  // Create stable match contexts with createRoot, reusing them when possible
+  // This is the key pattern from @solidjs/router's Routes component
+  const matchContextStates = Solid.createMemo(
+    Solid.on(
+      matches,
+      (nextMatches, prevMatches, prevContexts: MatchContextState[] | undefined) => {
+        let equal = prevMatches && nextMatches.length === prevMatches.length
+        const nextContexts: MatchContextState[] = []
+
+        for (let i = 0, len = nextMatches.length; i < len; i++) {
+          const prevMatch = prevMatches && prevMatches[i]
+          const nextMatch = nextMatches[i]
+
+          // Reuse the previous context if the match ID is the same
+          if (prevContexts && prevMatch && nextMatch && nextMatch.id === prevMatch.id) {
+            nextContexts[i] = prevContexts[i]!
+          } else {
+            equal = false
+            // Dispose the old context
+            if (disposers[i]) {
+              disposers[i]!()
+            }
+
+            // Create new context in its own reactive scope
+            Solid.createRoot((dispose) => {
+              disposers[i] = dispose
+
+              // Create stable accessor to match data inside this isolated scope
+              // This prevents stale value access during async transitions
+              const getMatchData = Solid.createMemo(() => {
+                const currentMatches = router.state.matches
+                let match = currentMatches.find((m) => m.id === nextMatch!.id)
+
+                // Fallback to cachedMatches during transitions
+                if (!match) {
+                  match = router.state.cachedMatches.find((m) => m.id === nextMatch!.id)
+                }
+
+                return match
+              })
+
+              nextContexts[i] = {
+                matchId: nextMatch!.id,
+                outlet: createOutlet(() => matchContextStates()[i + 1]),
+                getMatchData,
+              }
+            })
+          }
+        }
+
+        // Dispose any extra contexts that are no longer needed
+        disposers.splice(nextMatches.length).forEach((dispose) => dispose())
+
+        // If nothing changed, reuse the entire previous array
+        if (prevContexts && equal) {
+          return prevContexts
+        }
+
+        return nextContexts
+      },
+    ),
+  )
+
   const matchComponent = () => {
+    const states = matchContextStates()
+    const rootMatchContext = states[0]
     return (
-      <Solid.Show when={matchId()}>
-        <Match matchId={matchId()!} />
+      <Solid.Show when={rootMatchContext}>
+        {(ctx) => (
+          <matchContextStateContext.Provider value={() => ctx()}>
+            <Match matchId={ctx().matchId} />
+          </matchContextStateContext.Provider>
+        )}
       </Solid.Show>
     )
   }
 
   return (
-    <matchContext.Provider value={matchId}>
+    <matchContext.Provider value={() => matchContextStates()[0]?.matchId}>
       {router.options.disableGlobalCatchBoundary ? (
         matchComponent()
       ) : (
@@ -105,6 +196,21 @@ function MatchesInner() {
         </CatchBoundary>
       )}
     </matchContext.Provider>
+  )
+}
+
+// Create outlet similar to @solidjs/router's createOutlet
+const createOutlet = (child: () => MatchContextState | undefined) => {
+  return () => (
+    <Solid.Show when={child()} keyed>
+      {(childCtx) => (
+        <matchContext.Provider value={() => childCtx.matchId}>
+          <matchContextStateContext.Provider value={() => childCtx}>
+            <Match matchId={childCtx.matchId} />
+          </matchContextStateContext.Provider>
+        </matchContext.Provider>
+      )}
+    </Solid.Show>
   )
 }
 

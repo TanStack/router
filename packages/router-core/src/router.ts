@@ -710,7 +710,7 @@ export type CommitLocationFn = ({
   ...next
 }: ParsedLocation & CommitLocationOptions) => Promise<void>
 
-export type StartTransitionFn = (fn: () => void) => void
+export type StartTransitionFn = (fn: () => void) => void | Promise<void>
 
 export interface MatchRoutesFn {
   (
