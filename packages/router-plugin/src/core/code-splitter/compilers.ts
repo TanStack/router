@@ -727,19 +727,33 @@ export function compileCodeSplitVirtualRoute(
 
             if (path.node.declaration) {
               if (t.isVariableDeclaration(path.node.declaration)) {
-                path.replaceWith(
-                  t.importDeclaration(
-                    path.node.declaration.declarations.map((decl) =>
-                      t.importSpecifier(
-                        t.identifier((decl.id as any).name),
-                        t.identifier((decl.id as any).name),
-                      ),
-                    ),
-                    t.stringLiteral(
-                      removeSplitSearchParamFromFilename(opts.filename),
+                const importDecl = t.importDeclaration(
+                  path.node.declaration.declarations.map((decl) =>
+                    t.importSpecifier(
+                      t.identifier((decl.id as any).name),
+                      t.identifier((decl.id as any).name),
                     ),
                   ),
+                  t.stringLiteral(
+                    removeSplitSearchParamFromFilename(opts.filename),
+                  ),
                 )
+
+                path.replaceWith(importDecl)
+
+                // Track the imported identifier paths so deadCodeElimination can remove them if unused
+                // We need to traverse the newly created import to get the identifier paths
+                path.traverse({
+                  Identifier(identPath) {
+                    // Only track the local binding identifiers (the imported names)
+                    if (
+                      identPath.parentPath.isImportSpecifier() &&
+                      identPath.key === 'local'
+                    ) {
+                      refIdents.add(identPath)
+                    }
+                  },
+                })
               }
             }
           },
