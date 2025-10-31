@@ -1581,7 +1581,7 @@ describe('loader in the route definition', () => {
   })
 
   // disabled test due to flakiness
-  test.skip("on navigate (with preload using router methods), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
+  test("on navigate (with preload using router methods), loader isn't invoked with undefined context if beforeLoad is pending when navigation happens", async () => {
     const mock = vi.fn()
 
     const rootRoute = createRootRoute()
