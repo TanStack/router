@@ -56,6 +56,12 @@
         "default": "./dist/esm/server-rpc.js"
       }
     },
+    "./ssr-rpc": {
+      "import": {
+        "types": "./dist/esm/ssr-rpc.d.ts",
+        "default": "./dist/esm/ssr-rpc.js"
+      }
+    },
     "./server": {
       "import": {
         "types": "./dist/esm/server.d.ts",

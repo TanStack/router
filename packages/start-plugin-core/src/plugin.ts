@@ -34,6 +34,12 @@ export interface TanStackStartVitePluginCoreOptions {
     server: string
     start: string
   }
+  serverFn?: {
+    directive?: string
+    ssr?: {
+      getServerFnById?: string
+    }
+  }
 }
 
 export interface ResolvedStartConfig {
@@ -69,6 +75,8 @@ export function TanStackStartVitePluginCore(
     srcDirectory: '',
     viteAppBase: '',
   }
+
+  const directive = corePluginOpts.serverFn?.directive ?? 'use server'
 
   let startConfig: TanStackStartOutputConfig | null
   const getConfig: GetConfigFn = () => {
@@ -328,20 +336,32 @@ export function TanStackStartVitePluginCore(
     tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPlugin
     startCompilerPlugin(corePluginOpts.framework),
-    createServerFnPlugin(corePluginOpts.framework),
+    createServerFnPlugin({ framework: corePluginOpts.framework, directive }),
 
     TanStackServerFnPlugin({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
       manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
+      directive,
       generateFunctionId: startPluginOpts?.serverFns?.generateFunctionId,
-      client: {
-        getRuntimeCode: () =>
-          `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/client-rpc'`,
-        replacer: (d) => `createClientRpc('${d.functionId}')`,
-        envName: VITE_ENVIRONMENT_NAMES.client,
-      },
-      server: {
+      callers: [
+        {
+          envConsumer: 'client',
+          getRuntimeCode: () =>
+            `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/client-rpc'`,
+          replacer: (d) => `createClientRpc('${d.functionId}')`,
+          envName: VITE_ENVIRONMENT_NAMES.client,
+        },
+        {
+          envConsumer: 'server',
+          getRuntimeCode: () =>
+            `import { createSsrRpc } from '@tanstack/${corePluginOpts.framework}-start/ssr-rpc'`,
+          envName: VITE_ENVIRONMENT_NAMES.server,
+          replacer: (d) => `createSsrRpc('${d.functionId}')`,
+          getServerFnById: corePluginOpts.serverFn?.ssr?.getServerFnById,
+        },
+      ],
+      provider: {
         getRuntimeCode: () =>
           `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-rpc'`,
         replacer: (d) => `createServerRpc('${d.functionId}', ${d.fn})`,
