@@ -303,9 +303,10 @@ export type Method = 'GET' | 'POST'
 type ExtractResponse<T> = Extract<T, Response>
 type ExcludeResponse<T> = Exclude<T, Response>
 
-type ServerFnReturnValue<TRegister, TValue> = TValue extends Promise<infer U>
-  ? Promise<ServerFnReturnValueAwaited<TRegister, U>>
-  : ServerFnReturnValueAwaited<TRegister, TValue>
+type ServerFnReturnValue<TRegister, TValue> =
+  TValue extends PromiseLike<infer U>
+    ? Promise<ServerFnReturnValueAwaited<TRegister, U>>
+    : ServerFnReturnValueAwaited<TRegister, TValue>
 
 type ServerFnReturnValueAwaited<TRegister, TValue> =
   [ExcludeResponse<TValue>] extends [never]
