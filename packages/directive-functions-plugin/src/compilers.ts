@@ -41,7 +41,6 @@ export type ReplacerFn = (opts: {
 
 export type CompileDirectivesOpts = ParseAstOptions & {
   directive: string
-  directiveLabel: string
   getRuntimeCode?: (opts: {
     directiveFnsById: Record<string, DirectiveFn>
   }) => string
@@ -119,7 +118,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
 
 function findNearestVariableName(
   path: babel.NodePath,
-  directiveLabel: string,
+  directive: string,
 ): string {
   let currentPath: babel.NodePath | null = path
   const nameParts: Array<string> = []
@@ -189,7 +188,7 @@ function findNearestVariableName(
         babel.types.isObjectMethod(currentPath.node)
       ) {
         throw new Error(
-          `${directiveLabel} in ClassMethod or ObjectMethod not supported`,
+          `"${directive}" in ClassMethod or ObjectMethod not supported`,
         )
       }
 
@@ -219,7 +218,6 @@ export function findDirectives(
   ast: babel.types.File,
   opts: ParseAstOptions & {
     directive: string
-    directiveLabel: string
     replacer?: ReplacerFn
     generateFunctionId: GenerateFunctionIdFn
     directiveSplitParam: string
@@ -320,7 +318,7 @@ export function findDirectives(
             throw codeFrameError(
               opts.code,
               nearestBlock.node.loc,
-              `${opts.directiveLabel}s cannot be nested in other blocks or functions`,
+              `"${opts.directive}" cannot be nested in other blocks or functions`,
             )
           }
 
@@ -335,7 +333,7 @@ export function findDirectives(
             throw codeFrameError(
               opts.code,
               directiveFn.node.loc,
-              `${opts.directiveLabel}s must be function declarations or function expressions`,
+              `"${opts.directive}" must be function declarations or function expressions`,
             )
           }
 
@@ -397,7 +395,7 @@ export function findDirectives(
     }
 
     // Find the nearest variable name
-    let functionName = findNearestVariableName(directiveFn, opts.directiveLabel)
+    let functionName = findNearestVariableName(directiveFn, opts.directive)
 
     const incrementFunctionNameVersion = (functionName: string) => {
       const [realReferenceName, count] = functionName.split(/_(\d+)$/)

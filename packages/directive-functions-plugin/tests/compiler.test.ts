@@ -19,7 +19,6 @@ const generateFunctionId: CompileDirectivesOpts['generateFunctionId'] = (
 
 const clientConfig: Omit<CompileDirectivesOpts, 'code'> = {
   directive: 'use server',
-  directiveLabel: 'Server function',
   root: './test-files',
   filename: './test-files/test.ts',
   getRuntimeCode: () => 'import { createClientRpc } from "my-rpc-lib-client"',
@@ -29,7 +28,6 @@ const clientConfig: Omit<CompileDirectivesOpts, 'code'> = {
 
 const ssrConfig: Omit<CompileDirectivesOpts, 'code'> = {
   directive: 'use server',
-  directiveLabel: 'Server function',
   root: './test-files',
   filename: './test-files/test.ts',
   getRuntimeCode: () => 'import { createSsrRpc } from "my-rpc-lib-server"',
@@ -39,7 +37,6 @@ const ssrConfig: Omit<CompileDirectivesOpts, 'code'> = {
 
 const serverConfig: Omit<CompileDirectivesOpts, 'code'> = {
   directive: 'use server',
-  directiveLabel: 'Server function',
   root: './test-files',
   filename: './test-files/test.ts',
   getRuntimeCode: () => 'import { createServerRpc } from "my-rpc-lib-server"',

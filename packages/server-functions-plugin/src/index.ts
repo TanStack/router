@@ -22,12 +22,13 @@ export type TanStackServerFnPluginOpts = {
   generateFunctionId?: GenerateFunctionIdFnOptional
   client: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
+  directive?: string
 }
 
 export type ServerFnPluginEnvOpts = {
   getRuntimeCode: () => string
   replacer: ReplacerFn
-  envName?: string
+  envName: string
 }
 
 const debug =
@@ -38,15 +39,8 @@ export function TanStackServerFnPlugin(
   _opts: TanStackServerFnPluginOpts,
 ): Array<Plugin> {
   const opts = {
+    directive: 'use server',
     ..._opts,
-    client: {
-      ..._opts.client,
-      envName: _opts.client.envName || 'client',
-    },
-    server: {
-      ..._opts.server,
-      envName: _opts.server.envName || 'server',
-    },
   }
 
   const directiveFnsById: Record<string, DirectiveFn> = {}
@@ -129,8 +123,6 @@ export function TanStackServerFnPlugin(
     }
     return functionId
   }
-  const directive = 'use server'
-  const directiveLabel = 'Server Function'
 
   const resolvedManifestVirtualImportId = resolveViteId(
     opts.manifestVirtualImportId,
@@ -140,8 +132,7 @@ export function TanStackServerFnPlugin(
     // The client plugin is used to compile the client directives
     // and save them so we can create a manifest
     TanStackDirectiveFunctionsPluginEnv({
-      directive,
-      directiveLabel,
+      directive: opts.directive,
       onDirectiveFnsById,
       generateFunctionId,
       environments: {

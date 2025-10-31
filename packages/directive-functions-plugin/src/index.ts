@@ -27,22 +27,17 @@ export type DirectiveFunctionsViteEnvOptions = Pick<
   envLabel: string
 }
 
-export type DirectiveFunctionsViteOptions = Pick<
-  CompileDirectivesOpts,
-  'directive' | 'directiveLabel'
-> &
-  DirectiveFunctionsViteEnvOptions & {
-    onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
-    generateFunctionId: GenerateFunctionIdFn
-  }
+export type DirectiveFunctionsViteOptions = DirectiveFunctionsViteEnvOptions & {
+  directive: string
+  onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
+  generateFunctionId: GenerateFunctionIdFn
+}
 
 const createDirectiveRx = (directive: string) =>
   new RegExp(`"${directive}"|'${directive}'`, 'gm')
 
-export type DirectiveFunctionsVitePluginEnvOptions = Pick<
-  CompileDirectivesOpts,
-  'directive' | 'directiveLabel'
-> & {
+export type DirectiveFunctionsVitePluginEnvOptions = {
+  directive: string
   environments: {
     client: DirectiveFunctionsViteEnvOptions & { envName?: string }
     server: DirectiveFunctionsViteEnvOptions & { envName?: string }
@@ -115,7 +110,6 @@ function transformCode({
   id,
   envLabel,
   directive,
-  directiveLabel,
   getRuntimeCode,
   generateFunctionId,
   replacer,
@@ -135,7 +129,6 @@ function transformCode({
   const { compiledResult, directiveFnsById, isDirectiveSplitParam } =
     compileDirectives({
       directive,
-      directiveLabel,
       getRuntimeCode,
       generateFunctionId,
       replacer,
