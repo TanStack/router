@@ -48,26 +48,20 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   replacer: ReplacerFn
   filename: string
   root: string
-}
-
-function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
-  return `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
+  isDirectiveSplitParam: boolean
+  directiveSplitParam: string
 }
 
 export function compileDirectives(opts: CompileDirectivesOpts): {
   compiledResult: GeneratorResult
   directiveFnsById: Record<string, DirectiveFn>
-  isDirectiveSplitParam: boolean
 } {
-  const directiveSplitParam = buildDirectiveSplitParam(opts)
-  const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
-
   const ast = parseAst(opts)
   const refIdents = findReferencedIdentifiers(ast)
   const directiveFnsById = findDirectives(ast, {
     ...opts,
-    directiveSplitParam,
-    isDirectiveSplitParam,
+    directiveSplitParam: opts.directiveSplitParam,
+    isDirectiveSplitParam: opts.isDirectiveSplitParam,
   })
 
   // Add runtime code if there are directives
@@ -83,7 +77,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   // If we are in the source file, we need to remove all exports
   // then make sure that all of our functions are exported under their
   // directive name
-  if (isDirectiveSplitParam) {
+  if (opts.isDirectiveSplitParam) {
     safeRemoveExports(ast)
 
     // Export a single object with all of the functions
@@ -112,7 +106,6 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   return {
     compiledResult,
     directiveFnsById,
-    isDirectiveSplitParam,
   }
 }
 

@@ -39,9 +39,10 @@ const getLookupConfigurationsForEnv = (
     return [createServerFnConfig]
   }
 }
-export function createServerFnPlugin(
-  framework: CompileStartFrameworkOptions,
-): PluginOption {
+export function createServerFnPlugin(opts: {
+  framework: CompileStartFrameworkOptions
+  directive: string
+}): PluginOption {
   const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
 
   const compilers: Partial<Record<ViteEnvironmentNames, ServerFnCompiler>> = {}
@@ -106,10 +107,11 @@ export function createServerFnPlugin(
 
             compiler = new ServerFnCompiler({
               env,
+              directive: opts.directive,
               lookupKinds: LookupKindsPerEnv[env],
               lookupConfigurations: getLookupConfigurationsForEnv(
                 env,
-                framework,
+                opts.framework,
               ),
               loadModule: async (id: string) => {
                 if (this.environment.mode === 'build') {

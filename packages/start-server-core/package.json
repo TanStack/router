@@ -53,6 +53,12 @@
         "default": "./dist/esm/createServerRpc.js"
       }
     },
+    "./createSsrRpc": {
+      "import": {
+        "types": "./dist/esm/createSsrRpc.d.ts",
+        "default": "./dist/esm/createSsrRpc.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {
