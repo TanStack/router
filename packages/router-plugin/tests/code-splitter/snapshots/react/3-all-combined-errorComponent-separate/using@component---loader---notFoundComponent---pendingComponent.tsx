@@ -6,7 +6,6 @@ const DummyPostResource = (postId: string) => ({
   },
   [Symbol.dispose]: () => console.log('disposing!')
 });
-import { Route } from "using.tsx";
 const SplitLoader = ({
   params: {
     postId
