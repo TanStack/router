@@ -19,7 +19,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.134.4",
+    "@tanstack/router-plugin": "^1.134.6",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-plugin-solid": "^2.11.10"
