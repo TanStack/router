@@ -66,6 +66,11 @@ export const handleServerAction = async ({
   const response = await (async () => {
     try {
       let result = await (async () => {
+        // For raw handlers, skip FormData parsing and pass the request directly
+        if ((action as any).__rawHandler) {
+          return await action({ context }, signal)
+        }
+
         // FormData
         if (
           formDataContentTypes.some(
