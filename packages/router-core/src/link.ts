@@ -615,14 +615,14 @@ export type ToPathOption<
   TRouter extends AnyRouter = AnyRouter,
   TFrom extends string = string,
   TTo extends string | undefined = string,
-> = ConstrainLiteral<
-  TTo,
-  RelativeToPathAutoComplete<
-    TRouter,
-    NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
-    NoInfer<TTo> & string
-  >
->
+  TRelativeToPathAutoComplete = TTo extends any
+    ? RelativeToPathAutoComplete<
+        TRouter,
+        NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
+        NoInfer<TTo> & string
+      >
+    : never,
+> = ConstrainLiteral<TTo, TRelativeToPathAutoComplete>
 
 export type FromPathOption<TRouter extends AnyRouter, TFrom> = ConstrainLiteral<
   TFrom,
