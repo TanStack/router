@@ -1,5 +1,5 @@
 import * as template from '@babel/template'
-import type { AnyRoute } from '@tanstack/router-core'
+import type { AnyRoute, AnyRouteMatch } from '@tanstack/router-core'
 
 type AnyRouteWithPrivateProps = AnyRoute & {
   _path: string
@@ -26,7 +26,13 @@ function handleRouteUpdate(
   if (oldRouteIndex > -1) {
     router.flatRoutes[oldRouteIndex] = newRoute
   }
-  router.invalidate({ filter: (m) => m.routeId === oldRoute.id })
+  const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
+  if (
+    router.state.matches.find(filter) ||
+    router.state.pendingMatches?.find(filter)
+  ) {
+    router.invalidate({ filter })
+  }
 }
 
 export const routeHmrStatement = template.statement(
