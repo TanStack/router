@@ -54,10 +54,20 @@ export function Transitioner() {
       _includeValidateSearch: true,
     })
 
-    if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
-    ) {
+    const latestPublicHref = trimPathRight(router.latestLocation.publicHref)
+    const nextPublicHref = trimPathRight(nextLocation.publicHref)
+
+    if (latestPublicHref !== nextPublicHref) {
+      const latestOrigin = new URL(router.latestLocation.url).origin
+      const nextOrigin = new URL(nextLocation.url).origin
+
+      if (latestOrigin !== nextOrigin) {
+        if (typeof window !== 'undefined') {
+          window.location.href = nextLocation.url
+        }
+        return
+      }
+
       router.commitLocation({ ...nextLocation, replace: true })
     }
 
