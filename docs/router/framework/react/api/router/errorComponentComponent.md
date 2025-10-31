@@ -11,7 +11,7 @@ The `ErrorComponent` component accepts the following props:
 
 ### `props.error` prop
 
-- Type: `TError` (defaults to `Error`)
+- Type: `Error`
 - The error that was thrown by the component's children
 
 ### `props.info` prop
