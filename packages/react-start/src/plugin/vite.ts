@@ -55,6 +55,7 @@ export function tanstackStart(
                     '@tanstack/react-start',
                     '@tanstack/react-router',
                     '@tanstack/react-router-devtools',
+                    '@tanstack/start-static-server-functions',
                   ],
                   include: [
                     'react',

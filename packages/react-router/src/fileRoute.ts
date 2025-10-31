@@ -57,6 +57,13 @@ import type { UseRouteContextRoute } from './useRouteContext'
  * @returns A function that accepts Route options and returns a Route instance.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createFileRouteFunction
  */
+/**
+ * Creates a file-based Route factory for a given path.
+ * Used by file-based routing to associate a file with a route. The returned
+ * function accepts standard route options; the path is typically auto-managed
+ * by the generator.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createFileRouteFunction
+ */
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
@@ -84,6 +91,10 @@ export function createFileRoute<
 /** 
   @deprecated It's no longer recommended to use the `FileRoute` class directly.
   Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
+*/
+/**
+  @deprecated It's no longer recommended to use the `FileRoute` class directly.
+  Instead, use `createFileRoute('/path')(options)` to create a file route.
 */
 export class FileRoute<
   TFilePath extends keyof FileRoutesByPath,
@@ -183,6 +194,10 @@ export class FileRoute<
   @deprecated It's recommended not to split loaders into separate files.
   Instead, place the loader function in the the main route file, inside the
   `createFileRoute('/path/to/file)(options)` options.
+*/
+/**
+  @deprecated It's recommended not to split loaders into separate files.
+  Instead, place the loader function in the main route file via `createFileRoute`.
 */
 export function FileRouteLoader<
   TFilePath extends keyof FileRoutesByPath,
@@ -308,6 +323,10 @@ export class LazyRoute<TRoute extends AnyRoute> {
  * @returns A function that accepts lazy route options and returns a `LazyRoute`.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyRouteFunction
  */
+/**
+ * Create a lazily-configurable code-based route stub by ID.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyRouteFunction
+ */
 export function createLazyRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   TId extends string = string,
@@ -341,6 +360,10 @@ export function createLazyRoute<
  *
  * @param id File path literal for the route file.
  * @returns A function that accepts lazy route options and returns a `LazyRoute`.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyFileRouteFunction
+ */
+/**
+ * Create a lazily-configurable file-based route stub by file path.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyFileRouteFunction
  */
 export function createLazyFileRoute<

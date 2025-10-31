@@ -1,5 +1,4 @@
-import { ErrorComponent, Link, createFileRoute } from '@tanstack/solid-router'
-import type { ErrorComponentProps } from '@tanstack/solid-router'
+import { Link, createFileRoute } from '@tanstack/solid-router'
 
 import { fetchPost } from '~/utils/posts'
 import { NotFound } from '~/components/NotFound'
@@ -18,7 +17,7 @@ function PostComponent() {
   const post = Route.useLoaderData()
 
   return (
-    <div class="space-y-2">
+    <div class="space-y-2" data-testid="post-view">
       <h4 class="text-xl font-bold underline">{post().title}</h4>
       <div class="text-sm">{post().body}</div>
       <Link

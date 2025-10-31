@@ -7,8 +7,7 @@ export function getRouter() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        // Enable only on client to avoid hydration mismatches
-        experimental_prefetchInRender: typeof window !== 'undefined',
+        experimental_prefetchInRender: true,
       },
     },
   })

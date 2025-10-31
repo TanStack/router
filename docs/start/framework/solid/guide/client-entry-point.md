@@ -13,9 +13,11 @@ Getting our html to the client is only half the battle. Once there, we need to h
 ```tsx
 // src/client.tsx
 import { hydrate } from 'solid-js/web'
-import { StartClient } from '@tanstack/solid-start/client'
+import { StartClient, hydrateStart } from '@tanstack/solid-start/client'
 
-hydrate(() => <StartClient />, document.body)
+hydrateStart().then((router) => {
+  hydrate(() => <StartClient router={router} />, document)
+})
 ```
 
 This enables us to kick off client-side routing once the user's initial server request has fulfilled.

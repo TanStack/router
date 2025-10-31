@@ -259,8 +259,8 @@ export function useLinkProps<
     return Solid.mergeProps(
       propsSafeToSpread,
       {
-        ref,
-        href: externalLink,
+        ref: mergeRefs(setRef, _options().ref),
+        href: externalLink(),
       },
       Solid.splitProps(local, [
         'target',
@@ -327,7 +327,7 @@ export function useLinkProps<
 
   const handleEnter = (e: MouseEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
 
     if (preload()) {
       if (eventTarget.preloadTimeout) {
@@ -343,7 +343,7 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       clearTimeout(eventTarget.preloadTimeout)
@@ -421,8 +421,14 @@ export function useLinkProps<
         ]),
         disabled: !!local.disabled,
         target: local.target,
-        ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
-        ...(resolvedClassName() && { class: resolvedClassName() }),
+        ...(() => {
+          const s = resolvedStyle()
+          return Object.keys(s).length ? { style: s } : {}
+        })(),
+        ...(() => {
+          const c = resolvedClassName()
+          return c ? { class: c } : {}
+        })(),
         ...(local.disabled && {
           role: 'link',
           'aria-disabled': true,
@@ -572,7 +578,9 @@ export const Link: LinkComponent<'a'> = (props) => {
         get isActive() {
           return (linkProps as any)['data-status'] === 'active'
         },
-        isTransitioning: false,
+        get isTransitioning() {
+          return (linkProps as any)['data-transitioning'] === 'transitioning'
+        },
       })
     }
 

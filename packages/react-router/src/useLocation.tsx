@@ -37,6 +37,11 @@ export type UseLocationResult<
  * @returns The current location (or selected value).
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLocationHook
  */
+/**
+ * Read the current location from the router state with optional selection.
+ * Useful for subscribing to just the pieces of location you care about.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLocationHook
+ */
 export function useLocation<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,

@@ -25,6 +25,9 @@ export default defineConfig({
         // Enable if you need pages to be at `/page/index.html` instead of `/page.html`
         autoSubfolderIndex: true,
 
+        // If disabled, only the root path or the paths defined in the pages config will be prerendered
+        autoStaticPathsDiscovery: true,
+
         // How many prerender jobs to run at once
         concurrency: 14,
 
@@ -40,13 +43,20 @@ export default defineConfig({
         // Delay between retries in milliseconds
         retryDelay: 1000,
 
+        // Maximum number of redirects to follow during prerendering
+        maxRedirects: 5,
+
+        // Fail if an error occurs during prerendering
+        failOnError: true,
+
         // Callback when page is successfully rendered
         onSuccess: ({ page }) => {
           console.log(`Rendered ${page.path}!`)
         },
       },
-      // Optional configuration for specific pages (without this it will still automatically
-      // prerender all routes)
+      // Optional configuration for specific pages
+      // Note: When autoStaticPathsDiscovery is enabled (default), discovered static
+      // routes will be merged with the pages specified below
       pages: [
         {
           path: '/my-page',
@@ -58,3 +68,21 @@ export default defineConfig({
   ],
 })
 ```
+
+## Automatic Static Route Discovery
+
+All static paths will be automatically discovered and seamlessly merged with the specified `pages` config
+
+Routes are excluded from automatic discovery in the following cases:
+
+- Routes with path parameters (e.g., `/users/$userId`) since they require specific parameter values
+- Layout routes (prefixed with `_`) since they don't render standalone pages
+- Routes without components (e.g., API routes)
+
+Note: Dynamic routes can still be prerendered if they are linked from other pages when `crawlLinks` is enabled.
+
+## Crawling Links
+
+When `crawlLinks` is enabled (default: `true`), TanStack Start will extract links from prerendered pages and prerender those linked pages as well.
+
+For example, if `/` contains a link to `/posts`, then `/posts` will also be automatically prerendered.
