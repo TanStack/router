@@ -58,7 +58,6 @@ export function tanstackStart(
                     '@tanstack/start-static-server-functions',
                   ],
                   include: [
-                    'react',
                     'react/jsx-runtime',
                     'react/jsx-dev-runtime',
                     'react-dom',
