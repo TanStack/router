@@ -24,9 +24,12 @@ if (import.meta.hot) {
           router.flatRoutes[oldRouteIndex] = newRoute;
         }
         ;
-        router.invalidate({
-          filter: m => m.routeId === oldRoute.id
-        });
+        const filter = m => m.routeId === oldRoute.id;
+        if (router.state.matches.find(filter) || router.state.pendingMatches?.find(filter)) {
+          router.invalidate({
+            filter
+          });
+        }
       })(Route, newModule.Route);
     }
   });
