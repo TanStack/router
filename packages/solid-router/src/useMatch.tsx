@@ -91,7 +91,7 @@ export function useMatch<
 
       // Return an object with match and metadata for throwing outside select
       return {
-        match: match as any,
+        match: match,
         isTransitioning: state.isTransitioning as boolean,
       }
     },

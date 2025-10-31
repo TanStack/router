@@ -6,12 +6,10 @@ import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
-import { MatchAccessorContext } from './matchAccessorContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
 import type {
   AnyRoute,
-  AnyRouteMatch,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -101,9 +99,9 @@ function MatchesInner() {
   const matchContextStates = Solid.createMemo(
     Solid.on(
       matches,
-      (nextMatches, prevMatches, prevContexts: MatchContextState[] | undefined) => {
+      (nextMatches, prevMatches, prevContexts: Array<MatchContextState> | undefined) => {
         let equal = prevMatches && nextMatches.length === prevMatches.length
-        const nextContexts: MatchContextState[] = []
+        const nextContexts: Array<MatchContextState> = []
 
         for (let i = 0, len = nextMatches.length; i < len; i++) {
           const prevMatch = prevMatches && prevMatches[i]

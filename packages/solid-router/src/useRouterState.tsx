@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
+ 
 import { useStore } from '@tanstack/solid-store'
 import { useRouter } from './useRouter'
 import type {
