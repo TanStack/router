@@ -24,6 +24,8 @@ const clientConfig: Omit<CompileDirectivesOpts, 'code'> = {
   getRuntimeCode: () => 'import { createClientRpc } from "my-rpc-lib-client"',
   generateFunctionId,
   replacer: (opts) => `createClientRpc(${JSON.stringify(opts.functionId)})`,
+  directiveSplitParam: 'tsr-directive-use-server',
+  isDirectiveSplitParam: false,
 }
 
 const ssrConfig: Omit<CompileDirectivesOpts, 'code'> = {
@@ -33,6 +35,8 @@ const ssrConfig: Omit<CompileDirectivesOpts, 'code'> = {
   getRuntimeCode: () => 'import { createSsrRpc } from "my-rpc-lib-server"',
   generateFunctionId,
   replacer: (opts) => `createSsrRpc(${JSON.stringify(opts.functionId)})`,
+  directiveSplitParam: 'tsr-directive-use-server',
+  isDirectiveSplitParam: false,
 }
 
 const serverConfig: Omit<CompileDirectivesOpts, 'code'> = {
@@ -49,6 +53,8 @@ const serverConfig: Omit<CompileDirectivesOpts, 'code'> = {
     // For any other server functions the split function may reference,
     // we use the splitImportFn which is a dynamic import of the split file.
     `createServerRpc(${JSON.stringify(opts.functionId)}, ${opts.fn})`,
+  directiveSplitParam: 'tsr-directive-use-server',
+  isDirectiveSplitParam: true,
 }
 
 describe('server function compilation', () => {
