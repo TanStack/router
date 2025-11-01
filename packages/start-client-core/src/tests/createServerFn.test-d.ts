@@ -8,7 +8,10 @@ import type {
   TsrSerializable,
   Validator,
 } from '@tanstack/router-core'
-import type { ConstrainValidator } from '../createServerFn'
+import type {
+  ConstrainValidator,
+  ServerFnReturnType,
+} from '../createServerFn'
 
 test('createServerFn method with autocomplete', () => {
   createServerFn().handler((options) => {
@@ -380,17 +383,22 @@ describe('response', () => {
     expectTypeOf(fn()).toEqualTypeOf<Promise<Response>>()
   })
 
-  test(`client receives union when handler may return Response or data`, () => {
+  test(`client receives union when handler may return Response or string`, () => {
     const fn = createServerFn().handler(() => {
-      return Math.random() > 0.5
-        ? new Response('Hello World')
-        : ({ message: 'Hello World' } as const)
+      const result: Response | 'Hello World' =
+        Math.random() > 0.5 ? new Response('Hello World') : 'Hello World'
+
+      return result
     })
 
-    expectTypeOf(fn()).toEqualTypeOf<
-      Promise<Response | { readonly message: 'Hello World' }>
-    >()
+    expectTypeOf(fn()).toEqualTypeOf<Promise<Response | 'Hello World'>>()
   })
+})
+
+test('ServerFnReturnType distributes Response union', () => {
+  expectTypeOf<
+    ServerFnReturnType<Register, Response | 'Hello World'>
+  >().toEqualTypeOf<Response | 'Hello World'>()
 })
 
 test('createServerFn can be used as a mutation function', () => {
