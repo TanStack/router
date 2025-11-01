@@ -224,7 +224,12 @@ export function TanStackStartVitePluginCore(
             const peerDependencies = pkgJson['peerDependencies']
 
             if (peerDependencies) {
-              return startPackageName in peerDependencies
+              if (
+                startPackageName in peerDependencies ||
+                '@tanstack/start-client-core' in peerDependencies
+              ) {
+                return true
+              }
             }
 
             return false
@@ -247,6 +252,7 @@ export function TanStackStartVitePluginCore(
                 outDir: getClientOutputDirectory(viteConfig),
               },
               optimizeDeps: {
+                exclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
                 // Ensure user code can be crawled for dependencies
                 entries: [clientAlias, routerAlias].map((entry) =>
                   // Entries are treated as `tinyglobby` patterns so need to be escaped
