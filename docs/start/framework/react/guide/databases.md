@@ -20,15 +20,17 @@ import { createServerFn } from '@tanstack/react-start'
 
 const db = createMyDatabaseClient()
 
-export const getUser = createServerFn(async ({ ctx }) => {
-  const user = await db.getUser(ctx.userId)
+export const getUser = createServerFn().handler(async ({ context }) => {
+  const user = await db.getUser(context.userId)
   return user
 })
 
-export const createUser = createServerFn(async ({ ctx, input }) => {
-  const user = await db.createUser(input)
-  return user
-})
+export const createUser = createServerFn({ method: 'POST' }).handler(
+  async ({ data }) => {
+    const user = await db.createUser(data)
+    return user
+  },
+)
 ```
 
 This is obviously contrived, but it demonstrates that you can use literally any database provider with TanStack Start as long as you can call into it from a server function or server route.
