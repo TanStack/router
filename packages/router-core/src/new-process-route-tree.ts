@@ -213,13 +213,15 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 	}
 }
 
+function sortStaticSegments(a: SegmentNode['static'][number], b: SegmentNode['static'][number]) {
+	if (a.caseSensitive && !b.caseSensitive) return -1
+	if (!a.caseSensitive && b.caseSensitive) return 1
+	return b.staticName.length - a.staticName.length
+}
+
 function sortTreeNodes(node: SegmentNode) {
 	if (node.static.length) {
-		node.static.sort((a, b) => {
-			if (a.caseSensitive && !b.caseSensitive) return -1
-			if (!a.caseSensitive && b.caseSensitive) return 1
-			return b.staticName.length - a.staticName.length
-		})
+		node.static.sort(sortStaticSegments)
 		for (const child of node.static) {
 			sortTreeNodes(child.node)
 		}
@@ -251,6 +253,7 @@ function createEmptyNode(): SegmentNode {
 
 type SegmentNode = {
 	// Static segments (highest priority)
+	// TODO: maybe we could split this into two maps: caseSensitive and caseInsensitive for faster lookup
 	static: Array<{
 		staticName: string
 		caseSensitive: boolean
@@ -281,7 +284,7 @@ type SegmentNode = {
 		suffix?: string
 	}
 
-	// Terminal route (if this path ends here)
+	// Terminal route (if this path can end here)
 	route?: RouteLike
 }
 
@@ -303,16 +306,21 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 	routeTree: TRouteLike
 	initRoute?: (route: TRouteLike, index: number) => void
 }) {
-	const rootNode = createEmptyNode()
+	const segmentTree = createEmptyNode()
 	const data = new Uint16Array(6)
 	const routesById = {} as Record<string, TRouteLike>
 	const routesByPath = {} as Record<string, TRouteLike>
 	let index = 0
-	parseSegments(data, routeTree, 0, rootNode, (route) => {
+	parseSegments(data, routeTree, 0, segmentTree, (route) => {
 		initRoute?.(route, index)
 		routesById[route.id] = route
 		routesByPath[route.fullPath] = route
 		index++
 	})
-	sortTreeNodes(rootNode)
+	sortTreeNodes(segmentTree)
+	return {
+		segmentTree,
+		routesById,
+		routesByPath,
+	}
 }
