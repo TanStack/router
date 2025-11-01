@@ -23,12 +23,14 @@ import { Route as ConsistentRouteImport } from './routes/consistent'
 import { Route as AbortSignalRouteImport } from './routes/abort-signal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RedirectTestIndexRouteImport } from './routes/redirect-test/index'
+import { Route as RedirectTestSsrIndexRouteImport } from './routes/redirect-test-ssr/index'
 import { Route as PrimitivesIndexRouteImport } from './routes/primitives/index'
 import { Route as MiddlewareIndexRouteImport } from './routes/middleware/index'
 import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-redirect/index'
 import { Route as FactoryIndexRouteImport } from './routes/factory/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as RedirectTestTargetRouteImport } from './routes/redirect-test/target'
+import { Route as RedirectTestSsrTargetRouteImport } from './routes/redirect-test-ssr/target'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
@@ -105,6 +107,11 @@ const RedirectTestIndexRoute = RedirectTestIndexRouteImport.update({
   path: '/redirect-test/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RedirectTestSsrIndexRoute = RedirectTestSsrIndexRouteImport.update({
+  id: '/redirect-test-ssr/',
+  path: '/redirect-test-ssr/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrimitivesIndexRoute = PrimitivesIndexRouteImport.update({
   id: '/primitives/',
   path: '/primitives/',
@@ -133,6 +140,11 @@ const CookiesIndexRoute = CookiesIndexRouteImport.update({
 const RedirectTestTargetRoute = RedirectTestTargetRouteImport.update({
   id: '/redirect-test/target',
   path: '/redirect-test/target',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedirectTestSsrTargetRoute = RedirectTestSsrTargetRouteImport.update({
+  id: '/redirect-test-ssr/target',
+  path: '/redirect-test-ssr/target',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MiddlewareSendServerFnRoute = MiddlewareSendServerFnRouteImport.update({
@@ -182,12 +194,14 @@ export interface FileRoutesByFullPath {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
   '/primitives': typeof PrimitivesIndexRoute
+  '/redirect-test-ssr': typeof RedirectTestSsrIndexRoute
   '/redirect-test': typeof RedirectTestIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
@@ -209,12 +223,14 @@ export interface FileRoutesByTo {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
   '/primitives': typeof PrimitivesIndexRoute
+  '/redirect-test-ssr': typeof RedirectTestSsrIndexRoute
   '/redirect-test': typeof RedirectTestIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
@@ -237,12 +253,14 @@ export interface FileRoutesById {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/cookies/': typeof CookiesIndexRoute
   '/factory/': typeof FactoryIndexRoute
   '/formdata-redirect/': typeof FormdataRedirectIndexRoute
   '/middleware/': typeof MiddlewareIndexRoute
   '/primitives/': typeof PrimitivesIndexRoute
+  '/redirect-test-ssr/': typeof RedirectTestSsrIndexRoute
   '/redirect-test/': typeof RedirectTestIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
@@ -266,12 +284,14 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/cookies'
     | '/factory'
     | '/formdata-redirect'
     | '/middleware'
     | '/primitives'
+    | '/redirect-test-ssr'
     | '/redirect-test'
     | '/formdata-redirect/target/$name'
   fileRoutesByTo: FileRoutesByTo
@@ -293,12 +313,14 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/cookies'
     | '/factory'
     | '/formdata-redirect'
     | '/middleware'
     | '/primitives'
+    | '/redirect-test-ssr'
     | '/redirect-test'
     | '/formdata-redirect/target/$name'
   id:
@@ -320,12 +342,14 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/cookies/'
     | '/factory/'
     | '/formdata-redirect/'
     | '/middleware/'
     | '/primitives/'
+    | '/redirect-test-ssr/'
     | '/redirect-test/'
     | '/formdata-redirect/target/$name'
   fileRoutesById: FileRoutesById
@@ -348,12 +372,14 @@ export interface RootRouteChildren {
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
+  RedirectTestSsrTargetRoute: typeof RedirectTestSsrTargetRoute
   RedirectTestTargetRoute: typeof RedirectTestTargetRoute
   CookiesIndexRoute: typeof CookiesIndexRoute
   FactoryIndexRoute: typeof FactoryIndexRoute
   FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
   MiddlewareIndexRoute: typeof MiddlewareIndexRoute
   PrimitivesIndexRoute: typeof PrimitivesIndexRoute
+  RedirectTestSsrIndexRoute: typeof RedirectTestSsrIndexRoute
   RedirectTestIndexRoute: typeof RedirectTestIndexRoute
   FormdataRedirectTargetNameRoute: typeof FormdataRedirectTargetNameRoute
 }
@@ -458,6 +484,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTestIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/redirect-test-ssr/': {
+      id: '/redirect-test-ssr/'
+      path: '/redirect-test-ssr'
+      fullPath: '/redirect-test-ssr'
+      preLoaderRoute: typeof RedirectTestSsrIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/primitives/': {
       id: '/primitives/'
       path: '/primitives'
@@ -498,6 +531,13 @@ declare module '@tanstack/react-router' {
       path: '/redirect-test/target'
       fullPath: '/redirect-test/target'
       preLoaderRoute: typeof RedirectTestTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect-test-ssr/target': {
+      id: '/redirect-test-ssr/target'
+      path: '/redirect-test-ssr/target'
+      fullPath: '/redirect-test-ssr/target'
+      preLoaderRoute: typeof RedirectTestSsrTargetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/middleware/send-serverFn': {
@@ -556,12 +596,14 @@ const rootRouteChildren: RootRouteChildren = {
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
+  RedirectTestSsrTargetRoute: RedirectTestSsrTargetRoute,
   RedirectTestTargetRoute: RedirectTestTargetRoute,
   CookiesIndexRoute: CookiesIndexRoute,
   FactoryIndexRoute: FactoryIndexRoute,
   FormdataRedirectIndexRoute: FormdataRedirectIndexRoute,
   MiddlewareIndexRoute: MiddlewareIndexRoute,
   PrimitivesIndexRoute: PrimitivesIndexRoute,
+  RedirectTestSsrIndexRoute: RedirectTestSsrIndexRoute,
   RedirectTestIndexRoute: RedirectTestIndexRoute,
   FormdataRedirectTargetNameRoute: FormdataRedirectTargetNameRoute,
 }
