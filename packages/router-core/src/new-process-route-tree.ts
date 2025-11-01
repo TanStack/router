@@ -122,89 +122,91 @@ function parseSegment(path: string, start: number, output: Uint16Array) {
  */
 function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: TRouteLike, start: number, node: SegmentNode, onRoute: (route: TRouteLike) => void) {
 	let cursor = start
-	const path = route.fullPath
-	const length = path.length
-	const caseSensitive = route.options?.caseSensitive ?? true
-	while (cursor < length) {
-		let nextNode: SegmentNode
-		const start = cursor
-		parseSegment(path, start, data)
-		const end = data[5]!
-		cursor = end
-		const kind = data[0] as SegmentKind
-		const value = path.substring(data[2]!, data[3])
-		switch (kind) {
-			case SEGMENT_TYPE_PATHNAME: {
-				const staticName = caseSensitive ? value : value.toLowerCase()
-				const existingNode = node.static.find(s => s.caseSensitive === caseSensitive && s.staticName === staticName)
-				if (existingNode) {
-					nextNode = existingNode.node
-				} else {
-					nextNode = createEmptyNode()
-					node.static.push({
-						staticName,
-						caseSensitive,
-						node: nextNode
-					})
+	{
+		const path = route.fullPath
+		const length = path.length
+		const caseSensitive = route.options?.caseSensitive ?? true
+		while (cursor < length) {
+			let nextNode: SegmentNode
+			const start = cursor
+			parseSegment(path, start, data)
+			const end = data[5]!
+			cursor = end
+			const kind = data[0] as SegmentKind
+			const value = path.substring(data[2]!, data[3])
+			switch (kind) {
+				case SEGMENT_TYPE_PATHNAME: {
+					const staticName = caseSensitive ? value : value.toLowerCase()
+					const existingNode = node.static.find(s => s.caseSensitive === caseSensitive && s.staticName === staticName)
+					if (existingNode) {
+						nextNode = existingNode.node
+					} else {
+						nextNode = createEmptyNode()
+						node.static.push({
+							staticName,
+							caseSensitive,
+							node: nextNode
+						})
+					}
+					break
 				}
-				break
-			}
-			case SEGMENT_TYPE_PARAM: {
-				const prefix_raw = path.substring(start, data[1])
-				const suffix_raw = path.substring(data[4]!, end)
-				const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
-				const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-				const existingNode = node.dynamic.find(s => s.caseSensitive === caseSensitive && s.paramName === value && s.prefix === prefix && s.suffix === suffix)
-				if (existingNode) {
-					nextNode = existingNode.node
-				} else {
-					nextNode = createEmptyNode()
-					node.dynamic.push({
-						paramName: value,
+				case SEGMENT_TYPE_PARAM: {
+					const prefix_raw = path.substring(start, data[1])
+					const suffix_raw = path.substring(data[4]!, end)
+					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
+					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
+					const existingNode = node.dynamic.find(s => s.caseSensitive === caseSensitive && s.paramName === value && s.prefix === prefix && s.suffix === suffix)
+					if (existingNode) {
+						nextNode = existingNode.node
+					} else {
+						nextNode = createEmptyNode()
+						node.dynamic.push({
+							paramName: value,
+							prefix,
+							suffix,
+							caseSensitive,
+							node: nextNode
+						})
+					}
+					break
+				}
+				case SEGMENT_TYPE_OPTIONAL_PARAM: {
+					const prefix_raw = path.substring(start, data[1])
+					const suffix_raw = path.substring(data[4]!, end)
+					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
+					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
+					const existingNode = node.optional.find(s => s.caseSensitive === caseSensitive && s.paramName === value && s.prefix === prefix && s.suffix === suffix)
+					if (existingNode) {
+						nextNode = existingNode.node
+					} else {
+						nextNode = createEmptyNode()
+						node.optional.push({
+							paramName: value,
+							prefix,
+							suffix,
+							caseSensitive,
+							node: nextNode
+						})
+					}
+					break
+				}
+				case SEGMENT_TYPE_WILDCARD: {
+					const prefix_raw = path.substring(start, data[1])
+					const suffix_raw = path.substring(data[4]!, end)
+					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
+					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
+					node.wildcard = {
 						prefix,
 						suffix,
-						caseSensitive,
-						node: nextNode
-					})
+					}
+					node.route = route
+					return
 				}
-				break
 			}
-			case SEGMENT_TYPE_OPTIONAL_PARAM: {
-				const prefix_raw = path.substring(start, data[1])
-				const suffix_raw = path.substring(data[4]!, end)
-				const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
-				const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-				const existingNode = node.optional.find(s => s.caseSensitive === caseSensitive && s.paramName === value && s.prefix === prefix && s.suffix === suffix)
-				if (existingNode) {
-					nextNode = existingNode.node
-				} else {
-					nextNode = createEmptyNode()
-					node.optional.push({
-						paramName: value,
-						prefix,
-						suffix,
-						caseSensitive,
-						node: nextNode
-					})
-				}
-				break
-			}
-			case SEGMENT_TYPE_WILDCARD: {
-				const prefix_raw = path.substring(start, data[1])
-				const suffix_raw = path.substring(data[4]!, end)
-				const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
-				const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-				node.wildcard = {
-					prefix,
-					suffix,
-				}
-				node.route = route
-				return
-			}
+			node = nextNode
 		}
-		node = nextNode
+		node.route = route
 	}
-	node.route = route
 	if (route.children) for (const child of route.children) {
 		onRoute(route)
 		parseSegments(data, child as TRouteLike, cursor, node, onRoute)
@@ -213,7 +215,11 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 
 function sortTreeNodes(node: SegmentNode) {
 	if (node.static.length) {
-		node.static.sort((a, b) => a.staticName.localeCompare(b.staticName)) // TODO
+		node.static.sort((a, b) => {
+			if (a.caseSensitive && !b.caseSensitive) return -1
+			if (!a.caseSensitive && b.caseSensitive) return 1
+			return b.staticName.length - a.staticName.length
+		})
 		for (const child of node.static) {
 			sortTreeNodes(child.node)
 		}
