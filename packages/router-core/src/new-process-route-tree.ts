@@ -136,18 +136,25 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 			const value = path.substring(data[2]!, data[3])
 			switch (kind) {
 				case SEGMENT_TYPE_PATHNAME: {
-					const name = caseSensitive ? value : value.toLowerCase()
-					const existingNode = node.static?.find(s => s.caseSensitive === caseSensitive && s.name === name)
-					if (existingNode) {
-						nextNode = existingNode.node
+					if (caseSensitive) {
+						const existingNode = node.static?.get(value)
+						if (existingNode) {
+							nextNode = existingNode
+						} else {
+							node.static ??= new Map()
+							nextNode = {}
+							node.static.set(value, nextNode)
+						}
 					} else {
-						node.static ??= []
-						nextNode = {}
-						node.static.push({
-							name,
-							caseSensitive,
-							node: nextNode
-						})
+						const name = value.toLowerCase()
+						const existingNode = node.staticInsensitive?.get(name)
+						if (existingNode) {
+							nextNode = existingNode
+						} else {
+							node.staticInsensitive ??= new Map()
+							nextNode = {}
+							node.staticInsensitive.set(name, nextNode)
+						}
 					}
 					break
 				}
@@ -217,21 +224,27 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 	}
 }
 
-function sortStaticSegments(a: NonNullable<SegmentNode['static']>[number], b: NonNullable<SegmentNode['static']>[number]) {
-	if (a.caseSensitive && !b.caseSensitive) return -1
-	if (!a.caseSensitive && b.caseSensitive) return 1
-	return b.name.length - a.name.length
+function sortDynamic(a: { prefix?: string, suffix?: string }, b: { prefix?: string, suffix?: string }) {
+	const aScore =
+		// bonus for having both prefix and suffix
+		(a.prefix && a.suffix ? 500 : 0)
+		// prefix counts double
+		+ (a.prefix ? a.prefix.length * 2 : 0)
+		// suffix counts single
+		+ (a.suffix ? a.suffix.length : 0)
+	const bScore =
+		// bonus for having both prefix and suffix
+		(b.prefix && b.suffix ? 500 : 0)
+		// prefix counts double
+		+ (b.prefix ? b.prefix.length * 2 : 0)
+		// suffix counts single
+		+ (b.suffix ? b.suffix.length : 0)
+	return bScore - aScore
 }
 
 function sortTreeNodes(node: SegmentNode) {
-	if (node.static?.length) {
-		node.static.sort(sortStaticSegments)
-		for (const child of node.static) {
-			sortTreeNodes(child.node)
-		}
-	}
 	if (node.dynamic?.length) {
-		node.dynamic.sort((a, b) => a.name.localeCompare(b.name)) // TODO
+		node.dynamic.sort(sortDynamic)
 		for (const child of node.dynamic) {
 			sortTreeNodes(child.node)
 		}
@@ -247,12 +260,10 @@ function sortTreeNodes(node: SegmentNode) {
 
 type SegmentNode = {
 	// Static segments (highest priority)
-	// TODO: maybe we could split this into two maps: caseSensitive and caseInsensitive for faster lookup
-	static?: Array<{
-		name: string
-		caseSensitive: boolean
-		node: SegmentNode
-	}>
+	static?: Map<string, SegmentNode>
+
+	// Case insensitive static segments (second highest priority)
+	staticInsensitive?: Map<string, SegmentNode>
 
 	// Dynamic segments ($param)
 	dynamic?: Array<{
