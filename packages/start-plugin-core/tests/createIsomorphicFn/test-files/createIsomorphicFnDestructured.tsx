@@ -33,3 +33,8 @@ const serverThenClientFnAbstracted = createIsomorphicFn()
 const clientThenServerFnAbstracted = createIsomorphicFn()
   .client(abstractedClientFn)
   .server(abstractedServerFn)
+
+const withTypeRestriction = createIsomorphicFn()
+  .$withType<() => string>()
+  .server(() => 'server')
+  .client(() => 'client')
