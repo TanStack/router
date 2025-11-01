@@ -379,6 +379,18 @@ describe('response', () => {
 
     expectTypeOf(fn()).toEqualTypeOf<Promise<Response>>()
   })
+
+  test(`client receives union when handler may return Response or data`, () => {
+    const fn = createServerFn().handler(() => {
+      return Math.random() > 0.5
+        ? new Response('Hello World')
+        : ({ message: 'Hello World' } as const)
+    })
+
+    expectTypeOf(fn()).toEqualTypeOf<
+      Promise<Response | { readonly message: 'Hello World' }>
+    >()
+  })
 })
 
 test('createServerFn can be used as a mutation function', () => {
