@@ -142,7 +142,8 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 							nextNode = existingNode
 						} else {
 							node.static ??= new Map()
-							nextNode = {}
+							nextNode = createEmptyNode()
+							nextNode.parent = node
 							node.static.set(value, nextNode)
 						}
 					} else {
@@ -152,7 +153,8 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 							nextNode = existingNode
 						} else {
 							node.staticInsensitive ??= new Map()
-							nextNode = {}
+							nextNode = createEmptyNode()
+							nextNode.parent = node
 							node.staticInsensitive.set(name, nextNode)
 						}
 					}
@@ -167,7 +169,8 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					if (existingNode) {
 						nextNode = existingNode.node
 					} else {
-						nextNode = {}
+						nextNode = createEmptyNode()
+						nextNode.parent = node
 						node.dynamic ??= []
 						node.dynamic.push({
 							name: value,
@@ -188,7 +191,8 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					if (existingNode) {
 						nextNode = existingNode.node
 					} else {
-						nextNode = {}
+						nextNode = createEmptyNode()
+						nextNode.parent = node
 						node.optional ??= []
 						node.optional.push({
 							name: value,
@@ -260,39 +264,52 @@ function sortTreeNodes(node: SegmentNode) {
 
 type SegmentNode = {
 	// Static segments (highest priority)
-	static?: Map<string, SegmentNode>
+	static: Map<string, SegmentNode> | null
 
 	// Case insensitive static segments (second highest priority)
-	staticInsensitive?: Map<string, SegmentNode>
+	staticInsensitive: Map<string, SegmentNode> | null
 
 	// Dynamic segments ($param)
-	dynamic?: Array<{
+	dynamic: Array<{
 		name: string
-		prefix?: string
-		suffix?: string
+		prefix: string | undefined
+		suffix: string | undefined
 		caseSensitive: boolean
 		node: SegmentNode
-	}>
+	}> | null
 
 	// Optional dynamic segments ({-$param})
-	optional?: Array<{
+	optional: Array<{
 		name: string
-		prefix?: string
-		suffix?: string
+		prefix: string | undefined
+		suffix: string | undefined
 		caseSensitive: boolean
 		node: SegmentNode
-	}>
+	}> | null
 
 	// Wildcard segment ($ - lowest priority)
-	wildcard?: {
-		prefix?: string
-		suffix?: string
-	}
+	wildcard: {
+		prefix: string | undefined
+		suffix: string | undefined
+	} | null
 
 	// Terminal route (if this path can end here)
-	routeId?: string
+	routeId: string | null
+
+	parent: SegmentNode | null
 }
 
+function createEmptyNode(): SegmentNode {
+	return {
+		static: null,
+		staticInsensitive: null,
+		dynamic: null,
+		optional: null,
+		wildcard: null,
+		routeId: null,
+		parent: null
+	}
+}
 
 // function intoRouteLike(routeTree, parent) {
 // 	const route = {
@@ -325,7 +342,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 	routeTree: TRouteLike
 	initRoute?: (route: TRouteLike, index: number) => void
 }) {
-	const segmentTree: SegmentNode = {}
+	const segmentTree = createEmptyNode()
 	const data = new Uint16Array(6)
 	const routesById = {} as Record<string, TRouteLike>
 	const routesByPath = {} as Record<string, TRouteLike>
