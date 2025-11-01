@@ -6,6 +6,7 @@ import type {
   Constrain,
   Register,
   TsrSerializable,
+  ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
 import type {
@@ -311,7 +312,10 @@ test('createServerFn returns Date', () => {
     dates: [new Date(), new Date()] as const,
   }))
 
-  expectTypeOf(fn()).toEqualTypeOf<Promise<{ dates: readonly [Date, Date] }>>()
+  expectTypeOf<ReturnType<typeof fn>>().toMatchTypeOf<Promise<unknown>>()
+  expectTypeOf<Awaited<ReturnType<typeof fn>>>().toMatchTypeOf<
+    ValidateSerializableInput<Register, { dates: readonly [Date, Date] }>
+  >()
 })
 
 test('createServerFn returns undefined', () => {
