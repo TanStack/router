@@ -125,25 +125,26 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 	{
 		const path = route.fullPath
 		const length = path.length
-		const caseSensitive = route.options?.caseSensitive ?? true
+		const caseSensitive = route.options?.caseSensitive ?? false
 		while (cursor < length) {
 			let nextNode: SegmentNode
 			const start = cursor
 			parseSegment(path, start, data)
 			const end = data[5]!
-			cursor = end
+			cursor = end + 1
 			const kind = data[0] as SegmentKind
 			const value = path.substring(data[2]!, data[3])
 			switch (kind) {
 				case SEGMENT_TYPE_PATHNAME: {
-					const staticName = caseSensitive ? value : value.toLowerCase()
-					const existingNode = node.static.find(s => s.caseSensitive === caseSensitive && s.staticName === staticName)
+					const name = caseSensitive ? value : value.toLowerCase()
+					const existingNode = node.static?.find(s => s.caseSensitive === caseSensitive && s.name === name)
 					if (existingNode) {
 						nextNode = existingNode.node
 					} else {
-						nextNode = createEmptyNode()
+						node.static ??= []
+						nextNode = {}
 						node.static.push({
-							staticName,
+							name,
 							caseSensitive,
 							node: nextNode
 						})
@@ -155,13 +156,14 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const suffix_raw = path.substring(data[4]!, end)
 					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
 					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-					const existingNode = node.dynamic.find(s => s.caseSensitive === caseSensitive && s.paramName === value && s.prefix === prefix && s.suffix === suffix)
+					const existingNode = node.dynamic?.find(s => s.caseSensitive === caseSensitive && s.name === value && s.prefix === prefix && s.suffix === suffix)
 					if (existingNode) {
 						nextNode = existingNode.node
 					} else {
-						nextNode = createEmptyNode()
+						nextNode = {}
+						node.dynamic ??= []
 						node.dynamic.push({
-							paramName: value,
+							name: value,
 							prefix,
 							suffix,
 							caseSensitive,
@@ -175,13 +177,14 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const suffix_raw = path.substring(data[4]!, end)
 					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
 					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-					const existingNode = node.optional.find(s => s.caseSensitive === caseSensitive && s.paramName === value && s.prefix === prefix && s.suffix === suffix)
+					const existingNode = node.optional?.find(s => s.caseSensitive === caseSensitive && s.name === value && s.prefix === prefix && s.suffix === suffix)
 					if (existingNode) {
 						nextNode = existingNode.node
 					} else {
-						nextNode = createEmptyNode()
+						nextNode = {}
+						node.optional ??= []
 						node.optional.push({
-							paramName: value,
+							name: value,
 							prefix,
 							suffix,
 							caseSensitive,
@@ -199,13 +202,14 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 						prefix,
 						suffix,
 					}
-					node.route = route
+					node.routeId = route.id
 					return
 				}
 			}
 			node = nextNode
 		}
-		node.route = route
+		if (route.path)
+			node.routeId = route.id
 	}
 	if (route.children) for (const child of route.children) {
 		onRoute(route)
@@ -213,40 +217,30 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 	}
 }
 
-function sortStaticSegments(a: SegmentNode['static'][number], b: SegmentNode['static'][number]) {
+function sortStaticSegments(a: NonNullable<SegmentNode['static']>[number], b: NonNullable<SegmentNode['static']>[number]) {
 	if (a.caseSensitive && !b.caseSensitive) return -1
 	if (!a.caseSensitive && b.caseSensitive) return 1
-	return b.staticName.length - a.staticName.length
+	return b.name.length - a.name.length
 }
 
 function sortTreeNodes(node: SegmentNode) {
-	if (node.static.length) {
+	if (node.static?.length) {
 		node.static.sort(sortStaticSegments)
 		for (const child of node.static) {
 			sortTreeNodes(child.node)
 		}
 	}
-	if (node.dynamic.length) {
-		node.dynamic.sort((a, b) => a.paramName.localeCompare(b.paramName)) // TODO
+	if (node.dynamic?.length) {
+		node.dynamic.sort((a, b) => a.name.localeCompare(b.name)) // TODO
 		for (const child of node.dynamic) {
 			sortTreeNodes(child.node)
 		}
 	}
-	if (node.optional.length) {
-		node.optional.sort((a, b) => a.paramName.localeCompare(b.paramName)) // TODO
+	if (node.optional?.length) {
+		node.optional.sort((a, b) => a.name.localeCompare(b.name)) // TODO
 		for (const child of node.optional) {
 			sortTreeNodes(child.node)
 		}
-	}
-}
-
-function createEmptyNode(): SegmentNode {
-	return {
-		static: [],
-		dynamic: [],
-		optional: [],
-		wildcard: undefined,
-		route: undefined
 	}
 }
 
@@ -254,15 +248,15 @@ function createEmptyNode(): SegmentNode {
 type SegmentNode = {
 	// Static segments (highest priority)
 	// TODO: maybe we could split this into two maps: caseSensitive and caseInsensitive for faster lookup
-	static: Array<{
-		staticName: string
+	static?: Array<{
+		name: string
 		caseSensitive: boolean
 		node: SegmentNode
 	}>
 
 	// Dynamic segments ($param)
-	dynamic: Array<{
-		paramName: string
+	dynamic?: Array<{
+		name: string
 		prefix?: string
 		suffix?: string
 		caseSensitive: boolean
@@ -270,8 +264,8 @@ type SegmentNode = {
 	}>
 
 	// Optional dynamic segments ({-$param})
-	optional: Array<{
-		paramName: string
+	optional?: Array<{
+		name: string
 		prefix?: string
 		suffix?: string
 		caseSensitive: boolean
@@ -285,13 +279,27 @@ type SegmentNode = {
 	}
 
 	// Terminal route (if this path can end here)
-	route?: RouteLike
+	routeId?: string
 }
 
+
+// function intoRouteLike(routeTree, parent) {
+// 	const route = {
+// 		id: routeTree.id,
+// 		fullPath: routeTree.fullPath,
+// 		path: routeTree.path,
+// 		options: routeTree.options && 'caseSensitive' in routeTree.options ? { caseSensitive: routeTree.options.caseSensitive } : undefined,
+// 	}
+// 	if (routeTree.children) {
+// 		route.children = routeTree.children.map(child => intoRouteLike(child, route))
+// 	}
+// 	return route
+// }
 
 type RouteLike = {
 	id: string // unique identifier,
 	fullPath: string // full path from the root,
+	path?: string // relative path from the parent,
 	children?: Array<RouteLike> // child routes,
 	parentRoute?: RouteLike // parent route,
 	options?: {
@@ -306,12 +314,12 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 	routeTree: TRouteLike
 	initRoute?: (route: TRouteLike, index: number) => void
 }) {
-	const segmentTree = createEmptyNode()
+	const segmentTree: SegmentNode = {}
 	const data = new Uint16Array(6)
 	const routesById = {} as Record<string, TRouteLike>
 	const routesByPath = {} as Record<string, TRouteLike>
 	let index = 0
-	parseSegments(data, routeTree, 0, segmentTree, (route) => {
+	parseSegments(data, routeTree, 1, segmentTree, (route) => {
 		initRoute?.(route, index)
 		routesById[route.id] = route
 		routesByPath[route.fullPath] = route
