@@ -710,7 +710,7 @@ export type CommitLocationFn = ({
   ...next
 }: ParsedLocation & CommitLocationOptions) => Promise<void>
 
-export type StartTransitionFn = (fn: () => void) => void
+export type StartTransitionFn = (fn: () => void) => void | Promise<void>
 
 export interface MatchRoutesFn {
   (
@@ -2095,51 +2095,57 @@ export class RouterCore<
 
                 // Commit the pending matches. If a previous match was
                 // removed, place it in the cachedMatches
-                let exitingMatches!: Array<AnyRouteMatch>
-                let enteringMatches!: Array<AnyRouteMatch>
-                let stayingMatches!: Array<AnyRouteMatch>
+                let exitingMatches: Array<AnyRouteMatch> = []
+                let enteringMatches: Array<AnyRouteMatch> = []
+                let stayingMatches: Array<AnyRouteMatch> = []
 
-                batch(() => {
-                  this.__store.setState((s) => {
-                    const previousMatches = s.matches
-                    const newMatches = s.pendingMatches || s.matches
+                // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
+                this.startTransition(() => {
+                  batch(() => {
+                    this.__store.setState((s) => {
+                      const previousMatches = s.matches
+                      const newMatches = s.pendingMatches || s.matches
 
-                    exitingMatches = previousMatches.filter(
-                      (match) => !newMatches.some((d) => d.id === match.id),
-                    )
-                    enteringMatches = newMatches.filter(
-                      (match) =>
-                        !previousMatches.some((d) => d.id === match.id),
-                    )
-                    stayingMatches = previousMatches.filter((match) =>
-                      newMatches.some((d) => d.id === match.id),
-                    )
+                      exitingMatches = previousMatches.filter(
+                        (match) => !newMatches.some((d) => d.id === match.id),
+                      )
+                      enteringMatches = newMatches.filter(
+                        (match) =>
+                          !previousMatches.some((d) => d.id === match.id),
+                      )
+                      stayingMatches = previousMatches.filter((match) =>
+                        newMatches.some((d) => d.id === match.id),
+                      )
 
-                    return {
-                      ...s,
-                      isLoading: false,
-                      loadedAt: Date.now(),
-                      matches: newMatches,
-                      pendingMatches: undefined,
-                      cachedMatches: [
-                        ...s.cachedMatches,
-                        ...exitingMatches.filter((d) => d.status !== 'error'),
-                      ],
-                    }
+                      return {
+                        ...s,
+                        isLoading: false,
+                        loadedAt: Date.now(),
+                        matches: newMatches,
+                        pendingMatches: undefined,
+                        cachedMatches: [
+                          ...s.cachedMatches,
+                          ...exitingMatches.filter((d) => d.status !== 'error'),
+                        ],
+                      }
+                    })
+                    this.clearExpiredCache()
                   })
-                  this.clearExpiredCache()
-                })
 
-                //
-                ;(
-                  [
-                    [exitingMatches, 'onLeave'],
-                    [enteringMatches, 'onEnter'],
-                    [stayingMatches, 'onStay'],
-                  ] as const
-                ).forEach(([matches, hook]) => {
-                  matches.forEach((match) => {
-                    this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+                  // Call lifecycle hooks inside the transition so they execute synchronously
+                  // even when startTransition is async (e.g., in Solid)
+                  ;(
+                    [
+                      [exitingMatches, 'onLeave'],
+                      [enteringMatches, 'onEnter'],
+                      [stayingMatches, 'onStay'],
+                    ] as const
+                  ).forEach(([matches, hook]) => {
+                    matches.forEach((match) => {
+                      this.looseRoutesById[match.routeId]!.options[hook]?.(
+                        match,
+                      )
+                    })
                   })
                 })
               })

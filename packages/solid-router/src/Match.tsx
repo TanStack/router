@@ -17,18 +17,30 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
+import { useMatchContextState } from './Matches'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
+
+  // Query match data reactively using useRouterState
+  // This ensures we get updates when the match changes
   const matchState = useRouterState({
     select: (s) => {
-      const match = s.matches.find((d) => d.id === props.matchId)
+      // Check current matches first
+      let match = s.matches.find((d) => d.id === props.matchId)
 
-      invariant(
-        match,
-        `Could not find match for matchId "${props.matchId}". Please file an issue!`,
-      )
+      // During async transitions, old components may re-render after their match
+      // has been moved to cachedMatches. Check there as a fallback.
+      if (!match) {
+        match = s.cachedMatches.find((d) => d.id === props.matchId)
+      }
+
+      // Return undefined gracefully if match doesn't exist (component is unmounting)
+      if (!match) {
+        return undefined
+      }
+
       return {
         routeId: match.routeId,
         ssr: match.ssr,
@@ -37,7 +49,12 @@ export const Match = (props: { matchId: string }) => {
     },
   })
 
-  const route: () => AnyRoute = () => router.routesById[matchState().routeId]
+  // Early return if no match data
+  if (!matchState()) {
+    return null
+  }
+
+  const route: () => AnyRoute = () => router.routesById[matchState()!.routeId]
 
   const PendingComponent = () =>
     route().options.pendingComponent ?? router.options.defaultPendingComponent
@@ -56,14 +73,15 @@ export const Match = (props: { matchId: string }) => {
       : route().options.notFoundComponent
 
   const resolvedNoSsr =
-    matchState().ssr === false || matchState().ssr === 'data-only'
+    matchState()!.ssr === false || matchState()!.ssr === 'data-only'
 
   const ResolvedSuspenseBoundary = () =>
     // If we're on the root route, allow forcefully wrapping in suspense
     (!route().isRoot ||
       route().options.wrapInSuspense ||
       resolvedNoSsr ||
-      matchState()._displayPending) &&
+      matchState()!._displayPending ||
+      PendingComponent()) &&
     (route().options.wrapInSuspense ??
       PendingComponent() ??
       ((route().options.errorComponent as any)?.preload || resolvedNoSsr))
@@ -121,7 +139,7 @@ export const Match = (props: { matchId: string }) => {
                 // route ID which doesn't match the current route, rethrow the error
                 if (
                   !routeNotFoundComponent() ||
-                  (error.routeId && error.routeId !== matchState().routeId) ||
+                  (error.routeId && error.routeId !== matchState()!.routeId) ||
                   (!error.routeId && !route().isRoot)
                 )
                   throw error
@@ -190,7 +208,19 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   const matchState = useRouterState({
     select: (s) => {
-      const match = s.matches.find((d) => d.id === props.matchId)!
+      // Check current matches first
+      let match = s.matches.find((d) => d.id === props.matchId)
+
+      // During async transitions, old components may re-render after their match
+      // has been moved to cachedMatches. Check there as a fallback.
+      if (!match) {
+        match = s.cachedMatches.find((d) => d.id === props.matchId)
+      }
+
+      if (!match) {
+        return undefined
+      }
+
       const routeId = match.routeId as string
 
       const remountFn =
@@ -218,11 +248,15 @@ export const MatchInner = (props: { matchId: string }): any => {
     },
   })
 
-  const route = () => router.routesById[matchState().routeId]!
+  if (!matchState()) {
+    return null
+  }
 
-  const match = () => matchState().match
+  const route = () => router.routesById[matchState()!.routeId]!
 
-  const componentKey = () => matchState().key ?? matchState().match.id
+  const match = () => matchState()!.match
+
+  const componentKey = () => matchState()!.key ?? matchState()!.match.id
 
   const out = () => {
     const Comp = route().options.component ?? router.options.defaultComponent
@@ -340,58 +374,54 @@ export const MatchInner = (props: { matchId: string }): any => {
 export const Outlet = () => {
   const router = useRouter()
   const matchId = Solid.useContext(matchContext)
+
+  // Use the stable match context for the outlet function
+  const matchContextState = useMatchContextState()
+
   const routeId = useRouterState({
-    select: (s) => s.matches.find((d) => d.id === matchId())?.routeId as string,
+    select: (s) => {
+      // Check matches first, then cachedMatches
+      let match = s.matches.find((d) => d.id === matchId())
+      if (!match) {
+        match = s.cachedMatches.find((d) => d.id === matchId())
+      }
+      return match?.routeId as string
+    },
   })
 
   const route = () => router.routesById[routeId()]!
 
   const parentGlobalNotFound = useRouterState({
     select: (s) => {
-      const matches = s.matches
-      const parentMatch = matches.find((d) => d.id === matchId())
-      invariant(
-        parentMatch,
-        `Could not find parent match for matchId "${matchId()}"`,
-      )
+      // Check matches first, then cachedMatches
+      let parentMatch = s.matches.find((d) => d.id === matchId())
+      if (!parentMatch) {
+        parentMatch = s.cachedMatches.find((d) => d.id === matchId())
+      }
+
+      // Return undefined gracefully if not found
+      if (!parentMatch) {
+        return undefined
+      }
+
       return parentMatch.globalNotFound
     },
   })
 
-  const childMatchId = useRouterState({
-    select: (s) => {
-      const matches = s.matches
-      const index = matches.findIndex((d) => d.id === matchId())
-      const v = matches[index + 1]?.id
-      return v
-    },
+  // Use the outlet function from the context instead of manually rendering Match
+  const outlet = Solid.createMemo(() => {
+    const ctx = matchContextState?.()
+    return ctx?.outlet
   })
 
   return (
-    <Solid.Switch>
-      <Solid.Match when={parentGlobalNotFound()}>
+    <>
+      <Solid.Show when={parentGlobalNotFound()}>
         {renderRouteNotFound(router, route(), undefined)}
-      </Solid.Match>
-      <Solid.Match when={childMatchId()}>
-        {(matchId) => {
-          // const nextMatch = <Match matchId={matchId()} />
-
-          return (
-            <Solid.Show
-              when={matchId() === rootRouteId}
-              fallback={<Match matchId={matchId()} />}
-            >
-              <Solid.Suspense
-                fallback={
-                  <Dynamic component={router.options.defaultPendingComponent} />
-                }
-              >
-                <Match matchId={matchId()} />
-              </Solid.Suspense>
-            </Solid.Show>
-          )
-        }}
-      </Solid.Match>
-    </Solid.Switch>
+      </Solid.Show>
+      <Solid.Show when={!parentGlobalNotFound() && outlet()}>
+        {(outletFn) => <>{outletFn()()}</>}
+      </Solid.Show>
+    </>
   )
 }
