@@ -300,31 +300,12 @@ export type RscStream<T> = {
 
 export type Method = 'GET' | 'POST'
 
-type ExtractResponse<T> = Extract<T, Response>
-type ExcludeResponse<T> = Exclude<T, Response>
-
-type ServerFnReturnValue<TRegister, TValue> =
-  TValue extends PromiseLike<infer U>
-    ? Promise<ServerFnReturnValueAwaited<TRegister, U>>
-    : ServerFnReturnValueAwaited<TRegister, TValue>
-
-type ServerFnReturnValueAwaited<TRegister, TValue> =
-  [ExcludeResponse<TValue>] extends [never]
-    ? ExtractResponse<TValue> extends never
-      ? ValidateSerializableInput<TRegister, TValue>
-      : ExtractResponse<TValue>
-    : ExtractResponse<TValue> extends never
-      ? ValidateSerializableInput<TRegister, TValue>
-      : ValidateSerializableInput<
-          TRegister,
-          ExcludeResponse<TValue>
-        > |
-          ExtractResponse<TValue>
-
-export type ServerFnReturnType<TRegister, TResponse> = ServerFnReturnValue<
-  TRegister,
-  TResponse
->
+export type ServerFnReturnType<TRegister, TResponse> =
+  TResponse extends PromiseLike<infer U>
+    ? Promise<ServerFnReturnType<TRegister, U>>
+    : TResponse extends Response
+      ? TResponse
+      : ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
   TRegister,
