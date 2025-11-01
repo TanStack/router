@@ -9,10 +9,7 @@ import type {
   ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
-import type {
-  ConstrainValidator,
-  ServerFnReturnType,
-} from '../createServerFn'
+import type { ConstrainValidator, ServerFnReturnType } from '../createServerFn'
 
 test('createServerFn method with autocomplete', () => {
   createServerFn().handler((options) => {
