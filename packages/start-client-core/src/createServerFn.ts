@@ -301,9 +301,11 @@ export type RscStream<T> = {
 export type Method = 'GET' | 'POST'
 
 export type ServerFnReturnType<TRegister, TResponse> =
-  Awaited<TResponse> extends Response
-    ? TResponse
-    : ValidateSerializableInput<TRegister, TResponse>
+  TResponse extends PromiseLike<infer U>
+    ? Promise<ServerFnReturnType<TRegister, U>>
+    : TResponse extends Response
+      ? TResponse
+      : ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
   TRegister,
