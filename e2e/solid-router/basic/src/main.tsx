@@ -5,6 +5,7 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  createLink,
   createRootRoute,
   createRoute,
   createRouter,
@@ -28,6 +29,7 @@ const rootRoute = createRootRoute({
 })
 
 function RootComponent() {
+  const SvgLink = createLink('svg')
   return (
     <>
       <HeadContent />
@@ -75,7 +77,7 @@ function RootComponent() {
         <div class="flex items-center">
           <svg width="20" height="20" viewBox="0 0 20 20" role="img">
             <title id="rectTitle">Link in SVG</title>
-            <Link to="/posts" aria-label="Open posts from SVG">
+            <SvgLink to="/posts" aria-label="Open posts from SVG">
               <rect
                 x="0"
                 y="0"
@@ -85,7 +87,7 @@ function RootComponent() {
                 fill="blue"
                 stroke-width="2"
               />
-            </Link>
+            </SvgLink>
           </svg>
         </div>
       </div>
