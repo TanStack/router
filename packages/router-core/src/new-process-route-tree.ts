@@ -1,3 +1,5 @@
+import invariant from "tiny-invariant"
+
 export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
 export const SEGMENT_TYPE_WILDCARD = 2
@@ -214,7 +216,7 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 			node.routeId = route.id
 	}
 	if (route.children) for (const child of route.children) {
-		onRoute(route)
+		onRoute(child as TRouteLike)
 		parseSegments(data, child as TRouteLike, cursor, node, onRoute)
 	}
 }
@@ -360,6 +362,11 @@ type RouteLike = {
 	}
 }
 
+/** Trim trailing slashes (except preserving root '/'). */
+export function trimPathRight(path: string) {
+	return path === '/' ? path : path.replace(/\/{1,}$/, '')
+}
+
 export function processRouteTree<TRouteLike extends RouteLike>({
 	routeTree,
 	initRoute,
@@ -374,8 +381,24 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 	let index = 0
 	parseSegments(data, routeTree, 1, segmentTree, (route) => {
 		initRoute?.(route, index)
+
+		invariant(
+			!(route.id in routesById),
+			`Duplicate routes found with id: ${String(route.id)}`,
+		)
+
 		routesById[route.id] = route
-		routesByPath[route.fullPath] = route
+
+		if (index !== 0 && route.path) {
+			const trimmedFullPath = trimPathRight(route.fullPath)
+			if (
+				!routesByPath[trimmedFullPath] ||
+				route.fullPath.endsWith('/')
+			) {
+				routesByPath[trimmedFullPath] = route
+			}
+		}
+
 		index++
 	})
 	sortTreeNodes(segmentTree)
