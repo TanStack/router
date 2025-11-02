@@ -241,7 +241,7 @@ You can customize function ID generation for the production build by providing a
 
 Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
-Please note that this customization is **experimental** und subject to change.
+Please note that this customization is **experimental** and subject to change.
 
 Example:
 
@@ -256,12 +256,14 @@ export default defineConfig({
     tanstackStart({
       serverFns: {
         generateFunctionId: ({ filename, functionName }) => {
-          // Return a custom ID string. If you return undefined, the default is used.
+          // Return a custom ID string
           return crypto
             .createHash('sha1')
             .update(`${filename}--${functionName}`)
             .digest('hex')
-          return undefined
+
+          // If you return undefined, the default is used
+          // return undefined
         },
       },
     }),
