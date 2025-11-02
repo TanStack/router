@@ -145,6 +145,9 @@ export type UnionToIntersection<T> = (
   ? T
   : never
 
+export type UnObject<T> = T extends { foo: any } ? T["foo"] : never
+export type ToObject<T> = { foo: T }
+
 /**
  * Merges everything in a union into one object.
  * This mapped type is homomorphic which means it preserves stuff! :)

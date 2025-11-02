@@ -2162,6 +2162,20 @@ test('when navigating from a route with params to a route with an additional par
   }>()
 })
 
+test('when resolving parent-relative to values from a union of routes', () => {
+  const DefaultRouterLink = Link<
+    DefaultRouter,
+    '/invoices/$invoiceId/details' | '/posts/$postId/preview',
+    '../'
+  >
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'..' | '../..' | '../edit' | undefined>()
+
+})
+
 test('when navigating to a union of routes with params', () => {
   const DefaultRouterLink = Link<
     DefaultRouter,
