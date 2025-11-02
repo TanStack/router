@@ -190,7 +190,7 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					} else {
 						const next = createOptionalNode(value, caseSensitive, prefix, suffix)
 						nextNode = next
-						nextNode.parent = node
+						next.parent = node
 						node.optional ??= []
 						node.optional.push(next)
 					}
@@ -204,9 +204,8 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const next = createWildcardNode(caseSensitive, prefix, suffix)
 					nextNode = next
 					next.parent = node
-					next.routeId = route.id
-					node.wildcard = next
-					return
+					node.wildcard ??= []
+					node.wildcard.push(next)
 				}
 			}
 			node = nextNode
@@ -341,8 +340,8 @@ type SegmentNode = {
 	// Optional dynamic segments ({-$param})
 	optional: Array<OptionalSegmentNode> | null
 
-	// Wildcard segment ($ - lowest priority)
-	wildcard: WildcardSegmentNode | null
+	// Wildcard segments ($ - lowest priority)
+	wildcard: Array<WildcardSegmentNode> | null
 
 	// Terminal route (if this path can end here)
 	routeId: string | null
@@ -462,6 +461,8 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 		{ node: segmentTree, partIndex: 0 }
 	]
 
+	let wildcardMatch: typeof stack[0] | null = null
+
 	while (stack.length) {
 		let { node, partIndex, skipped } = stack.shift()!
 
@@ -529,25 +530,31 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 
 			// 5. Try wildcard match
 			if (node.wildcard) {
-				const { prefix, suffix } = node.wildcard
-				if (prefix) {
-					const casePart = node.wildcard.caseSensitive ? part : part.toLowerCase()
-					if (!casePart.startsWith(prefix)) break
+				for (const segment of node.wildcard) {
+					const { prefix, suffix } = segment
+					if (prefix) {
+						const casePart = segment.caseSensitive ? part : part.toLowerCase()
+						if (!casePart.startsWith(prefix)) continue
+					}
+					if (suffix) {
+						const part = parts[parts.length - 1]!
+						const casePart = segment.caseSensitive ? part : part.toLowerCase()
+						if (!casePart.endsWith(suffix)) continue
+					}
+					// a wildcard match terminates the loop, but we need to continue searching in case there's a longer match
+					if (!wildcardMatch || (wildcardMatch.partIndex < partIndex)) {
+						wildcardMatch = { node: segment, partIndex, skipped }
+					}
+					break main
 				}
-				if (suffix) {
-					const part = parts[parts.length - 1]!
-					const casePart = node.wildcard.caseSensitive ? part : part.toLowerCase()
-					if (!casePart.endsWith(suffix)) break
-				}
-				partIndex = parts.length
-				node = node.wildcard
-				continue
 			}
 
 			// No match found
 			break
 		}
 	}
+
+	if (wildcardMatch) return wildcardMatch
 
 	return null
 }
