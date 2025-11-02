@@ -630,11 +630,22 @@ export function compileCodeSplitVirtualRoute(
                 splitMeta.shouldRemoveNode = false
               } else if (t.isObjectPattern(splitNode.id) && t.isIdentifier(splitKey.node)) {
                 const matchingProperty = splitNode.id.properties.find((prop) => {
-                  return (
-                    t.isObjectProperty(prop) &&
-                    t.isIdentifier(prop.value) &&
-                    prop.value.name === splitKey.node.name
-                  )
+                  if (!t.isObjectProperty(prop)) {
+                    return false
+                  }
+
+                  if (t.isIdentifier(prop.value)) {
+                    return prop.value.name === splitKey.node.name
+                  }
+
+                  if (
+                    t.isAssignmentPattern(prop.value) &&
+                    t.isIdentifier(prop.value.left)
+                  ) {
+                    return prop.value.left.name === splitKey.node.name
+                  }
+
+                  return false
                 })
 
                 if (!matchingProperty) {

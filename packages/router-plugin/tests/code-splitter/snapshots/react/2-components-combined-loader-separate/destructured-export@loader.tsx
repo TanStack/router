@@ -4,11 +4,13 @@ const createBits = () => ({
     message: 'hello'
   })
 });
+const fallbackLoader = () => ({
+  message: 'fallback'
+});
 const {
-  loader
+  loader = fallbackLoader
 } = createBits();
 function AboutComponentImpl() {
   return <div>About</div>;
 }
-import { Route } from "destructured-export.tsx";
 export { loader };

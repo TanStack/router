@@ -4,11 +4,13 @@ const createBits = () => ({
     message: 'hello'
   })
 });
+function DefaultAboutComponent() {
+  return <div>Default About</div>;
+}
 const {
-  component: AboutComponent
+  component: AboutComponent = DefaultAboutComponent
 } = createBits();
 function AboutComponentImpl() {
   return <div>About</div>;
 }
-import { Route } from "destructured-export.tsx";
 export { AboutComponent as component };
