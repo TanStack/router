@@ -133,16 +133,16 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 			const end = data[5]!
 			cursor = end + 1
 			const kind = data[0] as SegmentKind
-			const value = path.substring(data[2]!, data[3])
 			switch (kind) {
 				case SEGMENT_TYPE_PATHNAME: {
+					const value = path.substring(data[2]!, data[3])
 					if (caseSensitive) {
 						const existingNode = node.static?.get(value)
 						if (existingNode) {
 							nextNode = existingNode
 						} else {
 							node.static ??= new Map()
-							const next = createStaticNode()
+							const next = createStaticNode(route.fullPath)
 							next.parent = node
 							nextNode = next
 							node.static.set(value, next)
@@ -154,7 +154,7 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 							nextNode = existingNode
 						} else {
 							node.staticInsensitive ??= new Map()
-							const next = createStaticNode()
+							const next = createStaticNode(route.fullPath)
 							next.parent = node
 							nextNode = next
 							node.staticInsensitive.set(name, next)
@@ -167,11 +167,11 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const suffix_raw = path.substring(data[4]!, end)
 					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
 					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-					const existingNode = node.dynamic?.find(s => s.caseSensitive === caseSensitive && s.name === value && s.prefix === prefix && s.suffix === suffix)
+					const existingNode = node.dynamic?.find(s => s.caseSensitive === caseSensitive && s.prefix === prefix && s.suffix === suffix)
 					if (existingNode) {
 						nextNode = existingNode
 					} else {
-						const next = createDynamicNode(value, caseSensitive, prefix, suffix)
+						const next = createDynamicNode(SEGMENT_TYPE_PARAM, route.fullPath, caseSensitive, prefix, suffix)
 						nextNode = next
 						next.parent = node
 						node.dynamic ??= []
@@ -184,11 +184,11 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const suffix_raw = path.substring(data[4]!, end)
 					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
 					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-					const existingNode = node.optional?.find(s => s.caseSensitive === caseSensitive && s.name === value && s.prefix === prefix && s.suffix === suffix)
+					const existingNode = node.optional?.find(s => s.caseSensitive === caseSensitive && s.prefix === prefix && s.suffix === suffix)
 					if (existingNode) {
 						nextNode = existingNode
 					} else {
-						const next = createOptionalNode(value, caseSensitive, prefix, suffix)
+						const next = createDynamicNode(SEGMENT_TYPE_OPTIONAL_PARAM, route.fullPath, caseSensitive, prefix, suffix)
 						nextNode = next
 						next.parent = node
 						node.optional ??= []
@@ -201,7 +201,7 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const suffix_raw = path.substring(data[4]!, end)
 					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
 					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-					const next = createWildcardNode(caseSensitive, prefix, suffix)
+					const next = createDynamicNode(SEGMENT_TYPE_WILDCARD, route.fullPath, caseSensitive, prefix, suffix)
 					nextNode = next
 					next.parent = node
 					node.wildcard ??= []
@@ -238,6 +238,16 @@ function sortDynamic(a: { prefix?: string, suffix?: string }, b: { prefix?: stri
 }
 
 function sortTreeNodes(node: SegmentNode) {
+	if (node.static) {
+		for (const child of node.static.values()) {
+			sortTreeNodes(child)
+		}
+	}
+	if (node.staticInsensitive) {
+		for (const child of node.staticInsensitive.values()) {
+			sortTreeNodes(child)
+		}
+	}
 	if (node.dynamic?.length) {
 		node.dynamic.sort(sortDynamic)
 		for (const child of node.dynamic) {
@@ -245,14 +255,20 @@ function sortTreeNodes(node: SegmentNode) {
 		}
 	}
 	if (node.optional?.length) {
-		node.optional.sort((a, b) => a.name.localeCompare(b.name)) // TODO
+		node.optional.sort(sortDynamic)
 		for (const child of node.optional) {
+			sortTreeNodes(child)
+		}
+	}
+	if (node.wildcard?.length) {
+		node.wildcard.sort(sortDynamic)
+		for (const child of node.wildcard) {
 			sortTreeNodes(child)
 		}
 	}
 }
 
-function createStaticNode(): StaticSegmentNode {
+function createStaticNode(fullPath: string): StaticSegmentNode {
 	return {
 		kind: SEGMENT_TYPE_PATHNAME,
 		static: null,
@@ -261,36 +277,22 @@ function createStaticNode(): StaticSegmentNode {
 		optional: null,
 		wildcard: null,
 		routeId: null,
+		fullPath,
 		parent: null
 	}
 }
 
-function createDynamicNode(name: string, caseSensitive: boolean, prefix?: string, suffix?: string): DynamicSegmentNode {
+function createDynamicNode(kind: typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM, fullPath: string, caseSensitive: boolean, prefix?: string, suffix?: string): DynamicSegmentNode {
 	return {
-		...createStaticNode(),
-		kind: SEGMENT_TYPE_PARAM,
-		caseSensitive,
-		prefix,
-		suffix,
-		name,
-	}
-}
-
-function createOptionalNode(name: string, caseSensitive: boolean, prefix?: string, suffix?: string): OptionalSegmentNode {
-	return {
-		...createStaticNode(),
-		kind: SEGMENT_TYPE_OPTIONAL_PARAM,
-		caseSensitive,
-		prefix,
-		suffix,
-		name,
-	}
-}
-
-function createWildcardNode(caseSensitive: boolean, prefix?: string, suffix?: string): WildcardSegmentNode {
-	return {
-		...createStaticNode(),
-		kind: SEGMENT_TYPE_WILDCARD,
+		kind,
+		static: null,
+		staticInsensitive: null,
+		dynamic: null,
+		optional: null,
+		wildcard: null,
+		routeId: null,
+		fullPath,
+		parent: null,
 		caseSensitive,
 		prefix,
 		suffix,
@@ -302,23 +304,7 @@ type StaticSegmentNode = SegmentNode & {
 }
 
 type DynamicSegmentNode = SegmentNode & {
-	kind: typeof SEGMENT_TYPE_PARAM
-	name: string
-	prefix?: string
-	suffix?: string
-	caseSensitive: boolean
-}
-
-type OptionalSegmentNode = SegmentNode & {
-	kind: typeof SEGMENT_TYPE_OPTIONAL_PARAM
-	name: string
-	prefix?: string
-	suffix?: string
-	caseSensitive: boolean
-}
-
-type WildcardSegmentNode = SegmentNode & {
-	kind: typeof SEGMENT_TYPE_WILDCARD
+	kind: typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM
 	prefix?: string
 	suffix?: string
 	caseSensitive: boolean
@@ -338,13 +324,14 @@ type SegmentNode = {
 	dynamic: Array<DynamicSegmentNode> | null
 
 	// Optional dynamic segments ({-$param})
-	optional: Array<OptionalSegmentNode> | null
+	optional: Array<DynamicSegmentNode> | null
 
 	// Wildcard segments ($ - lowest priority)
-	wildcard: Array<WildcardSegmentNode> | null
+	wildcard: Array<DynamicSegmentNode> | null
 
 	// Terminal route (if this path can end here)
 	routeId: string | null
+	fullPath: string
 
 	parent: SegmentNode | null
 }
@@ -380,7 +367,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 	routeTree: TRouteLike
 	initRoute?: (route: TRouteLike, index: number) => void
 }) {
-	const segmentTree = createStaticNode()
+	const segmentTree = createStaticNode(routeTree.fullPath)
 	const data = new Uint16Array(6)
 	const routesById = {} as Record<string, TRouteLike>
 	const routesByPath = {} as Record<string, TRouteLike>
@@ -405,33 +392,45 @@ export function findMatch(path: string, segmentTree: SegmentNode): { routeId: st
 	const leaf = getNodeMatch(parts, segmentTree)
 	if (!leaf) return null
 	const list = buildBranch(leaf.node)
+	let nodeParts: Array<string> | null = null
 	const params: Record<string, string> = {}
+	const data = new Uint16Array(6)
 	for (let partIndex = 0, nodeIndex = 0, pathIndex = 0; partIndex < parts.length && nodeIndex < list.length; partIndex++, nodeIndex++, pathIndex++) {
 		const node = list[nodeIndex]!
 		const part = parts[partIndex]!
 		const currentPathIndex = pathIndex
 		pathIndex += part.length
 		if (node.kind === SEGMENT_TYPE_PARAM) {
+			nodeParts ??= leaf.node.fullPath.split('/')
+			const nodePart = nodeParts[nodeIndex]!
+			parseSegment(nodePart, 0, data)
+			// param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
+			const name = nodePart.substring(data[2]!, data[3])
 			const n = node as DynamicSegmentNode
 			if (n.suffix || n.prefix) {
-				params[n.name] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
+				params[name] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
 			} else {
-				params[n.name] = part
+				params[name] = part
 			}
 		} else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-			const n = node as OptionalSegmentNode
+			nodeParts ??= leaf.node.fullPath.split('/')
+			const nodePart = nodeParts[nodeIndex]!
+			parseSegment(nodePart, 0, data)
+			// param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
+			const name = nodePart.substring(data[2]!, data[3])
+			const n = node as DynamicSegmentNode
 			if (leaf.skipped?.includes(nodeIndex)) {
 				partIndex-- // stay on the same part
-				params[n.name] = ''
+				params[name] = ''
 				continue
 			}
 			if (n.suffix || n.prefix) {
-				params[n.name] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
+				params[name] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
 			} else {
-				params[n.name] = part
+				params[name] = part
 			}
 		} else if (node.kind === SEGMENT_TYPE_WILDCARD) {
-			const n = node as WildcardSegmentNode
+			const n = node as DynamicSegmentNode
 			params['*'] = path.substring(currentPathIndex + (n.prefix?.length ?? 0), path.length - (n.suffix?.length ?? 0))
 			break
 		}
