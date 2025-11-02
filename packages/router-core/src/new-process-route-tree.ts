@@ -284,6 +284,10 @@ function createStaticNode(fullPath: string): StaticSegmentNode {
 	}
 }
 
+/**
+ * Keys must be declared in the same order as in `SegmentNode` type,
+ * to ensure they are represented as the same object class in the engine.
+ */
 function createDynamicNode(kind: typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM, fullPath: string, caseSensitive: boolean, prefix?: string, suffix?: string): DynamicSegmentNode {
 	return {
 		kind,
@@ -333,6 +337,8 @@ type SegmentNode = {
 
 	// Terminal route (if this path can end here)
 	routeId: string | null
+
+	// The full path for this segment node (will only be valid on leaf nodes)
 	fullPath: string
 
 	parent: SegmentNode | null
