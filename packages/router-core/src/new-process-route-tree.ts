@@ -142,9 +142,10 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 							nextNode = existingNode
 						} else {
 							node.static ??= new Map()
-							nextNode = createEmptyNode()
-							nextNode.parent = node
-							node.static.set(value, nextNode)
+							const next = createStaticNode()
+							next.parent = node
+							nextNode = next
+							node.static.set(value, next)
 						}
 					} else {
 						const name = value.toLowerCase()
@@ -153,9 +154,10 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 							nextNode = existingNode
 						} else {
 							node.staticInsensitive ??= new Map()
-							nextNode = createEmptyNode()
-							nextNode.parent = node
-							node.staticInsensitive.set(name, nextNode)
+							const next = createStaticNode()
+							next.parent = node
+							nextNode = next
+							node.staticInsensitive.set(name, next)
 						}
 					}
 					break
@@ -167,18 +169,13 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
 					const existingNode = node.dynamic?.find(s => s.caseSensitive === caseSensitive && s.name === value && s.prefix === prefix && s.suffix === suffix)
 					if (existingNode) {
-						nextNode = existingNode.node
+						nextNode = existingNode
 					} else {
-						nextNode = createEmptyNode()
-						nextNode.parent = node
+						const next = createDynamicNode(value, caseSensitive, prefix, suffix)
+						nextNode = next
+						next.parent = node
 						node.dynamic ??= []
-						node.dynamic.push({
-							name: value,
-							prefix,
-							suffix,
-							caseSensitive,
-							node: nextNode
-						})
+						node.dynamic.push(next)
 					}
 					break
 				}
@@ -189,18 +186,13 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
 					const existingNode = node.optional?.find(s => s.caseSensitive === caseSensitive && s.name === value && s.prefix === prefix && s.suffix === suffix)
 					if (existingNode) {
-						nextNode = existingNode.node
+						nextNode = existingNode
 					} else {
-						nextNode = createEmptyNode()
+						const next = createOptionalNode(value, caseSensitive, prefix, suffix)
+						nextNode = next
 						nextNode.parent = node
 						node.optional ??= []
-						node.optional.push({
-							name: value,
-							prefix,
-							suffix,
-							caseSensitive,
-							node: nextNode
-						})
+						node.optional.push(next)
 					}
 					break
 				}
@@ -209,10 +201,10 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const suffix_raw = path.substring(data[4]!, end)
 					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
 					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-					node.wildcard = {
-						prefix,
-						suffix,
-					}
+					const next = createWildcardNode(caseSensitive, prefix, suffix)
+					nextNode = next
+					next.parent = node
+					node.wildcard = next
 					node.routeId = route.id
 					return
 				}
@@ -250,57 +242,20 @@ function sortTreeNodes(node: SegmentNode) {
 	if (node.dynamic?.length) {
 		node.dynamic.sort(sortDynamic)
 		for (const child of node.dynamic) {
-			sortTreeNodes(child.node)
+			sortTreeNodes(child)
 		}
 	}
 	if (node.optional?.length) {
 		node.optional.sort((a, b) => a.name.localeCompare(b.name)) // TODO
 		for (const child of node.optional) {
-			sortTreeNodes(child.node)
+			sortTreeNodes(child)
 		}
 	}
 }
 
-
-type SegmentNode = {
-	// Static segments (highest priority)
-	static: Map<string, SegmentNode> | null
-
-	// Case insensitive static segments (second highest priority)
-	staticInsensitive: Map<string, SegmentNode> | null
-
-	// Dynamic segments ($param)
-	dynamic: Array<{
-		name: string
-		prefix: string | undefined
-		suffix: string | undefined
-		caseSensitive: boolean
-		node: SegmentNode
-	}> | null
-
-	// Optional dynamic segments ({-$param})
-	optional: Array<{
-		name: string
-		prefix: string | undefined
-		suffix: string | undefined
-		caseSensitive: boolean
-		node: SegmentNode
-	}> | null
-
-	// Wildcard segment ($ - lowest priority)
-	wildcard: {
-		prefix: string | undefined
-		suffix: string | undefined
-	} | null
-
-	// Terminal route (if this path can end here)
-	routeId: string | null
-
-	parent: SegmentNode | null
-}
-
-function createEmptyNode(): SegmentNode {
+function createStaticNode(): StaticSegmentNode {
 	return {
+		kind: SEGMENT_TYPE_PATHNAME,
 		static: null,
 		staticInsensitive: null,
 		dynamic: null,
@@ -309,6 +264,90 @@ function createEmptyNode(): SegmentNode {
 		routeId: null,
 		parent: null
 	}
+}
+
+function createDynamicNode(name: string, caseSensitive: boolean, prefix?: string, suffix?: string): DynamicSegmentNode {
+	return {
+		...createStaticNode(),
+		kind: SEGMENT_TYPE_PARAM,
+		caseSensitive,
+		prefix,
+		suffix,
+		name,
+	}
+}
+
+function createOptionalNode(name: string, caseSensitive: boolean, prefix?: string, suffix?: string): OptionalSegmentNode {
+	return {
+		...createStaticNode(),
+		kind: SEGMENT_TYPE_OPTIONAL_PARAM,
+		caseSensitive,
+		prefix,
+		suffix,
+		name,
+	}
+}
+
+function createWildcardNode(caseSensitive: boolean, prefix?: string, suffix?: string): WildcardSegmentNode {
+	return {
+		...createStaticNode(),
+		kind: SEGMENT_TYPE_WILDCARD,
+		caseSensitive,
+		prefix,
+		suffix,
+	}
+}
+
+type StaticSegmentNode = SegmentNode & {
+	kind: typeof SEGMENT_TYPE_PATHNAME
+}
+
+type DynamicSegmentNode = SegmentNode & {
+	kind: typeof SEGMENT_TYPE_PARAM
+	name: string
+	prefix?: string
+	suffix?: string
+	caseSensitive: boolean
+}
+
+type OptionalSegmentNode = SegmentNode & {
+	kind: typeof SEGMENT_TYPE_OPTIONAL_PARAM
+	name: string
+	prefix?: string
+	suffix?: string
+	caseSensitive: boolean
+}
+
+type WildcardSegmentNode = SegmentNode & {
+	kind: typeof SEGMENT_TYPE_WILDCARD
+	prefix?: string
+	suffix?: string
+	caseSensitive: boolean
+}
+
+
+type SegmentNode = {
+	kind: SegmentKind
+
+	// Static segments (highest priority)
+	static: Map<string, StaticSegmentNode> | null
+
+	// Case insensitive static segments (second highest priority)
+	staticInsensitive: Map<string, StaticSegmentNode> | null
+
+	// Dynamic segments ($param)
+	dynamic: Array<DynamicSegmentNode> | null
+
+	// Optional dynamic segments ({-$param})
+	optional: Array<OptionalSegmentNode> | null
+
+	// Wildcard segment ($ - lowest priority)
+	wildcard: WildcardSegmentNode | null
+
+	// Terminal route (if this path can end here)
+	routeId: string | null
+
+	parent: SegmentNode | null
 }
 
 // function intoRouteLike(routeTree, parent) {
@@ -342,7 +381,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 	routeTree: TRouteLike
 	initRoute?: (route: TRouteLike, index: number) => void
 }) {
-	const segmentTree = createEmptyNode()
+	const segmentTree = createStaticNode()
 	const data = new Uint16Array(6)
 	const routesById = {} as Record<string, TRouteLike>
 	const routesByPath = {} as Record<string, TRouteLike>
@@ -359,4 +398,118 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 		routesById,
 		routesByPath,
 	}
+}
+
+
+export function findMatch(path: string, segmentTree: SegmentNode): { routeId: string, params: Record<string, string> } | null {
+	const parts = path.split('/')
+	const leaf = getNodeMatch(parts, segmentTree)
+	if (!leaf) return null
+	const list = [leaf]
+	let node = leaf
+	while (node.parent) {
+		node = node.parent
+		list.push(node)
+	}
+	list.reverse()
+	const params: Record<string, string> = {}
+	for (let i = 0; i < parts.length; i++) {
+		const node = list[i]!
+		if (node.kind === SEGMENT_TYPE_PARAM) {
+			const n = node as DynamicSegmentNode
+			const part = parts[i]!
+			if (n.suffix || n.prefix) {
+				params[n.name] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
+			} else {
+				params[n.name] = part
+			}
+		} else if (node.kind === SEGMENT_TYPE_WILDCARD) {
+			const n = node as WildcardSegmentNode
+			const part = parts[i]!
+			if (n.suffix || n.prefix) {
+				params['*'] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
+			} else {
+				params['*'] = part
+			}
+			break
+		}
+
+	}
+	return {
+		routeId: leaf.routeId!,
+		params,
+	}
+}
+
+function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
+	parts = parts.filter(Boolean)
+	let node: SegmentNode | null = segmentTree
+	let partIndex = 0
+
+	main: while (node && partIndex <= parts.length) {
+		if (partIndex === parts.length) {
+			if (node.routeId) {
+				return node
+			}
+			return null
+		}
+
+		const part = parts[partIndex]!
+
+		// 1. Try static match
+		if (node.static) {
+			const match = node.static.get(part)
+			if (match) {
+				node = match
+				partIndex++
+				continue
+			}
+		}
+
+		// 2. Try case insensitive static match
+		if (node.staticInsensitive) {
+			const match = node.staticInsensitive.get(part.toLowerCase())
+			if (match) {
+				node = match
+				partIndex++
+				continue
+			}
+		}
+
+		// 3. Try dynamic match
+		if (node.dynamic) {
+			for (const segment of node.dynamic) {
+				const { prefix, suffix } = segment
+				if (prefix || suffix) {
+					const casePart = segment.caseSensitive ? part : part.toLowerCase()
+					if (prefix && !casePart.startsWith(prefix)) continue
+					if (suffix && !casePart.endsWith(suffix)) continue
+				}
+				node = segment
+				partIndex++
+				continue main
+			}
+		}
+
+		// 4. Try wildcard match
+		if (node.wildcard) {
+			const { prefix, suffix } = node.wildcard
+			if (prefix) {
+				const casePart = node.wildcard.caseSensitive ? part : part.toLowerCase()
+				if (!casePart.startsWith(prefix)) return null
+			}
+			if (suffix) {
+				const part = parts[parts.length - 1]!
+				const casePart = node.wildcard.caseSensitive ? part : part.toLowerCase()
+				if (!casePart.endsWith(suffix)) return null
+			}
+			partIndex = parts.length
+			continue
+		}
+
+		// No match found
+		return null
+	}
+
+	return null
 }
