@@ -448,7 +448,7 @@ export function findMatch(path: string, segmentTree: SegmentNode): { routeId: st
 			// param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
 			const name = nodePart.substring(data[2]!, data[3])
 			const n = node as DynamicSegmentNode
-			if (leaf.skipped?.includes(nodeIndex)) {
+			if (leaf.skipped & (1 << nodeIndex)) {
 				partIndex-- // stay on the same part
 				params[name] = ''
 				continue
@@ -485,29 +485,31 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 
 	type Frame = {
 		node: SegmentNode
-		partIndex: number
+		index: number
 		depth: number
-		skipped?: Array<number>
+		/** Bitmask of skipped optional segments */
+		skipped: number
 	}
 
 	// use a stack to explore all possible paths (optional params cause branching)
 	// we use a depth-first search, return the first result found
 	const stack: Array<Frame> = [
-		{ node: segmentTree, partIndex: 0, depth: 0 }
+		{ node: segmentTree, index: 0, depth: 0, skipped: 0 }
 	]
 
 	let wildcardMatch: Frame | null = null
 
 	while (stack.length) {
-		let { node, partIndex, skipped, depth } = stack.shift()!
+		// eslint-disable-next-line prefer-const
+		let { node, index, skipped, depth } = stack.shift()!
 
-		main: while (node && partIndex <= parts.length) {
-			if (partIndex === parts.length) {
+		main: while (node && index <= parts.length) {
+			if (index === parts.length) {
 				if (!node.routeId) break
 				return { node, skipped }
 			}
 
-			const part = parts[partIndex]!
+			const part = parts[index]!
 
 			// 1. Try static match
 			if (node.static) {
@@ -515,7 +517,7 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 				if (match) {
 					node = match
 					depth++
-					partIndex++
+					index++
 					continue
 				}
 			}
@@ -526,7 +528,7 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 				if (match) {
 					node = match
 					depth++
-					partIndex++
+					index++
 					continue
 				}
 			}
@@ -542,18 +544,18 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 					}
 					node = segment
 					depth++
-					partIndex++
+					index++
 					continue main
 				}
 			}
 
 			// 4. Try optional match
 			if (node.optional) {
-				skipped ??= []
 				const nextDepth = depth + 1
+				const nextSkipped = skipped | (1 << nextDepth)
 				for (const segment of node.optional) {
-					// when skipping, node and depth advance by 1, but partIndex doesn't
-					stack.push({ node: segment, partIndex, skipped: [...skipped, nextDepth], depth: nextDepth }) // enqueue skipping the optional
+					// when skipping, node and depth advance by 1, but index doesn't
+					stack.push({ node: segment, index, skipped: nextSkipped, depth: nextDepth }) // enqueue skipping the optional
 				}
 				for (const segment of node.optional) {
 					const { prefix, suffix } = segment
@@ -563,7 +565,7 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 						if (suffix && !casePart.endsWith(suffix)) continue
 					}
 					node = segment
-					partIndex++
+					index++
 					depth++
 					continue main
 				}
@@ -583,8 +585,8 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 						if (!casePart.endsWith(suffix)) continue
 					}
 					// a wildcard match terminates the loop, but we need to continue searching in case there's a longer match
-					if (!wildcardMatch || (wildcardMatch.partIndex < partIndex)) {
-						wildcardMatch = { node: segment, partIndex, skipped, depth }
+					if (!wildcardMatch || (wildcardMatch.index < index)) {
+						wildcardMatch = { node: segment, index, skipped, depth }
 					}
 					break main
 				}
