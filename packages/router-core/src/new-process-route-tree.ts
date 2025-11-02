@@ -59,7 +59,7 @@ function parseSegment(path: string, start: number, output: Uint16Array) {
 		output[0] = SEGMENT_TYPE_OPTIONAL_PARAM
 		output[1] = start + prefix.length
 		output[2] = start + prefix.length + 3 // skip '{-$'
-		output[3] = start + prefix.length + paramName.length
+		output[3] = start + prefix.length + 3 + paramName.length
 		output[4] = end - suffix.length
 		output[5] = end
 		return
@@ -73,7 +73,7 @@ function parseSegment(path: string, start: number, output: Uint16Array) {
 		output[0] = SEGMENT_TYPE_PARAM
 		output[1] = start + prefix.length
 		output[2] = start + prefix.length + 2 // skip '{$'
-		output[3] = start + prefix.length + paramName.length
+		output[3] = start + prefix.length + 2 + paramName.length
 		output[4] = end - suffix.length
 		output[5] = end
 		return
@@ -204,8 +204,8 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 					const next = createWildcardNode(caseSensitive, prefix, suffix)
 					nextNode = next
 					next.parent = node
+					next.routeId = route.id
 					node.wildcard = next
-					node.routeId = route.id
 					return
 				}
 			}
@@ -405,19 +405,27 @@ export function findMatch(path: string, segmentTree: SegmentNode): { routeId: st
 	const parts = path.split('/')
 	const leaf = getNodeMatch(parts, segmentTree)
 	if (!leaf) return null
-	const list = [leaf]
-	let node = leaf
-	while (node.parent) {
-		node = node.parent
-		list.push(node)
-	}
-	list.reverse()
+	const list = buildBranch(leaf.node)
 	const params: Record<string, string> = {}
-	for (let i = 0; i < parts.length; i++) {
-		const node = list[i]!
+	for (let partIndex = 0, nodeIndex = 0, pathIndex = 0; partIndex < parts.length && nodeIndex < list.length; partIndex++, nodeIndex++, pathIndex++) {
+		const node = list[nodeIndex]!
+		const part = parts[partIndex]!
+		const currentPathIndex = pathIndex
+		pathIndex += part.length
 		if (node.kind === SEGMENT_TYPE_PARAM) {
 			const n = node as DynamicSegmentNode
-			const part = parts[i]!
+			if (n.suffix || n.prefix) {
+				params[n.name] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
+			} else {
+				params[n.name] = part
+			}
+		} else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
+			const n = node as OptionalSegmentNode
+			if (leaf.skipped?.includes(node)) {
+				partIndex-- // stay on the same part
+				params[n.name] = ''
+				continue
+			}
 			if (n.suffix || n.prefix) {
 				params[n.name] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
 			} else {
@@ -425,90 +433,120 @@ export function findMatch(path: string, segmentTree: SegmentNode): { routeId: st
 			}
 		} else if (node.kind === SEGMENT_TYPE_WILDCARD) {
 			const n = node as WildcardSegmentNode
-			const part = parts[i]!
-			if (n.suffix || n.prefix) {
-				params['*'] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
-			} else {
-				params['*'] = part
-			}
+			params['*'] = path.substring(currentPathIndex + (n.prefix?.length ?? 0), path.length - (n.suffix?.length ?? 0))
 			break
 		}
-
 	}
 	return {
-		routeId: leaf.routeId!,
+		routeId: leaf.node.routeId!,
 		params,
 	}
 }
 
+function buildBranch(node: SegmentNode) {
+	const list = [node]
+	while (node.parent) {
+		node = node.parent
+		list.push(node)
+	}
+	list.reverse()
+	return list
+}
+
 function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 	parts = parts.filter(Boolean)
-	let node: SegmentNode | null = segmentTree
-	let partIndex = 0
 
-	main: while (node && partIndex <= parts.length) {
-		if (partIndex === parts.length) {
-			if (node.routeId) {
-				return node
+	// use a stack to explore all possible paths (optional params cause branching)
+	// we use a depth-first search, return the first result found
+	const stack: Array<{ node: SegmentNode, partIndex: number, skipped?: Array<SegmentNode> }> = [
+		{ node: segmentTree, partIndex: 0 }
+	]
+
+	while (stack.length) {
+		let { node, partIndex, skipped } = stack.shift()!
+
+		main: while (node && partIndex <= parts.length) {
+			if (partIndex === parts.length) {
+				if (!node.routeId) break
+				return { node, skipped }
 			}
-			return null
-		}
 
-		const part = parts[partIndex]!
+			const part = parts[partIndex]!
 
-		// 1. Try static match
-		if (node.static) {
-			const match = node.static.get(part)
-			if (match) {
-				node = match
-				partIndex++
-				continue
-			}
-		}
-
-		// 2. Try case insensitive static match
-		if (node.staticInsensitive) {
-			const match = node.staticInsensitive.get(part.toLowerCase())
-			if (match) {
-				node = match
-				partIndex++
-				continue
-			}
-		}
-
-		// 3. Try dynamic match
-		if (node.dynamic) {
-			for (const segment of node.dynamic) {
-				const { prefix, suffix } = segment
-				if (prefix || suffix) {
-					const casePart = segment.caseSensitive ? part : part.toLowerCase()
-					if (prefix && !casePart.startsWith(prefix)) continue
-					if (suffix && !casePart.endsWith(suffix)) continue
+			// 1. Try static match
+			if (node.static) {
+				const match = node.static.get(part)
+				if (match) {
+					node = match
+					partIndex++
+					continue
 				}
-				node = segment
-				partIndex++
-				continue main
 			}
-		}
 
-		// 4. Try wildcard match
-		if (node.wildcard) {
-			const { prefix, suffix } = node.wildcard
-			if (prefix) {
-				const casePart = node.wildcard.caseSensitive ? part : part.toLowerCase()
-				if (!casePart.startsWith(prefix)) return null
+			// 2. Try case insensitive static match
+			if (node.staticInsensitive) {
+				const match = node.staticInsensitive.get(part.toLowerCase())
+				if (match) {
+					node = match
+					partIndex++
+					continue
+				}
 			}
-			if (suffix) {
-				const part = parts[parts.length - 1]!
-				const casePart = node.wildcard.caseSensitive ? part : part.toLowerCase()
-				if (!casePart.endsWith(suffix)) return null
-			}
-			partIndex = parts.length
-			continue
-		}
 
-		// No match found
-		return null
+			// 3. Try dynamic match
+			if (node.dynamic) {
+				for (const segment of node.dynamic) {
+					const { prefix, suffix } = segment
+					if (prefix || suffix) {
+						const casePart = segment.caseSensitive ? part : part.toLowerCase()
+						if (prefix && !casePart.startsWith(prefix)) continue
+						if (suffix && !casePart.endsWith(suffix)) continue
+					}
+					node = segment
+					partIndex++
+					continue main
+				}
+			}
+
+			// 4. Try optional match
+			if (node.optional) {
+				skipped ??= []
+				for (const segment of node.optional) {
+					stack.push({ node: segment, partIndex, skipped: [...skipped, segment] }) // enqueue skipping the optional
+				}
+				for (const segment of node.optional) {
+					const { prefix, suffix } = segment
+					if (prefix || suffix) {
+						const casePart = segment.caseSensitive ? part : part.toLowerCase()
+						if (prefix && !casePart.startsWith(prefix)) continue
+						if (suffix && !casePart.endsWith(suffix)) continue
+					}
+					node = segment
+					partIndex++
+					continue main
+				}
+			}
+
+			// 5. Try wildcard match
+			if (node.wildcard) {
+				const { prefix, suffix } = node.wildcard
+				if (prefix) {
+					const casePart = node.wildcard.caseSensitive ? part : part.toLowerCase()
+					if (!casePart.startsWith(prefix)) break
+				}
+				if (suffix) {
+					const part = parts[parts.length - 1]!
+					const casePart = node.wildcard.caseSensitive ? part : part.toLowerCase()
+					if (!casePart.endsWith(suffix)) break
+				}
+				partIndex = parts.length
+				node = node.wildcard
+				continue
+			}
+
+			// No match found
+			break
+		}
 	}
 
 	return null
