@@ -378,7 +378,7 @@ export function interpolatePath({
   leaveParams,
   decodeCharMap,
 }: InterpolatePathOptions): InterPolatePathResult {
-  if (!path) return { interpolatedPath: '', usedParams: {}, isMissingParams: false }
+  if (!path) return { interpolatedPath: '/', usedParams: {}, isMissingParams: false }
 
   function encodeParam(key: string): any {
     const value = params[key]
@@ -495,7 +495,7 @@ export function interpolatePath({
     }
   }
 
-  const interpolatedPath = joinPaths(interpolatedSegments)
+  const interpolatedPath = joinPaths(interpolatedSegments) || '/'
 
   return { usedParams, interpolatedPath, isMissingParams }
 }

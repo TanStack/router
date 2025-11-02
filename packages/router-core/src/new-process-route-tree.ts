@@ -122,7 +122,13 @@ export function parseSegment(path: string, start: number, output: Uint16Array) {
  * @param node The current segment node in the trie to populate.
  * @param onRoute Callback invoked for each route processed.
  */
-function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: TRouteLike, start: number, node: SegmentNode, onRoute: (route: TRouteLike) => void) {
+function parseSegments<TRouteLike extends RouteLike>(
+	data: Uint16Array,
+	route: TRouteLike,
+	start: number,
+	node: SegmentNode,
+	onRoute: (route: TRouteLike, node: SegmentNode) => void
+) {
 	let cursor = start
 	{
 		const path = route.fullPath
@@ -214,9 +220,9 @@ function parseSegments<TRouteLike extends RouteLike>(data: Uint16Array, route: T
 		}
 		if (route.path)
 			node.routeId = route.id
+		onRoute(route, node)
 	}
 	if (route.children) for (const child of route.children) {
-		onRoute(child as TRouteLike)
 		parseSegments(data, child as TRouteLike, cursor, node, onRoute)
 	}
 }
@@ -385,7 +391,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 	const routesById = {} as Record<string, TRouteLike>
 	const routesByPath = {} as Record<string, TRouteLike>
 	let index = 0
-	parseSegments(data, routeTree, 1, segmentTree, (route) => {
+	parseSegments(data, routeTree, 1, segmentTree, (route, node) => {
 		initRoute?.(route, index)
 
 		invariant(
