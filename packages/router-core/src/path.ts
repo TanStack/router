@@ -1,4 +1,6 @@
 import { decodePathSegment, last } from './utils'
+import { parseSegment } from "./new-process-route-tree"
+import type { SegmentKind } from "./new-process-route-tree"
 import type { LRUCache } from './lru-cache'
 import type { MatchLocation } from './RouterProvider'
 import type { AnyPathParams } from './route'
@@ -10,10 +12,10 @@ export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
 
 export interface Segment {
   readonly type:
-    | typeof SEGMENT_TYPE_PATHNAME
-    | typeof SEGMENT_TYPE_PARAM
-    | typeof SEGMENT_TYPE_WILDCARD
-    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+  | typeof SEGMENT_TYPE_PATHNAME
+  | typeof SEGMENT_TYPE_PARAM
+  | typeof SEGMENT_TYPE_WILDCARD
+  | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   readonly value: string
   readonly prefixSegment?: string
   readonly suffixSegment?: string
@@ -119,52 +121,6 @@ interface ResolvePathOptions {
   base: string
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
-  parseCache?: ParsePathnameCache
-}
-
-function segmentToString(segment: Segment): string {
-  const { type, value } = segment
-  if (type === SEGMENT_TYPE_PATHNAME) {
-    return value
-  }
-
-  const { prefixSegment, suffixSegment } = segment
-
-  if (type === SEGMENT_TYPE_PARAM) {
-    const param = value.substring(1)
-    if (prefixSegment && suffixSegment) {
-      return `${prefixSegment}{$${param}}${suffixSegment}`
-    } else if (prefixSegment) {
-      return `${prefixSegment}{$${param}}`
-    } else if (suffixSegment) {
-      return `{$${param}}${suffixSegment}`
-    }
-  }
-
-  if (type === SEGMENT_TYPE_OPTIONAL_PARAM) {
-    const param = value.substring(1)
-    if (prefixSegment && suffixSegment) {
-      return `${prefixSegment}{-$${param}}${suffixSegment}`
-    } else if (prefixSegment) {
-      return `${prefixSegment}{-$${param}}`
-    } else if (suffixSegment) {
-      return `{-$${param}}${suffixSegment}`
-    }
-    return `{-$${param}}`
-  }
-
-  if (type === SEGMENT_TYPE_WILDCARD) {
-    if (prefixSegment && suffixSegment) {
-      return `${prefixSegment}{$}${suffixSegment}`
-    } else if (prefixSegment) {
-      return `${prefixSegment}{$}`
-    } else if (suffixSegment) {
-      return `{$}${suffixSegment}`
-    }
-  }
-
-  // This case should never happen, should we throw instead?
-  return value
 }
 
 /**
@@ -175,25 +131,23 @@ export function resolvePath({
   base,
   to,
   trailingSlash = 'never',
-  parseCache,
 }: ResolvePathOptions) {
-  let baseSegments = parsePathname(base, parseCache).slice()
-  const toSegments = parsePathname(to, parseCache)
+  let baseSegments = base.split('/')
+  const toSegments = to.split('/')
 
-  if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
+  if (baseSegments.length > 1 && last(baseSegments) === '') {
     baseSegments.pop()
   }
 
   for (let index = 0, length = toSegments.length; index < length; index++) {
-    const toSegment = toSegments[index]!
-    const value = toSegment.value
+    const value = toSegments[index]!
     if (value === '/') {
       if (!index) {
         // Leading slash
-        baseSegments = [toSegment]
+        baseSegments = [value]
       } else if (index === length - 1) {
         // Trailing Slash
-        baseSegments.push(toSegment)
+        baseSegments.push(value)
       } else {
         // ignore inter-slashes
       }
@@ -202,24 +156,42 @@ export function resolvePath({
     } else if (value === '.') {
       // ignore
     } else {
-      baseSegments.push(toSegment)
+      baseSegments.push(value)
     }
   }
 
   if (baseSegments.length > 1) {
-    if (last(baseSegments)!.value === '/') {
+    if (last(baseSegments) === '') {
       if (trailingSlash === 'never') {
         baseSegments.pop()
       }
     } else if (trailingSlash === 'always') {
-      baseSegments.push({ type: SEGMENT_TYPE_PATHNAME, value: '/' })
+      baseSegments.push('')
     }
   }
 
-  const segmentValues = baseSegments.map(segmentToString)
-  // const joined = joinPaths([basepath, ...segmentValues])
+  const data = new Uint16Array(6)
+  const segmentValues = baseSegments.map((segment) => {
+    if (!segment) return ''
+    parseSegment(segment, 0, data)
+    const kind = data[0] as SegmentKind
+    if (kind === SEGMENT_TYPE_PATHNAME) {
+      return segment
+    }
+    const end = data[5]!
+    const prefix = segment.substring(0, data[1])
+    const suffix = segment.substring(data[4]!, end)
+    const value = segment.substring(data[2]!, data[3])
+    if (kind === SEGMENT_TYPE_PARAM) {
+      return prefix || suffix ? `${prefix}{$${value}}${suffix}` : `$${value}`
+    } else if (kind === SEGMENT_TYPE_WILDCARD) {
+      return prefix || suffix ? `${prefix}{$}${suffix}` : '$'
+    } else { // SEGMENT_TYPE_OPTIONAL_PARAM
+      return `${prefix}{-$${value}}${suffix}`
+    }
+  })
   const joined = joinPaths(segmentValues)
-  return joined
+  return joined || '/'
 }
 
 export type ParsePathnameCache = LRUCache<string, ReadonlyArray<Segment>>
@@ -381,7 +353,6 @@ interface InterpolatePathOptions {
   leaveParams?: boolean
   // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
   decodeCharMap?: Map<string, string>
-  parseCache?: ParsePathnameCache
 }
 
 type InterPolatePathResult = {
@@ -406,9 +377,8 @@ export function interpolatePath({
   leaveWildcards,
   leaveParams,
   decodeCharMap,
-  parseCache,
 }: InterpolatePathOptions): InterPolatePathResult {
-  const interpolatedPathSegments = parsePathname(path, parseCache)
+  if (!path) return { interpolatedPath: '', usedParams: {}, isMissingParams: false }
 
   function encodeParam(key: string): any {
     const value = params[key]
@@ -425,94 +395,108 @@ export function interpolatePath({
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
   let isMissingParams = false
-
   const usedParams: Record<string, unknown> = {}
-  const interpolatedPath = joinPaths(
-    interpolatedPathSegments.map((segment) => {
-      if (segment.type === SEGMENT_TYPE_PATHNAME) {
-        return segment.value
+  let cursor = 0
+  const data = new Uint16Array(6)
+  const length = path.length
+  const interpolatedSegments: Array<string> = []
+  while (cursor < length) {
+    const start = cursor
+    parseSegment(path, start, data)
+    const end = data[5]!
+    cursor = end + 1
+    const kind = data[0] as SegmentKind
+
+    if (kind === SEGMENT_TYPE_PATHNAME) {
+      interpolatedSegments.push(path.substring(start, end))
+      continue
+    }
+
+    if (kind === SEGMENT_TYPE_WILDCARD) {
+      usedParams._splat = params._splat
+
+      // TODO: Deprecate *
+      usedParams['*'] = params._splat
+
+      const prefix = path.substring(start, data[1])
+      const suffix = path.substring(data[4]!, end)
+
+      // Check if _splat parameter is missing. _splat could be missing if undefined or an empty string or some other falsy value.
+      if (!params._splat) {
+        isMissingParams = true
+        // For missing splat parameters, just return the prefix and suffix without the wildcard
+        // If there is a prefix or suffix, return them joined, otherwise omit the segment
+        if (prefix || suffix) {
+          if (leaveWildcards) {
+            interpolatedSegments.push(`${prefix}{$}${suffix}`)
+          } else {
+            interpolatedSegments.push(`${prefix}${suffix}`)
+          }
+        }
+        continue
       }
 
-      if (segment.type === SEGMENT_TYPE_WILDCARD) {
-        usedParams._splat = params._splat
+      const value = encodeParam('_splat')
+      if (leaveWildcards) {
+        interpolatedSegments.push(`${prefix}${prefix || suffix ? '{$}' : '$'}${value ?? ''}${suffix}`)
+      } else {
+        interpolatedSegments.push(`${prefix}${value}${suffix}`)
+      }
+      continue
+    }
 
-        // TODO: Deprecate *
-        usedParams['*'] = params._splat
+    if (kind === SEGMENT_TYPE_PARAM) {
+      const key = path.substring(data[2]!, data[3])
+      if (!isMissingParams && !(key in params)) {
+        isMissingParams = true
+      }
+      usedParams[key] = params[key]
 
-        const segmentPrefix = segment.prefixSegment || ''
-        const segmentSuffix = segment.suffixSegment || ''
+      const prefix = path.substring(start, data[1])
+      const suffix = path.substring(data[4]!, end)
+      if (leaveParams) {
+        const value = encodeParam(key)
+        interpolatedSegments.push(`${prefix}$${key}${value ?? ''}${suffix}`)
+      } else {
+        interpolatedSegments.push(`${prefix}${encodeParam(key) ?? 'undefined'}${suffix}`)
+      }
+      continue
+    }
 
-        // Check if _splat parameter is missing. _splat could be missing if undefined or an empty string or some other falsy value.
-        if (!params._splat) {
-          isMissingParams = true
-          // For missing splat parameters, just return the prefix and suffix without the wildcard
-          if (leaveWildcards) {
-            return `${segmentPrefix}${segment.value}${segmentSuffix}`
-          }
-          // If there is a prefix or suffix, return them joined, otherwise omit the segment
-          if (segmentPrefix || segmentSuffix) {
-            return `${segmentPrefix}${segmentSuffix}`
-          }
-          return undefined
-        }
+    if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
+      const key = path.substring(data[2]!, data[3])
 
-        const value = encodeParam('_splat')
+      const prefix = path.substring(start, data[1])
+      const suffix = path.substring(data[4]!, end)
+
+      // Check if optional parameter is missing or undefined
+      if (!(key in params) || params[key] == null) {
         if (leaveWildcards) {
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
-        }
-        return `${segmentPrefix}${value}${segmentSuffix}`
-      }
-
-      if (segment.type === SEGMENT_TYPE_PARAM) {
-        const key = segment.value.substring(1)
-        if (!isMissingParams && !(key in params)) {
-          isMissingParams = true
-        }
-        usedParams[key] = params[key]
-
-        const segmentPrefix = segment.prefixSegment || ''
-        const segmentSuffix = segment.suffixSegment || ''
-        if (leaveParams) {
-          const value = encodeParam(segment.value)
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
-        }
-        return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
-      }
-
-      if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
-        const key = segment.value.substring(1)
-
-        const segmentPrefix = segment.prefixSegment || ''
-        const segmentSuffix = segment.suffixSegment || ''
-
-        // Check if optional parameter is missing or undefined
-        if (!(key in params) || params[key] == null) {
-          if (leaveWildcards) {
-            return `${segmentPrefix}${key}${segmentSuffix}`
-          }
+          interpolatedSegments.push(`${prefix}${key}${suffix}`)
+        } else if (prefix || suffix) {
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
-          if (segmentPrefix || segmentSuffix) {
-            return `${segmentPrefix}${segmentSuffix}`
-          }
-          // If no prefix/suffix, omit the entire segment
-          return undefined
+          interpolatedSegments.push(`${prefix}${suffix}`)
         }
-
-        usedParams[key] = params[key]
-
-        if (leaveParams) {
-          const value = encodeParam(segment.value)
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
-        }
-        if (leaveWildcards) {
-          return `${segmentPrefix}${key}${encodeParam(key) ?? ''}${segmentSuffix}`
-        }
-        return `${segmentPrefix}${encodeParam(key) ?? ''}${segmentSuffix}`
+        // If no prefix/suffix, omit the entire segment
+        continue
       }
 
-      return segment.value
-    }),
-  )
+      usedParams[key] = params[key]
+
+      const value = encodeParam(key) ?? ''
+      if (leaveParams) {
+        interpolatedSegments.push(`${prefix}${key}${value}${suffix}`)
+      } else if (leaveWildcards) {
+        interpolatedSegments.push(`${prefix}${key}${value}${suffix}`)
+      } else {
+        interpolatedSegments.push(`${prefix}${value}${suffix}`)
+      }
+      continue
+    }
+  }
+
+  const interpolatedPath = joinPaths(interpolatedSegments)
+
   return { usedParams, interpolatedPath, isMissingParams }
 }
 

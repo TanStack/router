@@ -5,7 +5,7 @@ export const SEGMENT_TYPE_PARAM = 1
 export const SEGMENT_TYPE_WILDCARD = 2
 export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
 
-type SegmentKind = typeof SEGMENT_TYPE_PATHNAME | typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+export type SegmentKind = typeof SEGMENT_TYPE_PATHNAME | typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM
 
 const PARAM_RE = /^\$(.{1,})$/ // $paramName
 const PARAM_W_CURLY_BRACES_RE = /^(.*?)\{\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{$paramName}suffix
@@ -26,7 +26,7 @@ const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
  * @param start The starting index of the segment within the path.
  * @param output A Uint16Array to populate with the parsed segment data.
  */
-function parseSegment(path: string, start: number, output: Uint16Array) {
+export function parseSegment(path: string, start: number, output: Uint16Array) {
 	const next = path.indexOf('/', start)
 	const end = next === -1 ? path.length : next
 	if (end === start) { // TODO: maybe should never happen?
@@ -420,6 +420,14 @@ export function findMatch(path: string, segmentTree: SegmentNode): { routeId: st
 	const parts = path.split('/')
 	const leaf = getNodeMatch(parts, segmentTree)
 	if (!leaf) return null
+	const params = extractParams(path, parts, leaf)
+	return {
+		routeId: leaf.node.routeId!,
+		params,
+	}
+}
+
+function extractParams(path: string, parts: Array<string>, leaf: { node: SegmentNode, skipped: number }) {
 	const list = buildBranch(leaf.node)
 	let nodeParts: Array<string> | null = null
 	const params: Record<string, string> = {}
@@ -464,10 +472,7 @@ export function findMatch(path: string, segmentTree: SegmentNode): { routeId: st
 			break
 		}
 	}
-	return {
-		routeId: leaf.node.routeId!,
-		params,
-	}
+	return params
 }
 
 function buildBranch(node: SegmentNode) {
