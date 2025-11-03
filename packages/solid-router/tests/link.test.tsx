@@ -900,6 +900,7 @@ describe('Link', () => {
       expect(window.location.search).toBe('?page=2&filter=inactive')
     })
 
+    await screen.findByTestId('current-page')
     // Verify search was updated
     expect(window.location.pathname).toBe('/Dashboard/posts')
     expect(window.location.search).toBe('?page=2&filter=inactive')
