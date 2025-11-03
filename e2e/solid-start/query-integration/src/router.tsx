@@ -4,13 +4,7 @@ import { setupRouterSsrQueryIntegration } from '@tanstack/solid-router-ssr-query
 import { routeTree } from './routeTree.gen'
 
 export function getRouter() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        experimental_prefetchInRender: true,
-      },
-    },
-  })
+  const queryClient = new QueryClient()
   const router = createRouter({
     routeTree,
     context: { queryClient },
