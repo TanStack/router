@@ -368,11 +368,11 @@ export const Outlet = () => {
   })
 
   return (
-    <Solid.Switch>
-      <Solid.Match when={parentGlobalNotFound()}>
+    <>
+      <Solid.Show when={parentGlobalNotFound()}>
         {renderRouteNotFound(router, route(), undefined)}
-      </Solid.Match>
-      <Solid.Match when={childMatchId()}>
+      </Solid.Show>
+      <Solid.Show when={childMatchId()}>
         {(matchId) => {
           // const nextMatch = <Match matchId={matchId()} />
 
@@ -391,7 +391,7 @@ export const Outlet = () => {
             </Solid.Show>
           )
         }}
-      </Solid.Match>
-    </Solid.Switch>
+      </Solid.Show>
+    </>
   )
 }
