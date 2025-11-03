@@ -91,9 +91,7 @@ export function useMatch<
 
         // Determine if we should throw an error
         const shouldThrowError =
-          !pendingMatch &&
-          !state.isTransitioning &&
-          (opts.shouldThrow ?? true)
+          !pendingMatch && !state.isTransitioning && (opts.shouldThrow ?? true)
 
         return { match: undefined, shouldThrowError }
       }
