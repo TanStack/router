@@ -646,19 +646,19 @@ describe('React Router - Optional Path Parameters', () => {
 
       // Test navigation scenarios
       const navigateAll = await screen.findByTestId('navigate-all')
-      fireEvent.click(navigateAll)
+      await fireEvent.click(navigateAll)
       await waitFor(() => {
         expect(router.state.location.pathname).toBe('/posts')
       })
 
       const navigateTech = await screen.findByTestId('navigate-tech')
-      fireEvent.click(navigateTech)
+      await fireEvent.click(navigateTech)
       await waitFor(() => {
         expect(router.state.location.pathname).toBe('/posts/tech')
       })
 
       const navigateSpecific = await screen.findByTestId('navigate-specific')
-      fireEvent.click(navigateSpecific)
+      await fireEvent.click(navigateSpecific)
       await waitFor(() => {
         expect(router.state.location.pathname).toBe('/posts/tech/hello-world')
       })
