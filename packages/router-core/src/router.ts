@@ -2090,17 +2090,17 @@ export class RouterCore<
             // eslint-disable-next-line @typescript-eslint/require-await
             onReady: async () => {
               // eslint-disable-next-line @typescript-eslint/require-await
-              this.startViewTransition(async () => {
-                // this.viewTransitionPromise = createControlledPromise<true>()
+              // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
+              this.startTransition(() => {
+                this.startViewTransition(async () => {
+                  // this.viewTransitionPromise = createControlledPromise<true>()
 
-                // Commit the pending matches. If a previous match was
-                // removed, place it in the cachedMatches
-                let exitingMatches: Array<AnyRouteMatch> = []
-                let enteringMatches: Array<AnyRouteMatch> = []
-                let stayingMatches: Array<AnyRouteMatch> = []
+                  // Commit the pending matches. If a previous match was
+                  // removed, place it in the cachedMatches
+                  let exitingMatches: Array<AnyRouteMatch> = []
+                  let enteringMatches: Array<AnyRouteMatch> = []
+                  let stayingMatches: Array<AnyRouteMatch> = []
 
-                // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
-                this.startTransition(() => {
                   batch(() => {
                     this.__store.setState((s) => {
                       const previousMatches = s.matches
@@ -2131,18 +2131,20 @@ export class RouterCore<
                     })
                     this.clearExpiredCache()
                   })
-                })
 
-                //
-                ;(
-                  [
-                    [exitingMatches, 'onLeave'],
-                    [enteringMatches, 'onEnter'],
-                    [stayingMatches, 'onStay'],
-                  ] as const
-                ).forEach(([matches, hook]) => {
-                  matches.forEach((match) => {
-                    this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+                  //
+                  ;(
+                    [
+                      [exitingMatches, 'onLeave'],
+                      [enteringMatches, 'onEnter'],
+                      [stayingMatches, 'onStay'],
+                    ] as const
+                  ).forEach(([matches, hook]) => {
+                    matches.forEach((match) => {
+                      this.looseRoutesById[match.routeId]!.options[hook]?.(
+                        match,
+                      )
+                    })
                   })
                 })
               })
