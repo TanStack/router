@@ -276,13 +276,16 @@ Head to [Appwrite Cloud](https://cloud.appwrite.io) and sign up if you haven't a
 
 In your Appwrite project, navigate to the **Sites** page from the sidebar. Click on the **Create site**, select **Connect a repository**, connect your GitHub account and select your repository.
 
-  1. Select the **production branch** and **root directory**
-  2. Verify **TanStack Start** is selected as the framework
-  3. Confirm the build settings:
+1. Select the **production branch** and **root directory**
+2. Verify **TanStack Start** is selected as the framework
+3. Confirm the build settings:
+
+
     - **Install command:** `npm install`
     - **Build command:** `npm run build`
     - **Output directory:** `./dist` (if you're using Nitro v2 or v3, this should be `./.output`)
-  4. Add any required **environment variables**
-  5. Click **Deploy**
+
+4. Add any required **environment variables**
+5. Click **Deploy**
 
 After successful deployment, click the **Visit site** button to see your deployed application.
