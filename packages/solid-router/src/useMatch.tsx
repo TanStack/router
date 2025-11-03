@@ -73,24 +73,50 @@ export function useMatch<
     opts.from ? dummyMatchContext : matchContext,
   )
 
-  const matchSelection = useRouterState({
+  // Create a signal to track error state separately from the match
+  const matchState: Solid.Accessor<{
+    match: any
+    shouldThrowError: boolean
+  }> = useRouterState({
     select: (state: any) => {
       const match = state.matches.find((d: any) =>
         opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
       )
 
-      invariant(
-        !((opts.shouldThrow ?? true) && !match),
-        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-      )
-
       if (match === undefined) {
-        return undefined
+        // During navigation transitions, check if the match exists in pendingMatches
+        const pendingMatch = state.pendingMatches?.find((d: any) =>
+          opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
+        )
+
+        // Determine if we should throw an error
+        const shouldThrowError =
+          !pendingMatch &&
+          !state.isTransitioning &&
+          (opts.shouldThrow ?? true)
+
+        return { match: undefined, shouldThrowError }
       }
 
-      return opts.select ? opts.select(match) : match
+      return {
+        match: opts.select ? opts.select(match) : match,
+        shouldThrowError: false,
+      }
     },
   } as any)
 
-  return matchSelection as any
+  // Use createEffect to throw errors outside the reactive selector context
+  // This allows error boundaries to properly catch the errors
+  Solid.createEffect(() => {
+    const state = matchState()
+    if (state.shouldThrowError) {
+      invariant(
+        false,
+        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      )
+    }
+  })
+
+  // Return an accessor that extracts just the match value
+  return Solid.createMemo(() => matchState().match) as any
 }

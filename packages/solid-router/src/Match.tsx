@@ -364,10 +364,13 @@ export const Outlet = () => {
     select: (s) => {
       const matches = s.matches
       const parentMatch = matches.find((d) => d.id === matchId())
-      invariant(
-        parentMatch,
-        `Could not find parent match for matchId "${matchId()}"`,
-      )
+
+      // During navigation transitions, parent match can be temporarily removed
+      // Return false to avoid errors - the component will handle this gracefully
+      if (!parentMatch) {
+        return false
+      }
+
       return parentMatch.globalNotFound
     },
   })
