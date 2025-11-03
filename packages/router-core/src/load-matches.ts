@@ -468,7 +468,7 @@ const executeBeforeLoad = (
       return beforeLoadContext
         .catch(async (err) => {
           if (!isRedirect(err)) {
-            await loadLazyRouteChunks(route)
+            await loadRouteChunk(route)
           }
           handleSerialError(inner, index, err, 'BEFORE_LOAD')
         })
@@ -477,11 +477,12 @@ const executeBeforeLoad = (
   } catch (err) {
     pending()
     if (!isRedirect(err)) {
-      return loadLazyRouteChunks(route).then(() => {
+      return loadRouteChunk(route).then(() => {
         handleSerialError(inner, index, err, 'BEFORE_LOAD')
+        updateContext(undefined)
       })
     }
-    return handleSerialError(inner, index, err, 'BEFORE_LOAD')
+    handleSerialError(inner, index, err, 'BEFORE_LOAD')
   }
 
   updateContext(beforeLoadContext)
@@ -909,7 +910,7 @@ export async function loadMatches(arg: {
   return inner.matches
 }
 
-async function loadLazyRouteChunks(route: AnyRoute) {
+export async function loadRouteChunk(route: AnyRoute) {
   if (!route._lazyLoaded && route._lazyPromise === undefined) {
     if (route.lazyFn) {
       route._lazyPromise = route.lazyFn().then((lazyRoute) => {
@@ -923,12 +924,6 @@ async function loadLazyRouteChunks(route: AnyRoute) {
       route._lazyLoaded = true
     }
   }
-
-  return route._lazyPromise
-}
-
-export async function loadRouteChunk(route: AnyRoute) {
-  const lazyPromise = loadLazyRouteChunks(route)
 
   // If for some reason lazy resolves more lazy components...
   // We'll wait for that before we attempt to preload the
@@ -949,8 +944,8 @@ export async function loadRouteChunk(route: AnyRoute) {
       route._componentsPromise = undefined // gc promise, we won't need it anymore
       return
     }
-    route._componentsPromise = lazyPromise
-      ? lazyPromise.then(loadComponents)
+    route._componentsPromise = route._lazyPromise
+      ? route._lazyPromise.then(loadComponents)
       : loadComponents()
   }
   return route._componentsPromise
