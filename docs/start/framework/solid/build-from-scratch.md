@@ -154,13 +154,14 @@ Finally, we need to create the root of our application. This is the entry point 
 ```tsx
 // src/routes/__root.tsx
 /// <reference types="vite/client" />
-import type * as Solid from 'solid-js'
+import * as Solid from 'solid-js'
 import {
   Outlet,
   createRootRoute,
   HeadContent,
   Scripts,
 } from '@tanstack/solid-router'
+import { HydrationScript } from 'solid-js/web'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -190,11 +191,16 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: Solid.JSX.Element }>) {
   return (
-    <>
-      <HeadContent />
-      {children}
-      <Scripts />
-    </>
+    <html>
+      <head>
+        <HydrationScript />
+      </head>
+      <body>
+        <HeadContent />
+        <Solid.Suspense>{children}</Solid.Suspense>
+        <Scripts />
+      </body>
+    </html>
   )
 }
 ```

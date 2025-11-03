@@ -22,6 +22,7 @@
  * // Expected output: "token=foo&key=value"
  * ```
  */
+/** Encode a plain object into a URL query string using URLSearchParams. */
 export function encode(
   obj: Record<string, any>,
   stringify: (value: any) => string = String,
@@ -46,6 +47,7 @@ export function encode(
  * // Example input: toValue("123")
  * // Expected output: 123
  */
+/** Convert a string into a primitive boolean/number when possible. */
 function toValue(str: unknown) {
   if (!str) return ''
 
@@ -62,6 +64,7 @@ function toValue(str: unknown) {
  * // Example input: decode("token=foo&key=value")
  * // Expected output: { "token": "foo", "key": "value" }
  */
+/** Decode a URL query string into an object with basic type coercion. */
 export function decode(str: any): any {
   const searchParams = new URLSearchParams(str)
 

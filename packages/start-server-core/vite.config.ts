@@ -21,6 +21,7 @@ export default mergeConfig(
     entry: [
       './src/index.tsx',
       './src/createServerRpc.ts',
+      './src/createSsrRpc.ts',
       './src/fake-start-server-fn-manifest.ts',
     ],
     externalDeps: [

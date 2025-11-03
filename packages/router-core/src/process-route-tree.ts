@@ -3,7 +3,7 @@ import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
-  parseRoutePathSegments,
+  parsePathname,
   trimPathLeft,
   trimPathRight,
 } from './path'
@@ -70,7 +70,7 @@ function sortRoutes<TRouteLike extends RouteLike>(
     }
 
     const trimmed = trimPathLeft(d.fullPath)
-    let parsed = parseRoutePathSegments(trimmed)
+    let parsed = parsePathname(trimmed)
 
     // Removes the leading slash if it is not the only remaining segment
     let skip = 0
@@ -184,6 +184,14 @@ export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
   flatRoutes: Array<TRouteLike>
 }
 
+/**
+ * Build lookup maps and a specificity-sorted flat list from a route tree.
+ * Returns `routesById`, `routesByPath`, and `flatRoutes`.
+ */
+/**
+ * Build lookup maps and a specificity-sorted flat list from a route tree.
+ * Returns `routesById`, `routesByPath`, and `flatRoutes`.
+ */
 export function processRouteTree<TRouteLike extends RouteLike>({
   routeTree,
   initRoute,

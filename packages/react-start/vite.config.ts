@@ -29,6 +29,7 @@ export default mergeConfig(
       './src/client-rpc.ts',
       './src/server.tsx',
       './src/server-rpc.ts',
+      './src/ssr-rpc.ts',
       './src/plugin/vite.ts',
     ],
     externalDeps: [

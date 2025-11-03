@@ -222,18 +222,21 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   const match = () => matchState().match
 
+  const componentKey = () => matchState().key ?? matchState().match.id
+
   const out = () => {
     const Comp = route().options.component ?? router.options.defaultComponent
     if (Comp) {
-      const key = matchState().key ?? matchState().match.id
-      return (
-        <Solid.Show when={key} keyed>
-          <Comp />
-        </Solid.Show>
-      )
+      return <Comp />
     }
     return <Outlet />
   }
+
+  const keyedOut = () => (
+    <Solid.Show when={componentKey()} keyed>
+      {(_key) => out()}
+    </Solid.Show>
+  )
 
   return (
     <Solid.Switch>
@@ -327,7 +330,9 @@ export const MatchInner = (props: { matchId: string }): any => {
           throw match().error
         }}
       </Solid.Match>
-      <Solid.Match when={match().status === 'success'}>{out()}</Solid.Match>
+      <Solid.Match when={match().status === 'success'}>
+        {keyedOut()}
+      </Solid.Match>
     </Solid.Switch>
   )
 }
@@ -362,31 +367,45 @@ export const Outlet = () => {
     },
   })
 
-  return (
-    <Solid.Switch>
-      <Solid.Match when={parentGlobalNotFound()}>
-        {renderRouteNotFound(router, route(), undefined)}
-      </Solid.Match>
-      <Solid.Match when={childMatchId()}>
-        {(matchId) => {
-          // const nextMatch = <Match matchId={matchId()} />
+  const childMatchStatus = useRouterState({
+    select: (s) => {
+      const matches = s.matches
+      const index = matches.findIndex((d) => d.id === matchId())
+      return matches[index + 1]?.status
+    },
+  })
 
-          return (
-            <Solid.Show
-              when={matchId() === rootRouteId}
-              fallback={<Match matchId={matchId()} />}
+  // Only show not-found if we're not in a redirected state
+  const shouldShowNotFound = () =>
+    childMatchStatus() !== 'redirected' && parentGlobalNotFound()
+
+  return (
+    <Solid.Show
+      when={!shouldShowNotFound() && childMatchId()}
+      fallback={
+        <Solid.Show when={shouldShowNotFound()}>
+          {renderRouteNotFound(router, route(), undefined)}
+        </Solid.Show>
+      }
+    >
+      {(matchId) => {
+        // const nextMatch = <Match matchId={matchId()} />
+
+        return (
+          <Solid.Show
+            when={matchId() === rootRouteId}
+            fallback={<Match matchId={matchId()} />}
+          >
+            <Solid.Suspense
+              fallback={
+                <Dynamic component={router.options.defaultPendingComponent} />
+              }
             >
-              <Solid.Suspense
-                fallback={
-                  <Dynamic component={router.options.defaultPendingComponent} />
-                }
-              >
-                <Match matchId={matchId()} />
-              </Solid.Suspense>
-            </Solid.Show>
-          )
-        }}
-      </Solid.Match>
-    </Solid.Switch>
+              <Match matchId={matchId()} />
+            </Solid.Suspense>
+          </Solid.Show>
+        )
+      }}
+    </Solid.Show>
   )
 }

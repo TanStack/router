@@ -1,6 +1,5 @@
 import { rootRouteId } from '@tanstack/router-core'
-import { VIRTUAL_MODULES } from './virtual-modules'
-import { loadVirtualModule } from './loadVirtualModule'
+import type { RouterManagedTag } from '@tanstack/router-core'
 
 /**
  * @description Returns the router manifest that should be sent to the client.
@@ -9,9 +8,7 @@ import { loadVirtualModule } from './loadVirtualModule'
  * between routes or any other data that is not needed for the client.
  */
 export async function getStartManifest() {
-  const { tsrStartManifest } = await loadVirtualModule(
-    VIRTUAL_MODULES.startManifest,
-  )
+  const { tsrStartManifest } = await import('tanstack-start-manifest:v')
   const startManifest = tsrStartManifest()
 
   const rootRoute = (startManifest.routes[rootRouteId] =
@@ -21,8 +18,8 @@ export async function getStartManifest() {
 
   let script = `import('${startManifest.clientEntry}')`
   if (process.env.TSS_DEV_SERVER === 'true') {
-    const { injectedHeadScripts } = await loadVirtualModule(
-      VIRTUAL_MODULES.injectedHeadScripts,
+    const { injectedHeadScripts } = await import(
+      'tanstack-start-injected-head-scripts:v'
     )
     if (injectedHeadScripts) {
       script = `${injectedHeadScripts + ';'}${script}`
@@ -43,13 +40,17 @@ export async function getStartManifest() {
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).map(([k, v]) => {
         const { preloads, assets } = v
-        return [
-          k,
-          {
-            preloads,
-            assets,
-          },
-        ]
+        const result = {} as {
+          preloads?: Array<string>
+          assets?: Array<RouterManagedTag>
+        }
+        if (preloads) {
+          result['preloads'] = preloads
+        }
+        if (assets) {
+          result['assets'] = assets
+        }
+        return [k, result]
       }),
     ),
   }

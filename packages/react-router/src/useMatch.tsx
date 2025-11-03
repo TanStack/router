@@ -77,14 +77,6 @@ export type UseMatchResult<
 
 /**
  * Read and select the nearest or targeted route match.
- *
- * Options:
- * - `from`/`strict`: Target a specific route ID and control union vs. exact typing
- * - `select`: Project the match object to a derived value
- * - `shouldThrow`: Throw if the match is not found in strict contexts
- * - `structuralSharing`: Enable structural sharing for stable references
- *
- * @returns The active match (or selected value).
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchHook
  */
 export function useMatch<

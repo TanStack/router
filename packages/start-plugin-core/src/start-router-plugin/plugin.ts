@@ -7,6 +7,7 @@ import { normalizePath } from 'vite'
 import path from 'pathe'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { routesManifestPlugin } from './generator-plugins/routes-manifest-plugin'
+import { prerenderRoutesPlugin } from './generator-plugins/prerender-routes-plugin'
 import { pruneServerOnlySubtrees } from './pruneServerOnlySubtrees'
 import { SERVER_PROP } from './constants'
 import type {
@@ -209,11 +210,15 @@ export function tanStackStartRouter(
     clientTreePlugin,
     tanstackRouterGenerator(() => {
       const routerConfig = getConfig().startConfig.router
+      const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
+      if (startPluginOpts?.prerender?.enabled === true) {
+        plugins.push(prerenderRoutesPlugin())
+      }
       return {
         ...routerConfig,
         target: corePluginOpts.framework,
         routeTreeFileFooter: getRouteTreeFileFooter,
-        plugins: [clientTreeGeneratorPlugin, routesManifestPlugin()],
+        plugins,
       }
     }),
     tanStackRouterCodeSplitter(() => {

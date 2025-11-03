@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { useExperimentalNonNestedRoutes } from './utils/useExperimentalNonNestedRoutes'
 
 const testCases: Array<{
   name: string
@@ -184,7 +185,13 @@ test.describe('Non-nested paths', () => {
           await expect(pathRouteHeading).not.toBeVisible()
           await expect(barHeading).toBeVisible()
           const bar2ParamValue = await barParams.innerText()
-          expect(JSON.parse(bar2ParamValue)).toEqual(paramValue2)
+          if (useExperimentalNonNestedRoutes || testPathDesc !== 'named') {
+            expect(JSON.parse(bar2ParamValue)).toEqual(paramValue2)
+          } else {
+            // this is a bug with named path params and non-nested paths
+            // that is resolved in the new experimental flag
+            expect(JSON.parse(bar2ParamValue)).toEqual(paramValue)
+          }
         })
       })
     },

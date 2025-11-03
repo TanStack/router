@@ -25,6 +25,7 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 - [`railway`](#nodejs--railway--docker): Deploy to Railway
 - [`node-server`](#nodejs--railway--docker): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
+- [`appwrite-sites`](#appwrite-sites): Deploy to Appwrite Sites
 - ... and more to come!
 
 ### Cloudflare Workers ⭐ _Official Partner_
@@ -369,3 +370,37 @@ bun run server.ts
 ```
 
 For a complete working example, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
+
+### Appwrite Sites
+
+When deploying to [Appwrite Sites](https://appwrite.io/products/sites), you'll need to complete a few steps:
+
+1. **Create a TanStack Start app** (or use an existing one)
+
+```bash
+npm create @tanstack/start@latest
+```
+
+2. **Push your project to a GitHub repository**
+
+Create a [GitHub repository](https://github.com/new) and push your code.
+
+3. **Create an Appwrite project**
+
+Head to [Appwrite Cloud](https://cloud.appwrite.io) and sign up if you haven't already, then create your first project.
+
+4. **Deploy your site**
+
+In your Appwrite project, navigate to the **Sites** page from the sidebar. Click on the **Create site**, select **Connect a repository**, connect your GitHub account and select your repository.
+
+1. Select the **production branch** and **root directory**
+2. Verify **TanStack Start** is selected as the framework
+3. Confirm the build settings:
+   - **Install command:** `npm install`
+   - **Build command:** `npm run build`
+   - **Output directory:** `./dist` (if you're using Nitro v2 or v3, this should be `./.output`)
+
+4. Add any required **environment variables**
+5. Click **Deploy**
+
+After successful deployment, click the **Visit site** button to see your deployed application.

@@ -14,20 +14,25 @@ export type GenerateFunctionIdFnOptional = (
 
 export type TanStackServerFnPluginOpts = {
   /**
-   * The virtual import ID that will be used to import the server function manifest.
    * This virtual import ID will be used in the server build to import the manifest
    * and its modules.
    */
   manifestVirtualImportId: string
   generateFunctionId?: GenerateFunctionIdFnOptional
-  client: ServerFnPluginEnvOpts
-  server: ServerFnPluginEnvOpts
+  callers: Array<
+    ServerFnPluginEnvOpts & {
+      envConsumer: 'client' | 'server'
+      getServerFnById?: string
+    }
+  >
+  provider: ServerFnPluginEnvOpts
+  directive: string
 }
 
 export type ServerFnPluginEnvOpts = {
   getRuntimeCode: () => string
   replacer: ReplacerFn
-  envName?: string
+  envName: string
 }
 
 const debug =
@@ -35,20 +40,8 @@ const debug =
   ['true', 'server-functions-plugin'].includes(process.env.TSR_VITE_DEBUG)
 
 export function TanStackServerFnPlugin(
-  _opts: TanStackServerFnPluginOpts,
+  opts: TanStackServerFnPluginOpts,
 ): Array<Plugin> {
-  const opts = {
-    ..._opts,
-    client: {
-      ..._opts.client,
-      envName: _opts.client.envName || 'client',
-    },
-    server: {
-      ..._opts.server,
-      envName: _opts.server.envName || 'server',
-    },
-  }
-
   const directiveFnsById: Record<string, DirectiveFn> = {}
   let serverDevEnv: DevEnvironment | undefined
 
@@ -75,19 +68,21 @@ export function TanStackServerFnPlugin(
     return path
   }
 
+  let root = process.cwd()
+  let command: 'build' | 'serve' = 'build'
+
   const generateFunctionId: GenerateFunctionIdFn = ({
     extractedFilename,
     functionName,
     filename,
   }) => {
-    if (serverDevEnv) {
-      const root = serverDevEnv.config.root
-
+    if (command === 'serve') {
+      const rootWithTrailingSlash = withTrailingSlash(root)
       let file = extractedFilename
-      if (extractedFilename.startsWith(withTrailingSlash(root))) {
-        file = extractedFilename.slice(root.length)
+      if (extractedFilename.startsWith(rootWithTrailingSlash)) {
+        file = extractedFilename.slice(rootWithTrailingSlash.length)
       }
-      file = `/@id${file[0] === '/' ? '' : '/'}${file}`
+      file = `/@id/${file}`
 
       const serverFn: {
         file: string
@@ -129,35 +124,33 @@ export function TanStackServerFnPlugin(
     }
     return functionId
   }
-  const directive = 'use server'
-  const directiveLabel = 'Server Function'
 
   const resolvedManifestVirtualImportId = resolveViteId(
     opts.manifestVirtualImportId,
+  )
+
+  const appliedEnvironments = new Set([
+    ...opts.callers
+      .filter((c) => c.envConsumer === 'server')
+      .map((c) => c.envName),
+    opts.provider.envName,
+  ])
+
+  const serverCallerEnvironments = new Map(
+    opts.callers
+      .filter((c) => c.envConsumer === 'server')
+      .map((c) => [c.envName, c]),
   )
 
   return [
     // The client plugin is used to compile the client directives
     // and save them so we can create a manifest
     TanStackDirectiveFunctionsPluginEnv({
-      directive,
-      directiveLabel,
+      directive: opts.directive,
       onDirectiveFnsById,
       generateFunctionId,
-      environments: {
-        client: {
-          envLabel: 'Client',
-          getRuntimeCode: opts.client.getRuntimeCode,
-          replacer: opts.client.replacer,
-          envName: opts.client.envName,
-        },
-        server: {
-          envLabel: 'Server',
-          getRuntimeCode: opts.server.getRuntimeCode,
-          replacer: opts.server.replacer,
-          envName: opts.server.envName,
-        },
-      },
+      provider: opts.provider,
+      callers: opts.callers,
     }),
     {
       // On the server, we need to be able to read the server-function manifest from the client build.
@@ -165,13 +158,12 @@ export function TanStackServerFnPlugin(
       // by its ID, import it, and call it.
       name: 'tanstack-start-server-fn-vite-plugin-manifest-server',
       enforce: 'pre',
-      configureServer(viteDevServer) {
-        serverDevEnv = viteDevServer.environments[opts.server.envName]
-        if (!serverDevEnv) {
-          throw new Error(
-            `TanStackServerFnPluginEnv: environment "${opts.server.envName}" not found`,
-          )
-        }
+      applyToEnvironment: (env) => {
+        return appliedEnvironments.has(env.name)
+      },
+      configResolved(config) {
+        root = config.root
+        command = config.command
       },
       resolveId: {
         filter: { id: new RegExp(opts.manifestVirtualImportId) },
@@ -182,8 +174,18 @@ export function TanStackServerFnPlugin(
       load: {
         filter: { id: new RegExp(resolvedManifestVirtualImportId) },
         handler() {
-          if (this.environment.name !== opts.server.envName) {
-            return `export default {}`
+          // a different server side environment is used for e.g. SSR and server functions
+          if (this.environment.name !== opts.provider.envName) {
+            const getServerFnById = serverCallerEnvironments.get(
+              this.environment.name,
+            )?.getServerFnById
+            if (!getServerFnById) {
+              throw new Error(
+                `No getServerFnById implementation found for environment ${this.environment.name}`,
+              )
+            }
+
+            return getServerFnById
           }
 
           if (this.environment.mode !== 'build') {

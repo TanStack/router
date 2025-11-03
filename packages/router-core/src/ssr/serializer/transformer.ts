@@ -32,6 +32,10 @@ export type UnionizeSerializationAdaptersInput<
   TAdapters extends ReadonlyArray<AnySerializationAdapter>,
 > = TAdapters[number]['~types']['input']
 
+/**
+ * Create a strongly-typed serialization adapter for SSR hydration.
+ * Use to register custom types with the router serializer.
+ */
 export function createSerializationAdapter<
   TInput = unknown,
   TOutput = unknown,
@@ -154,6 +158,7 @@ export interface SerializationAdapterTypes<
 
 export type AnySerializationAdapter = SerializationAdapter<any, any, any>
 
+/** Create a Seroval plugin for server-side serialization only. */
 export function makeSsrSerovalPlugin(
   serializationAdapter: AnySerializationAdapter,
   options: { didRun: boolean },
@@ -182,6 +187,7 @@ export function makeSsrSerovalPlugin(
   })
 }
 
+/** Create a Seroval plugin for client/server symmetric (de)serialization. */
 export function makeSerovalPlugin(
   serializationAdapter: AnySerializationAdapter,
 ): Plugin<any, SerovalNode> {

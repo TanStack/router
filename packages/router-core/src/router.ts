@@ -2,6 +2,7 @@ import { Store, batch } from '@tanstack/store'
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import {
   createControlledPromise,
+  decodePathSegment,
   deepEqual,
   findLast,
   functionalUpdate,
@@ -778,6 +779,10 @@ export interface ViewTransitionOptions {
 }
 
 // TODO where is this used? can we remove this?
+/**
+ * Convert an unknown error into a minimal, serializable object.
+ * Includes name and message (and stack in development).
+ */
 export function defaultSerializeError(err: unknown) {
   if (err instanceof Error) {
     const obj = {
@@ -797,6 +802,7 @@ export function defaultSerializeError(err: unknown) {
   }
 }
 
+/** Options for configuring trailing-slash behavior. */
 export const trailingSlashOptions = {
   always: 'always',
   never: 'never',
@@ -806,6 +812,10 @@ export const trailingSlashOptions = {
 export type TrailingSlashOption =
   (typeof trailingSlashOptions)[keyof typeof trailingSlashOptions]
 
+/**
+ * Compute whether path, href or hash changed between previous and current
+ * resolved locations in router state.
+ */
 export function getLocationChangeInfo(routerState: {
   resolvedLocation?: ParsedLocation
   location: ParsedLocation
@@ -842,6 +852,15 @@ export type CreateRouterFn = <
   TDehydrated
 >
 
+/**
+ * Core, framework-agnostic router engine that powers TanStack Router.
+ *
+ * Provides navigation, matching, loading, preloading, caching and event APIs
+ * used by framework adapters (React/Solid). Prefer framework helpers like
+ * `createRouter` in app code.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType
+ */
 export class RouterCore<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
@@ -1096,6 +1115,12 @@ export class RouterCore<
     }
   }
 
+  /**
+   * Subscribe to router lifecycle events like `onBeforeNavigate`, `onLoad`,
+   * `onResolved`, etc. Returns an unsubscribe function.
+   *
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterEventsType
+   */
   subscribe: SubscribeFn = (eventType, fn) => {
     const listener: RouterListener<any> = {
       eventType,
@@ -1117,6 +1142,10 @@ export class RouterCore<
     })
   }
 
+  /**
+   * Parse a HistoryLocation into a strongly-typed ParsedLocation using the
+   * current router options, rewrite rules and search parser/stringifier.
+   */
   parseLocation: ParseLocationFn<TRouteTree> = (
     locationToParse,
     previousLocation,
@@ -1172,6 +1201,7 @@ export class RouterCore<
     return location
   }
 
+  /** Resolve a path against the router basepath and trailing-slash policy. */
   resolvePathWithBase = (from: string, path: string) => {
     const resolvedPath = resolvePath({
       base: from,
@@ -1538,6 +1568,13 @@ export class RouterCore<
     })
   }
 
+  /**
+   * Build the next ParsedLocation from navigation options without committing.
+   * Resolves `to`/`from`, params/search/hash/state, applies search validation
+   * and middlewares, and returns a stable, stringified location object.
+   *
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
+   */
   buildLocation: BuildLocationFn = (opts) => {
     const build = (
       dest: BuildNextOptions & {
@@ -1634,16 +1671,18 @@ export class RouterCore<
         }
       }
 
-      const nextPathname = interpolatePath({
-        // Use the original template path for interpolation
-        // This preserves the original parameter syntax including optional parameters
-        path: nextTo,
-        params: nextParams,
-        leaveWildcards: false,
-        leaveParams: opts.leaveParams,
-        decodeCharMap: this.pathParamsDecodeCharMap,
-        parseCache: this.parsePathnameCache,
-      }).interpolatedPath
+      const nextPathname = decodePathSegment(
+        interpolatePath({
+          // Use the original template path for interpolation
+          // This preserves the original parameter syntax including optional parameters
+          path: nextTo,
+          params: nextParams,
+          leaveWildcards: false,
+          leaveParams: opts.leaveParams,
+          decodeCharMap: this.pathParamsDecodeCharMap,
+          parseCache: this.parsePathnameCache,
+        }).interpolatedPath,
+      )
 
       // Resolve the next search
       let nextSearch = fromSearch
@@ -1785,6 +1824,10 @@ export class RouterCore<
 
   commitLocationPromise: undefined | ControlledPromise<void>
 
+  /**
+   * Commit a previously built location to history (push/replace), optionally
+   * using view transitions and scroll restoration options.
+   */
   commitLocation: CommitLocationFn = ({
     viewTransition,
     ignoreBlocker,
@@ -1875,6 +1918,7 @@ export class RouterCore<
     return this.commitLocationPromise
   }
 
+  /** Convenience helper: build a location from options, then commit it. */
   buildAndCommitLocation = ({
     replace,
     resetScroll,
@@ -1911,6 +1955,13 @@ export class RouterCore<
     })
   }
 
+  /**
+   * Imperatively navigate using standard `NavigateOptions`. When `reloadDocument`
+   * or an absolute `href` is provided, performs a full document navigation.
+   * Otherwise, builds and commits a client-side location.
+   *
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType
+   */
   navigate: NavigateFn = ({ to, reloadDocument, href, ...rest }) => {
     if (!reloadDocument && href) {
       try {
@@ -2060,8 +2111,8 @@ export class RouterCore<
                       (match) =>
                         !previousMatches.some((d) => d.id === match.id),
                     )
-                    stayingMatches = previousMatches.filter((match) =>
-                      newMatches.some((d) => d.id === match.id),
+                    stayingMatches = newMatches.filter((match) =>
+                      previousMatches.some((d) => d.id === match.id),
                     )
 
                     return {
@@ -2478,8 +2529,10 @@ export class RouterCore<
   }
 }
 
+/** Error thrown when search parameter validation fails. */
 export class SearchParamError extends Error {}
 
+/** Error thrown when path parameter parsing/validation fails. */
 export class PathParamError extends Error {}
 
 const normalize = (str: string) =>
@@ -2488,9 +2541,10 @@ function comparePaths(a: string, b: string) {
   return normalize(a) === normalize(b)
 }
 
-// A function that takes an import() argument which is a function and returns a new function that will
-// proxy arguments from the caller to the imported function, retaining all type
-// information along the way
+/**
+ * Lazily import a module function and forward arguments to it, retaining
+ * parameter and return types for the selected export key.
+ */
 export function lazyFn<
   T extends Record<string, (...args: Array<any>) => any>,
   TKey extends keyof T = 'default',
@@ -2503,6 +2557,7 @@ export function lazyFn<
   }
 }
 
+/** Create an initial RouterState from a parsed location. */
 export function getInitialRouterState(
   location: ParsedLocation,
 ): RouterState<any> {
@@ -2548,6 +2603,10 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
+/**
+ * Build the matched route chain and extract params for a pathname.
+ * Falls back to the root route if no specific route is found.
+ */
 export function getMatchedRoutes<TRouteLike extends RouteLike>({
   pathname,
   routePathname,

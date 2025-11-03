@@ -1,7 +1,11 @@
 import { decode, encode } from './qss'
 import type { AnySchema } from './validators'
 
+/** Default `parseSearch` that strips leading '?' and JSON-parses values. */
+/** Default `parseSearch` that strips leading '?' and JSON-parses values. */
+/** Default `parseSearch` that strips leading '?' and JSON-parses values. */
 export const defaultParseSearch = parseSearchWith(JSON.parse)
+/** Default `stringifySearch` using JSON.stringify for complex values. */
 export const defaultStringifySearch = stringifySearchWith(
   JSON.stringify,
   JSON.parse,
@@ -17,6 +21,7 @@ export const defaultStringifySearch = stringifySearchWith(
  * @returns A `parseSearch` function compatible with `Router` options.
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
+/** Build a parseSearch function using a provided JSON-like parser. */
 export function parseSearchWith(parser: (str: string) => any) {
   return (searchStr: string): AnySchema => {
     if (searchStr[0] === '?') {
@@ -53,6 +58,7 @@ export function parseSearchWith(parser: (str: string) => any) {
  * @returns A `stringifySearch` function compatible with `Router` options.
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
+/** Build a stringifySearch function using a provided serializer/parser. */
 export function stringifySearchWith(
   stringify: (search: any) => string,
   parser?: (str: string) => any,

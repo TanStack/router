@@ -11,12 +11,12 @@
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
-    "@tanstack/solid-router": "^1.133.24",
-    "@tanstack/solid-router-devtools": "^1.133.24",
-    "@tanstack/solid-start": "^1.133.24",
+    "@tanstack/solid-router": "^1.134.11",
+    "@tanstack/solid-router-devtools": "^1.134.11",
+    "@tanstack/solid-start": "^1.134.11",
     "prisma": "^5.22.0",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.5",
+    "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
