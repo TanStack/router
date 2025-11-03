@@ -1173,7 +1173,7 @@ export class RouterCore<
         href: fullPath,
         publicHref: href,
         url: url.href,
-        pathname,
+        pathname: decodePathSegment(pathname),
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: hash.split('#').reverse()[0] ?? '',

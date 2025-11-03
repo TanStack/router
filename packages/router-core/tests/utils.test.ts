@@ -599,4 +599,17 @@ describe('decodePathSegment', () => {
     const expectedResult = 'test%25%25end'
     expect(decodePathSegment(stringToCheck)).toBe(expectedResult)
   })
+
+  it('should handle multiple ignored items of the same type with varying case', () => {
+    const stringToCheck = '/params-ps/named/foo%2Fabc/c%2Fh'
+    const expectedResult = '/params-ps/named/foo%2Fabc/c%2Fh'
+    expect(decodePathSegment(stringToCheck)).toBe(expectedResult)
+
+    const stringToCheckWithLowerCase = '/params-ps/named/foo%2Fabc/c%5C%2f%5cAh'
+    const expectedResultWithLowerCase =
+      '/params-ps/named/foo%2Fabc/c%5C%2F%5CAh'
+    expect(decodePathSegment(stringToCheckWithLowerCase)).toBe(
+      expectedResultWithLowerCase,
+    )
+  })
 })
