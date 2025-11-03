@@ -284,6 +284,10 @@ test('Should not remount deps when remountDeps does not change ', async ({
   await expect(page.getByTestId('component-mounts')).toContainText(
     'Page component mounts: 1',
   )
+  await page.getByRole('button', { name: 'Regenerate search param' }).click()
+  await expect(page.getByTestId('component-mounts')).toContainText(
+    'Page component mounts: 1',
+  )
 })
 
 test('Should remount deps when remountDeps does change ', async ({ page }) => {
@@ -294,6 +298,10 @@ test('Should remount deps when remountDeps does change ', async ({ page }) => {
   await page.getByRole('button', { name: 'Regenerate search param' }).click()
   await expect(page.getByTestId('component-mounts')).toContainText(
     'Page component mounts: 2',
+  )
+  await page.getByRole('button', { name: 'Regenerate search param' }).click()
+  await expect(page.getByTestId('component-mounts')).toContainText(
+    'Page component mounts: 3',
   )
 })
 

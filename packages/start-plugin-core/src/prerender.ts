@@ -206,17 +206,28 @@ export async function prerender({
           const contentType = res.headers.get('content-type') || ''
           const isImplicitHTML =
             !cleanPagePath.endsWith('.html') && contentType.includes('html')
-          // &&
-          // !JsonSigRx.test(dataBuff.subarray(0, 32).toString('utf8'))
+
           const routeWithIndex = cleanPagePath.endsWith('/')
             ? cleanPagePath + 'index'
             : cleanPagePath
 
-          const htmlPath =
-            cleanPagePath.endsWith('/') ||
-            (prerenderOptions.autoSubfolderIndex ?? true)
-              ? joinURL(cleanPagePath, 'index.html')
-              : cleanPagePath + '.html'
+          const isSpaShell =
+            startConfig.spa?.prerender.outputPath === cleanPagePath
+
+          let htmlPath: string
+          if (isSpaShell) {
+            // For SPA shell, ignore autoSubfolderIndex option
+            htmlPath = cleanPagePath + '.html'
+          } else {
+            if (
+              cleanPagePath.endsWith('/') ||
+              (prerenderOptions.autoSubfolderIndex ?? true)
+            ) {
+              htmlPath = joinURL(cleanPagePath, 'index.html')
+            } else {
+              htmlPath = cleanPagePath + '.html'
+            }
+          }
 
           const filename = withoutBase(
             isImplicitHTML ? htmlPath : routeWithIndex,

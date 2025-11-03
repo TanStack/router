@@ -16,5 +16,4 @@ function OtherComponent() {
   });
   return <div>App component name is {componentName}</div>;
 }
-import { Route } from "circular-reference-function.tsx";
 export { App as component };

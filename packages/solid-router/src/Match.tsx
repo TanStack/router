@@ -222,18 +222,21 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   const match = () => matchState().match
 
+  const componentKey = () => matchState().key ?? matchState().match.id
+
   const out = () => {
     const Comp = route().options.component ?? router.options.defaultComponent
     if (Comp) {
-      const key = matchState().key ?? matchState().match.id
-      return (
-        <Solid.Show when={key} keyed>
-          <Comp />
-        </Solid.Show>
-      )
+      return <Comp />
     }
     return <Outlet />
   }
+
+  const keyedOut = () => (
+    <Solid.Show when={componentKey()} keyed>
+      {(_key) => out()}
+    </Solid.Show>
+  )
 
   return (
     <Solid.Switch>
@@ -327,7 +330,9 @@ export const MatchInner = (props: { matchId: string }): any => {
           throw match().error
         }}
       </Solid.Match>
-      <Solid.Match when={match().status === 'success'}>{out()}</Solid.Match>
+      <Solid.Match when={match().status === 'success'}>
+        {keyedOut()}
+      </Solid.Match>
     </Solid.Switch>
   )
 }

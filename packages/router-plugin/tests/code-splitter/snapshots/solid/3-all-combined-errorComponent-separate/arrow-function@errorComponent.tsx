@@ -1,1 +1,0 @@
-import { Route } from "arrow-function.tsx";
