@@ -56,24 +56,14 @@ export const Match = (props: { matchId: string }) => {
   const routeNotFoundComponent = () =>
     route().isRoot
       ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
-        (route().options.notFoundComponent ??
+      (route().options.notFoundComponent ??
         router.options.notFoundRoute?.options.component)
       : route().options.notFoundComponent
 
   const resolvedNoSsr =
     matchState()!.ssr === false || matchState()!.ssr === 'data-only'
 
-  const ResolvedSuspenseBoundary = () =>
-    // If we're on the root route, allow forcefully wrapping in suspense
-    (!route().isRoot ||
-      route().options.wrapInSuspense ||
-      resolvedNoSsr ||
-      matchState()!._displayPending) &&
-    (route().options.wrapInSuspense ??
-      PendingComponent() ??
-      ((route().options.errorComponent as any)?.preload || resolvedNoSsr))
-      ? Solid.Suspense
-      : SafeFragment
+  const ResolvedSuspenseBoundary = () => Solid.Suspense;
 
   const ResolvedCatchBoundary = () =>
     routeErrorComponent() ? CatchBoundary : SafeFragment
