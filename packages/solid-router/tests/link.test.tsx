@@ -4389,7 +4389,6 @@ describe('Link', () => {
     })
 
     render(() => <RouterProvider router={router} />)
-    await router.load()
 
     const linkToPosts = await screen.findByRole('link', {
       name: 'link to posts',
@@ -4399,21 +4398,10 @@ describe('Link', () => {
     fireEvent.focus(linkToPosts)
     fireEvent.click(linkToPosts)
 
-    // Wait for loading state to appear (after 200ms pendingMs delay)
-    await waitFor(
-      async () => {
-        const loading = await screen.findByText('Loading...')
-        expect(loading).toBeInTheDocument()
-      },
-      { timeout: 500 },
-    )
+    const loadingElement = await screen.findByText('Loading...')
+    expect(loadingElement).toBeInTheDocument()
 
-    // Then wait for the loader to complete and posts page to appear
-    const postsElement = await screen.findByText(
-      'Posts page',
-      {},
-      { timeout: 2000 },
-    )
+    const postsElement = await screen.findByText('Posts page')
     expect(postsElement).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts')
