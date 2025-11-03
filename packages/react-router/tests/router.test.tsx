@@ -344,7 +344,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
+    expect(router.state.location.pathname).toBe('/posts/🚀')
   })
 
   it('state.location.pathname, should have the params.slug value of "100%25"', async () => {
@@ -374,7 +374,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
+    expect(router.state.location.pathname).toBe('/posts/🚀')
   })
 
   it('state.location.pathname, should have the params.slug value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
@@ -388,8 +388,12 @@ describe('encoding: URL param segment for /posts/$slug', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe(
+    expect(router.state.location.href).toBe(
       '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
+    )
+
+    expect(router.state.location.pathname).toBe(
+      '/posts/framework%2Freact%2Fguide%2Ffile-based-routing tanstack',
     )
   })
 
@@ -593,7 +597,8 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
+    expect(router.state.location.href).toBe('/%F0%9F%9A%80')
+    expect(router.state.location.pathname).toBe('/🚀')
   })
 
   it('state.location.pathname, should have the params._splat value of "100%25"', async () => {
@@ -623,7 +628,8 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
+    expect(router.state.location.href).toBe('/%F0%9F%9A%80')
+    expect(router.state.location.pathname).toBe('/🚀')
   })
 
   it('state.location.pathname, should have the params._splat value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
@@ -640,6 +646,9 @@ describe('encoding: URL splat segment for /$', () => {
     expect(router.state.location.href).toBe(
       '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
     )
+    expect(router.state.location.pathname).toBe(
+      '/framework%2Freact%2Fguide%2Ffile-based-routing tanstack',
+    )
   })
 
   it('state.location.pathname, should have the params._splat value of "framework/react/guide/file-based-routing tanstack"', async () => {
@@ -653,6 +662,10 @@ describe('encoding: URL splat segment for /$', () => {
 
     expect(router.state.location.href).toBe(
       '/framework/react/guide/file-based-routing%20tanstack',
+    )
+
+    expect(router.state.location.pathname).toBe(
+      '/framework/react/guide/file-based-routing tanstack',
     )
   })
 
@@ -737,61 +750,66 @@ describe('encoding: URL path segment', () => {
   it.each([
     {
       input: '/path-segment/%C3%A9',
-      output: '/path-segment/%C3%A9',
+      path: '/path-segment/é',
+      url: '/path-segment/%C3%A9',
     },
     {
       input: '/path-segment/é',
-      output: '/path-segment/%C3%A9',
-      type: 'not encoded',
+      path: '/path-segment/é',
+      url: '/path-segment/%C3%A9',
     },
     {
       input: '/path-segment/100%25', // `%25` = `%`
-      output: '/path-segment/100%25',
-      type: 'not encoded',
+      path: '/path-segment/100%25',
+      url: '/path-segment/100%25',
     },
     {
       input: '/path-segment/100%25%25',
-      output: '/path-segment/100%25%25',
-      type: 'not encoded',
+      path: '/path-segment/100%25%25',
+      url: '/path-segment/100%25%25',
     },
     {
       input: '/path-segment/100%26', // `%26` = `&`
-      output: '/path-segment/100%26',
-      type: 'not encoded',
+      path: '/path-segment/100%26',
+      url: '/path-segment/100%26',
     },
     {
       input: '/path-segment/%F0%9F%9A%80',
-      output: '/path-segment/%F0%9F%9A%80',
+      path: '/path-segment/🚀',
+      url: '/path-segment/%F0%9F%9A%80',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
+      path: '/path-segment/🚀to%2Fthe%2Fmoon',
+      url: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
+      path: '/path-segment/%25🚀to%2Fthe%2Fmoon',
+      url: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
-      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
+      path: '/path-segment/🚀to%2Fthe%2Fmoon%25',
+      url: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
     },
     {
       input:
         '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output:
-        '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
+      path: '/path-segment/🚀to%2Fthe%2Fmoon%25🚀to%2Fthe%2Fmoon',
+      url: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/🚀',
-      output: '/path-segment/%F0%9F%9A%80',
-      type: 'not encoded',
+      path: '/path-segment/🚀',
+      url: '/path-segment/%F0%9F%9A%80',
     },
     {
       input: '/path-segment/🚀to%2Fthe%2Fmoon',
-      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
-      type: 'not encoded',
+      path: '/path-segment/🚀to%2Fthe%2Fmoon',
+      url: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
-  ])('should resolve $input to $output', async ({ input, output }) => {
+  ])('should resolve $input to $output', async ({ input, path, url }) => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: [input] }),
     })
@@ -799,7 +817,8 @@ describe('encoding: URL path segment', () => {
     render(<RouterProvider router={router} />)
     await act(() => router.load())
 
-    expect(new URL(router.state.location.url).pathname).toBe(output)
+    expect(router.state.location.pathname).toBe(path)
+    expect(new URL(router.state.location.url).pathname).toBe(url)
   })
 })
 
