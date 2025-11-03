@@ -393,6 +393,10 @@ describe('Link', () => {
       // navigate to /?foo=bar
       fireEvent.click(indexFooBarLink)
 
+      await waitFor(() => {
+        expect(indexFooBarLink).toHaveClass('active')
+      })
+
       expect(indexExactLink).toHaveClass('inactive')
       expect(indexExactLink).not.toHaveClass('active')
       expect(indexExactLink).toHaveAttribute('href', '/')
