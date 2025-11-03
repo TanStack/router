@@ -775,7 +775,12 @@ describe('Link', () => {
       '/posts?page=2&filter=inactive',
     )
 
-    fireEvent.click(updateSearchLink)
+    await fireEvent.click(updateSearchLink)
+
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
 
     const updatedPage = await screen.findByTestId('current-page')
     const updatedFilter = await screen.findByTestId('current-filter')
@@ -888,9 +893,13 @@ describe('Link', () => {
       '/Dashboard/posts?page=2&filter=inactive',
     )
 
-    fireEvent.click(updateSearchLink)
+    await fireEvent.click(updateSearchLink)
 
-    await screen.findByTestId('current-page')
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
+
     // Verify search was updated
     expect(window.location.pathname).toBe('/Dashboard/posts')
     expect(window.location.search).toBe('?page=2&filter=inactive')
@@ -4380,6 +4389,7 @@ describe('Link', () => {
     })
 
     render(() => <RouterProvider router={router} />)
+    await router.load()
 
     const linkToPosts = await screen.findByRole('link', {
       name: 'link to posts',
@@ -4389,10 +4399,17 @@ describe('Link', () => {
     fireEvent.focus(linkToPosts)
     fireEvent.click(linkToPosts)
 
-    const loadingElement = await screen.findByText('Loading...')
-    expect(loadingElement).toBeInTheDocument()
+    // Wait for loading state to appear (after 200ms pendingMs delay)
+    await waitFor(
+      async () => {
+        const loading = await screen.findByText('Loading...')
+        expect(loading).toBeInTheDocument()
+      },
+      { timeout: 500 }
+    )
 
-    const postsElement = await screen.findByText('Posts page')
+    // Then wait for the loader to complete and posts page to appear
+    const postsElement = await screen.findByText('Posts page', {}, { timeout: 2000 })
     expect(postsElement).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts')
