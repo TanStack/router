@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import {
   Link,
   Outlet,
@@ -649,7 +656,7 @@ describe('React Router - Optional Path Parameters', () => {
       await waitFor(() => {
         expect(router.state.location.pathname).toBe('/posts/tech')
       })
-      
+
       const navigateSpecific = await screen.findByTestId('navigate-specific')
       fireEvent.click(navigateSpecific)
       await waitFor(() => {

@@ -657,7 +657,7 @@ describe('Solid Router - Optional Path Parameters', () => {
       await waitFor(() => {
         expect(router.state.location.pathname).toBe('/posts/tech')
       })
-      
+
       const navigateSpecific = await screen.findByTestId('navigate-specific')
       fireEvent.click(navigateSpecific)
       await waitFor(() => {
