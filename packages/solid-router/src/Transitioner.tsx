@@ -102,7 +102,7 @@ export function Transitioner() {
     ),
   )
 
-  Solid.createRenderEffect(
+  Solid.createComputed(
     Solid.on(
       [isPagePending, previousIsPagePending],
       ([isPagePending, previousIsPagePending]) => {
