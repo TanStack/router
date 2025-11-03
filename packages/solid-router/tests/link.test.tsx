@@ -4405,11 +4405,15 @@ describe('Link', () => {
         const loading = await screen.findByText('Loading...')
         expect(loading).toBeInTheDocument()
       },
-      { timeout: 500 }
+      { timeout: 500 },
     )
 
     // Then wait for the loader to complete and posts page to appear
-    const postsElement = await screen.findByText('Posts page', {}, { timeout: 2000 })
+    const postsElement = await screen.findByText(
+      'Posts page',
+      {},
+      { timeout: 2000 },
+    )
     expect(postsElement).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts')
