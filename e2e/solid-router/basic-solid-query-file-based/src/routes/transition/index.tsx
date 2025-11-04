@@ -29,9 +29,7 @@ export const Route = createFileRoute('/transition/')({
 function TransitionPage() {
   const search = Route.useSearch()
 
-  const doubleQuery = createMemo(() =>
-    useQuery(() => doubleQueryOptions(search().n)),
-  )
+  const doubleQuery = useQuery(() => doubleQueryOptions(search().n))
 
   return (
     <Suspense fallback="Loading...">
@@ -47,7 +45,7 @@ function TransitionPage() {
 
         <div class="mt-2">
           <div data-testid="n-value">n: {search().n}</div>
-          <div data-testid="double-value">double: {doubleQuery().data}</div>
+          <div data-testid="double-value">double: {doubleQuery.data}</div>
         </div>
       </div>
     </Suspense>
