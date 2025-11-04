@@ -219,7 +219,6 @@ export const MatchInner = (props: { matchId: string }): any => {
     },
   })
 
-  // If match doesn't exist yet, return null
   if (!matchState()) return null
 
   const route = () => router.routesById[matchState()!.routeId]!
