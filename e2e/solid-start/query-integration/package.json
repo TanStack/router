@@ -11,7 +11,7 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.0",
+    "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-query-devtools": "^5.90.0",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",

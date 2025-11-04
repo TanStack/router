@@ -1703,7 +1703,11 @@ describe('statusCode reset on navigation', () => {
       it('should set statusCode to 404 when a route beforeLoad throws a notFound()', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
-        const rootRoute = createRootRoute()
+        const rootRoute = createRootRoute({
+          notFoundComponent: () => (
+            <div data-testid="not-found-component">Not Found</div>
+          ),
+        })
 
         const indexRoute = createRoute({
           getParentRoute: () => rootRoute,

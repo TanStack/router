@@ -393,6 +393,10 @@ describe('Link', () => {
       // navigate to /?foo=bar
       fireEvent.click(indexFooBarLink)
 
+      await waitFor(() => {
+        expect(indexFooBarLink).toHaveClass('active')
+      })
+
       expect(indexExactLink).toHaveClass('inactive')
       expect(indexExactLink).not.toHaveClass('active')
       expect(indexExactLink).toHaveAttribute('href', '/')
@@ -771,7 +775,12 @@ describe('Link', () => {
       '/posts?page=2&filter=inactive',
     )
 
-    fireEvent.click(updateSearchLink)
+    await fireEvent.click(updateSearchLink)
+
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
 
     const updatedPage = await screen.findByTestId('current-page')
     const updatedFilter = await screen.findByTestId('current-filter')
@@ -884,7 +893,12 @@ describe('Link', () => {
       '/Dashboard/posts?page=2&filter=inactive',
     )
 
-    fireEvent.click(updateSearchLink)
+    await fireEvent.click(updateSearchLink)
+
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
 
     await screen.findByTestId('current-page')
     // Verify search was updated

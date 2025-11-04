@@ -360,6 +360,10 @@ describe('Link', () => {
       // navigate to /?foo=bar
       await act(() => fireEvent.click(indexFooBarLink))
 
+      await waitFor(() => {
+        expect(indexFooBarLink).toHaveClass('active')
+      })
+
       expect(indexExactLink).toHaveClass('inactive')
       expect(indexExactLink).not.toHaveClass('active')
       expect(indexExactLink).toHaveAttribute('href', '/')
@@ -744,6 +748,11 @@ describe('Link', () => {
 
     await act(() => fireEvent.click(updateSearchLink))
 
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
+
     // Verify search was updated
     expect(window.location.pathname).toBe('/posts')
     expect(window.location.search).toBe('?page=2&filter=inactive')
@@ -855,6 +864,11 @@ describe('Link', () => {
     )
 
     await act(() => fireEvent.click(updateSearchLink))
+
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
 
     // Verify search was updated
     expect(window.location.pathname).toBe('/Dashboard/posts')
