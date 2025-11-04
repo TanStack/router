@@ -123,21 +123,45 @@ Deploy your application to Cloudflare Workers using their one-click deployment p
 
 ### Netlify
 
-Install and add the [`@netlify/vite-plugin-tanstack-start`](https://www.npmjs.com/package/@netlify/vite-plugin-tanstack-start) plugin, which configures your build for Netlify deployment and provides full Netlify production platform emulation in local dev.
+Install and add the [`@netlify/vite-plugin-tanstack-start`](https://www.npmjs.com/package/@netlify/vite-plugin-tanstack-start) plugin, which configures your build for Netlify deployment and provides full Netlify production platform emulation in local dev:
+
+```bash
+npm install --save-dev @netlify/vite-plugin-tanstack-start
+# or...
+pnpm add --save-dev @netlify/vite-plugin-tanstack-start
+# or yarn, bun, etc.
+```
 
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import netlify from '@netlify/vite-plugin-tanstack-start'
+import netlify from '@netlify/vite-plugin-tanstack-start' // ← add this
 import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
-  plugins: [tanstackStart(), netlify(), viteSolid({ ssr: true })],
+  plugins: [
+    tanstackStart(),
+    netlify(), // ← add this (anywhere in the array is fine)
+    viteSolid({ ssr: true }),
+  ],
 })
 ```
 
-Add a `netlify.toml` file to your project root:
+Finally, use [Netlify CLI](https://developers.netlify.com/cli/) to deploy your app:
+
+```bash
+npx netlify deploy
+```
+
+If this is a new Netlify project, you'll be prompted to initialize it and build settings will be automatically configured for you.
+
+For more detailed documentation, check out the full [TanStack Start on Netlify
+docs](https://docs.netlify.com/build/frameworks/framework-setup-guides/tanstack-start/).
+
+#### Manual configuration
+
+Alternatively, if you prefer manual configuration, you can add a `netlify.toml` file to your project root:
 
 ```toml
 [build]
@@ -148,7 +172,18 @@ Add a `netlify.toml` file to your project root:
   port = 3000
 ```
 
-Deploy your application using their one-click deployment process, and you're ready to go!
+Or you can set the above settings directly [in the Netlify
+app](https://docs.netlify.com/build/configure-builds/overview/#build-settings).
+
+#### Other deployment methods
+
+Netlify also supports other deployment methods, such as [continuous deployment from a git repo
+hosted on GitHub, GitLab, or
+others](https://docs.netlify.com/start/quickstarts/deploy-from-repository/), [starting from a
+template](https://docs.netlify.com/start/quickstarts/deploy-from-template/), [deploying or
+importing from an AI code generation
+tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-tool/), and
+[more](https://docs.netlify.com/deploy/create-deploys/).
 
 ### Nitro
 
