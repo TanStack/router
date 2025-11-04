@@ -82,7 +82,7 @@ test('transitions should keep old values visible during navigation', async ({
   })
 
   clearInterval(pollInterval)
-  
+
   // With proper transitions, old values should remain visible until new ones arrive
   const hasLoadingText = bodyTexts.some((text) => text.includes('Loading...'))
 
