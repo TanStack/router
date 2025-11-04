@@ -367,7 +367,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
     expect(router.state.location.pathname).toBe('/posts/100%26')
   })
 
-  it('state.location.pathname, should have the params.slug value of "%F0%9F%9A%80"', async () => {
+  it('state.location.pathname, should have the params.slug value of "🚀"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     })
