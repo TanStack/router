@@ -293,7 +293,8 @@ export const MatchInner = (props: { matchId: string }): any => {
 
           // Display pending component if defined
           const pendingComponent =
-            route().options.pendingComponent ?? router.options.defaultPendingComponent
+            route().options.pendingComponent ??
+            router.options.defaultPendingComponent
 
           if (pendingComponent) {
             return (
