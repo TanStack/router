@@ -44,7 +44,7 @@ export const Match = (props: { matchId: string }) => {
 
   const route: () => AnyRoute = () => router.routesById[matchState()!.routeId]
 
-  const PendingComponent = () =>
+  const resolvePendingComponent = () =>
     route().options.pendingComponent ?? router.options.defaultPendingComponent
 
   const routeErrorComponent = () =>
@@ -94,7 +94,7 @@ export const Match = (props: { matchId: string }) => {
           fallback={
             // Don't show fallback on server when using no-ssr mode to avoid hydration mismatch
             router.isServer || resolvedNoSsr ? undefined : (
-              <Dynamic component={PendingComponent()} />
+              <Dynamic component={resolvePendingComponent()} />
             )
           }
         >
@@ -130,7 +130,7 @@ export const Match = (props: { matchId: string }) => {
                 <Solid.Match when={resolvedNoSsr}>
                   <Solid.Show
                     when={!router.isServer}
-                    fallback={<Dynamic component={PendingComponent()} />}
+                    fallback={<Dynamic component={resolvePendingComponent()} />}
                   >
                     <MatchInner matchId={props.matchId} />
                   </Solid.Show>
@@ -291,21 +291,18 @@ export const MatchInner = (props: { matchId: string }): any => {
             return router.getMatch(match().id)?._nonReactive.loadPromise
           })
 
-          // Display pending component if defined
-          const pendingComponent =
+          const FallbackComponent =
             route().options.pendingComponent ??
             router.options.defaultPendingComponent
 
-          if (pendingComponent) {
-            return (
-              <>
-                <Dynamic component={pendingComponent} />
-                {loaderResult()}
-              </>
-            )
-          }
-
-          return <>{loaderResult()}</>
+          return (
+            <>
+              {FallbackComponent ? (
+                <Dynamic component={FallbackComponent} />
+              ) : null}
+              {loaderResult()}
+            </>
+          )
         }}
       </Solid.Match>
       <Solid.Match when={match().status === 'notFound'}>
