@@ -291,6 +291,19 @@ export const MatchInner = (props: { matchId: string }): any => {
             return router.getMatch(match().id)?._nonReactive.loadPromise
           })
 
+          // Display pending component if defined
+          const pendingComponent =
+            route().options.pendingComponent ?? router.options.defaultPendingComponent
+
+          if (pendingComponent) {
+            return (
+              <>
+                <Dynamic component={pendingComponent} />
+                {loaderResult()}
+              </>
+            )
+          }
+
           return <>{loaderResult()}</>
         }}
       </Solid.Match>
