@@ -18,7 +18,16 @@ test('transitions should keep old values visible during navigation', async ({
     if (text) bodyTexts.push(text)
   }, 50)
 
+  // 1 click
+
   await page.getByTestId('increase-button').click()
+
+  await expect(page.getByTestId('n-value')).toContainText('n: 1', {
+    timeout: 2_000,
+  })
+  await expect(page.getByTestId('double-value')).toContainText('double: 2', {
+    timeout: 2_000,
+  })
 
   await page.waitForTimeout(200)
 
@@ -28,6 +37,54 @@ test('transitions should keep old values visible during navigation', async ({
     timeout: 2000,
   })
   await expect(page.getByTestId('double-value')).toContainText('double: 4', {
+    timeout: 2000,
+  })
+
+  // 2 clicks
+
+  await page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
+
+
+  await expect(page.getByTestId('n-value')).toContainText('n: 2', {
+    timeout: 2000,
+  })
+  await expect(page.getByTestId('double-value')).toContainText('double: 4', {
+    timeout: 2000,
+  })
+
+  await page.waitForTimeout(200)
+
+  clearInterval(pollInterval)
+
+  await expect(page.getByTestId('n-value')).toContainText('n: 4', {
+    timeout: 2000,
+  })
+  await expect(page.getByTestId('double-value')).toContainText('double: 8', {
+    timeout: 2000,
+  })
+
+  // 3 clicks
+
+  await page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
+  await page.getByTestId('increase-button').click()
+
+  await expect(page.getByTestId('n-value')).toContainText('n: 4', {
+    timeout: 2000,
+  })
+  await expect(page.getByTestId('double-value')).toContainText('double: 8', {
+    timeout: 2000,
+  })
+
+  await page.waitForTimeout(200)
+
+  clearInterval(pollInterval)
+
+  await expect(page.getByTestId('n-value')).toContainText('n: 7', {
+    timeout: 2000,
+  })
+  await expect(page.getByTestId('double-value')).toContainText('double: 14', {
     timeout: 2000,
   })
 
