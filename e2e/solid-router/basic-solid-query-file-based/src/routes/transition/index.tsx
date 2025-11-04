@@ -35,21 +35,21 @@ function TransitionPage() {
 
   return (
     <Suspense fallback="Loading...">
-    <div class="p-2">
-      <Link
-        data-testid="increase-button"
-        class="border bg-gray-50 px-3 py-1"
-        from="/transition"
-        search={(s) => ({ n: s.n + 1 })}
-      >
-        Increase
-      </Link>
+      <div class="p-2">
+        <Link
+          data-testid="increase-button"
+          class="border bg-gray-50 px-3 py-1"
+          from="/transition"
+          search={(s) => ({ n: s.n + 1 })}
+        >
+          Increase
+        </Link>
 
-      <div class="mt-2">
-        <div data-testid="n-value">n: {search().n}</div>
-        <div data-testid="double-value">double: {doubleQuery().data}</div>
+        <div class="mt-2">
+          <div data-testid="n-value">n: {search().n}</div>
+          <div data-testid="double-value">double: {doubleQuery().data}</div>
+        </div>
       </div>
-    </div>
     </Suspense>
   )
 }
