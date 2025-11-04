@@ -45,7 +45,6 @@ test('transitions should keep old values visible during navigation', async ({
   await page.getByTestId('increase-button').click()
   await page.getByTestId('increase-button').click()
 
-
   await expect(page.getByTestId('n-value')).toContainText('n: 2', {
     timeout: 2000,
   })
