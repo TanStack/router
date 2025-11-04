@@ -31,8 +31,6 @@ test('transitions should keep old values visible during navigation', async ({
 
   await page.waitForTimeout(200)
 
-  clearInterval(pollInterval)
-
   await expect(page.getByTestId('n-value')).toContainText('n: 2', {
     timeout: 2000,
   })
@@ -53,8 +51,6 @@ test('transitions should keep old values visible during navigation', async ({
   })
 
   await page.waitForTimeout(200)
-
-  clearInterval(pollInterval)
 
   await expect(page.getByTestId('n-value')).toContainText('n: 4', {
     timeout: 2000,
@@ -78,8 +74,6 @@ test('transitions should keep old values visible during navigation', async ({
 
   await page.waitForTimeout(200)
 
-  clearInterval(pollInterval)
-
   await expect(page.getByTestId('n-value')).toContainText('n: 7', {
     timeout: 2000,
   })
@@ -87,6 +81,8 @@ test('transitions should keep old values visible during navigation', async ({
     timeout: 2000,
   })
 
+  clearInterval(pollInterval)
+  
   // With proper transitions, old values should remain visible until new ones arrive
   const hasLoadingText = bodyTexts.some((text) => text.includes('Loading...'))
 
