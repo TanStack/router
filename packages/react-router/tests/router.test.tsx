@@ -809,17 +809,20 @@ describe('encoding: URL path segment', () => {
       path: '/path-segment/🚀to%2Fthe%2Fmoon',
       url: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
-  ])('should resolve $input to $output', async ({ input, path, url }) => {
-    const { router } = createTestRouter({
-      history: createMemoryHistory({ initialEntries: [input] }),
-    })
+  ])(
+    'should resolve $input to path=$path and url=$url',
+    async ({ input, path, url }) => {
+      const { router } = createTestRouter({
+        history: createMemoryHistory({ initialEntries: [input] }),
+      })
 
-    render(<RouterProvider router={router} />)
-    await act(() => router.load())
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe(path)
-    expect(new URL(router.state.location.url).pathname).toBe(url)
-  })
+      expect(router.state.location.pathname).toBe(path)
+      expect(new URL(router.state.location.url).pathname).toBe(url)
+    },
+  )
 })
 
 describe('router emits events during rendering', () => {
