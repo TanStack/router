@@ -496,7 +496,7 @@ const DECODE_IGNORE_LIST = Array.from(
   ]).values(),
 )
 
-export function decodePathSegment(
+export function decodePath(
   part: string,
   decodeIgnore: Array<string> = DECODE_IGNORE_LIST,
 ): string {

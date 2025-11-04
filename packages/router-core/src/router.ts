@@ -2,7 +2,7 @@ import { Store, batch } from '@tanstack/store'
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import {
   createControlledPromise,
-  decodePathSegment,
+  decodePath,
   deepEqual,
   findLast,
   functionalUpdate,
@@ -1173,7 +1173,7 @@ export class RouterCore<
         href: fullPath,
         publicHref: href,
         url: url.href,
-        pathname: decodePathSegment(pathname),
+        pathname: decodePath(pathname),
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: hash.split('#').reverse()[0] ?? '',
@@ -1671,7 +1671,7 @@ export class RouterCore<
         }
       }
 
-      const nextPathname = decodePathSegment(
+      const nextPathname = decodePath(
         interpolatePath({
           // Use the original template path for interpolation
           // This preserves the original parameter syntax including optional parameters

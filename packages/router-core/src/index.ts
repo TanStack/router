@@ -278,7 +278,7 @@ export {
   deepEqual,
   createControlledPromise,
   isModuleNotFoundError,
-  decodePathSegment,
+  decodePath,
 } from './utils'
 export type {
   NoInfer,
