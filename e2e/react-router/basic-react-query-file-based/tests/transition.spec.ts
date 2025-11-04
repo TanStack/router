@@ -11,7 +11,10 @@ test('react-query transitions keep previous data during navigation', async ({
   const bodySnapshots: Array<string> = []
 
   const interval = setInterval(async () => {
-    const text = await page.locator('body').textContent().catch(() => '')
+    const text = await page
+      .locator('body')
+      .textContent()
+      .catch(() => '')
     if (text) bodySnapshots.push(text)
   }, 50)
 
