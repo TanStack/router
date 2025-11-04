@@ -1795,11 +1795,21 @@ export class RouterCore<
         })
 
         if (foundMask) {
-          const { from: _from, ...maskProps } = foundMask
+          const { from: _from, params: maskParams, ...maskProps } = foundMask
+
+          // If mask has a params function, call it with the matched params as context
+          // Otherwise, use the matched params or the provided params value
+          const nextParams =
+            maskParams === false || maskParams === null
+              ? {}
+              : (maskParams ?? true) === true
+                ? params
+                : Object.assign(params, functionalUpdate(maskParams, params))
+
           maskedDest = {
             from: opts.from,
             ...maskProps,
-            params,
+            params: nextParams,
           }
           maskedNext = build(maskedDest)
         }
