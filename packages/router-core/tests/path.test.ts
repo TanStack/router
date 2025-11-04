@@ -446,6 +446,74 @@ describe('interpolatePath', () => {
     })
   })
 
+  describe('leave params - named params (prefix + suffix) + wildcards', () => {
+    it.each([
+      {
+        name: 'regular',
+        to: '/$foo',
+        params: { foo: 'bar' },
+        result: '/$foo',
+      },
+      {
+        name: 'regular curly braces',
+        to: '/{$foo}',
+        params: { foo: 'bar' },
+        result: '/$foo',
+      },
+      {
+        name: 'with prefix',
+        to: '/prefix{$bar}',
+        params: { bar: 'baz' },
+        result: '/prefix{$bar}',
+      },
+      {
+        name: 'with suffix',
+        to: '/{$bar}suffix',
+        params: { bar: 'baz' },
+        result: '/{$bar}suffix',
+      },
+      {
+        name: 'with prefix & suffix',
+        to: '/prefix{$bar}suffix',
+        params: { bar: 'baz' },
+        result: '/prefix{$bar}suffix',
+      },
+      {
+        name: 'with optional and value',
+        to: '/optional{-$bar}',
+        params: { bar: 'baz' },
+        result: '/optional{$bar}',
+      },
+      {
+        name: 'with optional no value',
+        to: '/optional{-$bar}',
+        params: {},
+        result: '/optional',
+      },
+      {
+        name: 'wildcard no braces',
+        to: '/$',
+        params: { _splat: 'bar' },
+        result: '/$',
+      },
+      {
+        name: 'wildcard with braces',
+        to: '/{$}',
+        params: { _splat: 'bar' },
+        result: '/$',
+      },
+    ])('$name', ({ to, params, result }) => {
+      expect(
+        interpolatePath({
+          path: to,
+          params,
+          leaveWildcards: false,
+          leaveParams: true,
+        }).interpolatedPath,
+      ).toBe(result)
+    })
+  })
+
   describe('should handle missing _splat parameter for', () => {
     it.each([
       {

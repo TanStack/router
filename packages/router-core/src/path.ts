@@ -447,8 +447,19 @@ export function interpolatePath({
           isMissingParams = true
           // For missing splat parameters, just return the prefix and suffix without the wildcard
           if (leaveWildcards) {
-            return `${segmentPrefix}${segment.value}${segmentSuffix}`
+            const segmentParam = segment.value
+            return `${segmentPrefix}${segmentParam}${segmentSuffix}`
           }
+
+          if (leaveParams) {
+            const segmentParam =
+              segment.prefixSegment || segment.suffixSegment
+                ? `{${segment.value}}`
+                : segment.value
+
+            return `${segmentPrefix}${segmentParam}${segmentSuffix}`
+          }
+
           // If there is a prefix or suffix, return them joined, otherwise omit the segment
           if (segmentPrefix || segmentSuffix) {
             return `${segmentPrefix}${segmentSuffix}`
@@ -457,9 +468,22 @@ export function interpolatePath({
         }
 
         const value = encodeParam('_splat')
+
         if (leaveWildcards) {
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
+          const segmentParam = segment.value
+          return `${segmentPrefix}${segmentParam}${value ?? ''}${segmentSuffix}`
         }
+
+        if (leaveParams) {
+          const segmentParam =
+            segment.prefixSegment || segment.suffixSegment
+              ? `{${segment.value}}`
+              : segment.value
+
+          const value = encodeParam(segment.value)
+          return `${segmentPrefix}${segmentParam}${value ?? ''}${segmentSuffix}`
+        }
+
         return `${segmentPrefix}${value}${segmentSuffix}`
       }
 
@@ -472,9 +496,15 @@ export function interpolatePath({
 
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
+
         if (leaveParams) {
+          const segmentParam =
+            segment.prefixSegment || segment.suffixSegment
+              ? `{${segment.value}}`
+              : segment.value
+
           const value = encodeParam(segment.value)
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
+          return `${segmentPrefix}${segmentParam}${value ?? ''}${segmentSuffix}`
         }
         return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
       }
@@ -486,14 +516,21 @@ export function interpolatePath({
         const segmentSuffix = segment.suffixSegment || ''
 
         // Check if optional parameter is missing or undefined
-        if (!(key in params) || params[key] == null) {
+        if (!(key in params) || params[key] == null || params[key] == '') {
           if (leaveWildcards) {
             return `${segmentPrefix}${key}${segmentSuffix}`
           }
+
+          if (leaveParams) {
+            const segmentParam = `{-$${key}}`
+            return `${segmentPrefix}${segmentParam}${segmentSuffix}`
+          }
+
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
           if (segmentPrefix || segmentSuffix) {
             return `${segmentPrefix}${segmentSuffix}`
           }
+
           // If no prefix/suffix, omit the entire segment
           return undefined
         }
@@ -501,12 +538,15 @@ export function interpolatePath({
         usedParams[key] = params[key]
 
         if (leaveParams) {
-          const value = encodeParam(segment.value)
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
+          const segmentParam = `{-$${key}}`
+
+          return `${segmentPrefix}${segmentParam}${segmentSuffix}`
         }
+
         if (leaveWildcards) {
           return `${segmentPrefix}${key}${encodeParam(key) ?? ''}${segmentSuffix}`
         }
+
         return `${segmentPrefix}${encodeParam(key) ?? ''}${segmentSuffix}`
       }
 
@@ -762,9 +802,11 @@ function isMatch(
             (!suffix || baseValue.endsWith(suffix))
           ) {
             let paramValue = baseValue
+
             if (prefix && paramValue.startsWith(prefix)) {
               paramValue = paramValue.slice(prefix.length)
             }
+
             if (suffix && paramValue.endsWith(suffix)) {
               paramValue = paramValue.slice(
                 0,
@@ -817,7 +859,9 @@ function isMatch(
         }
 
         if (matched) {
-          params[routeSegment.value.substring(1)] = _paramValue
+          if (_paramValue !== '') {
+            params[routeSegment.value.substring(1)] = _paramValue
+          }
           baseIndex++
         }
 
