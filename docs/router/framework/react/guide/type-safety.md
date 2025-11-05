@@ -26,7 +26,7 @@ const parentRoute = createRoute({
 
 ## Exported Hooks, Components, and Utilities
 
-For the types of your router to work with top-level exports like `Link`, `useNavigate`, `useParams`, etc. they must permeate the type-script module boundary and be registered right into the library. To do this, we use declaration merging on the exported `Register` interface.
+For the types of your router to work with top-level exports like `Link`, `useNavigate`, `useParams`, etc. they must permeate the TypeScript module boundary and be registered right into the library. To do this, we use declaration merging on the exported `Register` interface.
 
 ```ts
 const router = createRouter({

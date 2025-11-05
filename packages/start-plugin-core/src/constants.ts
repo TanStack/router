@@ -19,4 +19,8 @@ export const ENTRY_POINTS = {
   router: '#tanstack-router-entry',
 } as const
 
-export const TRANSFORM_ID_REGEX = [/\.[cm]?[tj]sx?/]
+// matches
+// .ts, .tsx, .cts, .mts, .js, .jsx, .cjs, .mjs
+// with optional query params after
+// but not .json
+export const TRANSFORM_ID_REGEX = [/\.[cm]?[tj]sx?($|\?)/]

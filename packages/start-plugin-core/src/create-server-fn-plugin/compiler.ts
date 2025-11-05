@@ -60,6 +60,7 @@ export class ServerFnCompiler {
   constructor(
     private options: {
       env: 'client' | 'server'
+      directive: string
       lookupConfigurations: Array<LookupConfig>
       lookupKinds: Set<LookupKind>
       loadModule: (id: string) => Promise<void>
@@ -252,7 +253,11 @@ export class ServerFnCompiler {
 
     pathsToRewrite.map((p) => {
       if (p.kind === 'ServerFn') {
-        handleCreateServerFn(p.nodePath, { env: this.options.env, code })
+        handleCreateServerFn(p.nodePath, {
+          env: this.options.env,
+          code,
+          directive: this.options.directive,
+        })
       } else {
         handleCreateMiddleware(p.nodePath, { env: this.options.env })
       }

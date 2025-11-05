@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as SuspenseTransitionRouteImport } from './routes/suspense-transition'
 import { Route as RedirectRouteImport } from './routes/redirect'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as DeferredRouteImport } from './routes/deferred'
@@ -29,6 +30,11 @@ import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layo
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuspenseTransitionRoute = SuspenseTransitionRouteImport.update({
+  id: '/suspense-transition',
+  path: '/suspense-transition',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RedirectRoute = RedirectRouteImport.update({
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/deferred': typeof DeferredRoute
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
+  '/suspense-transition': typeof SuspenseTransitionRoute
   '/users': typeof UsersRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
   '/redirect': typeof RedirectRoute
+  '/suspense-transition': typeof SuspenseTransitionRoute
   '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/deferred': typeof DeferredRoute
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
+  '/suspense-transition': typeof SuspenseTransitionRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/posts'
     | '/redirect'
+    | '/suspense-transition'
     | '/users'
     | '/api/users'
     | '/posts/$postId'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/'
     | '/deferred'
     | '/redirect'
+    | '/suspense-transition'
     | '/api/users'
     | '/posts/$postId'
     | '/users/$userId'
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/posts'
     | '/redirect'
+    | '/suspense-transition'
     | '/users'
     | '/_layout/_layout-2'
     | '/api/users'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   DeferredRoute: typeof DeferredRoute
   PostsRoute: typeof PostsRouteWithChildren
   RedirectRoute: typeof RedirectRoute
+  SuspenseTransitionRoute: typeof SuspenseTransitionRoute
   UsersRoute: typeof UsersRouteWithChildren
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
@@ -223,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suspense-transition': {
+      id: '/suspense-transition'
+      path: '/suspense-transition'
+      fullPath: '/suspense-transition'
+      preLoaderRoute: typeof SuspenseTransitionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/redirect': {
@@ -400,6 +420,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeferredRoute: DeferredRoute,
   PostsRoute: PostsRouteWithChildren,
   RedirectRoute: RedirectRoute,
+  SuspenseTransitionRoute: SuspenseTransitionRoute,
   UsersRoute: UsersRouteWithChildren,
   ApiUsersRoute: ApiUsersRouteWithChildren,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,

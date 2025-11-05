@@ -6,9 +6,10 @@ import type {
   Constrain,
   Register,
   TsrSerializable,
+  ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
-import type { ConstrainValidator } from '../createServerFn'
+import type { ConstrainValidator, ServerFnReturnType } from '../createServerFn'
 
 test('createServerFn method with autocomplete', () => {
   createServerFn().handler((options) => {
@@ -308,7 +309,10 @@ test('createServerFn returns Date', () => {
     dates: [new Date(), new Date()] as const,
   }))
 
-  expectTypeOf(fn()).toEqualTypeOf<Promise<{ dates: readonly [Date, Date] }>>()
+  expectTypeOf<ReturnType<typeof fn>>().toMatchTypeOf<Promise<unknown>>()
+  expectTypeOf<Awaited<ReturnType<typeof fn>>>().toMatchTypeOf<
+    ValidateSerializableInput<Register, { dates: readonly [Date, Date] }>
+  >()
 })
 
 test('createServerFn returns undefined', () => {
@@ -379,6 +383,23 @@ describe('response', () => {
 
     expectTypeOf(fn()).toEqualTypeOf<Promise<Response>>()
   })
+
+  test(`client receives union when handler may return Response or string`, () => {
+    const fn = createServerFn().handler(() => {
+      const result: Response | 'Hello World' =
+        Math.random() > 0.5 ? new Response('Hello World') : 'Hello World'
+
+      return result
+    })
+
+    expectTypeOf(fn()).toEqualTypeOf<Promise<Response | 'Hello World'>>()
+  })
+})
+
+test('ServerFnReturnType distributes Response union', () => {
+  expectTypeOf<
+    ServerFnReturnType<Register, Response | 'Hello World'>
+  >().toEqualTypeOf<Response | 'Hello World'>()
 })
 
 test('createServerFn can be used as a mutation function', () => {

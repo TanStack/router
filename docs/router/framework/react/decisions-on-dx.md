@@ -28,13 +28,13 @@ Every aspect of TanStack Router is designed to be as type-safe as possible, and 
 
 But to achieve this, we had to make some decisions that deviate from the norms in the routing world.
 
-1. [**Route configuration boilerplate?**](#1-why-is-the-routers-configuration-done-this-way): You have to define your routes in a way that allows TypeScript to infer the types of your routes as much as possible.
-2. [**TypeScript module declaration for the router?**](#2-declaring-the-router-instance-for-type-inference): You have to pass the `Router` instance to the rest of your application using TypeScript's module declaration.
-3. [**Why push for file-based routing over code-based?**](#3-why-is-file-based-routing-the-preferred-way-to-define-routes): We push for file-based routing as the preferred way to define your routes.
+1. [**Route configuration boilerplate?**](#why-is-the-routers-configuration-done-this-way): You have to define your routes in a way that allows TypeScript to infer the types of your routes as much as possible.
+2. [**TypeScript module declaration for the router?**](#declaring-the-router-instance-for-type-inference): You have to pass the `Router` instance to the rest of your application using TypeScript's module declaration.
+3. [**Why push for file-based routing over code-based?**](#why-is-file-based-routing-the-preferred-way-to-define-routes): We push for file-based routing as the preferred way to define your routes.
 
 > TLDR; All the design decisions in the developer experience of using TanStack Router are made so that you can have a best-in-class type-safety experience without compromising on the control, flexibility, and maintainability of your route configurations.
 
-## 1. Why is the Router's configuration done this way?
+## Why is the Router's configuration done this way?
 
 When you want to leverage the TypeScript's inference features to its fullest, you'll quickly realize that _Generics_ are your best friend. And so, TanStack Router uses Generics everywhere to ensure that the types of your routes are inferred as much as possible.
 
@@ -93,9 +93,9 @@ What we found to be the best way to define your routes is to abstract the defini
 You can read more about [code-based routing](../routing/code-based-routing.md) to see how to define your routes in this way.
 
 > [!TIP]
-> Finding Code-based routing to be a bit too cumbersome? See why [file-based routing](#3-why-is-file-based-routing-the-preferred-way-to-define-routes) is the preferred way to define your routes.
+> Finding Code-based routing to be a bit too cumbersome? See why [file-based routing](#why-is-file-based-routing-the-preferred-way-to-define-routes) is the preferred way to define your routes.
 
-## 2. Declaring the Router instance for type inference
+## Declaring the Router instance for type inference
 
 > Why do I have to declare the `Router`?
 
@@ -151,7 +151,7 @@ export const PostsIdLink = () => {
 
 We went with **module declaration**, as it is what we found to be the most scalable and maintainable approach with the least amount of overhead and boilerplate.
 
-## 3. Why is file-based routing the preferred way to define routes?
+## Why is file-based routing the preferred way to define routes?
 
 > Why are the docs pushing for file-based routing?
 

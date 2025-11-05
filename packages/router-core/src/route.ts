@@ -1709,15 +1709,6 @@ export class BaseRoute<
     this._to = fullPath as TrimPathRight<TFullPath>
   }
 
-  clone = (other: typeof this) => {
-    this._path = other._path
-    this._id = other._id
-    this._fullPath = other._fullPath
-    this._to = other._to
-    this.options.getParentRoute = other.options.getParentRoute
-    this.children = other.children
-  }
-
   addChildren: RouteAddChildrenFn<
     TRegister,
     TParentRoute,

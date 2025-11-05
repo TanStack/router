@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
@@ -20,6 +21,7 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TransitionIndexRouteImport } from './routes/transition/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RelativeIndexRouteImport } from './routes/relative/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
@@ -41,6 +43,8 @@ import { Route as NonNestedPrefixRouteRouteImport } from './routes/non-nested/pr
 import { Route as NonNestedPathRouteRouteImport } from './routes/non-nested/path/route'
 import { Route as NonNestedNamedRouteRouteImport } from './routes/non-nested/named/route'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as ParamsPsWildcardIndexRouteImport } from './routes/params-ps/wildcard/index'
+import { Route as ParamsPsNamedIndexRouteImport } from './routes/params-ps/named/index'
 import { Route as RelativeUseNavigateRelativeUseNavigateBRouteImport } from './routes/relative/useNavigate/relative-useNavigate-b'
 import { Route as RelativeUseNavigateRelativeUseNavigateARouteImport } from './routes/relative/useNavigate/relative-useNavigate-a'
 import { Route as RelativeLinkRelativeLinkBRouteImport } from './routes/relative/link/relative-link-b'
@@ -52,6 +56,13 @@ import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$
 import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
 import { Route as ParamsSingleValueRouteImport } from './routes/params.single.$value'
+import { Route as ParamsPsWildcardChar123Char125suffixAtChar45824RouteImport } from './routes/params-ps/wildcard/{$}suffix@대'
+import { Route as ParamsPsWildcardChar123Char125suffixRouteImport } from './routes/params-ps/wildcard/{$}suffix'
+import { Route as ParamsPsWildcardPrefixChar123Char125RouteImport } from './routes/params-ps/wildcard/prefix{$}'
+import { Route as ParamsPsWildcardPrefixAtChar45824Char123Char125RouteImport } from './routes/params-ps/wildcard/prefix@대{$}'
+import { Route as ParamsPsWildcardSplatRouteImport } from './routes/params-ps/wildcard/$'
+import { Route as ParamsPsNamedChar123fooChar125suffixRouteImport } from './routes/params-ps/named/{$foo}suffix'
+import { Route as ParamsPsNamedPrefixChar123fooChar125RouteImport } from './routes/params-ps/named/prefix{$foo}'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
@@ -88,6 +99,12 @@ import { Route as RelativeLinkPathPathIndexRouteImport } from './routes/relative
 import { Route as RelativeLinkNestedDeepIndexRouteImport } from './routes/relative/link/nested/deep/index'
 import { Route as ParamsPsNamedFooBarBazRouteImport } from './routes/params-ps/named/$foo/$bar.$baz'
 
+const Char45824Char54620Char48124Char44397Route =
+  Char45824Char54620Char48124Char44397RouteImport.update({
+    id: '/대한민국',
+    path: '/대한민국',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const RemountDepsRoute = RemountDepsRouteImport.update({
   id: '/remountDeps',
   path: '/remountDeps',
@@ -140,6 +157,11 @@ const NonNestedRouteRoute = NonNestedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransitionIndexRoute = TransitionIndexRouteImport.update({
+  id: '/transition/',
+  path: '/transition/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
@@ -249,6 +271,16 @@ const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
+const ParamsPsWildcardIndexRoute = ParamsPsWildcardIndexRouteImport.update({
+  id: '/params-ps/wildcard/',
+  path: '/params-ps/wildcard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParamsPsNamedIndexRoute = ParamsPsNamedIndexRouteImport.update({
+  id: '/params-ps/named/',
+  path: '/params-ps/named/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RelativeUseNavigateRelativeUseNavigateBRoute =
   RelativeUseNavigateRelativeUseNavigateBRouteImport.update({
     id: '/relative-useNavigate-b',
@@ -309,6 +341,47 @@ const ParamsSingleValueRoute = ParamsSingleValueRouteImport.update({
   path: '/params/single/$value',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ParamsPsWildcardChar123Char125suffixAtChar45824Route =
+  ParamsPsWildcardChar123Char125suffixAtChar45824RouteImport.update({
+    id: '/params-ps/wildcard/{$}suffix@대',
+    path: '/params-ps/wildcard/{$}suffix@대',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ParamsPsWildcardChar123Char125suffixRoute =
+  ParamsPsWildcardChar123Char125suffixRouteImport.update({
+    id: '/params-ps/wildcard/{$}suffix',
+    path: '/params-ps/wildcard/{$}suffix',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ParamsPsWildcardPrefixChar123Char125Route =
+  ParamsPsWildcardPrefixChar123Char125RouteImport.update({
+    id: '/params-ps/wildcard/prefix{$}',
+    path: '/params-ps/wildcard/prefix{$}',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ParamsPsWildcardPrefixAtChar45824Char123Char125Route =
+  ParamsPsWildcardPrefixAtChar45824Char123Char125RouteImport.update({
+    id: '/params-ps/wildcard/prefix@대{$}',
+    path: '/params-ps/wildcard/prefix@대{$}',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ParamsPsWildcardSplatRoute = ParamsPsWildcardSplatRouteImport.update({
+  id: '/params-ps/wildcard/$',
+  path: '/params-ps/wildcard/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParamsPsNamedChar123fooChar125suffixRoute =
+  ParamsPsNamedChar123fooChar125suffixRouteImport.update({
+    id: '/params-ps/named/{$foo}suffix',
+    path: '/params-ps/named/{$foo}suffix',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ParamsPsNamedPrefixChar123fooChar125Route =
+  ParamsPsNamedPrefixChar123fooChar125RouteImport.update({
+    id: '/params-ps/named/prefix{$foo}',
+    path: '/params-ps/named/prefix{$foo}',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
@@ -514,6 +587,7 @@ export interface FileRoutesByFullPath {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
   '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
@@ -532,6 +606,7 @@ export interface FileRoutesByFullPath {
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/transition': typeof TransitionIndexRoute
   '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
   '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
   '/non-nested/prefix/prefix{$baz}': typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren
@@ -542,6 +617,13 @@ export interface FileRoutesByFullPath {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/named/{$foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
+  '/params-ps/wildcard/$': typeof ParamsPsWildcardSplatRoute
+  '/params-ps/wildcard/prefix@대{$}': typeof ParamsPsWildcardPrefixAtChar45824Char123Char125Route
+  '/params-ps/wildcard/prefix{$}': typeof ParamsPsWildcardPrefixChar123Char125Route
+  '/params-ps/wildcard/{$}suffix': typeof ParamsPsWildcardChar123Char125suffixRoute
+  '/params-ps/wildcard/{$}suffix@대': typeof ParamsPsWildcardChar123Char125suffixAtChar45824Route
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -553,6 +635,8 @@ export interface FileRoutesByFullPath {
   '/relative/link/relative-link-b': typeof RelativeLinkRelativeLinkBRoute
   '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  '/params-ps/named': typeof ParamsPsNamedIndexRoute
+  '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
   '/non-nested/named/$baz/foo': typeof NonNestedNamedBazFooRoute
@@ -589,6 +673,7 @@ export interface FileRoutesByTo {
   '/editing-b': typeof EditingBRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
   '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
@@ -606,12 +691,20 @@ export interface FileRoutesByTo {
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
+  '/transition': typeof TransitionIndexRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/params-ps/non-nested/$foo': typeof ParamsPsNonNestedFooRouteRouteWithChildren
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/named/{$foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
+  '/params-ps/wildcard/$': typeof ParamsPsWildcardSplatRoute
+  '/params-ps/wildcard/prefix@대{$}': typeof ParamsPsWildcardPrefixAtChar45824Char123Char125Route
+  '/params-ps/wildcard/prefix{$}': typeof ParamsPsWildcardPrefixChar123Char125Route
+  '/params-ps/wildcard/{$}suffix': typeof ParamsPsWildcardChar123Char125suffixRoute
+  '/params-ps/wildcard/{$}suffix@대': typeof ParamsPsWildcardChar123Char125suffixAtChar45824Route
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -623,6 +716,8 @@ export interface FileRoutesByTo {
   '/relative/link/relative-link-b': typeof RelativeLinkRelativeLinkBRoute
   '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  '/params-ps/named': typeof ParamsPsNamedIndexRoute
+  '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
   '/non-nested/named/$baz/foo': typeof NonNestedNamedBazFooRoute
@@ -663,6 +758,7 @@ export interface FileRoutesById {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
   '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
@@ -683,6 +779,7 @@ export interface FileRoutesById {
   '/redirect/': typeof RedirectIndexRoute
   '/relative/': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/transition/': typeof TransitionIndexRoute
   '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
   '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
   '/non-nested/prefix/prefix{$baz}': typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren
@@ -693,6 +790,13 @@ export interface FileRoutesById {
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/named/{$foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
+  '/params-ps/wildcard/$': typeof ParamsPsWildcardSplatRoute
+  '/params-ps/wildcard/prefix@대{$}': typeof ParamsPsWildcardPrefixAtChar45824Char123Char125Route
+  '/params-ps/wildcard/prefix{$}': typeof ParamsPsWildcardPrefixChar123Char125Route
+  '/params-ps/wildcard/{$}suffix': typeof ParamsPsWildcardChar123Char125suffixRoute
+  '/params-ps/wildcard/{$}suffix@대': typeof ParamsPsWildcardChar123Char125suffixAtChar45824Route
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -704,6 +808,8 @@ export interface FileRoutesById {
   '/relative/link/relative-link-b': typeof RelativeLinkRelativeLinkBRoute
   '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  '/params-ps/named/': typeof ParamsPsNamedIndexRoute
+  '/params-ps/wildcard/': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
   '/non-nested/named/$baz/foo': typeof NonNestedNamedBazFooRoute
@@ -744,6 +850,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/대한민국'
     | '/non-nested/named'
     | '/non-nested/path'
     | '/non-nested/prefix'
@@ -762,6 +869,7 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/relative'
     | '/search-params/'
+    | '/transition'
     | '/non-nested/named/$baz'
     | '/non-nested/path/baz'
     | '/non-nested/prefix/prefix{$baz}'
@@ -772,6 +880,13 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/params-ps/named/prefix{$foo}'
+    | '/params-ps/named/{$foo}suffix'
+    | '/params-ps/wildcard/$'
+    | '/params-ps/wildcard/prefix@대{$}'
+    | '/params-ps/wildcard/prefix{$}'
+    | '/params-ps/wildcard/{$}suffix'
+    | '/params-ps/wildcard/{$}suffix@대'
     | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
@@ -783,6 +898,8 @@ export interface FileRouteTypes {
     | '/relative/link/relative-link-b'
     | '/relative/useNavigate/relative-useNavigate-a'
     | '/relative/useNavigate/relative-useNavigate-b'
+    | '/params-ps/named'
+    | '/params-ps/wildcard'
     | '/redirect/$target/'
     | '/params-ps/named/$foo/$bar'
     | '/non-nested/named/$baz/foo'
@@ -819,6 +936,7 @@ export interface FileRouteTypes {
     | '/editing-b'
     | '/notRemountDeps'
     | '/remountDeps'
+    | '/대한민국'
     | '/non-nested/named'
     | '/non-nested/path'
     | '/non-nested/prefix'
@@ -836,12 +954,20 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/relative'
     | '/search-params'
+    | '/transition'
     | '/params-ps/named/$foo'
     | '/params-ps/non-nested/$foo'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/params-ps/named/prefix{$foo}'
+    | '/params-ps/named/{$foo}suffix'
+    | '/params-ps/wildcard/$'
+    | '/params-ps/wildcard/prefix@대{$}'
+    | '/params-ps/wildcard/prefix{$}'
+    | '/params-ps/wildcard/{$}suffix'
+    | '/params-ps/wildcard/{$}suffix@대'
     | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
@@ -853,6 +979,8 @@ export interface FileRouteTypes {
     | '/relative/link/relative-link-b'
     | '/relative/useNavigate/relative-useNavigate-a'
     | '/relative/useNavigate/relative-useNavigate-b'
+    | '/params-ps/named'
+    | '/params-ps/wildcard'
     | '/redirect/$target'
     | '/params-ps/named/$foo/$bar'
     | '/non-nested/named/$baz/foo'
@@ -892,6 +1020,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/대한민국'
     | '/non-nested/named'
     | '/non-nested/path'
     | '/non-nested/prefix'
@@ -912,6 +1041,7 @@ export interface FileRouteTypes {
     | '/redirect/'
     | '/relative/'
     | '/search-params/'
+    | '/transition/'
     | '/non-nested/named/$baz'
     | '/non-nested/path/baz'
     | '/non-nested/prefix/prefix{$baz}'
@@ -922,6 +1052,13 @@ export interface FileRouteTypes {
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/params-ps/named/prefix{$foo}'
+    | '/params-ps/named/{$foo}suffix'
+    | '/params-ps/wildcard/$'
+    | '/params-ps/wildcard/prefix@대{$}'
+    | '/params-ps/wildcard/prefix{$}'
+    | '/params-ps/wildcard/{$}suffix'
+    | '/params-ps/wildcard/{$}suffix@대'
     | '/params/single/$value'
     | '/posts_/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
@@ -933,6 +1070,8 @@ export interface FileRouteTypes {
     | '/relative/link/relative-link-b'
     | '/relative/useNavigate/relative-useNavigate-a'
     | '/relative/useNavigate/relative-useNavigate-b'
+    | '/params-ps/named/'
+    | '/params-ps/wildcard/'
     | '/redirect/$target/'
     | '/params-ps/named/$foo/$bar'
     | '/non-nested/named/$baz/foo'
@@ -973,6 +1112,7 @@ export interface RootRouteChildren {
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
+  Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
   ParamsPsNonNestedRouteRoute: typeof ParamsPsNonNestedRouteRouteWithChildren
   RelativeLinkRouteRoute: typeof RelativeLinkRouteRouteWithChildren
   RelativeUseNavigateRouteRoute: typeof RelativeUseNavigateRouteRouteWithChildren
@@ -984,17 +1124,34 @@ export interface RootRouteChildren {
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   RelativeIndexRoute: typeof RelativeIndexRoute
+  TransitionIndexRoute: typeof TransitionIndexRoute
   ParamsPsNamedFooRouteRoute: typeof ParamsPsNamedFooRouteRouteWithChildren
   groupSubfolderInsideRoute: typeof groupSubfolderInsideRoute
+  ParamsPsNamedPrefixChar123fooChar125Route: typeof ParamsPsNamedPrefixChar123fooChar125Route
+  ParamsPsNamedChar123fooChar125suffixRoute: typeof ParamsPsNamedChar123fooChar125suffixRoute
+  ParamsPsWildcardSplatRoute: typeof ParamsPsWildcardSplatRoute
+  ParamsPsWildcardPrefixAtChar45824Char123Char125Route: typeof ParamsPsWildcardPrefixAtChar45824Char123Char125Route
+  ParamsPsWildcardPrefixChar123Char125Route: typeof ParamsPsWildcardPrefixChar123Char125Route
+  ParamsPsWildcardChar123Char125suffixRoute: typeof ParamsPsWildcardChar123Char125suffixRoute
+  ParamsPsWildcardChar123Char125suffixAtChar45824Route: typeof ParamsPsWildcardChar123Char125suffixAtChar45824Route
   ParamsSingleValueRoute: typeof ParamsSingleValueRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
   RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
   RedirectPreloadSecondRoute: typeof RedirectPreloadSecondRoute
   RedirectPreloadThirdRoute: typeof RedirectPreloadThirdRoute
+  ParamsPsNamedIndexRoute: typeof ParamsPsNamedIndexRoute
+  ParamsPsWildcardIndexRoute: typeof ParamsPsWildcardIndexRoute
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/remountDeps': {
       id: '/remountDeps'
       path: '/remountDeps'
@@ -1070,6 +1227,13 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transition/': {
+      id: '/transition/'
+      path: '/transition'
+      fullPath: '/transition'
+      preLoaderRoute: typeof TransitionIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search-params/': {
@@ -1219,6 +1383,20 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof RedirectTargetIndexRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
+    '/params-ps/wildcard/': {
+      id: '/params-ps/wildcard/'
+      path: '/params-ps/wildcard'
+      fullPath: '/params-ps/wildcard'
+      preLoaderRoute: typeof ParamsPsWildcardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/named/': {
+      id: '/params-ps/named/'
+      path: '/params-ps/named'
+      fullPath: '/params-ps/named'
+      preLoaderRoute: typeof ParamsPsNamedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/relative/useNavigate/relative-useNavigate-b': {
       id: '/relative/useNavigate/relative-useNavigate-b'
       path: '/relative-useNavigate-b'
@@ -1294,6 +1472,55 @@ declare module '@tanstack/solid-router' {
       path: '/params/single/$value'
       fullPath: '/params/single/$value'
       preLoaderRoute: typeof ParamsSingleValueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/wildcard/{$}suffix@대': {
+      id: '/params-ps/wildcard/{$}suffix@대'
+      path: '/params-ps/wildcard/{$}suffix@대'
+      fullPath: '/params-ps/wildcard/{$}suffix@대'
+      preLoaderRoute: typeof ParamsPsWildcardChar123Char125suffixAtChar45824RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/wildcard/{$}suffix': {
+      id: '/params-ps/wildcard/{$}suffix'
+      path: '/params-ps/wildcard/{$}suffix'
+      fullPath: '/params-ps/wildcard/{$}suffix'
+      preLoaderRoute: typeof ParamsPsWildcardChar123Char125suffixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/wildcard/prefix{$}': {
+      id: '/params-ps/wildcard/prefix{$}'
+      path: '/params-ps/wildcard/prefix{$}'
+      fullPath: '/params-ps/wildcard/prefix{$}'
+      preLoaderRoute: typeof ParamsPsWildcardPrefixChar123Char125RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/wildcard/prefix@대{$}': {
+      id: '/params-ps/wildcard/prefix@대{$}'
+      path: '/params-ps/wildcard/prefix@대{$}'
+      fullPath: '/params-ps/wildcard/prefix@대{$}'
+      preLoaderRoute: typeof ParamsPsWildcardPrefixAtChar45824Char123Char125RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/wildcard/$': {
+      id: '/params-ps/wildcard/$'
+      path: '/params-ps/wildcard/$'
+      fullPath: '/params-ps/wildcard/$'
+      preLoaderRoute: typeof ParamsPsWildcardSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/named/{$foo}suffix': {
+      id: '/params-ps/named/{$foo}suffix'
+      path: '/params-ps/named/{$foo}suffix'
+      fullPath: '/params-ps/named/{$foo}suffix'
+      preLoaderRoute: typeof ParamsPsNamedChar123fooChar125suffixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/named/prefix{$foo}': {
+      id: '/params-ps/named/prefix{$foo}'
+      path: '/params-ps/named/prefix{$foo}'
+      fullPath: '/params-ps/named/prefix{$foo}'
+      preLoaderRoute: typeof ParamsPsNamedPrefixChar123fooChar125RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/_layout-2/layout-b': {
@@ -1884,6 +2111,8 @@ const rootRouteChildren: RootRouteChildren = {
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
   RemountDepsRoute: RemountDepsRoute,
+  Char45824Char54620Char48124Char44397Route:
+    Char45824Char54620Char48124Char44397Route,
   ParamsPsNonNestedRouteRoute: ParamsPsNonNestedRouteRouteWithChildren,
   RelativeLinkRouteRoute: RelativeLinkRouteRouteWithChildren,
   RelativeUseNavigateRouteRoute: RelativeUseNavigateRouteRouteWithChildren,
@@ -1895,13 +2124,29 @@ const rootRouteChildren: RootRouteChildren = {
   ParamsPsIndexRoute: ParamsPsIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   RelativeIndexRoute: RelativeIndexRoute,
+  TransitionIndexRoute: TransitionIndexRoute,
   ParamsPsNamedFooRouteRoute: ParamsPsNamedFooRouteRouteWithChildren,
   groupSubfolderInsideRoute: groupSubfolderInsideRoute,
+  ParamsPsNamedPrefixChar123fooChar125Route:
+    ParamsPsNamedPrefixChar123fooChar125Route,
+  ParamsPsNamedChar123fooChar125suffixRoute:
+    ParamsPsNamedChar123fooChar125suffixRoute,
+  ParamsPsWildcardSplatRoute: ParamsPsWildcardSplatRoute,
+  ParamsPsWildcardPrefixAtChar45824Char123Char125Route:
+    ParamsPsWildcardPrefixAtChar45824Char123Char125Route,
+  ParamsPsWildcardPrefixChar123Char125Route:
+    ParamsPsWildcardPrefixChar123Char125Route,
+  ParamsPsWildcardChar123Char125suffixRoute:
+    ParamsPsWildcardChar123Char125suffixRoute,
+  ParamsPsWildcardChar123Char125suffixAtChar45824Route:
+    ParamsPsWildcardChar123Char125suffixAtChar45824Route,
   ParamsSingleValueRoute: ParamsSingleValueRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
   RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
   RedirectPreloadSecondRoute: RedirectPreloadSecondRoute,
   RedirectPreloadThirdRoute: RedirectPreloadThirdRoute,
+  ParamsPsNamedIndexRoute: ParamsPsNamedIndexRoute,
+  ParamsPsWildcardIndexRoute: ParamsPsWildcardIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,3 +1,5 @@
+![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/header_router.png)
+
 # @tanstack/solid-router-ssr-query
 
 SSR query integration for TanStack Solid Router and TanStack Solid Query.

@@ -55,6 +55,7 @@ export function tanstackStart(
                     '@tanstack/react-start',
                     '@tanstack/react-router',
                     '@tanstack/react-router-devtools',
+                    '@tanstack/start-static-server-functions',
                   ],
                   include: [
                     'react',
@@ -67,6 +68,11 @@ export function tanstackStart(
                     // `@tanstack/react-store` has a dependency on `use-sync-external-store`, which is CJS.
                     // It therefore needs to be included so that it is converted to ESM.
                     '@tanstack/react-router > @tanstack/react-store',
+                    ...(options.optimizeDeps?.exclude?.find(
+                      (x) => x === '@tanstack/react-form',
+                    )
+                      ? ['@tanstack/react-form > @tanstack/react-store']
+                      : []),
                   ],
                 }
               : undefined,

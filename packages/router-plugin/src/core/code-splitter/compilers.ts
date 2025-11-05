@@ -133,6 +133,7 @@ export function compileCodeSplitReferenceRoute(
   let createRouteFn: string
 
   let modified = false as boolean
+  let hmrAdded = false as boolean
   babel.traverse(ast, {
     Program: {
       enter(programPath) {
@@ -182,9 +183,10 @@ export function compileCodeSplitReferenceRoute(
                 }
                 if (!splittableCreateRouteFns.includes(createRouteFn)) {
                   // we can't split this route but we still add HMR handling if enabled
-                  if (opts.addHmr) {
-                    modified = true
+                  if (opts.addHmr && !hmrAdded) {
                     programPath.pushContainer('body', routeHmrStatement)
+                    modified = true
+                    hmrAdded = true
                   }
                   // exit traversal so this route is not split
                   return programPath.stop()
@@ -307,8 +309,10 @@ export function compileCodeSplitReferenceRoute(
                         )()
 
                         // add HMR handling
-                        if (opts.addHmr) {
+                        if (opts.addHmr && !hmrAdded) {
                           programPath.pushContainer('body', routeHmrStatement)
+                          modified = true
+                          hmrAdded = true
                         }
                       } else {
                         // if (splitNodeMeta.splitStrategy === 'lazyFn') {
@@ -727,19 +731,33 @@ export function compileCodeSplitVirtualRoute(
 
             if (path.node.declaration) {
               if (t.isVariableDeclaration(path.node.declaration)) {
-                path.replaceWith(
-                  t.importDeclaration(
-                    path.node.declaration.declarations.map((decl) =>
-                      t.importSpecifier(
-                        t.identifier((decl.id as any).name),
-                        t.identifier((decl.id as any).name),
-                      ),
-                    ),
-                    t.stringLiteral(
-                      removeSplitSearchParamFromFilename(opts.filename),
+                const importDecl = t.importDeclaration(
+                  path.node.declaration.declarations.map((decl) =>
+                    t.importSpecifier(
+                      t.identifier((decl.id as any).name),
+                      t.identifier((decl.id as any).name),
                     ),
                   ),
+                  t.stringLiteral(
+                    removeSplitSearchParamFromFilename(opts.filename),
+                  ),
                 )
+
+                path.replaceWith(importDecl)
+
+                // Track the imported identifier paths so deadCodeElimination can remove them if unused
+                // We need to traverse the newly created import to get the identifier paths
+                path.traverse({
+                  Identifier(identPath) {
+                    // Only track the local binding identifiers (the imported names)
+                    if (
+                      identPath.parentPath.isImportSpecifier() &&
+                      identPath.key === 'local'
+                    ) {
+                      refIdents.add(identPath)
+                    }
+                  },
+                })
               }
             }
           },

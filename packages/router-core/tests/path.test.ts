@@ -832,6 +832,14 @@ describe('parsePathname', () => {
           { type: SEGMENT_TYPE_WILDCARD, value: '$' },
         ],
       },
+      {
+        name: 'should preserve backslashes and percentage signs in path parameters',
+        to: '/%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B',
+        expected: [
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '%25ше%5Cллы' },
+        ],
+      },
     ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {
       const result = parsePathname(to)
       expect(result).toEqual(expected)

@@ -12,20 +12,20 @@ This is done via the `src/server.ts` file.
 
 ```tsx
 // src/server.ts
-import handler from '@tanstack/react-start/server-entry'
+import handler, { type ServerEntry } from '@tanstack/react-start/server-entry'
 
 export default {
-  fetch(request: Request) {
+  fetch(request) {
     return handler.fetch(request)
   },
-}
+} satisfies ServerEntry
 ```
 
-The entry point must conform to the following interface:
+The default export must conform to the `ServerEntry` interface:
 
-```tsx
+```ts
 export default {
-  fetch(req: Request): Promise<Response> {
+  fetch(req: Request, opts?: RequestOptions): Promise<Response> {
     // ...
   },
 }
@@ -44,6 +44,7 @@ import {
   defaultStreamHandler,
   defineHandlerCallback,
 } from '@tanstack/react-start/server'
+import type { ServerEntry } from '@tanstack/react-start/server-entry'
 
 const customHandler = defineHandlerCallback((ctx) => {
   // add custom logic here
@@ -54,7 +55,7 @@ const fetch = createStartHandler(customHandler)
 
 export default {
   fetch,
-}
+} satisfies ServerEntry
 ```
 
 ## Request context
@@ -64,7 +65,7 @@ When your server needs to pass additional, typed data into request handlers (for
 To add types for your request context, augment the `Register` interface from `@tanstack/react-start` with a `server.requestContext` property. The runtime `context` you pass to `handler.fetch` will then match that type. Example:
 
 ```tsx
-import handler from '@tanstack/react-start/server-entry'
+import handler, { type ServerEntry } from '@tanstack/react-start/server-entry'
 
 type MyRequestContext = {
   hello: string
@@ -80,10 +81,10 @@ declare module '@tanstack/react-start' {
 }
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request) {
     return handler.fetch(request, { context: { hello: 'world', foo: 123 } })
   },
-}
+} satisfies ServerEntry
 ```
 
 ## Server Configuration

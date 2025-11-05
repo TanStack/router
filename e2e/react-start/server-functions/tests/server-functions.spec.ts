@@ -468,3 +468,24 @@ test('primitives', async ({ page }) => {
     await expect(page.getByTestId(`result-${suffix}`)).toContainText(expected)
   }
 })
+
+test('redirect in server function on direct navigation', async ({ page }) => {
+  // Test direct navigation to a route with a server function that redirects
+  await page.goto('/redirect-test')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test/target')
+})
+
+test('redirect in server function called in query during SSR', async ({
+  page,
+}) => {
+  // Test direct navigation to a route with a server function that redirects
+  // when called inside a query with ssr: true
+  await page.goto('/redirect-test-ssr')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test-ssr/target')
+})

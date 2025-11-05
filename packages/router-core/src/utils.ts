@@ -488,3 +488,73 @@ export function findLast<T>(
   }
   return undefined
 }
+
+const DECODE_IGNORE_LIST = Array.from(
+  new Map([
+    ['%', '%25'],
+    ['\\', '%5C'],
+    ['/', '%2F'],
+    [';', '%3B'],
+    [':', '%3A'],
+    ['@', '%40'],
+    ['&', '%26'],
+    ['=', '%3D'],
+    ['+', '%2B'],
+    ['$', '%24'],
+    [',', '%2C'],
+  ]).values(),
+)
+
+export function decodePathSegment(
+  part: string,
+  decodeIgnore: Array<string> = DECODE_IGNORE_LIST,
+  startIndex = 0,
+): string {
+  function decode(part: string): string {
+    try {
+      return decodeURIComponent(part)
+    } catch {
+      // if the decoding fails, try to decode the various parts leaving the malformed tags in place
+      return part.replaceAll(/%[0-9A-Fa-f]{2}/g, (match) => {
+        try {
+          return decodeURIComponent(match)
+        } catch {
+          return match
+        }
+      })
+    }
+  }
+
+  // if the path segment does not contain any encoded uri components return the path as is
+  if (part === '' || !part.match(/%[0-9A-Fa-f]{2}/g)) return part
+
+  // decode the path / path segment by splitting it into parts defined by the ignore list.
+  // once these pieces have been decoded, join them back together to form the final decoded path segment with the ignored character in place.
+  // we walk through the ignore list linearly, breaking the segment up into pieces and decoding each piece individually.
+  // use index traversal to avoid making unnecessary copies of the array.
+  for (let i = startIndex; i < decodeIgnore.length; i++) {
+    const char = decodeIgnore[i]
+
+    // check if the part includes the current ignore character
+    // if it doesn't continue to the next ignore character
+    if (char && part.includes(char)) {
+      // split the part into pieces that needs to be checked and decoded
+      const partsToDecode = part.split(char)
+      const partsToJoin: Array<string> = []
+
+      // now check and decode each piece individually taking into consideration the remaining ignored characters.
+      // since we are walking through the list linearly, we only need to consider ignore items not yet traversed.
+      for (const partToDecode of partsToDecode) {
+        // once we have traversed the entire ignore list, each decoded part is returned.
+        partsToJoin.push(decodePathSegment(partToDecode, decodeIgnore, i + 1))
+      }
+
+      // and join them back together to form the final decoded path segment with the ignored character in place.
+      return partsToJoin.join(char)
+    }
+  }
+
+  // once we have reached the end of the ignore list, we start walking back returning each decoded part.
+  // should there be no matching characters, the path segment as a whole will be decoded.
+  return decode(part)
+}
