@@ -7,7 +7,7 @@ const { apiUrl } = cfg
 export const Route = createFileRoute('/test')({
   loader: async () => {
     // Uses the destructured binding
-    return fetch(apiUrl).then(r => r.json())
+    return fetch(apiUrl).then((r) => r.json())
   },
   component: TestComponent,
 })

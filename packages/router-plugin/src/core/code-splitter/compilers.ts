@@ -531,7 +531,9 @@ export function compileCodeSplitReferenceRoute(
           modified = true
 
           // Track which variable declarations we've already processed to avoid duplicate processing
-          const processedVarDecls = new Set<babel.NodePath<t.VariableDeclaration>>()
+          const processedVarDecls = new Set<
+            babel.NodePath<t.VariableDeclaration>
+          >()
 
           sharedModuleLevelIdents.forEach((identName) => {
             const binding = programPath.scope.getBinding(identName)
@@ -545,7 +547,8 @@ export function compileCodeSplitReferenceRoute(
               bindingPath.parentPath?.isVariableDeclaration() &&
               bindingPath.parentPath.parentPath?.isProgram()
             ) {
-              const varDecl = bindingPath.parentPath as babel.NodePath<t.VariableDeclaration>
+              const varDecl =
+                bindingPath.parentPath as babel.NodePath<t.VariableDeclaration>
 
               // Only export const/let declarations (not imports or functions)
               if (
@@ -566,7 +569,10 @@ export function compileCodeSplitReferenceRoute(
                   const localDeclarators: Array<t.VariableDeclarator> = []
 
                   declarators.forEach((declarator) => {
-                    if (t.isIdentifier(declarator.id) && sharedModuleLevelIdents.has(declarator.id.name)) {
+                    if (
+                      t.isIdentifier(declarator.id) &&
+                      sharedModuleLevelIdents.has(declarator.id.name)
+                    ) {
                       sharedDeclarators.push(declarator)
                       knownExportedIdents.add(declarator.id.name)
                       opts.sharedExports?.add(declarator.id.name)
@@ -576,17 +582,35 @@ export function compileCodeSplitReferenceRoute(
                   })
 
                   // Replace with split declarations
-                  if (sharedDeclarators.length > 0 && localDeclarators.length > 0) {
+                  if (
+                    sharedDeclarators.length > 0 &&
+                    localDeclarators.length > 0
+                  ) {
                     // Both shared and local declarators
-                    const localVarDecl = t.variableDeclaration(varDecl.node.kind, localDeclarators)
-                    const sharedVarDecl = t.variableDeclaration(varDecl.node.kind, sharedDeclarators)
-                    const exportDecl = t.exportNamedDeclaration(sharedVarDecl, [])
+                    const localVarDecl = t.variableDeclaration(
+                      varDecl.node.kind,
+                      localDeclarators,
+                    )
+                    const sharedVarDecl = t.variableDeclaration(
+                      varDecl.node.kind,
+                      sharedDeclarators,
+                    )
+                    const exportDecl = t.exportNamedDeclaration(
+                      sharedVarDecl,
+                      [],
+                    )
 
                     varDecl.replaceWithMultiple([localVarDecl, exportDecl])
                   } else if (sharedDeclarators.length > 0) {
                     // All declarators are shared
-                    const sharedVarDecl = t.variableDeclaration(varDecl.node.kind, sharedDeclarators)
-                    const exportDecl = t.exportNamedDeclaration(sharedVarDecl, [])
+                    const sharedVarDecl = t.variableDeclaration(
+                      varDecl.node.kind,
+                      sharedDeclarators,
+                    )
+                    const exportDecl = t.exportNamedDeclaration(
+                      sharedVarDecl,
+                      [],
+                    )
                     varDecl.replaceWith(exportDecl)
                   }
                 } else {

@@ -3,7 +3,8 @@ import { createFileRoute } from '@tanstack/solid-router'
 // Multiple declarators in same statement
 // Only 'shared' is used by both loader and component
 // 'a' is only used in component, should NOT be exported
-const a = 1, shared = new Map()
+const a = 1,
+  shared = new Map()
 
 export const Route = createFileRoute('/test')({
   loader: async () => {
