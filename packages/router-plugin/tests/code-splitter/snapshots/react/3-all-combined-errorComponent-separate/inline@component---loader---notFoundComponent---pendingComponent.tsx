@@ -6,9 +6,9 @@ const Button = (props: {
 }) => {
   return <button>{props.children}</button>;
 };
-import { Route } from "inline.tsx";
+import { Route } from "./inline.tsx";
 Route.addChildren([]);
-import { test } from "inline.tsx";
+import { test } from "./inline.tsx";
 const SplitComponent = () => {
   return <div className="p-2">
         {test}

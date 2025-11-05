@@ -66,6 +66,10 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   let ROOT: string = process.cwd()
   let userConfig: Config
 
+  // Cache of shared module-level variables that were exported in reference files
+  // Key: base filename (without query params), Value: Set of exported identifier names
+  const sharedExportsCache = new Map<string, Set<string>>()
+
   function initUserConfig() {
     if (typeof options === 'function') {
       userConfig = options()
@@ -125,6 +129,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     const splitGroupings: CodeSplitGroupings =
       fromCode.groupings || pluginSplitBehavior || getGlobalCodeSplitGroupings()
 
+    const sharedExports = new Set<string>()
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
       codeSplitGroupings: splitGroupings,
@@ -136,7 +141,14 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         : undefined,
       addHmr:
         (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction,
+      sharedExports,
     })
+
+    // Cache shared exports for virtual route compilation
+    if (sharedExports.size > 0) {
+      const baseFilename = id.split('?')[0]!
+      sharedExportsCache.set(baseFilename, sharedExports)
+    }
 
     if (compiledReferenceRoute === null) {
       if (debug) {
@@ -176,10 +188,15 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       splitRouteIdentNodes.includes(p as any),
     ) as Array<SplitRouteIdentNodes>
 
+    // Get shared exports from cache for this route
+    const baseFilename = id.split('?')[0]!
+    const sharedExports = sharedExportsCache.get(baseFilename)
+
     const result = compileCodeSplitVirtualRoute({
       code,
       filename: id,
       splitTargets: grouping,
+      sharedExports,
     })
 
     if (debug) {

@@ -1,4 +1,4 @@
-const $$splitComponentImporter = () => import('boolean-null-literals.tsx?tsr-split=component');
+const $$splitComponentImporter = () => import('./boolean-null-literals.tsx?tsr-split=component');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/router';
 
