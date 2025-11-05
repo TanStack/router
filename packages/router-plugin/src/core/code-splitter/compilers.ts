@@ -82,9 +82,10 @@ function addSplitSearchParamToFilename(
   const [bareFilename] = filename.split('?')
 
   // Ensure relative import specifier for proper bundler resolution
-  const relativeFilename = bareFilename!.startsWith('./') || bareFilename!.startsWith('../')
-    ? bareFilename!
-    : `./${bareFilename!}`
+  const relativeFilename =
+    bareFilename!.startsWith('./') || bareFilename!.startsWith('../')
+      ? bareFilename!
+      : `./${bareFilename!}`
 
   const params = new URLSearchParams()
   params.append(tsrSplit, createIdentifier(grouping))
@@ -176,7 +177,9 @@ export function compileCodeSplitReferenceRoute(
               }
 
               // Helper to collect all identifiers referenced by a node
-              const collectReferencedIdentifiers = (propPath: babel.NodePath<t.ObjectProperty>): Set<string> => {
+              const collectReferencedIdentifiers = (
+                propPath: babel.NodePath<t.ObjectProperty>,
+              ): Set<string> => {
                 const identifiers = new Set<string>()
                 const valuePath = propPath.get('value')
 
@@ -184,7 +187,9 @@ export function compileCodeSplitReferenceRoute(
                 const pathsToAnalyze: Array<babel.NodePath> = []
 
                 if (valuePath.isIdentifier()) {
-                  const binding = programPath.scope.getBinding(valuePath.node.name)
+                  const binding = programPath.scope.getBinding(
+                    valuePath.node.name,
+                  )
                   if (binding) {
                     pathsToAnalyze.push(binding.path)
                   }
@@ -193,7 +198,7 @@ export function compileCodeSplitReferenceRoute(
                 }
 
                 // Traverse each path to find all referenced identifiers
-                pathsToAnalyze.forEach(analyzePath => {
+                pathsToAnalyze.forEach((analyzePath) => {
                   analyzePath.traverse({
                     Identifier(idPath) {
                       // Only collect identifiers that are references (not declarations)
@@ -263,20 +268,22 @@ export function compileCodeSplitReferenceRoute(
                     if (!t.isIdentifier(propPath.node.key)) return
 
                     const key = propPath.node.key.name
-                    const willBeSplit = findIndexForSplitNode(key) !== -1 && SPLIT_NODES_CONFIG.has(key as any)
+                    const willBeSplit =
+                      findIndexForSplitNode(key) !== -1 &&
+                      SPLIT_NODES_CONFIG.has(key as any)
 
                     const idents = collectReferencedIdentifiers(propPath)
 
                     if (willBeSplit) {
-                      idents.forEach(id => splitPropertyIdents.add(id))
+                      idents.forEach((id) => splitPropertyIdents.add(id))
                     } else {
-                      idents.forEach(id => nonSplitPropertyIdents.add(id))
+                      idents.forEach((id) => nonSplitPropertyIdents.add(id))
                     }
                   },
                 })
 
                 // Find shared identifiers that need to be exported
-                splitPropertyIdents.forEach(ident => {
+                splitPropertyIdents.forEach((ident) => {
                   if (nonSplitPropertyIdents.has(ident)) {
                     sharedModuleLevelIdents.add(ident)
                   }
@@ -901,7 +908,11 @@ export function compileCodeSplitVirtualRoute(
             VariableDeclaration(varDeclPath) {
               // Only process top-level const/let declarations
               if (!varDeclPath.parentPath.isProgram()) return
-              if (varDeclPath.node.kind !== 'const' && varDeclPath.node.kind !== 'let') return
+              if (
+                varDeclPath.node.kind !== 'const' &&
+                varDeclPath.node.kind !== 'let'
+              )
+                return
 
               varDeclPath.node.declarations.forEach((declarator) => {
                 if (!t.isIdentifier(declarator.id)) return
@@ -922,14 +933,19 @@ export function compileCodeSplitVirtualRoute(
               VariableDeclaration(varDeclPath) {
                 if (!varDeclPath.parentPath.isProgram()) return
 
-                const declaratorsToKeep = varDeclPath.node.declarations.filter((declarator) => {
-                  if (!t.isIdentifier(declarator.id)) return true
-                  return !variablesToImport.includes(declarator.id.name)
-                })
+                const declaratorsToKeep = varDeclPath.node.declarations.filter(
+                  (declarator) => {
+                    if (!t.isIdentifier(declarator.id)) return true
+                    return !variablesToImport.includes(declarator.id.name)
+                  },
+                )
 
                 if (declaratorsToKeep.length === 0) {
                   varDeclPath.remove()
-                } else if (declaratorsToKeep.length < varDeclPath.node.declarations.length) {
+                } else if (
+                  declaratorsToKeep.length <
+                  varDeclPath.node.declarations.length
+                ) {
                   varDeclPath.node.declarations = declaratorsToKeep
                 }
               },
@@ -940,7 +956,9 @@ export function compileCodeSplitVirtualRoute(
               variablesToImport.map((name) =>
                 t.importSpecifier(t.identifier(name), t.identifier(name)),
               ),
-              t.stringLiteral(removeSplitSearchParamFromFilename(opts.filename)),
+              t.stringLiteral(
+                removeSplitSearchParamFromFilename(opts.filename),
+              ),
             )
             programPath.unshiftContainer('body', importDecl)
 

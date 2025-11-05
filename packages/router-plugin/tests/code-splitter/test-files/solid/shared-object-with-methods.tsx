@@ -4,7 +4,7 @@ import { createFileRoute } from '@tanstack/solid-router'
 const api = {
   endpoint: 'http://api.com',
   fetch: async () => ({ data: 'loaded' }),
-  cache: new Map()
+  cache: new Map(),
 }
 
 export const Route = createFileRoute('/test')({
