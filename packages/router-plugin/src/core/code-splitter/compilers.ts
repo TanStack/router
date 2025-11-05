@@ -81,9 +81,13 @@ function addSplitSearchParamToFilename(
 ) {
   const [bareFilename] = filename.split('?')
 
-  // Ensure relative import specifier for proper bundler resolution
+  // Don't modify absolute paths - they're used internally by bundlers
+  // Only ensure relative import specifier for relative paths
   const relativeFilename =
-    bareFilename!.startsWith('./') || bareFilename!.startsWith('../')
+    bareFilename!.startsWith('/') || // Unix absolute path
+    /^[a-zA-Z]:/.test(bareFilename!) || // Windows absolute path (C:\ or C:/)
+    bareFilename!.startsWith('./') ||
+    bareFilename!.startsWith('../')
       ? bareFilename!
       : `./${bareFilename!}`
 
@@ -96,8 +100,13 @@ function addSplitSearchParamToFilename(
 
 function removeSplitSearchParamFromFilename(filename: string) {
   const [bareFilename] = filename.split('?')
-  // Ensure relative import specifier for proper bundler resolution
-  return bareFilename!.startsWith('./') || bareFilename!.startsWith('../')
+
+  // Don't modify absolute paths - they're used internally by bundlers
+  // Only ensure relative import specifier for relative paths
+  return bareFilename!.startsWith('/') || // Unix absolute path
+    /^[a-zA-Z]:/.test(bareFilename!) || // Windows absolute path (C:\ or C:/)
+    bareFilename!.startsWith('./') ||
+    bareFilename!.startsWith('../')
     ? bareFilename!
     : `./${bareFilename!}`
 }
