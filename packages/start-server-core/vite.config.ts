@@ -4,7 +4,7 @@ import packageJson from './package.json'
 // this needs to be imported from the actual file instead of from 'index.tsx'
 // so we don't trigger the import of a `?script-string` import before the minifyScriptPlugin is setup
 import { VIRTUAL_MODULES } from './src/virtual-modules'
-
+import path from 'path'
 const config = defineConfig({
   test: {
     include: ['**/*.{test-d,test,spec}.?(c|m)[jt]s?(x)'],
@@ -12,6 +12,15 @@ const config = defineConfig({
     watch: false,
     environment: 'jsdom',
   },
+  resolve: {
+    alias: {
+      '#tanstack-router-entry': path.resolve(__dirname, './tests/mocks/router-entry.ts'),
+      '#tanstack-start-entry': path.resolve(__dirname, './tests/mocks/start-entry.ts'),
+      'tanstack-start-manifest:v': path.resolve(__dirname, './tests/mocks/start-manifest.ts'),
+      'tanstack-start-injected-head-scripts:v': path.resolve(__dirname, './tests/mocks/injected-head-scripts.ts'),
+
+    }
+  }
 })
 
 export default mergeConfig(
