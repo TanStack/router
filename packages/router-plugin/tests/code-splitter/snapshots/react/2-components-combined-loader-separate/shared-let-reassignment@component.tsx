@@ -10,4 +10,3 @@ function TestComponent() {
   return <div>Count: {store.count}</div>;
 }
 export { TestComponent as component };
-

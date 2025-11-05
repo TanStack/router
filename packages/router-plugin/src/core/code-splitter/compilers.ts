@@ -121,6 +121,32 @@ const allCreateRouteFns = [
   ...unsplittableCreateRouteFns,
 ]
 
+/**
+ * Helper to check if a VariableDeclarator is at module level.
+ * Handles both:
+ * - `const x = ...` (Program > VariableDeclaration > VariableDeclarator)
+ * - `export const x = ...` (Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator)
+ */
+function isTopLevelVarDecl(
+  declaratorPath: babel.NodePath<t.VariableDeclarator>,
+): boolean {
+  const varDecl = declaratorPath.parentPath
+  if (!varDecl?.isVariableDeclaration()) return false
+
+  const parent = varDecl.parentPath
+  if (!parent) return false
+
+  // Direct: Program > VariableDeclaration
+  if (parent.isProgram()) return true
+
+  // Exported: Program > ExportNamedDeclaration > VariableDeclaration
+  if (parent.isExportNamedDeclaration() && parent.parentPath?.isProgram()) {
+    return true
+  }
+
+  return false
+}
+
 export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions & {
     codeSplitGroupings: CodeSplitGroupings
@@ -196,9 +222,7 @@ export function compileCodeSplitReferenceRoute(
                 const pathsToAnalyze: Array<babel.NodePath> = []
 
                 if (valuePath.isIdentifier()) {
-                  const binding = programPath.scope.getBinding(
-                    valuePath.node.name,
-                  )
+                  const binding = valuePath.scope.getBinding(valuePath.node.name)
                   if (binding) {
                     pathsToAnalyze.push(binding.path)
                   }
@@ -214,17 +238,13 @@ export function compileCodeSplitReferenceRoute(
                       if (!idPath.isReferencedIdentifier()) return
 
                       const name = idPath.node.name
-                      const binding = programPath.scope.getBinding(name)
+                      // Use idPath.scope to properly handle shadowing
+                      const binding = idPath.scope.getBinding(name)
 
                       // Only include identifiers that are defined at module level
-                      if (binding) {
-                        const declarationPath = binding.path
-                        // Check if this is a top-level variable declaration
-                        if (
-                          declarationPath.isVariableDeclarator() &&
-                          declarationPath.parentPath?.isVariableDeclaration() &&
-                          declarationPath.parentPath.parentPath?.isProgram()
-                        ) {
+                      if (binding && binding.path.isVariableDeclarator()) {
+                        // Use the helper to check for top-level (handles both direct and exported)
+                        if (isTopLevelVarDecl(binding.path)) {
                           identifiers.add(name)
                         }
                       }
@@ -551,11 +571,8 @@ export function compileCodeSplitReferenceRoute(
             const bindingPath = binding.path
 
             // Check if it's a variable declaration at the top level
-            if (
-              bindingPath.isVariableDeclarator() &&
-              bindingPath.parentPath?.isVariableDeclaration() &&
-              bindingPath.parentPath.parentPath?.isProgram()
-            ) {
+            // (handles both `const x = ...` and `export const x = ...`)
+            if (bindingPath.isVariableDeclarator() && isTopLevelVarDecl(bindingPath)) {
               const varDecl =
                 bindingPath.parentPath as babel.NodePath<t.VariableDeclaration>
 
@@ -569,6 +586,13 @@ export function compileCodeSplitReferenceRoute(
                   return
                 }
                 processedVarDecls.add(varDecl)
+
+                // If already exported, just track it - don't re-export
+                if (varDecl.parentPath?.isExportNamedDeclaration()) {
+                  knownExportedIdents.add(identName)
+                  opts.sharedExports?.add(identName)
+                  return
+                }
 
                 // Check if this declaration has multiple declarators
                 const declarators = varDecl.node.declarations
@@ -977,8 +1001,10 @@ export function compileCodeSplitVirtualRoute(
         // Import shared module-level variables that were exported in the reference file
         // Only process variables confirmed to be in the sharedExports set
         if (opts.sharedExports && opts.sharedExports.size > 0) {
-          const variablesToImport: Array<string> = []
+          const candidateVariables: Array<string> = []
+          const reassignedVariables = new Set<string>()
 
+          // First pass: find candidate variables to import
           programPath.traverse({
             VariableDeclaration(varDeclPath) {
               // Only process top-level const/let declarations
@@ -996,11 +1022,46 @@ export function compileCodeSplitVirtualRoute(
 
                 // Only import if this variable is in the confirmed shared exports set
                 if (opts.sharedExports!.has(varName)) {
-                  variablesToImport.push(varName)
+                  candidateVariables.push(varName)
                 }
               })
             },
           })
+
+          // Second pass: detect reassignments/updates to candidate variables
+          // Reassigned imports produce invalid ESM, so we must skip them
+          programPath.traverse({
+            AssignmentExpression(path) {
+              if (t.isIdentifier(path.node.left)) {
+                const name = path.node.left.name
+                if (candidateVariables.includes(name)) {
+                  reassignedVariables.add(name)
+                }
+              }
+            },
+            UpdateExpression(path) {
+              if (t.isIdentifier(path.node.argument)) {
+                const name = path.node.argument.name
+                if (candidateVariables.includes(name)) {
+                  reassignedVariables.add(name)
+                }
+              }
+            },
+          })
+
+          // Warn about reassigned variables and filter them out
+          if (reassignedVariables.size > 0) {
+            const varList = Array.from(reassignedVariables).join(', ')
+            console.warn(
+              `[tanstack-router] Cannot import shared variable(s) [${varList}] in "${opts.filename}" because they are reassigned in the split file. ` +
+                `Imported bindings are read-only in ESM. Consider using 'const' with an object and mutating properties instead of reassigning the binding.`,
+            )
+          }
+
+          // Only import variables that are not reassigned
+          const variablesToImport = candidateVariables.filter(
+            (name) => !reassignedVariables.has(name),
+          )
 
           // Remove shared variable declarations and add imports
           if (variablesToImport.length > 0) {
