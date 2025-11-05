@@ -222,7 +222,9 @@ export function compileCodeSplitReferenceRoute(
                 const pathsToAnalyze: Array<babel.NodePath> = []
 
                 if (valuePath.isIdentifier()) {
-                  const binding = valuePath.scope.getBinding(valuePath.node.name)
+                  const binding = valuePath.scope.getBinding(
+                    valuePath.node.name,
+                  )
                   if (binding) {
                     pathsToAnalyze.push(binding.path)
                   }
@@ -572,7 +574,10 @@ export function compileCodeSplitReferenceRoute(
 
             // Check if it's a variable declaration at the top level
             // (handles both `const x = ...` and `export const x = ...`)
-            if (bindingPath.isVariableDeclarator() && isTopLevelVarDecl(bindingPath)) {
+            if (
+              bindingPath.isVariableDeclarator() &&
+              isTopLevelVarDecl(bindingPath)
+            ) {
               const varDecl =
                 bindingPath.parentPath as babel.NodePath<t.VariableDeclaration>
 
