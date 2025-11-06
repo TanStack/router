@@ -1,4 +1,4 @@
-import { shared } from "shared-partial-declarators.tsx";
+import { shared } from "./shared-partial-declarators.tsx";
 // Multiple declarators in same statement
 // Only 'shared' is used by both loader and component
 // 'a' is only used in component, should NOT be exported

@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js';
 import { Link, Outlet } from '@tanstack/solid-router';
 import { fetchPosts } from '../posts';
-import { Route } from "arrow-function.tsx";
+import { Route } from "./arrow-function.tsx";
 const PostsComponent = () => {
   const posts = Route.useLoaderData();
   return <div className="p-2 flex gap-2">

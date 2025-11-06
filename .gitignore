@@ -24,8 +24,6 @@ coverage
 packages/router-generator/tests/**/*.gen.ts
 packages/router-generator/tests/**/*.gen.js
 e2e/**/port*.txt
-test-results/
-**/test-results/
 
 # misc
 .DS_Store
@@ -81,6 +79,3 @@ vite.config.ts.timestamp_*
 **/llms
 
 **/.tanstack
-
-# Claude Code settings
-.claude/

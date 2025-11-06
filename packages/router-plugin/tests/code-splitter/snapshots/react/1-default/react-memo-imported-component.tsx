@@ -1,4 +1,4 @@
-const $$splitComponentImporter = () => import('react-memo-imported-component.tsx?tsr-split=component');
+const $$splitComponentImporter = () => import('./react-memo-imported-component.tsx?tsr-split=component');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 import { importedLoader } from '../../shared/imported';

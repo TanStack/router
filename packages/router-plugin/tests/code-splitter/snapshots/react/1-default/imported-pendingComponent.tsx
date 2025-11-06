@@ -1,4 +1,4 @@
-const $$splitComponentImporter = () => import('imported-pendingComponent.tsx?tsr-split=component');
+const $$splitComponentImporter = () => import('./imported-pendingComponent.tsx?tsr-split=component');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 import { importedPendingComponent } from '../../shared/imported';

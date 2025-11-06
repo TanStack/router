@@ -1,7 +1,6 @@
+import { store } from "./shared-let-reassignment.tsx";
 // let with reassignment - tests live binding behavior
-let store = {
-  count: 0
-};
+
 store = {
   count: 1,
   updated: true

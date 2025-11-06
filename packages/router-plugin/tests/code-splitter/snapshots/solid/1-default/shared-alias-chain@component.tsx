@@ -1,4 +1,4 @@
-import { alias } from "shared-alias-chain.tsx"; // Alias chain - ensure we track through aliases
+import { alias } from "./shared-alias-chain.tsx"; // Alias chain - ensure we track through aliases
 function TestComponent() {
   return <div>{alias.name}</div>;
 }

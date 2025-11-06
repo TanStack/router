@@ -81,16 +81,34 @@ function addSplitSearchParamToFilename(
 ) {
   const [bareFilename] = filename.split('?')
 
+  // Don't modify absolute paths - they're used internally by bundlers
+  // Only ensure relative import specifier for relative paths
+  const relativeFilename =
+    bareFilename!.startsWith('/') || // Unix absolute path
+    /^[a-zA-Z]:/.test(bareFilename!) || // Windows absolute path (C:\ or C:/)
+    bareFilename!.startsWith('./') ||
+    bareFilename!.startsWith('../')
+      ? bareFilename!
+      : `./${bareFilename!}`
+
   const params = new URLSearchParams()
   params.append(tsrSplit, createIdentifier(grouping))
 
-  const result = `${bareFilename}?${params.toString()}`
+  const result = `${relativeFilename}?${params.toString()}`
   return result
 }
 
 function removeSplitSearchParamFromFilename(filename: string) {
   const [bareFilename] = filename.split('?')
-  return bareFilename!
+
+  // Don't modify absolute paths - they're used internally by bundlers
+  // Only ensure relative import specifier for relative paths
+  return bareFilename!.startsWith('/') || // Unix absolute path
+    /^[a-zA-Z]:/.test(bareFilename!) || // Windows absolute path (C:\ or C:/)
+    bareFilename!.startsWith('./') ||
+    bareFilename!.startsWith('../')
+    ? bareFilename!
+    : `./${bareFilename!}`
 }
 
 const splittableCreateRouteFns = ['createFileRoute']
@@ -113,47 +131,20 @@ function isTopLevelVarDecl(
   declaratorPath: babel.NodePath<t.VariableDeclarator>,
 ): boolean {
   const varDecl = declaratorPath.parentPath
-  if (!varDecl.isVariableDeclaration()) return false
+  if (!varDecl?.isVariableDeclaration()) return false
 
   const parent = varDecl.parentPath
+  if (!parent) return false
 
   // Direct: Program > VariableDeclaration
   if (parent.isProgram()) return true
 
   // Exported: Program > ExportNamedDeclaration > VariableDeclaration
-  if (parent.isExportNamedDeclaration() && parent.parentPath.isProgram()) {
+  if (parent.isExportNamedDeclaration() && parent.parentPath?.isProgram()) {
     return true
   }
 
   return false
-}
-
-/**
- * Insert nodes into the program body after any directive prologues ('use client', 'use server', etc.)
- * This ensures directives remain first in the file, which is required by frameworks like React Server Components.
- * Returns the index where the nodes were inserted.
- */
-function insertAfterDirectives(
-  programPath: babel.NodePath<t.Program>,
-  nodes: Array<t.Statement> | t.Statement,
-): number {
-  const body = programPath.get('body') as Array<babel.NodePath>
-  let insertIndex = 0
-
-  // Find the first non-directive statement
-  while (
-    insertIndex < body.length &&
-    body[insertIndex]!.isExpressionStatement() &&
-    t.isDirectiveLiteral((body[insertIndex]!.node as any).expression)
-  ) {
-    insertIndex++
-  }
-
-  // Insert at the calculated position
-  const nodesToInsert = Array.isArray(nodes) ? nodes : [nodes]
-  programPath.node.body.splice(insertIndex, 0, ...nodesToInsert)
-
-  return insertIndex
 }
 
 export function compileCodeSplitReferenceRoute(
@@ -421,7 +412,7 @@ export function compileCodeSplitReferenceRoute(
                             LAZY_ROUTE_COMPONENT_IDENT,
                           )
                         ) {
-                          insertAfterDirectives(programPath, [
+                          programPath.unshiftContainer('body', [
                             template.statement(
                               `import { ${LAZY_ROUTE_COMPONENT_IDENT} } from '${PACKAGE}'`,
                             )(),
@@ -435,7 +426,7 @@ export function compileCodeSplitReferenceRoute(
                             splitNodeMeta.localImporterIdent,
                           )
                         ) {
-                          insertAfterDirectives(programPath, [
+                          programPath.unshiftContainer('body', [
                             template.statement(
                               `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
                             )(),
@@ -489,8 +480,8 @@ export function compileCodeSplitReferenceRoute(
 
                         // Prepend the import statement to the program along with the importer function
                         if (!hasImportedOrDefinedIdentifier(LAZY_FN_IDENT)) {
-                          insertAfterDirectives(
-                            programPath,
+                          programPath.unshiftContainer(
+                            'body',
                             template.smart(
                               `import { ${LAZY_FN_IDENT} } from '${PACKAGE}'`,
                             )(),
@@ -504,7 +495,7 @@ export function compileCodeSplitReferenceRoute(
                             splitNodeMeta.localImporterIdent,
                           )
                         ) {
-                          insertAfterDirectives(programPath, [
+                          programPath.unshiftContainer('body', [
                             template.statement(
                               `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
                             )(),
@@ -602,7 +593,7 @@ export function compileCodeSplitReferenceRoute(
                 processedVarDecls.add(varDecl)
 
                 // If already exported, just track it - don't re-export
-                if (varDecl.parentPath.isExportNamedDeclaration()) {
+                if (varDecl.parentPath?.isExportNamedDeclaration()) {
                   knownExportedIdents.add(identName)
                   opts.sharedExports?.add(identName)
                   return
@@ -1110,12 +1101,10 @@ export function compileCodeSplitVirtualRoute(
                 removeSplitSearchParamFromFilename(opts.filename),
               ),
             )
-            const importIndex = insertAfterDirectives(programPath, importDecl)
+            programPath.unshiftContainer('body', importDecl)
 
             // Track imported identifiers for dead code elimination
-            const importPath = programPath.get('body')[
-              importIndex
-            ] as babel.NodePath
+            const importPath = programPath.get('body')[0] as babel.NodePath
             importPath.traverse({
               Identifier(identPath) {
                 if (

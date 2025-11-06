@@ -1,4 +1,4 @@
-const $$splitComponentImporter = () => import('shared-nested-closure.tsx?tsr-split=component');
+const $$splitComponentImporter = () => import('./shared-nested-closure.tsx?tsr-split=component');
 import { lazyRouteComponent } from '@tanstack/solid-router';
 import { createFileRoute } from '@tanstack/solid-router';
 
