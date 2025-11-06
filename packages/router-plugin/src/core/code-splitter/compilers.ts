@@ -131,16 +131,15 @@ function isTopLevelVarDecl(
   declaratorPath: babel.NodePath<t.VariableDeclarator>,
 ): boolean {
   const varDecl = declaratorPath.parentPath
-  if (!varDecl?.isVariableDeclaration()) return false
+  if (!varDecl.isVariableDeclaration()) return false
 
   const parent = varDecl.parentPath
-  if (!parent) return false
 
   // Direct: Program > VariableDeclaration
   if (parent.isProgram()) return true
 
   // Exported: Program > ExportNamedDeclaration > VariableDeclaration
-  if (parent.isExportNamedDeclaration() && parent.parentPath?.isProgram()) {
+  if (parent.isExportNamedDeclaration() && parent.parentPath.isProgram()) {
     return true
   }
 
@@ -593,7 +592,7 @@ export function compileCodeSplitReferenceRoute(
                 processedVarDecls.add(varDecl)
 
                 // If already exported, just track it - don't re-export
-                if (varDecl.parentPath?.isExportNamedDeclaration()) {
+                if (varDecl.parentPath.isExportNamedDeclaration()) {
                   knownExportedIdents.add(identName)
                   opts.sharedExports?.add(identName)
                   return

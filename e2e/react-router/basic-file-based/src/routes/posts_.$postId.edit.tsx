@@ -1,7 +1,7 @@
 import { createFileRoute, getRouteApi, useParams } from '@tanstack/react-router'
 import { useExperimentalNonNestedRoutes } from '../../tests/utils/useExperimentalNonNestedRoutes'
 
-export const Route = createFileRoute('/posts_/$postId/edit')({
+export const Route = createFileRoute('/posts/$postId/edit')({
   component: PostEditPage,
 })
 

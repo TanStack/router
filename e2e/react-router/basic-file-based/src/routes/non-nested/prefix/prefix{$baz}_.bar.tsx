@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/non-nested/prefix/prefix{$baz}_/bar')({
+export const Route = createFileRoute('/non-nested/prefix/prefix{$baz}/bar')({
   component: RouteComponent,
 })
 
