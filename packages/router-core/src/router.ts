@@ -1563,7 +1563,10 @@ export class RouterCore<
   }
 
   cancelMatches = () => {
-    this.state.pendingMatches?.forEach((match) => {
+    const currentPendingMatches = this.state.matches.filter((match) => match.status === 'pending')
+    const currentLoadingMatches = this.state.matches.filter((match) => match.isFetching === 'loader')
+    const matchesToCancelArray = new Set([...(this.state.pendingMatches ?? []), ...currentPendingMatches, ...currentLoadingMatches])
+    matchesToCancelArray.forEach((match) => {
       this.cancelMatch(match.id)
     })
   }

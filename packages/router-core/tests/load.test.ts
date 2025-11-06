@@ -460,6 +460,55 @@ test('exec on stay (beforeLoad & loader)', async () => {
   expect(layoutBeforeLoadResolved).toBe(true)
 })
 
+test('cancelMatches after pending timeout', async () => {
+  const WAIT_TIME = 5
+  const onAbortMock = vi.fn()
+  const rootRoute = new BaseRootRoute({})
+  const fooRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo',
+    pendingMs: WAIT_TIME * 20,
+    loader: async ({ abortController }) => {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          resolve()
+        }, WAIT_TIME * 40)
+        abortController.signal.addEventListener('abort', () => {
+          onAbortMock()
+          clearTimeout(timer)
+          resolve()
+        })
+      })
+    },
+    pendingComponent: {},
+  })
+  const barRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/bar',
+  })
+  const routeTree = rootRoute.addChildren([fooRoute, barRoute])
+  const router = new RouterCore({ routeTree, history: createMemoryHistory() })
+
+  await router.load()
+  router.navigate({ to: '/foo' })
+  await sleep(WAIT_TIME * 30)
+
+  // At this point, pending timeout should have triggered
+  const fooMatch = router.getMatch('/foo')
+  expect(fooMatch).toBeDefined()
+
+  // Navigate away, which should cancel the pending match
+  await router.navigate({ to: '/bar' })
+  await router.latestLoadPromise
+
+  expect(router.state.location.pathname).toBe('/bar')
+
+  // Verify that abort was called and pending timeout was cleared
+  expect(onAbortMock).toHaveBeenCalled()
+  const cancelledFooMatch = router.getMatch('/foo')
+  expect(cancelledFooMatch?._nonReactive.pendingTimeout).toBeUndefined()
+})
+
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }

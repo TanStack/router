@@ -713,3 +713,70 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(nestedPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
 })
+
+test('cancelMatches after pending timeout', async () => {
+  function getPendingComponent(onMount: () => void) {
+    const PendingComponent = () => {
+      onMount()
+      return <div>Pending...</div>
+    }
+    return PendingComponent
+  }
+  const onAbortMock = vi.fn()
+  const fooPendingComponentOnMountMock = vi.fn()
+  const history = createMemoryHistory({ initialEntries: ['/'] })
+  const rootRoute = createRootRoute({
+    component: () => (
+      <div>
+        <h1>Index page</h1>
+        <Link data-testid="link-to-foo" to="/foo">
+          link to foo
+        </Link>
+        <Link data-testid="link-to-bar" to="/bar">
+          link to bar
+        </Link>
+        <Outlet />
+      </div>
+    ),
+  })
+  const fooRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo',
+    pendingMs: WAIT_TIME * 20,
+    loader: async ({ abortController }) => {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          resolve()
+        }, WAIT_TIME * 40)
+        abortController.signal.addEventListener('abort', () => {
+          onAbortMock()
+          clearTimeout(timer)
+          resolve()
+        })
+      })
+    },
+    pendingComponent: getPendingComponent(fooPendingComponentOnMountMock),
+    component: () => <div>Foo page</div>,
+  })
+  const barRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/bar',
+    component: () => <div>Bar page</div>,
+  })
+  const routeTree = rootRoute.addChildren([fooRoute, barRoute])
+  const router = createRouter({ routeTree, history })
+  render(() => <RouterProvider router={router} />)
+  await router.latestLoadPromise
+  const fooLink = await screen.findByTestId('link-to-foo')
+  fireEvent.click(fooLink)
+  await sleep(WAIT_TIME * 30)
+  const pendingElement = await screen.findByText('Pending...')
+  expect(pendingElement).toBeInTheDocument()
+  const barLink = await screen.findByTestId('link-to-bar')
+  fireEvent.click(barLink)
+  const barElement = await screen.findByText('Bar page')
+  expect(barElement).toBeInTheDocument()
+  expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
+  expect(onAbortMock).toHaveBeenCalled()
+})
+
