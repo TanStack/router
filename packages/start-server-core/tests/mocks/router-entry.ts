@@ -1,6 +1,6 @@
-import { AnyRouter } from '@tanstack/router-core'
+import type { AnyRouter } from '@tanstack/router-core'
 
-export let currentHandlers: Record<string, any> = {}
+export const currentHandlers: Record<string, any> = {}
 
 function makeFakeRouter(): AnyRouter {
   return {

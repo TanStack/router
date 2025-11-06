@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { createStartHandler } from '../src'
 import { currentHandlers } from './mocks/router-entry'
 
