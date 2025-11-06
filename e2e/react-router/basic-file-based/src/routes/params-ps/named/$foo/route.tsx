@@ -36,14 +36,6 @@ function RouteComponent() {
       >
         Bar2
       </Link>
-      <Link
-        from={Route.fullPath}
-        to="./$bar"
-        params={{ bar: '🚀%2F/abc대' }}
-        data-testid="params-foo-links-bar-special-characters"
-      >
-        Bar with special characters
-      </Link>
       <Outlet />
     </div>
   )
