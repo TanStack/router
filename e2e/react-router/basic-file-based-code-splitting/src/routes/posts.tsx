@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
+import { Link, Outlet } from '@tanstack/react-router'
 import { fetchPosts } from '../posts'
 
-export const Route = createFileRoute('/posts')({
+export const Route = createFileRoute({
   loader: fetchPosts,
   component: PostsComponent,
 })

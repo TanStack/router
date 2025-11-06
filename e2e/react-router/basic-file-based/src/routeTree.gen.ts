@@ -84,14 +84,14 @@ import { Route as NonNestedPrefixPrefixChar123bazChar125IndexRouteImport } from 
 import { Route as NonNestedPathBazIndexRouteImport } from './routes/non-nested/path/baz.index'
 import { Route as NonNestedNamedBazIndexRouteImport } from './routes/non-nested/named/$baz.index'
 import { Route as ParamsPsNonNestedFooBarRouteImport } from './routes/params-ps/non-nested/$foo_/$bar'
-import { Route as NonNestedSuffixChar123bazChar125suffixFooRouteImport } from './routes/non-nested/suffix/{$baz}suffix.foo'
 import { Route as NonNestedSuffixChar123bazChar125suffixBarRouteImport } from './routes/non-nested/suffix/{$baz}suffix_.bar'
-import { Route as NonNestedPrefixPrefixChar123bazChar125FooRouteImport } from './routes/non-nested/prefix/prefix{$baz}.foo'
+import { Route as NonNestedSuffixChar123bazChar125suffixFooRouteImport } from './routes/non-nested/suffix/{$baz}suffix.foo'
 import { Route as NonNestedPrefixPrefixChar123bazChar125BarRouteImport } from './routes/non-nested/prefix/prefix{$baz}_.bar'
-import { Route as NonNestedPathBazFooRouteImport } from './routes/non-nested/path/baz.foo'
+import { Route as NonNestedPrefixPrefixChar123bazChar125FooRouteImport } from './routes/non-nested/prefix/prefix{$baz}.foo'
 import { Route as NonNestedPathBazBarRouteImport } from './routes/non-nested/path/baz_.bar'
-import { Route as NonNestedNamedBazFooRouteImport } from './routes/non-nested/named/$baz.foo'
+import { Route as NonNestedPathBazFooRouteImport } from './routes/non-nested/path/baz.foo'
 import { Route as NonNestedNamedBazBarRouteImport } from './routes/non-nested/named/$baz_.bar'
+import { Route as NonNestedNamedBazFooRouteImport } from './routes/non-nested/named/$baz.foo'
 import { Route as ParamsPsNamedFooBarRouteRouteImport } from './routes/params-ps/named/$foo/$bar.route'
 import { Route as RelativeUseNavigatePathPathIndexRouteImport } from './routes/relative/useNavigate/path/$path/index'
 import { Route as RelativeUseNavigateNestedDeepIndexRouteImport } from './routes/relative/useNavigate/nested/deep/index'
@@ -333,7 +333,7 @@ const RedirectTargetViaBeforeLoadRoute =
     getParentRoute: () => RedirectTargetRoute,
   } as any)
 const PostsPostIdEditRoute = PostsPostIdEditRouteImport.update({
-  id: '/posts/$postId/edit',
+  id: '/posts_/$postId/edit',
   path: '/posts/$postId/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
@@ -405,7 +405,7 @@ const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
 } as any)
 const ParamsPsNonNestedFooRouteRoute =
   ParamsPsNonNestedFooRouteRouteImport.update({
-    id: '/$foo',
+    id: '/$foo_',
     path: '/$foo',
     getParentRoute: () => ParamsPsNonNestedRouteRoute,
   } as any)
@@ -497,17 +497,23 @@ const ParamsPsNonNestedFooBarRoute = ParamsPsNonNestedFooBarRouteImport.update({
   path: '/$bar',
   getParentRoute: () => ParamsPsNonNestedFooRouteRoute,
 } as any)
+const NonNestedSuffixChar123bazChar125suffixBarRoute =
+  NonNestedSuffixChar123bazChar125suffixBarRouteImport.update({
+    id: '/{$baz}suffix_/bar',
+    path: '/{$baz}suffix/bar',
+    getParentRoute: () => NonNestedSuffixRouteRoute,
+  } as any)
 const NonNestedSuffixChar123bazChar125suffixFooRoute =
   NonNestedSuffixChar123bazChar125suffixFooRouteImport.update({
     id: '/foo',
     path: '/foo',
     getParentRoute: () => NonNestedSuffixChar123bazChar125suffixRouteRoute,
   } as any)
-const NonNestedSuffixChar123bazChar125suffixBarRoute =
-  NonNestedSuffixChar123bazChar125suffixBarRouteImport.update({
-    id: '/{$baz}suffix/bar',
-    path: '/{$baz}suffix/bar',
-    getParentRoute: () => NonNestedSuffixRouteRoute,
+const NonNestedPrefixPrefixChar123bazChar125BarRoute =
+  NonNestedPrefixPrefixChar123bazChar125BarRouteImport.update({
+    id: '/prefix{$baz}_/bar',
+    path: '/prefix{$baz}/bar',
+    getParentRoute: () => NonNestedPrefixRouteRoute,
   } as any)
 const NonNestedPrefixPrefixChar123bazChar125FooRoute =
   NonNestedPrefixPrefixChar123bazChar125FooRouteImport.update({
@@ -515,31 +521,25 @@ const NonNestedPrefixPrefixChar123bazChar125FooRoute =
     path: '/foo',
     getParentRoute: () => NonNestedPrefixPrefixChar123bazChar125RouteRoute,
   } as any)
-const NonNestedPrefixPrefixChar123bazChar125BarRoute =
-  NonNestedPrefixPrefixChar123bazChar125BarRouteImport.update({
-    id: '/prefix{$baz}/bar',
-    path: '/prefix{$baz}/bar',
-    getParentRoute: () => NonNestedPrefixRouteRoute,
-  } as any)
+const NonNestedPathBazBarRoute = NonNestedPathBazBarRouteImport.update({
+  id: '/baz_/bar',
+  path: '/baz/bar',
+  getParentRoute: () => NonNestedPathRouteRoute,
+} as any)
 const NonNestedPathBazFooRoute = NonNestedPathBazFooRouteImport.update({
   id: '/foo',
   path: '/foo',
   getParentRoute: () => NonNestedPathBazRouteRoute,
 } as any)
-const NonNestedPathBazBarRoute = NonNestedPathBazBarRouteImport.update({
-  id: '/baz/bar',
-  path: '/baz/bar',
-  getParentRoute: () => NonNestedPathRouteRoute,
+const NonNestedNamedBazBarRoute = NonNestedNamedBazBarRouteImport.update({
+  id: '/$baz_/bar',
+  path: '/$baz/bar',
+  getParentRoute: () => NonNestedNamedRouteRoute,
 } as any)
 const NonNestedNamedBazFooRoute = NonNestedNamedBazFooRouteImport.update({
   id: '/foo',
   path: '/foo',
   getParentRoute: () => NonNestedNamedBazRouteRoute,
-} as any)
-const NonNestedNamedBazBarRoute = NonNestedNamedBazBarRouteImport.update({
-  id: '/$baz/bar',
-  path: '/$baz/bar',
-  getParentRoute: () => NonNestedNamedRouteRoute,
 } as any)
 const ParamsPsNamedFooBarRouteRoute =
   ParamsPsNamedFooBarRouteRouteImport.update({
@@ -640,14 +640,14 @@ export interface FileRoutesByFullPath {
   '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
-  '/non-nested/named/$baz/bar': typeof NonNestedNamedBazBarRoute
   '/non-nested/named/$baz/foo': typeof NonNestedNamedBazFooRoute
-  '/non-nested/path/baz/bar': typeof NonNestedPathBazBarRoute
+  '/non-nested/named/$baz/bar': typeof NonNestedNamedBazBarRoute
   '/non-nested/path/baz/foo': typeof NonNestedPathBazFooRoute
-  '/non-nested/prefix/prefix{$baz}/bar': typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
+  '/non-nested/path/baz/bar': typeof NonNestedPathBazBarRoute
   '/non-nested/prefix/prefix{$baz}/foo': typeof NonNestedPrefixPrefixChar123bazChar125FooRoute
-  '/non-nested/suffix/{$baz}suffix/bar': typeof NonNestedSuffixChar123bazChar125suffixBarRoute
+  '/non-nested/prefix/prefix{$baz}/bar': typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
   '/non-nested/suffix/{$baz}suffix/foo': typeof NonNestedSuffixChar123bazChar125suffixFooRoute
+  '/non-nested/suffix/{$baz}suffix/bar': typeof NonNestedSuffixChar123bazChar125suffixBarRoute
   '/params-ps/non-nested/$foo/$bar': typeof ParamsPsNonNestedFooBarRoute
   '/non-nested/named/$baz/': typeof NonNestedNamedBazIndexRoute
   '/non-nested/path/baz/': typeof NonNestedPathBazIndexRoute
@@ -721,14 +721,14 @@ export interface FileRoutesByTo {
   '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
-  '/non-nested/named/$baz/bar': typeof NonNestedNamedBazBarRoute
   '/non-nested/named/$baz/foo': typeof NonNestedNamedBazFooRoute
-  '/non-nested/path/baz/bar': typeof NonNestedPathBazBarRoute
+  '/non-nested/named/$baz/bar': typeof NonNestedNamedBazBarRoute
   '/non-nested/path/baz/foo': typeof NonNestedPathBazFooRoute
-  '/non-nested/prefix/prefix{$baz}/bar': typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
+  '/non-nested/path/baz/bar': typeof NonNestedPathBazBarRoute
   '/non-nested/prefix/prefix{$baz}/foo': typeof NonNestedPrefixPrefixChar123bazChar125FooRoute
-  '/non-nested/suffix/{$baz}suffix/bar': typeof NonNestedSuffixChar123bazChar125suffixBarRoute
+  '/non-nested/prefix/prefix{$baz}/bar': typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
   '/non-nested/suffix/{$baz}suffix/foo': typeof NonNestedSuffixChar123bazChar125suffixFooRoute
+  '/non-nested/suffix/{$baz}suffix/bar': typeof NonNestedSuffixChar123bazChar125suffixBarRoute
   '/params-ps/non-nested/$foo/$bar': typeof ParamsPsNonNestedFooBarRoute
   '/non-nested/named/$baz': typeof NonNestedNamedBazIndexRoute
   '/non-nested/path/baz': typeof NonNestedPathBazIndexRoute
@@ -786,7 +786,7 @@ export interface FileRoutesById {
   '/non-nested/prefix/prefix{$baz}': typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren
   '/non-nested/suffix/{$baz}suffix': typeof NonNestedSuffixChar123bazChar125suffixRouteRouteWithChildren
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
-  '/params-ps/non-nested/$foo': typeof ParamsPsNonNestedFooRouteRouteWithChildren
+  '/params-ps/non-nested/$foo_': typeof ParamsPsNonNestedFooRouteRouteWithChildren
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
@@ -799,7 +799,7 @@ export interface FileRoutesById {
   '/params-ps/wildcard/{$}suffix': typeof ParamsPsWildcardChar123Char125suffixRoute
   '/params-ps/wildcard/{$}suffix@대': typeof ParamsPsWildcardChar123Char125suffixAtChar45824Route
   '/params/single/$value': typeof ParamsSingleValueRoute
-  '/posts/$postId/edit': typeof PostsPostIdEditRoute
+  '/posts_/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/redirect/preload/first': typeof RedirectPreloadFirstRoute
@@ -813,15 +813,15 @@ export interface FileRoutesById {
   '/params-ps/wildcard/': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
-  '/non-nested/named/$baz/bar': typeof NonNestedNamedBazBarRoute
   '/non-nested/named/$baz/foo': typeof NonNestedNamedBazFooRoute
-  '/non-nested/path/baz/bar': typeof NonNestedPathBazBarRoute
+  '/non-nested/named/$baz_/bar': typeof NonNestedNamedBazBarRoute
   '/non-nested/path/baz/foo': typeof NonNestedPathBazFooRoute
-  '/non-nested/prefix/prefix{$baz}/bar': typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
+  '/non-nested/path/baz_/bar': typeof NonNestedPathBazBarRoute
   '/non-nested/prefix/prefix{$baz}/foo': typeof NonNestedPrefixPrefixChar123bazChar125FooRoute
-  '/non-nested/suffix/{$baz}suffix/bar': typeof NonNestedSuffixChar123bazChar125suffixBarRoute
+  '/non-nested/prefix/prefix{$baz}_/bar': typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
   '/non-nested/suffix/{$baz}suffix/foo': typeof NonNestedSuffixChar123bazChar125suffixFooRoute
-  '/params-ps/non-nested/$foo/$bar': typeof ParamsPsNonNestedFooBarRoute
+  '/non-nested/suffix/{$baz}suffix_/bar': typeof NonNestedSuffixChar123bazChar125suffixBarRoute
+  '/params-ps/non-nested/$foo_/$bar': typeof ParamsPsNonNestedFooBarRoute
   '/non-nested/named/$baz/': typeof NonNestedNamedBazIndexRoute
   '/non-nested/path/baz/': typeof NonNestedPathBazIndexRoute
   '/non-nested/prefix/prefix{$baz}/': typeof NonNestedPrefixPrefixChar123bazChar125IndexRoute
@@ -903,14 +903,14 @@ export interface FileRouteTypes {
     | '/params-ps/wildcard'
     | '/redirect/$target/'
     | '/params-ps/named/$foo/$bar'
-    | '/non-nested/named/$baz/bar'
     | '/non-nested/named/$baz/foo'
-    | '/non-nested/path/baz/bar'
+    | '/non-nested/named/$baz/bar'
     | '/non-nested/path/baz/foo'
-    | '/non-nested/prefix/prefix{$baz}/bar'
+    | '/non-nested/path/baz/bar'
     | '/non-nested/prefix/prefix{$baz}/foo'
-    | '/non-nested/suffix/{$baz}suffix/bar'
+    | '/non-nested/prefix/prefix{$baz}/bar'
     | '/non-nested/suffix/{$baz}suffix/foo'
+    | '/non-nested/suffix/{$baz}suffix/bar'
     | '/params-ps/non-nested/$foo/$bar'
     | '/non-nested/named/$baz/'
     | '/non-nested/path/baz/'
@@ -984,14 +984,14 @@ export interface FileRouteTypes {
     | '/params-ps/wildcard'
     | '/redirect/$target'
     | '/params-ps/named/$foo/$bar'
-    | '/non-nested/named/$baz/bar'
     | '/non-nested/named/$baz/foo'
-    | '/non-nested/path/baz/bar'
+    | '/non-nested/named/$baz/bar'
     | '/non-nested/path/baz/foo'
-    | '/non-nested/prefix/prefix{$baz}/bar'
+    | '/non-nested/path/baz/bar'
     | '/non-nested/prefix/prefix{$baz}/foo'
-    | '/non-nested/suffix/{$baz}suffix/bar'
+    | '/non-nested/prefix/prefix{$baz}/bar'
     | '/non-nested/suffix/{$baz}suffix/foo'
+    | '/non-nested/suffix/{$baz}suffix/bar'
     | '/params-ps/non-nested/$foo/$bar'
     | '/non-nested/named/$baz'
     | '/non-nested/path/baz'
@@ -1048,7 +1048,7 @@ export interface FileRouteTypes {
     | '/non-nested/prefix/prefix{$baz}'
     | '/non-nested/suffix/{$baz}suffix'
     | '/params-ps/named/$foo'
-    | '/params-ps/non-nested/$foo'
+    | '/params-ps/non-nested/$foo_'
     | '/(group)/_layout/insidelayout'
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
@@ -1061,7 +1061,7 @@ export interface FileRouteTypes {
     | '/params-ps/wildcard/{$}suffix'
     | '/params-ps/wildcard/{$}suffix@대'
     | '/params/single/$value'
-    | '/posts/$postId/edit'
+    | '/posts_/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/redirect/preload/first'
@@ -1075,15 +1075,15 @@ export interface FileRouteTypes {
     | '/params-ps/wildcard/'
     | '/redirect/$target/'
     | '/params-ps/named/$foo/$bar'
-    | '/non-nested/named/$baz/bar'
     | '/non-nested/named/$baz/foo'
-    | '/non-nested/path/baz/bar'
+    | '/non-nested/named/$baz_/bar'
     | '/non-nested/path/baz/foo'
-    | '/non-nested/prefix/prefix{$baz}/bar'
+    | '/non-nested/path/baz_/bar'
     | '/non-nested/prefix/prefix{$baz}/foo'
-    | '/non-nested/suffix/{$baz}suffix/bar'
+    | '/non-nested/prefix/prefix{$baz}_/bar'
     | '/non-nested/suffix/{$baz}suffix/foo'
-    | '/params-ps/non-nested/$foo/$bar'
+    | '/non-nested/suffix/{$baz}suffix_/bar'
+    | '/params-ps/non-nested/$foo_/$bar'
     | '/non-nested/named/$baz/'
     | '/non-nested/path/baz/'
     | '/non-nested/prefix/prefix{$baz}/'
@@ -1461,8 +1461,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
-    '/posts/$postId/edit': {
-      id: '/posts/$postId/edit'
+    '/posts_/$postId/edit': {
+      id: '/posts_/$postId/edit'
       path: '/posts/$postId/edit'
       fullPath: '/posts/$postId/edit'
       preLoaderRoute: typeof PostsPostIdEditRouteImport
@@ -1552,8 +1552,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
       parentRoute: typeof groupLayoutRoute
     }
-    '/params-ps/non-nested/$foo': {
-      id: '/params-ps/non-nested/$foo'
+    '/params-ps/non-nested/$foo_': {
+      id: '/params-ps/non-nested/$foo_'
       path: '/$foo'
       fullPath: '/params-ps/non-nested/$foo'
       preLoaderRoute: typeof ParamsPsNonNestedFooRouteRouteImport
@@ -1664,12 +1664,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NonNestedNamedBazIndexRouteImport
       parentRoute: typeof NonNestedNamedBazRouteRoute
     }
-    '/params-ps/non-nested/$foo/$bar': {
-      id: '/params-ps/non-nested/$foo/$bar'
+    '/params-ps/non-nested/$foo_/$bar': {
+      id: '/params-ps/non-nested/$foo_/$bar'
       path: '/$bar'
       fullPath: '/params-ps/non-nested/$foo/$bar'
       preLoaderRoute: typeof ParamsPsNonNestedFooBarRouteImport
       parentRoute: typeof ParamsPsNonNestedFooRouteRoute
+    }
+    '/non-nested/suffix/{$baz}suffix_/bar': {
+      id: '/non-nested/suffix/{$baz}suffix_/bar'
+      path: '/{$baz}suffix/bar'
+      fullPath: '/non-nested/suffix/{$baz}suffix/bar'
+      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixBarRouteImport
+      parentRoute: typeof NonNestedSuffixRouteRoute
     }
     '/non-nested/suffix/{$baz}suffix/foo': {
       id: '/non-nested/suffix/{$baz}suffix/foo'
@@ -1678,12 +1685,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixFooRouteImport
       parentRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRoute
     }
-    '/non-nested/suffix/{$baz}suffix/bar': {
-      id: '/non-nested/suffix/{$baz}suffix/bar'
-      path: '/{$baz}suffix/bar'
-      fullPath: '/non-nested/suffix/{$baz}suffix/bar'
-      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixBarRouteImport
-      parentRoute: typeof NonNestedSuffixRouteRoute
+    '/non-nested/prefix/prefix{$baz}_/bar': {
+      id: '/non-nested/prefix/prefix{$baz}_/bar'
+      path: '/prefix{$baz}/bar'
+      fullPath: '/non-nested/prefix/prefix{$baz}/bar'
+      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125BarRouteImport
+      parentRoute: typeof NonNestedPrefixRouteRoute
     }
     '/non-nested/prefix/prefix{$baz}/foo': {
       id: '/non-nested/prefix/prefix{$baz}/foo'
@@ -1692,12 +1699,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125FooRouteImport
       parentRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRoute
     }
-    '/non-nested/prefix/prefix{$baz}/bar': {
-      id: '/non-nested/prefix/prefix{$baz}/bar'
-      path: '/prefix{$baz}/bar'
-      fullPath: '/non-nested/prefix/prefix{$baz}/bar'
-      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125BarRouteImport
-      parentRoute: typeof NonNestedPrefixRouteRoute
+    '/non-nested/path/baz_/bar': {
+      id: '/non-nested/path/baz_/bar'
+      path: '/baz/bar'
+      fullPath: '/non-nested/path/baz/bar'
+      preLoaderRoute: typeof NonNestedPathBazBarRouteImport
+      parentRoute: typeof NonNestedPathRouteRoute
     }
     '/non-nested/path/baz/foo': {
       id: '/non-nested/path/baz/foo'
@@ -1706,12 +1713,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NonNestedPathBazFooRouteImport
       parentRoute: typeof NonNestedPathBazRouteRoute
     }
-    '/non-nested/path/baz/bar': {
-      id: '/non-nested/path/baz/bar'
-      path: '/baz/bar'
-      fullPath: '/non-nested/path/baz/bar'
-      preLoaderRoute: typeof NonNestedPathBazBarRouteImport
-      parentRoute: typeof NonNestedPathRouteRoute
+    '/non-nested/named/$baz_/bar': {
+      id: '/non-nested/named/$baz_/bar'
+      path: '/$baz/bar'
+      fullPath: '/non-nested/named/$baz/bar'
+      preLoaderRoute: typeof NonNestedNamedBazBarRouteImport
+      parentRoute: typeof NonNestedNamedRouteRoute
     }
     '/non-nested/named/$baz/foo': {
       id: '/non-nested/named/$baz/foo'
@@ -1719,13 +1726,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/non-nested/named/$baz/foo'
       preLoaderRoute: typeof NonNestedNamedBazFooRouteImport
       parentRoute: typeof NonNestedNamedBazRouteRoute
-    }
-    '/non-nested/named/$baz/bar': {
-      id: '/non-nested/named/$baz/bar'
-      path: '/$baz/bar'
-      fullPath: '/non-nested/named/$baz/bar'
-      preLoaderRoute: typeof NonNestedNamedBazBarRouteImport
-      parentRoute: typeof NonNestedNamedRouteRoute
     }
     '/params-ps/named/$foo/$bar': {
       id: '/params-ps/named/$foo/$bar'

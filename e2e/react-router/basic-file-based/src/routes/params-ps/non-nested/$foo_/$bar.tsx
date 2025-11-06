@@ -1,7 +1,7 @@
 import { createFileRoute, useParams } from '@tanstack/react-router'
 import { useExperimentalNonNestedRoutes } from '../../../../../tests/utils/useExperimentalNonNestedRoutes'
 
-export const Route = createFileRoute('/params-ps/non-nested/$foo/$bar')({
+export const Route = createFileRoute('/params-ps/non-nested/$foo_/$bar')({
   component: RouteComponent,
 })
 
