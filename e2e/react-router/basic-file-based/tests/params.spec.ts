@@ -145,6 +145,12 @@ test.describe('params operations + prefix/suffix', () => {
         params: { foo: 'foo' },
         destHeadingId: 'ParamsNamedFooSuffix',
       },
+      {
+        id: 'l-to-named-foo-special-characters',
+        pathname: '/params-ps/named/foo%25%5C%2F%F0%9F%9A%80%EB%8C%80',
+        params: { foo: 'foo%\\/🚀대' },
+        destHeadingId: 'ParamsNamedFoo',
+      },
     ] satisfies Array<{
       id: string
       pathname: string
@@ -317,6 +323,16 @@ test.describe('params operations + prefix/suffix', () => {
         },
         destHeadingId: 'ParamsWildcardSplatSuffix',
       },
+      {
+        id: 'l-to-wildcard-encoded',
+        pathname:
+          '/params-ps/wildcard/%25EB%258C%2580%25ED%2595%259C%25EB%25AF%25BC%25EA%25B5%25AD',
+        params: {
+          '*': '%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD',
+          _splat: '%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD',
+        },
+        destHeadingId: 'ParamsWildcardSplat',
+      },
     ] satisfies Array<{
       id: string
       pathname: string
@@ -368,12 +384,122 @@ test.describe('params operations + prefix/suffix', () => {
   })
 })
 
-test.describe('Unicode route rendering', () => {
-  test('should render non-latin route correctly', async ({ page, baseURL }) => {
-    await page.goto('/대한민국')
+test.describe('Unicode params', () => {
+  test('should render non-latin route correctly across multiple params', async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto('/params-ps')
+    await page.waitForURL('/params-ps')
+    const fooLink = page.getByTestId('l-to-named-foo-special-characters')
 
-    await expect(page.locator('body')).toContainText('Hello "/대한민국"!')
+    await fooLink.click()
+    await page.waitForURL('/params-ps/named/foo%25%5C%2F%F0%9F%9A%80%EB%8C%80')
 
-    expect(page.url()).toBe(`${baseURL}/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD`)
+    expect(page.url()).toBe(
+      `${baseURL}/params-ps/named/foo%25%5C%2F%F0%9F%9A%80%EB%8C%80`,
+    )
+
+    const headingEl = page.getByRole('heading', { name: 'ParamsNamedFoo' })
+    await expect(headingEl).toBeVisible()
+    let paramsEl = page.getByTestId('params-output')
+    let paramsText = await paramsEl.innerText()
+    expect(paramsText).toEqual(JSON.stringify({ foo: 'foo%\\/🚀대' }))
+
+    const barLink = page.getByTestId('params-foo-links-bar-special-characters')
+
+    await barLink.click()
+
+    await page.waitForURL(
+      '/params-ps/named/foo%25%5C%2F%F0%9F%9A%80%EB%8C%80/%F0%9F%9A%80%252F%2Fabc%EB%8C%80',
+    )
+
+    expect(page.url()).toBe(
+      `${baseURL}/params-ps/named/foo%25%5C%2F%F0%9F%9A%80%EB%8C%80/%F0%9F%9A%80%252F%2Fabc%EB%8C%80`,
+    )
+
+    paramsEl = page.getByTestId('foo-bar-value')
+    paramsText = await paramsEl.innerText()
+    expect(paramsText).toEqual('🚀%2F/abc대')
+  })
+
+  test.describe('should handle routes with non-latin paths and params correctly', () => {
+    const testCases = [
+      {
+        name: 'named',
+        childPath: '🚀',
+        latinParams: 'foo',
+        unicodeParams: 'foo%\\/🚀대',
+      },
+      {
+        name: 'wildcard',
+        childPath: 'wildcard',
+        latinParams: 'foo/bar',
+        unicodeParams: 'foo%\\/🚀대',
+      },
+    ]
+
+    testCases.forEach(({ name, childPath, latinParams, unicodeParams }) => {
+      test(`${name} params`, async ({ page, baseURL }) => {
+        const pascalCaseName = name.charAt(0).toUpperCase() + name.slice(1)
+        const routeParentPath = '/대한민국'
+        const encodedRouteParentPath = encodeURI(routeParentPath)
+        const childRoutePath = `${routeParentPath}/${childPath}`
+        const encodedChildRoutePath = encodeURI(childRoutePath)
+
+        await page.goto(routeParentPath)
+        await page.waitForURL(encodedRouteParentPath)
+
+        const headingRootEl = page.getByTestId('unicode-heading')
+
+        expect(await headingRootEl.innerText()).toBe('Hello "/대한민국"!')
+
+        const latinLink = page.getByTestId(`l-to-${name}-latin`)
+        const unicodeLink = page.getByTestId(`l-to-${name}-unicode`)
+
+        await expect(latinLink).not.toContainClass('font-bold')
+        await expect(unicodeLink).not.toContainClass('font-bold')
+
+        await latinLink.click()
+
+        await page.waitForURL(`${encodedChildRoutePath}/${latinParams}`)
+
+        expect(page.url()).toBe(
+          `${baseURL}${encodedChildRoutePath}/${latinParams}`,
+        )
+
+        await expect(latinLink).toContainClass('font-bold')
+        await expect(unicodeLink).not.toContainClass('font-bold')
+
+        const headingEl = page.getByTestId(`unicode-${name}-heading`)
+        const paramsEl = page.getByTestId(`unicode-${name}-params`)
+
+        expect(await headingEl.innerText()).toBe(
+          `Unicode ${pascalCaseName} Params`,
+        )
+        expect(await paramsEl.innerText()).toBe(latinParams)
+
+        await unicodeLink.click()
+
+        const encodedParams =
+          name === 'wildcard'
+            ? encodeURI(unicodeParams)
+            : encodeURIComponent(unicodeParams)
+
+        await page.waitForURL(`${encodedChildRoutePath}/${encodedParams}`)
+
+        expect(page.url()).toBe(
+          `${baseURL}${encodedChildRoutePath}/${encodedParams}`,
+        )
+
+        await expect(latinLink).not.toContainClass('font-bold')
+        await expect(unicodeLink).toContainClass('font-bold')
+
+        expect(await headingEl.innerText()).toBe(
+          `Unicode ${pascalCaseName} Params`,
+        )
+        expect(await paramsEl.innerText()).toBe(unicodeParams)
+      })
+    })
   })
 })

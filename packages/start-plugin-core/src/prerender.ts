@@ -178,10 +178,9 @@ export async function prerender({
         const retries = retriesByPath.get(page.path) || 0
         try {
           // Fetch the route
-          const encodedRoute = encodeURI(page.path)
 
           const res = await localFetch(
-            withBase(encodedRoute, routerBasePath),
+            withBase(page.path, routerBasePath),
             {
               headers: {
                 ...(prerenderOptions.headers ?? {}),
