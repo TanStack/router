@@ -9,7 +9,7 @@ function RouteComponent() {
   return (
     <div>
       <div data-testid="non-nested-deep-baz-bar-qux-heading">
-        Hello deeply nested bar/bar/qux
+        Hello deeply nested baz/bar/qux
       </div>
       <div data-testid="non-nested-deep-baz-bar-qux-param">
         {JSON.stringify(params())}
