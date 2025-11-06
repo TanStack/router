@@ -146,6 +146,34 @@ function isTopLevelVarDecl(
   return false
 }
 
+/**
+ * Insert nodes into the program body after any directive prologues ('use client', 'use server', etc.)
+ * This ensures directives remain first in the file, which is required by frameworks like React Server Components.
+ * Returns the index where the nodes were inserted.
+ */
+function insertAfterDirectives(
+  programPath: babel.NodePath<t.Program>,
+  nodes: Array<t.Statement> | t.Statement,
+): number {
+  const body = programPath.get('body') as Array<babel.NodePath>
+  let insertIndex = 0
+
+  // Find the first non-directive statement
+  while (
+    insertIndex < body.length &&
+    body[insertIndex]!.isExpressionStatement() &&
+    t.isDirectiveLiteral((body[insertIndex]!.node as any).expression)
+  ) {
+    insertIndex++
+  }
+
+  // Insert at the calculated position
+  const nodesToInsert = Array.isArray(nodes) ? nodes : [nodes]
+  programPath.node.body.splice(insertIndex, 0, ...nodesToInsert)
+
+  return insertIndex
+}
+
 export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions & {
     codeSplitGroupings: CodeSplitGroupings
@@ -411,7 +439,7 @@ export function compileCodeSplitReferenceRoute(
                             LAZY_ROUTE_COMPONENT_IDENT,
                           )
                         ) {
-                          programPath.unshiftContainer('body', [
+                          insertAfterDirectives(programPath, [
                             template.statement(
                               `import { ${LAZY_ROUTE_COMPONENT_IDENT} } from '${PACKAGE}'`,
                             )(),
@@ -425,7 +453,7 @@ export function compileCodeSplitReferenceRoute(
                             splitNodeMeta.localImporterIdent,
                           )
                         ) {
-                          programPath.unshiftContainer('body', [
+                          insertAfterDirectives(programPath, [
                             template.statement(
                               `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
                             )(),
@@ -479,8 +507,8 @@ export function compileCodeSplitReferenceRoute(
 
                         // Prepend the import statement to the program along with the importer function
                         if (!hasImportedOrDefinedIdentifier(LAZY_FN_IDENT)) {
-                          programPath.unshiftContainer(
-                            'body',
+                          insertAfterDirectives(
+                            programPath,
                             template.smart(
                               `import { ${LAZY_FN_IDENT} } from '${PACKAGE}'`,
                             )(),
@@ -494,7 +522,7 @@ export function compileCodeSplitReferenceRoute(
                             splitNodeMeta.localImporterIdent,
                           )
                         ) {
-                          programPath.unshiftContainer('body', [
+                          insertAfterDirectives(programPath, [
                             template.statement(
                               `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
                             )(),
@@ -1100,10 +1128,12 @@ export function compileCodeSplitVirtualRoute(
                 removeSplitSearchParamFromFilename(opts.filename),
               ),
             )
-            programPath.unshiftContainer('body', importDecl)
+            const importIndex = insertAfterDirectives(programPath, importDecl)
 
             // Track imported identifiers for dead code elimination
-            const importPath = programPath.get('body')[0] as babel.NodePath
+            const importPath = programPath.get('body')[
+              importIndex
+            ] as babel.NodePath
             importPath.traverse({
               Identifier(identPath) {
                 if (
