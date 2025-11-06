@@ -81,34 +81,16 @@ function addSplitSearchParamToFilename(
 ) {
   const [bareFilename] = filename.split('?')
 
-  // Don't modify absolute paths - they're used internally by bundlers
-  // Only ensure relative import specifier for relative paths
-  const relativeFilename =
-    bareFilename!.startsWith('/') || // Unix absolute path
-    /^[a-zA-Z]:/.test(bareFilename!) || // Windows absolute path (C:\ or C:/)
-    bareFilename!.startsWith('./') ||
-    bareFilename!.startsWith('../')
-      ? bareFilename!
-      : `./${bareFilename!}`
-
   const params = new URLSearchParams()
   params.append(tsrSplit, createIdentifier(grouping))
 
-  const result = `${relativeFilename}?${params.toString()}`
+  const result = `${bareFilename}?${params.toString()}`
   return result
 }
 
 function removeSplitSearchParamFromFilename(filename: string) {
   const [bareFilename] = filename.split('?')
-
-  // Don't modify absolute paths - they're used internally by bundlers
-  // Only ensure relative import specifier for relative paths
-  return bareFilename!.startsWith('/') || // Unix absolute path
-    /^[a-zA-Z]:/.test(bareFilename!) || // Windows absolute path (C:\ or C:/)
-    bareFilename!.startsWith('./') ||
-    bareFilename!.startsWith('../')
-    ? bareFilename!
-    : `./${bareFilename!}`
+  return bareFilename!
 }
 
 const splittableCreateRouteFns = ['createFileRoute']

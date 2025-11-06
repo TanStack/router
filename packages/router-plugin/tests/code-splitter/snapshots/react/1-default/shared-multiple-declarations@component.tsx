@@ -1,4 +1,4 @@
-import { collection1 } from "./shared-multiple-declarations.tsx";
+import { collection1 } from "shared-multiple-declarations.tsx";
 // Multiple declarations in same const statement
 // Only collection1 is shared, but both are in same declaration
 const collection2 = {

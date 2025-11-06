@@ -14,15 +14,15 @@ import bytesImage from '~/images/bytes.svg';
 import bytesUidotdevImage from '~/images/bytes-uidotdev.png';
 import { useMutation } from '~/hooks/useMutation';
 import { sample } from '~/utils/utils';
-import { textColors } from "./random-number.tsx";
-import { gradients } from "./random-number.tsx";
+import { textColors } from "random-number.tsx";
+import { gradients } from "random-number.tsx";
 const courses = [{
   name: 'The Official TanStack React Query Course',
   cardStyles: `border-t-4 border-red-500 hover:(border-green-500)`,
   href: 'https://query.gg/?s=tanstack',
   description: `Learn how to build enterprise quality apps with TanStack's React Query the easy way with our brand new course.`
 }];
-import { Route } from "./random-number.tsx";
+import { Route } from "random-number.tsx";
 async function bytesSignupServerFn({
   email
 }: {

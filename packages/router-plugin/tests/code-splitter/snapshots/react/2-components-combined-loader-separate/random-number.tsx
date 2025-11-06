@@ -1,6 +1,6 @@
-const $$splitComponentImporter = () => import('./random-number.tsx?tsr-split=component---errorComponent---notFoundComponent---pendingComponent');
+const $$splitComponentImporter = () => import('random-number.tsx?tsr-split=component---errorComponent---notFoundComponent---pendingComponent');
 import { lazyRouteComponent } from '@tanstack/react-router';
-const $$splitLoaderImporter = () => import('./random-number.tsx?tsr-split=loader');
+const $$splitLoaderImporter = () => import('random-number.tsx?tsr-split=loader');
 import { lazyFn } from '@tanstack/react-router';
 import { Await, Link, createFileRoute } from '@tanstack/react-router';
 import { Carbon } from '~/components/Carbon';

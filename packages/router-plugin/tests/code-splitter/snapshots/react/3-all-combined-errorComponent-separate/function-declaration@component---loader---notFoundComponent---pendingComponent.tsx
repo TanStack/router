@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Link, Outlet } from '@tanstack/react-router';
 import { fetchPosts } from '../posts';
-import { Route } from "./function-declaration.tsx";
+import { Route } from "function-declaration.tsx";
 function PostsComponent() {
   const posts = Route.useLoaderData();
   return <div className="p-2 flex gap-2">

@@ -1,4 +1,4 @@
-import { collection } from "./shared-variable-dependency.tsx";
+import { collection } from "shared-variable-dependency.tsx";
 // Variable references another shared variable
 const baseConfig = {
   apiUrl: 'http://api.com',

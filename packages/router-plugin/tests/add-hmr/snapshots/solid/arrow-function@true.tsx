@@ -1,4 +1,4 @@
-const $$splitComponentImporter = () => import('./arrow-function.tsx?tsr-split=component');
+const $$splitComponentImporter = () => import('arrow-function.tsx?tsr-split=component');
 import { lazyRouteComponent } from '@tanstack/solid-router';
 import { createFileRoute } from '@tanstack/solid-router';
 import { fetchPosts } from '../posts';

@@ -1,5 +1,5 @@
 console.warn("[tanstack-router] These exports from \"retain-export-component.tsx\" will not be code-split and will increase your bundle size:\n- Layout\nFor the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.");
-const $$splitLoaderImporter = () => import('./retain-export-component.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent');
+const $$splitLoaderImporter = () => import('retain-export-component.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent');
 import { lazyFn } from '@tanstack/react-router';
 import * as React from 'react';
 import { createFileRoute, Outlet } from '@tanstack/react-router';

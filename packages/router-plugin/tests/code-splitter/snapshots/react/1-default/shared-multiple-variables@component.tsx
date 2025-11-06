@@ -1,4 +1,4 @@
-import { collection1, collection2 } from "./shared-multiple-variables.tsx";
+import { collection1, collection2 } from "shared-multiple-variables.tsx";
 // Multiple shared variables used by both loader and component
 
 const config = {

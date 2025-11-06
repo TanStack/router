@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Link, Outlet } from '@tanstack/react-router';
-import { Route } from "./arrow-function.tsx";
+import { Route } from "arrow-function.tsx";
 const PostsComponent = () => {
   const posts = Route.useLoaderData();
   return <div className="p-2 flex gap-2">

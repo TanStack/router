@@ -1,4 +1,4 @@
-import { collection } from "./shared-call-expression.tsx";
+import { collection } from "shared-call-expression.tsx";
 // Call expression initializers - should still work
 
 const query = {

@@ -1,4 +1,4 @@
-const $$splitComponentImporter = () => import('./function-declaration.tsx?tsr-split=component');
+const $$splitComponentImporter = () => import('function-declaration.tsx?tsr-split=component');
 import { lazyRouteComponent } from '@tanstack/react-router';
 import * as React from 'react';
 import { createFileRoute } from '@tanstack/react-router';
