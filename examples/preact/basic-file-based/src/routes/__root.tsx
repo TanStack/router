@@ -1,5 +1,4 @@
-import { createFileRoute } from '@tanstack/preact-router'
-import { Link, Outlet } from '@tanstack/preact-router'
+import { createFileRoute, Link, Outlet } from '@tanstack/preact-router'
 import { TanStackRouterDevtools } from '@tanstack/preact-router-devtools'
 
 export const Route = createFileRoute('/__root')({
