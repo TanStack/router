@@ -129,7 +129,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="flex-grow min-h-0 h-full flex flex-col">
+          <div className="grow min-h-0 h-full flex flex-col">
             {children}
             <Toaster />
           </div>

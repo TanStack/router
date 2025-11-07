@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { deepEqual, isPlainArray, replaceEqualDeep } from '../src/utils'
+import {
+  decodePath,
+  deepEqual,
+  isPlainArray,
+  replaceEqualDeep,
+} from '../src/utils'
 
 describe('replaceEqualDeep', () => {
   it('should return the same object if the input objects are equal', () => {
@@ -490,5 +495,121 @@ describe('deepEqual', () => {
       // @ts-expect-error
       delete Object.prototype.x
     })
+  })
+})
+
+describe('decodePath', () => {
+  it('should decode a path segment with no ignored items existing', () => {
+    const itemsToCheck = ['%25', '%5C']
+    const stringToCheck =
+      'https://mozilla.org/?x=%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
+    const expectedResult = 'https://mozilla.org/?x=шеллы'
+
+    const result = decodePath(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment with one ignored character and one ignored item existing', () => {
+    const itemsToCheck = ['%25']
+    const stringToCheck =
+      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
+    const expectedResult = 'https://mozilla.org/?x=%25ше\\ллы'
+
+    const result = decodePath(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment with multiple ignored characters and first ignored item existing', () => {
+    const itemsToCheck = ['%25', '%5C']
+    let stringToCheck =
+      'https://mozilla.org/?x=%25%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
+    let expectedResult = 'https://mozilla.org/?x=%25шеллы'
+
+    let result = decodePath(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+
+    stringToCheck = 'https://mozilla.org/?x=%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
+    expectedResult = 'https://mozilla.org/?x=ше%5Cллы'
+
+    result = decodePath(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment with multiple ignored characters and other ignored item existing', () => {
+    const itemsToCheck = ['%25', '%5C']
+    let stringToCheck =
+      'https://mozilla.org/?x=%5C%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
+    let expectedResult = 'https://mozilla.org/?x=%5Cшеллы'
+
+    let result = decodePath(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+
+    stringToCheck = 'https://mozilla.org/?x=%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
+    expectedResult = 'https://mozilla.org/?x=ше%5Cллы'
+
+    result = decodePath(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment with multiple ignored characters and multiple ignored items existing', () => {
+    const itemsToCheck = ['%25', '%5C']
+    const stringToCheck =
+      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
+    const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы'
+
+    const result = decodePath(stringToCheck, itemsToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should decode a path segment, ignoring `%` and `\\` by default, with multiple ignored items existing', () => {
+    const stringToCheck =
+      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B%2F'
+    const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы%2F'
+
+    const result = decodePath(stringToCheck)
+
+    expect(result).toBe(expectedResult)
+  })
+
+  it('should handle malformed percent-encodings gracefully', () => {
+    const stringToCheck = 'path%ZZ%D1%88test%5C%C3%A9'
+    // Malformed sequences should remain as-is, valid ones decoded
+    const result = decodePath(stringToCheck)
+    expect(result).toBe(`path%ZZ%D1%88test%5Cé`)
+  })
+
+  it('should return empty string unchanged', () => {
+    expect(decodePath('')).toBe('')
+  })
+
+  it('should return strings without encoding unchanged', () => {
+    const stringToCheck = 'plain-text-path'
+    expect(decodePath(stringToCheck)).toBe(stringToCheck)
+  })
+
+  it('should handle consecutive ignored characters', () => {
+    const stringToCheck = 'test%25%25end'
+    const expectedResult = 'test%25%25end'
+    expect(decodePath(stringToCheck)).toBe(expectedResult)
+  })
+
+  it('should handle multiple ignored items of the same type with varying case', () => {
+    const stringToCheck = '/params-ps/named/foo%2Fabc/c%2Fh'
+    const expectedResult = '/params-ps/named/foo%2Fabc/c%2Fh'
+    expect(decodePath(stringToCheck)).toBe(expectedResult)
+
+    const stringToCheckWithLowerCase = '/params-ps/named/foo%2Fabc/c%5C%2f%5cAh'
+    const expectedResultWithLowerCase =
+      '/params-ps/named/foo%2Fabc/c%5C%2F%5CAh'
+    expect(decodePath(stringToCheckWithLowerCase)).toBe(
+      expectedResultWithLowerCase,
+    )
   })
 })

@@ -17,7 +17,7 @@ or
 npm create @tanstack/start@latest
 ```
 
-depending on your package manage of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.
+depending on your package manager of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.
 
 You can also clone and run the [Basic](https://github.com/TanStack/router/tree/main/examples/react/start-basic) example right away with the following commands:
 

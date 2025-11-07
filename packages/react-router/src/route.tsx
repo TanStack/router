@@ -78,6 +78,15 @@ declare module '@tanstack/router-core' {
   }
 }
 
+/**
+ * Returns a route-specific API that exposes type-safe hooks pre-bound
+ * to a single route ID. Useful for consuming a route's APIs from files
+ * where the route object isn't directly imported (e.g. code-split files).
+ *
+ * @param id Route ID string literal for the target route.
+ * @returns A `RouteApi` instance bound to the given route ID.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/getRouteApiFunction
+ */
 export function getRouteApi<
   const TId,
   TRouter extends AnyRouter = RegisteredRouter,
@@ -307,6 +316,17 @@ export class Route<
   ) as unknown as LinkComponentRoute<TFullPath>
 }
 
+/**
+ * Creates a non-root Route instance for code-based routing.
+ *
+ * Use this to define a route that will be composed into a route tree
+ * (typically via a parent route's `addChildren`). If you're using file-based
+ * routing, prefer `createFileRoute`.
+ *
+ * @param options Route options (path, component, loader, context, etc.).
+ * @returns A Route instance to be attached to the route tree.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouteFunction
+ */
 export function createRoute<
   TRegister = unknown,
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
@@ -403,6 +423,15 @@ export type AnyRootRoute = RootRoute<
   any
 >
 
+/**
+ * Creates a root route factory that requires a router context type.
+ *
+ * Use when your root route expects `context` to be provided to `createRouter`.
+ * The returned function behaves like `createRootRoute` but enforces a context type.
+ *
+ * @returns A factory function to configure and return a root route.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRootRouteWithContextFunction
+ */
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
     TRegister = Register,
@@ -563,6 +592,16 @@ export class RootRoute<
   ) as unknown as LinkComponentRoute<'/'>
 }
 
+/**
+ * Creates a root Route instance used to build your route tree.
+ *
+ * Typically paired with `createRouter({ routeTree })`. If you need to require
+ * a typed router context, use `createRootRouteWithContext` instead.
+ *
+ * @param options Root route options (component, error, pending, etc.).
+ * @returns A root route instance.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRootRouteFunction
+ */
 export function createRootRoute<
   TRegister = Register,
   TSearchValidator = undefined,

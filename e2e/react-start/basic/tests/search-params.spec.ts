@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 import { isSpaMode } from 'tests/utils/isSpaMode'
+import { isPrerender } from './utils/isPrerender'
 import type { Response } from '@playwright/test'
 
 function expectRedirect(response: Response | null, endsWith: string) {
@@ -18,7 +19,7 @@ function expectRedirect(response: Response | null, endsWith: string) {
 function expectNoRedirect(response: Response | null) {
   expect(response).not.toBeNull()
   const request = response!.request()
-  expect(request.redirectedFrom()?.redirectedTo() === request).toBeTruthy
+  expect(request.redirectedFrom()).toBeNull()
 }
 
 test.describe('/search-params/loader-throws-redirect', () => {
@@ -27,7 +28,7 @@ test.describe('/search-params/loader-throws-redirect', () => {
   }) => {
     const response = await page.goto('/search-params/loader-throws-redirect')
 
-    if (!isSpaMode) {
+    if (!isSpaMode && !isPrerender) {
       expectRedirect(response, '/search-params/loader-throws-redirect?step=a')
     }
 
@@ -52,7 +53,7 @@ test.describe('/search-params/default', () => {
     page,
   }) => {
     const response = await page.goto('/search-params/default')
-    if (!isSpaMode) {
+    if (!isSpaMode && !isPrerender) {
       expectRedirect(response, '/search-params/default?default=d1')
     }
     await expect(page.getByTestId('search-default')).toContainText('d1')
@@ -65,7 +66,7 @@ test.describe('/search-params/default', () => {
   test('Directly visiting the route with search param set', async ({
     page,
   }) => {
-    const response = await page.goto('/search-params/default/?default=d2')
+    const response = await page.goto('/search-params/default?default=d2')
     expectNoRedirect(response)
 
     await expect(page.getByTestId('search-default')).toContainText('d2')

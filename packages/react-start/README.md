@@ -2,7 +2,7 @@
 
 # TanStack React Start
 
-![TanStack React Start Header](https://github.com/tanstack/router/raw/main/media/header.png)
+![TanStack React Start Header](https://github.com/tanstack/router/raw/main/media/header_start.png)
 
 SSR, Streaming, Server Functions, API Routes, bundling and more powered by [TanStack Router](https://tanstack.com/router) and Vite. Ready to deploy to your favorite hosting provider.
 

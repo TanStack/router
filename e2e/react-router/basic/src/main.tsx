@@ -69,7 +69,23 @@ function RootComponent() {
           }}
         >
           This Route Does Not Exist
-        </Link>
+        </Link>{' '}
+        <div className="flex items-center">
+          <svg width="20" height="20" viewBox="0 0 20 20" role="img">
+            <title id="rectTitle">Link in SVG</title>
+            <Link to="/posts" aria-label="Open posts from SVG">
+              <rect
+                x="0"
+                y="0"
+                width="20"
+                height="20"
+                rx="4"
+                fill="blue"
+                strokeWidth="2"
+              />
+            </Link>
+          </svg>
+        </div>
       </div>
       <Outlet />
       <TanStackRouterDevtools position="bottom-right" />

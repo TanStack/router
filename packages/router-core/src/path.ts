@@ -1,4 +1,3 @@
-import { rootRouteId } from './root'
 import { last } from './utils'
 import type { LRUCache } from './lru-cache'
 import type { MatchLocation } from './RouterProvider'
@@ -22,6 +21,8 @@ export interface Segment {
   readonly hasStaticAfter?: boolean
 }
 
+/** Join path segments, cleaning duplicate slashes between parts. */
+/** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
   return cleanPath(
     paths
@@ -32,23 +33,32 @@ export function joinPaths(paths: Array<string | undefined>) {
   )
 }
 
+/** Remove repeated slashes from a path string. */
+/** Remove repeated slashes from a path string. */
 export function cleanPath(path: string) {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')
 }
 
+/** Trim leading slashes (except preserving root '/'). */
+/** Trim leading slashes (except preserving root '/'). */
 export function trimPathLeft(path: string) {
   return path === '/' ? path : path.replace(/^\/{1,}/, '')
 }
 
+/** Trim trailing slashes (except preserving root '/'). */
+/** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
   return path === '/' ? path : path.replace(/\/{1,}$/, '')
 }
 
+/** Trim both leading and trailing slashes. */
+/** Trim both leading and trailing slashes. */
 export function trimPath(path: string) {
   return trimPathRight(trimPathLeft(path))
 }
 
+/** Remove a trailing slash from value when appropriate for comparisons. */
 export function removeTrailingSlash(value: string, basepath: string): string {
   if (value?.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
     return value.slice(0, -1)
@@ -60,6 +70,14 @@ export function removeTrailingSlash(value: string, basepath: string): string {
 // see the usage in the isActive under useLinkProps
 // /sample/path1 = /sample/path1/
 // /sample/path1/some <> /sample/path1
+/**
+ * Compare two pathnames for exact equality after normalizing trailing slashes
+ * relative to the provided `basepath`.
+ */
+/**
+ * Compare two pathnames for exact equality after normalizing trailing slashes
+ * relative to the provided `basepath`.
+ */
 export function exactPathTest(
   pathName1: string,
   pathName2: string,
@@ -149,14 +167,18 @@ function segmentToString(segment: Segment): string {
   return value
 }
 
+/**
+ * Resolve a destination path against a base, honoring trailing-slash policy
+ * and supporting relative segments (`.`/`..`) and absolute `to` values.
+ */
 export function resolvePath({
   base,
   to,
   trailingSlash = 'never',
   parseCache,
 }: ResolvePathOptions) {
-  let baseSegments = parseBasePathSegments(base, parseCache).slice()
-  const toSegments = parseRoutePathSegments(to, parseCache)
+  let baseSegments = parsePathname(base, parseCache).slice()
+  const toSegments = parsePathname(to, parseCache)
 
   if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
     baseSegments.pop()
@@ -202,25 +224,22 @@ export function resolvePath({
 
 export type ParsePathnameCache = LRUCache<string, ReadonlyArray<Segment>>
 
-export const parseBasePathSegments = (
-  pathname?: string,
-  cache?: ParsePathnameCache,
-): ReadonlyArray<Segment> => parsePathname(pathname, cache, true)
-
-export const parseRoutePathSegments = (
-  pathname?: string,
-  cache?: ParsePathnameCache,
-): ReadonlyArray<Segment> => parsePathname(pathname, cache, false)
-
+/**
+ * Parse a pathname into an array of typed segments used by the router's
+ * matcher. Results are optionally cached via an LRU cache.
+ */
+/**
+ * Parse a pathname into an array of typed segments used by the router's
+ * matcher. Results are optionally cached via an LRU cache.
+ */
 export const parsePathname = (
   pathname?: string,
   cache?: ParsePathnameCache,
-  basePathValues?: boolean,
 ): ReadonlyArray<Segment> => {
   if (!pathname) return []
   const cached = cache?.get(pathname)
   if (cached) return cached
-  const parsed = baseParsePathname(pathname, basePathValues)
+  const parsed = baseParsePathname(pathname)
   cache?.set(pathname, parsed)
   return parsed
 }
@@ -250,10 +269,7 @@ const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
  * - `/foo/[$]{$foo} - Dynamic route with a static prefix of `$`
  * - `/foo/{$foo}[$]` - Dynamic route with a static suffix of `$`
  */
-function baseParsePathname(
-  pathname: string,
-  basePathValues?: boolean,
-): ReadonlyArray<Segment> {
+function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
   pathname = cleanPath(pathname)
 
   const segments: Array<Segment> = []
@@ -275,14 +291,8 @@ function baseParsePathname(
 
   segments.push(
     ...split.map((part): Segment => {
-      // strip tailing underscore for non-nested paths
-      const partToMatch =
-        !basePathValues && part !== rootRouteId && part.slice(-1) === '_'
-          ? part.slice(0, -1)
-          : part
-
       // Check for wildcard with curly braces: prefix{$}suffix
-      const wildcardBracesMatch = partToMatch.match(WILDCARD_W_CURLY_BRACES_RE)
+      const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
       if (wildcardBracesMatch) {
         const prefix = wildcardBracesMatch[1]
         const suffix = wildcardBracesMatch[2]
@@ -295,7 +305,7 @@ function baseParsePathname(
       }
 
       // Check for optional parameter format: prefix{-$paramName}suffix
-      const optionalParamBracesMatch = partToMatch.match(
+      const optionalParamBracesMatch = part.match(
         OPTIONAL_PARAM_W_CURLY_BRACES_RE,
       )
       if (optionalParamBracesMatch) {
@@ -311,7 +321,7 @@ function baseParsePathname(
       }
 
       // Check for the new parameter format: prefix{$paramName}suffix
-      const paramBracesMatch = partToMatch.match(PARAM_W_CURLY_BRACES_RE)
+      const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
       if (paramBracesMatch) {
         const prefix = paramBracesMatch[1]
         const paramName = paramBracesMatch[2]
@@ -325,8 +335,8 @@ function baseParsePathname(
       }
 
       // Check for bare parameter format: $paramName (without curly braces)
-      if (PARAM_RE.test(partToMatch)) {
-        const paramName = partToMatch.substring(1)
+      if (PARAM_RE.test(part)) {
+        const paramName = part.substring(1)
         return {
           type: SEGMENT_TYPE_PARAM,
           value: '$' + paramName,
@@ -336,7 +346,7 @@ function baseParsePathname(
       }
 
       // Check for bare wildcard: $ (without curly braces)
-      if (WILDCARD_RE.test(partToMatch)) {
+      if (WILDCARD_RE.test(part)) {
         return {
           type: SEGMENT_TYPE_WILDCARD,
           value: '$',
@@ -348,12 +358,7 @@ function baseParsePathname(
       // Handle regular pathname segment
       return {
         type: SEGMENT_TYPE_PATHNAME,
-        value: partToMatch.includes('%25')
-          ? partToMatch
-              .split('%25')
-              .map((segment) => decodeURI(segment))
-              .join('%25')
-          : decodeURI(partToMatch),
+        value: part,
       }
     }),
   )
@@ -384,6 +389,17 @@ type InterPolatePathResult = {
   usedParams: Record<string, unknown>
   isMissingParams: boolean // true if any params were not available when being looked up in the params object
 }
+/**
+ * Interpolate params and wildcards into a route path template.
+ *
+ * - Encodes params safely (configurable allowed characters)
+ * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
+ * - Optionally leaves placeholders or wildcards in place
+ */
+/**
+ * Interpolate params and wildcards into a route path template.
+ * Encodes safely and supports optional params and custom decode char maps.
+ */
 export function interpolatePath({
   path,
   params,
@@ -392,7 +408,7 @@ export function interpolatePath({
   decodeCharMap,
   parseCache,
 }: InterpolatePathOptions): InterPolatePathResult {
-  const interpolatedPathSegments = parseRoutePathSegments(path, parseCache)
+  const interpolatedPathSegments = parsePathname(path, parseCache)
 
   function encodeParam(key: string): any {
     const value = params[key]
@@ -426,8 +442,8 @@ export function interpolatePath({
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
 
-        // Check if _splat parameter is missing
-        if (!('_splat' in params)) {
+        // Check if _splat parameter is missing. _splat could be missing if undefined or an empty string or some other falsy value.
+        if (!params._splat) {
           isMissingParams = true
           // For missing splat parameters, just return the prefix and suffix without the wildcard
           if (leaveWildcards) {
@@ -510,6 +526,14 @@ function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
   return encoded
 }
 
+/**
+ * Match a pathname against a route destination and return extracted params
+ * or `undefined`. Uses the same parsing as the router for consistency.
+ */
+/**
+ * Match a pathname against a route destination and return extracted params
+ * or `undefined`. Uses the same parsing as the router for consistency.
+ */
 export function matchPathname(
   currentPathname: string,
   matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
@@ -525,6 +549,8 @@ export function matchPathname(
   return pathParams ?? {}
 }
 
+/** Low-level matcher that compares two path strings and extracts params. */
+/** Low-level matcher that compares two path strings and extracts params. */
 export function matchByPath(
   from: string,
   {
@@ -537,11 +563,11 @@ export function matchByPath(
   const stringTo = to as string
 
   // Parse the from and to
-  const baseSegments = parseBasePathSegments(
+  const baseSegments = parsePathname(
     from.startsWith('/') ? from : `/${from}`,
     parseCache,
   )
-  const routeSegments = parseRoutePathSegments(
+  const routeSegments = parsePathname(
     stringTo.startsWith('/') ? stringTo : `/${stringTo}`,
     parseCache,
   )

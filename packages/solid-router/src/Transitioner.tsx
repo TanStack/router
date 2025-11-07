@@ -15,7 +15,12 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
+  if (router.isServer) {
+    return null
+  }
+
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
@@ -30,10 +35,15 @@ export function Transitioner() {
   const isPagePending = () => isLoading() || hasPendingMatches()
   const previousIsPagePending = usePrevious(isPagePending)
 
-  router.startTransition = async (fn: () => void | Promise<void>) => {
+  router.startTransition = (fn: () => void | Promise<void>) => {
     setIsTransitioning(true)
-    await fn()
-    setIsTransitioning(false)
+    Solid.startTransition(async () => {
+      try {
+        await fn()
+      } finally {
+        setIsTransitioning(false)
+      }
+    })
   }
 
   // Subscribe to location changes
@@ -98,7 +108,7 @@ export function Transitioner() {
     ),
   )
 
-  Solid.createRenderEffect(
+  Solid.createComputed(
     Solid.on(
       [isPagePending, previousIsPagePending],
       ([isPagePending, previousIsPagePending]) => {

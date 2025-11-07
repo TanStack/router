@@ -244,6 +244,7 @@ export function createStartHandler<TRegister = Register>(
                 getRouter,
                 request,
                 executeRouter,
+                context,
               })
 
               return response
@@ -343,6 +344,7 @@ async function handleServerRoutes({
   getRouter,
   request,
   executeRouter,
+  context,
 }: {
   getRouter: () => Awaitable<AnyRouter>
   request: Request
@@ -351,6 +353,7 @@ async function handleServerRoutes({
   }: {
     serverContext: any
   }) => Promise<Response>
+  context: any
 }) {
   const router = await getRouter()
   let url = new URL(request.url)
@@ -378,39 +381,25 @@ async function handleServerRoutes({
             })
           : server.handlers
 
-      const requestMethod = request.method.toLowerCase()
+      const requestMethod = request.method.toUpperCase() as RouteMethod
 
       // Attempt to find the method in the handlers
-      let method = Object.keys(handlers).find(
-        (method) => method.toLowerCase() === requestMethod,
-      )
-
-      // If no method is found, attempt to find the 'all' method
-      if (!method) {
-        method = Object.keys(handlers).find(
-          (method) => method.toLowerCase() === 'all',
-        )
-          ? 'all'
-          : undefined
-      }
+      const handler = handlers[requestMethod] ?? handlers['ANY']
 
       // If a method is found, execute the handler
-      if (method) {
-        const handler = handlers[method as RouteMethod]
-        if (handler) {
-          const mayDefer = !!foundRoute.options.component
-          if (typeof handler === 'function') {
-            middlewares.push(handlerToMiddleware(handler, mayDefer))
-          } else {
-            const { middleware } = handler
-            if (middleware && middleware.length) {
-              middlewares.push(
-                ...flattenMiddlewares(middleware).map((d) => d.options.server),
-              )
-            }
-            if (handler.handler) {
-              middlewares.push(handlerToMiddleware(handler.handler, mayDefer))
-            }
+      if (handler) {
+        const mayDefer = !!foundRoute.options.component
+        if (typeof handler === 'function') {
+          middlewares.push(handlerToMiddleware(handler, mayDefer))
+        } else {
+          const { middleware } = handler
+          if (middleware && middleware.length) {
+            middlewares.push(
+              ...flattenMiddlewares(middleware).map((d) => d.options.server),
+            )
+          }
+          if (handler.handler) {
+            middlewares.push(handlerToMiddleware(handler.handler, mayDefer))
           }
         }
       }
@@ -424,7 +413,7 @@ async function handleServerRoutes({
 
   const ctx = await executeMiddleware(middlewares, {
     request,
-    context: {},
+    context,
     params: routeParams,
     pathname,
   })
