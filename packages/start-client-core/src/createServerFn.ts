@@ -261,11 +261,36 @@ export async function executeMiddleware(
           }
         }
 
+        // SNAPSHOT BEFORE - only on server
+        let h3Before: any = undefined
+        if (env === 'server') {
+          const { snapshotH3State } = await import(
+            '@tanstack/start-server-core'
+          )
+          h3Before = snapshotH3State()
+        }
+
         // Execute the middleware
         const result = await middlewareFn({
           ...ctx,
           next: userNext as any,
         } as any)
+
+        // RECONCILE AFTER - if returned Response and on server
+        if (result instanceof Response && env === 'server' && h3Before) {
+          const { snapshotH3State, reconcileResponseWithH3Changes } =
+            await import('@tanstack/start-server-core')
+          const h3After = snapshotH3State()
+          const reconciledResponse = reconcileResponseWithH3Changes(
+            result,
+            h3Before,
+            h3After,
+          )
+          return {
+            ...ctx,
+            result: reconciledResponse,
+          }
+        }
 
         // If result is NOT a ctx object, we need to return it as
         // the { result }

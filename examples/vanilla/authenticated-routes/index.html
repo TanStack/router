@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TanStack Router - Vanilla Authenticated Routes</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+      nav { background: white; border-bottom: 1px solid #e0e0e0; padding: 1rem 2rem; display: flex; gap: 1rem; justify-content: space-between; align-items: center; }
+      nav .links { display: flex; gap: 1rem; }
+      nav a { color: #667eea; text-decoration: none; font-weight: 500; }
+      nav a:hover { text-decoration: underline; }
+      nav a.active { font-weight: 700; }
+      nav .user-info { color: #666; }
+      main { padding: 2rem; max-width: 800px; margin: 0 auto; }
+      .card { background: white; border-radius: 8px; border: 1px solid #e0e0e0; padding: 2rem; margin-bottom: 1rem; }
+      .button { background: #667eea; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 500; }
+      .button:hover { background: #5568d3; }
+      .button.secondary { background: #666; }
+      .button.secondary:hover { background: #555; }
+      .error { background: #fee; border: 1px solid #fcc; color: #c33; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+      .success { background: #efe; border: 1px solid #cfc; color: #3c3; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+      input { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 1rem; }
+      label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+

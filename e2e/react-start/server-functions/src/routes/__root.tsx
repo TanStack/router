@@ -8,6 +8,7 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/react-router'
 
+import { z } from 'zod'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -34,6 +35,9 @@ export const Route = createRootRouteWithContext<{ foo: { bar: string } }>()({
   },
   notFoundComponent: () => <NotFound />,
   component: RootComponent,
+  validateSearch: z.object({
+    status: z.string().optional(),
+  }),
 })
 
 function RootComponent() {

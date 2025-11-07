@@ -35,7 +35,7 @@ test('invoking a server function with custom response status code', async ({
       resolve()
     })
   })
-  await page.getByTestId('invoke-server-fn').click()
+  await page.getByTestId('invoke-server-fn-simple-set').click()
   await requestPromise
 })
 

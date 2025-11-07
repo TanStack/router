@@ -8,7 +8,11 @@ import {
   json,
 } from '@tanstack/start-client-core'
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
-import { getResponse } from './request-response'
+import {
+  getResponse,
+  getResponseStatus,
+  getResponseStatusText,
+} from './request-response'
 import { getServerFnById } from './getServerFnById'
 
 let regex: RegExp | undefined = undefined
@@ -142,22 +146,11 @@ export const handleServerAction = async ({
         'context' in res &&
         ('result' in res || 'error' in res)
 
-      console.log(
-        {
-          isServerFn,
-          isCreateServerFn,
-          isFormData,
-          isCtxResult,
-        },
-        res,
-      )
-
       function unwrapResultOrError(result: any) {
         if (
           isPlainObject(result) &&
           ('result' in result || 'error' in result)
         ) {
-          console.log('tanner')
           return result.result || result.error
         }
         return result
@@ -169,16 +162,19 @@ export const handleServerAction = async ({
         if (unwrapped instanceof Response) {
           res = unwrapped
         } else {
-          res = json(unwrapped)
+          // Create Response with h3 state
+          res = new Response(JSON.stringify(unwrapped), {
+            status: getResponseStatus(),
+            statusText: getResponseStatusText(),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
         }
       }
 
       if (isNotFound(res)) {
         res = isNotFoundResponse(res)
-      }
-
-      if (!isServerFn) {
-        return res
       }
 
       if (res instanceof Response) {
@@ -210,7 +206,6 @@ export const handleServerAction = async ({
       function serializeResult(res: unknown): Response {
         let nonStreamingBody: any = undefined
 
-        const alsResponse = getResponse()
         if (res !== undefined) {
           // first run without the stream in case `result` does not need streaming
           let done = false as boolean
@@ -246,8 +241,8 @@ export const handleServerAction = async ({
             return new Response(
               nonStreamingBody ? JSON.stringify(nonStreamingBody) : undefined,
               {
-                status: alsResponse?.status,
-                statusText: alsResponse?.statusText,
+                status: getResponseStatus(),
+                statusText: getResponseStatusText(),
                 headers: {
                   'Content-Type': 'application/json',
                   [X_TSS_SERIALIZED]: 'true',
@@ -276,8 +271,8 @@ export const handleServerAction = async ({
             },
           })
           return new Response(stream, {
-            status: alsResponse?.status,
-            statusText: alsResponse?.statusText,
+            status: getResponseStatus(),
+            statusText: getResponseStatusText(),
             headers: {
               'Content-Type': 'application/x-ndjson',
               [X_TSS_SERIALIZED]: 'true',
@@ -286,8 +281,8 @@ export const handleServerAction = async ({
         }
 
         return new Response(undefined, {
-          status: alsResponse?.status,
-          statusText: alsResponse?.statusText,
+          status: getResponseStatus(),
+          statusText: getResponseStatusText(),
         })
       }
     } catch (error: any) {
@@ -325,10 +320,9 @@ export const handleServerAction = async ({
           }),
         ),
       )
-      const response = getResponse()
       return new Response(serializedError, {
-        status: response?.status ?? 500,
-        statusText: response?.statusText,
+        status: getResponseStatus() || 500,
+        statusText: getResponseStatusText(),
         headers: {
           'Content-Type': 'application/json',
           [X_TSS_SERIALIZED]: 'true',
