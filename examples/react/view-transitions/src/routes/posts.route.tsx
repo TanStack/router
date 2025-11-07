@@ -26,6 +26,7 @@ function PostsLayoutComponent() {
                   }}
                   className="block py-1 text-blue-600 hover:opacity-75"
                   activeProps={{ className: 'font-bold underline' }}
+                  // see styles.css for 'warp' and 'warp-backwards' transition
                   viewTransition={{
                     types: ({ fromLocation, toLocation }) => {
                       const fromRoute = router
