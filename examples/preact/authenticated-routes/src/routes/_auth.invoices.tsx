@@ -1,5 +1,4 @@
-import { createFileRoute } from '@tanstack/preact-router'
-import { Link, Outlet } from '@tanstack/preact-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/preact-router'
 
 import { fetchInvoices } from '../posts'
 
