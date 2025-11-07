@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import * as React from 'react'
 import { Link, Outlet } from '@tanstack/react-router'
 import { fetchPosts } from '../posts'
@@ -10,6 +10,7 @@ export const Route = createFileRoute('/posts')({
 
 function PostsLayoutComponent() {
   const posts = Route.useLoaderData()
+  const router = useRouter()
 
   return (
     <div className="p-2 flex gap-2  [view-transition-name:main-content]">
@@ -25,8 +26,29 @@ function PostsLayoutComponent() {
                   }}
                   className="block py-1 text-blue-600 hover:opacity-75"
                   activeProps={{ className: 'font-bold underline' }}
-                  // see styles.css for 'warp' transition
-                  viewTransition={{ types: ['warp'] }}
+                  viewTransition={{
+                    types: ({ fromLocation, toLocation }) => {
+                      const fromRoute = router
+                        .matchRoutes(fromLocation?.pathname ?? '/')
+                        .find((entry) => entry.routeId === '/posts/$postId')
+                      const toRoute = router
+                        .matchRoutes(toLocation?.pathname ?? '/')
+                        .find((entry) => entry.routeId === '/posts/$postId')
+
+                      const fromIndex = Number(fromRoute?.params.postId)
+                      const toIndex = Number(toRoute?.params.postId)
+
+                      if (
+                        Number.isNaN(fromIndex) ||
+                        Number.isNaN(toIndex) ||
+                        fromIndex === toIndex
+                      ) {
+                        return false // no transition
+                      }
+
+                      return fromIndex > toIndex ? ['warp-backwards'] : ['warp']
+                    },
+                  }}
                 >
                   <div>{post.title.substring(0, 20)}</div>
                 </Link>
