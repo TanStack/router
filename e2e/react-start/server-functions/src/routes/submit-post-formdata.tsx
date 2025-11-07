@@ -33,7 +33,7 @@ function SubmitPostFormDataFn() {
     <div className="p-2 m-2 grid gap-2">
       <h3>Submit POST FormData Fn Call</h3>
       <div className="overflow-y-auto">
-        It should navigate to a raw response of {''}
+        It should return navigate and return{' '}
         <code>
           <pre data-testid="expected-submit-post-formdata-server-fn-result">
             Hello, {testValues.name}!

@@ -203,65 +203,6 @@ export function setResponseStatus(code?: number, text?: string): void {
   }
 }
 
-export function getResponseStatusText(): string | undefined {
-  return getH3Event().res.statusText
-}
-
-export interface H3StateSnapshot {
-  status: number
-  statusText: string | undefined
-  headers: Headers
-}
-
-/**
- * Capture current h3 event state for reconciliation
- */
-export function snapshotH3State(): H3StateSnapshot {
-  const event = getH3Event()
-  return {
-    status: event.res.status || 200,
-    statusText: event.res.statusText,
-    headers: new Headers(event.res.headers),
-  }
-}
-
-/**
- * Reconcile a Response with h3 changes detected via snapshot diff.
- * This enables "last-call wins" semantics where imperative API calls
- * made after a Response is returned will modify the final Response.
- */
-export function reconcileResponseWithH3Changes(
-  response: Response,
-  before: H3StateSnapshot,
-  after: H3StateSnapshot,
-): Response {
-  // Start with Response headers
-  const finalHeaders = new Headers(response.headers)
-
-  // Apply h3 header additions/modifications
-  after.headers.forEach((value, key) => {
-    const beforeValue = before.headers.get(key)
-    const afterValue = after.headers.get(key)
-    if (beforeValue !== afterValue) {
-      finalHeaders.set(key, value)
-    }
-  })
-
-  // Apply h3 header deletions
-  before.headers.forEach((_, key) => {
-    if (!after.headers.has(key)) {
-      finalHeaders.delete(key)
-    }
-  })
-
-  // Clone Response with reconciled values
-  return new Response(response.body, {
-    status: after.status,
-    statusText: after.statusText,
-    headers: finalHeaders,
-  })
-}
-
 /**
  * Parse the request to get HTTP Cookie header string and return an object of all cookie name-value pairs.
  * @returns Object of cookie name-value pairs

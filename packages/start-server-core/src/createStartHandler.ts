@@ -14,11 +14,7 @@ import {
   getOrigin,
 } from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
-import {
-  requestHandler,
-  snapshotH3State,
-  reconcileResponseWithH3Changes,
-} from './request-response'
+import { requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
 
@@ -32,7 +28,6 @@ import type {
   StartEntry,
 } from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-handler'
-import type { H3StateSnapshot } from './request-response'
 import type {
   AnyRoute,
   AnyRouter,
@@ -273,6 +268,7 @@ export function createStartHandler<TRegister = Register>(
       [...middlewares, requestHandlerMiddleware],
       {
         request,
+
         context: requestOpts?.context || {},
       },
     )
@@ -281,7 +277,7 @@ export function createStartHandler<TRegister = Register>(
 
     if (isRedirect(response)) {
       if (isResolvedRedirect(response)) {
-        if (request.headers.get('x-tsr-createServerFn') === 'true') {
+        if (request.headers.get('x-tsr-redirect') === 'manual') {
           return json(
             {
               ...response.options,
@@ -322,7 +318,7 @@ export function createStartHandler<TRegister = Register>(
       const router = await getRouter()
       const redirect = router.resolveRedirect(response)
 
-      if (request.headers.get('x-tsr-createServerFn') === 'true') {
+      if (request.headers.get('x-tsr-redirect') === 'manual') {
         return json(
           {
             ...response.options,
@@ -479,9 +475,6 @@ function executeMiddleware(middlewares: TODO, ctx: TODO) {
     const middleware = middlewares[index]
     if (!middleware) return ctx
 
-    // Snapshot before middleware
-    const h3Before = snapshotH3State()
-
     let result
     try {
       result = await middleware({
@@ -505,41 +498,24 @@ function executeMiddleware(middlewares: TODO, ctx: TODO) {
       })
     } catch (err: TODO) {
       if (isSpecialResponse(err)) {
-        // Reconcile thrown Response
-        const h3After = snapshotH3State()
-        const reconciled =
-          err instanceof Response
-            ? reconcileResponseWithH3Changes(err, h3Before, h3After)
-            : err
         result = {
-          response: reconciled,
+          response: err,
         }
       } else {
         throw err
       }
     }
 
-    // Reconcile result if it's a Response
-    const reconciledResult = handleCtxResult(result, h3Before)
-    return Object.assign(ctx, reconciledResult)
+    // Merge the middleware result into the context, just in case it
+    // returns a partial context
+    return Object.assign(ctx, handleCtxResult(result))
   }
 
   return handleCtxResult(next(ctx))
 }
 
-function handleCtxResult(result: TODO, h3Before?: H3StateSnapshot) {
+function handleCtxResult(result: TODO) {
   if (isSpecialResponse(result)) {
-    if (result instanceof Response && h3Before) {
-      const h3After = snapshotH3State()
-      const reconciled = reconcileResponseWithH3Changes(
-        result,
-        h3Before,
-        h3After,
-      )
-      return {
-        response: reconciled,
-      }
-    }
     return {
       response: result,
     }

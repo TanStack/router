@@ -1,18 +1,13 @@
-import { isNotFound, isPlainObject } from '@tanstack/router-core'
+import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import {
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
   getDefaultSerovalPlugins,
-  json,
 } from '@tanstack/start-client-core'
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
-import {
-  getResponse,
-  getResponseStatus,
-  getResponseStatusText,
-} from './request-response'
+import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
 
 let regex: RegExp | undefined = undefined
@@ -46,9 +41,7 @@ export const handleServerAction = async ({
     createServerFn?: boolean
   }
 
-  const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
-  const isCreateServerFn =
-    request.headers.get('x-tsr-createServerFn') === 'true'
+  const isCreateServerFn = 'createServerFn' in search
 
   if (typeof serverFnId !== 'string') {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
@@ -63,9 +56,6 @@ export const handleServerAction = async ({
   ]
 
   const contentType = request.headers.get('Content-Type')
-  const isFormData = formDataContentTypes.some(
-    (type) => contentType && contentType.includes(type),
-  )
   const serovalPlugins = getDefaultSerovalPlugins()
 
   function parsePayload(payload: any) {
@@ -75,9 +65,13 @@ export const handleServerAction = async ({
 
   const response = await (async () => {
     try {
-      let res = await (async () => {
+      let result = await (async () => {
         // FormData
-        if (isFormData) {
+        if (
+          formDataContentTypes.some(
+            (type) => contentType && contentType.includes(type),
+          )
+        ) {
           // We don't support GET requests with FormData payloads... that seems impossible
           invariant(
             method.toLowerCase() !== 'get',
@@ -141,45 +135,23 @@ export const handleServerAction = async ({
         return await action(...jsonPayload)
       })()
 
-      const isCtxResult =
-        isPlainObject(res) &&
-        'context' in res &&
-        ('result' in res || 'error' in res)
+      // Any time we get a Response back, we should just
+      // return it immediately.
+      if (result.result instanceof Response) {
+        result.result.headers.set(X_TSS_RAW_RESPONSE, 'true')
+        return result.result
+      }
 
-      function unwrapResultOrError(result: any) {
-        if (
-          isPlainObject(result) &&
-          ('result' in result || 'error' in result)
-        ) {
-          return result.result || result.error
+      // If this is a non createServerFn request, we need to
+      // pull out the result from the result object
+      if (!isCreateServerFn) {
+        result = result.result
+
+        // The result might again be a response,
+        // and if it is, return it.
+        if (result instanceof Response) {
+          return result
         }
-        return result
-      }
-
-      // This was not called by the serverFnFetcher, so it's likely a no-JS POST request)
-      if (isCtxResult) {
-        const unwrapped = unwrapResultOrError(res)
-        if (unwrapped instanceof Response) {
-          res = unwrapped
-        } else {
-          // Create Response with h3 state
-          res = new Response(JSON.stringify(unwrapped), {
-            status: getResponseStatus(),
-            statusText: getResponseStatusText(),
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          })
-        }
-      }
-
-      if (isNotFound(res)) {
-        res = isNotFoundResponse(res)
-      }
-
-      if (res instanceof Response) {
-        res.headers.set(X_TSS_RAW_RESPONSE, 'true')
-        return res
       }
 
       // TODO: RSCs Where are we getting this package?
@@ -201,90 +173,91 @@ export const handleServerAction = async ({
       //   return new Response(null, { status: 200 })
       // }
 
-      return serializeResult(res)
+      if (isNotFound(result)) {
+        return isNotFoundResponse(result)
+      }
 
-      function serializeResult(res: unknown): Response {
-        let nonStreamingBody: any = undefined
+      const response = getResponse()
+      let nonStreamingBody: any = undefined
 
-        if (res !== undefined) {
-          // first run without the stream in case `result` does not need streaming
-          let done = false as boolean
-          const callbacks: {
-            onParse: (value: any) => void
-            onDone: () => void
-            onError: (error: any) => void
-          } = {
-            onParse: (value) => {
-              nonStreamingBody = value
-            },
-            onDone: () => {
-              done = true
-            },
-            onError: (error) => {
-              throw error
-            },
-          }
-          toCrossJSONStream(res, {
-            refs: new Map(),
-            plugins: serovalPlugins,
-            onParse(value) {
-              callbacks.onParse(value)
-            },
-            onDone() {
-              callbacks.onDone()
-            },
-            onError: (error) => {
-              callbacks.onError(error)
-            },
-          })
-          if (done) {
-            return new Response(
-              nonStreamingBody ? JSON.stringify(nonStreamingBody) : undefined,
-              {
-                status: getResponseStatus(),
-                statusText: getResponseStatusText(),
-                headers: {
-                  'Content-Type': 'application/json',
-                  [X_TSS_SERIALIZED]: 'true',
-                },
+      if (result !== undefined) {
+        // first run without the stream in case `result` does not need streaming
+        let done = false as boolean
+        const callbacks: {
+          onParse: (value: any) => void
+          onDone: () => void
+          onError: (error: any) => void
+        } = {
+          onParse: (value) => {
+            nonStreamingBody = value
+          },
+          onDone: () => {
+            done = true
+          },
+          onError: (error) => {
+            throw error
+          },
+        }
+        toCrossJSONStream(result, {
+          refs: new Map(),
+          plugins: serovalPlugins,
+          onParse(value) {
+            callbacks.onParse(value)
+          },
+          onDone() {
+            callbacks.onDone()
+          },
+          onError: (error) => {
+            callbacks.onError(error)
+          },
+        })
+        if (done) {
+          return new Response(
+            nonStreamingBody ? JSON.stringify(nonStreamingBody) : undefined,
+            {
+              status: response?.status,
+              statusText: response?.statusText,
+              headers: {
+                'Content-Type': 'application/json',
+                [X_TSS_SERIALIZED]: 'true',
               },
-            )
-          }
-
-          // not done yet, we need to stream
-          const stream = new ReadableStream({
-            start(controller) {
-              callbacks.onParse = (value) =>
-                controller.enqueue(JSON.stringify(value) + '\n')
-              callbacks.onDone = () => {
-                try {
-                  controller.close()
-                } catch (error) {
-                  controller.error(error)
-                }
-              }
-              callbacks.onError = (error) => controller.error(error)
-              // stream the initial body
-              if (nonStreamingBody !== undefined) {
-                callbacks.onParse(nonStreamingBody)
-              }
             },
-          })
-          return new Response(stream, {
-            status: getResponseStatus(),
-            statusText: getResponseStatusText(),
-            headers: {
-              'Content-Type': 'application/x-ndjson',
-              [X_TSS_SERIALIZED]: 'true',
-            },
-          })
+          )
         }
 
-        return new Response(undefined, {
-          status: getResponseStatus(),
-          statusText: getResponseStatusText(),
+        // not done yet, we need to stream
+        const stream = new ReadableStream({
+          start(controller) {
+            callbacks.onParse = (value) =>
+              controller.enqueue(JSON.stringify(value) + '\n')
+            callbacks.onDone = () => {
+              try {
+                controller.close()
+              } catch (error) {
+                controller.error(error)
+              }
+            }
+            callbacks.onError = (error) => controller.error(error)
+            // stream the initial body
+            if (nonStreamingBody !== undefined) {
+              callbacks.onParse(nonStreamingBody)
+            }
+          },
+        })
+        return new Response(stream, {
+          status: response?.status,
+          statusText: response?.statusText,
+          headers: {
+            'Content-Type': 'application/x-ndjson',
+            [X_TSS_SERIALIZED]: 'true',
+          },
         })
       }
+
+      return new Response(undefined, {
+        status: response?.status,
+        statusText: response?.statusText,
+      })
     } catch (error: any) {
       if (error instanceof Response) {
         return error
@@ -320,9 +293,10 @@ export const handleServerAction = async ({
           }),
         ),
       )
+      const response = getResponse()
       return new Response(serializedError, {
-        status: getResponseStatus() || 500,
-        statusText: getResponseStatusText(),
+        status: response?.status ?? 500,
+        statusText: response?.statusText,
         headers: {
           'Content-Type': 'application/json',
           [X_TSS_SERIALIZED]: 'true',

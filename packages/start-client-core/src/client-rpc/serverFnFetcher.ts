@@ -17,16 +17,6 @@ import type { Plugin as SerovalPlugin } from 'seroval'
 
 let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
 
-// caller =>
-//   serverFnFetcher =>
-//     client =>
-//       server =>
-//         fn =>
-//       seroval =>
-//     client middleware =>
-//   serverFnFetcher =>
-// caller
-
 export async function serverFnFetcher(
   url: string,
   args: Array<any>,
@@ -47,8 +37,7 @@ export async function serverFnFetcher(
 
     // Arrange the headers
     const headers = new Headers({
-      'x-tsr-serverFn': 'true',
-      'x-tsr-createServerFn': 'true',
+      'x-tsr-redirect': 'manual',
       ...(first.headers instanceof Headers
         ? Object.fromEntries(first.headers.entries())
         : first.headers),
@@ -74,6 +63,12 @@ export async function serverFnFetcher(
           url += `?${encodedPayload}`
         }
       }
+    }
+
+    if (url.includes('?')) {
+      url += `&createServerFn`
+    } else {
+      url += `?createServerFn`
     }
 
     let body = undefined
@@ -102,7 +97,6 @@ export async function serverFnFetcher(
     handler(url, {
       method: 'POST',
       headers: {
-        'x-tsr-serverFn': 'true',
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
@@ -171,7 +165,7 @@ async function getFetchBody(
 async function getResponse(fn: () => Promise<Response>) {
   const response = await (async () => {
     try {
-      return await fn() // client => server => fn => server => client
+      return await fn()
     } catch (error) {
       if (error instanceof Response) {
         return error
@@ -184,16 +178,22 @@ async function getResponse(fn: () => Promise<Response>) {
   if (response.headers.get(X_TSS_RAW_RESPONSE) === 'true') {
     return response
   }
-
   const contentType = response.headers.get('content-type')
   invariant(contentType, 'expected content-type header to be set')
   const serializedByStart = !!response.headers.get(X_TSS_SERIALIZED)
+  // If the response is not ok, throw an error
+  if (!response.ok) {
+    if (serializedByStart && contentType.includes('application/json')) {
+      const jsonPayload = await response.json()
+      const result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
+      throw result
+    }
 
-  // If the response is serialized by the start server, we need to process it
-  // differently than a normal response.
+    throw new Error(await response.text())
+  }
+
   if (serializedByStart) {
     let result
-    // If it's a stream from the start serializer, process it as such
     if (contentType.includes('application/x-ndjson')) {
       const refs = new Map()
       result = await processServerFnResponse({
@@ -206,22 +206,17 @@ async function getResponse(fn: () => Promise<Response>) {
         },
       })
     }
-    // If it's a JSON response, it can be simpler
     if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
       result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
     }
-
     invariant(result, 'expected result to be resolved')
     if (result instanceof Error) {
       throw result
     }
-
     return result
   }
 
-  // If it wasn't processed by the start serializer, check
-  // if it's JSON
   if (contentType.includes('application/json')) {
     const jsonPayload = await response.json()
     const redirect = parseRedirect(jsonPayload)
@@ -234,12 +229,6 @@ async function getResponse(fn: () => Promise<Response>) {
     return jsonPayload
   }
 
-  // Othwerwise, if it's not OK, throw the content
-  if (!response.ok) {
-    throw new Error(await response.text())
-  }
-
-  // Or return the response itself
   return response
 }
 
