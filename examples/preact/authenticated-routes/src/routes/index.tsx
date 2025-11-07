@@ -44,4 +44,3 @@ function HomeComponent() {
     </div>
   )
 }
-

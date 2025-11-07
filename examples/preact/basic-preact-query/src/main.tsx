@@ -276,4 +276,3 @@ if (!rootElement.innerHTML) {
     rootElement,
   )
 }
-

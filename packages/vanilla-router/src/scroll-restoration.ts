@@ -1,4 +1,8 @@
-import type { AnyRouter, ParsedLocation, ScrollRestorationEntry } from '@tanstack/router-core'
+import type {
+  AnyRouter,
+  ParsedLocation,
+  ScrollRestorationEntry,
+} from '@tanstack/router-core'
 import {
   defaultGetScrollRestorationKey,
   getCssSelector,
@@ -10,7 +14,7 @@ import {
  * Setup scroll restoration for the router
  * This is typically called automatically when scrollRestoration: true is set in router options
  * But can be called manually if needed
- * 
+ *
  * @param router - The router instance
  * @param force - Force setup even if scrollRestoration is false in options
  */
@@ -24,7 +28,7 @@ export function setupScrollRestorationUtil<TRouter extends AnyRouter>(
 /**
  * Get scroll position for a specific element or window
  * This is a vanilla JS equivalent of useElementScrollRestoration hook
- * 
+ *
  * @param router - The router instance
  * @param options - Options for getting scroll position
  * @param options.id - Unique ID for the element (must match data-scroll-restoration-id attribute)
@@ -68,7 +72,7 @@ export function getScrollPosition<TRouter extends AnyRouter>(
  * Save scroll position for a specific element or window
  * This is typically handled automatically by setupScrollRestoration
  * But can be called manually if needed
- * 
+ *
  * @param router - The router instance
  * @param options - Options for saving scroll position
  * @param options.id - Unique ID for the element (must match data-scroll-restoration-id attribute)
@@ -104,7 +108,8 @@ export function saveScrollPosition<TRouter extends AnyRouter>(
   scrollRestorationCache.set((state) => {
     const keyEntry = (state[restoreKey] ||= {} as any)
 
-    const elementEntry = (keyEntry[elementSelector] ||= {} as ScrollRestorationEntry)
+    const elementEntry = (keyEntry[elementSelector] ||=
+      {} as ScrollRestorationEntry)
 
     if (elementSelector === 'window') {
       elementEntry.scrollX = window.scrollX || 0
@@ -120,4 +125,3 @@ export function saveScrollPosition<TRouter extends AnyRouter>(
     return state
   })
 }
-

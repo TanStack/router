@@ -42,4 +42,3 @@ export const postsQueryOptions = queryOptions({
   queryKey: ['posts'],
   queryFn: () => fetchPosts(),
 })
-

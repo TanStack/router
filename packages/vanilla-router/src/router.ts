@@ -70,7 +70,7 @@ export class Router<
    * Subscribe to router state changes
    * This is the recommended way to react to router state updates in vanilla JS
    * Similar to React Router's useRouterState hook
-   * 
+   *
    * @param callback - Function called whenever router state changes
    * @returns Unsubscribe function
    */
@@ -83,4 +83,3 @@ export class Router<
     })
   }
 }
-

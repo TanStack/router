@@ -25,7 +25,7 @@ app.use('*', async (req, res) => {
     )
 
     const entry = await vite.ssrLoadModule('/src/entry-server.tsx')
-    
+
     // Test streaming by checking query param
     const useStreaming = req.query.stream === 'true'
 
@@ -44,4 +44,3 @@ app.listen(port, () => {
   console.info(`Test SSR: http://localhost:${port}/`)
   console.info(`Test Streaming: http://localhost:${port}/?stream=true`)
 })
-

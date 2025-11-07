@@ -21,4 +21,3 @@ export const fetchInvoiceById = async (id: number) => {
     .get<InvoiceType>(`https://jsonplaceholder.typicode.com/posts/${id}`)
     .then((r) => r.data)
 }
-

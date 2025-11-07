@@ -1,8 +1,4 @@
-import {
-  BaseRootRoute,
-  BaseRoute,
-  notFound,
-} from '@tanstack/router-core'
+import { BaseRootRoute, BaseRoute, notFound } from '@tanstack/router-core'
 import type {
   AnyContext,
   AnyRoute,
@@ -36,52 +32,51 @@ declare module '@tanstack/router-core' {
 }
 
 export class Route<
-    in out TRegister = unknown,
-    in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
-    in out TPath extends RouteConstraints['TPath'] = '/',
-    in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-      TParentRoute,
-      TPath
-    >,
-    in out TCustomId extends RouteConstraints['TCustomId'] = string,
-    in out TId extends RouteConstraints['TId'] = ResolveId<
-      TParentRoute,
-      TCustomId,
-      TPath
-    >,
-    in out TSearchValidator = undefined,
-    in out TParams = ResolveParams<TPath>,
-    in out TRouterContext = AnyContext,
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out TServerMiddlewares = unknown,
-    in out THandlers = undefined,
-  >
-  extends BaseRoute<
-    TRegister,
+  in out TRegister = unknown,
+  in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+  in out TPath extends RouteConstraints['TPath'] = '/',
+  in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
     TParentRoute,
-    TPath,
-    TFullPath,
+    TPath
+  >,
+  in out TCustomId extends RouteConstraints['TCustomId'] = string,
+  in out TId extends RouteConstraints['TId'] = ResolveId<
+    TParentRoute,
     TCustomId,
-    TId,
-    TSearchValidator,
-    TParams,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren,
-    TFileRouteTypes,
-    TSSR,
-    TServerMiddlewares,
-    THandlers
-  > {
+    TPath
+  >,
+  in out TSearchValidator = undefined,
+  in out TParams = ResolveParams<TPath>,
+  in out TRouterContext = AnyContext,
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out TServerMiddlewares = unknown,
+  in out THandlers = undefined,
+> extends BaseRoute<
+  TRegister,
+  TParentRoute,
+  TPath,
+  TFullPath,
+  TCustomId,
+  TId,
+  TSearchValidator,
+  TParams,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren,
+  TFileRouteTypes,
+  TSSR,
+  TServerMiddlewares,
+  THandlers
+> {
   constructor(
     options?: RouteOptions<
       TRegister,
@@ -113,7 +108,9 @@ export class Route<
    * Get the loader data for this route
    * @param router - The router instance (required)
    */
-  getLoaderData = (router: import('@tanstack/router-core').AnyRouter): TLoaderFn extends undefined ? undefined : any => {
+  getLoaderData = (
+    router: import('@tanstack/router-core').AnyRouter,
+  ): TLoaderFn extends undefined ? undefined : any => {
     const match = router.state.matches.find((m) => m.routeId === this.id)
     if (!match) return undefined as any
     const matchState = router.getMatch(match.id)
@@ -135,7 +132,9 @@ export class Route<
    * Get the search params for this route
    * @param router - The router instance (required)
    */
-  getSearch = (router: import('@tanstack/router-core').AnyRouter): TSearchValidator extends undefined ? Record<string, unknown> : any => {
+  getSearch = (
+    router: import('@tanstack/router-core').AnyRouter,
+  ): TSearchValidator extends undefined ? Record<string, unknown> : any => {
     const match = router.state.matches.find((m) => m.routeId === this.id)
     if (!match) return {} as any
     const matchState = router.getMatch(match.id)
@@ -146,7 +145,9 @@ export class Route<
    * Get the route context for this route
    * @param router - The router instance (required)
    */
-  getRouteContext = (router: import('@tanstack/router-core').AnyRouter): TRouteContextFn extends AnyContext ? AnyContext : TRouteContextFn => {
+  getRouteContext = (
+    router: import('@tanstack/router-core').AnyRouter,
+  ): TRouteContextFn extends AnyContext ? AnyContext : TRouteContextFn => {
     const match = router.state.matches.find((m) => m.routeId === this.id)
     if (!match) return {} as any
     const matchState = router.getMatch(match.id)
@@ -157,7 +158,9 @@ export class Route<
    * Get the loader dependencies for this route
    * @param router - The router instance (required)
    */
-  getLoaderDeps = (router: import('@tanstack/router-core').AnyRouter): TLoaderDeps => {
+  getLoaderDeps = (
+    router: import('@tanstack/router-core').AnyRouter,
+  ): TLoaderDeps => {
     const match = router.state.matches.find((m) => m.routeId === this.id)
     if (!match) return {} as TLoaderDeps
     const matchState = router.getMatch(match.id)
@@ -255,33 +258,32 @@ export function createRoute<
 }
 
 export class RootRoute<
-    in out TRegister = unknown,
-    in out TSearchValidator = undefined,
-    in out TRouterContext = {},
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out TServerMiddlewares = unknown,
-    in out THandlers = undefined,
-  >
-  extends BaseRootRoute<
-    TRegister,
-    TSearchValidator,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren,
-    TFileRouteTypes,
-    TSSR,
-    TServerMiddlewares,
-    THandlers
-  > {
+  in out TRegister = unknown,
+  in out TSearchValidator = undefined,
+  in out TRouterContext = {},
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out TServerMiddlewares = unknown,
+  in out THandlers = undefined,
+> extends BaseRootRoute<
+  TRegister,
+  TSearchValidator,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren,
+  TFileRouteTypes,
+  TSSR,
+  TServerMiddlewares,
+  THandlers
+> {
   constructor(
     options?: RootRouteOptions<
       TRegister,
@@ -303,7 +305,9 @@ export class RootRoute<
    * Get the loader data for this route
    * @param router - The router instance (required)
    */
-  getLoaderData = (router: import('@tanstack/router-core').AnyRouter): TLoaderFn extends undefined ? undefined : any => {
+  getLoaderData = (
+    router: import('@tanstack/router-core').AnyRouter,
+  ): TLoaderFn extends undefined ? undefined : any => {
     const match = router.state.matches.find((m) => m.routeId === this.id)
     if (!match) return undefined as any
     const matchState = router.getMatch(match.id)
@@ -314,18 +318,25 @@ export class RootRoute<
    * Get the params for this route
    * @param router - The router instance (required)
    */
-  getParams = (router: import('@tanstack/router-core').AnyRouter): Record<string, never> => {
+  getParams = (
+    router: import('@tanstack/router-core').AnyRouter,
+  ): Record<string, never> => {
     const match = router.state.matches.find((m) => m.routeId === this.id)
     if (!match) return {} as Record<string, never>
     const matchState = router.getMatch(match.id)
-    return (matchState?._strictParams ?? matchState?.params ?? {}) as Record<string, never>
+    return (matchState?._strictParams ?? matchState?.params ?? {}) as Record<
+      string,
+      never
+    >
   }
 
   /**
    * Get the search params for this route
    * @param router - The router instance (required)
    */
-  getSearch = (router: import('@tanstack/router-core').AnyRouter): TSearchValidator extends undefined ? Record<string, unknown> : any => {
+  getSearch = (
+    router: import('@tanstack/router-core').AnyRouter,
+  ): TSearchValidator extends undefined ? Record<string, unknown> : any => {
     const match = router.state.matches.find((m) => m.routeId === this.id)
     if (!match) return {} as any
     const matchState = router.getMatch(match.id)
@@ -336,7 +347,9 @@ export class RootRoute<
    * Get the route context for this route
    * @param router - The router instance (required)
    */
-  getRouteContext = (router: import('@tanstack/router-core').AnyRouter): TRouteContextFn extends AnyContext ? AnyContext : TRouteContextFn => {
+  getRouteContext = (
+    router: import('@tanstack/router-core').AnyRouter,
+  ): TRouteContextFn extends AnyContext ? AnyContext : TRouteContextFn => {
     const match = router.state.matches.find((m) => m.routeId === this.id)
     if (!match) return {} as any
     const matchState = router.getMatch(match.id)
@@ -347,7 +360,9 @@ export class RootRoute<
    * Get the loader dependencies for this route
    * @param router - The router instance (required)
    */
-  getLoaderDeps = (router: import('@tanstack/router-core').AnyRouter): TLoaderDeps => {
+  getLoaderDeps = (
+    router: import('@tanstack/router-core').AnyRouter,
+  ): TLoaderDeps => {
     const match = router.state.matches.find((m) => m.routeId === this.id)
     if (!match) return {} as TLoaderDeps
     const matchState = router.getMatch(match.id)
@@ -418,4 +433,3 @@ export function createRootRoute<
     THandlers
   >(options as any)
 }
-

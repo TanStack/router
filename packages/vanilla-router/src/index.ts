@@ -1,12 +1,7 @@
 export { createRouter } from './router'
 export type { Router } from './router'
 
-export {
-  createRoute,
-  createRootRoute,
-  Route,
-  RootRoute,
-} from './route'
+export { createRoute, createRootRoute, Route, RootRoute } from './route'
 export type {
   VanillaRouteComponent,
   VanillaErrorRouteComponent,
@@ -30,13 +25,7 @@ export {
 } from './utils'
 
 // Navigation utilities
-export {
-  navigate,
-  canGoBack,
-  goBack,
-  goForward,
-  go,
-} from './navigation'
+export { navigate, canGoBack, goBack, goForward, go } from './navigation'
 
 // Route data utilities
 export {
@@ -84,10 +73,7 @@ export type {
   ParsedLocation,
 } from '@tanstack/router-core'
 
-export {
-  redirect,
-  notFound,
-} from '@tanstack/router-core'
+export { redirect, notFound } from '@tanstack/router-core'
 
 export {
   createBrowserHistory,
@@ -95,7 +81,4 @@ export {
   createMemoryHistory,
 } from '@tanstack/history'
 
-export type {
-  RouterHistory,
-  HistoryLocation,
-} from '@tanstack/history'
+export type { RouterHistory, HistoryLocation } from '@tanstack/history'

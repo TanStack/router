@@ -26,4 +26,3 @@ function PostComponent() {
     </div>
   )
 }
-

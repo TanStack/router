@@ -7,4 +7,3 @@ export const Route = createFileRoute('/posts/')({
 function PostsIndexComponent() {
   return <div>Select a post.</div>
 }
-

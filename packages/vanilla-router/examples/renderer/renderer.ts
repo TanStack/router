@@ -1,4 +1,7 @@
-import type { VanillaRouteComponent, VanillaErrorRouteComponent } from '../../src/types'
+import type {
+  VanillaRouteComponent,
+  VanillaErrorRouteComponent,
+} from '../../src/types'
 
 interface ComponentInstance {
   cleanup?: () => void
@@ -7,7 +10,7 @@ interface ComponentInstance {
 
 /**
  * RenderContext - Input data structure for the renderer
- * 
+ *
  * This is a generic interface that any framework can implement
  * to provide component rendering data to VanillaRenderer.
  */
@@ -22,15 +25,15 @@ export interface RenderContext {
 
 /**
  * VanillaRenderer - Generic rendering engine for vanilla components
- * 
+ *
  * This is a pure, framework-agnostic rendering utility that:
  * - Instantiates components and manages their lifecycle
  * - Recursively renders nested component trees
  * - Handles cleanup functions
- * 
+ *
  * It has no knowledge of routers, routes, Outlets, or any framework-specific concepts.
  * It simply takes a tree of render contexts and produces HTML strings.
- * 
+ *
  * Components are pure functions that return render functions.
  * The renderer provides context accessors that components can call
  * to get their data and child HTML.
@@ -44,7 +47,7 @@ export class VanillaRenderer {
 
   /**
    * Render a tree of component contexts to an HTML string
-   * 
+   *
    * @param contexts - Array of render contexts, ordered from root to leaf
    * @param router - Optional router instance to pass to components
    * @returns HTML string representation of the component tree
@@ -68,7 +71,7 @@ export class VanillaRenderer {
 
     // Set up context for this render cycle
     this.currentContexts = contexts
-    
+
     // Store router globally for component access
     if (router) {
       ;(globalThis as any).__tanstackRouter = router
@@ -77,7 +80,12 @@ export class VanillaRenderer {
     try {
       return this.renderContexts(contexts, 0, router)
     } catch (error) {
-      return this.renderError(error as Error, contexts[0]?.errorComponent, contexts[0]?.data, router)
+      return this.renderError(
+        error as Error,
+        contexts[0]?.errorComponent,
+        contexts[0]?.data,
+        router,
+      )
     } finally {
       if (router) {
         delete (globalThis as any).__tanstackRouter
@@ -87,11 +95,15 @@ export class VanillaRenderer {
 
   /**
    * Recursively render component contexts
-   * 
+   *
    * Components can access their data and child HTML via context functions
    * provided by the renderer.
    */
-  private renderContexts(contexts: Array<RenderContext>, index: number, router?: any): string {
+  private renderContexts(
+    contexts: Array<RenderContext>,
+    index: number,
+    router?: any,
+  ): string {
     if (index >= contexts.length) {
       return ''
     }
@@ -108,7 +120,11 @@ export class VanillaRenderer {
     try {
       // Check for pending state
       if (context.isPending && context.pendingComponent) {
-        const pendingInstance = this.createComponentInstance(context.pendingComponent, index, router)
+        const pendingInstance = this.createComponentInstance(
+          context.pendingComponent,
+          index,
+          router,
+        )
         // Pending components don't have children
         return pendingInstance.getHtml()
       }
@@ -119,7 +135,7 @@ export class VanillaRenderer {
         const errorInstance = this.createComponentInstance(
           router ? errorFactory(router) : errorFactory,
           index,
-          router
+          router,
         )
         // Error components don't have children
         return errorInstance.getHtml()
@@ -134,7 +150,7 @@ export class VanillaRenderer {
 
       const instance = this.createComponentInstance(Component, index, router)
       this.componentInstances.set(String(index), instance)
-      
+
       // Store cleanup function if present
       if (instance.cleanup) {
         this.cleanupFunctions.set(String(index), instance.cleanup)
@@ -143,13 +159,13 @@ export class VanillaRenderer {
       // Render children first (if any) and cache the result
       const childHtml = this.renderContexts(contexts, index + 1, router)
       this.childHtmlCache.set(index, childHtml)
-      
+
       // Set context again before calling getHtml() so getChildHtml() and getContextData() work
       const getContextData = () => this.currentContexts[index]?.data
       const getChildHtmlFn = () => this.childHtmlCache.get(index) || ''
       const renderContext = { data: getContextData, childHtml: getChildHtmlFn }
       ;(globalThis as any).__vanillaRendererContext = renderContext
-      
+
       try {
         // Render this component - it can access childHtml via context
         let html = instance.getHtml()
@@ -171,34 +187,38 @@ export class VanillaRenderer {
 
   /**
    * Create a component instance from a component function
-   * 
+   *
    * Components can return:
    * - A render function: () => string
    * - A tuple with cleanup: [() => void, () => string]
-   * 
+   *
    * The render function can access context via getContext() and getChildHtml()
    */
-  private createComponentInstance(component: VanillaRouteComponent, index: number, router?: any): ComponentInstance {
+  private createComponentInstance(
+    component: VanillaRouteComponent,
+    index: number,
+    router?: any,
+  ): ComponentInstance {
     // Create context accessors for this component
     const getContext = () => this.currentContexts[index]?.data
     const getChildHtml = () => this.childHtmlCache.get(index) || ''
-    
+
     // Create a context object that components can access
     const context = {
       data: getContext,
       childHtml: getChildHtml,
     }
-    
+
     // Store context globally so component can access it
     ;(globalThis as any).__vanillaRendererContext = context
-    
+
     // Router components need router passed in
     const routerInstance = router || (globalThis as any).__tanstackRouter
     const result = routerInstance ? component(routerInstance) : component()
-    
+
     // Clear context after component creation
     delete (globalThis as any).__vanillaRendererContext
-    
+
     if (Array.isArray(result)) {
       const [cleanup, getHtml] = result
       return { cleanup, getHtml }
@@ -210,17 +230,26 @@ export class VanillaRenderer {
   /**
    * Render error state
    */
-  private renderError(error: Error, errorComponent?: VanillaErrorRouteComponent, data?: any, router?: any): string {
+  private renderError(
+    error: Error,
+    errorComponent?: VanillaErrorRouteComponent,
+    data?: any,
+    router?: any,
+  ): string {
     if (errorComponent) {
       // Set up context for error component
       const context = { data: () => data, childHtml: () => '' }
       ;(globalThis as any).__vanillaRendererContext = context
-      
+
       const routerInstance = router || (globalThis as any).__tanstackRouter
       const errorFactory = errorComponent({ error })
-      const instance = this.createComponentInstance(routerInstance ? errorFactory(routerInstance) : errorFactory, 0, routerInstance)
+      const instance = this.createComponentInstance(
+        routerInstance ? errorFactory(routerInstance) : errorFactory,
+        0,
+        routerInstance,
+      )
       delete (globalThis as any).__vanillaRendererContext
-      
+
       return instance.getHtml()
     } else {
       return `<div>Error: ${error.message || String(error)}</div>`
@@ -268,16 +297,16 @@ export function getContextData(): any {
 
 /**
  * JSX Runtime for Vanilla Renderer
- * 
+ *
  * This provides JSX support for the vanilla renderer by converting JSX syntax
  * into HTML strings that work with the component system.
- * 
+ *
  * Usage with TypeScript/JSX:
  * 1. Set jsx: "react" in tsconfig.json
  * 2. Set jsxFactory: "jsx" in tsconfig.json
  * 3. Import: import { jsx, Fragment } from '@tanstack/vanilla-router/jsx-runtime'
  * 4. Write components using JSX syntax
- * 
+ *
  * The JSX factory converts JSX elements to HTML strings, which are then
  * composed together by the vanilla renderer's component system.
  */
@@ -287,11 +316,13 @@ export function getContextData(): any {
  */
 export function jsx(type: any, props: any, ...children: any[]): string {
   // Normalize children - handle undefined/null
-  const normalizedChildren = children.filter(child => child !== undefined && child !== null)
-  
+  const normalizedChildren = children.filter(
+    (child) => child !== undefined && child !== null,
+  )
+
   // Handle fragments
   if (type === Symbol.for('react.fragment') || type === null) {
-    return normalizedChildren.map(child => renderChild(child)).join('')
+    return normalizedChildren.map((child) => renderChild(child)).join('')
   }
 
   // Handle components (functions)
@@ -299,41 +330,63 @@ export function jsx(type: any, props: any, ...children: any[]): string {
     const componentResult = type(props || {})
     if (typeof componentResult === 'function') {
       // It's a render function - call it with children
-      return componentResult(normalizedChildren.map(child => renderChild(child)).join(''))
+      return componentResult(
+        normalizedChildren.map((child) => renderChild(child)).join(''),
+      )
     }
     return renderChild(componentResult)
   }
 
   // Handle HTML elements
   const tagName = String(type).toLowerCase()
-  const attrs = props ? Object.entries(props)
-    .filter(([key]) => key !== 'children')
-    .map(([key, value]) => {
-      // Special case: className -> class
-      if (key === 'className') {
-        return `class="${escapeHtml(String(value))}"`
-      }
-      // Convert camelCase to kebab-case for attributes
-      const attrName = key.replace(/([A-Z])/g, '-$1').toLowerCase()
-      if (value === true) return attrName
-      if (value === false || value === null || value === undefined) return ''
-      return `${attrName}="${escapeHtml(String(value))}"`
-    })
-    .filter(Boolean)
-    .join(' ') : ''
-
-  const childrenHtml = normalizedChildren.length > 0 
-    ? normalizedChildren.map(child => {
-        // Handle dangerouslySetInnerHTML pattern for raw HTML insertion
-        if (child && typeof child === 'object' && child.__html) {
-          return child.__html
-        }
-        return renderChild(child)
-      }).join('')
+  const attrs = props
+    ? Object.entries(props)
+        .filter(([key]) => key !== 'children')
+        .map(([key, value]) => {
+          // Special case: className -> class
+          if (key === 'className') {
+            return `class="${escapeHtml(String(value))}"`
+          }
+          // Convert camelCase to kebab-case for attributes
+          const attrName = key.replace(/([A-Z])/g, '-$1').toLowerCase()
+          if (value === true) return attrName
+          if (value === false || value === null || value === undefined)
+            return ''
+          return `${attrName}="${escapeHtml(String(value))}"`
+        })
+        .filter(Boolean)
+        .join(' ')
     : ''
 
+  const childrenHtml =
+    normalizedChildren.length > 0
+      ? normalizedChildren
+          .map((child) => {
+            // Handle dangerouslySetInnerHTML pattern for raw HTML insertion
+            if (child && typeof child === 'object' && child.__html) {
+              return child.__html
+            }
+            return renderChild(child)
+          })
+          .join('')
+      : ''
+
   // Self-closing tags
-  const selfClosingTags = ['input', 'img', 'br', 'hr', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr']
+  const selfClosingTags = [
+    'input',
+    'img',
+    'br',
+    'hr',
+    'meta',
+    'link',
+    'area',
+    'base',
+    'col',
+    'embed',
+    'source',
+    'track',
+    'wbr',
+  ]
   if (selfClosingTags.includes(tagName)) {
     return `<${tagName}${attrs ? ' ' + attrs : ''} />`
   }
@@ -353,8 +406,8 @@ export function jsxs(type: any, props: any, ...children: any[]): string {
  */
 export function Fragment({ children = [] }: { children?: any[] }): string {
   return (Array.isArray(children) ? children : [children])
-    .filter(child => child !== undefined && child !== null)
-    .map(child => renderChild(child))
+    .filter((child) => child !== undefined && child !== null)
+    .map((child) => renderChild(child))
     .join('')
 }
 
@@ -367,9 +420,13 @@ function renderChild(child: any): string {
   if (typeof child === 'string' && child.trim().startsWith('<')) {
     return child
   }
-  if (typeof child === 'string' || typeof child === 'number') return escapeHtml(String(child))
+  if (typeof child === 'string' || typeof child === 'number')
+    return escapeHtml(String(child))
   if (Array.isArray(child)) return child.map(renderChild).join('')
-  if (typeof child === 'object' && child.$$typeof === Symbol.for('react.element')) {
+  if (
+    typeof child === 'object' &&
+    child.$$typeof === Symbol.for('react.element')
+  ) {
     return jsx(child.type, child.props)
   }
   return String(child)

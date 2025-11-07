@@ -13,6 +13,9 @@
 'package: nitro-v2-vite-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/nitro-v2-vite-plugin/**/*'
+'package: preact-router':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/preact-router/**/*'
 'package: react-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router/**/*'
@@ -97,6 +100,9 @@
 'package: valibot-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/valibot-adapter/**/*'
+'package: vanilla-router':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vanilla-router/**/*'
 'package: virtual-file-routes':
   - changed-files:
       - any-glob-to-any-file: 'packages/virtual-file-routes/**/*'

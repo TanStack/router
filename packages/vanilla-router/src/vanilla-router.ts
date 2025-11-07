@@ -19,7 +19,7 @@ export function outlet(): string {
  * Process router matches and return nested HTML strings
  * Handles outlet replacement for nested routes automatically
  * Returns an array of HTML strings in render order
- * 
+ *
  * @param router - The router instance
  * @param matches - Array of matches from router.state.matches
  * @returns Array of HTML strings with nested routes properly composed
@@ -51,38 +51,49 @@ export function getMatchesHtml(
   })
 
   // Clean up any remaining outlet markers (e.g., when root route has outlet but no children)
-  return htmlParts.map(html => html.replace(OUTLET_MARKER, ''))
+  return htmlParts.map((html) => html.replace(OUTLET_MARKER, ''))
 }
 
 /**
  * Get HTML for a single match (handles error, pending, not found, and component states)
  */
-function getMatchHtml(router: AnyRouter, match: AnyRouter['state']['matches'][0]): string {
+function getMatchHtml(
+  router: AnyRouter,
+  match: AnyRouter['state']['matches'][0],
+): string {
   const route: AnyRoute = router.routesById[match.routeId]
   const matchState = router.getMatch(match.id)
-  
+
   try {
     // Check for not found status first (like React/Preact adapters)
     if (match.status === 'notFound') {
-      const notFoundComponent = route.options.notFoundComponent === false
-        ? undefined
-        : route.options.notFoundComponent ?? router.options.defaultNotFoundComponent
-      
-      if (notFoundComponent && matchState?.error && isNotFound(matchState.error)) {
+      const notFoundComponent =
+        route.options.notFoundComponent === false
+          ? undefined
+          : (route.options.notFoundComponent ??
+            router.options.defaultNotFoundComponent)
+
+      if (
+        notFoundComponent &&
+        matchState?.error &&
+        isNotFound(matchState.error)
+      ) {
         const notFoundFactory = notFoundComponent({ data: matchState.error })
         const notFoundHtml = notFoundFactory(router)
         return typeof notFoundHtml === 'string' ? notFoundHtml : notFoundHtml()
       }
-      
+
       // Fallback if no notFoundComponent configured
       return '<div>Not Found</div>'
     }
 
     // Get components from route options
-    const errorComponent = route.options.errorComponent === false
-      ? undefined
-      : route.options.errorComponent ?? router.options.defaultErrorComponent
-    const pendingComponent = route.options.pendingComponent ?? router.options.defaultPendingComponent
+    const errorComponent =
+      route.options.errorComponent === false
+        ? undefined
+        : (route.options.errorComponent ?? router.options.defaultErrorComponent)
+    const pendingComponent =
+      route.options.pendingComponent ?? router.options.defaultPendingComponent
     const component = route.options.component ?? router.options.defaultComponent
 
     // Check for error state
@@ -201,7 +212,7 @@ export function setupLinkHandlers(router: AnyRouter): () => void {
  * Setup router with automatic state subscription and link handling
  * This is a convenience function that combines subscribeState and setupLinkHandlers
  * Also handles initial loading and rendering
- * 
+ *
  * @param router - The router instance
  * @param renderCallback - Function called whenever router state changes to render the UI
  * @returns Cleanup function that unsubscribes from state changes and removes link handlers
@@ -229,18 +240,17 @@ export async function vanillaRouter(
 
   // Subscribe to router state changes
   // Use subscribeState if available (vanilla Router), otherwise fall back to __store
-  const unsubscribeState = 
+  const unsubscribeState =
     typeof (router as any).subscribeState === 'function'
       ? (router as any).subscribeState(renderCallback)
       : router.__store.subscribe(renderCallback)
-  
+
   // Setup link handlers on document
   const cleanupLinkHandlers = setupLinkHandlers(router)
-  
+
   // Return combined cleanup function
   return () => {
     unsubscribeState()
     cleanupLinkHandlers()
   }
 }
-

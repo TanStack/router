@@ -41,4 +41,3 @@ function InvoicesRoute() {
     </div>
   )
 }
-

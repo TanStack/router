@@ -30,4 +30,3 @@ export const fetchPosts = async () => {
     .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
     .then((r) => r.data.slice(0, 10))
 }
-

@@ -54,7 +54,9 @@ export const postsLayoutRoute = createRoute({
   loader: () => fetchPosts(),
   component: (router: ReturnType<typeof createRouter>) => {
     // Access data via route getters - pass router explicitly
-    const posts = postsLayoutRoute.getLoaderData(router) as Array<{ id: string; title: string }> | undefined
+    const posts = postsLayoutRoute.getLoaderData(router) as
+      | Array<{ id: string; title: string }>
+      | undefined
 
     if (!posts) {
       return `<div>Loading posts...</div>`
@@ -63,11 +65,15 @@ export const postsLayoutRoute = createRoute({
     return `
       <div class="p-2">
         <ul>
-          ${posts.map((post) => `
+          ${posts
+            .map(
+              (post) => `
             <li>
               <a href="${buildHref(router, { to: '/posts/$postId', params: { postId: post.id } })}">${post.title}</a>
             </li>
-          `).join('')}
+          `,
+            )
+            .join('')}
         </ul>
         ${outlet()}
       </div>
@@ -90,17 +96,21 @@ const postsIndexRoute = createRoute({
 const postRoute = createRoute({
   getParentRoute: () => postsLayoutRoute,
   path: '$postId',
-  errorComponent: ({ error }) => (router: ReturnType<typeof createRouter>) => {
-    if (error instanceof NotFoundError) {
-      return `<div>${error.message}</div>`
-    }
-    return `<div>Error: ${String(error)}</div>`
-  },
+  errorComponent:
+    ({ error }) =>
+    (router: ReturnType<typeof createRouter>) => {
+      if (error instanceof NotFoundError) {
+        return `<div>${error.message}</div>`
+      }
+      return `<div>Error: ${String(error)}</div>`
+    },
   loader: ({ params }) => fetchPost(params.postId),
   component: (router: ReturnType<typeof createRouter>) => {
     // Access data via route getters - pass router explicitly
-    const post = postRoute.getLoaderData(router) as { title: string; body: string } | undefined
-    
+    const post = postRoute.getLoaderData(router) as
+      | { title: string; body: string }
+      | undefined
+
     if (!post) {
       return `<div>Loading...</div>`
     }
@@ -150,4 +160,3 @@ function render() {
 
 // Setup router with state subscription and link handlers
 await vanillaRouter(router, render)
-

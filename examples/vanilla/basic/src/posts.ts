@@ -29,4 +29,3 @@ export const fetchPost = async (postId: string) => {
 
   return post
 }
-

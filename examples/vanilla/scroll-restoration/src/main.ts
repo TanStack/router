@@ -37,9 +37,12 @@ const IndexComponent = (router: ReturnType<typeof createRouter>) => {
     </div>
     <h1>Welcome Home!</h1>
     <div>
-      ${Array.from({ length: 50 }, (_, i) => `
+      ${Array.from(
+        { length: 50 },
+        (_, i) => `
         <div class="item">Home Item ${i + 1}</div>
-      `).join('')}
+      `,
+      ).join('')}
     </div>
   `
 }
@@ -60,9 +63,12 @@ const AboutComponent = (router: ReturnType<typeof createRouter>) => {
     </div>
     <h1>About Page</h1>
     <div>
-      ${Array.from({ length: 50 }, (_, i) => `
+      ${Array.from(
+        { length: 50 },
+        (_, i) => `
         <div class="item">About Item ${i + 1}</div>
-      `).join('')}
+      `,
+      ).join('')}
     </div>
   `
 }
@@ -83,9 +89,12 @@ const ScrollableComponent = (router: ReturnType<typeof createRouter>) => {
     </div>
     <h1>Scrollable Container Demo</h1>
     <div class="scrollable-container" data-scroll-restoration-id="scrollable-content">
-      ${Array.from({ length: 50 }, (_, i) => `
+      ${Array.from(
+        { length: 50 },
+        (_, i) => `
         <div class="item">Scrollable Item ${i + 1}</div>
-      `).join('')}
+      `,
+      ).join('')}
     </div>
   `
 }
@@ -118,7 +127,7 @@ function render() {
   if (!rootElement) return
   const htmlParts = getMatchesHtml(router, router.state.matches)
   rootElement.innerHTML = htmlParts.join('')
-  
+
   // Update active links
   const currentPath = router.state.location.pathname
   const links = rootElement.querySelectorAll('nav a')
@@ -134,4 +143,3 @@ function render() {
 
 // Setup router
 vanillaRouter(router, render).catch(console.error)
-

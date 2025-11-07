@@ -58,10 +58,7 @@ export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
  * @returns True if the JS has been hydrated already, false otherwise.
  */
 function useHydrated(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => true,
-  )
+  return useSyncExternalStore(subscribe, () => true)
 }
 
 function subscribe() {

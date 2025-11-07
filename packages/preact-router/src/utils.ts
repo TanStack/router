@@ -1,4 +1,9 @@
-import { useRef, useEffect, useLayoutEffect as preactUseLayoutEffect, useImperativeHandle } from 'preact/hooks'
+import {
+  useRef,
+  useEffect,
+  useLayoutEffect as preactUseLayoutEffect,
+  useImperativeHandle,
+} from 'preact/hooks'
 import type { Ref } from 'preact'
 
 export function useStableCallback<T extends (...args: Array<any>) => any>(
@@ -73,7 +78,8 @@ export function useIntersectionObserver<T extends Element>(
 ) {
   useEffect(() => {
     if (
-      !ref || !ref.current ||
+      !ref ||
+      !ref.current ||
       options.disabled ||
       typeof IntersectionObserver !== 'function'
     ) {

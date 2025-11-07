@@ -1,6 +1,6 @@
 /**
  * Example: Using headless router with component renderer (JSX)
- * 
+ *
  * NOTE: This example is outdated - HeadlessRouter was refactored into utilities.
  * The renderer is now located in examples/renderer/ for example use only.
  */
@@ -15,13 +15,17 @@ const rootRoute = createRoute({
   id: 'root',
   component: () => {
     return () => {
-      return jsx('div', {},
-        jsx('nav', {},
+      return jsx(
+        'div',
+        {},
+        jsx(
+          'nav',
+          {},
           jsx('a', { href: '/' }, 'Home'),
           jsx('a', { href: '/about' }, 'About'),
-          jsx('a', { href: '/posts' }, 'Posts')
+          jsx('a', { href: '/posts' }, 'Posts'),
         ),
-        jsx('main', { id: 'outlet' })
+        jsx('main', { id: 'outlet' }),
       )
     }
   },
@@ -32,9 +36,11 @@ const indexRoute = createRoute({
   path: '/',
   component: () => {
     return () => {
-      return jsx('div', {},
+      return jsx(
+        'div',
+        {},
         jsx('h1', {}, 'Home Page'),
-        jsx('p', {}, 'Welcome to the home page!')
+        jsx('p', {}, 'Welcome to the home page!'),
       )
     }
   },
@@ -45,9 +51,11 @@ const aboutRoute = createRoute({
   path: '/about',
   component: () => {
     return () => {
-      return jsx('div', {},
+      return jsx(
+        'div',
+        {},
         jsx('h1', {}, 'About'),
-        jsx('p', {}, 'This is the about page.')
+        jsx('p', {}, 'This is the about page.'),
       )
     }
   },
@@ -62,15 +70,17 @@ const postsRoute = createRoute({
         { id: 1, title: 'Post 1' },
         { id: 2, title: 'Post 2' },
       ]
-      return jsx('div', {},
+      return jsx(
+        'div',
+        {},
         jsx('h1', {}, 'Posts'),
-        jsx('ul', {},
+        jsx(
+          'ul',
+          {},
           ...posts.map((post) =>
-            jsx('li', {},
-              jsx('a', { href: `/posts/${post.id}` }, post.title)
-            )
-          )
-        )
+            jsx('li', {}, jsx('a', { href: `/posts/${post.id}` }, post.title)),
+          ),
+        ),
       )
     }
   },
@@ -83,9 +93,11 @@ const postRoute = createRoute({
     return () => {
       // Use route getter to access params
       const params = postRoute.getParams()
-      return jsx('div', {},
+      return jsx(
+        'div',
+        {},
         jsx('h1', {}, `Post ${params.postId}`),
-        jsx('p', {}, `This is post ${params.postId}`)
+        jsx('p', {}, `This is post ${params.postId}`),
       )
     }
   },
@@ -147,4 +159,3 @@ const headlessRouter = new HeadlessRouter(router, (state) => {
 
 // Setup link handlers
 headlessRouter.setupLinkHandlers(rootElement)
-

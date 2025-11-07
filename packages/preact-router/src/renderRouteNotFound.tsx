@@ -1,5 +1,12 @@
 import { createElement as h, Fragment } from 'preact'
-import { useContext, useState, useEffect, useMemo, useRef, useCallback } from 'preact/hooks'
+import {
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from 'preact/hooks'
 import warning from 'tiny-warning'
 import { DefaultGlobalNotFound } from './not-found'
 import type { AnyRoute, AnyRouter } from '@tanstack/router-core'

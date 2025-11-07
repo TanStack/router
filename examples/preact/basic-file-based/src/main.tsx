@@ -23,4 +23,3 @@ const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   render(<RouterProvider router={router} />, rootElement)
 }
-

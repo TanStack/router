@@ -1,4 +1,11 @@
-import { useContext, useMemo, useRef, useState, useCallback, useEffect } from 'preact/hooks'
+import {
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+} from 'preact/hooks'
 import { useSyncExternalStore } from 'preact/compat'
 import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'

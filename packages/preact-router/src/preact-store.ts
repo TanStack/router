@@ -53,14 +53,9 @@ export function useStore<TState, TSelected = TState>(
 
   const getSnapshot = () => selector(store.state)
 
-  const slice = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-  ) as TSelected
+  const slice = useSyncExternalStore(subscribe, getSnapshot) as TSelected
 
   return slice
 }
 
 export { shallow }
-
-

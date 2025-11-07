@@ -134,7 +134,9 @@ function AnchorComponent() {
               <label>
                 <input
                   checked={withScroll}
-                  onChange={(e) => setWithScroll((e.target as HTMLInputElement).checked)}
+                  onChange={(e) =>
+                    setWithScroll((e.target as HTMLInputElement).checked)
+                  }
                   type="checkbox"
                 />{' '}
                 Scroll Into View
@@ -205,4 +207,3 @@ function AnchorComponent() {
     </div>
   )
 }
-

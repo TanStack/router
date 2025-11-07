@@ -25,7 +25,7 @@ import type { VanillaRouteComponent } from './types'
  * Create a file route for vanilla JS
  * This is adapted from React/Preact fileRoute but without hooks
  * Instead, route getters are used (e.g., route.getLoaderData(router))
- * 
+ *
  * @param path - The file path (e.g., '/posts/$postId')
  * @returns A function that creates a route with the given options
  */
@@ -52,7 +52,7 @@ export function createFileRoute<
 /**
  * FileRoute class for vanilla JS
  * Provides route creation without hooks - use route getters instead
- * 
+ *
  * @deprecated It's no longer recommended to use the `FileRoute` class directly.
  * Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
  */
@@ -130,7 +130,7 @@ export class FileRoute<
  * FileRouteLoader for vanilla JS
  * Note: In vanilla JS, loaders should be defined directly in route options
  * This is provided for compatibility but is deprecated
- * 
+ *
  * @deprecated It's recommended not to split loaders into separate files.
  * Instead, place the loader function in the main route file, inside the
  * `createFileRoute('/path/to/file')(options)` options.
@@ -215,7 +215,9 @@ export class LazyRoute<TRoute extends AnyRoute> {
    * Use route.getMatch(router) instead of this method
    */
   getMatch(router: import('@tanstack/router-core').AnyRouter) {
-    const match = router.state.matches.find((m) => m.routeId === this.options.id)
+    const match = router.state.matches.find(
+      (m) => m.routeId === this.options.id,
+    )
     if (!match) return undefined
     return router.getMatch(match.id)
   }
@@ -225,7 +227,9 @@ export class LazyRoute<TRoute extends AnyRoute> {
    * Use route.getLoaderData(router) instead of this method
    */
   getLoaderData(router: import('@tanstack/router-core').AnyRouter) {
-    const match = router.state.matches.find((m) => m.routeId === this.options.id)
+    const match = router.state.matches.find(
+      (m) => m.routeId === this.options.id,
+    )
     if (!match) return undefined
     const matchState = router.getMatch(match.id)
     return matchState?.loaderData
@@ -236,7 +240,9 @@ export class LazyRoute<TRoute extends AnyRoute> {
    * Use route.getParams(router) instead of this method
    */
   getParams(router: import('@tanstack/router-core').AnyRouter) {
-    const match = router.state.matches.find((m) => m.routeId === this.options.id)
+    const match = router.state.matches.find(
+      (m) => m.routeId === this.options.id,
+    )
     if (!match) return {}
     const matchState = router.getMatch(match.id)
     return matchState?._strictParams ?? matchState?.params ?? {}
@@ -247,7 +253,9 @@ export class LazyRoute<TRoute extends AnyRoute> {
    * Use route.getSearch(router) instead of this method
    */
   getSearch(router: import('@tanstack/router-core').AnyRouter) {
-    const match = router.state.matches.find((m) => m.routeId === this.options.id)
+    const match = router.state.matches.find(
+      (m) => m.routeId === this.options.id,
+    )
     if (!match) return {}
     const matchState = router.getMatch(match.id)
     return matchState?._strictSearch ?? matchState?.search ?? {}
@@ -258,10 +266,11 @@ export class LazyRoute<TRoute extends AnyRoute> {
    * Use route.getRouteContext(router) instead of this method
    */
   getRouteContext(router: import('@tanstack/router-core').AnyRouter) {
-    const match = router.state.matches.find((m) => m.routeId === this.options.id)
+    const match = router.state.matches.find(
+      (m) => m.routeId === this.options.id,
+    )
     if (!match) return {}
     const matchState = router.getMatch(match.id)
     return matchState?.context ?? {}
   }
 }
-

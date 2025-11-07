@@ -81,4 +81,3 @@ export async function render({
   // Stream the response body
   return pipeline(response.body as any, res)
 }
-

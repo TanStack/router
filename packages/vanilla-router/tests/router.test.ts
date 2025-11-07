@@ -80,9 +80,7 @@ describe('Vanilla Router', () => {
     })
 
     const router = createRouter({
-      routeTree: rootRoute.addChildren([
-        postsRoute.addChildren([postRoute]),
-      ]),
+      routeTree: rootRoute.addChildren([postsRoute.addChildren([postRoute])]),
     })
 
     const href = buildHref(router, {
@@ -153,4 +151,3 @@ describe('Vanilla Router', () => {
     expect(html).toContain('Post ID: 123')
   })
 })
-

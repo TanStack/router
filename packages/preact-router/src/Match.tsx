@@ -25,11 +25,7 @@ import type {
   RootRouteOptions,
 } from '@tanstack/router-core'
 
-export const Match = memo(function MatchImpl({
-  matchId,
-}: {
-  matchId: string
-}) {
+export const Match = memo(function MatchImpl({ matchId }: { matchId: string }) {
   const router = useRouter()
   const matchState = useRouterState({
     select: (s) => {
@@ -157,9 +153,7 @@ export const Match = memo(function MatchImpl({
 function OnRendered() {
   const router = useRouter()
 
-  const prevLocationRef = useRef<undefined | ParsedLocation<{}>>(
-    undefined,
-  )
+  const prevLocationRef = useRef<undefined | ParsedLocation<{}>>(undefined)
 
   return (
     <script
@@ -351,9 +345,7 @@ export const Outlet = memo(function OutletImpl() {
   const nextMatch = <Match matchId={childMatchId} />
 
   if (matchId === rootRouteId) {
-    return (
-      <Suspense fallback={pendingElement}>{nextMatch}</Suspense>
-    )
+    return <Suspense fallback={pendingElement}>{nextMatch}</Suspense>
   }
 
   return nextMatch

@@ -384,8 +384,7 @@ const intersectionObserverOptions: IntersectionObserverInit = {
 }
 
 const composeHandlers =
-  (handlers: Array<undefined | React.EventHandler<any>>) =>
-  (e: any) => {
+  (handlers: Array<undefined | React.EventHandler<any>>) => (e: any) => {
     for (const handler of handlers) {
       if (!handler) continue
       if (e.defaultPrevented) return

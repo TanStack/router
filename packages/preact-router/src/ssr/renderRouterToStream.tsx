@@ -1,7 +1,5 @@
 import { renderToString } from 'preact-render-to-string'
-import {
-  transformReadableStreamWithRouter,
-} from '@tanstack/router-core/ssr/server'
+import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
 import type { ComponentChildren } from 'preact'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { ReadableStream } from 'node:stream/web'

@@ -632,7 +632,7 @@ export function createRouteMask<
 }
 
 export interface DefaultRouteTypes<TProps> {
-  component: ((props: TProps) => any)
+  component: (props: TProps) => any
 }
 export interface RouteTypes<TProps> extends DefaultRouteTypes<TProps> {}
 

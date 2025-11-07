@@ -33,4 +33,3 @@ function LayoutComponent() {
     </div>
   )
 }
-

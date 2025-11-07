@@ -92,4 +92,3 @@ function LoginComponent() {
     </div>
   )
 }
-

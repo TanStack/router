@@ -15,4 +15,3 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     </>
   ),
 })
-

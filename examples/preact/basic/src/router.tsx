@@ -1,4 +1,9 @@
-import { createRouter, createRootRoute, createRoute, Outlet } from '@tanstack/preact-router'
+import {
+  createRouter,
+  createRootRoute,
+  createRoute,
+  Outlet,
+} from '@tanstack/preact-router'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import type { ErrorComponentProps } from '@tanstack/preact-router'
 

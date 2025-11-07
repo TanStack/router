@@ -1,5 +1,12 @@
 import { createElement as h, Fragment } from 'preact'
-import { useContext, useState, useEffect, useMemo, useRef, useCallback } from 'preact/hooks'
+import {
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from 'preact/hooks'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import type { AsyncRouteComponent } from './route'
 

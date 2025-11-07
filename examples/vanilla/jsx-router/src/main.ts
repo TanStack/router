@@ -10,7 +10,7 @@ import { VanillaRenderer, jsx } from './renderer'
 
 // Mock data fetching
 async function fetchPosts() {
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 500))
   return [
     { id: '1', title: 'Getting Started with Vanilla Router' },
     { id: '2', title: 'JSX Rendering Made Simple' },
@@ -19,11 +19,20 @@ async function fetchPosts() {
 }
 
 async function fetchPost(id: string) {
-  await new Promise(resolve => setTimeout(resolve, 300))
+  await new Promise((resolve) => setTimeout(resolve, 300))
   const posts: Record<string, { title: string; body: string }> = {
-    '1': { title: 'Getting Started with Vanilla Router', body: 'Vanilla Router is a powerful routing solution for vanilla JavaScript applications. It provides type-safe routing, nested routes, and excellent developer experience.' },
-    '2': { title: 'JSX Rendering Made Simple', body: 'Combine the power of JSX with vanilla JavaScript. The JSX renderer makes it easy to build component-based UIs without a framework.' },
-    '3': { title: 'Building Modern Web Apps', body: 'Modern web applications require modern tools. Vanilla Router and JSX renderer provide a lightweight alternative to heavy frameworks.' },
+    '1': {
+      title: 'Getting Started with Vanilla Router',
+      body: 'Vanilla Router is a powerful routing solution for vanilla JavaScript applications. It provides type-safe routing, nested routes, and excellent developer experience.',
+    },
+    '2': {
+      title: 'JSX Rendering Made Simple',
+      body: 'Combine the power of JSX with vanilla JavaScript. The JSX renderer makes it easy to build component-based UIs without a framework.',
+    },
+    '3': {
+      title: 'Building Modern Web Apps',
+      body: 'Modern web applications require modern tools. Vanilla Router and JSX renderer provide a lightweight alternative to heavy frameworks.',
+    },
   }
   if (!posts[id]) throw new Error('Post not found')
   return posts[id]
@@ -32,14 +41,16 @@ async function fetchPost(id: string) {
 // Root component using JSX
 const RootComponent = (router: ReturnType<typeof createRouter>) => {
   return () => {
-    return jsx('div', {},
-      jsx('nav', {},
+    return jsx(
+      'div',
+      {},
+      jsx(
+        'nav',
+        {},
         jsx('a', { href: buildHref(router, { to: '/' }) }, 'Home'),
-        jsx('a', { href: buildHref(router, { to: '/posts' }) }, 'Posts')
+        jsx('a', { href: buildHref(router, { to: '/posts' }) }, 'Posts'),
       ),
-      jsx('main', {},
-        outlet()
-      )
+      jsx('main', {}, outlet()),
     )
   }
 }
@@ -51,9 +62,15 @@ const rootRoute = createRootRoute({
 // Index component
 const IndexComponent = (router: ReturnType<typeof createRouter>) => {
   return () => {
-    return jsx('div', {},
+    return jsx(
+      'div',
+      {},
       jsx('h1', {}, 'Welcome Home!'),
-      jsx('p', {}, 'This is the home page using Vanilla Router with JSX rendering.')
+      jsx(
+        'p',
+        {},
+        'This is the home page using Vanilla Router with JSX rendering.',
+      ),
     )
   }
 }
@@ -72,21 +89,36 @@ const postsLayoutRoute = createRoute({
   component: (router: ReturnType<typeof createRouter>) => {
     return () => {
       const posts = postsLayoutRoute.getLoaderData(router)
-      
+
       if (!posts) {
         return jsx('div', { className: 'loading' }, 'Loading posts...')
       }
 
-      return jsx('div', {},
+      return jsx(
+        'div',
+        {},
         jsx('h1', {}, 'Posts'),
-        jsx('ul', { className: 'post-list' },
-          ...posts.map(post => 
-            jsx('li', { className: 'post-item' },
-              jsx('a', { href: buildHref(router, { to: '/posts/$postId', params: { postId: post.id } }) }, post.title)
-            )
-          )
+        jsx(
+          'ul',
+          { className: 'post-list' },
+          ...posts.map((post) =>
+            jsx(
+              'li',
+              { className: 'post-item' },
+              jsx(
+                'a',
+                {
+                  href: buildHref(router, {
+                    to: '/posts/$postId',
+                    params: { postId: post.id },
+                  }),
+                },
+                post.title,
+              ),
+            ),
+          ),
         ),
-        outlet()
+        outlet(),
       )
     }
   },
@@ -98,9 +130,7 @@ const postsIndexRoute = createRoute({
   path: '/',
   component: (router: ReturnType<typeof createRouter>) => {
     return () => {
-      return jsx('div', {},
-        jsx('p', {}, 'Select a post to view details.')
-      )
+      return jsx('div', {}, jsx('p', {}, 'Select a post to view details.'))
     }
   },
 })
@@ -109,18 +139,21 @@ const postsIndexRoute = createRoute({
 const postRoute = createRoute({
   getParentRoute: () => postsLayoutRoute,
   path: '$postId',
-  loader: ({ params }: { params: { postId: string } }) => fetchPost(params.postId),
+  loader: ({ params }: { params: { postId: string } }) =>
+    fetchPost(params.postId),
   component: (router: ReturnType<typeof createRouter>) => {
     return () => {
       const post = postRoute.getLoaderData(router)
-      
+
       if (!post) {
         return jsx('div', { className: 'loading' }, 'Loading...')
       }
 
-      return jsx('div', { className: 'post-detail' },
+      return jsx(
+        'div',
+        { className: 'post-detail' },
         jsx('h1', { className: 'post-title' }, post.title),
-        jsx('div', { className: 'post-body' }, post.body)
+        jsx('div', { className: 'post-body' }, post.body),
       )
     }
   },
@@ -145,12 +178,12 @@ if (!rootElement) throw new Error('App element not found')
 function render() {
   if (!rootElement) return
   const state = router.state
-  
+
   // Convert router matches to render contexts
   const contexts = state.matches.map((match) => {
     const route = router.routesById[match.routeId]
     const matchState = router.getMatch(match.id)
-    
+
     return {
       component: route.options.component,
       errorComponent: route.options.errorComponent,
@@ -173,4 +206,3 @@ function render() {
 
 // Setup router
 vanillaRouter(router, render).catch(console.error)
-

@@ -41,7 +41,7 @@ function getCurrentUser() {
 const RootComponent = (router: ReturnType<typeof createRouter>) => {
   const currentPath = router.state.location.pathname
   const user = getCurrentUser()
-  
+
   return `
     <nav>
       <div class="links">
@@ -74,13 +74,17 @@ const IndexComponent = (router: ReturnType<typeof createRouter>) => {
     <div class="card">
       <h1>Welcome Home!</h1>
       <p>This is a public page. Anyone can access it.</p>
-      ${user ? `
+      ${
+        user
+          ? `
         <p>You are logged in as <strong>${user.username}</strong>.</p>
         <a href="${buildHref(router, { to: '/dashboard' })}" class="button">Go to Dashboard</a>
-      ` : `
+      `
+          : `
         <p>You are not logged in.</p>
         <a href="${buildHref(router, { to: '/login' })}" class="button">Login</a>
-      `}
+      `
+      }
     </div>
   `
 }
@@ -175,7 +179,7 @@ if (!rootElement) throw new Error('App element not found')
 
 function render() {
   if (!rootElement) return
-  
+
   // Update router context with current auth state
   router.options.context = {
     auth: {
@@ -183,10 +187,10 @@ function render() {
       user: getCurrentUser(),
     },
   }
-  
+
   const htmlParts = getMatchesHtml(router, router.state.matches)
   rootElement.innerHTML = htmlParts.join('')
-  
+
   // Update active links
   const currentPath = router.state.location.pathname
   const links = rootElement.querySelectorAll('nav a')
@@ -198,7 +202,7 @@ function render() {
       link.classList.remove('active')
     }
   })
-  
+
   // Setup login form handler
   const loginForm = rootElement.querySelector('#login-form') as HTMLFormElement
   if (loginForm) {
@@ -207,8 +211,10 @@ function render() {
       const formData = new FormData(loginForm)
       const username = formData.get('username') as string
       const password = formData.get('password') as string
-      const errorDiv = rootElement.querySelector('#login-error') as HTMLDivElement
-      
+      const errorDiv = rootElement.querySelector(
+        '#login-error',
+      ) as HTMLDivElement
+
       try {
         await login(username, password)
         errorDiv.style.display = 'none'
@@ -217,7 +223,8 @@ function render() {
       } catch (error) {
         errorDiv.style.display = 'block'
         errorDiv.className = 'error'
-        errorDiv.textContent = error instanceof Error ? error.message : 'Login failed'
+        errorDiv.textContent =
+          error instanceof Error ? error.message : 'Login failed'
       }
     }
   }
@@ -231,4 +238,3 @@ function render() {
 
 // Setup router
 vanillaRouter(router, render).catch(console.error)
-

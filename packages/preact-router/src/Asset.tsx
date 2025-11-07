@@ -16,11 +16,7 @@ export function Asset({
 }: RouterManagedTag & { nonce?: string }): any {
   switch (tag) {
     case 'title':
-      return (
-        <title {...(attrs as any)}>
-          {children}
-        </title>
-      )
+      return <title {...(attrs as any)}>{children}</title>
     case 'meta':
       return <meta {...(attrs as any)} />
     case 'link':
@@ -152,12 +148,7 @@ function Script({
   }
 
   if (typeof children === 'string') {
-    return (
-      <script
-        {...attrs}
-        dangerouslySetInnerHTML={{ __html: children }}
-      />
-    )
+    return <script {...attrs} dangerouslySetInnerHTML={{ __html: children }} />
   }
 
   return null

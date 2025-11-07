@@ -1,4 +1,11 @@
-import { useContext, useMemo, useRef, useState, useCallback, useEffect } from 'preact/hooks'
+import {
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+} from 'preact/hooks'
 import { useSyncExternalStore } from 'preact/compat'
 import type { ComponentChildren } from 'preact'
 import { useRouter } from './useRouter'
@@ -284,7 +291,9 @@ export function Block<
  */
 export function Block(opts: LegacyPromptProps): ComponentChildren
 
-export function Block(opts: PromptProps | LegacyPromptProps): ComponentChildren {
+export function Block(
+  opts: PromptProps | LegacyPromptProps,
+): ComponentChildren {
   const { children, ...rest } = opts
   const args = _resolvePromptBlockerArgs(rest)
 
@@ -299,7 +308,9 @@ export function Block(opts: PromptProps | LegacyPromptProps): ComponentChildren 
 type LegacyPromptProps = {
   blockerFn?: LegacyBlockerFn
   condition?: boolean | any
-  children?: ComponentChildren | ((params: BlockerResolver) => ComponentChildren)
+  children?:
+    | ComponentChildren
+    | ((params: BlockerResolver) => ComponentChildren)
 }
 
 type PromptProps<

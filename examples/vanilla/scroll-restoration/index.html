@@ -5,18 +5,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TanStack Router - Vanilla Scroll Restoration</title>
     <style>
-      * { box-sizing: border-box; }
-      body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-      nav { background: white; border-bottom: 1px solid #e0e0e0; padding: 1rem 2rem; display: flex; gap: 1rem; position: sticky; top: 0; z-index: 10; }
-      nav a { color: #667eea; text-decoration: none; font-weight: 500; }
-      nav a:hover { text-decoration: underline; }
-      nav a.active { font-weight: 700; }
-      main { padding: 2rem; max-width: 1200px; margin: 0 auto; }
-      .item { height: 100px; padding: 1rem; margin-bottom: 0.5rem; background: white; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; align-items: center; }
-      .scrollable-container { height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; background: white; margin-top: 1rem; }
-      .scrollable-container .item { margin-bottom: 0.5rem; }
-      h1 { margin-top: 0; }
-      .info { background: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f5f5f5;
+      }
+      nav {
+        background: white;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 1rem 2rem;
+        display: flex;
+        gap: 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      nav a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      nav a:hover {
+        text-decoration: underline;
+      }
+      nav a.active {
+        font-weight: 700;
+      }
+      main {
+        padding: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .item {
+        height: 100px;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        display: flex;
+        align-items: center;
+      }
+      .scrollable-container {
+        height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1rem;
+        background: white;
+        margin-top: 1rem;
+      }
+      .scrollable-container .item {
+        margin-bottom: 0.5rem;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      .info {
+        background: #e3f2fd;
+        border: 1px solid #90caf9;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
     </style>
   </head>
   <body>
@@ -24,4 +82,3 @@
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
-

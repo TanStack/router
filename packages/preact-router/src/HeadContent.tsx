@@ -1,5 +1,12 @@
 import { createElement as h, Fragment } from 'preact'
-import { useContext, useState, useEffect, useMemo, useRef, useCallback } from 'preact/hooks'
+import {
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from 'preact/hooks'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'

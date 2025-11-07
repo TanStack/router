@@ -26,7 +26,11 @@ function setStoredUser(user: string | null) {
   }
 }
 
-export function AuthProvider({ children }: { children: preact.ComponentChildren }) {
+export function AuthProvider({
+  children,
+}: {
+  children: preact.ComponentChildren
+}) {
   const [user, setUser] = useState<string | null>(getStoredUser())
   const isAuthenticated = !!user
 
@@ -62,4 +66,3 @@ export function useAuth() {
   }
   return context
 }
-

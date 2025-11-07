@@ -7,8 +7,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   resolve: {
     alias: {
-      '@tanstack/vanilla-router': path.resolve(__dirname, '../../../packages/vanilla-router/src'),
+      '@tanstack/vanilla-router': path.resolve(
+        __dirname,
+        '../../../packages/vanilla-router/src',
+      ),
     },
   },
 })
-

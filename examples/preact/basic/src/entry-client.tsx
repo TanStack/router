@@ -5,4 +5,3 @@ import { createRouterInstance } from './router'
 const router = createRouterInstance()
 
 render(<RouterClient router={router} />, document)
-

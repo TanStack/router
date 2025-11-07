@@ -3,7 +3,14 @@
  */
 
 import { createRouter, createRoute } from '@tanstack/vanilla-router'
-import { buildHref, outlet, getMatchesHtml, setupLinkHandlers, setRouter, getRouter } from '@tanstack/vanilla-router'
+import {
+  buildHref,
+  outlet,
+  getMatchesHtml,
+  setupLinkHandlers,
+  setRouter,
+  getRouter,
+} from '@tanstack/vanilla-router'
 
 // Define routes - components are simple functions that return HTML strings
 // Note: Routes can reference each other, but for simple paths you can use strings
@@ -72,7 +79,11 @@ const rootRoute = createRoute({
 })
 
 // Create router
-const routeTree = rootRoute.addChildren([indexRoute, aboutRoute, postsRoute.addChildren([postRoute])])
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  aboutRoute,
+  postsRoute.addChildren([postRoute]),
+])
 
 const router = createRouter({
   routeTree,
@@ -89,7 +100,7 @@ function renderToDOM(router: typeof router, rootElement: HTMLElement) {
   const state = router.state
 
   // Check for not found
-  if (state.matches.some(m => m.status === 'notFound' || m.globalNotFound)) {
+  if (state.matches.some((m) => m.status === 'notFound' || m.globalNotFound)) {
     rootElement.innerHTML = '<div>404 - Not Found</div>'
     return
   }
@@ -127,4 +138,3 @@ init()
 
 // Setup link handlers (returns cleanup function)
 const cleanupLinkHandlers = setupLinkHandlers(router, rootElement)
-

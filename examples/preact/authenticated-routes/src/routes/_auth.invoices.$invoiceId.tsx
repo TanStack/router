@@ -28,4 +28,3 @@ function InvoicePage() {
     </section>
   )
 }
-

@@ -16,4 +16,3 @@ function DashboardPage() {
     </section>
   )
 }
-

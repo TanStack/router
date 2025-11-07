@@ -40,4 +40,3 @@ const rootElement = document.getElementById('app')!
 if (!rootElement.innerHTML) {
   render(<App />, rootElement)
 }
-
