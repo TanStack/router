@@ -468,6 +468,7 @@ export interface RouterOptions<
   origin?: string
   ssr?: {
     nonce?: string
+    progressiveChunkSize?: number
   }
 }
 
