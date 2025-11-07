@@ -1,5 +1,4 @@
-import { createFileRoute } from '@tanstack/preact-router'
-import { Link, Outlet, redirect, useRouter } from '@tanstack/preact-router'
+import { Link, Outlet, createFileRoute, redirect, useRouter } from '@tanstack/preact-router'
 
 import { useAuth } from '../auth'
 
