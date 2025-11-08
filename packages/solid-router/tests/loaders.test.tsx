@@ -779,4 +779,3 @@ test('cancelMatches after pending timeout', async () => {
   expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
   expect(onAbortMock).toHaveBeenCalled()
 })
-

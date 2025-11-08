@@ -744,16 +744,18 @@ test('cancelMatches after pending timeout', async () => {
   const onAbortMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
   const rootRoute = createRootRoute({
-    component: () => <div>
-      <h1>Index page</h1>
-      <Link data-testid="link-to-foo" to="/foo">
-        link to foo
-      </Link>
-      <Link data-testid="link-to-bar" to="/bar">
-        link to bar
-      </Link>
-      <Outlet />
-    </div>
+    component: () => (
+      <div>
+        <h1>Index page</h1>
+        <Link data-testid="link-to-foo" to="/foo">
+          link to foo
+        </Link>
+        <Link data-testid="link-to-bar" to="/bar">
+          link to bar
+        </Link>
+        <Outlet />
+      </div>
+    ),
   })
   const fooRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -767,8 +769,8 @@ test('cancelMatches after pending timeout', async () => {
         abortController.signal.addEventListener('abort', () => {
           onAbortMock()
           clearTimeout(timer)
-          resolve();
-        });
+          resolve()
+        })
       })
     },
     pendingComponent: getPendingComponent(fooPendingComponentOnMountMock),
