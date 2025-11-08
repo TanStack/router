@@ -296,7 +296,7 @@ export const MatchInner = (props: { matchId: string }): any => {
 
           return (
             <>
-              {FallbackComponent ? (
+              {FallbackComponent && pendingMinMs > 0 ? (
                 <Dynamic component={FallbackComponent} />
               ) : null}
               {loaderResult()}
