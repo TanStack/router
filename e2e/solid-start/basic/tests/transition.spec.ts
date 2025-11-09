@@ -38,8 +38,6 @@ test('transitions/count/create-resource should keep old values visible during na
     timeout: 2000,
   })
 
-  // TODO - the below tests should be possible to uncomment
-
   // 2 clicks
 
   page.getByTestId('increase-button').click()
