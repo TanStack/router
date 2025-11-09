@@ -1,8 +1,9 @@
 ### Guide
 
-Rename .env.example to .env.local 
+Rename .env.example to .env.local
 
 Run
+
 - `pnpm i`
 - `pnpx convex dev`
 - `pnpx convex env set SITE_URL http://localhost:3000/`
@@ -10,4 +11,5 @@ Run
 - `pnpx convex dev` - takes up one terminal
 
 In a separate terminal run
+
 - `pnpm run dev`
