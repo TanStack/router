@@ -562,8 +562,8 @@ const getLoaderContext = (
   route: AnyRoute,
 ): LoaderFnContext => {
   const parentMatchPromise = inner.matchPromises[index - 1] as any
-  const match = inner.router.getMatch(matchId)!
-  const { params, loaderDeps, abortController, cause } = match
+  const { params, loaderDeps, abortController, cause } =
+    inner.router.getMatch(matchId)!
 
   let context = inner.router.options.context ?? {}
 
@@ -571,7 +571,7 @@ const getLoaderContext = (
     const innerMatch = inner.matches[i]
     if (!innerMatch) continue
     const m = inner.router.getMatch(innerMatch.id)
-    if (!m || !m._nonReactive) continue
+    if (!m) continue
     context = {
       ...context,
       ...(m.__routeContext ?? {}),
