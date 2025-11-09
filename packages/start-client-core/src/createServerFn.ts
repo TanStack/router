@@ -88,6 +88,80 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       const newOptions = { ...resolvedOptions, inputValidator }
       return createServerFn(undefined, newOptions) as any
     },
+    rawHandler: (...args) => {
+      // This function signature changes due to AST transformations
+      // in the babel plugin. We need to cast it to the correct
+      // function signature post-transformation
+      const [extractedFn, serverFn] = args as unknown as [
+        CompiledFetcherFn<Register, any>,
+        RawServerFn<Register, any, any>,
+      ]
+
+      // Keep the original function around so we can use it
+      // in the server environment
+      const newOptions = {
+        ...resolvedOptions,
+        extractedFn,
+        serverFn: serverFn as any,
+        rawHandler: true,
+      }
+
+      const resolvedMiddleware = [
+        ...(newOptions.middleware || []),
+        serverFnBaseToMiddleware(newOptions),
+      ]
+
+      // We want to make sure the new function has the same
+      // properties as the original function
+
+      return Object.assign(
+        async (opts?: CompiledFetcherFnOptions) => {
+          // Start by executing the client-side middleware chain
+          return executeMiddleware(resolvedMiddleware, 'client', {
+            ...extractedFn,
+            ...newOptions,
+            data: opts?.data as any,
+            headers: opts?.headers,
+            signal: opts?.signal,
+            context: {},
+          }).then((d) => {
+            if (d.error) throw d.error
+            return d.result
+          })
+        },
+        {
+          // This copies over the URL, function ID
+          ...extractedFn,
+          __rawHandler: true,
+          // The extracted function on the server-side calls
+          // this function
+          __executeServer: async (opts: any, signal: AbortSignal) => {
+            const startContext = getStartContextServerOnly()
+            const serverContextAfterGlobalMiddlewares =
+              startContext.contextAfterGlobalMiddlewares
+            const ctx = {
+              ...extractedFn,
+              ...opts,
+              context: {
+                ...serverContextAfterGlobalMiddlewares,
+                ...opts.context,
+              },
+              signal,
+              request: startContext.request,
+            }
+
+            return executeMiddleware(resolvedMiddleware, 'server', ctx).then(
+              (d) => ({
+                // Only send the result and sendContext back to the client
+                result: d.result,
+                error: d.error,
+                context: d.sendContext,
+              }),
+            )
+          },
+        },
+      ) as any
+    },
     handler: (...args) => {
       // This function signature changes due to AST transformations
       // in the babel plugin. We need to cast it to the correct
@@ -317,6 +391,12 @@ export type ServerFn<
   ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator>,
 ) => ServerFnReturnType<TRegister, TResponse>
 
+export type RawServerFn<TRegister, TMiddlewares, TResponse> = (ctx: {
+  request: Request
+  signal: AbortSignal
+  context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
+}) => ServerFnReturnType<TRegister, TResponse>
+
 export interface ServerFnCtx<
   TRegister,
   TMethod,
@@ -358,6 +438,7 @@ export type ServerFnBaseOptions<
     TResponse
   >
   functionId: string
+  rawHandler?: boolean
 }
 
 export type ValidateValidatorInput<
@@ -515,6 +596,9 @@ export interface ServerFnHandler<
       TNewResponse
     >,
   ) => Fetcher<TMiddlewares, TInputValidator, TNewResponse>
+  rawHandler: <TNewResponse>(
+    fn?: RawServerFn<TRegister, TMiddlewares, TNewResponse>,
+  ) => Fetcher<TMiddlewares, TInputValidator, TNewResponse>
 }
 
 export interface ServerFnBuilder<TRegister, TMethod extends Method = 'GET'>
@@ -613,6 +697,7 @@ export type ServerFnMiddlewareOptions = {
   sendContext?: any
   context?: any
   functionId: string
+  request?: Request
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
@@ -720,7 +805,19 @@ function serverFnBaseToMiddleware(
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function
-        const result = await options.serverFn?.(ctx as TODO)
+        let result: any
+        if (options.rawHandler) {
+          // For raw handlers, pass request, signal, and context
+          const ctxWithRequest = ctx as typeof ctx & { request: Request }
+          result = await (options.serverFn as any)?.({
+            request: ctxWithRequest.request,
+            signal: ctx.signal,
+            context: ctx.context,
+          })
+        } else {
+          // For normal handlers, pass the full context
+          result = await options.serverFn?.(ctx as TODO)
+        }
 
         return next({
           ...ctx,

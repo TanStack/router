@@ -35,7 +35,7 @@ const LookupSetup: Record<
   LookupKind,
   { candidateCallIdentifier: Set<string> }
 > = {
-  ServerFn: { candidateCallIdentifier: new Set(['handler']) },
+  ServerFn: { candidateCallIdentifier: new Set(['handler', 'rawHandler']) },
   Middleware: {
     candidateCallIdentifier: new Set(['server', 'client', 'createMiddlewares']),
   },

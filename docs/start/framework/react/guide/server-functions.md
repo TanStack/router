@@ -127,6 +127,123 @@ export const submitForm = createServerFn({ method: 'POST' })
   })
 ```
 
+## Raw Handler for Streaming Uploads
+
+For advanced use cases like streaming file uploads or accessing the raw request body, use `.rawHandler()` instead of `.handler()`. This gives you direct access to the Request object without automatic body parsing.
+
+### Why Use Raw Handler?
+
+The raw handler is essential when you need to:
+
+- **Stream large file uploads** directly to cloud storage without loading them into memory
+- **Enforce size limits during upload** rather than after the entire file is loaded
+- **Access raw request streams** for custom body parsing (e.g., multipart/form-data with busboy)
+- **Implement proper backpressure** for large data transfers
+- **Minimize memory footprint** for file uploads
+
+### Basic Raw Handler
+
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+
+export const uploadFile = createServerFn({ method: 'POST' }).rawHandler(
+  async ({ request, signal }) => {
+    // Access the raw request object
+    const contentType = request.headers.get('content-type')
+    const body = await request.text()
+
+    return new Response(
+      JSON.stringify({
+        contentType,
+        size: body.length,
+      }),
+    )
+  },
+)
+```
+
+### Streaming File Upload Example
+
+With raw handlers, you can stream files directly to cloud storage without buffering them in memory:
+
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+
+export const uploadFile = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware]) // Middleware context is available!
+  .rawHandler(async ({ request, signal, context }) => {
+    // Access middleware context (user, auth, etc.)
+    const userId = context.user.id
+
+    // Access the raw request body stream
+    const body = request.body
+
+    if (!body) {
+      return new Response('No file provided', { status: 400 })
+    }
+
+    // Stream directly to your storage (S3, Azure, etc.)
+    // You can use libraries like busboy to parse multipart/form-data
+    // and enforce size limits DURING upload
+    await streamToStorage(body, {
+      userId,
+      maxSize: 25 * 1024 * 1024, // 25MB limit
+      signal, // Pass for cancellation support
+    })
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+```
+
+### Client-Side Usage
+
+The raw handler works seamlessly from the client with FormData:
+
+```tsx
+import { useMutation } from '@tanstack/react-query'
+import { uploadFile } from './server-functions'
+
+function FileUpload() {
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      return uploadFile({ data: formData })
+    },
+  })
+
+  return (
+    <input
+      type="file"
+      onChange={(e) => {
+        const file = e.target.files?.[0]
+        if (file) uploadMutation.mutate(file)
+      }}
+    />
+  )
+}
+```
+
+### Key Differences from Regular Handler
+
+| Feature      | `.handler()`                        | `.rawHandler()`                |
+| ------------ | ----------------------------------- | ------------------------------ |
+| Body Parsing | Automatic (FormData, JSON)          | Manual - you control it        |
+| Memory Usage | Loads entire body into memory first | Can stream directly            |
+| Size Limits  | Can't enforce during upload         | Enforce during upload          |
+| Use Case     | Standard data/form handling         | Large files, streaming         |
+| Parameters   | `{ data, context, signal }`         | `{ request, context, signal }` |
+
+### Important Notes
+
+1. **No automatic body parsing** - With `rawHandler`, the request body is NOT automatically parsed. You must handle it yourself.
+2. **No data parameter** - Raw handlers receive `{ request, signal, context }` instead of the usual `{ data, context, signal }`. There is no automatic data parsing/validation.
+3. **Middleware context is available** - Request middleware still runs and you have full access to the middleware context (authentication, user info, etc.).
+4. **Response handling** - Always return a `Response` object from raw handlers.
+
 ## Error Handling & Redirects
 
 Server functions can throw errors, redirects, and not-found responses that are handled automatically when called from route lifecycles or components using `useServerFn()`.

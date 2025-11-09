@@ -96,6 +96,106 @@ describe('createServerFn compiles correctly', async () => {
     `)
   })
 
+  test('should work with rawHandler', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const myRawFunc = ({ request, signal }) => {
+          return new Response('hello from raw handler')
+        }
+        const myServerFn = createServerFn({ method: 'POST' }).rawHandler(myRawFunc)`
+
+    const compiledResultClient = await compile({
+      id: 'test.ts',
+      code,
+      env: 'client',
+    })
+
+    const compiledResultServer = await compile({
+      id: 'test.ts',
+      code,
+      env: 'server',
+    })
+
+    expect(compiledResultClient!.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/react-start';
+      const myServerFn = createServerFn({
+        method: 'POST'
+      }).rawHandler((opts, signal) => {
+        "use server";
+
+        return myServerFn.__executeServer(opts, signal);
+      });"
+    `)
+
+    expect(compiledResultServer!.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/react-start';
+      const myRawFunc = ({
+        request,
+        signal
+      }) => {
+        return new Response('hello from raw handler');
+      };
+      const myServerFn = createServerFn({
+        method: 'POST'
+      }).rawHandler((opts, signal) => {
+        "use server";
+
+        return myServerFn.__executeServer(opts, signal);
+      }, myRawFunc);"
+    `)
+  })
+
+  test('should work with inline rawHandler', async () => {
+    const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        export const uploadFile = createServerFn({ method: 'POST' }).rawHandler(async ({ request, signal }) => {
+          const contentType = request.headers.get('content-type')
+          return new Response(JSON.stringify({ contentType }))
+        })`
+
+    const compiledResultClient = await compile({
+      id: 'test.ts',
+      code,
+      env: 'client',
+    })
+
+    const compiledResultServer = await compile({
+      id: 'test.ts',
+      code,
+      env: 'server',
+    })
+
+    expect(compiledResultClient!.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/react-start';
+      export const uploadFile = createServerFn({
+        method: 'POST'
+      }).rawHandler((opts, signal) => {
+        "use server";
+
+        return uploadFile.__executeServer(opts, signal);
+      });"
+    `)
+
+    expect(compiledResultServer!.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/react-start';
+      export const uploadFile = createServerFn({
+        method: 'POST'
+      }).rawHandler((opts, signal) => {
+        "use server";
+
+        return uploadFile.__executeServer(opts, signal);
+      }, async ({
+        request,
+        signal
+      }) => {
+        const contentType = request.headers.get('content-type');
+        return new Response(JSON.stringify({
+          contentType
+        }));
+      });"
+    `)
+  })
+
   test('should use dce by default', async () => {
     const code = `
       import { createServerFn } from '@tanstack/react-start'

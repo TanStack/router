@@ -17,7 +17,12 @@ export function handleCreateServerFn(
   // the validator, handler, and middleware methods. Check to make sure they
   // are children of the createServerFn call expression.
 
-  const validMethods = ['middleware', 'inputValidator', 'handler'] as const
+  const validMethods = [
+    'middleware',
+    'inputValidator',
+    'handler',
+    'rawHandler',
+  ] as const
   type ValidMethods = (typeof validMethods)[number]
   const callExpressionPaths: Record<
     ValidMethods,
@@ -26,6 +31,7 @@ export function handleCreateServerFn(
     middleware: null,
     inputValidator: null,
     handler: null,
+    rawHandler: null,
   }
 
   const rootCallExpression = getRootCallExpression(path)
@@ -85,15 +91,30 @@ export function handleCreateServerFn(
   // First, we need to move the handler function to a nested function call
   // that is applied to the arguments passed to the server function.
 
-  const handlerFnPath = callExpressionPaths.handler?.get(
-    'arguments.0',
-  ) as babel.NodePath<any>
+  // Support both handler and rawHandler
+  const handlerMethod = callExpressionPaths.handler
+    ? 'handler'
+    : callExpressionPaths.rawHandler
+      ? 'rawHandler'
+      : null
 
-  if (!callExpressionPaths.handler || !handlerFnPath.node) {
+  if (!handlerMethod) {
     throw codeFrameError(
       opts.code,
       path.node.callee.loc!,
-      `createServerFn must be called with a "handler" property!`,
+      `createServerFn must be called with a "handler" or "rawHandler" property!`,
+    )
+  }
+
+  const handlerFnPath = callExpressionPaths[handlerMethod]?.get(
+    'arguments.0',
+  ) as babel.NodePath<any>
+
+  if (!handlerFnPath.node) {
+    throw codeFrameError(
+      opts.code,
+      path.node.callee.loc!,
+      `createServerFn must be called with a "handler" or "rawHandler" property!`,
     )
   }
 
@@ -152,6 +173,6 @@ export function handleCreateServerFn(
   )
 
   if (opts.env === 'server') {
-    callExpressionPaths.handler.node.arguments.push(handlerFn)
+    callExpressionPaths[handlerMethod]!.node.arguments.push(handlerFn)
   }
 }
