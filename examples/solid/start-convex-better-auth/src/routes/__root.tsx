@@ -5,7 +5,7 @@ import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import type * as Solid from 'solid-js'
 import appCss from '~/styles/app.css?url'
 import AppConvexProvider from '~/providers/convex'
-import { fetchAuth } from '~/lib/server'
+import { fetchAuth } from '~/library/server'
 
 export const Route = createRootRoute({
   head: () => ({

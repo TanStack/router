@@ -6,8 +6,8 @@ import {
 import { useQuery } from 'convex-solidjs'
 import { api } from 'convex/_generated/api'
 import { For, Show } from 'solid-js'
-import { addNumber } from '~/lib/server'
-import { authClient } from '~/lib/auth-client'
+import { addNumber } from '~/library/server'
+import { authClient } from '~/library/auth-client'
 
 export const Route = createFileRoute('/_authed/dashboard')({
   component: RouteComponent,

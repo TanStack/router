@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/solid-router'
-import { fetchUser } from '~/lib/server'
+import { fetchUser } from '~/library/server'
 
 export const Route = createFileRoute('/_authed')({
   component: () => (

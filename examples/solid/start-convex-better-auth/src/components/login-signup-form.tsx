@@ -1,7 +1,7 @@
 import { useNavigate } from '@tanstack/solid-router'
 import { createSignal } from 'solid-js'
-import { authClient } from '~/lib/auth-client'
-import { refreshAuth } from '~/lib/convex-client'
+import { authClient } from '~/library/auth-client'
+import { refreshAuth } from '~/library/convex-client'
 
 export default function LoginSignupForm() {
   const navigate = useNavigate()
