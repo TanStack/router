@@ -2295,23 +2295,27 @@ export class RouterCore<
   }
 
   updateMatch: UpdateMatchFn = (id, updater) => {
-    const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
-      ? 'pendingMatches'
-      : this.state.matches.some((d) => d.id === id)
-        ? 'matches'
-        : this.state.cachedMatches.some((d) => d.id === id)
-          ? 'cachedMatches'
-          : ''
+    this.startTransition(() => {
+      const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
+        ? 'pendingMatches'
+        : this.state.matches.some((d) => d.id === id)
+          ? 'matches'
+          : this.state.cachedMatches.some((d) => d.id === id)
+            ? 'cachedMatches'
+            : ''
 
-    if (matchesKey) {
-      this.__store.setState((s) => ({
-        ...s,
-        [matchesKey]: s[matchesKey]?.map((d) => (d.id === id ? updater(d) : d)),
-      }))
-    }
+      if (matchesKey) {
+        this.__store.setState((s) => ({
+          ...s,
+          [matchesKey]: s[matchesKey]?.map((d) =>
+            d.id === id ? updater(d) : d,
+          ),
+        }))
+      }
+    })
   }
 
-  getMatch: GetMatchFn = (matchId: string) => {
+  getMatch: GetMatchFn = (matchId: string): AnyRouteMatch | undefined => {
     const findFn = (d: { id: string }) => d.id === matchId
     return (
       this.state.cachedMatches.find(findFn) ??
