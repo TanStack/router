@@ -13,8 +13,8 @@
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-query-devtools": "^5.71.9",
-    "@tanstack/solid-router": "^1.134.19",
-    "@tanstack/solid-router-devtools": "^1.134.19",
+    "@tanstack/solid-router": "^1.134.20",
+    "@tanstack/solid-router-devtools": "^1.134.20",
     "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
@@ -22,7 +22,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.134.18",
+    "@tanstack/router-plugin": "^1.134.20",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-plugin-solid": "^2.11.10"
