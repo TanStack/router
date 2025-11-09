@@ -45,7 +45,9 @@ function TransitionPage() {
 
         <div class="mt-2">
           <div data-testid="n-value">n: {doubleQuery.data?.n}</div>
-          <div data-testid="double-value">double: {doubleQuery.data?.double}</div>
+          <div data-testid="double-value">
+            double: {doubleQuery.data?.double}
+          </div>
         </div>
       </div>
     </Suspense>
