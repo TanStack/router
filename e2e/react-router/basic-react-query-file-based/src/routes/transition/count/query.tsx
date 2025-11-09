@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { Suspense, useMemo } from 'react'
+import { Suspense } from 'react'
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 
@@ -12,7 +12,7 @@ const doubleQueryOptions = (n: number) =>
     queryKey: ['transition-double', n],
     queryFn: async () => {
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      return n * 2
+      return { n, double: n * 2 }
     },
     placeholderData: (oldData) => oldData,
   })
@@ -44,8 +44,8 @@ function TransitionPage() {
         </Link>
 
         <div className="mt-2">
-          <div data-testid="n-value">n: {search.n}</div>
-          <div data-testid="double-value">double: {doubleQuery.data}</div>
+          <div data-testid="n-value">n: {doubleQuery.data?.n}</div>
+          <div data-testid="double-value">double: {doubleQuery.data?.double}</div>
         </div>
       </div>
     </Suspense>
