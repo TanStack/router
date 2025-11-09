@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "dev:convex": "convex dev",
+    "convex:dev": "convex dev",
     "build": "vite build && tsc --noEmit",
     "start": "vite start"
   },

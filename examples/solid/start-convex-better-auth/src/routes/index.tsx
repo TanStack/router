@@ -1,22 +1,21 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import Counter from '~/components/Counter'
-import { fetchNumbers } from '~/lib/server'
+import { useQuery } from 'convex-solidjs'
+import { api } from 'convex/_generated/api'
+import { For } from 'solid-js'
+import { addNumber } from '~/lib/server'
 
 export const Route = createFileRoute('/')({
   component: RouteComponent,
-  loader: async () => {
-    const numbers = await fetchNumbers()
-    return { numbers }
-  },
 })
 
 function RouteComponent() {
-  const loaderData = Route.useLoaderData()
+  // example of a Convex query
+  const { data } = useQuery(api.myFunctions.listNumbers, { count: 10 })
   return (
     <main>
       <h1>Hello world!</h1>
-      <Counter />
-      <pre>{JSON.stringify(loaderData().numbers, null, 2)}</pre>
+      <For each={data()?.numbers}>{(number) => <div>{number}</div>}</For>
+      <button onClick={() => addNumber()}>Add Number To Convex</button>
     </main>
   )
 }
