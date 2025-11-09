@@ -22,6 +22,7 @@ import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as TransitionCountQueryRouteImport } from './routes/transition/count/query'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
 import { Route as ApiUsersIdRouteImport } from './routes/api/users.$id'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
@@ -90,6 +91,11 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
+const TransitionCountQueryRoute = TransitionCountQueryRouteImport.update({
+  id: '/transition/count/query',
+  path: '/transition/count/query',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
   id: '/posts_/$postId/deep',
   path: '/posts/$postId/deep',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/transition/count/query': typeof TransitionCountQueryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
+  '/transition/count/query': typeof TransitionCountQueryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
+  '/transition/count/query': typeof TransitionCountQueryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/layout-b'
     | '/api/users/$id'
     | '/posts/$postId/deep'
+    | '/transition/count/query'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/layout-b'
     | '/api/users/$id'
     | '/posts/$postId/deep'
+    | '/transition/count/query'
   id:
     | '__root__'
     | '/'
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2/layout-b'
     | '/api/users/$id'
     | '/posts_/$postId/deep'
+    | '/transition/count/query'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -227,6 +239,7 @@ export interface RootRouteChildren {
   UsersRoute: typeof UsersRouteWithChildren
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
+  TransitionCountQueryRoute: typeof TransitionCountQueryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -321,6 +334,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
+    }
+    '/transition/count/query': {
+      id: '/transition/count/query'
+      path: '/transition/count/query'
+      fullPath: '/transition/count/query'
+      preLoaderRoute: typeof TransitionCountQueryRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/posts_/$postId/deep': {
       id: '/posts_/$postId/deep'
@@ -424,6 +444,7 @@ const rootRouteChildren: RootRouteChildren = {
   UsersRoute: UsersRouteWithChildren,
   ApiUsersRoute: ApiUsersRouteWithChildren,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
+  TransitionCountQueryRoute: TransitionCountQueryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
