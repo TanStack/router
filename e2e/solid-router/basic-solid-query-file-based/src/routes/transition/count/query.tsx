@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
-import { Suspense, createMemo } from 'solid-js'
+import { Suspense } from 'solid-js'
 import { queryOptions, useQuery } from '@tanstack/solid-query'
 import { z } from 'zod'
 
@@ -17,7 +17,7 @@ const doubleQueryOptions = (n: number) =>
     placeholderData: (oldData) => oldData,
   })
 
-export const Route = createFileRoute('/transition/')({
+export const Route = createFileRoute('/transition/count/query')({
   validateSearch: searchSchema,
   loader: ({ context: { queryClient }, location }) => {
     const { n } = searchSchema.parse(location.search)
@@ -37,7 +37,7 @@ function TransitionPage() {
         <Link
           data-testid="increase-button"
           class="border bg-gray-50 px-3 py-1"
-          from="/transition"
+          from="/transition/count/query"
           search={(s) => ({ n: s.n + 1 })}
         >
           Increase

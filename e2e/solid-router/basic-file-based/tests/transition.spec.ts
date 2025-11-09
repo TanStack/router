@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test'
 
-test('transitions should keep old values visible during navigation', async ({
+test('transitions/count/create-resource should keep old values visible during navigation', async ({
   page,
 }) => {
-  await page.goto('/transition')
+  await page.goto('/transition/count/create-resource')
 
   await expect(page.getByTestId('n-value')).toContainText('n: 1')
   await expect(page.getByTestId('double-value')).toContainText('double: 2')
@@ -20,7 +20,7 @@ test('transitions should keep old values visible during navigation', async ({
 
   // 1 click
 
-  await page.getByTestId('increase-button').click()
+  page.getByTestId('increase-button').click()
 
   await expect(page.getByTestId('n-value')).toContainText('n: 1', {
     timeout: 2_000,
@@ -40,8 +40,8 @@ test('transitions should keep old values visible during navigation', async ({
 
   // 2 clicks
 
-  await page.getByTestId('increase-button').click()
-  await page.getByTestId('increase-button').click()
+  page.getByTestId('increase-button').click()
+  page.getByTestId('increase-button').click()
 
   await expect(page.getByTestId('n-value')).toContainText('n: 2', {
     timeout: 2000,
@@ -61,9 +61,9 @@ test('transitions should keep old values visible during navigation', async ({
 
   // 3 clicks
 
-  await page.getByTestId('increase-button').click()
-  await page.getByTestId('increase-button').click()
-  await page.getByTestId('increase-button').click()
+  page.getByTestId('increase-button').click()
+  page.getByTestId('increase-button').click()
+  page.getByTestId('increase-button').click()
 
   await expect(page.getByTestId('n-value')).toContainText('n: 4', {
     timeout: 2000,

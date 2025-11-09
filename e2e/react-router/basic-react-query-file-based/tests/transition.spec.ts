@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('react-query transitions keep previous data during navigation', async ({
   page,
 }) => {
-  await page.goto('/transition')
+  await page.goto('/transition/count/query')
 
   await expect(page.getByTestId('n-value')).toContainText('n: 1')
   await expect(page.getByTestId('double-value')).toContainText('double: 2')
