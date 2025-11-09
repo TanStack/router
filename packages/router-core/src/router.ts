@@ -1454,8 +1454,6 @@ export class RouterCore<
           __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
-            error: (existingMatch as AnyRouteMatch | undefined)?._nonReactive
-              ?.error,
           },
           __beforeLoadContext: undefined,
           context: {},
@@ -2317,7 +2315,7 @@ export class RouterCore<
     })
   }
 
-  getMatch: GetMatchFn = (matchId: string) => {
+  getMatch: GetMatchFn = (matchId: string): AnyRouteMatch | undefined => {
     const findFn = (d: { id: string }) => d.id === matchId
     return (
       this.state.cachedMatches.find(findFn) ??
