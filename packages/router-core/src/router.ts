@@ -1594,7 +1594,8 @@ export class RouterCore<
       } = {},
     ): ParsedLocation => {
       // We allow the caller to override the current location
-      const currentLocation = dest._fromLocation || this.pendingBuiltLocation || this.latestLocation
+      const currentLocation =
+        dest._fromLocation || this.pendingBuiltLocation || this.latestLocation
 
       const allCurrentLocationMatches = this.matchRoutes(currentLocation, {
         _buildLocation: true,
@@ -1957,7 +1958,9 @@ export class RouterCore<
       _includeValidateSearch: true,
     })
 
-    this.pendingBuiltLocation = location as ParsedLocation<FullSearchSchema<TRouteTree>>
+    this.pendingBuiltLocation = location as ParsedLocation<
+      FullSearchSchema<TRouteTree>
+    >
 
     const commitPromise = this.commitLocation({
       ...location,
