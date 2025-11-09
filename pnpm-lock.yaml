@@ -7659,6 +7659,9 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
+      tailwindcss:
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57

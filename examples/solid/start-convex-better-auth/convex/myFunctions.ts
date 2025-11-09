@@ -1,6 +1,7 @@
 import { v } from 'convex/values'
 import { action, mutation, query } from './_generated/server'
 import { api } from './_generated/api'
+import { authComponent } from './auth'
 
 // Write your Convex functions in any file inside this directory (`convex`).
 // See https://docs.convex.dev/functions for more.
@@ -14,10 +15,17 @@ export const listNumbers = query({
 
   // Query implementation.
   handler: async (ctx, args) => {
+    // Get the current authenticated user
+    const authUser = await authComponent.getAuthUser(ctx)
+    if (!authUser._id) {
+      throw new Error('User must be authenticated to list random numbers')
+    }
+
     // Read the database as many times as you need here.
     // See https://docs.convex.dev/database/reading-data.
     const numbers = await ctx.db
       .query('numbers')
+      .withIndex('userId', (q) => q.eq('userId', authUser._id))
       // Ordered by _creationTime, return most recent
       .order('desc')
       .take(args.count)
@@ -37,11 +45,20 @@ export const addNumber = mutation({
 
   // Mutation implementation.
   handler: async (ctx, args) => {
+    // Get the current authenticated user
+    const authUser = await authComponent.getAuthUser(ctx)
+    if (!authUser._id) {
+      throw new Error('User must be authenticated to create a random number')
+    }
+
     // Insert or modify documents in the database here.
     // Mutations can also read from the database like queries.
     // See https://docs.convex.dev/database/writing-data.
 
-    const id = await ctx.db.insert('numbers', { value: args.value })
+    const id = await ctx.db.insert('numbers', {
+      value: args.value,
+      userId: authUser._id,
+    })
 
     console.log('Added new document with id:', id)
     // Optionally, return a value from your mutation.

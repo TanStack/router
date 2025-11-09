@@ -9,11 +9,9 @@ export const Route = createFileRoute('/_authed')({
   ),
   beforeLoad: async (ctx) => {
     const user = await fetchUser()
-    if (!ctx.context.token || !ctx.context.session || !user) {
-      const currentPath = ctx.location.pathname + ctx.location.search
+    if (!ctx.context.token) {
       throw redirect({
         to: '/',
-        search: { redirect: currentPath },
       })
     }
     return { user }

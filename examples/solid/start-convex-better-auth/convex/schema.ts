@@ -1,5 +1,5 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema, defineTable } from 'convex/server'
+import { v } from 'convex/values'
 
 // The schema is entirely optional.
 // You can delete this file (schema.ts) and the
@@ -8,5 +8,6 @@ import { v } from "convex/values";
 export default defineSchema({
   numbers: defineTable({
     value: v.number(),
-  }),
-});
+    userId: v.string(),
+  }).index('userId', ['userId']),
+})
