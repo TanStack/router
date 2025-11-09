@@ -1454,7 +1454,8 @@ export class RouterCore<
           __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
-            error: (existingMatch as AnyRouteMatch | undefined)?._nonReactive?.error,
+            error: (existingMatch as AnyRouteMatch | undefined)?._nonReactive
+              ?.error,
           },
           __beforeLoadContext: undefined,
           context: {},
