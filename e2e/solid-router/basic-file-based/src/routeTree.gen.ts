@@ -21,7 +21,6 @@ import { Route as Char45824Char54620Char48124Char44397RouteRouteImport } from '.
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TransitionIndexRouteImport } from './routes/transition/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RelativeIndexRouteImport } from './routes/relative/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
@@ -48,6 +47,8 @@ import { Route as ParamsPsWildcardIndexRouteImport } from './routes/params-ps/wi
 import { Route as ParamsPsNamedIndexRouteImport } from './routes/params-ps/named/index'
 import { Route as Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport } from './routes/대한민국/🚀.$id'
 import { Route as Char45824Char54620Char48124Char44397WildcardSplatRouteImport } from './routes/대한민국/wildcard.$'
+import { Route as TransitionTypingCreateResourceRouteImport } from './routes/transition/typing/create-resource'
+import { Route as TransitionCountCreateResourceRouteImport } from './routes/transition/count/create-resource'
 import { Route as RelativeUseNavigateRelativeUseNavigateBRouteImport } from './routes/relative/useNavigate/relative-useNavigate-b'
 import { Route as RelativeUseNavigateRelativeUseNavigateARouteImport } from './routes/relative/useNavigate/relative-useNavigate-a'
 import { Route as RelativeLinkRelativeLinkBRouteImport } from './routes/relative/link/relative-link-b'
@@ -168,11 +169,6 @@ const NonNestedRouteRoute = NonNestedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TransitionIndexRoute = TransitionIndexRouteImport.update({
-  id: '/transition/',
-  path: '/transition/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
@@ -308,6 +304,18 @@ const Char45824Char54620Char48124Char44397WildcardSplatRoute =
     id: '/wildcard/$',
     path: '/wildcard/$',
     getParentRoute: () => Char45824Char54620Char48124Char44397RouteRoute,
+  } as any)
+const TransitionTypingCreateResourceRoute =
+  TransitionTypingCreateResourceRouteImport.update({
+    id: '/transition/typing/create-resource',
+    path: '/transition/typing/create-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TransitionCountCreateResourceRoute =
+  TransitionCountCreateResourceRouteImport.update({
+    id: '/transition/count/create-resource',
+    path: '/transition/count/create-resource',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const RelativeUseNavigateRelativeUseNavigateBRoute =
   RelativeUseNavigateRelativeUseNavigateBRouteImport.update({
@@ -680,7 +688,6 @@ export interface FileRoutesByFullPath {
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
-  '/transition': typeof TransitionIndexRoute
   '/non-nested/deep/$baz': typeof NonNestedDeepBazRouteRouteWithChildren
   '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
   '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
@@ -710,6 +717,8 @@ export interface FileRoutesByFullPath {
   '/relative/link/relative-link-b': typeof RelativeLinkRelativeLinkBRoute
   '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
+  '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/대한민국/wildcard/$': typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
   '/대한민국/🚀/$id': typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
   '/params-ps/named': typeof ParamsPsNamedIndexRoute
@@ -776,7 +785,6 @@ export interface FileRoutesByTo {
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
-  '/transition': typeof TransitionIndexRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/params-ps/non-nested/$foo': typeof ParamsPsNonNestedFooRouteRouteWithChildren
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
@@ -801,6 +809,8 @@ export interface FileRoutesByTo {
   '/relative/link/relative-link-b': typeof RelativeLinkRelativeLinkBRoute
   '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
+  '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/대한민국/wildcard/$': typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
   '/대한민국/🚀/$id': typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
   '/params-ps/named': typeof ParamsPsNamedIndexRoute
@@ -872,7 +882,6 @@ export interface FileRoutesById {
   '/redirect/': typeof RedirectIndexRoute
   '/relative/': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
-  '/transition/': typeof TransitionIndexRoute
   '/non-nested/deep/$baz': typeof NonNestedDeepBazRouteRouteWithChildren
   '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
   '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
@@ -902,6 +911,8 @@ export interface FileRoutesById {
   '/relative/link/relative-link-b': typeof RelativeLinkRelativeLinkBRoute
   '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
+  '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/대한민국/wildcard/$': typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
   '/대한민국/🚀/$id': typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
   '/params-ps/named/': typeof ParamsPsNamedIndexRoute
@@ -973,7 +984,6 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/relative'
     | '/search-params/'
-    | '/transition'
     | '/non-nested/deep/$baz'
     | '/non-nested/named/$baz'
     | '/non-nested/path/baz'
@@ -1003,6 +1013,8 @@ export interface FileRouteTypes {
     | '/relative/link/relative-link-b'
     | '/relative/useNavigate/relative-useNavigate-a'
     | '/relative/useNavigate/relative-useNavigate-b'
+    | '/transition/count/create-resource'
+    | '/transition/typing/create-resource'
     | '/대한민국/wildcard/$'
     | '/대한민국/🚀/$id'
     | '/params-ps/named'
@@ -1069,7 +1081,6 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/relative'
     | '/search-params'
-    | '/transition'
     | '/params-ps/named/$foo'
     | '/params-ps/non-nested/$foo'
     | '/insidelayout'
@@ -1094,6 +1105,8 @@ export interface FileRouteTypes {
     | '/relative/link/relative-link-b'
     | '/relative/useNavigate/relative-useNavigate-a'
     | '/relative/useNavigate/relative-useNavigate-b'
+    | '/transition/count/create-resource'
+    | '/transition/typing/create-resource'
     | '/대한민국/wildcard/$'
     | '/대한민국/🚀/$id'
     | '/params-ps/named'
@@ -1164,7 +1177,6 @@ export interface FileRouteTypes {
     | '/redirect/'
     | '/relative/'
     | '/search-params/'
-    | '/transition/'
     | '/non-nested/deep/$baz'
     | '/non-nested/named/$baz'
     | '/non-nested/path/baz'
@@ -1194,6 +1206,8 @@ export interface FileRouteTypes {
     | '/relative/link/relative-link-b'
     | '/relative/useNavigate/relative-useNavigate-a'
     | '/relative/useNavigate/relative-useNavigate-b'
+    | '/transition/count/create-resource'
+    | '/transition/typing/create-resource'
     | '/대한민국/wildcard/$'
     | '/대한민국/🚀/$id'
     | '/params-ps/named/'
@@ -1257,7 +1271,6 @@ export interface RootRouteChildren {
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   RelativeIndexRoute: typeof RelativeIndexRoute
-  TransitionIndexRoute: typeof TransitionIndexRoute
   ParamsPsNamedFooRouteRoute: typeof ParamsPsNamedFooRouteRouteWithChildren
   groupSubfolderInsideRoute: typeof groupSubfolderInsideRoute
   ParamsPsNamedPrefixChar123fooChar125Route: typeof ParamsPsNamedPrefixChar123fooChar125Route
@@ -1272,6 +1285,8 @@ export interface RootRouteChildren {
   RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
   RedirectPreloadSecondRoute: typeof RedirectPreloadSecondRoute
   RedirectPreloadThirdRoute: typeof RedirectPreloadThirdRoute
+  TransitionCountCreateResourceRoute: typeof TransitionCountCreateResourceRoute
+  TransitionTypingCreateResourceRoute: typeof TransitionTypingCreateResourceRoute
   ParamsPsNamedIndexRoute: typeof ParamsPsNamedIndexRoute
   ParamsPsWildcardIndexRoute: typeof ParamsPsWildcardIndexRoute
 }
@@ -1360,13 +1375,6 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/transition/': {
-      id: '/transition/'
-      path: '/transition'
-      fullPath: '/transition'
-      preLoaderRoute: typeof TransitionIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search-params/': {
@@ -1550,6 +1558,20 @@ declare module '@tanstack/solid-router' {
       fullPath: '/대한민국/wildcard/$'
       preLoaderRoute: typeof Char45824Char54620Char48124Char44397WildcardSplatRouteImport
       parentRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
+    }
+    '/transition/typing/create-resource': {
+      id: '/transition/typing/create-resource'
+      path: '/transition/typing/create-resource'
+      fullPath: '/transition/typing/create-resource'
+      preLoaderRoute: typeof TransitionTypingCreateResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transition/count/create-resource': {
+      id: '/transition/count/create-resource'
+      path: '/transition/count/create-resource'
+      fullPath: '/transition/count/create-resource'
+      preLoaderRoute: typeof TransitionCountCreateResourceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/relative/useNavigate/relative-useNavigate-b': {
       id: '/relative/useNavigate/relative-useNavigate-b'
@@ -2415,7 +2437,6 @@ const rootRouteChildren: RootRouteChildren = {
   ParamsPsIndexRoute: ParamsPsIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   RelativeIndexRoute: RelativeIndexRoute,
-  TransitionIndexRoute: TransitionIndexRoute,
   ParamsPsNamedFooRouteRoute: ParamsPsNamedFooRouteRouteWithChildren,
   groupSubfolderInsideRoute: groupSubfolderInsideRoute,
   ParamsPsNamedPrefixChar123fooChar125Route:
@@ -2436,6 +2457,8 @@ const rootRouteChildren: RootRouteChildren = {
   RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
   RedirectPreloadSecondRoute: RedirectPreloadSecondRoute,
   RedirectPreloadThirdRoute: RedirectPreloadThirdRoute,
+  TransitionCountCreateResourceRoute: TransitionCountCreateResourceRoute,
+  TransitionTypingCreateResourceRoute: TransitionTypingCreateResourceRoute,
   ParamsPsNamedIndexRoute: ParamsPsNamedIndexRoute,
   ParamsPsWildcardIndexRoute: ParamsPsWildcardIndexRoute,
 }
