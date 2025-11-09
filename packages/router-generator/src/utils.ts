@@ -365,7 +365,7 @@ export function hasParentRoute(
   routes: Array<RouteNode>,
   node: RouteNode,
   routePathToCheck: string | undefined,
-  originalRoutePathToCheck?: string,
+  originalRoutePathToCheck: string | undefined,
 ): RouteNode | null {
   const getNonNestedSegments = (routePath: string) => {
     const regex = /_(?=\/|$)/g
@@ -394,24 +394,24 @@ export function hasParentRoute(
     ? []
     : [...sortedNodes]
 
-  if (node._isExperimentalNonNestedRoute) {
-    const nonNestedSegments = getNonNestedSegments(
-      originalRoutePathToCheck ?? '',
-    )
+  if (node._isExperimentalNonNestedRoute && originalRoutePathToCheck) {
+    const nonNestedSegments = getNonNestedSegments(originalRoutePathToCheck)
 
     for (const route of sortedNodes) {
       if (route.routePath === '/') continue
 
       if (
-        routePathToCheck.startsWith(`${route.routePath}/`) &&
         route._isExperimentalNonNestedRoute &&
-        route.routePath !== routePathToCheck
+        route.routePath !== routePathToCheck &&
+        originalRoutePathToCheck.startsWith(`${route.originalRoutePath}/`)
       ) {
         return route
       }
 
       if (
-        nonNestedSegments.find((seg) => seg === `${route.routePath}_`) ||
+        nonNestedSegments.find(
+          (seg) => seg === `${route.originalRoutePath}_`,
+        ) ||
         !(
           route._fsRouteType === 'pathless_layout' ||
           route._fsRouteType === 'layout' ||

@@ -104,7 +104,7 @@ If you are not able to use the automatic code-splitting feature, you can still c
 > [!IMPORTANT]
 > The `__root.tsx` route file, using either `createRootRoute` or `createRootRouteWithContext`, does not support code splitting, since it's always rendered regardless of the current route.
 
-These are the only options that `createLazyFileRoute` support:
+These are the only options that `createLazyFileRoute` supports:
 
 | Export Name         | Description                                                           |
 | ------------------- | --------------------------------------------------------------------- |
