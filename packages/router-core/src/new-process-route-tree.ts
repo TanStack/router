@@ -437,6 +437,7 @@ export function findMatch(path: string, segmentTree: SegmentNode, fuzzy = false)
 	const leaf = getNodeMatch(parts, segmentTree, fuzzy)
 	if (!leaf) return null
 	const params = extractParams(path, parts, leaf)
+	if ('**' in leaf) params['**'] = leaf['**']!
 	return {
 		routeId: leaf.node.routeId!,
 		params,
@@ -500,9 +501,6 @@ function buildBranch(node: SegmentNode) {
 	return list
 }
 
-/**
- * when fuzzy: true, we return the longest matching node even if not all parts are consumed
- */
 function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode, fuzzy: boolean) {
 	parts = parts.filter(Boolean)
 
@@ -522,6 +520,7 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode, fuzzy: boo
 	let stackIndex = 0
 
 	let wildcardMatch: Frame | null = null
+	let bestFuzzy: Frame | null = null
 
 	while (stackIndex < stack.length) {
 		// eslint-disable-next-line prefer-const
@@ -531,6 +530,11 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode, fuzzy: boo
 			if (index === parts.length) {
 				if (!node.routeId) break
 				return { node, skipped }
+			}
+
+			// In fuzzy mode, track the best partial match we've found so far
+			if (fuzzy && node.routeId && (!bestFuzzy || index > bestFuzzy.index || (index === bestFuzzy.index && depth > bestFuzzy.depth))) {
+				bestFuzzy = { node, index, depth, skipped }
 			}
 
 			const part = parts[index]!
@@ -621,7 +625,16 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode, fuzzy: boo
 		}
 	}
 
+
 	if (wildcardMatch) return wildcardMatch
+
+	if (fuzzy && bestFuzzy) {
+		return {
+			node: bestFuzzy.node,
+			skipped: bestFuzzy.skipped,
+			'**': '/' + parts.slice(bestFuzzy.index).join('/'),
+		}
+	}
 
 	return null
 }

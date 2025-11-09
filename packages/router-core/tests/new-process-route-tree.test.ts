@@ -116,5 +116,35 @@ describe('findMatch', () => {
 			}
 		`)
 	})
-})
 
+	it('works w/ fuzzy matching', () => {
+		expect(findMatch('/foo/123', segmentTree, true)).toMatchInlineSnapshot(`
+			{
+			  "params": {
+			    "**": "/123",
+			  },
+			  "routeId": "/foo",
+			}
+		`)
+	})
+	it('can still return exact matches w/ fuzzy:true', () => {
+		expect(findMatch('/yo/foobar', segmentTree, true)).toMatchInlineSnapshot(`
+			{
+			  "params": {
+			    "id": "",
+			  },
+			  "routeId": "/yo/foo{-$id}bar",
+			}
+		`)
+	})
+	it('can still match a wildcard route w/ fuzzy:true', () => {
+		expect(findMatch('/yo/something', segmentTree, true)).toMatchInlineSnapshot(`
+			{
+			  "params": {
+			    "*": "something",
+			  },
+			  "routeId": "/yo/$",
+			}
+		`)
+	})
+})
