@@ -1253,7 +1253,7 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
   expect(window.location.pathname).toEqual('/posts/id1')
 })
 
-test.skip('when setting search params with 2 parallel navigate calls', async () => {
+test('when setting search params with 2 parallel navigate calls', async () => {
   const rootRoute = createRootRoute()
 
   const IndexComponent = () => {
@@ -1300,6 +1300,9 @@ test.skip('when setting search params with 2 parallel navigate calls', async () 
   })
 
   render(() => <RouterProvider router={router} />)
+
+  // Wait for router to initialize with defaults
+  await screen.findByTestId('param1')
 
   // console.log(router.state.location)
   expect(router.state.location.search).toEqual({

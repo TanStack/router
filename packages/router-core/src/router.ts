@@ -896,6 +896,7 @@ export class RouterCore<
   rewrite?: LocationRewrite
   origin?: string
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
+  pendingBuiltLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
@@ -1593,7 +1594,8 @@ export class RouterCore<
       } = {},
     ): ParsedLocation => {
       // We allow the caller to override the current location
-      const currentLocation = dest._fromLocation || this.latestLocation
+      const currentLocation =
+        dest._fromLocation || this.pendingBuiltLocation || this.latestLocation
 
       const allCurrentLocationMatches = this.matchRoutes(currentLocation, {
         _buildLocation: true,
@@ -1956,7 +1958,11 @@ export class RouterCore<
       _includeValidateSearch: true,
     })
 
-    return this.commitLocation({
+    this.pendingBuiltLocation = location as ParsedLocation<
+      FullSearchSchema<TRouteTree>
+    >
+
+    const commitPromise = this.commitLocation({
       ...location,
       viewTransition,
       replace,
@@ -1964,6 +1970,16 @@ export class RouterCore<
       hashScrollIntoView,
       ignoreBlocker,
     })
+
+    // Clear pending location after commit starts
+    // We do this on next microtask to allow synchronous navigate calls to chain
+    Promise.resolve().then(() => {
+      if (this.pendingBuiltLocation === location) {
+        this.pendingBuiltLocation = undefined
+      }
+    })
+
+    return commitPromise
   }
 
   /**
