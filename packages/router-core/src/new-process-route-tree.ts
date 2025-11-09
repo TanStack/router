@@ -127,6 +127,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 	route: TRouteLike,
 	start: number,
 	node: SegmentNode,
+	depth: number,
 	onRoute: (route: TRouteLike, node: SegmentNode) => void
 ) {
 	let cursor = start
@@ -152,6 +153,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 							node.static ??= new Map()
 							const next = createStaticNode(route.fullPath)
 							next.parent = node
+							next.depth = ++depth
 							nextNode = next
 							node.static.set(value, next)
 						}
@@ -164,6 +166,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 							node.staticInsensitive ??= new Map()
 							const next = createStaticNode(route.fullPath)
 							next.parent = node
+							next.depth = ++depth
 							nextNode = next
 							node.staticInsensitive.set(name, next)
 						}
@@ -181,6 +184,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 					} else {
 						const next = createDynamicNode(SEGMENT_TYPE_PARAM, route.fullPath, caseSensitive, prefix, suffix)
 						nextNode = next
+						next.depth = ++depth
 						next.parent = node
 						node.dynamic ??= []
 						node.dynamic.push(next)
@@ -199,6 +203,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 						const next = createDynamicNode(SEGMENT_TYPE_OPTIONAL_PARAM, route.fullPath, caseSensitive, prefix, suffix)
 						nextNode = next
 						next.parent = node
+						next.depth = ++depth
 						node.optional ??= []
 						node.optional.push(next)
 					}
@@ -212,6 +217,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 					const next = createDynamicNode(SEGMENT_TYPE_WILDCARD, route.fullPath, caseSensitive, prefix, suffix)
 					nextNode = next
 					next.parent = node
+					next.depth = ++depth
 					node.wildcard ??= []
 					node.wildcard.push(next)
 				}
@@ -223,7 +229,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 		onRoute(route, node)
 	}
 	if (route.children) for (const child of route.children) {
-		parseSegments(data, child as TRouteLike, cursor, node, onRoute)
+		parseSegments(data, child as TRouteLike, cursor, node, depth, onRoute)
 	}
 }
 
@@ -279,6 +285,7 @@ function sortTreeNodes(node: SegmentNode) {
 function createStaticNode(fullPath: string): StaticSegmentNode {
 	return {
 		kind: SEGMENT_TYPE_PATHNAME,
+		depth: 0,
 		static: null,
 		staticInsensitive: null,
 		dynamic: null,
@@ -297,6 +304,7 @@ function createStaticNode(fullPath: string): StaticSegmentNode {
 function createDynamicNode(kind: typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM, fullPath: string, caseSensitive: boolean, prefix?: string, suffix?: string): DynamicSegmentNode {
 	return {
 		kind,
+		depth: 0,
 		static: null,
 		staticInsensitive: null,
 		dynamic: null,
@@ -348,6 +356,8 @@ type SegmentNode = {
 	fullPath: string
 
 	parent: SegmentNode | null
+
+	depth: number
 }
 
 // function intoRouteLike(routeTree, parent) {
@@ -391,7 +401,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 	const routesById = {} as Record<string, TRouteLike>
 	const routesByPath = {} as Record<string, TRouteLike>
 	let index = 0
-	parseSegments(data, routeTree, 1, segmentTree, (route, node) => {
+	parseSegments(data, routeTree, 1, segmentTree, 0, (route, node) => {
 		initRoute?.(route, index)
 
 		invariant(
@@ -422,9 +432,9 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 }
 
 
-export function findMatch(path: string, segmentTree: SegmentNode): { routeId: string, params: Record<string, string> } | null {
+export function findMatch(path: string, segmentTree: SegmentNode, fuzzy = false): { routeId: string, params: Record<string, string> } | null {
 	const parts = path.split('/')
-	const leaf = getNodeMatch(parts, segmentTree)
+	const leaf = getNodeMatch(parts, segmentTree, fuzzy)
 	if (!leaf) return null
 	const params = extractParams(path, parts, leaf)
 	return {
@@ -482,16 +492,18 @@ function extractParams(path: string, parts: Array<string>, leaf: { node: Segment
 }
 
 function buildBranch(node: SegmentNode) {
-	const list = [node]
-	while (node.parent) {
-		node = node.parent
-		list.push(node)
-	}
-	list.reverse()
+	const list: Array<SegmentNode> = Array(node.depth + 1)
+	do {
+		list[node.depth] = node
+		node = node.parent!
+	} while (node)
 	return list
 }
 
-function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
+/**
+ * when fuzzy: true, we return the longest matching node even if not all parts are consumed
+ */
+function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode, fuzzy: boolean) {
 	parts = parts.filter(Boolean)
 
 	type Frame = {
@@ -507,12 +519,13 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode) {
 	const stack: Array<Frame> = [
 		{ node: segmentTree, index: 0, depth: 0, skipped: 0 }
 	]
+	let stackIndex = 0
 
 	let wildcardMatch: Frame | null = null
 
-	while (stack.length) {
+	while (stackIndex < stack.length) {
 		// eslint-disable-next-line prefer-const
-		let { node, index, skipped, depth } = stack.shift()!
+		let { node, index, skipped, depth } = stack[stackIndex++]!
 
 		main: while (node && index <= parts.length) {
 			if (index === parts.length) {
