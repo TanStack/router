@@ -11,9 +11,11 @@ import {
 } from './utils'
 import { processRouteTree } from './process-route-tree'
 import {
+  SEGMENT_TYPE_PATHNAME,
   cleanPath,
   interpolatePath,
   matchPathname,
+  parsePathname,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -31,7 +33,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
-import type { ParsePathnameCache } from './path'
+import type { ParsePathnameCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -2686,26 +2688,54 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     let fuzzyMatch:
       | { foundRoute: TRouteLike; routeParams: Record<string, string> }
       | undefined = undefined
+    const exactMatches: Array<{
+      route: TRouteLike
+      routeParams: Record<string, string>
+      endsWithStatic: boolean
+    }> = []
+
+    const getLastNonSlashSegment = (segments: ReadonlyArray<Segment>) => {
+      for (let i = segments.length - 1; i >= 0; i--) {
+        if (segments[i]?.value !== '/') return segments[i]
+      }
+      return undefined
+    }
+
     for (const route of flatRoutes) {
       const matchedParams = getMatchedParams(route)
 
       if (matchedParams) {
-        if (
-          route.path !== '/' &&
-          (matchedParams as Record<string, string>)['**']
-        ) {
-          if (!fuzzyMatch) {
-            fuzzyMatch = { foundRoute: route, routeParams: matchedParams }
-          }
+        const isFuzzy =
+          route.path !== '/' && (matchedParams as Record<string, string>)['**']
+
+        if (isFuzzy) {
+          fuzzyMatch ??= { foundRoute: route, routeParams: matchedParams }
         } else {
-          foundRoute = route
-          routeParams = matchedParams
-          break
+          const routeSegments = parsePathname(route.fullPath, parseCache)
+          const pathSegments = parsePathname(trimmedPath, parseCache)
+          const lastRouteSegment = getLastNonSlashSegment(routeSegments)
+          const lastPathSegment = getLastNonSlashSegment(pathSegments)
+          const endsWithStatic =
+            lastRouteSegment?.type === SEGMENT_TYPE_PATHNAME &&
+            lastPathSegment?.type === SEGMENT_TYPE_PATHNAME &&
+            lastRouteSegment.value === lastPathSegment.value
+
+          exactMatches.push({
+            route,
+            routeParams: matchedParams,
+            endsWithStatic: !!endsWithStatic,
+          })
         }
       }
     }
-    // did not find a perfect fit, so take the fuzzy matching route if it exists
-    if (!foundRoute && fuzzyMatch) {
+
+    if (exactMatches.length > 0) {
+      exactMatches.sort(
+        (a, b) => Number(b.endsWithStatic) - Number(a.endsWithStatic),
+      )
+      foundRoute = exactMatches[0]!.route
+      routeParams = exactMatches[0]!.routeParams
+    } else if (fuzzyMatch) {
       foundRoute = fuzzyMatch.foundRoute
       routeParams = fuzzyMatch.routeParams
     }
