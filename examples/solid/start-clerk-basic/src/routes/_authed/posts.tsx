@@ -13,7 +13,12 @@ function PostsComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        <For each={[...posts(), { id: 'i-do-not-exist', title: 'Non-existent Post' }]}>
+        <For
+          each={[
+            ...posts(),
+            { id: 'i-do-not-exist', title: 'Non-existent Post' },
+          ]}
+        >
           {(post) => (
             <li class="whitespace-nowrap">
               <Link
