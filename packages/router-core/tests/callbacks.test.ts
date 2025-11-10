@@ -64,10 +64,10 @@ describe('callbacks', () => {
     it('runs on navigate from a previous route', async () => {
       const onLeave = vi.fn()
       const router = setup({ onLeave })
-      await router.navigate({ to: '/foo/foo' })
+      await router.navigate({ to: '/foo' })
 
       // Leaving foo to bar
-      await router.navigate({ to: '/bar/bar' })
+      await router.navigate({ to: '/bar' })
       expect(onLeave).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({ id: '/foo/foo' }),
@@ -86,7 +86,7 @@ describe('callbacks', () => {
     it('runs on navigate to the same route', async () => {
       const onStay = vi.fn()
       const router = setup({ onStay })
-      await router.navigate({ to: '/foo/foo' })
+      await router.navigate({ to: '/foo' })
 
       // Staying on foo
       await router.navigate({ to: '/foo', search: { foo: 'baz' } })
@@ -96,7 +96,7 @@ describe('callbacks', () => {
       )
 
       // Staying on foo
-      await router.navigate({ to: '/foo/foo', search: { foo: 'quux' } })
+      await router.navigate({ to: '/foo', search: { foo: 'quux' } })
       expect(onStay).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({ id: '/foo/foo', search: { foo: 'quux' } }),

@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { useExperimentalNonNestedRoutes } from './utils/useExperimentalNonNestedRoutes'
 import type { Page } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
