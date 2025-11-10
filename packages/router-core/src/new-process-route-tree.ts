@@ -126,9 +126,9 @@ function parseSegments<TRouteLike extends RouteLike>(
 	data: Uint16Array,
 	route: TRouteLike,
 	start: number,
-	node: SegmentNode,
+	node: AnySegmentNode,
 	depth: number,
-	onRoute: (route: TRouteLike, node: SegmentNode) => void
+	onRoute: (route: TRouteLike, node: AnySegmentNode) => void
 ) {
 	let cursor = start
 	{
@@ -136,7 +136,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 		const length = path.length
 		const caseSensitive = route.options?.caseSensitive ?? false
 		while (cursor < length) {
-			let nextNode: SegmentNode
+			let nextNode: AnySegmentNode
 			const start = cursor
 			parseSegment(path, start, data)
 			const end = data[5]!
@@ -328,6 +328,7 @@ type DynamicSegmentNode = SegmentNode & {
 	caseSensitive: boolean
 }
 
+type AnySegmentNode = StaticSegmentNode | DynamicSegmentNode
 
 type SegmentNode = {
 	kind: SegmentKind
@@ -353,7 +354,7 @@ type SegmentNode = {
 	// The full path for this segment node (will only be valid on leaf nodes)
 	fullPath: string
 
-	parent: SegmentNode | null
+	parent: AnySegmentNode | null
 
 	depth: number
 }
@@ -430,7 +431,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 }
 
 
-export function findMatch(path: string, segmentTree: SegmentNode, fuzzy = false): { routeId: string, params: Record<string, string> } | null {
+export function findMatch(path: string, segmentTree: AnySegmentNode, fuzzy = false): { routeId: string, params: Record<string, string> } | null {
 	const parts = path.split('/')
 	const leaf = getNodeMatch(parts, segmentTree, fuzzy)
 	if (!leaf) return null
@@ -442,11 +443,10 @@ export function findMatch(path: string, segmentTree: SegmentNode, fuzzy = false)
 	}
 }
 
-function extractParams(path: string, parts: Array<string>, leaf: { node: SegmentNode, skipped: number }) {
+function extractParams(path: string, parts: Array<string>, leaf: { node: AnySegmentNode, skipped: number }) {
 	const list = buildBranch(leaf.node)
 	let nodeParts: Array<string> | null = null
 	const params: Record<string, string> = {}
-	const data = new Uint16Array(6)
 	for (let partIndex = 0, nodeIndex = 0, pathIndex = 0; partIndex < parts.length && nodeIndex < list.length; partIndex++, nodeIndex++, pathIndex++) {
 		const node = list[nodeIndex]!
 		const part = parts[partIndex]!
@@ -455,34 +455,35 @@ function extractParams(path: string, parts: Array<string>, leaf: { node: Segment
 		if (node.kind === SEGMENT_TYPE_PARAM) {
 			nodeParts ??= leaf.node.fullPath.split('/')
 			const nodePart = nodeParts[nodeIndex]!
-			parseSegment(nodePart, 0, data)
 			// param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
-			const name = nodePart.substring(data[2]!, data[3])
-			const n = node as DynamicSegmentNode
-			if (n.suffix || n.prefix) {
-				params[name] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
+			if (node.suffix !== undefined || node.prefix !== undefined) {
+				const preLength = node.prefix?.length ?? 0
+				const sufLength = node.suffix?.length ?? 0
+				const name = nodePart.substring(preLength + 2, nodePart.length - sufLength - 1)
+				params[name] = part.substring(preLength, part.length - sufLength)
 			} else {
+				const name = nodePart.substring(1)
 				params[name] = part
 			}
 		} else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
 			nodeParts ??= leaf.node.fullPath.split('/')
 			const nodePart = nodeParts[nodeIndex]!
-			parseSegment(nodePart, 0, data)
+			const preLength = node.prefix?.length ?? 0
+			const sufLength = node.suffix?.length ?? 0
+			const name = nodePart.substring(preLength + 3, nodePart.length - sufLength - 1)
 			// param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
-			const name = nodePart.substring(data[2]!, data[3])
-			const n = node as DynamicSegmentNode
 			if (leaf.skipped & (1 << nodeIndex)) {
 				partIndex-- // stay on the same part
 				params[name] = ''
 				continue
 			}
-			if (n.suffix || n.prefix) {
-				params[name] = part.substring(n.prefix?.length ?? 0, part.length - (n.suffix?.length ?? 0))
+			if (node.suffix || node.prefix) {
+				params[name] = part.substring(preLength, part.length - sufLength)
 			} else {
 				params[name] = part
 			}
 		} else if (node.kind === SEGMENT_TYPE_WILDCARD) {
-			const n = node as DynamicSegmentNode
+			const n = node
 			params['*'] = path.substring(currentPathIndex + (n.prefix?.length ?? 0), path.length - (n.suffix?.length ?? 0))
 			break
 		}
@@ -490,8 +491,8 @@ function extractParams(path: string, parts: Array<string>, leaf: { node: Segment
 	return params
 }
 
-function buildBranch(node: SegmentNode) {
-	const list: Array<SegmentNode> = Array(node.depth + 1)
+function buildBranch(node: AnySegmentNode) {
+	const list: Array<AnySegmentNode> = Array(node.depth + 1)
 	do {
 		list[node.depth] = node
 		node = node.parent!
@@ -499,11 +500,11 @@ function buildBranch(node: SegmentNode) {
 	return list
 }
 
-function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode, fuzzy: boolean) {
+function getNodeMatch(parts: Array<string>, segmentTree: AnySegmentNode, fuzzy: boolean) {
 	parts = parts.filter(Boolean)
 
 	type Frame = {
-		node: SegmentNode
+		node: AnySegmentNode
 		index: number
 		depth: number
 		/** Bitmask of skipped optional segments */
