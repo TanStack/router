@@ -1363,13 +1363,13 @@ export class RouterCore<
 
       // Existing matches are matches that are already loaded along with
       // pending matches that are still loading
-      const matchId = 
+      const matchId =
         // route.id for disambiguation
-        route.id
+        route.id +
         // interpolatedPath for param changes
-        + interpolatedPath
+        interpolatedPath +
         // explicit deps
-        + loaderDepsHash
+        loaderDepsHash
 
       const existingMatch = this.getMatch(matchId)
 
