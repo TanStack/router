@@ -102,6 +102,7 @@ function RootDocument({ children }: { children: JSXElement }) {
       <body>
         <HeadContent />
 
+<<<<<<< Updated upstream
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -127,6 +128,36 @@ function RootDocument({ children }: { children: JSXElement }) {
             <SignedOut>
               <SignInButton mode="modal" />
             </SignedOut>
+=======
+
+        <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+          <div class="p-2 flex gap-2 text-lg">
+            <Link
+              to="/"
+              activeProps={{
+                class: 'font-bold',
+              }}
+              activeOptions={{ exact: true }}
+            >
+              Home
+            </Link>{' '}
+            <Link
+              to="/posts"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Posts
+            </Link>
+            <div class="ml-auto">
+              <SignedIn>
+                <UserButton />
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal" />
+              </SignedOut>
+            </div>
+>>>>>>> Stashed changes
           </div>
         </div>
         <hr />
