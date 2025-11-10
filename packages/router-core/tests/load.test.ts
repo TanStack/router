@@ -51,14 +51,14 @@ describe('beforeLoad skip or exec', () => {
     const navigation = router.navigate({ to: '/foo' })
     expect(beforeLoad).toHaveBeenCalledTimes(1)
     expect(router.state.pendingMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await navigation
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: '/foo',
+          id: '/foo/foo',
           context: {
             hello: 'world',
           },
@@ -73,7 +73,7 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     await router.preloadRoute({ to: '/foo' })
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
     await router.navigate({ to: '/foo' })
@@ -87,7 +87,7 @@ describe('beforeLoad skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await router.navigate({ to: '/foo' })
 
@@ -233,14 +233,14 @@ describe('loader skip or exec', () => {
     const navigation = router.navigate({ to: '/foo' })
     expect(loader).toHaveBeenCalledTimes(1)
     expect(router.state.pendingMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await navigation
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: '/foo',
+          id: '/foo/foo',
           loaderData: {
             hello: 'world',
           },
@@ -255,7 +255,7 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     await router.preloadRoute({ to: '/foo' })
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
     await router.navigate({ to: '/foo' })
@@ -268,7 +268,7 @@ describe('loader skip or exec', () => {
     const router = setup({ loader, staleTime: 1000 })
     await router.preloadRoute({ to: '/foo' })
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
     await router.navigate({ to: '/foo' })
@@ -282,7 +282,7 @@ describe('loader skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await router.navigate({ to: '/foo' })
 
@@ -494,7 +494,7 @@ test('cancelMatches after pending timeout', async () => {
   await sleep(WAIT_TIME * 30)
 
   // At this point, pending timeout should have triggered
-  const fooMatch = router.getMatch('/foo')
+  const fooMatch = router.getMatch('/foo/foo')
   expect(fooMatch).toBeDefined()
 
   // Navigate away, which should cancel the pending match
@@ -505,7 +505,7 @@ test('cancelMatches after pending timeout', async () => {
 
   // Verify that abort was called and pending timeout was cleared
   expect(onAbortMock).toHaveBeenCalled()
-  const cancelledFooMatch = router.getMatch('/foo')
+  const cancelledFooMatch = router.getMatch('/foo/foo')
   expect(cancelledFooMatch?._nonReactive.pendingTimeout).toBeUndefined()
 })
 

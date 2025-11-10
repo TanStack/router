@@ -213,7 +213,7 @@ const isBeforeLoadSsr = (
 
   // in SPA mode, only SSR the root route
   if (inner.router.isShell()) {
-    existingMatch.ssr = matchId === rootRouteId
+    existingMatch.ssr = route.id === rootRouteId
     return
   }
 

@@ -377,7 +377,6 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
-  leaveWildcards?: boolean
   leaveParams?: boolean
   // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
   decodeCharMap?: Map<string, string>
@@ -403,7 +402,6 @@ type InterPolatePathResult = {
 export function interpolatePath({
   path,
   params,
-  leaveWildcards,
   leaveParams,
   decodeCharMap,
   parseCache,
@@ -446,9 +444,6 @@ export function interpolatePath({
         if (!params._splat) {
           isMissingParams = true
           // For missing splat parameters, just return the prefix and suffix without the wildcard
-          if (leaveWildcards) {
-            return `${segmentPrefix}${segment.value}${segmentSuffix}`
-          }
           // If there is a prefix or suffix, return them joined, otherwise omit the segment
           if (segmentPrefix || segmentSuffix) {
             return `${segmentPrefix}${segmentSuffix}`
@@ -457,9 +452,6 @@ export function interpolatePath({
         }
 
         const value = encodeParam('_splat')
-        if (leaveWildcards) {
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
-        }
         return `${segmentPrefix}${value}${segmentSuffix}`
       }
 
@@ -487,9 +479,6 @@ export function interpolatePath({
 
         // Check if optional parameter is missing or undefined
         if (!(key in params) || params[key] == null) {
-          if (leaveWildcards) {
-            return `${segmentPrefix}${key}${segmentSuffix}`
-          }
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
           if (segmentPrefix || segmentSuffix) {
             return `${segmentPrefix}${segmentSuffix}`
@@ -503,9 +492,6 @@ export function interpolatePath({
         if (leaveParams) {
           const value = encodeParam(segment.value)
           return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
-        }
-        if (leaveWildcards) {
-          return `${segmentPrefix}${key}${encodeParam(key) ?? ''}${segmentSuffix}`
         }
         return `${segmentPrefix}${encodeParam(key) ?? ''}${segmentSuffix}`
       }
