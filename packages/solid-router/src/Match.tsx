@@ -411,7 +411,7 @@ export const Outlet = () => {
 
         return (
           <Solid.Show
-            when={currentMatchId() === rootRouteId}
+            when={routeId() === rootRouteId}
             fallback={<Match matchId={currentMatchId()} />}
           >
             <Solid.Suspense
