@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { useExperimentalNonNestedRoutes } from './utils/useExperimentalNonNestedRoutes'
 
 const testCases: Array<{
   name: string
@@ -185,13 +184,7 @@ test.describe('Non-nested paths', () => {
           await expect(pathRouteHeading).not.toBeVisible()
           await expect(barHeading).toBeVisible()
           const bar2ParamValue = await barParams.innerText()
-          if (useExperimentalNonNestedRoutes || testPathDesc !== 'named') {
-            expect(JSON.parse(bar2ParamValue)).toEqual(paramValue2)
-          } else {
-            // this is a bug with named path params and non-nested paths
-            // that is resolved in the new experimental flag
-            expect(JSON.parse(bar2ParamValue)).toEqual(paramValue)
-          }
+          expect(JSON.parse(bar2ParamValue)).toEqual(paramValue2)
         })
       })
     },
@@ -350,17 +343,8 @@ test.describe('Deeply nested non-nested paths', () => {
     await expect(bazBarFooRouteHeading).not.toBeVisible()
     await expect(bazBarFooQuxHeading).toBeVisible()
     await expect(bazBarFooQuxParams).toBeVisible()
-
-    if (useExperimentalNonNestedRoutes) {
-      expect(await bazBarFooQuxParams.innerText()).toBe(
-        JSON.stringify({ baz: 'baz-bar-qux', foo: 'foo' }),
-      )
-    } else {
-      // this is a bug with named path params and non-nested paths
-      // that is resolved in the new experimental flag
-      expect(await bazBarFooQuxParams.innerText()).toBe(
-        JSON.stringify({ baz: 'baz-bar', foo: 'foo' }),
-      )
-    }
+    expect(await bazBarFooQuxParams.innerText()).toBe(
+      JSON.stringify({ baz: 'baz-bar-qux', foo: 'foo' }),
+    )
   })
 })

@@ -48,14 +48,14 @@ describe('callbacks', () => {
       await router.navigate({ to: '/foo' })
       expect(onEnter).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ id: '/foo' }),
+        expect.objectContaining({ id: '/foo/foo' }),
       )
 
       // Entering bar
       await router.navigate({ to: '/bar' })
       expect(onEnter).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ id: '/bar' }),
+        expect.objectContaining({ id: '/bar/bar' }),
       )
     })
   })
@@ -64,20 +64,20 @@ describe('callbacks', () => {
     it('runs on navigate from a previous route', async () => {
       const onLeave = vi.fn()
       const router = setup({ onLeave })
-      await router.navigate({ to: '/foo' })
+      await router.navigate({ to: '/foo/foo' })
 
       // Leaving foo to bar
-      await router.navigate({ to: '/bar' })
+      await router.navigate({ to: '/bar/bar' })
       expect(onLeave).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ id: '/foo' }),
+        expect.objectContaining({ id: '/foo/foo' }),
       )
 
       // Leaving bar to foo
       await router.navigate({ to: '/foo' })
       expect(onLeave).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ id: '/bar' }),
+        expect.objectContaining({ id: '/bar/bar' }),
       )
     })
   })
@@ -86,20 +86,20 @@ describe('callbacks', () => {
     it('runs on navigate to the same route', async () => {
       const onStay = vi.fn()
       const router = setup({ onStay })
-      await router.navigate({ to: '/foo' })
+      await router.navigate({ to: '/foo/foo' })
 
       // Staying on foo
       await router.navigate({ to: '/foo', search: { foo: 'baz' } })
       expect(onStay).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ id: '/foo', search: { foo: 'baz' } }),
+        expect.objectContaining({ id: '/foo/foo', search: { foo: 'baz' } }),
       )
 
       // Staying on foo
-      await router.navigate({ to: '/foo', search: { foo: 'quux' } })
+      await router.navigate({ to: '/foo/foo', search: { foo: 'quux' } })
       expect(onStay).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ id: '/foo', search: { foo: 'quux' } }),
+        expect.objectContaining({ id: '/foo/foo', search: { foo: 'quux' } }),
       )
     })
   })
