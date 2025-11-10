@@ -349,7 +349,6 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
-  leaveWildcards?: boolean
   leaveParams?: boolean
   // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
   decodeCharMap?: Map<string, string>
@@ -374,7 +373,6 @@ type InterPolatePathResult = {
 export function interpolatePath({
   path,
   params,
-  leaveWildcards,
   leaveParams,
   decodeCharMap,
 }: InterpolatePathOptions): InterPolatePathResult {
@@ -427,21 +425,13 @@ export function interpolatePath({
         // For missing splat parameters, just return the prefix and suffix without the wildcard
         // If there is a prefix or suffix, return them joined, otherwise omit the segment
         if (prefix || suffix) {
-          if (leaveWildcards) {
-            interpolatedSegments.push(`${prefix}{$}${suffix}`)
-          } else {
-            interpolatedSegments.push(`${prefix}${suffix}`)
-          }
+          interpolatedSegments.push(`${prefix}${suffix}`)
         }
         continue
       }
 
       const value = encodeParam('_splat')
-      if (leaveWildcards) {
-        interpolatedSegments.push(`${prefix}${prefix || suffix ? '{$}' : '$'}${value ?? ''}${suffix}`)
-      } else {
-        interpolatedSegments.push(`${prefix}${value}${suffix}`)
-      }
+      interpolatedSegments.push(`${prefix}${value}${suffix}`)
       continue
     }
 
@@ -471,9 +461,7 @@ export function interpolatePath({
 
       // Check if optional parameter is missing or undefined
       if (!(key in params) || params[key] == null) {
-        if (leaveWildcards) {
-          interpolatedSegments.push(`${prefix}${key}${suffix}`)
-        } else if (prefix || suffix) {
+       if (prefix || suffix) {
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
           interpolatedSegments.push(`${prefix}${suffix}`)
         }
@@ -485,8 +473,6 @@ export function interpolatePath({
 
       const value = encodeParam(key) ?? ''
       if (leaveParams) {
-        interpolatedSegments.push(`${prefix}${key}${value}${suffix}`)
-      } else if (leaveWildcards) {
         interpolatedSegments.push(`${prefix}${key}${value}${suffix}`)
       } else {
         interpolatedSegments.push(`${prefix}${value}${suffix}`)

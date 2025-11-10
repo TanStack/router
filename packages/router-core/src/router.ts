@@ -1362,14 +1362,13 @@ export class RouterCore<
 
       // Existing matches are matches that are already loaded along with
       // pending matches that are still loading
-      const matchId =
-        interpolatePath({
-          path: route.id,
-          params: routeParams,
-          leaveWildcards: true,
-          decodeCharMap: this.pathParamsDecodeCharMap,
-          parseCache: this.parsePathnameCache,
-        }).interpolatedPath + loaderDepsHash
+      const matchId = 
+        // route.id for disambiguation
+        route.id
+        // interpolatedPath for param changes
+        + interpolatedPath
+        // explicit deps
+        + loaderDepsHash
 
       const existingMatch = this.getMatch(matchId)
 
@@ -1677,7 +1676,6 @@ export class RouterCore<
           // This preserves the original parameter syntax including optional parameters
           path: nextTo,
           params: nextParams,
-          leaveWildcards: false,
           leaveParams: opts.leaveParams,
           decodeCharMap: this.pathParamsDecodeCharMap,
           parseCache: this.parsePathnameCache,
