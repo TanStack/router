@@ -56,7 +56,7 @@ export function ClientOnly(props: ClientOnlyProps) {
  * ```
  * @returns True if the JS has been hydrated already, false otherwise.
  */
-function useHydrated(): Solid.Accessor<boolean> {
+export function useHydrated(): Solid.Accessor<boolean> {
   const [hydrated, setHydrated] = Solid.createSignal(false)
   Solid.onMount(() => {
     setHydrated(true)

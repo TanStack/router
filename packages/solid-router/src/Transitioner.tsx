@@ -19,7 +19,7 @@ export function Transitioner() {
     return null
   }
 
-  const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+  const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
 
   // Track pending state changes
   const hasPendingMatches = useRouterState({
@@ -29,20 +29,15 @@ export function Transitioner() {
   const previousIsLoading = usePrevious(isLoading)
 
   const isAnyPending = () =>
-    isLoading() || isTransitioning() || hasPendingMatches()
+    isLoading() || isSolidTransitioning() || hasPendingMatches()
   const previousIsAnyPending = usePrevious(isAnyPending)
 
   const isPagePending = () => isLoading() || hasPendingMatches()
   const previousIsPagePending = usePrevious(isPagePending)
 
   router.startTransition = (fn: () => void | Promise<void>) => {
-    setIsTransitioning(true)
-    Solid.startTransition(async () => {
-      try {
-        await fn()
-      } finally {
-        setIsTransitioning(false)
-      }
+    Solid.startTransition(() => {
+      startSolidTransition(fn)
     })
   }
 
