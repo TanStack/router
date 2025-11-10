@@ -51,6 +51,49 @@ describe('findMatch', () => {
 						path: '$b/bbb',
 					}
 				]
+			}, {
+				id: '/x/y/z',
+				fullPath: '/x/y/z',
+				path: 'x/y/z',
+			}, {
+				id: '/$id/y/w',
+				fullPath: '/$id/y/w',
+	it('foo', () => {
+		expect(findMatch('/posts/new', segmentTree)).toMatchInlineSnapshot(`
+			{
+			  "params": {
+			    "other": "",
+			  },
+			  "routeId": "/{-$other}/posts/new",
+			}
+		`)
+		expect(findMatch('/yo/posts/new', segmentTree)).toMatchInlineSnapshot(`
+			{
+			  "params": {
+			    "other": "yo",
+			  },
+			  "routeId": "/{-$other}/posts/new",
+			}
+		`)
+		expect(findMatch('/x/y/w', segmentTree)).toMatchInlineSnapshot(`
+			{
+			  "params": {
+			    "id": "x",
+			  },
+			  "routeId": "/$id/y/w",
+			}
+		`)
+	})
+
+				path: '$id/y/w',
+			}, {
+				id: '/{-$other}/posts/new',
+				fullPath: '/{-$other}/posts/new',
+				path: '{-$other}/posts/new',
+			}, {
+				id: '/posts/$id',
+				fullPath: '/posts/$id',
+				path: 'posts/$id',
 			}
 		]
 	}

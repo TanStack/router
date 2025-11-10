@@ -537,6 +537,38 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode, fuzzy: boo
 
 			const part = parts[index]!
 
+			// 3. Try dynamic match
+			if (node.dynamic) {
+				for (const segment of node.dynamic) {
+					const { prefix, suffix } = segment
+					if (prefix || suffix) {
+						const casePart = segment.caseSensitive ? part : part.toLowerCase()
+						if (prefix && !casePart.startsWith(prefix)) continue
+						if (suffix && !casePart.endsWith(suffix)) continue
+					}
+					stack.push({ node: segment, index: index + 1, skipped, depth: depth + 1 })
+				}
+			}
+
+			// 4. Try optional match
+			if (node.optional) {
+				const nextDepth = depth + 1
+				const nextSkipped = skipped | (1 << nextDepth)
+				for (const segment of node.optional) {
+					// when skipping, node and depth advance by 1, but index doesn't
+					stack.push({ node: segment, index, skipped: nextSkipped, depth: nextDepth }) // enqueue skipping the optional
+				}
+				for (const segment of node.optional) {
+					const { prefix, suffix } = segment
+					if (prefix || suffix) {
+						const casePart = segment.caseSensitive ? part : part.toLowerCase()
+						if (prefix && !casePart.startsWith(prefix)) continue
+						if (suffix && !casePart.endsWith(suffix)) continue
+					}
+					stack.push({ node: segment, index: index + 1, skipped, depth: nextDepth })
+				}
+			}
+
 			// 1. Try static match
 			if (node.static) {
 				const match = node.static.get(part)
@@ -556,44 +588,6 @@ function getNodeMatch(parts: Array<string>, segmentTree: SegmentNode, fuzzy: boo
 					depth++
 					index++
 					continue
-				}
-			}
-
-			// 3. Try dynamic match
-			if (node.dynamic) {
-				for (const segment of node.dynamic) {
-					const { prefix, suffix } = segment
-					if (prefix || suffix) {
-						const casePart = segment.caseSensitive ? part : part.toLowerCase()
-						if (prefix && !casePart.startsWith(prefix)) continue
-						if (suffix && !casePart.endsWith(suffix)) continue
-					}
-					node = segment
-					depth++
-					index++
-					continue main
-				}
-			}
-
-			// 4. Try optional match
-			if (node.optional) {
-				const nextDepth = depth + 1
-				const nextSkipped = skipped | (1 << nextDepth)
-				for (const segment of node.optional) {
-					// when skipping, node and depth advance by 1, but index doesn't
-					stack.push({ node: segment, index, skipped: nextSkipped, depth: nextDepth }) // enqueue skipping the optional
-				}
-				for (const segment of node.optional) {
-					const { prefix, suffix } = segment
-					if (prefix || suffix) {
-						const casePart = segment.caseSensitive ? part : part.toLowerCase()
-						if (prefix && !casePart.startsWith(prefix)) continue
-						if (suffix && !casePart.endsWith(suffix)) continue
-					}
-					node = segment
-					index++
-					depth++
-					continue main
 				}
 			}
 
