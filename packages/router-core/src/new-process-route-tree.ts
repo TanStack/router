@@ -234,21 +234,19 @@ function parseSegments<TRouteLike extends RouteLike>(
 }
 
 function sortDynamic(a: { prefix?: string, suffix?: string }, b: { prefix?: string, suffix?: string }) {
-	const aScore =
-		// bonus for having both prefix and suffix
-		(a.prefix && a.suffix ? 500 : 0)
-		// prefix counts double
-		+ (a.prefix ? a.prefix.length * 2 : 0)
-		// suffix counts single
-		+ (a.suffix ? a.suffix.length : 0)
-	const bScore =
-		// bonus for having both prefix and suffix
-		(b.prefix && b.suffix ? 500 : 0)
-		// prefix counts double
-		+ (b.prefix ? b.prefix.length * 2 : 0)
-		// suffix counts single
-		+ (b.suffix ? b.suffix.length : 0)
-	return bScore - aScore
+	if (a.prefix && b.prefix && a.prefix !== b.prefix) {
+		if (a.prefix.startsWith(b.prefix)) return -1
+		if (b.prefix.startsWith(a.prefix)) return 1
+	}
+	if (a.suffix && b.suffix && a.suffix !== b.suffix) {
+		if (a.suffix.endsWith(b.suffix)) return -1
+		if (b.suffix.endsWith(a.suffix)) return 1
+	}
+	if (a.prefix && !b.prefix) return -1
+	if (!a.prefix && b.prefix) return 1
+	if (a.suffix && !b.suffix) return -1
+	if (!a.suffix && b.suffix) return 1
+	return 0
 }
 
 function sortTreeNodes(node: SegmentNode) {
