@@ -5,7 +5,7 @@ import {
   SignedIn,
   SignedOut,
   UserButton,
-} from '@clerk/tanstack-react-start'
+} from '@clerk/tanstack-solid-start'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { createServerFn } from '@tanstack/solid-start'
 
@@ -16,7 +16,7 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/solid-router'
-import { auth } from '@clerk/tanstack-react-start/server'
+import { auth } from '@clerk/tanstack-solid-start/server'
 import { HydrationScript } from 'solid-js/web'
 import type { JSXElement } from 'solid-js'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
@@ -85,11 +85,9 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <ClerkProvider>
-      <RootDocument>
-        <Outlet />
-      </RootDocument>
-    </ClerkProvider>
+    <RootDocument>
+      <Outlet />
+    </RootDocument>
   )
 }
 
@@ -101,34 +99,6 @@ function RootDocument({ children }: { children: JSXElement }) {
       </head>
       <body>
         <HeadContent />
-
-<<<<<<< Updated upstream
-        <div class="p-2 flex gap-2 text-lg">
-          <Link
-            to="/"
-            activeProps={{
-              class: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>{' '}
-          <Link
-            to="/posts"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Posts
-          </Link>
-          <div class="ml-auto">
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-            <SignedOut>
-              <SignInButton mode="modal" />
-            </SignedOut>
-=======
 
         <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
           <div class="p-2 flex gap-2 text-lg">
@@ -157,11 +127,11 @@ function RootDocument({ children }: { children: JSXElement }) {
                 <SignInButton mode="modal" />
               </SignedOut>
             </div>
->>>>>>> Stashed changes
           </div>
-        </div>
-        <hr />
-        {children}
+          <hr />
+          {children}
+
+        </ClerkProvider>
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>
