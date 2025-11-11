@@ -44,23 +44,24 @@ return data.user  // Contains functions and metadata ❌
 
 ### What's Serializable?
 
-| Type | Serializable? | Example |
-|------|---------------|---------|
-| String | ✅ Yes | `"hello"` |
-| Number | ✅ Yes | `42` |
-| Boolean | ✅ Yes | `true` |
-| null | ✅ Yes | `null` |
-| Plain Object | ✅ Yes | `{ name: "Alice" }` |
-| Array | ✅ Yes | `[1, 2, 3]` |
-| ISO String | ✅ Yes | `new Date().toISOString()` |
-| undefined | ❌ No | Use `null` instead |
-| Function | ❌ No | Cannot serialize |
-| Class Instance | ❌ No | Extract fields |
-| Date Object | ❌ No | Convert to ISO string |
+| Type           | Serializable? | Example                    |
+| -------------- | ------------- | -------------------------- |
+| String         | ✅ Yes        | `"hello"`                  |
+| Number         | ✅ Yes        | `42`                       |
+| Boolean        | ✅ Yes        | `true`                     |
+| null           | ✅ Yes        | `null`                     |
+| Plain Object   | ✅ Yes        | `{ name: "Alice" }`        |
+| Array          | ✅ Yes        | `[1, 2, 3]`                |
+| ISO String     | ✅ Yes        | `new Date().toISOString()` |
+| undefined      | ❌ No         | Use `null` instead         |
+| Function       | ❌ No         | Cannot serialize           |
+| Class Instance | ❌ No         | Extract fields             |
+| Date Object    | ❌ No         | Convert to ISO string      |
 
 ## Common Errors & Solutions
 
 ### Error: "Cannot serialize function"
+
 **Cause**: Returning an object with methods
 **Fix**: Extract only primitive values
 
@@ -76,6 +77,7 @@ return {
 ```
 
 ### Error: "Cannot serialize undefined"
+
 **Cause**: A field is `undefined` instead of `null`
 **Fix**: Use `null` or omit the field entirely
 
@@ -92,6 +94,7 @@ return {
 ```
 
 ### Error: React Hydration Mismatch
+
 **Cause**: Server and client render different HTML
 **Fix**: Ensure consistent data structure between server/client
 
@@ -120,6 +123,7 @@ src/
 ## How It Works
 
 ### 1. User Authentication Check (`__root.tsx`)
+
 The root route uses a server function to check authentication:
 
 ```typescript
@@ -139,6 +143,7 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
 ```
 
 ### 2. Protected Routes (`_authed.tsx`)
+
 Routes prefixed with `_authed` redirect unauthenticated users to login:
 
 ```typescript
@@ -150,6 +155,7 @@ beforeLoad: ({ context }) => {
 ```
 
 ### 3. Supabase Client (`utils/supabase.ts`)
+
 Server-side Supabase client with cookie handling:
 
 ```typescript
@@ -159,8 +165,12 @@ export function getSupabaseServerClient() {
     process.env.SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { /* ... */ },
-        setAll(cookies) { /* ... */ },
+        getAll() {
+          /* ... */
+        },
+        setAll(cookies) {
+          /* ... */
+        },
       },
     },
   )
@@ -177,17 +187,21 @@ export function getSupabaseServerClient() {
 ## Troubleshooting
 
 ### Authentication not persisting
+
 Make sure cookies are properly configured in `utils/supabase.ts`
 
 ### TypeScript errors
+
 Run `npm run build` to check for type errors
 
 ### Can't connect to Supabase
+
 Verify your `.env` file has correct credentials
 
 ## Example Deployment
 
 This example works with:
+
 - ✅ Cloudflare Pages
 - ✅ Netlify
 - ✅ Vercel
