@@ -359,7 +359,8 @@ async function handleServerRoutes({
   let url = new URL(request.url)
   url = executeRewriteInput(router.rewrite, url)
   const pathname = url.pathname
-  const { matchedRoutes, foundRoute, routeParams } = router.getMatchedRoutes(pathname)
+  const { matchedRoutes, foundRoute, routeParams } =
+    router.getMatchedRoutes(pathname)
 
   // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
 
