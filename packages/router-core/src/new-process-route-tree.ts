@@ -138,8 +138,9 @@ function parseSegments<TRouteLike extends RouteLike>(
   start: number,
   node: AnySegmentNode<TRouteLike>,
   depth: number,
-  onRoute?: (route: TRouteLike, node: AnySegmentNode<TRouteLike>) => void,
+  onRoute?: (route: TRouteLike) => void,
 ) {
+  onRoute?.(route)
   let cursor = start
   {
     const path = route.fullPath ?? route.from
@@ -291,7 +292,6 @@ function parseSegments<TRouteLike extends RouteLike>(
       node = nextNode
     }
     if (route.path || !route.children) node.route = route
-    onRoute?.(route, node)
   }
   if (route.children)
     for (const child of route.children) {
@@ -492,7 +492,7 @@ export type ProcessedTree<
   singleCache: Map<any, AnySegmentNode<TSingle>>
 }
 
-export function processFlatRouteList<TRouteLike extends RouteLike>(
+export function processFlatRouteList<TRouteLike extends Extract<RouteLike, { from: string }>>(
   routeList: Array<TRouteLike>,
 ) {
   const segmentTree = createStaticNode<TRouteLike>('/')
@@ -599,7 +599,7 @@ export function processRouteTree<
     1,
     segmentTree,
     0,
-    (route, node) => {
+    (route) => {
       initRoute?.(route, index)
 
       invariant(
