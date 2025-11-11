@@ -480,15 +480,39 @@ describe('interpolatePath', () => {
       },
       {
         name: 'with optional and value',
-        to: '/optional{-$bar}',
+        to: '/{-$bar}/optional',
         params: { bar: 'baz' },
-        result: '/optional{$bar}',
+        result: '/{-$bar}/optional',
       },
       {
         name: 'with optional no value',
+        to: '/{-$bar}/optional',
+        params: {},
+        result: '/{-$bar}/optional',
+      },
+      {
+        name: 'with optional, prefix and value',
+        to: '/optional{-$bar}',
+        params: { bar: 'baz' },
+        result: '/optional{-$bar}',
+      },
+      {
+        name: 'with optional, prefix no value',
         to: '/optional{-$bar}',
         params: {},
-        result: '/optional',
+        result: '/optional{-$bar}',
+      },
+      {
+        name: 'with optional, suffix and value',
+        to: '/{-$bar}optional',
+        params: { bar: 'baz' },
+        result: '/{-$bar}optional',
+      },
+      {
+        name: 'with optional, suffix no value',
+        to: '/{-$bar}optional',
+        params: {},
+        result: '/{-$bar}optional',
       },
       {
         name: 'wildcard no braces',
