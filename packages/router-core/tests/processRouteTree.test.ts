@@ -443,13 +443,19 @@ describe('processRouteTree', () => {
       {
         routes: ['/{-$owner}/posts/new', '/posts/$id'],
         pathname: '/posts/new',
-        expected: { route: '/{-$owner}/posts/new', params: { owner: undefined } },
+        expected: {
+          route: '/{-$owner}/posts/new',
+          params: { owner: undefined },
+        },
         description: 'prefers static suffix over dynamic param',
       },
       {
         routes: ['/{-$owner}/posts/edit', '/posts/$id'],
         pathname: '/posts/edit',
-        expected: { route: '/{-$owner}/posts/edit', params: { owner: undefined } },
+        expected: {
+          route: '/{-$owner}/posts/edit',
+          params: { owner: undefined },
+        },
         description: 'prefers static suffix with different word',
       },
       {
@@ -461,7 +467,10 @@ describe('processRouteTree', () => {
       {
         routes: ['/users/{-$org}/settings', '/users/$id'],
         pathname: '/users/settings',
-        expected: { route: '/users/{-$org}/settings', params: { org: undefined } },
+        expected: {
+          route: '/users/{-$org}/settings',
+          params: { org: undefined },
+        },
         description: 'works with optional params before static',
       },
       {
@@ -473,7 +482,10 @@ describe('processRouteTree', () => {
       {
         routes: ['/api/{-$version}/docs', '/api/$endpoint'],
         pathname: '/api/docs',
-        expected: { route: '/api/{-$version}/docs', params: { version: undefined } },
+        expected: {
+          route: '/api/{-$version}/docs',
+          params: { version: undefined },
+        },
         description: 'prefers static suffix in nested routes',
       },
     ])(
