@@ -177,10 +177,7 @@ export function useBlocker(
         location: HistoryLocation,
       ): AnyShouldBlockFnLocation {
         const parsedLocation = router.parseLocation(location)
-        const matchedRoutes = router.getMatchedRoutes(
-          parsedLocation.pathname,
-          undefined,
-        )
+        const matchedRoutes = router.getMatchedRoutes(parsedLocation.pathname)
         if (matchedRoutes.foundRoute === undefined) {
           throw new Error(`No route found for location ${location.href}`)
         }
