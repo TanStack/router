@@ -98,6 +98,20 @@ describe('findRouteMatch', () => {
         '/{-$other}/posts/a/b/$c',
       )
     })
+    it('?? is this what we want?', () => {
+      const tree = makeTree([
+        '/{-$a}/{-$b}/{-$c}/d/e',
+        '/$a/$b/c/d/$e'
+      ])
+      expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe('/$a/$b/c/d/$e')
+    })
+    it('?? is this what we want?', () => {
+      const tree = makeTree([
+        '/$a/$b/$c/d/e',
+        '/$a/$b/c/d/$e'
+      ])
+      expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe('/$a/$b/c/d/$e')
+    })
   })
 
   describe('not found', () => {
@@ -114,6 +128,46 @@ describe('findRouteMatch', () => {
           "**": "/x/y/z",
         }
       `)
+    })
+  })
+
+  describe('case sensitivity competition', () => {
+    it('a case sensitive segment early on should not prevent a case insensitive match', () => {
+      const tree = {
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/Foo',
+            fullPath: '/Foo',
+            path: 'Foo',
+            options: { caseSensitive: false },
+            children: [
+              {
+                id: '/Foo/a',
+                fullPath: '/Foo/a',
+                path: '/a',
+              }
+            ]
+          }, {
+            id: '/foo',
+            fullPath: '/foo',
+            path: 'foo',
+            options: { caseSensitive: true },
+            children: [
+              {
+                id: '/foo/b',
+                fullPath: '/foo/b',
+                path: 'b',
+              }
+            ]
+          }
+        ]
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/foo/a', processedTree)?.route.id).toBe('/Foo/a')
+      expect(findRouteMatch('/foo/b', processedTree)?.route.id).toBe('/foo/b')
     })
   })
 

@@ -776,6 +776,8 @@ function getNodeMatch<T extends RouteLike>(
             dynamics,
             optionals,
           }
+          // perfect match, no need to continue
+          if (statics === parts.length) return bestMatch
         }
         break
       }
@@ -800,13 +802,30 @@ function getNodeMatch<T extends RouteLike>(
       }
 
       const part = parts[index]!
+      let lowerPart: string
+
+      // 1. Try static match
+      if (node.static) {
+        const match = node.static.get(part)
+        if (match) {
+          stack.push({
+            node: match,
+            index: index + 1,
+            skipped,
+            depth: depth + 1,
+            statics: statics + 1,
+            dynamics,
+            optionals,
+          })
+        }
+      }
 
       // 3. Try dynamic match
       if (node.dynamic) {
         for (const segment of node.dynamic) {
           const { prefix, suffix } = segment
           if (prefix || suffix) {
-            const casePart = segment.caseSensitive ? part : part.toLowerCase()
+            const casePart = segment.caseSensitive ? part : (lowerPart ??= part.toLowerCase())
             if (prefix && !casePart.startsWith(prefix)) continue
             if (suffix && !casePart.endsWith(suffix)) continue
           }
@@ -841,7 +860,7 @@ function getNodeMatch<T extends RouteLike>(
         for (const segment of node.optional) {
           const { prefix, suffix } = segment
           if (prefix || suffix) {
-            const casePart = segment.caseSensitive ? part : part.toLowerCase()
+            const casePart = segment.caseSensitive ? part : (lowerPart ??= part.toLowerCase())
             if (prefix && !casePart.startsWith(prefix)) continue
             if (suffix && !casePart.endsWith(suffix)) continue
           }
@@ -857,41 +876,17 @@ function getNodeMatch<T extends RouteLike>(
         }
       }
 
-      // 1. Try static match
-      if (node.static) {
-        const match = node.static.get(part)
-        if (match) {
-          node = match
-          depth++
-          index++
-          statics++
-          continue
-        }
-      }
-
-      // 2. Try case insensitive static match
-      if (node.staticInsensitive) {
-        const match = node.staticInsensitive.get(part.toLowerCase())
-        if (match) {
-          node = match
-          depth++
-          index++
-          statics++
-          continue
-        }
-      }
-
       // 5. Try wildcard match
       if (node.wildcard) {
         for (const segment of node.wildcard) {
           const { prefix, suffix } = segment
           if (prefix) {
-            const casePart = segment.caseSensitive ? part : part.toLowerCase()
+            const casePart = segment.caseSensitive ? part : (lowerPart ??= part.toLowerCase())
             if (!casePart.startsWith(prefix)) continue
           }
           if (suffix) {
-            const part = parts[parts.length - 1]!
-            const casePart = segment.caseSensitive ? part : part.toLowerCase()
+            const lastPart = parts[parts.length - 1]!
+            const casePart = segment.caseSensitive ? lastPart : lastPart.toLowerCase()
             if (!casePart.endsWith(suffix)) continue
           }
           // a wildcard match terminates the loop, but we need to continue searching in case there's a longer match
@@ -907,6 +902,18 @@ function getNodeMatch<T extends RouteLike>(
             }
           }
           break main
+        }
+      }
+
+      // 2. Try case insensitive static match
+      if (node.staticInsensitive) {
+        const match = node.staticInsensitive.get((lowerPart ??= part.toLowerCase()))
+        if (match) {
+          node = match
+          depth++
+          index++
+          statics++
+          continue
         }
       }
 
