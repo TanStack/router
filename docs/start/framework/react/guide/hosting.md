@@ -195,7 +195,7 @@ tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-
 
 [Nitro](https://v3.nitro.build/) is an agnostic layer that allows you to deploy TanStack Start applications to [a wide range of hostings](https://v3.nitro.build/deploy).
 
-**⚠️ The [`nitro/vite`](https://v3.nitro.build/) plugin is an official plugin from the Nitro team for using Nitro v3 as the underlying build tool for TanStack Start. It is still in development and is receiving regular updates. Please report any issues that you encounter to investigate.**
+**⚠️ The [`nitro/vite`](https://v3.nitro.build/) plugin natively integrates with Vite Environments API as the underlying build tool for TanStack Start. It is still under active development and receives regular updates. Please report any issues you encounter with reproduction so they can be investigated.**
 
 ```tsx
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -258,13 +258,8 @@ import { defineConfig } from 'vite'
 import { nitro } from 'nitro/vite'
 import viteReact from '@vitejs/plugin-react'
 
-
 export default defineConfig({
-  plugins: [
-    tanstackStart(),
-    nitro({ preset: 'bun' }),
-    viteReact(),
-  ],
+  plugins: [tanstackStart(), nitro({ preset: 'bun' }), viteReact()],
 })
 ```
 
