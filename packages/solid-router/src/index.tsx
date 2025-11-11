@@ -8,7 +8,6 @@ export {
   trimPathRight,
   trimPath,
   resolvePath,
-  parsePathname,
   interpolatePath,
   rootRouteId,
   defaultSerializeError,
