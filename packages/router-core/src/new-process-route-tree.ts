@@ -75,12 +75,13 @@ export function parseSegment(
   if (wildcardBracesMatch) {
     const prefix = wildcardBracesMatch[1]!
     const suffix = wildcardBracesMatch[2]!
+    const total = path.length
     output[0] = SEGMENT_TYPE_WILDCARD
     output[1] = start + prefix.length
     output[2] = start + prefix.length
-    output[3] = end - suffix.length
-    output[4] = end - suffix.length
-    output[5] = end
+    output[3] = total - suffix.length
+    output[4] = total - suffix.length
+    output[5] = total
     return
   }
 
