@@ -836,7 +836,9 @@ function isMatch(
         }
 
         if (matched) {
-          params[routeSegment.value.substring(1)] = _paramValue
+          if (_paramValue !== '') {
+            params[routeSegment.value.substring(1)] = _paramValue
+          }
           baseIndex++
         }
 
