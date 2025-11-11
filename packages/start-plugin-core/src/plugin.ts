@@ -39,6 +39,7 @@ export interface TanStackStartVitePluginCoreOptions {
     ssr?: {
       getServerFnById?: string
     }
+    providerEnv?: string
   }
 }
 
@@ -105,6 +106,19 @@ export function TanStackStartVitePluginCore(
     return bundle
   }
 
+  const environments: Array<{ name: string; type: 'client' | 'server' }> = [
+    { name: VITE_ENVIRONMENT_NAMES.client, type: 'client' },
+    { name: VITE_ENVIRONMENT_NAMES.server, type: 'server' },
+  ]
+  if (
+    corePluginOpts.serverFn?.providerEnv &&
+    !environments.find((e) => e.name === corePluginOpts.serverFn?.providerEnv)
+  ) {
+    environments.push({
+      name: corePluginOpts.serverFn.providerEnv,
+      type: 'server',
+    })
+  }
   return [
     {
       name: 'tanstack-start-core:config',
@@ -341,8 +355,12 @@ export function TanStackStartVitePluginCore(
     },
     tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPlugin
-    startCompilerPlugin(corePluginOpts.framework),
-    createServerFnPlugin({ framework: corePluginOpts.framework, directive }),
+    startCompilerPlugin({ framework: corePluginOpts.framework, environments }),
+    createServerFnPlugin({
+      framework: corePluginOpts.framework,
+      directive,
+      environments,
+    }),
 
     TanStackServerFnPlugin({
       // This is the ID that will be available to look up and import
@@ -371,7 +389,8 @@ export function TanStackStartVitePluginCore(
         getRuntimeCode: () =>
           `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-rpc'`,
         replacer: (d) => `createServerRpc('${d.functionId}', ${d.fn})`,
-        envName: VITE_ENVIRONMENT_NAMES.server,
+        envName:
+          corePluginOpts.serverFn?.providerEnv || VITE_ENVIRONMENT_NAMES.server,
       },
     }),
     loadEnvPlugin(),

@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { useExperimentalNonNestedRoutes } from './utils/useExperimentalNonNestedRoutes'
 import type { Page } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
@@ -100,22 +99,12 @@ test.describe('params operations + non-nested routes', () => {
     const foo2ParamsValue = page.getByTestId('foo-params-value')
     const foo2ParamsText = await foo2ParamsValue.innerText()
     const foo2ParamsObj = JSON.parse(foo2ParamsText)
-    if (useExperimentalNonNestedRoutes) {
-      expect(foo2ParamsObj).toEqual({ foo: 'foo2' })
-    } else {
-      // this is a bug that is resolved in the new experimental flag
-      expect(foo2ParamsObj).toEqual({ foo: 'foo' })
-    }
+    expect(foo2ParamsObj).toEqual({ foo: 'foo2' })
 
     const params2Value = page.getByTestId('foo-bar-params-value')
     const params2Text = await params2Value.innerText()
     const params2Obj = JSON.parse(params2Text)
-    if (useExperimentalNonNestedRoutes) {
-      expect(params2Obj).toEqual({ foo: 'foo2', bar: 'bar2' })
-    } else {
-      // this is a bug that is resolved in the new experimental flag
-      expect(params2Obj).toEqual({ foo: 'foo', bar: 'bar2' })
-    }
+    expect(params2Obj).toEqual({ foo: 'foo2', bar: 'bar2' })
   })
 })
 

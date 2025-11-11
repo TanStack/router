@@ -105,7 +105,7 @@ export const Match = (props: { matchId: string }) => {
             onCatch={(error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)
               if (isNotFound(error)) throw error
-              warning(false, `Error in route match: ${props.matchId}`)
+              warning(false, `Error in route match: ${matchState()!.routeId}`)
               routeOnCatch()?.(error)
             }}
           >
@@ -411,7 +411,7 @@ export const Outlet = () => {
 
         return (
           <Solid.Show
-            when={currentMatchId() === rootRouteId}
+            when={routeId() === rootRouteId}
             fallback={<Match matchId={currentMatchId()} />}
           >
             <Solid.Suspense
