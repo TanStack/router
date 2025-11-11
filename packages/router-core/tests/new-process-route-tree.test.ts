@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findMatch, processFlatRouteList, processRouteTree } from "../src/new-process-route-tree"
+import { findRouteMatch, processFlatRouteList, processRouteTree } from "../src/new-process-route-tree"
 import type { AnyRoute, RouteMask } from "../src"
 
 describe('processFlatRouteList', () => {
@@ -238,11 +238,10 @@ describe('findMatch', () => {
 		]
 	}
 
-	const { processedTree: { segmentTree } } =
-		processRouteTree(testTree)
+	const { processedTree } = processRouteTree(testTree)
 
 	it('foo', () => {
-		expect(findMatch('/posts/new', segmentTree)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/posts/new', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "other": "",
@@ -254,7 +253,7 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-		expect(findMatch('/yo/posts/new', segmentTree)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/yo/posts/new', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "other": "yo",
@@ -266,7 +265,7 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-		expect(findMatch('/x/y/w', segmentTree)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/x/y/w', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "id": "x",
@@ -283,7 +282,7 @@ describe('findMatch', () => {
 
 
 	it('works w/ optional params when param is present', () => {
-		expect(findMatch('/yo/foo123bar/ma', segmentTree)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/yo/foo123bar/ma', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "id": "123",
@@ -297,7 +296,7 @@ describe('findMatch', () => {
 		`)
 	})
 	it('works w/ optional params when param is absent', () => {
-		expect(findMatch('/yo/ma', segmentTree)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/yo/ma', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "id": "",
@@ -311,7 +310,7 @@ describe('findMatch', () => {
 		`)
 	})
 	it('works w/ wildcard and suffix', () => {
-		expect(findMatch('/yo/somefile.png', segmentTree)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/yo/somefile.png', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "*": "somefile",
@@ -325,7 +324,7 @@ describe('findMatch', () => {
 		`)
 	})
 	it('works w/ wildcard alone', () => {
-		expect(findMatch('/yo/something', segmentTree)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/yo/something', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "*": "something",
@@ -339,7 +338,7 @@ describe('findMatch', () => {
 		`)
 	})
 	it('works w/ multiple required param routes at same level, w/ different names for their param', () => {
-		expect(findMatch('/foo/123/aaa', segmentTree)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/foo/123/aaa', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "a": "123",
@@ -351,7 +350,7 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-		expect(findMatch('/foo/123/bbb', segmentTree)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/foo/123/bbb', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "b": "123",
@@ -366,7 +365,7 @@ describe('findMatch', () => {
 	})
 
 	it('works w/ fuzzy matching', () => {
-		expect(findMatch('/foo/123', segmentTree, true)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/foo/123', processedTree, true)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "**": "/123",
@@ -392,7 +391,7 @@ describe('findMatch', () => {
 		`)
 	})
 	it('can still return exact matches w/ fuzzy:true', () => {
-		expect(findMatch('/yo/foobar', segmentTree, true)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/yo/foobar', processedTree, true)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "id": "",
@@ -413,7 +412,7 @@ describe('findMatch', () => {
 		`)
 	})
 	it('can still match a wildcard route w/ fuzzy:true', () => {
-		expect(findMatch('/yo/something', segmentTree, true)).toMatchInlineSnapshot(`
+		expect(findRouteMatch('/yo/something', processedTree, true)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "*": "something",

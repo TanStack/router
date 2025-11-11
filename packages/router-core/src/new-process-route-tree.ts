@@ -19,12 +19,15 @@ const WILDCARD_W_CURLY_BRACES_RE = /^([^{]*)\{\$\}([^}]*)$/ // prefix{$}suffix
  * - `output[3]` = index of the end of the value
  * - `output[4]` = index of the start of the suffix
  * - `output[5]` = index of the end of the segment
- * 
- * @param path The full path string containing the segment.
- * @param start The starting index of the segment within the path.
- * @param output A Uint16Array to populate with the parsed segment data.
  */
-export function parseSegment(path: string, start: number, output: Uint16Array) {
+export function parseSegment(
+	/** The full path string containing the segment. */
+	path: string,
+	/** The starting index of the segment within the path. */
+	start: number,
+	/** A Uint16Array (length: 6) to populate with the parsed segment data. */
+	output: Uint16Array
+) {
 	const next = path.indexOf('/', start)
 	const end = next === -1 ? path.length : next
 	const part = path.substring(start, end)
@@ -121,6 +124,7 @@ export function parseSegment(path: string, start: number, output: Uint16Array) {
  * @param onRoute Callback invoked for each route processed.
  */
 function parseSegments<TRouteLike extends RouteLike>(
+	defaultCaseSensitive: boolean,
 	data: Uint16Array,
 	route: TRouteLike,
 	start: number,
@@ -132,7 +136,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 	{
 		const path = route.fullPath ?? route.from
 		const length = path.length
-		const caseSensitive = route.options?.caseSensitive ?? false
+		const caseSensitive = route.options?.caseSensitive ?? defaultCaseSensitive
 		while (cursor < length) {
 			let nextNode: AnySegmentNode<TRouteLike>
 			const start = cursor
@@ -227,7 +231,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 		onRoute?.(route, node)
 	}
 	if (route.children) for (const child of route.children) {
-		parseSegments(data, child as TRouteLike, cursor, node, depth, onRoute)
+		parseSegments(defaultCaseSensitive, data, child as TRouteLike, cursor, node, depth, onRoute)
 	}
 }
 
@@ -386,10 +390,15 @@ type RouteLike = {
 
 type ProcessedTree<
 	TTree extends Extract<RouteLike, { fullPath: string }>,
-	TFlat extends Extract<RouteLike, { from: string }>
+	TFlat extends Extract<RouteLike, { from: string }>,
+	TSingle extends Extract<RouteLike, { from: string }>,
 > = {
-	segmentTree: AnySegmentNode<TTree>,
+	/** a representation of the `routeTree` as a segment tree, for performant path matching */
+	segmentTree: AnySegmentNode<TTree>
+	/** a cache of mini route trees generated from flat route lists, for performant route mask matching */
 	flatCache: Map<any, AnySegmentNode<TFlat>>
+	/** @deprecated keep until v2 so that `router.matchRoute` can keep not caring about the actual route tree */
+	singleCache: Map<any, AnySegmentNode<TSingle>>
 }
 
 export function processFlatRouteList<TRouteLike extends RouteLike>(
@@ -398,13 +407,23 @@ export function processFlatRouteList<TRouteLike extends RouteLike>(
 	const segmentTree = createStaticNode<TRouteLike>('/')
 	const data = new Uint16Array(6)
 	for (const route of routeList) {
-		parseSegments(data, route, 1, segmentTree, 1)
+		parseSegments(false, data, route, 1, segmentTree, 1)
 	}
 	sortTreeNodes(segmentTree)
 	return segmentTree
 }
 
-export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(list: Array<T>, path: string, processedTree: ProcessedTree<any, T>): { route: T, params: Record<string, string> } | null {
+/**
+ * Take an arbitrary list of routes, create a tree from them (if it hasn't been created already), and match a path against it.
+ */
+export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(
+	/** The flat list of routes to match against. This array should be stable, it comes from a route's `routeMasks` option. */
+	list: Array<T>,
+	/** The path to match. */
+	path: string,
+	/** The `processedTree` returned by the initial `processRouteTree` call. */
+	processedTree: ProcessedTree<any, T, any>
+) {
 	let tree = processedTree.flatCache.get(list)
 	if (!tree) {
 		// flat route lists (routeMasks option) are not eagerly processed,
@@ -415,22 +434,65 @@ export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(li
 	return findMatch(path, tree)
 }
 
+/**
+ * @deprecated keep until v2 so that `router.matchRoute` can keep not caring about the actual route tree
+ */
+export function findSingleMatch(from: string, caseSensitive: boolean, fuzzy: boolean, path: string, processedTree: ProcessedTree<any, any, { from: string }>) {
+	const key = `${caseSensitive}|${from}`
+	let tree = processedTree.singleCache.get(key)
+	if (!tree) {
+		// single flat routes (router.matchRoute) are not eagerly processed,
+		// if we haven't seen this route before, process it now
+		tree = createStaticNode<{ from: string }>('/')
+		const data = new Uint16Array(6)
+		parseSegments(false, data, { from }, 1, tree, 1)
+		processedTree.singleCache.set(key, tree)
+	}
+	return findMatch(path, tree, fuzzy)
+}
+
+export function findRouteMatch<T extends Extract<RouteLike, { fullPath: string }>>(
+	/** The path to match against the route tree. */
+	path: string,
+	/** The `processedTree` returned by the initial `processRouteTree` call. */
+	processedTree: ProcessedTree<T, any, any>,
+	/** If `true`, allows fuzzy matching (partial matches). */
+	fuzzy = false
+) {
+	return findMatch(path, processedTree.segmentTree, fuzzy)
+}
+
 
 /** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
 	return path === '/' ? path : path.replace(/\/{1,}$/, '')
 }
 
+/**
+ * Processes a route tree into a segment trie for efficient path matching.
+ * Also builds lookup maps for routes by ID and by trimmed full path.
+ */
 export function processRouteTree<TRouteLike extends Extract<RouteLike, { fullPath: string }> & { id: string }>(
+	/** The root of the route tree to process. */
 	routeTree: TRouteLike,
+	/** Whether matching should be case sensitive by default (overridden by individual route options). */
+	caseSensitive: boolean = false,
+	/** Optional callback invoked for each route during processing. */
 	initRoute?: (route: TRouteLike, index: number) => void
-) {
+): {
+	/** Should be considered a black box, needs to be provided to all matching functions in this module. */
+	processedTree: ProcessedTree<TRouteLike, any, any>,
+	/** A lookup map of routes by their unique IDs. */
+	routesById: Record<string, TRouteLike>,
+	/** A lookup map of routes by their trimmed full paths. */
+	routesByPath: Record<string, TRouteLike>,
+} {
 	const segmentTree = createStaticNode<TRouteLike>(routeTree.fullPath)
 	const data = new Uint16Array(6)
 	const routesById = {} as Record<string, TRouteLike>
 	const routesByPath = {} as Record<string, TRouteLike>
 	let index = 0
-	parseSegments(data, routeTree, 1, segmentTree, 0, (route, node) => {
+	parseSegments(caseSensitive, data, routeTree, 1, segmentTree, 0, (route, node) => {
 		initRoute?.(route, index)
 
 		invariant(
@@ -453,9 +515,10 @@ export function processRouteTree<TRouteLike extends Extract<RouteLike, { fullPat
 		index++
 	})
 	sortTreeNodes(segmentTree)
-	const processedTree: ProcessedTree<TRouteLike, any> = {
+	const processedTree: ProcessedTree<TRouteLike, any, any> = {
 		segmentTree,
 		flatCache: new Map(),
+		singleCache: new Map(),
 	}
 	return {
 		processedTree,
@@ -464,8 +527,7 @@ export function processRouteTree<TRouteLike extends Extract<RouteLike, { fullPat
 	}
 }
 
-
-export function findMatch<T extends RouteLike>(path: string, segmentTree: AnySegmentNode<T>, fuzzy = false): { route: T, params: Record<string, string> } | null {
+function findMatch<T extends RouteLike>(path: string, segmentTree: AnySegmentNode<T>, fuzzy = false): { route: T, params: Record<string, string> } | null {
 	const parts = path.split('/')
 	const leaf = getNodeMatch(parts, segmentTree, fuzzy)
 	if (!leaf) return null
