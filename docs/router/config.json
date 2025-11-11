@@ -578,6 +578,10 @@
               "to": "framework/react/examples/view-transitions"
             },
             {
+              "label": "Framer Motion",
+              "to": "framework/react/examples/with-framer-motion"
+            },
+            {
               "label": "With tRPC",
               "to": "framework/react/examples/with-trpc"
             },
@@ -633,6 +637,10 @@
             {
               "label": "View Transitions",
               "to": "framework/solid/examples/view-transitions"
+            },
+            {
+              "label": "Framer Motion",
+              "to": "framework/solid/examples/with-framer-motion"
             }
           ]
         }
