@@ -7,11 +7,9 @@ export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
 
 export type SegmentKind = typeof SEGMENT_TYPE_PATHNAME | typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM
 
-const PARAM_RE = /^\$(.{1,})$/ // $paramName
-const PARAM_W_CURLY_BRACES_RE = /^(.*?)\{\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{$paramName}suffix
-const OPTIONAL_PARAM_W_CURLY_BRACES_RE = /^(.*?)\{-\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{-$paramName}suffix
-const WILDCARD_RE = /^\$$/ // $
-const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
+const PARAM_W_CURLY_BRACES_RE = /^([^{]*)\{\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/ // prefix{$paramName}suffix
+const OPTIONAL_PARAM_W_CURLY_BRACES_RE = /^([^{]*)\{-\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/ // prefix{-$paramName}suffix
+const WILDCARD_W_CURLY_BRACES_RE = /^([^{]*)\{\$\}([^}]*)$/ // prefix{$}suffix
 
 /**
  * Populates the `output` array with the parsed representation of the given `segment` string.
@@ -29,8 +27,9 @@ const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
 export function parseSegment(path: string, start: number, output: Uint16Array) {
 	const next = path.indexOf('/', start)
 	const end = next === -1 ? path.length : next
-	if (end === start) { // TODO: maybe should never happen?
-		// Slash segment
+	const part = path.substring(start, end)
+
+	if (!part || !part.includes('$')) { // early escape for static pathname
 		output[0] = SEGMENT_TYPE_PATHNAME
 		output[1] = start
 		output[2] = start
@@ -39,7 +38,29 @@ export function parseSegment(path: string, start: number, output: Uint16Array) {
 		output[5] = end
 		return
 	}
-	const part = path.substring(start, end)
+
+		// $ (wildcard)
+	if (part === '$') {
+		output[0] = SEGMENT_TYPE_WILDCARD
+		output[1] = start
+		output[2] = start
+		output[3] = end
+		output[4] = end
+		output[5] = end
+		return
+	}
+
+	// $paramName
+	if (part.charCodeAt(0) === 36) {
+		output[0] = SEGMENT_TYPE_PARAM
+		output[1] = start
+		output[2] = start + 1 // skip '$'
+		output[3] = start + part.length
+		output[4] = end
+		output[5] = end
+		return
+	}
+
 	const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
 	if (wildcardBracesMatch) {
 		const prefix = wildcardBracesMatch[1]!
@@ -81,30 +102,7 @@ export function parseSegment(path: string, start: number, output: Uint16Array) {
 		return
 	}
 
-	const paramMatch = part.match(PARAM_RE)
-	if (paramMatch) {
-		const paramName = paramMatch[1]!
-		output[0] = SEGMENT_TYPE_PARAM
-		output[1] = start
-		output[2] = start + 1 // skip '$'
-		output[3] = start + 1 + paramName.length
-		output[4] = end
-		output[5] = end
-		return
-	}
-
-	const wildcardMatch = part.match(WILDCARD_RE)
-	if (wildcardMatch) {
-		output[0] = SEGMENT_TYPE_WILDCARD
-		output[1] = start
-		output[2] = start
-		output[3] = end
-		output[4] = end
-		output[5] = end
-		return
-	}
-
-	// Static pathname segment
+	// fallback to static pathname (should never happen)
 	output[0] = SEGMENT_TYPE_PATHNAME
 	output[1] = start
 	output[2] = start
