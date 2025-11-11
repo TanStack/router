@@ -498,7 +498,7 @@ export function processFlatRouteList<
   const segmentTree = createStaticNode<TRouteLike>('/')
   const data = new Uint16Array(6)
   for (const route of routeList) {
-    parseSegments(false, data, route, 1, segmentTree, 1)
+    parseSegments(false, data, route, 1, segmentTree, 0)
   }
   sortTreeNodes(segmentTree)
   return segmentTree
@@ -542,7 +542,7 @@ export function findSingleMatch(
     // if we haven't seen this route before, process it now
     tree = createStaticNode<{ from: string }>('/')
     const data = new Uint16Array(6)
-    parseSegments(caseSensitive, data, { from }, 1, tree, 1)
+    parseSegments(caseSensitive, data, { from }, 1, tree, 0)
     processedTree.singleCache.set(key, tree)
   }
   return findMatch(path, tree, fuzzy)
