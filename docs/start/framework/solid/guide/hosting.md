@@ -289,6 +289,108 @@ export default defineConfig({
 })
 ```
 
+#### Production Server with Bun
+
+Alternatively, you can use a custom server implementation that leverages Bun's native APIs.
+
+We provide a reference implementation that demonstrates one approach to building a production-ready Bun server. This example uses Bun-native functions for optimal performance and includes features like intelligent asset preloading and memory management.
+
+**This is a starting point - feel free to adapt it to your needs or simplify it for your use case.**
+
+**What this example demonstrates:**
+
+- Serving static assets using Bun's native file handling
+- Hybrid loading strategy (preload small files, serve large files on-demand)
+- Optional features like ETag support and Gzip compression
+- Production-ready caching headers
+
+**Quick Setup:**
+
+1. Copy the [`server.ts`](https://github.com/tanstack/router/blob/main/examples/react/start-bun/server.ts) file from the example repository to your project root (or use it as inspiration for your own implementation)
+
+2. Build your application:
+
+   ```sh
+   bun run build
+   ```
+
+3. Start the server:
+
+   ```sh
+   bun run server.ts
+   ```
+
+**Configuration (Optional):**
+
+The reference server implementation includes several optional configuration options via environment variables. You can use these as-is, modify them, or remove features you don't need:
+
+```sh
+# Basic usage - just works out of the box
+bun run server.ts
+
+# Common configurations
+PORT=8080 bun run server.ts  # Custom port
+ASSET_PRELOAD_VERBOSE_LOGGING=true bun run server.ts  # See what's happening
+```
+
+**Available Environment Variables:**
+
+| Variable                         | Description                                        | Default                                                                       |
+| -------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `PORT`                           | Server port                                        | `3000`                                                                        |
+| `ASSET_PRELOAD_MAX_SIZE`         | Maximum file size to preload into memory (bytes)   | `5242880` (5MB)                                                               |
+| `ASSET_PRELOAD_INCLUDE_PATTERNS` | Comma-separated glob patterns for files to include | All files                                                                     |
+| `ASSET_PRELOAD_EXCLUDE_PATTERNS` | Comma-separated glob patterns for files to exclude | None                                                                          |
+| `ASSET_PRELOAD_VERBOSE_LOGGING`  | Enable detailed logging                            | `false`                                                                       |
+| `ASSET_PRELOAD_ENABLE_ETAG`      | Enable ETag generation                             | `true`                                                                        |
+| `ASSET_PRELOAD_ENABLE_GZIP`      | Enable Gzip compression                            | `true`                                                                        |
+| `ASSET_PRELOAD_GZIP_MIN_SIZE`    | Minimum file size for Gzip (bytes)                 | `1024` (1KB)                                                                  |
+| `ASSET_PRELOAD_GZIP_MIME_TYPES`  | MIME types eligible for Gzip                       | `text/,application/javascript,application/json,application/xml,image/svg+xml` |
+
+<details>
+<summary>Advanced configuration examples</summary>
+
+```sh
+# Optimize for minimal memory usage
+ASSET_PRELOAD_MAX_SIZE=1048576 bun run server.ts
+
+# Preload only critical assets
+ASSET_PRELOAD_INCLUDE_PATTERNS="*.js,*.css" \
+ASSET_PRELOAD_EXCLUDE_PATTERNS="*.map,vendor-*" \
+bun run server.ts
+
+# Disable optional features
+ASSET_PRELOAD_ENABLE_ETAG=false \
+ASSET_PRELOAD_ENABLE_GZIP=false \
+bun run server.ts
+
+# Custom Gzip configuration
+ASSET_PRELOAD_GZIP_MIN_SIZE=2048 \
+ASSET_PRELOAD_GZIP_MIME_TYPES="text/,application/javascript,application/json" \
+bun run server.ts
+```
+
+</details>
+
+**Example Output:**
+
+```txt
+📦 Loading static assets from ./dist/client...
+   Max preload size: 5.00 MB
+
+📁 Preloaded into memory:
+   /assets/index-a1b2c3d4.js           45.23 kB │ gzip:  15.83 kB
+   /assets/index-e5f6g7h8.css           12.45 kB │ gzip:   4.36 kB
+
+💾 Served on-demand:
+   /assets/vendor-i9j0k1l2.js          245.67 kB │ gzip:  86.98 kB
+
+✅ Preloaded 2 files (57.68 KB) into memory
+🚀 Server running at http://localhost:3000
+```
+
+For a complete working example, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
+
 ### Appwrite Sites
 
 When deploying to [Appwrite Sites](https://appwrite.io/products/sites), you'll need to complete a few steps:
