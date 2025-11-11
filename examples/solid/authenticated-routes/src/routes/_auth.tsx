@@ -1,4 +1,10 @@
-import { Link, Outlet, createFileRoute, redirect, useRouter  } from '@tanstack/solid-router'
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  redirect,
+  useRouter,
+} from '@tanstack/solid-router'
 
 import { useAuth } from '../auth'
 
@@ -53,11 +59,7 @@ function AuthLayout() {
           </Link>
         </li>
         <li>
-          <button
-            type="button"
-            class="hover:underline"
-            onClick={handleLogout}
-          >
+          <button type="button" class="hover:underline" onClick={handleLogout}>
             Logout
           </button>
         </li>

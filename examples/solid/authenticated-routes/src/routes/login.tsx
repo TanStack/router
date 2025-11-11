@@ -1,5 +1,10 @@
 import * as Solid from 'solid-js'
-import { createFileRoute, redirect, useRouter, useRouterState  } from '@tanstack/solid-router'
+import {
+  createFileRoute,
+  redirect,
+  useRouter,
+  useRouterState,
+} from '@tanstack/solid-router'
 import { z } from 'zod'
 
 import { useAuth } from '../auth'
