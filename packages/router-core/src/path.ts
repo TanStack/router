@@ -132,33 +132,38 @@ export function resolvePath({
   to,
   trailingSlash = 'never',
 }: ResolvePathOptions) {
-  let baseSegments = base.split('/')
+  let baseSegments: Array<string>
   const toSegments = to.split('/')
-
-  if (baseSegments.length > 1 && last(baseSegments) === '') {
-    baseSegments.pop()
-  }
-
-  for (let index = 0, length = toSegments.length; index < length; index++) {
-    const value = toSegments[index]!
-    if (value === '/') {
-      if (!index) {
-        // Leading slash
-        baseSegments = [value]
-      } else if (index === length - 1) {
-        // Trailing Slash
-        baseSegments.push(value)
-      } else {
-        // ignore inter-slashes
-      }
-    } else if (value === '..') {
+  if (toSegments[0] === '') {
+    baseSegments = toSegments
+  } else {
+    baseSegments = base.split('/')
+    while (baseSegments.length > 1 && last(baseSegments) === '') {
       baseSegments.pop()
-    } else if (value === '.') {
-      // ignore
-    } else {
-      baseSegments.push(value)
+    }
+  
+    for (let index = 0, length = toSegments.length; index < length; index++) {
+      const value = toSegments[index]!
+      if (value === '') {
+        if (!index) {
+          // Leading slash
+          baseSegments = [value]
+        } else if (index === length - 1) {
+          // Trailing Slash
+          baseSegments.push(value)
+        } else {
+          // ignore inter-slashes
+        }
+      } else if (value === '..') {
+        baseSegments.pop()
+      } else if (value === '.') {
+        // ignore
+      } else {
+        baseSegments.push(value)
+      }
     }
   }
+
 
   if (baseSegments.length > 1) {
     if (last(baseSegments) === '') {
@@ -171,26 +176,30 @@ export function resolvePath({
   }
 
   const data = new Uint16Array(6)
-  const segmentValues = baseSegments.map((segment) => {
-    if (!segment) return ''
+  let joined = ''
+  for (let i = 0; i < baseSegments.length; i++) {
+    if (i > 0) joined += '/'
+    const segment = baseSegments[i]!
+    if (!segment) continue
     parseSegment(segment, 0, data)
     const kind = data[0] as SegmentKind
     if (kind === SEGMENT_TYPE_PATHNAME) {
-      return segment
+      joined += segment
+      continue
     }
     const end = data[5]!
     const prefix = segment.substring(0, data[1])
     const suffix = segment.substring(data[4]!, end)
     const value = segment.substring(data[2]!, data[3])
     if (kind === SEGMENT_TYPE_PARAM) {
-      return prefix || suffix ? `${prefix}{$${value}}${suffix}` : `$${value}`
+      joined += prefix || suffix ? `${prefix}{$${value}}${suffix}` : `$${value}`
     } else if (kind === SEGMENT_TYPE_WILDCARD) {
-      return prefix || suffix ? `${prefix}{$}${suffix}` : '$'
+      joined += prefix || suffix ? `${prefix}{$}${suffix}` : '$'
     } else { // SEGMENT_TYPE_OPTIONAL_PARAM
-      return `${prefix}{-$${value}}${suffix}`
+      joined += `${prefix}{-$${value}}${suffix}`
     }
-  })
-  const joined = joinPaths(segmentValues)
+  }
+  joined = cleanPath(joined)
   return joined || '/'
 }
 
