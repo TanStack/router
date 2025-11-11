@@ -100,6 +100,23 @@ describe('findRouteMatch', () => {
     })
   })
 
+  describe('not found', () => {
+    it('returns null when no match is found', () => {
+      const tree = makeTree(['/a/b/c', '/d/e/f'])
+      expect(findRouteMatch('/x/y/z', tree)).toBeNull()
+    })
+    it('returns something w/ fuzzy matching enabled', () => {
+      const tree = makeTree(['/a/b/c', '/d/e/f'])
+      const match = findRouteMatch('/x/y/z', tree, true)
+      expect(match?.route?.id).toBe('__root__')
+      expect(match?.params).toMatchInlineSnapshot(`
+        {
+          "**": "/x/y/z",
+        }
+      `)
+    })
+  })
+
   describe('basic matching', () => {
     it('root', () => {
       const tree = makeTree([])

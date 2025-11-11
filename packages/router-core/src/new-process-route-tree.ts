@@ -762,8 +762,6 @@ function getNodeMatch<T extends RouteLike>(
     let { node, index, skipped, depth, statics, dynamics, optionals } =
       stack.pop()!
 
-    // // not sure if we need this check? looking for an edge-case to prove it either way
-    // main: while (node && index <= parts.length) {
     main: while (node) {
       if (index === parts.length) {
         if (!node.route) break
