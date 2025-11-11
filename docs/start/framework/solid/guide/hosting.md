@@ -198,7 +198,7 @@ import { nitro } from 'nitro/vite'
 import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
-  plugins: [tanstackStart(), nitro(), viteSolid({ssr: true})],
+  plugins: [tanstackStart(), nitro(), viteSolid({ ssr: true })],
   nitro: {},
 })
 ```
