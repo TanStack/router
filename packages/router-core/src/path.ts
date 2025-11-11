@@ -120,24 +120,29 @@ export function resolvePath({
   trailingSlash = 'never',
   cache,
 }: ResolvePathOptions) {
+  const isAbsolute = to.startsWith('/')
+  const isBase = !isAbsolute && to === '.'
+
   let key
   if (cache) {
     // `trailingSlash` is static per router, so it doesn't need to be part of the cache key
-    key = base + '\\\\' + to
+    key = isAbsolute ? to : isBase ? base : base + '\\\\' + to
     const cached = cache.get(key)
     if (cached) return cached
   }
 
   let baseSegments: Array<string>
-  const toSegments = to.split('/')
-  if (toSegments[0] === '') {
-    baseSegments = toSegments
+  if (isBase) {
+    baseSegments = base.split('/')
+  } else if (isAbsolute) {
+    baseSegments = to.split('/')
   } else {
     baseSegments = base.split('/')
     while (baseSegments.length > 1 && last(baseSegments) === '') {
       baseSegments.pop()
     }
 
+    const toSegments = to.split('/')
     for (let index = 0, length = toSegments.length; index < length; index++) {
       const value = toSegments[index]!
       if (value === '') {
