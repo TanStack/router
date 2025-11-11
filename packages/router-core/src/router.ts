@@ -2713,10 +2713,21 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
           const pathSegments = parsePathname(trimmedPath, parseCache)
           const lastRouteSegment = getLastNonSlashSegment(routeSegments)
           const lastPathSegment = getLastNonSlashSegment(pathSegments)
+          const routeCaseSensitive =
+            route.options?.caseSensitive ?? caseSensitive ?? false
+          const normalizeSegmentValue = (segment?: Segment) => {
+            if (!segment || segment.type !== SEGMENT_TYPE_PATHNAME) {
+              return undefined
+            }
+            return routeCaseSensitive
+              ? segment.value
+              : segment.value.toLowerCase()
+          }
+          const routeSegmentValue = normalizeSegmentValue(lastRouteSegment)
+          const pathSegmentValue = normalizeSegmentValue(lastPathSegment)
           const endsWithStatic =
-            lastRouteSegment?.type === SEGMENT_TYPE_PATHNAME &&
-            lastPathSegment?.type === SEGMENT_TYPE_PATHNAME &&
-            lastRouteSegment.value === lastPathSegment.value
+            routeSegmentValue !== undefined &&
+            routeSegmentValue === pathSegmentValue
 
           exactMatches.push({
             route,
