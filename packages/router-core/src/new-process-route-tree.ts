@@ -735,26 +735,57 @@ function getNodeMatch<T extends RouteLike>(
     depth: number
     /** Bitmask of skipped optional segments */
     skipped: number
+    statics: number
+    dynamics: number
+    optionals: number
   }
 
   // use a stack to explore all possible paths (optional params cause branching)
-  // we use a depth-first search, return the first result found
   const stack: Array<Frame> = [
-    { node: segmentTree, index: 0, depth: 0, skipped: 0 },
+    {
+      node: segmentTree,
+      index: 0,
+      depth: 0,
+      skipped: 0,
+      statics: 0,
+      dynamics: 0,
+      optionals: 0,
+    },
   ]
-  let stackIndex = 0
 
   let wildcardMatch: Frame | null = null
   let bestFuzzy: Frame | null = null
+  let bestMatch: Frame | null = null
 
-  while (stackIndex < stack.length) {
+  while (stack.length) {
     // eslint-disable-next-line prefer-const
-    let { node, index, skipped, depth } = stack[stackIndex++]!
+    let { node, index, skipped, depth, statics, dynamics, optionals } =
+      stack.pop()!
 
-    main: while (node && index <= parts.length) {
+    // // not sure if we need this check? looking for an edge-case to prove it either way
+    // main: while (node && index <= parts.length) {
+    main: while (node) {
       if (index === parts.length) {
         if (!node.route) break
-        return { node, skipped }
+        if (
+          !bestMatch ||
+          statics > bestMatch.statics ||
+          (statics === bestMatch.statics && dynamics > bestMatch.dynamics) ||
+          (statics === bestMatch.statics &&
+            dynamics === bestMatch.dynamics &&
+            optionals > bestMatch.optionals)
+        ) {
+          bestMatch = {
+            node,
+            index,
+            depth,
+            skipped,
+            statics,
+            dynamics,
+            optionals,
+          }
+        }
+        break
       }
 
       // In fuzzy mode, track the best partial match we've found so far
@@ -765,7 +796,15 @@ function getNodeMatch<T extends RouteLike>(
           index > bestFuzzy.index ||
           (index === bestFuzzy.index && depth > bestFuzzy.depth))
       ) {
-        bestFuzzy = { node, index, depth, skipped }
+        bestFuzzy = {
+          node,
+          index,
+          depth,
+          skipped,
+          statics,
+          dynamics,
+          optionals,
+        }
       }
 
       const part = parts[index]!
@@ -784,6 +823,9 @@ function getNodeMatch<T extends RouteLike>(
             index: index + 1,
             skipped,
             depth: depth + 1,
+            statics,
+            dynamics: dynamics + 1,
+            optionals,
           })
         }
       }
@@ -799,6 +841,9 @@ function getNodeMatch<T extends RouteLike>(
             index,
             skipped: nextSkipped,
             depth: nextDepth,
+            statics,
+            dynamics,
+            optionals,
           }) // enqueue skipping the optional
         }
         for (const segment of node.optional) {
@@ -813,6 +858,9 @@ function getNodeMatch<T extends RouteLike>(
             index: index + 1,
             skipped,
             depth: nextDepth,
+            statics,
+            dynamics,
+            optionals: optionals + 1,
           })
         }
       }
@@ -824,6 +872,7 @@ function getNodeMatch<T extends RouteLike>(
           node = match
           depth++
           index++
+          statics++
           continue
         }
       }
@@ -835,6 +884,7 @@ function getNodeMatch<T extends RouteLike>(
           node = match
           depth++
           index++
+          statics++
           continue
         }
       }
@@ -854,7 +904,15 @@ function getNodeMatch<T extends RouteLike>(
           }
           // a wildcard match terminates the loop, but we need to continue searching in case there's a longer match
           if (!wildcardMatch || wildcardMatch.index < index) {
-            wildcardMatch = { node: segment, index, skipped, depth }
+            wildcardMatch = {
+              node: segment,
+              index,
+              skipped,
+              depth,
+              statics,
+              dynamics,
+              optionals,
+            }
           }
           break main
         }
@@ -864,6 +922,8 @@ function getNodeMatch<T extends RouteLike>(
       break
     }
   }
+
+  if (bestMatch) return bestMatch
 
   if (wildcardMatch) return wildcardMatch
 
