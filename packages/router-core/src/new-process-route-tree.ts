@@ -39,7 +39,7 @@ export function parseSegment(path: string, start: number, output: Uint16Array) {
 		return
 	}
 
-		// $ (wildcard)
+	// $ (wildcard)
 	if (part === '$') {
 		output[0] = SEGMENT_TYPE_WILDCARD
 		output[1] = start
@@ -124,17 +124,17 @@ function parseSegments<TRouteLike extends RouteLike>(
 	data: Uint16Array,
 	route: TRouteLike,
 	start: number,
-	node: AnySegmentNode,
+	node: AnySegmentNode<TRouteLike>,
 	depth: number,
-	onRoute: (route: TRouteLike, node: AnySegmentNode) => void
+	onRoute?: (route: TRouteLike, node: AnySegmentNode<TRouteLike>) => void
 ) {
 	let cursor = start
 	{
-		const path = route.fullPath
+		const path = route.fullPath ?? route.from
 		const length = path.length
 		const caseSensitive = route.options?.caseSensitive ?? false
 		while (cursor < length) {
-			let nextNode: AnySegmentNode
+			let nextNode: AnySegmentNode<TRouteLike>
 			const start = cursor
 			parseSegment(path, start, data)
 			const end = data[5]!
@@ -149,7 +149,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 							nextNode = existingNode
 						} else {
 							node.static ??= new Map()
-							const next = createStaticNode(route.fullPath)
+							const next = createStaticNode<TRouteLike>(route.fullPath ?? route.from)
 							next.parent = node
 							next.depth = ++depth
 							nextNode = next
@@ -162,7 +162,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 							nextNode = existingNode
 						} else {
 							node.staticInsensitive ??= new Map()
-							const next = createStaticNode(route.fullPath)
+							const next = createStaticNode<TRouteLike>(route.fullPath ?? route.from)
 							next.parent = node
 							next.depth = ++depth
 							nextNode = next
@@ -180,7 +180,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 					if (existingNode) {
 						nextNode = existingNode
 					} else {
-						const next = createDynamicNode(SEGMENT_TYPE_PARAM, route.fullPath, caseSensitive, prefix, suffix)
+						const next = createDynamicNode<TRouteLike>(SEGMENT_TYPE_PARAM, route.fullPath ?? route.from, caseSensitive, prefix, suffix)
 						nextNode = next
 						next.depth = ++depth
 						next.parent = node
@@ -198,7 +198,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 					if (existingNode) {
 						nextNode = existingNode
 					} else {
-						const next = createDynamicNode(SEGMENT_TYPE_OPTIONAL_PARAM, route.fullPath, caseSensitive, prefix, suffix)
+						const next = createDynamicNode<TRouteLike>(SEGMENT_TYPE_OPTIONAL_PARAM, route.fullPath ?? route.from, caseSensitive, prefix, suffix)
 						nextNode = next
 						next.parent = node
 						next.depth = ++depth
@@ -212,7 +212,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 					const suffix_raw = path.substring(data[4]!, end)
 					const prefix = !prefix_raw ? undefined : caseSensitive ? prefix_raw : prefix_raw.toLowerCase()
 					const suffix = !suffix_raw ? undefined : caseSensitive ? suffix_raw : suffix_raw.toLowerCase()
-					const next = createDynamicNode(SEGMENT_TYPE_WILDCARD, route.fullPath, caseSensitive, prefix, suffix)
+					const next = createDynamicNode<TRouteLike>(SEGMENT_TYPE_WILDCARD, route.fullPath ?? route.from, caseSensitive, prefix, suffix)
 					nextNode = next
 					next.parent = node
 					next.depth = ++depth
@@ -222,9 +222,9 @@ function parseSegments<TRouteLike extends RouteLike>(
 			}
 			node = nextNode
 		}
-		if (route.path)
-			node.routeId = route.id
-		onRoute(route, node)
+		if (route.path || !route.children)
+			node.route = route
+		onRoute?.(route, node)
 	}
 	if (route.children) for (const child of route.children) {
 		parseSegments(data, child as TRouteLike, cursor, node, depth, onRoute)
@@ -247,7 +247,7 @@ function sortDynamic(a: { prefix?: string, suffix?: string }, b: { prefix?: stri
 	return 0
 }
 
-function sortTreeNodes(node: SegmentNode) {
+function sortTreeNodes(node: SegmentNode<RouteLike>) {
 	if (node.static) {
 		for (const child of node.static.values()) {
 			sortTreeNodes(child)
@@ -278,7 +278,7 @@ function sortTreeNodes(node: SegmentNode) {
 	}
 }
 
-function createStaticNode(fullPath: string): StaticSegmentNode {
+function createStaticNode<T extends RouteLike>(fullPath: string): StaticSegmentNode<T> {
 	return {
 		kind: SEGMENT_TYPE_PATHNAME,
 		depth: 0,
@@ -287,7 +287,7 @@ function createStaticNode(fullPath: string): StaticSegmentNode {
 		dynamic: null,
 		optional: null,
 		wildcard: null,
-		routeId: null,
+		route: null,
 		fullPath,
 		parent: null
 	}
@@ -297,7 +297,7 @@ function createStaticNode(fullPath: string): StaticSegmentNode {
  * Keys must be declared in the same order as in `SegmentNode` type,
  * to ensure they are represented as the same object class in the engine.
  */
-function createDynamicNode(kind: typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM, fullPath: string, caseSensitive: boolean, prefix?: string, suffix?: string): DynamicSegmentNode {
+function createDynamicNode<T extends RouteLike>(kind: typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM, fullPath: string, caseSensitive: boolean, prefix?: string, suffix?: string): DynamicSegmentNode<T> {
 	return {
 		kind,
 		depth: 0,
@@ -306,7 +306,7 @@ function createDynamicNode(kind: typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE
 		dynamic: null,
 		optional: null,
 		wildcard: null,
-		routeId: null,
+		route: null,
 		fullPath,
 		parent: null,
 		caseSensitive,
@@ -315,44 +315,44 @@ function createDynamicNode(kind: typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE
 	}
 }
 
-type StaticSegmentNode = SegmentNode & {
+type StaticSegmentNode<T extends RouteLike> = SegmentNode<T> & {
 	kind: typeof SEGMENT_TYPE_PATHNAME
 }
 
-type DynamicSegmentNode = SegmentNode & {
+type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
 	kind: typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM
 	prefix?: string
 	suffix?: string
 	caseSensitive: boolean
 }
 
-type AnySegmentNode = StaticSegmentNode | DynamicSegmentNode
+type AnySegmentNode<T extends RouteLike> = StaticSegmentNode<T> | DynamicSegmentNode<T>
 
-type SegmentNode = {
+type SegmentNode<T extends RouteLike> = {
 	kind: SegmentKind
 
 	// Static segments (highest priority)
-	static: Map<string, StaticSegmentNode> | null
+	static: Map<string, StaticSegmentNode<T>> | null
 
 	// Case insensitive static segments (second highest priority)
-	staticInsensitive: Map<string, StaticSegmentNode> | null
+	staticInsensitive: Map<string, StaticSegmentNode<T>> | null
 
 	// Dynamic segments ($param)
-	dynamic: Array<DynamicSegmentNode> | null
+	dynamic: Array<DynamicSegmentNode<T>> | null
 
 	// Optional dynamic segments ({-$param})
-	optional: Array<DynamicSegmentNode> | null
+	optional: Array<DynamicSegmentNode<T>> | null
 
 	// Wildcard segments ($ - lowest priority)
-	wildcard: Array<DynamicSegmentNode> | null
+	wildcard: Array<DynamicSegmentNode<T>> | null
 
 	// Terminal route (if this path can end here)
-	routeId: string | null
+	route: T | null
 
 	// The full path for this segment node (will only be valid on leaf nodes)
 	fullPath: string
 
-	parent: AnySegmentNode | null
+	parent: AnySegmentNode<T> | null
 
 	depth: number
 }
@@ -371,29 +371,42 @@ type SegmentNode = {
 // }
 
 type RouteLike = {
-	id: string // unique identifier,
-	fullPath: string // full path from the root,
 	path?: string // relative path from the parent,
 	children?: Array<RouteLike> // child routes,
 	parentRoute?: RouteLike // parent route,
 	options?: {
 		caseSensitive?: boolean
 	}
+} & (
+		// router tree
+		| { fullPath: string, from?: never } // full path from the root
+		// flat route masks list
+		| { fullPath?: never, from: string } // full path from the root
+	)
+
+export function processFlatRouteList<TRouteLike extends RouteLike>(
+	routeList: Array<TRouteLike>,
+) {
+	const segmentTree = createStaticNode<TRouteLike>('/')
+	const data = new Uint16Array(6)
+	for (const route of routeList) {
+		parseSegments(data, route, 1, segmentTree, 1)
+	}
+	sortTreeNodes(segmentTree)
+	return segmentTree
 }
+
 
 /** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
 	return path === '/' ? path : path.replace(/\/{1,}$/, '')
 }
 
-export function processRouteTree<TRouteLike extends RouteLike>({
-	routeTree,
-	initRoute,
-}: {
-	routeTree: TRouteLike
+export function processRouteTree<TRouteLike extends Extract<RouteLike, { fullPath: string }> & { id: string }>(
+	routeTree: TRouteLike,
 	initRoute?: (route: TRouteLike, index: number) => void
-}) {
-	const segmentTree = createStaticNode(routeTree.fullPath)
+) {
+	const segmentTree = createStaticNode<TRouteLike>(routeTree.fullPath)
 	const data = new Uint16Array(6)
 	const routesById = {} as Record<string, TRouteLike>
 	const routesByPath = {} as Record<string, TRouteLike>
@@ -429,19 +442,19 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 }
 
 
-export function findMatch(path: string, segmentTree: AnySegmentNode, fuzzy = false): { routeId: string, params: Record<string, string> } | null {
+export function findMatch<T extends RouteLike>(path: string, segmentTree: AnySegmentNode<T>, fuzzy = false): { route: T, params: Record<string, string> } | null {
 	const parts = path.split('/')
 	const leaf = getNodeMatch(parts, segmentTree, fuzzy)
 	if (!leaf) return null
 	const params = extractParams(path, parts, leaf)
 	if ('**' in leaf) params['**'] = leaf['**']!
 	return {
-		routeId: leaf.node.routeId!,
+		route: leaf.node.route!,
 		params,
 	}
 }
 
-function extractParams(path: string, parts: Array<string>, leaf: { node: AnySegmentNode, skipped: number }) {
+function extractParams<T extends RouteLike>(path: string, parts: Array<string>, leaf: { node: AnySegmentNode<T>, skipped: number }) {
 	const list = buildBranch(leaf.node)
 	let nodeParts: Array<string> | null = null
 	const params: Record<string, string> = {}
@@ -489,8 +502,8 @@ function extractParams(path: string, parts: Array<string>, leaf: { node: AnySegm
 	return params
 }
 
-function buildBranch(node: AnySegmentNode) {
-	const list: Array<AnySegmentNode> = Array(node.depth + 1)
+function buildBranch<T extends RouteLike>(node: AnySegmentNode<T>) {
+	const list: Array<AnySegmentNode<T>> = Array(node.depth + 1)
 	do {
 		list[node.depth] = node
 		node = node.parent!
@@ -498,11 +511,11 @@ function buildBranch(node: AnySegmentNode) {
 	return list
 }
 
-function getNodeMatch(parts: Array<string>, segmentTree: AnySegmentNode, fuzzy: boolean) {
+function getNodeMatch<T extends RouteLike>(parts: Array<string>, segmentTree: AnySegmentNode<T>, fuzzy: boolean) {
 	parts = parts.filter(Boolean)
 
 	type Frame = {
-		node: AnySegmentNode
+		node: AnySegmentNode<T>
 		index: number
 		depth: number
 		/** Bitmask of skipped optional segments */
@@ -525,12 +538,12 @@ function getNodeMatch(parts: Array<string>, segmentTree: AnySegmentNode, fuzzy: 
 
 		main: while (node && index <= parts.length) {
 			if (index === parts.length) {
-				if (!node.routeId) break
+				if (!node.route) break
 				return { node, skipped }
 			}
 
 			// In fuzzy mode, track the best partial match we've found so far
-			if (fuzzy && node.routeId && (!bestFuzzy || index > bestFuzzy.index || (index === bestFuzzy.index && depth > bestFuzzy.depth))) {
+			if (fuzzy && node.route && (!bestFuzzy || index > bestFuzzy.index || (index === bestFuzzy.index && depth > bestFuzzy.depth))) {
 				bestFuzzy = { node, index, depth, skipped }
 			}
 

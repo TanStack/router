@@ -1,6 +1,173 @@
 import { describe, expect, it } from 'vitest'
-import { findMatch, processRouteTree } from "../src/new-process-route-tree"
+import { findMatch, processFlatRouteList, processRouteTree } from "../src/new-process-route-tree"
+import type { AnyRoute, RouteMask } from "../src"
 
+describe('processFlatRouteList', () => {
+	it('processes a route masks list', () => {
+		const routeTree = {} as AnyRoute
+		const routeMasks: Array<RouteMask<AnyRoute>> = [
+			{ from: '/a/b/c', routeTree },
+			{ from: '/a/b/d', routeTree },
+			{ from: '/a/$param/d', routeTree },
+			{ from: '/a/{-$optional}/d', routeTree },
+			{ from: '/a/b/{$}.txt', routeTree },
+		]
+		expect(processFlatRouteList(routeMasks)).toMatchInlineSnapshot(`
+			{
+			  "depth": 0,
+			  "dynamic": null,
+			  "fullPath": "/",
+			  "kind": 0,
+			  "optional": null,
+			  "parent": null,
+			  "route": null,
+			  "static": null,
+			  "staticInsensitive": Map {
+			    "a" => {
+			      "depth": 2,
+			      "dynamic": [
+			        {
+			          "caseSensitive": false,
+			          "depth": 2,
+			          "dynamic": null,
+			          "fullPath": "/a/$param/d",
+			          "kind": 1,
+			          "optional": null,
+			          "parent": [Circular],
+			          "prefix": undefined,
+			          "route": null,
+			          "static": null,
+			          "staticInsensitive": Map {
+			            "d" => {
+			              "depth": 3,
+			              "dynamic": null,
+			              "fullPath": "/a/$param/d",
+			              "kind": 0,
+			              "optional": null,
+			              "parent": [Circular],
+			              "route": {
+			                "from": "/a/$param/d",
+			                "routeTree": {},
+			              },
+			              "static": null,
+			              "staticInsensitive": null,
+			              "wildcard": null,
+			            },
+			          },
+			          "suffix": undefined,
+			          "wildcard": null,
+			        },
+			      ],
+			      "fullPath": "/a/b/c",
+			      "kind": 0,
+			      "optional": [
+			        {
+			          "caseSensitive": false,
+			          "depth": 2,
+			          "dynamic": null,
+			          "fullPath": "/a/{-$optional}/d",
+			          "kind": 3,
+			          "optional": null,
+			          "parent": [Circular],
+			          "prefix": undefined,
+			          "route": null,
+			          "static": null,
+			          "staticInsensitive": Map {
+			            "d" => {
+			              "depth": 3,
+			              "dynamic": null,
+			              "fullPath": "/a/{-$optional}/d",
+			              "kind": 0,
+			              "optional": null,
+			              "parent": [Circular],
+			              "route": {
+			                "from": "/a/{-$optional}/d",
+			                "routeTree": {},
+			              },
+			              "static": null,
+			              "staticInsensitive": null,
+			              "wildcard": null,
+			            },
+			          },
+			          "suffix": undefined,
+			          "wildcard": null,
+			        },
+			      ],
+			      "parent": [Circular],
+			      "route": null,
+			      "static": null,
+			      "staticInsensitive": Map {
+			        "b" => {
+			          "depth": 3,
+			          "dynamic": null,
+			          "fullPath": "/a/b/c",
+			          "kind": 0,
+			          "optional": null,
+			          "parent": [Circular],
+			          "route": null,
+			          "static": null,
+			          "staticInsensitive": Map {
+			            "c" => {
+			              "depth": 4,
+			              "dynamic": null,
+			              "fullPath": "/a/b/c",
+			              "kind": 0,
+			              "optional": null,
+			              "parent": [Circular],
+			              "route": {
+			                "from": "/a/b/c",
+			                "routeTree": {},
+			              },
+			              "static": null,
+			              "staticInsensitive": null,
+			              "wildcard": null,
+			            },
+			            "d" => {
+			              "depth": 2,
+			              "dynamic": null,
+			              "fullPath": "/a/b/d",
+			              "kind": 0,
+			              "optional": null,
+			              "parent": [Circular],
+			              "route": {
+			                "from": "/a/b/d",
+			                "routeTree": {},
+			              },
+			              "static": null,
+			              "staticInsensitive": null,
+			              "wildcard": null,
+			            },
+			          },
+			          "wildcard": [
+			            {
+			              "caseSensitive": false,
+			              "depth": 2,
+			              "dynamic": null,
+			              "fullPath": "/a/b/{$}.txt",
+			              "kind": 2,
+			              "optional": null,
+			              "parent": [Circular],
+			              "prefix": undefined,
+			              "route": {
+			                "from": "/a/b/{$}.txt",
+			                "routeTree": {},
+			              },
+			              "static": null,
+			              "staticInsensitive": null,
+			              "suffix": ".txt",
+			              "wildcard": null,
+			            },
+			          ],
+			        },
+			      },
+			      "wildcard": null,
+			    },
+			  },
+			  "wildcard": null,
+			}
+		`)
+	})
+})
 
 describe('findMatch', () => {
 	const testTree = {
@@ -58,33 +225,6 @@ describe('findMatch', () => {
 			}, {
 				id: '/$id/y/w',
 				fullPath: '/$id/y/w',
-	it('foo', () => {
-		expect(findMatch('/posts/new', segmentTree)).toMatchInlineSnapshot(`
-			{
-			  "params": {
-			    "other": "",
-			  },
-			  "routeId": "/{-$other}/posts/new",
-			}
-		`)
-		expect(findMatch('/yo/posts/new', segmentTree)).toMatchInlineSnapshot(`
-			{
-			  "params": {
-			    "other": "yo",
-			  },
-			  "routeId": "/{-$other}/posts/new",
-			}
-		`)
-		expect(findMatch('/x/y/w', segmentTree)).toMatchInlineSnapshot(`
-			{
-			  "params": {
-			    "id": "x",
-			  },
-			  "routeId": "/$id/y/w",
-			}
-		`)
-	})
-
 				path: '$id/y/w',
 			}, {
 				id: '/{-$other}/posts/new',
@@ -98,8 +238,47 @@ describe('findMatch', () => {
 		]
 	}
 
+	it('foo', () => {
+		expect(findMatch('/posts/new', segmentTree)).toMatchInlineSnapshot(`
+			{
+			  "params": {
+			    "other": "",
+			  },
+			  "route": {
+			    "fullPath": "/{-$other}/posts/new",
+			    "id": "/{-$other}/posts/new",
+			    "path": "{-$other}/posts/new",
+			  },
+			}
+		`)
+		expect(findMatch('/yo/posts/new', segmentTree)).toMatchInlineSnapshot(`
+			{
+			  "params": {
+			    "other": "yo",
+			  },
+			  "route": {
+			    "fullPath": "/{-$other}/posts/new",
+			    "id": "/{-$other}/posts/new",
+			    "path": "{-$other}/posts/new",
+			  },
+			}
+		`)
+		expect(findMatch('/x/y/w', segmentTree)).toMatchInlineSnapshot(`
+			{
+			  "params": {
+			    "id": "x",
+			  },
+			  "route": {
+			    "fullPath": "/$id/y/w",
+			    "id": "/$id/y/w",
+			    "path": "$id/y/w",
+			  },
+			}
+		`)
+	})
+
 	const { segmentTree } =
-		processRouteTree({ routeTree: testTree })
+		processRouteTree(testTree)
 
 	it('works w/ optional params when param is present', () => {
 		expect(findMatch('/yo/foo123bar/ma', segmentTree)).toMatchInlineSnapshot(`
@@ -107,7 +286,11 @@ describe('findMatch', () => {
 			  "params": {
 			    "id": "123",
 			  },
-			  "routeId": "/yo/foo{-$id}bar/ma",
+			  "route": {
+			    "fullPath": "/yo/foo{-$id}bar/ma",
+			    "id": "/yo/foo{-$id}bar/ma",
+			    "path": "ma",
+			  },
 			}
 		`)
 	})
@@ -117,7 +300,11 @@ describe('findMatch', () => {
 			  "params": {
 			    "id": "",
 			  },
-			  "routeId": "/yo/foo{-$id}bar/ma",
+			  "route": {
+			    "fullPath": "/yo/foo{-$id}bar/ma",
+			    "id": "/yo/foo{-$id}bar/ma",
+			    "path": "ma",
+			  },
 			}
 		`)
 	})
@@ -127,7 +314,11 @@ describe('findMatch', () => {
 			  "params": {
 			    "*": "somefile",
 			  },
-			  "routeId": "/yo/{$}.png",
+			  "route": {
+			    "fullPath": "/yo/{$}.png",
+			    "id": "/yo/{$}.png",
+			    "path": "{$}.png",
+			  },
 			}
 		`)
 	})
@@ -137,7 +328,11 @@ describe('findMatch', () => {
 			  "params": {
 			    "*": "something",
 			  },
-			  "routeId": "/yo/$",
+			  "route": {
+			    "fullPath": "/yo/$",
+			    "id": "/yo/$",
+			    "path": "$",
+			  },
 			}
 		`)
 	})
@@ -147,7 +342,11 @@ describe('findMatch', () => {
 			  "params": {
 			    "a": "123",
 			  },
-			  "routeId": "/foo/$a/aaa",
+			  "route": {
+			    "fullPath": "/foo/$a/aaa",
+			    "id": "/foo/$a/aaa",
+			    "path": "$a/aaa",
+			  },
 			}
 		`)
 		expect(findMatch('/foo/123/bbb', segmentTree)).toMatchInlineSnapshot(`
@@ -155,7 +354,11 @@ describe('findMatch', () => {
 			  "params": {
 			    "b": "123",
 			  },
-			  "routeId": "/foo/$b/bbb",
+			  "route": {
+			    "fullPath": "/foo/$b/bbb",
+			    "id": "/foo/$b/bbb",
+			    "path": "$b/bbb",
+			  },
 			}
 		`)
 	})
@@ -166,7 +369,23 @@ describe('findMatch', () => {
 			  "params": {
 			    "**": "/123",
 			  },
-			  "routeId": "/foo",
+			  "route": {
+			    "children": [
+			      {
+			        "fullPath": "/foo/$a/aaa",
+			        "id": "/foo/$a/aaa",
+			        "path": "$a/aaa",
+			      },
+			      {
+			        "fullPath": "/foo/$b/bbb",
+			        "id": "/foo/$b/bbb",
+			        "path": "$b/bbb",
+			      },
+			    ],
+			    "fullPath": "/foo",
+			    "id": "/foo",
+			    "path": "foo",
+			  },
 			}
 		`)
 	})
@@ -176,7 +395,18 @@ describe('findMatch', () => {
 			  "params": {
 			    "id": "",
 			  },
-			  "routeId": "/yo/foo{-$id}bar",
+			  "route": {
+			    "children": [
+			      {
+			        "fullPath": "/yo/foo{-$id}bar/ma",
+			        "id": "/yo/foo{-$id}bar/ma",
+			        "path": "ma",
+			      },
+			    ],
+			    "fullPath": "/yo/foo{-$id}bar",
+			    "id": "/yo/foo{-$id}bar",
+			    "path": "foo{-$id}bar",
+			  },
 			}
 		`)
 	})
@@ -186,7 +416,11 @@ describe('findMatch', () => {
 			  "params": {
 			    "*": "something",
 			  },
-			  "routeId": "/yo/$",
+			  "route": {
+			    "fullPath": "/yo/$",
+			    "id": "/yo/$",
+			    "path": "$",
+			  },
 			}
 		`)
 	})
