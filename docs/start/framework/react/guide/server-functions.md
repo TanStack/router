@@ -241,7 +241,7 @@ You can customize function ID generation for the production build by providing a
 
 Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
-Please note that this customization is **experimental** und subject to change.
+Please note that this customization is **experimental** and subject to change.
 
 Example:
 

@@ -48,14 +48,14 @@ describe('callbacks', () => {
       await router.navigate({ to: '/foo' })
       expect(onEnter).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ id: '/foo' }),
+        expect.objectContaining({ id: '/foo/foo' }),
       )
 
       // Entering bar
       await router.navigate({ to: '/bar' })
       expect(onEnter).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ id: '/bar' }),
+        expect.objectContaining({ id: '/bar/bar' }),
       )
     })
   })
@@ -70,14 +70,14 @@ describe('callbacks', () => {
       await router.navigate({ to: '/bar' })
       expect(onLeave).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ id: '/foo' }),
+        expect.objectContaining({ id: '/foo/foo' }),
       )
 
       // Leaving bar to foo
       await router.navigate({ to: '/foo' })
       expect(onLeave).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ id: '/bar' }),
+        expect.objectContaining({ id: '/bar/bar' }),
       )
     })
   })
@@ -92,14 +92,14 @@ describe('callbacks', () => {
       await router.navigate({ to: '/foo', search: { foo: 'baz' } })
       expect(onStay).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ id: '/foo', search: { foo: 'baz' } }),
+        expect.objectContaining({ id: '/foo/foo', search: { foo: 'baz' } }),
       )
 
       // Staying on foo
       await router.navigate({ to: '/foo', search: { foo: 'quux' } })
       expect(onStay).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ id: '/foo', search: { foo: 'quux' } }),
+        expect.objectContaining({ id: '/foo/foo', search: { foo: 'quux' } }),
       )
     })
   })
