@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, test, vi } from 'vitest'
 
 import { trailingSlashOptions } from '@tanstack/router-core'
 import { waitFor } from '@solidjs/testing-library'
@@ -1262,4 +1262,80 @@ describe('router.navigate navigation using optional path parameters - edge cases
 
     expect(router.state.location.pathname).toBe('/files/prefix.txt')
   })
+})
+
+describe('encoded and unicode paths', () => {
+  const testCases = [
+    {
+      name: 'with prefix',
+      path: '/foo/prefix@대{$}',
+      expectedPath:
+        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]',
+      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀@]',
+      params: {
+        _splat: 'test[s\\/.\\/parameter%!🚀@]',
+        '*': 'test[s\\/.\\/parameter%!🚀@]',
+      },
+    },
+    {
+      name: 'with suffix',
+      path: '/foo/{$}대suffix@',
+      expectedPath:
+        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]%EB%8C%80suffix@',
+      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀@]대suffix@',
+      params: {
+        _splat: 'test[s\\/.\\/parameter%!🚀@]',
+        '*': 'test[s\\/.\\/parameter%!🚀@]',
+      },
+    },
+    {
+      name: 'with wildcard',
+      path: '/foo/$',
+      expectedPath: '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80]',
+      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀]',
+      params: {
+        _splat: 'test[s\\/.\\/parameter%!🚀]',
+        '*': 'test[s\\/.\\/parameter%!🚀]',
+      },
+    },
+    // '/' is left as is with splat params but encoded with normal params
+    {
+      name: 'with path param',
+      path: `/foo/$id`,
+      expectedPath: '/foo/test[s%5C%2F.%5C%2Fparameter%25!%F0%9F%9A%80]',
+      expectedLocation: '/foo/test[s%5C%2F.%5C%2Fparameter%25!🚀]',
+      params: {
+        id: 'test[s\\/.\\/parameter%!🚀]',
+      },
+    },
+  ]
+
+  test.each(testCases)(
+    'should handle encoded, decoded paths with unicode characters correctly - $name',
+    async ({ path, expectedPath, expectedLocation, params }) => {
+      const rootRoute = createRootRoute()
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+      })
+
+      const pathRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, pathRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      await router.load()
+      await router.navigate({ to: path, params })
+      await router.invalidate()
+
+      expect(router.state.location.href).toBe(expectedPath)
+      expect(router.state.location.pathname).toBe(expectedLocation)
+    },
+  )
 })

@@ -1,4 +1,4 @@
-import { decodePathSegment, last } from './utils'
+import { last } from './utils'
 import { parseSegment } from "./new-process-route-tree"
 import type { SegmentKind } from "./new-process-route-tree"
 import type { LRUCache } from './lru-cache'
@@ -330,7 +330,7 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
       // Handle regular pathname segment
       return {
         type: SEGMENT_TYPE_PATHNAME,
-        value: decodePathSegment(part),
+        value: part,
       }
     }),
   )

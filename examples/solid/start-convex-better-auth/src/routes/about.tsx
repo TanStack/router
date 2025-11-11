@@ -1,9 +1,12 @@
 import { createFileRoute } from '@tanstack/solid-router'
-
-export const Route = createFileRoute('/대한민국')({
+export const Route = createFileRoute('/about')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  return <div>Hello "/대한민국"!</div>
+  return (
+    <main>
+      <h1>About</h1>
+    </main>
+  )
 }

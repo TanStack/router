@@ -9,6 +9,7 @@ test.use({
 })
 test('Navigating to post', async ({ page }) => {
   await page.goto('/')
+  await page.waitForURL('/')
 
   await page.getByRole('link', { name: 'Posts' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
