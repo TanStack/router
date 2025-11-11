@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { findRouteMatch, processFlatRouteList, processRouteTree } from "../src/new-process-route-tree"
-import type { AnyRoute, RouteMask } from "../src"
+import {
+  findRouteMatch,
+  processFlatRouteList,
+  processRouteTree,
+} from '../src/new-process-route-tree'
+import type { AnyRoute, RouteMask } from '../src'
 
 describe('processFlatRouteList', () => {
-	it('processes a route masks list', () => {
-		const routeTree = {} as AnyRoute
-		const routeMasks: Array<RouteMask<AnyRoute>> = [
-			{ from: '/a/b/c', routeTree },
-			{ from: '/a/b/d', routeTree },
-			{ from: '/a/$param/d', routeTree },
-			{ from: '/a/{-$optional}/d', routeTree },
-			{ from: '/a/b/{$}.txt', routeTree },
-		]
-		expect(processFlatRouteList(routeMasks)).toMatchInlineSnapshot(`
+  it('processes a route masks list', () => {
+    const routeTree = {} as AnyRoute
+    const routeMasks: Array<RouteMask<AnyRoute>> = [
+      { from: '/a/b/c', routeTree },
+      { from: '/a/b/d', routeTree },
+      { from: '/a/$param/d', routeTree },
+      { from: '/a/{-$optional}/d', routeTree },
+      { from: '/a/b/{$}.txt', routeTree },
+    ]
+    expect(processFlatRouteList(routeMasks)).toMatchInlineSnapshot(`
 			{
 			  "depth": 0,
 			  "dynamic": null,
@@ -166,82 +170,88 @@ describe('processFlatRouteList', () => {
 			  "wildcard": null,
 			}
 		`)
-	})
+  })
 })
 
 describe('findMatch', () => {
-	const testTree = {
-		id: '__root__',
-		fullPath: '/',
-		path: '/',
-		children: [
-			{
-				id: '/yo',
-				fullPath: '/yo',
-				path: 'yo',
-				children: [
-					{
-						id: '/yo/foo{-$id}bar',
-						fullPath: '/yo/foo{-$id}bar',
-						path: 'foo{-$id}bar',
-						children: [
-							{
-								id: '/yo/foo{-$id}bar/ma',
-								fullPath: '/yo/foo{-$id}bar/ma',
-								path: 'ma',
-							}
-						]
-					},
-					{
-						id: '/yo/{$}.png',
-						fullPath: '/yo/{$}.png',
-						path: '{$}.png',
-					},
-					{
-						id: '/yo/$',
-						fullPath: '/yo/$',
-						path: '$',
-					}
-				]
-			}, {
-				id: '/foo',
-				fullPath: '/foo',
-				path: 'foo',
-				children: [
-					{
-						id: '/foo/$a/aaa',
-						fullPath: '/foo/$a/aaa',
-						path: '$a/aaa',
-					}, {
-						id: '/foo/$b/bbb',
-						fullPath: '/foo/$b/bbb',
-						path: '$b/bbb',
-					}
-				]
-			}, {
-				id: '/x/y/z',
-				fullPath: '/x/y/z',
-				path: 'x/y/z',
-			}, {
-				id: '/$id/y/w',
-				fullPath: '/$id/y/w',
-				path: '$id/y/w',
-			}, {
-				id: '/{-$other}/posts/new',
-				fullPath: '/{-$other}/posts/new',
-				path: '{-$other}/posts/new',
-			}, {
-				id: '/posts/$id',
-				fullPath: '/posts/$id',
-				path: 'posts/$id',
-			}
-		]
-	}
+  const testTree = {
+    id: '__root__',
+    fullPath: '/',
+    path: '/',
+    children: [
+      {
+        id: '/yo',
+        fullPath: '/yo',
+        path: 'yo',
+        children: [
+          {
+            id: '/yo/foo{-$id}bar',
+            fullPath: '/yo/foo{-$id}bar',
+            path: 'foo{-$id}bar',
+            children: [
+              {
+                id: '/yo/foo{-$id}bar/ma',
+                fullPath: '/yo/foo{-$id}bar/ma',
+                path: 'ma',
+              },
+            ],
+          },
+          {
+            id: '/yo/{$}.png',
+            fullPath: '/yo/{$}.png',
+            path: '{$}.png',
+          },
+          {
+            id: '/yo/$',
+            fullPath: '/yo/$',
+            path: '$',
+          },
+        ],
+      },
+      {
+        id: '/foo',
+        fullPath: '/foo',
+        path: 'foo',
+        children: [
+          {
+            id: '/foo/$a/aaa',
+            fullPath: '/foo/$a/aaa',
+            path: '$a/aaa',
+          },
+          {
+            id: '/foo/$b/bbb',
+            fullPath: '/foo/$b/bbb',
+            path: '$b/bbb',
+          },
+        ],
+      },
+      {
+        id: '/x/y/z',
+        fullPath: '/x/y/z',
+        path: 'x/y/z',
+      },
+      {
+        id: '/$id/y/w',
+        fullPath: '/$id/y/w',
+        path: '$id/y/w',
+      },
+      {
+        id: '/{-$other}/posts/new',
+        fullPath: '/{-$other}/posts/new',
+        path: '{-$other}/posts/new',
+      },
+      {
+        id: '/posts/$id',
+        fullPath: '/posts/$id',
+        path: 'posts/$id',
+      },
+    ],
+  }
 
-	const { processedTree } = processRouteTree(testTree)
+  const { processedTree } = processRouteTree(testTree)
 
-	it('foo', () => {
-		expect(findRouteMatch('/posts/new', processedTree)).toMatchInlineSnapshot(`
+  it('foo', () => {
+    expect(findRouteMatch('/posts/new', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "other": "",
@@ -253,7 +263,8 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-		expect(findRouteMatch('/yo/posts/new', processedTree)).toMatchInlineSnapshot(`
+    expect(findRouteMatch('/yo/posts/new', processedTree))
+      .toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "other": "yo",
@@ -265,7 +276,7 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-		expect(findRouteMatch('/x/y/w', processedTree)).toMatchInlineSnapshot(`
+    expect(findRouteMatch('/x/y/w', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "id": "x",
@@ -277,12 +288,11 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-	})
+  })
 
-
-
-	it('works w/ optional params when param is present', () => {
-		expect(findRouteMatch('/yo/foo123bar/ma', processedTree)).toMatchInlineSnapshot(`
+  it('works w/ optional params when param is present', () => {
+    expect(findRouteMatch('/yo/foo123bar/ma', processedTree))
+      .toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "id": "123",
@@ -294,9 +304,9 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-	})
-	it('works w/ optional params when param is absent', () => {
-		expect(findRouteMatch('/yo/ma', processedTree)).toMatchInlineSnapshot(`
+  })
+  it('works w/ optional params when param is absent', () => {
+    expect(findRouteMatch('/yo/ma', processedTree)).toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "id": "",
@@ -308,9 +318,10 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-	})
-	it('works w/ wildcard and suffix', () => {
-		expect(findRouteMatch('/yo/somefile.png', processedTree)).toMatchInlineSnapshot(`
+  })
+  it('works w/ wildcard and suffix', () => {
+    expect(findRouteMatch('/yo/somefile.png', processedTree))
+      .toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "*": "somefile",
@@ -322,9 +333,10 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-	})
-	it('works w/ wildcard alone', () => {
-		expect(findRouteMatch('/yo/something', processedTree)).toMatchInlineSnapshot(`
+  })
+  it('works w/ wildcard alone', () => {
+    expect(findRouteMatch('/yo/something', processedTree))
+      .toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "*": "something",
@@ -336,9 +348,10 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-	})
-	it('works w/ multiple required param routes at same level, w/ different names for their param', () => {
-		expect(findRouteMatch('/foo/123/aaa', processedTree)).toMatchInlineSnapshot(`
+  })
+  it('works w/ multiple required param routes at same level, w/ different names for their param', () => {
+    expect(findRouteMatch('/foo/123/aaa', processedTree))
+      .toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "a": "123",
@@ -350,7 +363,8 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-		expect(findRouteMatch('/foo/123/bbb', processedTree)).toMatchInlineSnapshot(`
+    expect(findRouteMatch('/foo/123/bbb', processedTree))
+      .toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "b": "123",
@@ -362,10 +376,11 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-	})
+  })
 
-	it('works w/ fuzzy matching', () => {
-		expect(findRouteMatch('/foo/123', processedTree, true)).toMatchInlineSnapshot(`
+  it('works w/ fuzzy matching', () => {
+    expect(findRouteMatch('/foo/123', processedTree, true))
+      .toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "**": "/123",
@@ -389,9 +404,10 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-	})
-	it('can still return exact matches w/ fuzzy:true', () => {
-		expect(findRouteMatch('/yo/foobar', processedTree, true)).toMatchInlineSnapshot(`
+  })
+  it('can still return exact matches w/ fuzzy:true', () => {
+    expect(findRouteMatch('/yo/foobar', processedTree, true))
+      .toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "id": "",
@@ -410,9 +426,10 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-	})
-	it('can still match a wildcard route w/ fuzzy:true', () => {
-		expect(findRouteMatch('/yo/something', processedTree, true)).toMatchInlineSnapshot(`
+  })
+  it('can still match a wildcard route w/ fuzzy:true', () => {
+    expect(findRouteMatch('/yo/something', processedTree, true))
+      .toMatchInlineSnapshot(`
 			{
 			  "params": {
 			    "*": "something",
@@ -424,5 +441,5 @@ describe('findMatch', () => {
 			  },
 			}
 		`)
-	})
+  })
 })

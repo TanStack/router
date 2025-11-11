@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { interpolatePath } from '../src/path'
 import {
-  interpolatePath,
-} from '../src/path'
-import { SEGMENT_TYPE_OPTIONAL_PARAM, SEGMENT_TYPE_PARAM, SEGMENT_TYPE_PATHNAME, SEGMENT_TYPE_WILDCARD } from "../src/new-process-route-tree"
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
+} from '../src/new-process-route-tree'
 
 describe.skip('Optional Path Parameters', () => {
   type ParsePathnameTestScheme = Array<{

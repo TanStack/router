@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  interpolatePath,
-} from '../src/path'
+import { interpolatePath } from '../src/path'
 
 describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
   describe('Optional Dynamic Parameters {-$param}', () => {

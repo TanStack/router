@@ -9,7 +9,12 @@ import {
   last,
   replaceEqualDeep,
 } from './utils'
-import { findFlatMatch, findRouteMatch, findSingleMatch, processRouteTree } from './new-process-route-tree'
+import {
+  findFlatMatch,
+  findRouteMatch,
+  findSingleMatch,
+  processRouteTree,
+} from './new-process-route-tree'
 import {
   cleanPath,
   interpolatePath,
@@ -689,9 +694,7 @@ export type ParseLocationFn<TRouteTree extends AnyRoute> = (
   previousLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>,
 ) => ParsedLocation<FullSearchSchema<TRouteTree>>
 
-export type GetMatchRoutesFn = (
-  pathname: string
-) => {
+export type GetMatchRoutesFn = (pathname: string) => {
   matchedRoutes: Array<AnyRoute>
   routeParams: Record<string, string>
   foundRoute: AnyRoute | undefined
@@ -1236,7 +1239,9 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const { foundRoute, matchedRoutes, routeParams } = this.getMatchedRoutes(next.pathname)
+    const { foundRoute, matchedRoutes, routeParams } = this.getMatchedRoutes(
+      next.pathname,
+    )
     let isGlobalNotFound = false
 
     // Check to see if the route needs a 404 entry
@@ -1766,7 +1771,11 @@ export class RouterCore<
         let params = {}
 
         if (this.options.routeMasks) {
-          const match = findFlatMatch<RouteMask<TRouteTree>>(this.options.routeMasks, next.pathname, this.processedTree)
+          const match = findFlatMatch<RouteMask<TRouteTree>>(
+            this.options.routeMasks,
+            next.pathname,
+            this.processedTree,
+          )
           if (match) {
             params = match.params
             const { from: _from, ...maskProps } = match.route
@@ -2487,7 +2496,13 @@ export class RouterCore<
       ? this.latestLocation
       : this.state.resolvedLocation || this.state.location
 
-    const match = findSingleMatch(next.pathname, opts?.caseSensitive ?? false, opts?.fuzzy ?? false, baseLocation.pathname, this.processedTree)
+    const match = findSingleMatch(
+      next.pathname,
+      opts?.caseSensitive ?? false,
+      opts?.fuzzy ?? false,
+      baseLocation.pathname,
+      this.processedTree,
+    )
 
     if (!match) {
       return false

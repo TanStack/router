@@ -1,6 +1,12 @@
 import { last } from './utils'
-import { SEGMENT_TYPE_OPTIONAL_PARAM, SEGMENT_TYPE_PARAM, SEGMENT_TYPE_PATHNAME, SEGMENT_TYPE_WILDCARD, parseSegment } from "./new-process-route-tree"
-import type { SegmentKind } from "./new-process-route-tree"
+import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
+  parseSegment,
+} from './new-process-route-tree'
+import type { SegmentKind } from './new-process-route-tree'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
 /** Join path segments, cleaning duplicate slashes between parts. */
@@ -143,7 +149,6 @@ export function resolvePath({
     }
   }
 
-
   if (baseSegments.length > 1) {
     if (last(baseSegments) === '') {
       if (trailingSlash === 'never') {
@@ -174,7 +179,8 @@ export function resolvePath({
       joined += prefix || suffix ? `${prefix}{$${value}}${suffix}` : `$${value}`
     } else if (kind === SEGMENT_TYPE_WILDCARD) {
       joined += prefix || suffix ? `${prefix}{$}${suffix}` : '$'
-    } else { // SEGMENT_TYPE_OPTIONAL_PARAM
+    } else {
+      // SEGMENT_TYPE_OPTIONAL_PARAM
       joined += `${prefix}{-$${value}}${suffix}`
     }
   }
@@ -212,7 +218,8 @@ export function interpolatePath({
   leaveParams,
   decodeCharMap,
 }: InterpolatePathOptions): InterPolatePathResult {
-  if (!path) return { interpolatedPath: '/', usedParams: {}, isMissingParams: false }
+  if (!path)
+    return { interpolatedPath: '/', usedParams: {}, isMissingParams: false }
 
   function encodeParam(key: string): any {
     const value = params[key]
@@ -284,7 +291,9 @@ export function interpolatePath({
         const value = encodeParam(key)
         interpolatedSegments.push(`${prefix}$${key}${value ?? ''}${suffix}`)
       } else {
-        interpolatedSegments.push(`${prefix}${encodeParam(key) ?? 'undefined'}${suffix}`)
+        interpolatedSegments.push(
+          `${prefix}${encodeParam(key) ?? 'undefined'}${suffix}`,
+        )
       }
       continue
     }
@@ -331,4 +340,3 @@ function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
   }
   return encoded
 }
-
