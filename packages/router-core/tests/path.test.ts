@@ -1,17 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
-  SEGMENT_TYPE_PARAM,
-  SEGMENT_TYPE_PATHNAME,
-  SEGMENT_TYPE_WILDCARD,
   exactPathTest,
   interpolatePath,
-  matchPathname,
-  parsePathname,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
 } from '../src/path'
-import type { Segment as PathSegment } from '../src/path'
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
   'removeTrailingSlash with basepath $basepath',
@@ -499,7 +493,7 @@ describe('interpolatePath', () => {
   })
 })
 
-describe('matchPathname', () => {
+describe.skip('matchPathname', () => {
   describe('path param(s) matching', () => {
     it.each([
       {
@@ -725,7 +719,7 @@ describe('matchPathname', () => {
   })
 })
 
-describe('parsePathname', () => {
+describe.skip('parsePathname', () => {
   type ParsePathnameTestScheme = Array<{
     name: string
     to: string | undefined

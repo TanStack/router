@@ -9,11 +9,10 @@ import {
   last,
   replaceEqualDeep,
 } from './utils'
-import { processRouteTree } from './process-route-tree'
+import { findFlatMatch, findRouteMatch, findSingleMatch, processRouteTree } from './new-process-route-tree'
 import {
   cleanPath,
   interpolatePath,
-  matchPathname,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -23,7 +22,6 @@ import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
-import { createLRUCache } from './lru-cache'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
 import {
   composeRewrites,
@@ -31,7 +29,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
-import type { ParsePathnameCache } from './path'
+import type { ProcessedTree } from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -692,8 +690,7 @@ export type ParseLocationFn<TRouteTree extends AnyRoute> = (
 ) => ParsedLocation<FullSearchSchema<TRouteTree>>
 
 export type GetMatchRoutesFn = (
-  pathname: string,
-  routePathname: string | undefined,
+  pathname: string
 ) => {
   matchedRoutes: Array<AnyRoute>
   routeParams: Record<string, string>
@@ -901,7 +898,7 @@ export class RouterCore<
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
-  flatRoutes!: Array<AnyRoute>
+  processedTree!: ProcessedTree<TRouteTree, any, any>
   isServer!: boolean
   pathParamsDecodeCharMap?: Map<string, string>
 
@@ -1093,18 +1090,19 @@ export class RouterCore<
   }
 
   buildRouteTree = () => {
-    const { routesById, routesByPath, flatRoutes } = processRouteTree({
-      routeTree: this.routeTree,
-      initRoute: (route, i) => {
+    const { routesById, routesByPath, processedTree } = processRouteTree(
+      this.routeTree,
+      this.options.caseSensitive,
+      (route, i) => {
         route.init({
           originalIndex: i,
         })
       },
-    })
+    )
 
     this.routesById = routesById as RoutesById<TRouteTree>
     this.routesByPath = routesByPath as RoutesByPath<TRouteTree>
-    this.flatRoutes = flatRoutes as Array<AnyRoute>
+    this.processedTree = processedTree
 
     const notFoundRoute = this.options.notFoundRoute
 
@@ -1208,7 +1206,6 @@ export class RouterCore<
       base: from,
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
-      parseCache: this.parsePathnameCache,
     })
     return resolvedPath
   }
@@ -1239,10 +1236,7 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const { foundRoute, matchedRoutes, routeParams } = this.getMatchedRoutes(
-      next.pathname,
-      opts?.dest?.to as string,
-    )
+    const { foundRoute, matchedRoutes, routeParams } = this.getMatchedRoutes(next.pathname)
     let isGlobalNotFound = false
 
     // Check to see if the route needs a 404 entry
@@ -1534,21 +1528,11 @@ export class RouterCore<
     return matches
   }
 
-  /** a cache for `parsePathname` */
-  private parsePathnameCache: ParsePathnameCache = createLRUCache(1000)
-
-  getMatchedRoutes: GetMatchRoutesFn = (
-    pathname: string,
-    routePathname: string | undefined,
-  ) => {
+  getMatchedRoutes: GetMatchRoutesFn = (pathname) => {
     return getMatchedRoutes({
       pathname,
-      routePathname,
-      caseSensitive: this.options.caseSensitive,
-      routesByPath: this.routesByPath,
       routesById: this.routesById,
-      flatRoutes: this.flatRoutes,
-      parseCache: this.parsePathnameCache,
+      processedTree: this.processedTree,
     })
   }
 
@@ -1611,10 +1595,7 @@ export class RouterCore<
         process.env.NODE_ENV !== 'production' &&
         dest._isNavigate
       ) {
-        const allFromMatches = this.getMatchedRoutes(
-          dest.from,
-          undefined,
-        ).matchedRoutes
+        const allFromMatches = this.getMatchedRoutes(dest.from).matchedRoutes
 
         const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
           return comparePaths(d.fullPath, dest.from!)
@@ -1665,7 +1646,6 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams,
-        parseCache: this.parsePathnameCache,
       }).interpolatedPath
 
       const destRoutes = this.matchRoutes(interpolatedNextTo, undefined, {
@@ -1691,7 +1671,6 @@ export class RouterCore<
           params: nextParams,
           leaveParams: opts.leaveParams,
           decodeCharMap: this.pathParamsDecodeCharMap,
-          parseCache: this.parsePathnameCache,
         }).interpolatedPath,
       )
 
@@ -1786,33 +1765,18 @@ export class RouterCore<
       if (!maskedNext) {
         let params = {}
 
-        const foundMask = this.options.routeMasks?.find((d) => {
-          const match = matchPathname(
-            next.pathname,
-            {
-              to: d.from,
-              caseSensitive: false,
-              fuzzy: false,
-            },
-            this.parsePathnameCache,
-          )
-
+        if (this.options.routeMasks) {
+          const match = findFlatMatch<RouteMask<TRouteTree>>(this.options.routeMasks, next.pathname, this.processedTree)
           if (match) {
-            params = match
-            return true
+            params = match.params
+            const { from: _from, ...maskProps } = match.route
+            maskedDest = {
+              from: opts.from,
+              ...maskProps,
+              params,
+            }
+            maskedNext = build(maskedDest)
           }
-
-          return false
-        })
-
-        if (foundMask) {
-          const { from: _from, ...maskProps } = foundMask
-          maskedDest = {
-            from: opts.from,
-            ...maskProps,
-            params,
-          }
-          maskedNext = build(maskedDest)
         }
       }
 
@@ -2523,31 +2487,25 @@ export class RouterCore<
       ? this.latestLocation
       : this.state.resolvedLocation || this.state.location
 
-    const match = matchPathname(
-      baseLocation.pathname,
-      {
-        ...opts,
-        to: next.pathname,
-      },
-      this.parsePathnameCache,
-    ) as any
+    const match = findSingleMatch(next.pathname, opts?.caseSensitive ?? false, opts?.fuzzy ?? false, baseLocation.pathname, this.processedTree)
 
     if (!match) {
       return false
     }
+
     if (location.params) {
-      if (!deepEqual(match, location.params, { partial: true })) {
+      if (!deepEqual(match.params, location.params, { partial: true })) {
         return false
       }
     }
 
-    if (match && (opts?.includeSearch ?? true)) {
+    if (opts?.includeSearch ?? true) {
       return deepEqual(baseLocation.search, next.search, { partial: true })
-        ? match
+        ? match.params
         : false
     }
 
-    return match
+    return match.params
   }
 
   ssr?: {
@@ -2643,70 +2601,21 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
  */
 export function getMatchedRoutes<TRouteLike extends RouteLike>({
   pathname,
-  routePathname,
-  caseSensitive,
-  routesByPath,
   routesById,
-  flatRoutes,
-  parseCache,
+  processedTree,
 }: {
   pathname: string
-  routePathname?: string
-  caseSensitive?: boolean
-  routesByPath: Record<string, TRouteLike>
   routesById: Record<string, TRouteLike>
-  flatRoutes: Array<TRouteLike>
-  parseCache?: ParsePathnameCache
+  processedTree: ProcessedTree<any, any, any>
 }) {
   let routeParams: Record<string, string> = {}
   const trimmedPath = trimPathRight(pathname)
-  const getMatchedParams = (route: TRouteLike) => {
-    const result = matchPathname(
-      trimmedPath,
-      {
-        to: route.fullPath,
-        caseSensitive: route.options?.caseSensitive ?? caseSensitive,
-        // we need fuzzy matching for `notFoundMode: 'fuzzy'`
-        fuzzy: true,
-      },
-      parseCache,
-    )
-    return result
-  }
 
-  let foundRoute: TRouteLike | undefined =
-    routePathname !== undefined ? routesByPath[routePathname] : undefined
-  if (foundRoute) {
-    routeParams = getMatchedParams(foundRoute)!
-  } else {
-    // iterate over flatRoutes to find the best match
-    // if we find a fuzzy matching route, keep looking for a perfect fit
-    let fuzzyMatch:
-      | { foundRoute: TRouteLike; routeParams: Record<string, string> }
-      | undefined = undefined
-    for (const route of flatRoutes) {
-      const matchedParams = getMatchedParams(route)
-
-      if (matchedParams) {
-        if (
-          route.path !== '/' &&
-          (matchedParams as Record<string, string>)['**']
-        ) {
-          if (!fuzzyMatch) {
-            fuzzyMatch = { foundRoute: route, routeParams: matchedParams }
-          }
-        } else {
-          foundRoute = route
-          routeParams = matchedParams
-          break
-        }
-      }
-    }
-    // did not find a perfect fit, so take the fuzzy matching route if it exists
-    if (!foundRoute && fuzzyMatch) {
-      foundRoute = fuzzyMatch.foundRoute
-      routeParams = fuzzyMatch.routeParams
-    }
+  let foundRoute: TRouteLike | undefined = undefined
+  const match = findRouteMatch<TRouteLike>(trimmedPath, processedTree, true)
+  if (match) {
+    foundRoute = match.route
+    routeParams = match.params
   }
 
   let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!

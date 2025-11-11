@@ -388,7 +388,7 @@ type RouteLike = {
 		| { fullPath?: never, from: string } // full path from the root
 	)
 
-type ProcessedTree<
+export type ProcessedTree<
 	TTree extends Extract<RouteLike, { fullPath: string }>,
 	TFlat extends Extract<RouteLike, { from: string }>,
 	TSingle extends Extract<RouteLike, { from: string }>,
