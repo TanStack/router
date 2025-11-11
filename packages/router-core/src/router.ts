@@ -22,6 +22,7 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
+import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
@@ -1203,12 +1204,15 @@ export class RouterCore<
     return location
   }
 
+  resolvePathCache = createLRUCache<string, string>(1000)
+
   /** Resolve a path against the router basepath and trailing-slash policy. */
   resolvePathWithBase = (from: string, path: string) => {
     const resolvedPath = resolvePath({
       base: from,
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
+      cache: this.resolvePathCache,
     })
     return resolvedPath
   }

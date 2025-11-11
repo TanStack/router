@@ -7,6 +7,7 @@ import {
   parseSegment,
 } from './new-process-route-tree'
 import type { SegmentKind } from './new-process-route-tree'
+import type { LRUCache } from './lru-cache'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
 /** Join path segments, cleaning duplicate slashes between parts. */
@@ -106,6 +107,7 @@ interface ResolvePathOptions {
   base: string
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
+  cache?: LRUCache<string, string>
 }
 
 /**
@@ -116,7 +118,16 @@ export function resolvePath({
   base,
   to,
   trailingSlash = 'never',
+  cache,
 }: ResolvePathOptions) {
+  let key
+  if (cache) {
+    // `trailingSlash` is static per router, so it doesn't need to be part of the cache key
+    key = base + '\\\\' + to
+    const cached = cache.get(key)
+    if (cached) return cached
+  }
+
   let baseSegments: Array<string>
   const toSegments = to.split('/')
   if (toSegments[0] === '') {
@@ -185,7 +196,9 @@ export function resolvePath({
     }
   }
   joined = cleanPath(joined)
-  return joined || '/'
+  const result = joined || '/'
+  if (key && cache) cache.set(key, result)
+  return result
 }
 
 interface InterpolatePathOptions {
