@@ -35,12 +35,17 @@ function handleRouteUpdate(
   }
 }
 
-function walkReplaceSegmentTree(route: AnyRouteWithPrivateProps, node: AnyRouter['processedTree']['segmentTree']) {
+function walkReplaceSegmentTree(
+  route: AnyRouteWithPrivateProps,
+  node: AnyRouter['processedTree']['segmentTree'],
+) {
   if (node.route?.id === route.id) {
     node.route = route
   }
   node.static?.forEach((child) => walkReplaceSegmentTree(route, child))
-  node.staticInsensitive?.forEach((child) => walkReplaceSegmentTree(route, child))
+  node.staticInsensitive?.forEach((child) =>
+    walkReplaceSegmentTree(route, child),
+  )
   node.dynamic?.forEach((child) => walkReplaceSegmentTree(route, child))
   node.optional?.forEach((child) => walkReplaceSegmentTree(route, child))
   node.wildcard?.forEach((child) => walkReplaceSegmentTree(route, child))
