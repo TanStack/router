@@ -5,7 +5,7 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/solid-router-devtools'
 import { HydrationScript } from 'solid-js/web'
 import Header from '../components/Header'
 
-// import appCss from '../styles.css?url'
+import appCss from '../styles.css?url'
 import type { JSX } from 'solid-js'
 
 export const Route = createRootRoute({
@@ -23,10 +23,10 @@ export const Route = createRootRoute({
       },
     ],
     links: [
-      // {
-      //   rel: 'stylesheet',
-      //   href: appCss,
-      // },
+      {
+        rel: 'stylesheet',
+        href: appCss,
+      },
     ],
   }),
 

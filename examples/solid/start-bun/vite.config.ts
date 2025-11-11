@@ -12,7 +12,7 @@ const config = defineConfig({
     }),
     tailwindcss(),
     tanstackStart(),
-    viteSolid(),
+    viteSolid({ ssr: true }),
   ],
 })
 
