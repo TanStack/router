@@ -19,11 +19,11 @@ function App() {
         </p>
         <a
           class="text-[#61dafb] hover:underline"
-          href="https://reactjs.org"
+          href="https://solidjs.com"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Learn React
+          Learn Solid
         </a>
         <a
           class="text-[#61dafb] hover:underline"
