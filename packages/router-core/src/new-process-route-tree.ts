@@ -492,9 +492,9 @@ export type ProcessedTree<
   singleCache: Map<any, AnySegmentNode<TSingle>>
 }
 
-export function processFlatRouteList<TRouteLike extends Extract<RouteLike, { from: string }>>(
-  routeList: Array<TRouteLike>,
-) {
+export function processFlatRouteList<
+  TRouteLike extends Extract<RouteLike, { from: string }>,
+>(routeList: Array<TRouteLike>) {
   const segmentTree = createStaticNode<TRouteLike>('/')
   const data = new Uint16Array(6)
   for (const route of routeList) {
@@ -592,33 +592,25 @@ export function processRouteTree<
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
   let index = 0
-  parseSegments(
-    caseSensitive,
-    data,
-    routeTree,
-    1,
-    segmentTree,
-    0,
-    (route) => {
-      initRoute?.(route, index)
+  parseSegments(caseSensitive, data, routeTree, 1, segmentTree, 0, (route) => {
+    initRoute?.(route, index)
 
-      invariant(
-        !(route.id in routesById),
-        `Duplicate routes found with id: ${String(route.id)}`,
-      )
+    invariant(
+      !(route.id in routesById),
+      `Duplicate routes found with id: ${String(route.id)}`,
+    )
 
-      routesById[route.id] = route
+    routesById[route.id] = route
 
-      if (index !== 0 && route.path) {
-        const trimmedFullPath = trimPathRight(route.fullPath)
-        if (!routesByPath[trimmedFullPath] || route.fullPath.endsWith('/')) {
-          routesByPath[trimmedFullPath] = route
-        }
+    if (index !== 0 && route.path) {
+      const trimmedFullPath = trimPathRight(route.fullPath)
+      if (!routesByPath[trimmedFullPath] || route.fullPath.endsWith('/')) {
+        routesByPath[trimmedFullPath] = route
       }
+    }
 
-      index++
-    },
-  )
+    index++
+  })
   sortTreeNodes(segmentTree)
   const processedTree: ProcessedTree<TRouteLike, any, any> = {
     segmentTree,
