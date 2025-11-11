@@ -62,9 +62,7 @@ function Home() {
         <h1 class="text-2xl mb-4">Start Server Functions - Todo Example</h1>
         <ul class="mb-4 space-y-2">
           {todos().map((t: any) => (
-            <li
-              class="bg-white/10 border border-white/20 rounded-lg p-3 backdrop-blur-sm shadow-md"
-            >
+            <li class="bg-white/10 border border-white/20 rounded-lg p-3 backdrop-blur-sm shadow-md">
               <span class="text-lg text-white">{t.name}</span>
             </li>
           ))}
