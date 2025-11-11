@@ -825,7 +825,9 @@ function getNodeMatch<T extends RouteLike>(
         for (const segment of node.dynamic) {
           const { prefix, suffix } = segment
           if (prefix || suffix) {
-            const casePart = segment.caseSensitive ? part : (lowerPart ??= part.toLowerCase())
+            const casePart = segment.caseSensitive
+              ? part
+              : (lowerPart ??= part.toLowerCase())
             if (prefix && !casePart.startsWith(prefix)) continue
             if (suffix && !casePart.endsWith(suffix)) continue
           }
@@ -860,7 +862,9 @@ function getNodeMatch<T extends RouteLike>(
         for (const segment of node.optional) {
           const { prefix, suffix } = segment
           if (prefix || suffix) {
-            const casePart = segment.caseSensitive ? part : (lowerPart ??= part.toLowerCase())
+            const casePart = segment.caseSensitive
+              ? part
+              : (lowerPart ??= part.toLowerCase())
             if (prefix && !casePart.startsWith(prefix)) continue
             if (suffix && !casePart.endsWith(suffix)) continue
           }
@@ -881,12 +885,16 @@ function getNodeMatch<T extends RouteLike>(
         for (const segment of node.wildcard) {
           const { prefix, suffix } = segment
           if (prefix) {
-            const casePart = segment.caseSensitive ? part : (lowerPart ??= part.toLowerCase())
+            const casePart = segment.caseSensitive
+              ? part
+              : (lowerPart ??= part.toLowerCase())
             if (!casePart.startsWith(prefix)) continue
           }
           if (suffix) {
             const lastPart = parts[parts.length - 1]!
-            const casePart = segment.caseSensitive ? lastPart : lastPart.toLowerCase()
+            const casePart = segment.caseSensitive
+              ? lastPart
+              : lastPart.toLowerCase()
             if (!casePart.endsWith(suffix)) continue
           }
           // a wildcard match terminates the loop, but we need to continue searching in case there's a longer match
@@ -907,7 +915,9 @@ function getNodeMatch<T extends RouteLike>(
 
       // 2. Try case insensitive static match
       if (node.staticInsensitive) {
-        const match = node.staticInsensitive.get((lowerPart ??= part.toLowerCase()))
+        const match = node.staticInsensitive.get(
+          (lowerPart ??= part.toLowerCase()),
+        )
         if (match) {
           node = match
           depth++
