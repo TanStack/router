@@ -629,6 +629,10 @@
             {
               "label": "Kitchen Sink + Solid Query (code-based)",
               "to": "framework/solid/examples/kitchen-sink-solid-query"
+            },
+            {
+              "label": "View Transitions",
+              "to": "framework/solid/examples/view-transitions"
             }
           ]
         }
