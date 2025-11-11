@@ -703,10 +703,12 @@ function extractParams<T extends RouteLike>(
       }
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
-      params['*'] = path.substring(
+      const rest = path.substring(
         currentPathIndex + (n.prefix?.length ?? 0),
         path.length - (n.suffix?.length ?? 0),
       )
+      params['*'] = rest
+      params._splat = rest
       break
     }
   }
