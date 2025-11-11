@@ -438,5 +438,59 @@ describe('processRouteTree', () => {
         expect(result.flatRoutes.map((r) => r.id)).toEqual(expected)
       },
     )
+
+    it.each([
+      {
+        routes: ['/{-$owner}/posts/new', '/posts/$id'],
+        pathname: '/posts/new',
+        expected: { route: '/{-$owner}/posts/new', params: {} },
+        description: 'prefers static suffix over dynamic param',
+      },
+      {
+        routes: ['/{-$owner}/posts/edit', '/posts/$id'],
+        pathname: '/posts/edit',
+        expected: { route: '/{-$owner}/posts/edit', params: {} },
+        description: 'prefers static suffix with different word',
+      },
+      {
+        routes: ['/{-$owner}/posts/new', '/posts/$id'],
+        pathname: '/posts/123',
+        expected: { route: '/posts/$id', params: { id: '123' } },
+        description: 'falls back to dynamic when no static match',
+      },
+      {
+        routes: ['/users/{-$org}/settings', '/users/$id'],
+        pathname: '/users/settings',
+        expected: { route: '/users/{-$org}/settings', params: {} },
+        description: 'works with optional params before static',
+      },
+      {
+        routes: ['/{-$a}/posts/create', '/posts/$id'],
+        pathname: '/posts/create',
+        expected: { route: '/{-$a}/posts/create', params: {} },
+        description: 'works with optional param and static suffix',
+      },
+      {
+        routes: ['/api/{-$version}/docs', '/api/$endpoint'],
+        pathname: '/api/docs',
+        expected: { route: '/api/{-$version}/docs', params: {} },
+        description: 'prefers static suffix in nested routes',
+      },
+    ])(
+      'route matching - static suffix: $description',
+      ({ routes, pathname, expected }) => {
+        const result = processRouteTree({ routeTree: createRouteTree(routes) })
+        const matchResult = getMatchedRoutes({
+          pathname,
+          caseSensitive: false,
+          routesByPath: result.routesByPath,
+          routesById: result.routesById,
+          flatRoutes: result.flatRoutes,
+        })
+
+        expect(matchResult.foundRoute?.id).toBe(expected.route)
+        expect(matchResult.routeParams).toEqual(expected.params)
+      },
+    )
   })
 })
