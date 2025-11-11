@@ -115,24 +115,25 @@ const postsLayoutRoute = createRoute({
     return (
       <Motion.div class="p-2 flex gap-2" {...mainTransitionProps}>
         <ul class="list-disc pl-4">
-          {[...posts(), { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
-            (post) => {
-              return (
-                <li class="whitespace-nowrap">
-                  <Link
-                    to={postRoute.to}
-                    params={{
-                      postId: post.id,
-                    }}
-                    class="block py-1 text-blue-800 hover:text-blue-600"
-                    activeProps={{ class: 'text-black font-bold' }}
-                  >
-                    <div>{post.title.substring(0, 20)}</div>
-                  </Link>
-                </li>
-              )
-            },
-          )}
+          {[
+            ...posts(),
+            { id: 'i-do-not-exist', title: 'Non-existent Post' },
+          ].map((post) => {
+            return (
+              <li class="whitespace-nowrap">
+                <Link
+                  to={postRoute.to}
+                  params={{
+                    postId: post.id,
+                  }}
+                  class="block py-1 text-blue-800 hover:text-blue-600"
+                  activeProps={{ class: 'text-black font-bold' }}
+                >
+                  <div>{post.title.substring(0, 20)}</div>
+                </Link>
+              </li>
+            )
+          })}
         </ul>
         <hr />
         <Presence>
