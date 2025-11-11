@@ -24,6 +24,7 @@ export const renderRouterToStream = async ({
     const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,
       nonce: router.options.ssr?.nonce,
+      progressiveChunkSize: Number.POSITIVE_INFINITY,
     })
 
     if (isbot(request.headers.get('User-Agent'))) {
@@ -46,6 +47,7 @@ export const renderRouterToStream = async ({
     try {
       const pipeable = ReactDOMServer.renderToPipeableStream(children, {
         nonce: router.options.ssr?.nonce,
+        progressiveChunkSize: Number.POSITIVE_INFINITY,
         ...(isbot(request.headers.get('User-Agent'))
           ? {
               onAllReady() {

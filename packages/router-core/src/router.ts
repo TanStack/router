@@ -896,6 +896,7 @@ export class RouterCore<
   rewrite?: LocationRewrite
   origin?: string
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
+  pendingBuiltLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
@@ -1363,13 +1364,12 @@ export class RouterCore<
       // Existing matches are matches that are already loaded along with
       // pending matches that are still loading
       const matchId =
-        interpolatePath({
-          path: route.id,
-          params: routeParams,
-          leaveWildcards: true,
-          decodeCharMap: this.pathParamsDecodeCharMap,
-          parseCache: this.parsePathnameCache,
-        }).interpolatedPath + loaderDepsHash
+        // route.id for disambiguation
+        route.id +
+        // interpolatedPath for param changes
+        interpolatedPath +
+        // explicit deps
+        loaderDepsHash
 
       const existingMatch = this.getMatch(matchId)
 
@@ -1563,7 +1563,18 @@ export class RouterCore<
   }
 
   cancelMatches = () => {
-    this.state.pendingMatches?.forEach((match) => {
+    const currentPendingMatches = this.state.matches.filter(
+      (match) => match.status === 'pending',
+    )
+    const currentLoadingMatches = this.state.matches.filter(
+      (match) => match.isFetching === 'loader',
+    )
+    const matchesToCancelArray = new Set([
+      ...(this.state.pendingMatches ?? []),
+      ...currentPendingMatches,
+      ...currentLoadingMatches,
+    ])
+    matchesToCancelArray.forEach((match) => {
       this.cancelMatch(match.id)
     })
   }
@@ -1582,7 +1593,8 @@ export class RouterCore<
       } = {},
     ): ParsedLocation => {
       // We allow the caller to override the current location
-      const currentLocation = dest._fromLocation || this.latestLocation
+      const currentLocation =
+        dest._fromLocation || this.pendingBuiltLocation || this.latestLocation
 
       const allCurrentLocationMatches = this.matchRoutes(currentLocation, {
         _buildLocation: true,
@@ -1677,7 +1689,6 @@ export class RouterCore<
           // This preserves the original parameter syntax including optional parameters
           path: nextTo,
           params: nextParams,
-          leaveWildcards: false,
           leaveParams: opts.leaveParams,
           decodeCharMap: this.pathParamsDecodeCharMap,
           parseCache: this.parsePathnameCache,
@@ -1945,7 +1956,11 @@ export class RouterCore<
       _includeValidateSearch: true,
     })
 
-    return this.commitLocation({
+    this.pendingBuiltLocation = location as ParsedLocation<
+      FullSearchSchema<TRouteTree>
+    >
+
+    const commitPromise = this.commitLocation({
       ...location,
       viewTransition,
       replace,
@@ -1953,6 +1968,16 @@ export class RouterCore<
       hashScrollIntoView,
       ignoreBlocker,
     })
+
+    // Clear pending location after commit starts
+    // We do this on next microtask to allow synchronous navigate calls to chain
+    Promise.resolve().then(() => {
+      if (this.pendingBuiltLocation === location) {
+        this.pendingBuiltLocation = undefined
+      }
+    })
+
+    return commitPromise
   }
 
   /**
@@ -2268,23 +2293,27 @@ export class RouterCore<
   }
 
   updateMatch: UpdateMatchFn = (id, updater) => {
-    const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
-      ? 'pendingMatches'
-      : this.state.matches.some((d) => d.id === id)
-        ? 'matches'
-        : this.state.cachedMatches.some((d) => d.id === id)
-          ? 'cachedMatches'
-          : ''
+    this.startTransition(() => {
+      const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
+        ? 'pendingMatches'
+        : this.state.matches.some((d) => d.id === id)
+          ? 'matches'
+          : this.state.cachedMatches.some((d) => d.id === id)
+            ? 'cachedMatches'
+            : ''
 
-    if (matchesKey) {
-      this.__store.setState((s) => ({
-        ...s,
-        [matchesKey]: s[matchesKey]?.map((d) => (d.id === id ? updater(d) : d)),
-      }))
-    }
+      if (matchesKey) {
+        this.__store.setState((s) => ({
+          ...s,
+          [matchesKey]: s[matchesKey]?.map((d) =>
+            d.id === id ? updater(d) : d,
+          ),
+        }))
+      }
+    })
   }
 
-  getMatch: GetMatchFn = (matchId: string) => {
+  getMatch: GetMatchFn = (matchId: string): AnyRouteMatch | undefined => {
     const findFn = (d: { id: string }) => d.id === matchId
     return (
       this.state.cachedMatches.find(findFn) ??

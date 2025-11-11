@@ -18,7 +18,7 @@ However, since hosting is one of the most crucial aspects of your application's 
 
 Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice:
 
-- [`cloudflare-workers`](#cloudflare-workers): Deploy to Cloudflare Workers
+- [`cloudflare-workers`](#cloudflare-workers--official-partner): Deploy to Cloudflare Workers
 - [`netlify`](#netlify): Deploy to Netlify
 - [`nitro`](#nitro): Deploy using Nitro
 - [`vercel`](#vercel): Deploy to Vercel
