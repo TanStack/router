@@ -384,6 +384,14 @@ type RouteLike = {
 		| { fullPath?: never, from: string } // full path from the root
 	)
 
+type ProcessedTree<
+	TTree extends Extract<RouteLike, { fullPath: string }>,
+	TFlat extends Extract<RouteLike, { from: string }>
+> = {
+	segmentTree: AnySegmentNode<TTree>,
+	flatCache: Map<any, AnySegmentNode<TFlat>>
+}
+
 export function processFlatRouteList<TRouteLike extends RouteLike>(
 	routeList: Array<TRouteLike>,
 ) {
@@ -394,6 +402,17 @@ export function processFlatRouteList<TRouteLike extends RouteLike>(
 	}
 	sortTreeNodes(segmentTree)
 	return segmentTree
+}
+
+export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(list: Array<T>, path: string, processedTree: ProcessedTree<any, T>): { route: T, params: Record<string, string> } | null {
+	let tree = processedTree.flatCache.get(list)
+	if (!tree) {
+		// flat route lists (routeMasks option) are not eagerly processed,
+		// if we haven't seen this list before, process it now
+		tree = processFlatRouteList(list)
+		processedTree.flatCache.set(list, tree)
+	}
+	return findMatch(path, tree)
 }
 
 
@@ -434,8 +453,12 @@ export function processRouteTree<TRouteLike extends Extract<RouteLike, { fullPat
 		index++
 	})
 	sortTreeNodes(segmentTree)
-	return {
+	const processedTree: ProcessedTree<TRouteLike, any> = {
 		segmentTree,
+		flatCache: new Map(),
+	}
+	return {
+		processedTree,
 		routesById,
 		routesByPath,
 	}

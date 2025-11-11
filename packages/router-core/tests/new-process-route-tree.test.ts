@@ -238,6 +238,9 @@ describe('findMatch', () => {
 		]
 	}
 
+	const { processedTree: { segmentTree } } =
+		processRouteTree(testTree)
+
 	it('foo', () => {
 		expect(findMatch('/posts/new', segmentTree)).toMatchInlineSnapshot(`
 			{
@@ -277,8 +280,7 @@ describe('findMatch', () => {
 		`)
 	})
 
-	const { segmentTree } =
-		processRouteTree(testTree)
+
 
 	it('works w/ optional params when param is present', () => {
 		expect(findMatch('/yo/foo123bar/ma', segmentTree)).toMatchInlineSnapshot(`
