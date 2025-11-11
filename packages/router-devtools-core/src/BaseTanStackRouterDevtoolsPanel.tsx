@@ -339,7 +339,6 @@ export const BaseTanStackRouterDevtoolsPanel =
               'state',
               'routesById',
               'routesByPath',
-              'flatRoutes',
               'options',
               'manifest',
             ] as const
