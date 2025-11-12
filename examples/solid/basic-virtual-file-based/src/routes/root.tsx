@@ -1,4 +1,3 @@
-
 import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 

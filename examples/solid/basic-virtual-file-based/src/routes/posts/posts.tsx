@@ -1,4 +1,3 @@
-
 import { Link, Outlet } from '@tanstack/solid-router'
 import { fetchPosts } from '../../posts'
 

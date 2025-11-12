@@ -70,9 +70,7 @@ function PostComponent() {
                 return (
                   <div>
                     <h6 class="text-md font-bold">{comment.name}</h6>
-                    <div class="text-sm italic opacity-50">
-                      {comment.email}
-                    </div>
+                    <div class="text-sm italic opacity-50">{comment.email}</div>
                     <div class="text-sm">{comment.body}</div>
                   </div>
                 )

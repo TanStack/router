@@ -1,4 +1,3 @@
-
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 
 export type PostType = {
