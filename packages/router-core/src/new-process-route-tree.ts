@@ -758,7 +758,7 @@ function getNodeMatch<T extends RouteLike>(
   }
 
   // use a stack to explore all possible paths (optional params cause branching)
-  const stack: Array<Frame> = [
+  let stack: Array<Frame> = [
     {
       node: segmentTree,
       index: 0,
@@ -769,12 +769,18 @@ function getNodeMatch<T extends RouteLike>(
       optionals: 0,
     },
   ]
+  // append to the stack in batches, to preserve order of exploration
+  const batch: Array<Frame> = []
 
   let wildcardMatch: Frame | null = null
   let bestFuzzy: Frame | null = null
   let bestMatch: Frame | null = null
 
-  while (stack.length) {
+  while (stack.length || batch.length) {
+    if (batch.length) {
+      stack = stack.concat(batch.reverse())
+      batch.length = 0
+    }
     const frame = stack.pop()!
     // eslint-disable-next-line prefer-const
     let { node, index, skipped, depth, statics, dynamics, optionals } = frame
@@ -818,7 +824,7 @@ function getNodeMatch<T extends RouteLike>(
     if (!isBeyondPath && node.static) {
       const match = node.static.get(part!)
       if (match) {
-        stack.unshift({
+        batch.push({
           node: match,
           index: index + 1,
           skipped,
@@ -836,7 +842,7 @@ function getNodeMatch<T extends RouteLike>(
         (lowerPart ??= part!.toLowerCase()),
       )
       if (match) {
-        stack.unshift({
+        batch.push({
           node: match,
           index: index + 1,
           skipped,
@@ -859,7 +865,7 @@ function getNodeMatch<T extends RouteLike>(
           if (prefix && !casePart.startsWith(prefix)) continue
           if (suffix && !casePart.endsWith(suffix)) continue
         }
-        stack.push({
+        batch.push({
           node: segment,
           index: index + 1,
           skipped,
@@ -874,19 +880,6 @@ function getNodeMatch<T extends RouteLike>(
     // 4. Try optional match
     if (node.optional) {
       const nextDepth = depth + 1
-      const nextSkipped = skipped | (1 << nextDepth)
-      for (const segment of node.optional) {
-        // when skipping, node and depth advance by 1, but index doesn't
-        stack.push({
-          node: segment,
-          index,
-          skipped: nextSkipped,
-          depth: nextDepth,
-          statics,
-          dynamics,
-          optionals,
-        }) // enqueue skipping the optional
-      }
       if (!isBeyondPath) {
         for (const segment of node.optional) {
           const { prefix, suffix } = segment
@@ -897,7 +890,7 @@ function getNodeMatch<T extends RouteLike>(
             if (prefix && !casePart.startsWith(prefix)) continue
             if (suffix && !casePart.endsWith(suffix)) continue
           }
-          stack.push({
+          batch.push({
             node: segment,
             index: index + 1,
             skipped,
@@ -907,6 +900,19 @@ function getNodeMatch<T extends RouteLike>(
             optionals: optionals + 1,
           })
         }
+      }
+      const nextSkipped = skipped | (1 << nextDepth)
+      for (const segment of node.optional) {
+        // when skipping, node and depth advance by 1, but index doesn't
+        batch.push({
+          node: segment,
+          index,
+          skipped: nextSkipped,
+          depth: nextDepth,
+          statics,
+          dynamics,
+          optionals,
+        }) // enqueue skipping the optional
       }
     }
 
