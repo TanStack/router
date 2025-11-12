@@ -2514,7 +2514,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.10)
+        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.10)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -2560,7 +2560,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.10)
+        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.10)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -7348,6 +7348,43 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
+  examples/solid/quickstart-webpack-file-based:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: ^1.135.2
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
+      solid-js:
+        specifier: 1.9.10
+        version: 1.9.10
+    devDependencies:
+      '@swc/core':
+        specifier: ^1.10.15
+        version: 1.10.15(@swc/helpers@0.5.15)
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      html-webpack-plugin:
+        specifier: ^5.6.3
+        version: 5.6.3(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1)
+      swc-loader:
+        specifier: ^0.2.6
+        version: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
+      webpack:
+        specifier: ^5.97.1
+        version: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack-cli@5.1.4)
+      webpack-cli:
+        specifier: ^5.1.4
+        version: 5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1)
+      webpack-dev-server:
+        specifier: ^5.2.0
+        version: 5.2.0(webpack-cli@5.1.4)(webpack@5.97.1)
 
   examples/solid/start-bare:
     dependencies:
