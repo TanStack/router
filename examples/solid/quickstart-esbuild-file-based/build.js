@@ -13,6 +13,7 @@ const ctx = await esbuild.context({
   format: 'esm',
   target: ['esnext'],
   sourcemap: true,
+  conditions: ['style'],
   plugins: [
     solidPlugin(),
     tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
