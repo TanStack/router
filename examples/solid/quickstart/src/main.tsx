@@ -1,4 +1,4 @@
-import {render} from 'solid-js/web'
+import { render } from 'solid-js/web'
 import {
   Link,
   Outlet,
