@@ -611,6 +611,10 @@
               "to": "framework/solid/examples/quickstart-file-based"
             },
             {
+              "label": "Quickstart (code-based)",
+              "to": "framework/solid/examples/quickstart"
+            },
+            {
               "label": "Basic (file-based)",
               "to": "framework/solid/examples/basic-file-based"
             },
