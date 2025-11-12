@@ -18,7 +18,13 @@ import {
   useSearch,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import { createEffect, createMemo, createRenderEffect, createSignal, on } from 'solid-js'
+import {
+  createEffect,
+  createMemo,
+  createRenderEffect,
+  createSignal,
+  on,
+} from 'solid-js'
 import { z } from 'zod'
 import {
   fetchInvoiceById,
@@ -462,9 +468,12 @@ function UsersLayoutComponent() {
   const [filterDraft, setFilterDraft] = createSignal(filterBy ?? '')
 
   createEffect(
-    on(() => filterBy, () => {
-      setFilterDraft(filterBy ?? '')
-    }),
+    on(
+      () => filterBy,
+      () => {
+        setFilterDraft(filterBy ?? '')
+      },
+    ),
   )
 
   const sortedUsers = createMemo(() => {
