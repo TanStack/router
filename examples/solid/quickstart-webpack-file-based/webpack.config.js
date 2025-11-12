@@ -30,7 +30,7 @@ export default ({ WEBPACK_SERVE }) => ({
       {
         test: /\.tsx?$/,
         exclude: /(node_modules)/,
-        use: { loader: 'swc-loader' },
+        use: { loader: 'babel-loader' },
       },
     ],
   },
