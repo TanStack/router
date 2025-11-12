@@ -651,6 +651,10 @@
               "to": "framework/solid/examples/authenticated-routes"
             },
             {
+              "label": "Scroll Restoration",
+              "to": "framework/solid/examples/scroll-restoration"
+            },
+            {
               "label": "Deferred Data",
               "to": "framework/solid/examples/deferred-data"
             },
