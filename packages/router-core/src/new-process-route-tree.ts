@@ -950,7 +950,7 @@ function getNodeMatch<T extends RouteLike>(
     return {
       node: bestFuzzy.node,
       skipped: bestFuzzy.skipped,
-      '**': '/' + parts.slice(bestFuzzy.index).join('/'),
+      '**': parts.slice(bestFuzzy.index).join('/'),
     }
   }
 

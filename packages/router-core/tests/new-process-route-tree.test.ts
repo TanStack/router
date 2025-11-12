@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  findRouteMatch,
-  processFlatRouteList,
-  processRouteTree,
-} from '../src/new-process-route-tree'
+import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
 import type { AnyRoute, RouteMask } from '../src'
 
 // import { createLRUCache } from '../src/lru-cache'
@@ -119,7 +115,7 @@ describe('findRouteMatch', () => {
       expect(match?.route?.id).toBe('__root__')
       expect(match?.params).toMatchInlineSnapshot(`
         {
-          "**": "/x/y/z",
+          "**": "x/y/z",
         }
       `)
     })

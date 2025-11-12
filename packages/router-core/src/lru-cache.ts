@@ -69,6 +69,6 @@ export function createLRUCache<TKey, TValue>(
       cache.clear()
       oldest = undefined
       newest = undefined
-    }
+    },
   }
 }
