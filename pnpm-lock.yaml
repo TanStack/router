@@ -7097,6 +7097,46 @@ importers:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
+  examples/solid/basic-ssr-file-based:
+    dependencies:
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/solid-router':
+        specifier: ^1.135.2
+        version: link:../../../packages/solid-router
+      compression:
+        specifier: ^1.8.0
+        version: 1.8.0
+      express:
+        specifier: ^4.21.2
+        version: 4.21.2
+      get-port:
+        specifier: ^7.1.0
+        version: 7.1.0
+      node-fetch:
+        specifier: ^3.3.2
+        version: 3.3.2
+      solid-js:
+        specifier: 1.9.10
+        version: 1.9.10
+    devDependencies:
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
+      '@types/express':
+        specifier: ^4.17.23
+        version: 4.17.23
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.2
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vite-plugin-solid:
+        specifier: ^2.11.10
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
   examples/solid/basic-ssr-streaming-file-based:
     dependencies:
       '@tailwindcss/postcss':
