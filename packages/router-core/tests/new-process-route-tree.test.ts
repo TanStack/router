@@ -164,6 +164,31 @@ describe('findRouteMatch', () => {
       expect(findRouteMatch('/foo/a', processedTree)?.route.id).toBe('/Foo/a')
       expect(findRouteMatch('/foo/b', processedTree)?.route.id).toBe('/foo/b')
     })
+    it('a case sensitive segment should have priority over a case insensitive one', () => {
+      const tree = {
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/FOO',
+            fullPath: '/FOO',
+            path: 'FOO',
+            options: { caseSensitive: true },
+          },
+          {
+            id: '/foo',
+            fullPath: '/foo',
+            path: 'foo',
+            options: { caseSensitive: false },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/FOO', processedTree)?.route.id).toBe('/FOO')
+      expect(findRouteMatch('/Foo', processedTree)?.route.id).toBe('/foo')
+      expect(findRouteMatch('/foo', processedTree)?.route.id).toBe('/foo')
+    })
   })
 
   describe('basic matching', () => {
