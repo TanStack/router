@@ -8389,6 +8389,49 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
+  examples/solid/start-i18n-paraglide:
+    dependencies:
+      '@tanstack/solid-devtools':
+        specifier: ^0.7.0
+        version: 0.7.14(csstype@3.1.3)(solid-js@1.9.10)
+      '@tanstack/solid-router':
+        specifier: ^1.135.2
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../../packages/solid-start
+      solid-js:
+        specifier: 1.9.10
+        version: 1.9.10
+    devDependencies:
+      '@inlang/paraglide-js':
+        specifier: 2.4.0
+        version: 2.4.0(babel-plugin-macros@3.1.0)
+      '@tailwindcss/vite':
+        specifier: ^4.1.13
+        version: 4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@types/node':
+        specifier: 22.10.2
+        version: 22.10.2
+      tailwindcss:
+        specifier: ^4.1.13
+        version: 4.1.17
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vite-plugin-solid:
+        specifier: ^2.11.10
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
   examples/solid/start-streaming-data-from-server-functions:
     dependencies:
       '@tanstack/solid-router':
