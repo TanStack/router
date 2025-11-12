@@ -26,7 +26,7 @@ export default {
 }
 ```
 
-And in the .babelrc, these presets:
+And in the .babelrc (SWC doesn't support solid-js, see [here](https://www.answeroverflow.com/m/1135200483116593182)), add these presets:
 
 ```tsx
 // .babelrc
