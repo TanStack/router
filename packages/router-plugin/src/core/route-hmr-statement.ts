@@ -22,7 +22,8 @@ function handleRouteUpdate(
   const router = window.__TSR_ROUTER__!
   router.routesById[newRoute.id] = newRoute
   router.routesByPath[newRoute.fullPath] = newRoute
-  router.processedTree.flatCache.clear()
+  router.processedTree.matchCache.clear()
+  router.processedTree.flatCache?.clear()
   router.processedTree.singleCache.clear()
   // TODO: how to rebuild the tree if we add a new route?
   walkReplaceSegmentTree(newRoute, router.processedTree.segmentTree)
