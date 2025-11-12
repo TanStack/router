@@ -42,7 +42,6 @@ if (isDev) {
   await ctx.rebuild()
   await ctx.dispose()
 }
-
 ```
 
 Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/router/tree/main/examples/solid/quickstart-esbuild-file-based) and get started.
