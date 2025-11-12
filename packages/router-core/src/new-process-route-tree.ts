@@ -544,7 +544,7 @@ export function findSingleMatch(
   path: string,
   processedTree: ProcessedTree<any, any, { from: string }>,
 ) {
-  const key = `${caseSensitive}|${from}`
+  const key = caseSensitive ? `case|${from}` : from
   let tree = processedTree.singleCache.get(key)
   if (!tree) {
     // single flat routes (router.matchRoute) are not eagerly processed,
@@ -719,6 +719,7 @@ function extractParams<T extends RouteLike>(
         currentPathIndex + (n.prefix?.length ?? 0),
         path.length - (n.suffix?.length ?? 0),
       )
+      // TODO: Deprecate *
       params['*'] = rest
       params._splat = rest
       break
@@ -757,10 +758,10 @@ function getNodeMatch<T extends RouteLike>(
     optionals: number
   }
 
-  // use a stack to explore all possible paths (optional params cause branching)
+  // use a stack to explore all possible paths (params cause branching)
   // iterate "backwards" (low priority first) so that we can push() each candidate, and pop() the highest priority candidate first
   // - pros: it is depth-first, so we find full matches faster
-  // - cons: each branch of the node must be iterated fully, we cannot short-circuit, because highest priority matches are at the end of the loop (for loop with i--)
+  // - cons: we cannot short-circuit, because highest priority matches are at the end of the loop (for loop with i--) (but we have no good short-circuiting anyway)
   // other possible approaches:
   // - shift instead of pop (measure performance difference), this allows iterating "forwards" (effectively breadth-first)
   // - never remove from the stack, keep a cursor instead. Then we can push "forwards" and avoid reversing the order of candidates (effectively breadth-first)
