@@ -751,7 +751,12 @@ function getNodeMatch<T extends RouteLike>(
     index: number
     /** how many nodes between `node` and the root of the segment tree */
     depth: number
-    /** Bitmask of skipped optional segments */
+    /**
+     * Bitmask of skipped optional segments.
+     *
+     * This is a very performant way of storing an "array of booleans", but it means beyond 32 segments we can't track skipped optionals.
+     * If we really really need to support more than 32 segments we can switch to using a `BigInt` here. It's about 2x slower in worst case scenarios.
+     */
     skipped: number
     statics: number
     dynamics: number
