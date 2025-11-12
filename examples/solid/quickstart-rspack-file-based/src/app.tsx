@@ -1,5 +1,5 @@
-import { render } from 'solid-js/web'
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
+
 import { routeTree } from './routeTree.gen'
 import './styles.css'
 
@@ -16,9 +16,8 @@ declare module '@tanstack/solid-router' {
     router: typeof router
   }
 }
-
-const rootElement = document.getElementById('app')!
-
-if (!rootElement.innerHTML) {
-  render(() => <RouterProvider router={router} />, rootElement)
+const App = () => {
+  return <RouterProvider router={router} />
 }
+
+export default App

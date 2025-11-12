@@ -32,6 +32,10 @@ export default ({ WEBPACK_SERVE }) => ({
         exclude: /(node_modules)/,
         use: { loader: 'babel-loader' },
       },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader', 'postcss-loader'],
+      },
     ],
   },
   devServer: {
