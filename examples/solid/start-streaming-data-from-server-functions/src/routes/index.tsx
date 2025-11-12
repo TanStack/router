@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
-import { useCallback, useState } from 'react'
+import { createSignal } from 'solid-js'
 import { z } from 'zod'
 
 /**
@@ -93,12 +93,12 @@ export const Route = createFileRoute('/')({
 })
 
 function RouteComponent() {
-  const [readableStreamMessages, setReadableStreamMessages] = useState('')
+  const [readableStreamMessages, setReadableStreamMessages] = createSignal('')
 
   const [asyncGeneratorFuncMessages, setAsyncGeneratorFuncMessages] =
-    useState('')
+    createSignal('')
 
-  const getTypedReadableStreamResponse = useCallback(async () => {
+  const getTypedReadableStreamResponse = async () => {
     const response = await streamingResponseFn()
 
     if (!response) {
@@ -120,9 +120,9 @@ function RouteComponent() {
         }
       }
     }
-  }, [])
+  }
 
-  const getResponseFromTheAsyncGenerator = useCallback(async () => {
+  const getResponseFromTheAsyncGenerator = async () => {
     setAsyncGeneratorFuncMessages('')
     for await (const msg of await streamingWithAnAsyncGeneratorFn()) {
       const chunk = msg?.choices[0].delta.content
@@ -130,7 +130,7 @@ function RouteComponent() {
         setAsyncGeneratorFuncMessages((prev) => prev + chunk)
       }
     }
-  }, [])
+  }
 
   return (
     <main>
@@ -142,8 +142,8 @@ function RouteComponent() {
         <button onClick={() => getResponseFromTheAsyncGenerator()}>
           Get 10 random numbers (Async Generator Function)
         </button>
-        <pre>{readableStreamMessages}</pre>
-        <pre>{asyncGeneratorFuncMessages}</pre>
+        <pre>{readableStreamMessages()}</pre>
+        <pre>{asyncGeneratorFuncMessages()}</pre>
       </div>
     </main>
   )

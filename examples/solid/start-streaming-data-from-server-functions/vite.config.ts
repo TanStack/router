@@ -12,6 +12,6 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     tanstackStart(),
-    viteSolid(),
+    viteSolid({ ssr: true }),
   ],
 })
