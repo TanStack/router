@@ -13,6 +13,7 @@ import {
   findFlatMatch,
   findRouteMatch,
   findSingleMatch,
+  processRouteMasks,
   processRouteTree,
 } from './new-process-route-tree'
 import {
@@ -1103,6 +1104,9 @@ export class RouterCore<
         })
       },
     )
+    if (this.options.routeMasks) {
+      processRouteMasks(this.options.routeMasks, processedTree)
+    }
 
     this.routesById = routesById as RoutesById<TRouteTree>
     this.routesByPath = routesByPath as RoutesByPath<TRouteTree>
@@ -1776,7 +1780,6 @@ export class RouterCore<
 
         if (this.options.routeMasks) {
           const match = findFlatMatch<RouteMask<TRouteTree>>(
-            this.options.routeMasks,
             next.pathname,
             this.processedTree,
           )
@@ -2627,7 +2630,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesById: Record<string, TRouteLike>
   processedTree: ProcessedTree<any, any, any>
 }) {
-  let routeParams: Record<string, string> = {}
+  let routeParams: Record<string, string>
   const trimmedPath = trimPathRight(pathname)
 
   let foundRoute: TRouteLike | undefined = undefined
@@ -2635,6 +2638,8 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   if (match) {
     foundRoute = match.route
     routeParams = match.params
+  } else {
+    routeParams = {}
   }
 
   let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!

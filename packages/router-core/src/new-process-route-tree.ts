@@ -1,4 +1,6 @@
 import invariant from 'tiny-invariant'
+import { createLRUCache } from './lru-cache'
+import type { LRUCache } from './lru-cache'
 
 export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
@@ -485,45 +487,51 @@ export type ProcessedTree<
   TFlat extends Extract<RouteLike, { from: string }>,
   TSingle extends Extract<RouteLike, { from: string }>,
 > = {
-  /** a representation of the `routeTree` as a segment tree, for performant path matching */
+  /** a representation of the `routeTree` as a segment tree */
   segmentTree: AnySegmentNode<TTree>
-  /** a cache of mini route trees generated from flat route lists, for performant route mask matching */
-  flatCache: Map<any, AnySegmentNode<TFlat>>
+  /** a mini route tree generated from the flat `routeMasks` list */
+  masksTree: AnySegmentNode<TFlat> | null
   /** @deprecated keep until v2 so that `router.matchRoute` can keep not caring about the actual route tree */
   singleCache: Map<any, AnySegmentNode<TSingle>>
+  /** a cache of route matches from the `segmentTree` */
+  matchCache: LRUCache<string, ReturnType<typeof findMatch<TTree>>>
+  /** a cache of route matches from the `masksTree` */
+  flatCache: LRUCache<string, ReturnType<typeof findMatch<TFlat>>> | null
 }
 
-export function processFlatRouteList<
+export function processRouteMasks<
   TRouteLike extends Extract<RouteLike, { from: string }>,
->(routeList: Array<TRouteLike>) {
+>(
+  routeList: Array<TRouteLike>,
+  processedTree: ProcessedTree<any, TRouteLike, any>,
+) {
   const segmentTree = createStaticNode<TRouteLike>('/')
   const data = new Uint16Array(6)
   for (const route of routeList) {
     parseSegments(false, data, route, 1, segmentTree, 0)
   }
   sortTreeNodes(segmentTree)
-  return segmentTree
+  processedTree.masksTree = segmentTree
+  processedTree.flatCache = createLRUCache<
+    string,
+    ReturnType<typeof findMatch<TRouteLike>>
+  >(1000)
 }
 
 /**
  * Take an arbitrary list of routes, create a tree from them (if it hasn't been created already), and match a path against it.
  */
 export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(
-  /** The flat list of routes to match against. This array should be stable, it comes from a route's `routeMasks` option. */
-  list: Array<T>,
   /** The path to match. */
   path: string,
   /** The `processedTree` returned by the initial `processRouteTree` call. */
   processedTree: ProcessedTree<any, T, any>,
 ) {
-  let tree = processedTree.flatCache.get(list)
-  if (!tree) {
-    // flat route lists (routeMasks option) are not eagerly processed,
-    // if we haven't seen this list before, process it now
-    tree = processFlatRouteList(list)
-    processedTree.flatCache.set(list, tree)
-  }
-  return findMatch(path, tree)
+  const cached = processedTree.flatCache!.get(path)
+  if (cached) return cached
+  const result = findMatch(path, processedTree.masksTree!)
+  processedTree.flatCache!.set(path, result)
+  return result
 }
 
 /**
@@ -559,7 +567,12 @@ export function findRouteMatch<
   /** If `true`, allows fuzzy matching (partial matches). */
   fuzzy = false,
 ) {
-  return findMatch(path, processedTree.segmentTree, fuzzy)
+  const key = fuzzy ? `fuzzy|${path}` : path
+  const cached = processedTree.matchCache.get(key)
+  if (cached) return cached
+  const result = findMatch(path, processedTree.segmentTree, fuzzy)
+  processedTree.matchCache.set(key, result)
+  return result
 }
 
 /** Trim trailing slashes (except preserving root '/'). */
@@ -615,8 +628,13 @@ export function processRouteTree<
   sortTreeNodes(segmentTree)
   const processedTree: ProcessedTree<TRouteLike, any, any> = {
     segmentTree,
-    flatCache: new Map(),
     singleCache: new Map(),
+    matchCache: createLRUCache<
+      string,
+      ReturnType<typeof findMatch<TRouteLike>>
+    >(1000),
+    flatCache: null,
+    masksTree: null,
   }
   return {
     processedTree,
