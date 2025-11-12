@@ -331,16 +331,16 @@
               "to": "framework/solid/examples/start-basic-auth"
             },
             {
-              "label": "Basic + Static rendering",
-              "to": "framework/solid/examples/start-basic-static"
-            },
-            {
-              "label": "Basic + Supabase",
-              "to": "framework/solid/examples/start-basic-supabase"
+              "label": "Basic + Supabase Auth",
+              "to": "framework/solid/examples/start-supabase-basic"
             },
             {
               "label": "Bare + Convex + Better Auth",
               "to": "framework/solid/examples/start-convex-better-auth"
+            },
+                        {
+              "label": "Basic + Static rendering",
+              "to": "framework/solid/examples/start-basic-static"
             },
             {
               "label": "Cloudflare Vite Plugin",
