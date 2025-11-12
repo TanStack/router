@@ -7,9 +7,7 @@ import { Content } from '../../components/Content'
 import { Search } from '../../components/Search'
 
 const ArkType = () => {
-  const search = Route.useSearch({
-    select: (search) => search.search,
-  })
+  const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
 
   return (
@@ -17,11 +15,11 @@ const ArkType = () => {
       <Header title="ArkType" />
       <Content>
         <Search
-          search={search()}
+          search={search().search}
           onChange={(search) => navigate({ search: { search }, replace: true })}
         />
         <Suspense>
-          <Users search={search()} />
+          <Users search={search().search} />
         </Suspense>
       </Content>
     </>
