@@ -651,6 +651,10 @@
               "to": "framework/solid/examples/authenticated-routes"
             },
             {
+              "label": "Deferred Data",
+              "to": "framework/solid/examples/deferred-data"
+            },
+            {
               "label": "View Transitions",
               "to": "framework/solid/examples/view-transitions"
             },
