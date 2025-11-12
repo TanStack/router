@@ -3,6 +3,10 @@ import { ErrorComponent } from '@tanstack/solid-router'
 import { fetchPost } from '../../posts'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 
+export function PostErrorComponent({ error }: ErrorComponentProps) {
+  return <ErrorComponent error={error} />
+}
+
 export const Route = createFileRoute({
   loader: async ({ params: { postId } }) => fetchPost(postId),
   errorComponent: PostErrorComponent as any,
@@ -11,10 +15,6 @@ export const Route = createFileRoute({
   },
   component: PostComponent,
 })
-
-export function PostErrorComponent({ error }: ErrorComponentProps) {
-  return <ErrorComponent error={error} />
-}
 
 function PostComponent() {
   const post = Route.useLoaderData()
