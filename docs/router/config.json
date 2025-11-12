@@ -634,7 +634,7 @@
               "label": "Kitchen Sink + Solid Query (code-based)",
               "to": "framework/solid/examples/kitchen-sink-solid-query"
             },
-                        {
+            {
               "label": "Authenticated Routes",
               "to": "framework/solid/examples/authenticated-routes"
             },
