@@ -635,6 +635,10 @@
               "to": "framework/solid/examples/kitchen-sink-solid-query"
             },
             {
+              "label": "Authenticated Routes",
+              "to": "framework/solid/examples/authenticated-routes"
+            },
+            {
               "label": "View Transitions",
               "to": "framework/solid/examples/view-transitions"
             },
