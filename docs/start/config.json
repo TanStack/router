@@ -338,7 +338,7 @@
               "label": "Bare + Convex + Better Auth",
               "to": "framework/solid/examples/start-convex-better-auth"
             },
-                        {
+            {
               "label": "Basic + Static rendering",
               "to": "framework/solid/examples/start-basic-static"
             },
