@@ -323,7 +323,6 @@ describe('findRouteMatch', () => {
       const tree = makeTree(['/a/{-$id}'])
       expect(findRouteMatch('/a', tree)?.route.id).toBe('/a/{-$id}')
     })
-
     it('multiple optionals at the end can still be omitted', () => {
       const tree = makeTree(['/a/{-$b}/{-$c}/{-$d}'])
       expect(findRouteMatch('/a', tree)?.route.id).toBe('/a/{-$b}/{-$c}/{-$d}')
@@ -331,6 +330,12 @@ describe('findRouteMatch', () => {
     it('multiple optionals at the end -> favor earlier segments', () => {
       const tree = makeTree(['/a/{-$b}/{-$c}/{-$d}/{-$e}'])
       expect(findRouteMatch('/a/b/c', tree)?.params).toEqual({ b: 'b', c: 'c' })
+    })
+    it('optional and wildcard at the end can still be omitted', () => {
+      const tree = makeTree(['/a/{-$id}/$'])
+      const result = findRouteMatch('/a', tree)
+      expect(result?.route.id).toBe('/a/{-$id}/$')
+      expect(result?.params).toEqual({})
     })
     it('multi-segment wildcard w/ prefix', () => {
       const tree = makeTree(['/file{$}'])

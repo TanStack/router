@@ -808,8 +808,8 @@ function getNodeMatch<T extends RouteLike>(
         // perfect match, no need to continue
         if (statics === partsLength) return bestMatch
       }
-      // beyond the length of the path parts, only skipped optional segments can match
-      if (!node.optional) continue
+      // beyond the length of the path parts, only skipped optional segments or wildcard segments can match
+      if (!node.optional && !node.wildcard) continue
     }
 
     // In fuzzy mode, track the best partial match we've found so far
@@ -827,16 +827,18 @@ function getNodeMatch<T extends RouteLike>(
     let lowerPart: string
 
     // 5. Try wildcard match
-    if (!isBeyondPath && node.wildcard) {
+    if (node.wildcard) {
       for (const segment of node.wildcard) {
         const { prefix, suffix } = segment
         if (prefix) {
+          if (isBeyondPath) continue
           const casePart = segment.caseSensitive
-            ? part!
+            ? part
             : (lowerPart ??= part!.toLowerCase())
-          if (!casePart.startsWith(prefix)) continue
+          if (!casePart!.startsWith(prefix)) continue
         }
         if (suffix) {
+          if (isBeyondPath) continue
           const end = parts.slice(index).join('/').slice(-suffix.length)
           const casePart = segment.caseSensitive ? end : end.toLowerCase()
           if (casePart !== suffix) continue
