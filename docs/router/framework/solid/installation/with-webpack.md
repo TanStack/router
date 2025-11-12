@@ -37,7 +37,6 @@ And in the .babelrc (SWC doesn't support solid-js, see [here](https://www.answer
 
 ```
 
-
 Or, for a full webpack.config.js, you can clone our [Quickstart Webpack example](https://github.com/TanStack/router/tree/main/examples/solid/quickstart-webpack-file-based) and get started.
 
 Now that you've added the plugin to your Webpack configuration, you're all set to start using file-based routing with TanStack Router.
