@@ -1,5 +1,5 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import type { JSX } from 'solid-js'
+import { render } from 'solid-js/web'
 import {
   ErrorComponent,
   Link,
@@ -11,10 +11,9 @@ import {
   createRouter,
   useNavigate,
   useRouterState,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import * as Dialog from '@radix-ui/react-dialog'
-import type { ErrorComponentProps } from '@tanstack/react-router'
+} from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import type { ErrorComponentProps } from '@tanstack/solid-router'
 import './styles.css'
 
 type PhotoType = {
@@ -69,7 +68,7 @@ type ModalObject = PhotoModal
 
 export function Spinner() {
   return (
-    <div className="animate-spin px-3 text-xl inline-flex items-center justify-center">
+    <div class="animate-spin px-3 text-xl inline-flex items-center justify-center">
       ⍥
     </div>
   )
@@ -88,11 +87,11 @@ function RootComponent() {
 
   return (
     <>
-      <div className="p-2 flex gap-2 text-lg">
+      <div class="p-2 flex gap-2 text-lg">
         <Link
           to="/"
           activeProps={{
-            className: 'font-bold',
+            class: 'font-bold',
           }}
           activeOptions={{ exact: true }}
         >
@@ -101,12 +100,12 @@ function RootComponent() {
         <Link
           to="/photos"
           activeProps={{
-            className: 'font-bold',
+            class: 'font-bold',
           }}
         >
           Photos
         </Link>{' '}
-        {status === 'pending' ? <Spinner /> : null}
+        {status() === 'pending' ? <Spinner /> : null}
       </div>
       <hr />
       <Outlet />
@@ -116,16 +115,30 @@ function RootComponent() {
   )
 }
 
-function Modal(props: Dialog.DialogProps) {
+function Modal(props: {
+  children: JSX.Element
+  onOpenChange?: (open: boolean) => void
+}) {
+  const handleOverlayClick = () => {
+    props.onOpenChange?.(false)
+  }
+
+  const handleContentClick = (e: MouseEvent) => {
+    e.stopPropagation()
+  }
+
   return (
-    <Dialog.Root open {...props}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/70" />
-        <Dialog.DialogContent className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          {props.children}
-        </Dialog.DialogContent>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <div
+      class="fixed inset-0 bg-black/70 flex items-center justify-center"
+      onClick={handleOverlayClick}
+    >
+      <div
+        class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+        onClick={handleContentClick}
+      >
+        {props.children}
+      </div>
+    </div>
   )
 }
 
@@ -134,7 +147,7 @@ const indexRoute = createRoute({
   path: '/',
   component: () => {
     return (
-      <div className="p-2">
+      <div class="p-2">
         <h3>Welcome Home!</h3>
       </div>
     )
@@ -151,14 +164,14 @@ function PhotosRoute() {
   const photos = photosLayoutRoute.useLoaderData()
 
   return (
-    <div className="p-2 space-y-2">
-      <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
+    <div class="p-2 space-y-2">
+      <ul class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
         {[
-          ...photos,
+          ...photos(),
           { id: 'i-do-not-exist', title: 'Missing Photo Test', url: '' },
         ].map((photo) => {
           return (
-            <li key={photo.id} className="">
+            <li class="">
               <Link
                 to={photoModalRoute.to}
                 params={{
@@ -172,9 +185,9 @@ function PhotosRoute() {
                 //     photoId: photo.id,
                 //   },
                 // }}
-                className="whitespace-nowrap border rounded-lg shadow-xs flex items-center hover:shadow-lg text-blue-600 hover:scale-[1.1] overflow-hidden transition-all"
+                class="whitespace-nowrap border rounded-lg shadow-xs flex items-center hover:shadow-lg text-blue-600 hover:scale-[1.1] overflow-hidden transition-all"
               >
-                <img src={photo.url} alt={photo.title} className="max-w-full" />
+                <img src={photo.url} alt={photo.title} class="max-w-full" />
               </Link>
             </li>
           )
@@ -195,7 +208,7 @@ const photoRoute = createRoute({
 
 function PhotoErrorComponent({ error }: ErrorComponentProps) {
   return (
-    <div className="p-4">
+    <div class="p-4">
       {(() => {
         if (error instanceof NotFoundError) {
           return <div>{error.message}</div>
@@ -210,8 +223,8 @@ function PhotoComponent() {
   const photo = photoRoute.useLoaderData()
 
   return (
-    <div className="p-4">
-      <Photo photo={photo} />
+    <div class="p-4">
+      <Photo photo={photo()} />
     </div>
   )
 }
@@ -238,7 +251,7 @@ function PhotoModalErrorComponent({ error }: ErrorComponentProps) {
         }
       }}
     >
-      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
+      <div class="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
         {(() => {
           if (error instanceof NotFoundError) {
             return <div>{error.message}</div>
@@ -250,7 +263,7 @@ function PhotoModalErrorComponent({ error }: ErrorComponentProps) {
   )
 }
 
-function PhotoModalPendingComponent() {
+function _PhotoModalPendingComponent() {
   const navigate = useNavigate()
 
   return (
@@ -263,7 +276,7 @@ function PhotoModalPendingComponent() {
         }
       }}
     >
-      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
+      <div class="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
         <Spinner />
       </div>
     </Modal>
@@ -284,15 +297,15 @@ function PhotoModalComponent() {
         }
       }}
     >
-      <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
+      <div class="bg-gray-100 dark:bg-gray-800 p-2 rounded-lg">
         <Link
           to="."
           target="_blank"
-          className="text-blue-600 hover:opacity-75 underline"
+          class="text-blue-600 hover:opacity-75 underline"
         >
           Open in new tab (to test de-masking)
         </Link>
-        <Photo photo={photo} />
+        <Photo photo={photo()} />
       </div>
     </Modal>
   )
@@ -300,10 +313,10 @@ function PhotoModalComponent() {
 
 function Photo({ photo }: { photo: PhotoType }) {
   return (
-    <div className="space-y-2">
-      <h4 className="text-xl font-bold underline">{photo.title}</h4>
-      <div className="">
-        <img src={photo.url} alt={photo.title} className="max-w-full" />
+    <div class="space-y-2">
+      <h4 class="text-xl font-bold underline">{photo.title}</h4>
+      <div class="">
+        <img src={photo.url} alt={photo.title} class="max-w-full" />
       </div>
     </div>
   )
@@ -331,7 +344,7 @@ const router = createRouter({
 })
 
 // Register things for typesafety
-declare module '@tanstack/react-router' {
+declare module '@tanstack/solid-router' {
   interface Register {
     router: typeof router
   }
@@ -340,7 +353,5 @@ declare module '@tanstack/react-router' {
 const rootElement = document.getElementById('app')!
 
 if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement)
-
-  root.render(<RouterProvider router={router} />)
+  render(() => <RouterProvider router={router} />, rootElement)
 }
