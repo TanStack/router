@@ -651,6 +651,10 @@
               "to": "framework/solid/examples/kitchen-sink-solid-query"
             },
             {
+              "label": "Location Masking",
+              "to": "framework/react/examples/location-masking"
+            },
+            {
               "label": "Authenticated Routes",
               "to": "framework/solid/examples/authenticated-routes"
             },
