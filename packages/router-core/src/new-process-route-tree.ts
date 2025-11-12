@@ -65,7 +65,7 @@ export function parseSegment(
     output[0] = SEGMENT_TYPE_PARAM
     output[1] = start
     output[2] = start + 1 // skip '$'
-    output[3] = start + part.length
+    output[3] = end
     output[4] = end
     output[5] = end
     return
@@ -74,14 +74,13 @@ export function parseSegment(
   const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
   if (wildcardBracesMatch) {
     const prefix = wildcardBracesMatch[1]!
-    const suffix = wildcardBracesMatch[2]!
-    const total = path.length
+    const pLength = prefix.length
     output[0] = SEGMENT_TYPE_WILDCARD
-    output[1] = start + prefix.length
-    output[2] = start + prefix.length
-    output[3] = total - suffix.length
-    output[4] = total - suffix.length
-    output[5] = total
+    output[1] = start + pLength
+    output[2] = start + pLength + 1 // skip '{'
+    output[3] = start + pLength + 2 // '$'
+    output[4] = start + pLength + 3 // skip '}'
+    output[5] = path.length
     return
   }
 
@@ -90,10 +89,11 @@ export function parseSegment(
     const prefix = optionalParamBracesMatch[1]!
     const paramName = optionalParamBracesMatch[2]!
     const suffix = optionalParamBracesMatch[3]!
+    const pLength = prefix.length
     output[0] = SEGMENT_TYPE_OPTIONAL_PARAM
-    output[1] = start + prefix.length
-    output[2] = start + prefix.length + 3 // skip '{-$'
-    output[3] = start + prefix.length + 3 + paramName.length
+    output[1] = start + pLength
+    output[2] = start + pLength + 3 // skip '{-$'
+    output[3] = start + pLength + 3 + paramName.length
     output[4] = end - suffix.length
     output[5] = end
     return
@@ -104,10 +104,11 @@ export function parseSegment(
     const prefix = paramBracesMatch[1]!
     const paramName = paramBracesMatch[2]!
     const suffix = paramBracesMatch[3]!
+    const pLength = prefix.length
     output[0] = SEGMENT_TYPE_PARAM
-    output[1] = start + prefix.length
-    output[2] = start + prefix.length + 2 // skip '{$'
-    output[3] = start + prefix.length + 2 + paramName.length
+    output[1] = start + pLength
+    output[2] = start + pLength + 2 // skip '{$'
+    output[3] = start + pLength + 2 + paramName.length
     output[4] = end - suffix.length
     output[5] = end
     return

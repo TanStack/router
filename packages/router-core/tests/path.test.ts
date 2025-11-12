@@ -976,8 +976,8 @@ describe('parsePathname', () => {
             type: SEGMENT_TYPE_WILDCARD,
             value: '$',
             prefixSegment: 'foo.',
+            suffixSegment: '/bar',
           },
-          { type: SEGMENT_TYPE_PATHNAME, value: 'bar' },
         ],
       },
     ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {
