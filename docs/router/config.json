@@ -683,6 +683,10 @@
               "to": "framework/solid/examples/with-trpc"
             },
             {
+              "label": "Monorepo basic",
+              "to": "framework/solid/examples/router-monorepo-simple"
+            },
+            {
               "label": "Monorepo with Solid Query",
               "to": "framework/solid/examples/router-monorepo-solid-query"
             }
