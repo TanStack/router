@@ -1,4 +1,7 @@
-import { ErrorComponent, PostNotFoundError } from '@router-solid-mono-simple/router'
+import {
+  ErrorComponent,
+  PostNotFoundError,
+} from '@router-solid-mono-simple/router'
 import type { ErrorComponentProps } from '@router-solid-mono-simple/router'
 
 export function PostErrorComponent({ error }: ErrorComponentProps) {
