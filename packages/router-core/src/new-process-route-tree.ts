@@ -758,7 +758,13 @@ function getNodeMatch<T extends RouteLike>(
   }
 
   // use a stack to explore all possible paths (optional params cause branching)
-  let stack: Array<Frame> = [
+  // iterate "backwards" (low priority first) so that we can push() each candidate, and pop() the highest priority candidate first
+  // - pros: it is depth-first, so we find full matches faster
+  // - cons: each branch of the node must be iterated fully, we cannot short-circuit, because highest priority matches are at the end of the loop (for loop with i--)
+  // other possible approaches:
+  // - shift instead of pop (measure performance difference), this allows iterating "forwards" (effectively breadth-first)
+  // - never remove from the stack, keep a cursor instead. Then we can push "forwards" and avoid reversing the order of candidates (effectively breadth-first)
+  const stack: Array<Frame> = [
     {
       node: segmentTree,
       index: 0,
@@ -769,18 +775,12 @@ function getNodeMatch<T extends RouteLike>(
       optionals: 0,
     },
   ]
-  // append to the stack in batches, to preserve order of exploration
-  const batch: Array<Frame> = []
 
   let wildcardMatch: Frame | null = null
   let bestFuzzy: Frame | null = null
   let bestMatch: Frame | null = null
 
-  while (stack.length || batch.length) {
-    if (batch.length) {
-      stack = stack.concat(batch.reverse())
-      batch.length = 0
-    }
+  while (stack.length) {
     const frame = stack.pop()!
     // eslint-disable-next-line prefer-const
     let { node, index, skipped, depth, statics, dynamics, optionals } = frame
@@ -820,102 +820,6 @@ function getNodeMatch<T extends RouteLike>(
     const part = isBeyondPath ? undefined : parts[index]!
     let lowerPart: string
 
-    // 1. Try static match
-    if (!isBeyondPath && node.static) {
-      const match = node.static.get(part!)
-      if (match) {
-        batch.push({
-          node: match,
-          index: index + 1,
-          skipped,
-          depth: depth + 1,
-          statics: statics + 1,
-          dynamics,
-          optionals,
-        })
-      }
-    }
-
-    // 2. Try case insensitive static match
-    if (!isBeyondPath && node.staticInsensitive) {
-      const match = node.staticInsensitive.get(
-        (lowerPart ??= part!.toLowerCase()),
-      )
-      if (match) {
-        batch.push({
-          node: match,
-          index: index + 1,
-          skipped,
-          depth: depth + 1,
-          statics: statics + 1,
-          dynamics,
-          optionals,
-        })
-      }
-    }
-
-    // 3. Try dynamic match
-    if (!isBeyondPath && node.dynamic) {
-      for (const segment of node.dynamic) {
-        const { prefix, suffix } = segment
-        if (prefix || suffix) {
-          const casePart = segment.caseSensitive
-            ? part!
-            : (lowerPart ??= part!.toLowerCase())
-          if (prefix && !casePart.startsWith(prefix)) continue
-          if (suffix && !casePart.endsWith(suffix)) continue
-        }
-        batch.push({
-          node: segment,
-          index: index + 1,
-          skipped,
-          depth: depth + 1,
-          statics,
-          dynamics: dynamics + 1,
-          optionals,
-        })
-      }
-    }
-
-    // 4. Try optional match
-    if (node.optional) {
-      const nextDepth = depth + 1
-      if (!isBeyondPath) {
-        for (const segment of node.optional) {
-          const { prefix, suffix } = segment
-          if (prefix || suffix) {
-            const casePart = segment.caseSensitive
-              ? part!
-              : (lowerPart ??= part!.toLowerCase())
-            if (prefix && !casePart.startsWith(prefix)) continue
-            if (suffix && !casePart.endsWith(suffix)) continue
-          }
-          batch.push({
-            node: segment,
-            index: index + 1,
-            skipped,
-            depth: nextDepth,
-            statics,
-            dynamics,
-            optionals: optionals + 1,
-          })
-        }
-      }
-      const nextSkipped = skipped | (1 << nextDepth)
-      for (const segment of node.optional) {
-        // when skipping, node and depth advance by 1, but index doesn't
-        batch.push({
-          node: segment,
-          index,
-          skipped: nextSkipped,
-          depth: nextDepth,
-          statics,
-          dynamics,
-          optionals,
-        }) // enqueue skipping the optional
-      }
-    }
-
     // 5. Try wildcard match
     if (!isBeyondPath && node.wildcard) {
       for (const segment of node.wildcard) {
@@ -944,6 +848,105 @@ function getNodeMatch<T extends RouteLike>(
           }
         }
         break
+      }
+    }
+
+    // 4. Try optional match
+    if (node.optional) {
+      const nextDepth = depth + 1
+      const nextSkipped = skipped | (1 << nextDepth)
+      for (let i = node.optional.length - 1; i >= 0; i--) {
+        const segment = node.optional[i]!
+        // when skipping, node and depth advance by 1, but index doesn't
+        stack.push({
+          node: segment,
+          index,
+          skipped: nextSkipped,
+          depth: nextDepth,
+          statics,
+          dynamics,
+          optionals,
+        }) // enqueue skipping the optional
+      }
+      if (!isBeyondPath) {
+        for (let i = node.optional.length - 1; i >= 0; i--) {
+          const segment = node.optional[i]!
+          const { prefix, suffix } = segment
+          if (prefix || suffix) {
+            const casePart = segment.caseSensitive
+              ? part!
+              : (lowerPart ??= part!.toLowerCase())
+            if (prefix && !casePart.startsWith(prefix)) continue
+            if (suffix && !casePart.endsWith(suffix)) continue
+          }
+          stack.push({
+            node: segment,
+            index: index + 1,
+            skipped,
+            depth: nextDepth,
+            statics,
+            dynamics,
+            optionals: optionals + 1,
+          })
+        }
+      }
+    }
+
+    // 3. Try dynamic match
+    if (!isBeyondPath && node.dynamic) {
+      for (let i = node.dynamic.length - 1; i >= 0; i--) {
+        const segment = node.dynamic[i]!
+        const { prefix, suffix } = segment
+        if (prefix || suffix) {
+          const casePart = segment.caseSensitive
+            ? part!
+            : (lowerPart ??= part!.toLowerCase())
+          if (prefix && !casePart.startsWith(prefix)) continue
+          if (suffix && !casePart.endsWith(suffix)) continue
+        }
+        stack.push({
+          node: segment,
+          index: index + 1,
+          skipped,
+          depth: depth + 1,
+          statics,
+          dynamics: dynamics + 1,
+          optionals,
+        })
+      }
+    }
+
+    // 2. Try case insensitive static match
+    if (!isBeyondPath && node.staticInsensitive) {
+      const match = node.staticInsensitive.get(
+        (lowerPart ??= part!.toLowerCase()),
+      )
+      if (match) {
+        stack.push({
+          node: match,
+          index: index + 1,
+          skipped,
+          depth: depth + 1,
+          statics: statics + 1,
+          dynamics,
+          optionals,
+        })
+      }
+    }
+
+    // 1. Try static match
+    if (!isBeyondPath && node.static) {
+      const match = node.static.get(part!)
+      if (match) {
+        stack.push({
+          node: match,
+          index: index + 1,
+          skipped,
+          depth: depth + 1,
+          statics: statics + 1,
+          dynamics,
+          optionals,
+        })
       }
     }
   }
