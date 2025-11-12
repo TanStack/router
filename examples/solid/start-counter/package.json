@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-solid-start-example-bare",
+  "name": "tanstack-solid-start-example-counter",
   "private": true,
   "sideEffects": false,
   "type": "module",
