@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { interpolatePath } from '../src/path'
+import {
+  findSingleMatch,
+  processRouteTree,
+} from '../src/new-process-route-tree'
 
 describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
   describe('Optional Dynamic Parameters {-$param}', () => {
@@ -91,7 +95,27 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
       })
     })
 
-    describe.skip('matchPathname', () => {
+    describe('matchPathname', () => {
+      const { processedTree } = processRouteTree({
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+      })
+      const matchPathname = (
+        from: string,
+        options: { to: string; caseSensitive?: boolean; fuzzy?: boolean },
+      ) => {
+        const match = findSingleMatch(
+          options.to,
+          options.caseSensitive ?? false,
+          options.fuzzy ?? false,
+          from,
+          processedTree,
+        )
+        const result = match ? match.params : undefined
+        if (options.to && !result) return
+        return result ?? {}
+      }
       it('should match optional dynamic params when present', () => {
         const result = matchPathname('/posts/tech', {
           to: '/posts/{-$category}',

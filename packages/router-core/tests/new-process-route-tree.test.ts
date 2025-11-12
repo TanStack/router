@@ -99,17 +99,11 @@ describe('findRouteMatch', () => {
       )
     })
     it('?? is this what we want?', () => {
-      const tree = makeTree([
-        '/{-$a}/{-$b}/{-$c}/d/e',
-        '/$a/$b/c/d/$e'
-      ])
+      const tree = makeTree(['/{-$a}/{-$b}/{-$c}/d/e', '/$a/$b/c/d/$e'])
       expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe('/$a/$b/c/d/$e')
     })
     it('?? is this what we want?', () => {
-      const tree = makeTree([
-        '/$a/$b/$c/d/e',
-        '/$a/$b/c/d/$e'
-      ])
+      const tree = makeTree(['/$a/$b/$c/d/e', '/$a/$b/c/d/$e'])
       expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe('/$a/$b/c/d/$e')
     })
   })
@@ -148,9 +142,10 @@ describe('findRouteMatch', () => {
                 id: '/Foo/a',
                 fullPath: '/Foo/a',
                 path: '/a',
-              }
-            ]
-          }, {
+              },
+            ],
+          },
+          {
             id: '/foo',
             fullPath: '/foo',
             path: 'foo',
@@ -160,10 +155,10 @@ describe('findRouteMatch', () => {
                 id: '/foo/b',
                 fullPath: '/foo/b',
                 path: 'b',
-              }
-            ]
-          }
-        ]
+              },
+            ],
+          },
+        ],
       }
       const { processedTree } = processRouteTree(tree)
       expect(findRouteMatch('/foo/a', processedTree)?.route.id).toBe('/Foo/a')
@@ -311,7 +306,7 @@ describe('findRouteMatch', () => {
     })
   })
 
-  describe.todo('fuzzy matching', () => { })
+  describe.todo('fuzzy matching', () => {})
 })
 
 describe.todo('processFlatRouteList', () => {

@@ -1,6 +1,29 @@
 import { describe, expect, it } from 'vitest'
+import {
+  findSingleMatch,
+  processRouteTree,
+} from '../src/new-process-route-tree'
 
-describe.skip('default path matching', () => {
+const { processedTree } = processRouteTree({
+  id: '__root__',
+  fullPath: '/',
+  path: '/',
+})
+const matchByPath = (
+  from: string,
+  options: { to: string; caseSensitive?: boolean; fuzzy?: boolean },
+) => {
+  const match = findSingleMatch(
+    options.to,
+    options.caseSensitive ?? false,
+    options.fuzzy ?? false,
+    from,
+    processedTree,
+  )
+  return match ? match.params : undefined
+}
+
+describe('default path matching', () => {
   it.each([
     ['', '', {}],
     ['/', '', {}],
@@ -75,7 +98,7 @@ describe.skip('default path matching', () => {
   })
 })
 
-describe.skip('case insensitive path matching', () => {
+describe('case insensitive path matching', () => {
   it.each([
     ['', '', '', {}],
     ['', '/', '', {}],
@@ -135,7 +158,7 @@ describe.skip('case insensitive path matching', () => {
   })
 })
 
-describe.skip('fuzzy path matching', () => {
+describe('fuzzy path matching', () => {
   it.each([
     ['', '', '', {}],
     ['', '/', '', {}],
