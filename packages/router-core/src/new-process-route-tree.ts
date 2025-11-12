@@ -661,9 +661,11 @@ function extractParams<T extends RouteLike>(
     if (node.kind === SEGMENT_TYPE_PARAM) {
       nodeParts ??= leaf.node.fullPath.split('/')
       const nodePart = nodeParts[nodeIndex]!
+      const preLength = node.prefix?.length ?? 0
+      // we can't rely on the presence of prefix/suffix to know whether it's curly-braced or not, because `/{$param}/` is valid, but has no prefix/suffix
+      const isCurlyBraced = nodePart.charCodeAt(preLength) === 123 // '{'
       // param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
-      if (node.suffix !== undefined || node.prefix !== undefined) {
-        const preLength = node.prefix?.length ?? 0
+      if (isCurlyBraced) {
         const sufLength = node.suffix?.length ?? 0
         const name = nodePart.substring(
           preLength + 2,
