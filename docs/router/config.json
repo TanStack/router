@@ -681,7 +681,7 @@
             {
               "label": "With tRPC",
               "to": "framework/solid/examples/with-trpc"
-            }
+            },
             {
               "label": "Monorepo with Solid Query",
               "to": "framework/solid/examples/router-monorepo-solid-query"
