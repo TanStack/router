@@ -893,11 +893,9 @@ function getNodeMatch<T extends RouteLike>(
             if (!casePart.startsWith(prefix)) continue
           }
           if (suffix) {
-            const lastPart = parts[parts.length - 1]!
-            const casePart = segment.caseSensitive
-              ? lastPart
-              : lastPart.toLowerCase()
-            if (!casePart.endsWith(suffix)) continue
+            const end = parts.slice(index).join('/').slice(-suffix.length)
+            const casePart = segment.caseSensitive ? end : end.toLowerCase()
+            if (casePart !== suffix) continue
           }
           // a wildcard match terminates the loop, but we need to continue searching in case there's a longer match
           if (!wildcardMatch || wildcardMatch.index < index) {
