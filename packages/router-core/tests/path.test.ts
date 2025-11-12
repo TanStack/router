@@ -531,7 +531,6 @@ describe('interpolatePath', () => {
         interpolatePath({
           path: to,
           params,
-          leaveWildcards: false,
           leaveParams: true,
         }).interpolatedPath,
       ).toBe(result)
