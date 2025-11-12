@@ -727,7 +727,9 @@ function getNodeMatch<T extends RouteLike>(
 
   type Frame = {
     node: AnySegmentNode<T>
+    /** index of the segment of path */
     index: number
+    /** how many nodes between `node` and the root of the segment tree */
     depth: number
     /** Bitmask of skipped optional segments */
     skipped: number
@@ -759,15 +761,16 @@ function getNodeMatch<T extends RouteLike>(
       stack.pop()!
 
     main: while (node) {
-      if (index === parts.length) {
-        if (!node.route) break
+      const isBeyondPath = index === parts.length
+      if (isBeyondPath) {
         if (
-          !bestMatch ||
-          statics > bestMatch.statics ||
-          (statics === bestMatch.statics && dynamics > bestMatch.dynamics) ||
-          (statics === bestMatch.statics &&
-            dynamics === bestMatch.dynamics &&
-            optionals > bestMatch.optionals)
+          node.route &&
+          (!bestMatch ||
+            statics > bestMatch.statics ||
+            (statics === bestMatch.statics &&
+              (dynamics > bestMatch.dynamics ||
+                (dynamics === bestMatch.dynamics &&
+                  optionals > bestMatch.optionals))))
         ) {
           bestMatch = {
             node,
@@ -781,7 +784,8 @@ function getNodeMatch<T extends RouteLike>(
           // perfect match, no need to continue
           if (statics === parts.length) return bestMatch
         }
-        break
+        // beyond the length of the path parts, only skipped optional segments can match
+        if (!node.optional) break
       }
 
       // In fuzzy mode, track the best partial match we've found so far
@@ -803,12 +807,12 @@ function getNodeMatch<T extends RouteLike>(
         }
       }
 
-      const part = parts[index]!
+      const part = isBeyondPath ? undefined : parts[index]!
       let lowerPart: string
 
       // 1. Try static match
-      if (node.static) {
-        const match = node.static.get(part)
+      if (!isBeyondPath && node.static) {
+        const match = node.static.get(part!)
         if (match) {
           stack.push({
             node: match,
@@ -823,13 +827,13 @@ function getNodeMatch<T extends RouteLike>(
       }
 
       // 3. Try dynamic match
-      if (node.dynamic) {
+      if (!isBeyondPath && node.dynamic) {
         for (const segment of node.dynamic) {
           const { prefix, suffix } = segment
           if (prefix || suffix) {
             const casePart = segment.caseSensitive
-              ? part
-              : (lowerPart ??= part.toLowerCase())
+              ? part!
+              : (lowerPart ??= part!.toLowerCase())
             if (prefix && !casePart.startsWith(prefix)) continue
             if (suffix && !casePart.endsWith(suffix)) continue
           }
@@ -861,35 +865,37 @@ function getNodeMatch<T extends RouteLike>(
             optionals,
           }) // enqueue skipping the optional
         }
-        for (const segment of node.optional) {
-          const { prefix, suffix } = segment
-          if (prefix || suffix) {
-            const casePart = segment.caseSensitive
-              ? part
-              : (lowerPart ??= part.toLowerCase())
-            if (prefix && !casePart.startsWith(prefix)) continue
-            if (suffix && !casePart.endsWith(suffix)) continue
+        if (!isBeyondPath) {
+          for (const segment of node.optional) {
+            const { prefix, suffix } = segment
+            if (prefix || suffix) {
+              const casePart = segment.caseSensitive
+                ? part!
+                : (lowerPart ??= part!.toLowerCase())
+              if (prefix && !casePart.startsWith(prefix)) continue
+              if (suffix && !casePart.endsWith(suffix)) continue
+            }
+            stack.push({
+              node: segment,
+              index: index + 1,
+              skipped,
+              depth: nextDepth,
+              statics,
+              dynamics,
+              optionals: optionals + 1,
+            })
           }
-          stack.push({
-            node: segment,
-            index: index + 1,
-            skipped,
-            depth: nextDepth,
-            statics,
-            dynamics,
-            optionals: optionals + 1,
-          })
         }
       }
 
       // 5. Try wildcard match
-      if (node.wildcard) {
+      if (!isBeyondPath && node.wildcard) {
         for (const segment of node.wildcard) {
           const { prefix, suffix } = segment
           if (prefix) {
             const casePart = segment.caseSensitive
-              ? part
-              : (lowerPart ??= part.toLowerCase())
+              ? part!
+              : (lowerPart ??= part!.toLowerCase())
             if (!casePart.startsWith(prefix)) continue
           }
           if (suffix) {
@@ -898,7 +904,7 @@ function getNodeMatch<T extends RouteLike>(
             if (casePart !== suffix) continue
           }
           // a wildcard match terminates the loop, but we need to continue searching in case there's a longer match
-          if (!wildcardMatch || wildcardMatch.index < index) {
+          if (!wildcardMatch || wildcardMatch.index <= index) {
             wildcardMatch = {
               node: segment,
               index,
@@ -914,9 +920,9 @@ function getNodeMatch<T extends RouteLike>(
       }
 
       // 2. Try case insensitive static match
-      if (node.staticInsensitive) {
+      if (!isBeyondPath && node.staticInsensitive) {
         const match = node.staticInsensitive.get(
-          (lowerPart ??= part.toLowerCase()),
+          (lowerPart ??= part!.toLowerCase()),
         )
         if (match) {
           node = match
