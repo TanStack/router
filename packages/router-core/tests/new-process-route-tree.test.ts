@@ -191,7 +191,7 @@ describe('findRouteMatch', () => {
     })
   })
 
-  describe.todo('trailing slashes', () => {})
+  describe.todo('trailing slashes', () => { })
 
   describe('case sensitivity competition', () => {
     it('a case sensitive segment early on should not prevent a case insensitive match', () => {
@@ -256,6 +256,31 @@ describe('findRouteMatch', () => {
       expect(findRouteMatch('/FOO', processedTree)?.route.id).toBe('/FOO')
       expect(findRouteMatch('/Foo', processedTree)?.route.id).toBe('/foo')
       expect(findRouteMatch('/foo', processedTree)?.route.id).toBe('/foo')
+    })
+    it('a case sensitive prefix/suffix should have priority over a case insensitive one', () => {
+      const tree = {
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/aa{$id}bb',
+            fullPath: '/aa{$id}bb',
+            path: 'aa{$id}bb',
+            options: { caseSensitive: false },
+          },
+          {
+            id: '/{$id}',
+            fullPath: '/{$id}',
+            path: '{$id}',
+            options: { caseSensitive: true },
+          },
+        ]
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/AfooB', processedTree)?.route.id).toBe('/A{$id}B')
+      expect(findRouteMatch('/AABB', processedTree)?.route.id).toBe('/A{$id}B')
+      expect(findRouteMatch('/aabb', processedTree)?.route.id).toBe('/aa{$id}bb')
     })
   })
 
@@ -428,7 +453,7 @@ describe('findRouteMatch', () => {
     })
   })
 
-  describe.todo('fuzzy matching', () => {})
+  describe.todo('fuzzy matching', () => { })
 })
 
 describe.todo('processRouteMasks', () => {
