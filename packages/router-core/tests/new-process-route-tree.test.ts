@@ -60,47 +60,132 @@ function makeTree(routes: Array<string>) {
 
 describe('findRouteMatch', () => {
   describe('priority', () => {
-    it('/static/optional vs /static/dynamic', () => {
-      const tree = makeTree(['/foo/{-$id}', '/foo/$id'])
-      expect(findRouteMatch('/foo/123', tree)?.route.id).toBe('/foo/$id')
+    describe('basic permutations', () => {
+      it('/static/static vs /static/dynamic', () => {
+        const tree = makeTree(['/a/b', '/a/$b'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/b')
+      })
+      it('/static/static vs /static/optional', () => {
+        const tree = makeTree(['/a/b', '/a/{-$b}'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/b')
+      })
+      it('/static/static vs /static/wildcard', () => {
+        const tree = makeTree(['/a/b', '/a/$'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/b')
+      })
+      it('/static/dynamic vs /static/optional', () => {
+        const tree = makeTree(['/a/$b', '/a/{-$b}'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/$b')
+      })
+      it('/static/dynamic vs /static/wildcard', () => {
+        const tree = makeTree(['/a/$b', '/a/$'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/$b')
+      })
+      it('/static/optional vs /static/wildcard', () => {
+        const tree = makeTree(['/a/{-$b}', '/a/$'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/{-$b}')
+      })
     })
-    it('/static/optional/static vs /static/dynamic/static', () => {
-      const tree = makeTree(['/a/{-$b}/c', '/a/$b/c'])
-      expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/a/$b/c')
+
+    describe('prefix / suffix variations', () => {
+      it('prefix+suffix dynamic wins over plain dynamic', () => {
+        const tree = makeTree(['/a/b{$b}b', '/a/$b'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{$b}b')
+      })
+      it('prefix dynamic wins over plain dynamic', () => {
+        const tree = makeTree(['/a/b{$b}', '/a/$b'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{$b}')
+      })
+      it('suffix dynamic wins over plain dynamic', () => {
+        const tree = makeTree(['/a/{$b}b', '/a/$b'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{$b}b')
+      })
+
+      it('prefix+suffix optional wins over plain optional', () => {
+        const tree = makeTree(['/a/b{-$b}b', '/a/{-$b}'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{-$b}b')
+      })
+      it('prefix optional wins over plain optional', () => {
+        const tree = makeTree(['/a/b{-$b}', '/a/{-$b}'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{-$b}')
+      })
+      it('suffix optional wins over plain optional', () => {
+        const tree = makeTree(['/a/{-$b}b', '/a/{-$b}'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{-$b}b')
+      })
+
+      it('prefix+suffix wildcard wins over plain wildcard', () => {
+        const tree = makeTree(['/a/b{$}b', '/a/$'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{$}b')
+      })
+      it('prefix wildcard wins over plain wildcard', () => {
+        const tree = makeTree(['/a/b{$}', '/a/$'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{$}')
+      })
+      it('suffix wildcard wins over plain wildcard', () => {
+        const tree = makeTree(['/a/{$}b', '/a/$'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{$}b')
+      })
     })
-    it('/static/optional/dynamic vs /static/dynamic/static', () => {
-      const tree = makeTree(['/a/{-$b}/$c', '/a/$b/c'])
-      expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/a/$b/c')
+
+    describe('prefix / suffix lengths', () => {
+      it('longer overlapping prefix wins over shorter prefix', () => {
+        const tree = makeTree(['/a/b{$b}', '/a/bbbb{$b}'])
+        expect(findRouteMatch('/a/bbbbb', tree)?.route.id).toBe('/a/bbbb{$b}')
+      })
+      it('longer overlapping suffix wins over shorter suffix', () => {
+        const tree = makeTree(['/a/{$b}b', '/a/{$b}bbbb'])
+        expect(findRouteMatch('/a/bbbbb', tree)?.route.id).toBe('/a/{$b}bbbb')
+      })
+      it('longer prefix and shorter suffix wins over shorter prefix and longer suffix', () => {
+        const tree = makeTree(['/a/b{$b}bbb', '/a/bbb{$b}b'])
+        expect(findRouteMatch('/a/bbbbb', tree)?.route.id).toBe('/a/bbb{$b}b')
+      })
     })
-    it('/static/optional/static vs /static/dynamic', () => {
-      const tree = makeTree(['/users/{-$org}/settings', '/users/$id'])
-      expect(findRouteMatch('/users/settings', tree)?.route.id).toBe(
-        '/users/{-$org}/settings',
-      )
-    })
-    it('/optional/static/static vs /static/dynamic', () => {
-      const tree = makeTree(['/{-$other}/posts/new', '/posts/$id'])
-      expect(findRouteMatch('/posts/new', tree)?.route.id).toBe(
-        '/{-$other}/posts/new',
-      )
-    })
-    it('/optional/static/static vs /static/static', () => {
-      const tree = makeTree(['/{-$other}/posts/new', '/posts/new'])
-      expect(findRouteMatch('/posts/new', tree)?.route.id).toBe('/posts/new')
-    })
-    it('/optional/static/static/dynamic vs /static/dynamic/static/dynamic', () => {
-      const tree = makeTree(['/{-$other}/posts/a/b/$c', '/posts/$a/b/$c'])
-      expect(findRouteMatch('/posts/a/b/c', tree)?.route.id).toBe(
-        '/{-$other}/posts/a/b/$c',
-      )
-    })
-    it('?? is this what we want?', () => {
-      const tree = makeTree(['/{-$a}/{-$b}/{-$c}/d/e', '/$a/$b/c/d/$e'])
-      expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe('/$a/$b/c/d/$e')
-    })
-    it('?? is this what we want?', () => {
-      const tree = makeTree(['/$a/$b/$c/d/e', '/$a/$b/c/d/$e'])
-      expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe('/$a/$b/c/d/$e')
+
+    describe('edge-case variations', () => {
+      it('/static/optional/static vs /static/dynamic/static', () => {
+        const tree = makeTree(['/a/{-$b}/c', '/a/$b/c'])
+        expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/a/$b/c')
+      })
+      it('/static/optional/dynamic vs /static/dynamic/static', () => {
+        const tree = makeTree(['/a/{-$b}/$c', '/a/$b/c'])
+        expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/a/$b/c')
+      })
+      it('/static/optional/static vs /static/dynamic', () => {
+        const tree = makeTree(['/users/{-$org}/settings', '/users/$id'])
+        expect(findRouteMatch('/users/settings', tree)?.route.id).toBe(
+          '/users/{-$org}/settings',
+        )
+      })
+      it('/optional/static/static vs /static/dynamic', () => {
+        const tree = makeTree(['/{-$other}/posts/new', '/posts/$id'])
+        expect(findRouteMatch('/posts/new', tree)?.route.id).toBe(
+          '/{-$other}/posts/new',
+        )
+      })
+      it('/optional/static/static vs /static/static', () => {
+        const tree = makeTree(['/{-$other}/posts/new', '/posts/new'])
+        expect(findRouteMatch('/posts/new', tree)?.route.id).toBe('/posts/new')
+      })
+      it('/optional/static/static/dynamic vs /static/dynamic/static/dynamic', () => {
+        const tree = makeTree(['/{-$other}/posts/a/b/$c', '/posts/$a/b/$c'])
+        expect(findRouteMatch('/posts/a/b/c', tree)?.route.id).toBe(
+          '/{-$other}/posts/a/b/$c',
+        )
+      })
+      it('?? is this what we want?', () => {
+        const tree = makeTree(['/{-$a}/{-$b}/{-$c}/d/e', '/$a/$b/c/d/$e'])
+        expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe(
+          '/$a/$b/c/d/$e',
+        )
+      })
+      it('?? is this what we want?', () => {
+        const tree = makeTree(['/$a/$b/$c/d/e', '/$a/$b/c/d/$e'])
+        expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe(
+          '/$a/$b/c/d/$e',
+        )
+      })
     })
   })
 
@@ -120,6 +205,8 @@ describe('findRouteMatch', () => {
       `)
     })
   })
+
+  describe.todo('trailing slashes', () => {})
 
   describe('case sensitivity competition', () => {
     it('a case sensitive segment early on should not prevent a case insensitive match', () => {
@@ -288,6 +375,16 @@ describe('findRouteMatch', () => {
       )
       expect(findRouteMatch('/yo/foo123bar/ma', tree)?.route.id).toBe(
         '/yo/foo{-$id}bar/ma',
+      )
+    })
+    it('edge-case: ???', () => {
+      // This test comes from the previous processRouteTree tests.
+      // > This demonstrates that `/foo/{-$p}.tsx` will be matched, not `/foo/{-$p}/{-$x}.tsx`
+      // > This route has 1 optional parameter, making it more specific than the route with 2
+      const tree = makeTree(['/foo/{-$p}.tsx', '/foo/{-$p}/{-$x}.tsx'])
+      expect(findRouteMatch('/foo', tree)?.route.id).toBe('/foo/{-$p}.tsx')
+      expect(findRouteMatch('/foo/bar.tsx', tree)?.route.id).toBe(
+        '/foo/{-$p}.tsx',
       )
     })
   })

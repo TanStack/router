@@ -741,7 +741,7 @@ function getNodeMatch<T extends RouteLike>(
   segmentTree: AnySegmentNode<T>,
   fuzzy: boolean,
 ) {
-  parts = parts.filter(Boolean)
+  parts = parts.filter(Boolean) // TODO: this is a bad idea, but idk how we're supposed to handle leading/trailing slashes
   const partsLength = parts.length
 
   type Frame = {
