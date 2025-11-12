@@ -32,7 +32,6 @@ export default defineConfig({
     },
   },
 })
-
 ```
 
 Or, you can clone our [Quickstart Rspack/Rsbuild example](https://github.com/TanStack/router/tree/main/examples/solid/quickstart-rspack-file-based) and get started.
