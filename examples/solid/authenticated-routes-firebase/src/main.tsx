@@ -1,8 +1,8 @@
-import {render} from 'solid-js/web'
+import { render } from 'solid-js/web'
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
 
 import { routeTree } from './routeTree.gen'
-import { AuthContextProvider,  useAuth } from './auth'
+import { AuthContextProvider, useAuth } from './auth'
 
 import './styles.css'
 
@@ -45,7 +45,6 @@ function App() {
     </AuthContextProvider>
   )
 }
-
 
 const rootElement = document.getElementById('app')!
 

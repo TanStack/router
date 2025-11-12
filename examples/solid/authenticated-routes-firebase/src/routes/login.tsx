@@ -1,4 +1,9 @@
-import { createFileRoute, redirect, useRouter, useRouterState } from '@tanstack/solid-router'
+import {
+  createFileRoute,
+  redirect,
+  useRouter,
+  useRouterState,
+} from '@tanstack/solid-router'
 import { z } from 'zod'
 
 import {
@@ -9,7 +14,6 @@ import {
 import { useAuth } from '../auth'
 import { sleep } from '../utils'
 import { siApple, siGithub, siGoogle } from 'simple-icons'
-
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 const fallback = '/dashboard' as const
@@ -69,7 +73,7 @@ function LoginComponent() {
                   fill="currentColor"
                   aria-labelledby="githubIconTitle"
                   role="img"
-                  style={{ "min-width": '20px' }}
+                  style={{ 'min-width': '20px' }}
                 >
                   <title id="githubIconTitle">GitHub Logo</title>
                   <path d={siGithub.path} />

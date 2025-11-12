@@ -16,7 +16,8 @@ function InvoicePage() {
   return (
     <section class="grid gap-2">
       <h2 class="text-lg">
-        <strong>Invoice No.</strong> #{loaderData().invoice.id.toString().padStart(2, '0')}
+        <strong>Invoice No.</strong> #
+        {loaderData().invoice.id.toString().padStart(2, '0')}
       </h2>
       <p>
         <strong>Invoice title:</strong> {loaderData().invoice.title}

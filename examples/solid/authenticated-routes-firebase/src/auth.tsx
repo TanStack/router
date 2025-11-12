@@ -15,9 +15,7 @@ export type AuthContextType = {
 
 const AuthContext = Solid.createContext<AuthContextType | null>(null)
 
-export function AuthContextProvider(props: {
-  children: Solid.JSX.Element
-}) {
+export function AuthContextProvider(props: { children: Solid.JSX.Element }) {
   const [user, setUser] = Solid.createSignal<User | null>(auth.currentUser)
   const [isInitialLoading, setIsInitialLoading] = Solid.createSignal(true)
   const isAuthenticated = () => !!user()

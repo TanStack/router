@@ -17,15 +17,11 @@ export const Route = createFileRoute('/')({
 function HomeComponent() {
   return (
     <div class="p-4 max-w-3xl mx-auto">
-      <h1 class="text-2xl font-bold mb-4">
-        Welcome to TS Router + Firebase
-      </h1>
+      <h1 class="text-2xl font-bold mb-4">Welcome to TS Router + Firebase</h1>
 
       <section class="mb-6 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
         <h2 class="text-xl font-semibold mb-2">About This Template</h2>
-        <p class="mb-2">
-          This template demonstrates a SPA architecture using:
-        </p>
+        <p class="mb-2">This template demonstrates a SPA architecture using:</p>
         <ul class="list-disc list-inside mb-4">
           <li>TanStack Router for type-safe routing</li>
           <li>Firebase Client SDK for authentication</li>
