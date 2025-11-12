@@ -2,6 +2,7 @@ import { Link } from '@tanstack/solid-router'
 import { expectTypeOf, test } from 'vitest'
 import { Route as ArkTypeRoute } from '../src/routes/users/arktype.index'
 import type { router } from '../src/main'
+import type { Accessor } from 'solid-js'
 
 test('infers correct input and output type for valibot', () => {
   expectTypeOf(Link<typeof router, string, '/users/arktype'>)
@@ -10,7 +11,7 @@ test('infers correct input and output type for valibot', () => {
     .exclude<boolean | ((...args: ReadonlyArray<any>) => any)>()
     .toEqualTypeOf<{ search?: string } | undefined>()
 
-  expectTypeOf(ArkTypeRoute.useSearch()).toEqualTypeOf<{
+  expectTypeOf(ArkTypeRoute.useSearch()).toEqualTypeOf<Accessor<{
     search: string
-  }>()
+  }>>()
 })
