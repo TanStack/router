@@ -652,7 +652,7 @@
             },
             {
               "label": "Location Masking",
-              "to": "framework/react/examples/location-masking"
+              "to": "framework/solid/examples/location-masking"
             },
             {
               "label": "Authenticated Routes",
@@ -665,6 +665,10 @@
             {
               "label": "Deferred Data",
               "to": "framework/solid/examples/deferred-data"
+            },
+            {
+              "label": "Navigation Blocking",
+              "to": "framework/solid/examples/navigation-blocking"
             },
             {
               "label": "View Transitions",
