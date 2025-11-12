@@ -223,6 +223,11 @@ describe('findRouteMatch', () => {
         '/file{-$id}.txt',
       )
     })
+    it('optional at the end can still be omitted', () => {
+      // WARN: I'm not sure this is the desired behavior (and also as of writing this, it fails)
+      const tree = makeTree(['/a/{-$id}'])
+      expect(findRouteMatch('/a', tree)?.route.id).toBe('/a/{-$id}')
+    })
     it('wildcard w/ prefix', () => {
       const tree = makeTree(['/file{$}'])
       expect(findRouteMatch('/file/a/b/c', tree)?.route.id).toBe('/file{$}')
