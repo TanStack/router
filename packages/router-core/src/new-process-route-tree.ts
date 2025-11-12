@@ -677,6 +677,11 @@ function extractParams<T extends RouteLike>(
         params[name] = part
       }
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
+      if (leaf.skipped & (1 << nodeIndex)) {
+        partIndex-- // stay on the same part
+        // params[name] = '' // ¿skipped optional params do not appear at all in the params object?
+        continue
+      }
       nodeParts ??= leaf.node.fullPath.split('/')
       const nodePart = nodeParts[nodeIndex]!
       const preLength = node.prefix?.length ?? 0
@@ -685,12 +690,6 @@ function extractParams<T extends RouteLike>(
         preLength + 3,
         nodePart.length - sufLength - 1,
       )
-      // param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
-      if (leaf.skipped & (1 << nodeIndex)) {
-        partIndex-- // stay on the same part
-        params[name] = ''
-        continue
-      }
       if (node.suffix || node.prefix) {
         params[name] = part.substring(preLength, part.length - sufLength)
       } else {
