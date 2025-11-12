@@ -6,6 +6,16 @@ import {
   resolvePath,
   trimPathLeft,
 } from '../src/path'
+import {
+  findSingleMatch,
+  parseSegment,
+  processRouteTree,
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
+  type SegmentKind,
+} from '../src/new-process-route-tree'
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
   'removeTrailingSlash with basepath $basepath',
@@ -493,7 +503,27 @@ describe('interpolatePath', () => {
   })
 })
 
-describe.skip('matchPathname', () => {
+describe('matchPathname', () => {
+  const { processedTree } = processRouteTree({
+    id: '__root__',
+    fullPath: '/',
+    path: '/',
+  })
+  const matchPathname = (
+    from: string,
+    options: { to: string; caseSensitive?: boolean; fuzzy?: boolean },
+  ) => {
+    const match = findSingleMatch(
+      options.to,
+      options.caseSensitive ?? false,
+      options.fuzzy ?? false,
+      from,
+      processedTree,
+    )
+    const result = match ? match.params : undefined
+    if (options.to && !result) return
+    return result ?? {}
+  }
   describe('path param(s) matching', () => {
     it.each([
       {
@@ -719,12 +749,50 @@ describe.skip('matchPathname', () => {
   })
 })
 
-describe.skip('parsePathname', () => {
+describe.only('parsePathname', () => {
   type ParsePathnameTestScheme = Array<{
     name: string
     to: string | undefined
     expected: Array<PathSegment>
   }>
+
+  type PathSegment = {
+    type: SegmentKind
+    value: string
+    prefixSegment?: string
+    suffixSegment?: string
+    // Indicates if there is a static segment after this required/optional param
+    hasStaticAfter?: boolean
+  }
+
+  const parsePathname = (to: string | undefined) => {
+    let cursor = 0
+    const data = new Uint16Array(6)
+    const path = to ?? ''
+    const segments: Array<PathSegment> = []
+    while (cursor < path.length) {
+      const start = cursor
+      parseSegment(path, start, data)
+      const end = data[5]!
+      cursor = end + 1
+      const type = data[0] as SegmentKind
+      const value = path.substring(data[2]!, data[3])
+      const prefix = path.substring(start, data[1])
+      const suffix = path.substring(data[4]!, end)
+      const segment: PathSegment = {
+        type,
+        value,
+      }
+      if (prefix) {
+        segment.prefixSegment = prefix
+      }
+      if (suffix) {
+        segment.suffixSegment = suffix
+      }
+      segments.push(segment)
+    }
+    return segments
+  }
 
   describe('regular usage', () => {
     it.each([

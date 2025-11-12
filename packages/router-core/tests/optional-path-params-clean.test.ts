@@ -2,12 +2,54 @@ import { describe, expect, it } from 'vitest'
 import { interpolatePath } from '../src/path'
 import {
   findSingleMatch,
+  parseSegment,
   processRouteTree,
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  type SegmentKind,
 } from '../src/new-process-route-tree'
 
 describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
   describe('Optional Dynamic Parameters {-$param}', () => {
-    describe.skip('parsePathname', () => {
+    describe('parsePathname', () => {
+      type PathSegment = {
+        type: SegmentKind
+        value: string
+        prefixSegment?: string
+        suffixSegment?: string
+        // Indicates if there is a static segment after this required/optional param
+        hasStaticAfter?: boolean
+      }
+
+      const parsePathname = (to: string | undefined) => {
+        let cursor = 0
+        const data = new Uint16Array(6)
+        const path = to ?? ''
+        const segments: Array<PathSegment> = []
+        while (cursor < path.length) {
+          const start = cursor
+          parseSegment(path, start, data)
+          const end = data[5]!
+          cursor = end + 1
+          const type = data[0] as SegmentKind
+          const value = path.substring(data[2]!, data[3])
+          const prefix = path.substring(start, data[1])
+          const suffix = path.substring(data[4]!, end)
+          const segment: PathSegment = {
+            type,
+            value,
+          }
+          if (prefix) {
+            segment.prefixSegment = prefix
+          }
+          if (suffix) {
+            segment.suffixSegment = suffix
+          }
+          segments.push(segment)
+        }
+        return segments
+      }
+
       it('should parse single optional dynamic param', () => {
         const result = parsePathname('/posts/{-$category}')
         expect(result).toEqual([
