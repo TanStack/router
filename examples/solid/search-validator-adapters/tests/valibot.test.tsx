@@ -20,11 +20,11 @@ test('can navigate to the route', async () => {
   })
 
   const Valibot = () => {
-    const search = valibotRoute.useSearch()
+    const search = valibotRoute.useSearch() as () => { search: string }
 
     return (
       <div>
-        <div>{search()}</div>
+        <div>{search().search}</div>
         <Link from="/users/valibot" search={{ search: 'updated' }}>
           Update
         </Link>

@@ -21,11 +21,11 @@ test('can navigate to the route', async () => {
   })
 
   const ArkType = () => {
-    const search = arkTypeRoute.useSearch()
+    const search = arkTypeRoute.useSearch() as () => { search: string }
 
     return (
       <div>
-        <div>{search()}</div>
+        <div>{search().search}</div>
         <Link from="/users/arktype" search={{ search: 'updated' }}>
           Update
         </Link>
