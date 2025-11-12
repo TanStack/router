@@ -1,10 +1,8 @@
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 import {
-  HeadContent,
   Link,
   Outlet,
-  Scripts,
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
 import type { RouterContext } from '../routerContext'
@@ -57,43 +55,37 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
   return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <div class="p-2 flex gap-2 text-lg">
-          <Link
-            to="/"
-            activeProps={{
-              class: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>{' '}
-          <Link
-            to="/posts"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Posts
-          </Link>{' '}
-          <Link
-            to="/error"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Error
-          </Link>
-        </div>
-        <hr />
-        <Outlet /> {/* Start rendering router matches */}
-        <TanStackRouterDevtools position="bottom-right" />
-        <Scripts />
-      </body>
-    </html>
+    <>
+      <div class="p-2 flex gap-2 text-lg">
+        <Link
+          to="/"
+          activeProps={{
+            class: 'font-bold',
+          }}
+          activeOptions={{ exact: true }}
+        >
+          Home
+        </Link>{' '}
+        <Link
+          to="/posts"
+          activeProps={{
+            class: 'font-bold',
+          }}
+        >
+          Posts
+        </Link>{' '}
+        <Link
+          to="/error"
+          activeProps={{
+            class: 'font-bold',
+          }}
+        >
+          Error
+        </Link>
+      </div>
+      <hr />
+      <Outlet /> {/* Start rendering router matches */}
+      <TanStackRouterDevtools position="bottom-right" />
+    </>
   )
 }

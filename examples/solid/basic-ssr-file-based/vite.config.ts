@@ -46,7 +46,7 @@ export default defineConfig((configEnv) => {
   return {
     plugins: [
       tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
-      solid(),
+      solid({ ssr: true }),
     ],
     build: configEnv.isSsrBuild ? ssrBuildConfig : clientBuildConfig,
   }

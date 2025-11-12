@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-react-example-basic-ssr-file-based",
+  "name": "tanstack-router-solid-example-basic-ssr-file-based",
   "private": true,
   "type": "module",
   "scripts": {
