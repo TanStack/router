@@ -53,30 +53,30 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
       it('should parse single optional dynamic param', () => {
         const result = parsePathname('/posts/{-$category}')
         expect(result).toEqual([
-          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           { type: SEGMENT_TYPE_PATHNAME, value: 'posts' },
-          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: 'category' },
         ])
       })
 
       it('should parse multiple optional dynamic params', () => {
         const result = parsePathname('/posts/{-$category}/{-$slug}')
         expect(result).toEqual([
-          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           { type: SEGMENT_TYPE_PATHNAME, value: 'posts' },
-          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
-          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$slug' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: 'category' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: 'slug' },
         ])
       })
 
       it('should handle prefix/suffix with optional dynamic params', () => {
         const result = parsePathname('/api/v{-$version}/data')
         expect(result).toEqual([
-          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           { type: SEGMENT_TYPE_PATHNAME, value: 'api' },
           {
             type: SEGMENT_TYPE_OPTIONAL_PARAM,
-            value: '$version',
+            value: 'version',
             prefixSegment: 'v',
             suffixSegment: undefined,
           },
