@@ -645,6 +645,10 @@
             {
               "label": "Framer Motion",
               "to": "framework/solid/examples/with-framer-motion"
+            },
+            {
+              "label": "With tRPC",
+              "to": "framework/solid/examples/with-trpc"
             }
           ]
         }
