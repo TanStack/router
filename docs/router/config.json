@@ -636,7 +636,7 @@
             },
                         {
               "label": "Authenticated Routes",
-              "to": "framework/react/examples/authenticated-routes"
+              "to": "framework/solid/examples/authenticated-routes"
             },
             {
               "label": "View Transitions",
