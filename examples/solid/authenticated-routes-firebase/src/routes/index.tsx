@@ -1,11 +1,10 @@
-import { createFileRoute } from '@tanstack/solid-router'
-import { Link, redirect } from '@tanstack/solid-router'
+import { Link, createFileRoute, redirect } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/')({
   beforeLoad: ({ context }) => {
     // Log for debugging
     console.log('Checking context on index.tsx:', context) // Check if user is authenticated
-    if (context.auth.isAuthenticated) {
+    if (context.auth.isAuthenticated()) {
       console.log('User authenticated, proceeding...')
       throw redirect({
         to: '/dashboard',

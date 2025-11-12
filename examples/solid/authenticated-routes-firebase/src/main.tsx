@@ -27,7 +27,7 @@ function InnerApp() {
   const auth = useAuth()
 
   // If the provider is initially loading, do not render the router
-  if (auth.isInitialLoading) {
+  if (auth.isInitialLoading()) {
     return (
       <div class="flex h-screen w-full items-center justify-center p-4">
         <div class="size-10 rounded-full border-4 border-gray-200 border-t-foreground animate-spin" />

@@ -6,18 +6,16 @@ import { auth } from './firebase/config'
 import type { AuthProvider, User } from 'firebase/auth'
 
 export type AuthContextType = {
-  isAuthenticated: boolean
-  isInitialLoading: boolean
+  isAuthenticated: () => boolean
+  isInitialLoading: () => boolean
   login: (provider: AuthProvider) => Promise<void>
   logout: () => Promise<void>
-  user: User | null
+  user: () => User | null
 }
 
 const AuthContext = Solid.createContext<AuthContextType | null>(null)
 
-export function AuthContextProvider({
-  children,
-}: {
+export function AuthContextProvider(props: {
   children: Solid.JSX.Element
 }) {
   const [user, setUser] = Solid.createSignal<User | null>(auth.currentUser)
@@ -40,7 +38,7 @@ export function AuthContextProvider({
     setUser(null)
     setIsInitialLoading(false)
   }
-  
+
   const login = async (provider: AuthProvider) => {
     const result = await signInWithPopup(auth, provider)
     flushSync(() => {
@@ -53,7 +51,7 @@ export function AuthContextProvider({
     <AuthContext.Provider
       value={{ isInitialLoading, isAuthenticated, user, login, logout }}
     >
-      {children}
+      {props.children}
     </AuthContext.Provider>
   )
 }

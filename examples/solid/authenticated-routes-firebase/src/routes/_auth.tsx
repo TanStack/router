@@ -1,11 +1,10 @@
-import { createFileRoute } from '@tanstack/solid-router'
-import { Link, Outlet, redirect, useRouter } from '@tanstack/solid-router'
+import { Link, Outlet, createFileRoute, redirect, useRouter  } from '@tanstack/solid-router'
 import { useAuth } from '../auth'
 
 export const Route = createFileRoute('/_auth')({
   beforeLoad: ({ context, location }) => {
     // Check if user is authenticated
-    if (!context.auth.isAuthenticated) {
+    if (!context.auth.isAuthenticated()) {
       console.log('User not authenticated, redirecting to login...')
       throw redirect({
         to: '/login',

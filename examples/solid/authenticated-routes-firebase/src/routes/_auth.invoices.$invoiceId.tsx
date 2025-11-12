@@ -1,6 +1,4 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import * as Solid from 'solid-js'
-
 import { fetchInvoiceById } from '../posts'
 
 export const Route = createFileRoute('/_auth/invoices/$invoiceId')({
@@ -13,18 +11,18 @@ export const Route = createFileRoute('/_auth/invoices/$invoiceId')({
 })
 
 function InvoicePage() {
-  const { invoice } = Route.useLoaderData()
+  const loaderData = Route.useLoaderData()
 
   return (
     <section class="grid gap-2">
       <h2 class="text-lg">
-        <strong>Invoice No.</strong> #{invoice.id.toString().padStart(2, '0')}
+        <strong>Invoice No.</strong> #{loaderData().invoice.id.toString().padStart(2, '0')}
       </h2>
       <p>
-        <strong>Invoice title:</strong> {invoice.title}
+        <strong>Invoice title:</strong> {loaderData().invoice.title}
       </p>
       <p>
-        <strong>Invoice body:</strong> {invoice.body}
+        <strong>Invoice body:</strong> {loaderData().invoice.body}
       </p>
     </section>
   )

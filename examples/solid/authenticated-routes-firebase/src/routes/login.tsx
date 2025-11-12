@@ -1,17 +1,15 @@
-import { createFileRoute } from '@tanstack/solid-router'
-import * as Solid from 'solid-js'
-import { redirect, useRouter, useRouterState } from '@tanstack/solid-router'
+import { createFileRoute, redirect, useRouter, useRouterState } from '@tanstack/solid-router'
 import { z } from 'zod'
-
-import { useAuth } from '../auth'
-import { sleep } from '../utils'
-import { siApple, siGithub, siGoogle } from 'simple-icons'
 
 import {
   GoogleAuthProvider,
   GithubAuthProvider,
   OAuthProvider,
 } from 'firebase/auth'
+import { useAuth } from '../auth'
+import { sleep } from '../utils'
+import { siApple, siGithub, siGoogle } from 'simple-icons'
+
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 const fallback = '/dashboard' as const
@@ -21,7 +19,7 @@ export const Route = createFileRoute('/login')({
     redirect: z.string().optional().catch(''),
   }),
   beforeLoad: ({ context, search }) => {
-    if (context.auth.isAuthenticated) {
+    if (context.auth.isAuthenticated()) {
       throw redirect({ to: search.redirect || fallback })
     }
   },
@@ -71,7 +69,7 @@ function LoginComponent() {
                   fill="currentColor"
                   aria-labelledby="githubIconTitle"
                   role="img"
-                  style={{ minWidth: '20px' }}
+                  style={{ "min-width": '20px' }}
                 >
                   <title id="githubIconTitle">GitHub Logo</title>
                   <path d={siGithub.path} />
