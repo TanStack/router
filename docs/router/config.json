@@ -627,6 +627,14 @@
               "to": "framework/solid/examples/basic-solid-query"
             },
             {
+              "label": "Basic + SSR (file-based)",
+              "to": "framework/solid/examples/basic-ssr-file-based"
+            },
+            {
+              "label": "Basic + SSR Streaming (file-based)",
+              "to": "framework/solid/examples/basic-ssr-streaming-file-based"
+            },
+            {
               "label": "Kitchen Sink (file-based)",
               "to": "framework/solid/examples/kitchen-sink-file-based"
             },
