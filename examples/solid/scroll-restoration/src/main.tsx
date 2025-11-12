@@ -52,9 +52,7 @@ function IndexComponent() {
       <h3>Welcome Home!</h3>
       <div class="space-y-2">
         {Array.from({ length: 50 }).map((_, i) => (
-          <div
-            class="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border"
-          >
+          <div class="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border">
             Home Item {i + 1}
           </div>
         ))}
@@ -76,9 +74,7 @@ function AboutComponent() {
       <div>Hello from About!</div>
       <div class="space-y-2">
         {Array.from({ length: 50 }).map((_, i) => (
-          <div
-            class="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border"
-          >
+          <div class="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border">
             About Item {i + 1}
           </div>
         ))}
@@ -105,7 +101,7 @@ function ByElementComponent() {
   })
 
   // Let's use TanStack Virtual to virtualize some content!
-  let virtualizerParentRef: any;
+  let virtualizerParentRef: any
   const virtualizer = createVirtualizer({
     count: 10000,
     getScrollElement: () => virtualizerParentRef,
@@ -121,9 +117,7 @@ function ByElementComponent() {
       <div class="h-full min-h-0 flex gap-4">
         <div class="border rounded-lg p-2 overflow-auto flex-1 space-y-2">
           {Array.from({ length: 50 }).map((_, i) => (
-            <div
-              class="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border"
-            >
+            <div class="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border">
               About Item {i + 1}
             </div>
           ))}
@@ -133,9 +127,7 @@ function ByElementComponent() {
             <div class="flex-1 border rounded-lg p-2 overflow-auto">
               <div class="space-y-2">
                 {Array.from({ length: 50 }).map((_, i) => (
-                  <div
-                    class="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border"
-                  >
+                  <div class="h-[100px] p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border">
                     About Item {i + 1}
                   </div>
                 ))}
@@ -161,8 +153,8 @@ function ByElementComponent() {
                   <div
                     class="absolute p-2 pb-0 w-full"
                     style={{
-                      height: item.size+'px',
-                      top: item.start+'px',
+                      height: item.size + 'px',
+                      top: item.start + 'px',
                     }}
                   >
                     <div class="p-2 rounded-lg bg-gray-200 dark:bg-gray-800 border h-full">
