@@ -681,6 +681,18 @@
             {
               "label": "With tRPC",
               "to": "framework/solid/examples/with-trpc"
+            },
+            {
+              "label": "Monorepo basic",
+              "to": "framework/solid/examples/router-monorepo-simple"
+            },
+            {
+              "label": "Monorepo basic (with lazy loading)",
+              "to": "framework/solid/examples/router-monorepo-simple-lazy"
+            },
+            {
+              "label": "Monorepo with Solid Query",
+              "to": "framework/solid/examples/router-monorepo-solid-query"
             }
           ]
         }

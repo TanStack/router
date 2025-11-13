@@ -11,8 +11,8 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/solid-router": "^1.135.2",
-    "@tanstack/solid-router-devtools": "^1.135.2",
-    "@tanstack/router-plugin": "^1.135.2",
+    "@tanstack/solid-router-devtools": "^1.136.0",
+    "@tanstack/router-plugin": "^1.136.0",
     "firebase": "^11.4.0",
     "postcss": "^8.5.1",
     "solid-js": "^1.9.10",
