@@ -392,7 +392,6 @@ type InterPolatePathResult = {
  *
  * - Encodes params safely (configurable allowed characters)
  * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
- * - Optionally leaves placeholders or wildcards in place
  */
 /**
  * Interpolate params and wildcards into a route path template.
