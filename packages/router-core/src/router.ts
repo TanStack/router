@@ -544,6 +544,10 @@ type NavigationEventInfo = {
   hashChanged: boolean
 }
 
+export type ViewTransitionEventInfo = {
+  transition: ViewTransition
+}
+
 export interface RouterEvents {
   onBeforeNavigate: {
     type: 'onBeforeNavigate'
@@ -563,6 +567,22 @@ export interface RouterEvents {
   onRendered: {
     type: 'onRendered'
   } & NavigationEventInfo
+  onViewTransitionStart: {
+    type: 'onViewTransitionStart'
+  } & ViewTransitionEventInfo &
+    NavigationEventInfo
+  onViewTransitionReady: {
+    type: 'onViewTransitionReady'
+  } & ViewTransitionEventInfo &
+    NavigationEventInfo
+  onViewTransitionUpdateCallbackDone: {
+    type: 'onViewTransitionUpdateCallbackDone'
+  } & ViewTransitionEventInfo &
+    NavigationEventInfo
+  onViewTransitionFinish: {
+    type: 'onViewTransitionFinish'
+  } & ViewTransitionEventInfo &
+    NavigationEventInfo
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -827,6 +847,7 @@ export function getLocationChangeInfo(routerState: {
   const hashChanged = fromLocation?.hash !== toLocation.hash
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
+export type LocationChangeInfo = ReturnType<typeof getLocationChangeInfo>
 
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
@@ -2088,22 +2109,21 @@ export class RouterCore<
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
 
+          const locationChangeInfo = getLocationChangeInfo({
+            resolvedLocation: prevLocation,
+            location: next,
+          })
+
           if (!this.state.redirect) {
             this.emit({
               type: 'onBeforeNavigate',
-              ...getLocationChangeInfo({
-                resolvedLocation: prevLocation,
-                location: next,
-              }),
+              ...locationChangeInfo,
             })
           }
 
           this.emit({
             type: 'onBeforeLoad',
-            ...getLocationChangeInfo({
-              resolvedLocation: prevLocation,
-              location: next,
-            }),
+            ...locationChangeInfo,
           })
 
           await loadMatches({
@@ -2114,10 +2134,9 @@ export class RouterCore<
             updateMatch: this.updateMatch,
             // eslint-disable-next-line @typescript-eslint/require-await
             onReady: async () => {
-              // eslint-disable-next-line @typescript-eslint/require-await
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
-                this.startViewTransition(async () => {
+                this.startViewTransition(locationChangeInfo, async () => {
                   // this.viewTransitionPromise = createControlledPromise<true>()
 
                   // Commit the pending matches. If a previous match was
@@ -2237,7 +2256,10 @@ export class RouterCore<
     }
   }
 
-  startViewTransition = (fn: () => Promise<void>) => {
+  startViewTransition = (
+    locationChangeInfo: LocationChangeInfo,
+    fn: () => Promise<void>,
+  ) => {
     // Determine if we should start a view transition from the navigation
     // or from the router default
     const shouldViewTransition =
@@ -2286,7 +2308,33 @@ export class RouterCore<
         startViewTransitionParams = fn
       }
 
-      document.startViewTransition(startViewTransitionParams)
+      const transition = document.startViewTransition(startViewTransitionParams)
+      this.emit({
+        type: 'onViewTransitionStart',
+        transition,
+        ...locationChangeInfo,
+      })
+      transition.ready.then(() => {
+        this.emit({
+          type: 'onViewTransitionReady',
+          transition,
+          ...locationChangeInfo,
+        })
+      })
+      transition.updateCallbackDone.then(() => {
+        this.emit({
+          type: 'onViewTransitionUpdateCallbackDone',
+          transition,
+          ...locationChangeInfo,
+        })
+      })
+      transition.finished.then(() => {
+        this.emit({
+          type: 'onViewTransitionFinish',
+          transition,
+          ...locationChangeInfo,
+        })
+      })
     } else {
       fn()
     }
