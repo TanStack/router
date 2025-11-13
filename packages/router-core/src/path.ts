@@ -444,15 +444,6 @@ export function interpolatePath({
         if (!params._splat) {
           isMissingParams = true
           // For missing splat parameters, just return the prefix and suffix without the wildcard
-          if (leaveParams) {
-            const segmentParam =
-              segment.prefixSegment || segment.suffixSegment
-                ? `{${segment.value}}`
-                : segment.value
-
-            return `${segmentPrefix}${segmentParam}${segmentSuffix}`
-          }
-
           // If there is a prefix or suffix, return them joined, otherwise omit the segment
           if (segmentPrefix || segmentSuffix) {
             return `${segmentPrefix}${segmentSuffix}`
@@ -461,16 +452,6 @@ export function interpolatePath({
         }
 
         const value = encodeParam('_splat')
-
-        if (leaveParams) {
-          const segmentParam =
-            segment.prefixSegment || segment.suffixSegment
-              ? `{${segment.value}}`
-              : segment.value
-
-          const value = encodeParam(segment.value)
-          return `${segmentPrefix}${segmentParam}${value ?? ''}${segmentSuffix}`
-        }
 
         return `${segmentPrefix}${value}${segmentSuffix}`
       }
@@ -485,15 +466,6 @@ export function interpolatePath({
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
 
-        if (leaveParams) {
-          const segmentParam =
-            segment.prefixSegment || segment.suffixSegment
-              ? `{${segment.value}}`
-              : segment.value
-
-          const value = encodeParam(segment.value)
-          return `${segmentPrefix}${segmentParam}${value ?? ''}${segmentSuffix}`
-        }
         return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
       }
 
@@ -505,11 +477,6 @@ export function interpolatePath({
 
         // Check if optional parameter is missing or undefined
         if (!(key in params) || params[key] == null) {
-          if (leaveParams) {
-            const segmentParam = `{-$${key}}`
-            return `${segmentPrefix}${segmentParam}${segmentSuffix}`
-          }
-
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
           if (segmentPrefix || segmentSuffix) {
             return `${segmentPrefix}${segmentSuffix}`
@@ -520,11 +487,6 @@ export function interpolatePath({
 
         usedParams[key] = params[key]
 
-        if (leaveParams) {
-          const segmentParam = `{-$${key}}`
-
-          return `${segmentPrefix}${segmentParam}${segmentSuffix}`
-        }
         return `${segmentPrefix}${encodeParam(key) ?? ''}${segmentSuffix}`
       }
 
