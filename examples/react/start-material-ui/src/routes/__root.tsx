@@ -9,11 +9,11 @@ import {
 } from '@tanstack/react-router'
 import { CacheProvider } from '@emotion/react'
 import { Container, CssBaseline, ThemeProvider } from '@mui/material'
-import createCache from '@emotion/cache'
 import fontsourceVariableRobotoCss from '@fontsource-variable/roboto?url'
 import React from 'react'
 import { theme } from '~/setup/theme'
 import { Header } from '~/components/Header'
+import { getEmotionCache } from '~/emotion-cache'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -33,10 +33,10 @@ function RootComponent() {
 }
 
 function Providers({ children }: { children: React.ReactNode }) {
-  const emotionCache = createCache({ key: 'css' })
+  const cache = getEmotionCache()
 
   return (
-    <CacheProvider value={emotionCache}>
+    <CacheProvider value={cache}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         {children}

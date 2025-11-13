@@ -3,8 +3,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Typography } from '@mui/material'
 import { Suspense } from 'react'
 
-const isStreaming = true
-
 const aboutQueryOptions = {
   queryKey: ['about'],
   queryFn: () =>
@@ -12,14 +10,9 @@ const aboutQueryOptions = {
 }
 
 export const Route = createFileRoute('/about')({
-  loader: async ({ context }) => {
-    const prefetch = context.queryClient.prefetchQuery(aboutQueryOptions)
-
-    // To demonstrate streaming, we return without awaiting.
-    // To demonstrate prefetching without streaming, we await the prefetch.
-    if (!isStreaming) {
-      await prefetch
-    }
+  loader: ({ context }) => {
+    // Prefetch without awaiting to enable streaming
+    context.queryClient.prefetchQuery(aboutQueryOptions)
   },
 
   component: RouteComponent,
@@ -45,7 +38,7 @@ function AboutLoading() {
 }
 
 function AboutData() {
-  useSuspenseQuery(aboutQueryOptions)
+  const query = useSuspenseQuery(aboutQueryOptions)
   return (
     <Typography variant="body1" sx={{ color: '#357a38' }}>
       Data loaded!
