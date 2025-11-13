@@ -678,13 +678,13 @@ function extractParams<T extends RouteLike>(
   const params: Record<string, string> = {}
   for (
     let partIndex = 0, nodeIndex = 0, pathIndex = 0;
-    partIndex < parts.length && nodeIndex < list.length;
+    nodeIndex < list.length;
     partIndex++, nodeIndex++, pathIndex++
   ) {
     const node = list[nodeIndex]!
-    const part = parts[partIndex]!
+    const part = parts[partIndex]
     const currentPathIndex = pathIndex
-    pathIndex += part.length
+    if (part) pathIndex += part.length
     if (node.kind === SEGMENT_TYPE_PARAM) {
       nodeParts ??= leaf.node.fullPath.split('/')
       const nodePart = nodeParts[nodeIndex]!
@@ -698,10 +698,10 @@ function extractParams<T extends RouteLike>(
           preLength + 2,
           nodePart.length - sufLength - 1,
         )
-        params[name] = part.substring(preLength, part.length - sufLength)
+        params[name] = part!.substring(preLength, part!.length - sufLength)
       } else {
         const name = nodePart.substring(1)
-        params[name] = part
+        params[name] = part!
       }
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
       if (leaf.skipped & (1 << nodeIndex)) {
@@ -718,9 +718,9 @@ function extractParams<T extends RouteLike>(
       )
       const value =
         node.suffix || node.prefix
-          ? part.substring(preLength, part.length - sufLength)
+          ? part!.substring(preLength, part!.length - sufLength)
           : part
-      if (value.length) params[name] = value
+      if (value?.length) params[name] = value
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
       const rest = path.substring(

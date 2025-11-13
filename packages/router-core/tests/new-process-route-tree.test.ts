@@ -360,7 +360,7 @@ describe('findRouteMatch', () => {
       const tree = makeTree(['/a/{-$id}/$'])
       const result = findRouteMatch('/a', tree)
       expect(result?.route.id).toBe('/a/{-$id}/$')
-      expect(result?.params).toEqual({})
+      expect(result?.params).toEqual({ '*': '', _splat: '' })
     })
     it('multi-segment wildcard w/ prefix', () => {
       const tree = makeTree(['/file{$}'])
