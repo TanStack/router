@@ -983,7 +983,7 @@ function getNodeMatch<T extends RouteLike>(
     }
   }
 
-  if (bestMatch && bestMatch.index > 1) return bestMatch
+  if (bestMatch) return bestMatch
 
   if (wildcardMatch) return wildcardMatch
 
