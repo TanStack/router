@@ -787,16 +787,18 @@ export type AnyRouterWithContext<TContext> = RouterCore<
 
 export type AnyRouter = RouterCore<any, any, any, any, any>
 
+export interface LocationChangeInfo {
+  fromLocation?: ParsedLocation
+  toLocation: ParsedLocation
+  pathChanged: boolean
+  hrefChanged: boolean
+  hashChanged: boolean
+}
+
 export interface ViewTransitionOptions {
   types:
     | Array<string>
-    | ((locationChangeInfo: {
-        fromLocation?: ParsedLocation
-        toLocation: ParsedLocation
-        pathChanged: boolean
-        hrefChanged: boolean
-        hashChanged: boolean
-      }) => Array<string> | false)
+    | ((locationChangeInfo: LocationChangeInfo) => Array<string> | false)
 }
 
 // TODO where is this used? can we remove this?
@@ -840,7 +842,7 @@ export type TrailingSlashOption =
 export function getLocationChangeInfo(routerState: {
   resolvedLocation?: ParsedLocation
   location: ParsedLocation
-}) {
+}): LocationChangeInfo {
   const fromLocation = routerState.resolvedLocation
   const toLocation = routerState.location
   const pathChanged = fromLocation?.pathname !== toLocation.pathname
@@ -848,7 +850,6 @@ export function getLocationChangeInfo(routerState: {
   const hashChanged = fromLocation?.hash !== toLocation.hash
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
-export type LocationChangeInfo = ReturnType<typeof getLocationChangeInfo>
 
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
@@ -2137,7 +2138,7 @@ export class RouterCore<
             onReady: async () => {
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
-                this.startViewTransition(locationChangeInfo, async () => {
+                this.startViewTransition(async () => {
                   // this.viewTransitionPromise = createControlledPromise<true>()
 
                   // Commit the pending matches. If a previous match was
@@ -2257,10 +2258,7 @@ export class RouterCore<
     }
   }
 
-  startViewTransition = (
-    locationChangeInfo: LocationChangeInfo,
-    fn: () => Promise<void>,
-  ) => {
+  startViewTransition = (fn: () => Promise<void>) => {
     // Determine if we should start a view transition from the navigation
     // or from the router default
     const shouldViewTransition =
@@ -2279,21 +2277,21 @@ export class RouterCore<
       // TODO: Fix this when dom types are updated
       let startViewTransitionParams: any
 
+      const next = this.latestLocation
+      const prevLocation = this.state.resolvedLocation
+
+      const locationChangeInfo = getLocationChangeInfo({
+        resolvedLocation: prevLocation,
+        location: next,
+      })
+
       if (
         typeof shouldViewTransition === 'object' &&
         this.isViewTransitionTypesSupported
       ) {
-        const next = this.latestLocation
-        const prevLocation = this.state.resolvedLocation
-
         const resolvedViewTransitionTypes =
           typeof shouldViewTransition.types === 'function'
-            ? shouldViewTransition.types(
-                getLocationChangeInfo({
-                  resolvedLocation: prevLocation,
-                  location: next,
-                }),
-              )
+            ? shouldViewTransition.types(locationChangeInfo)
             : shouldViewTransition.types
 
         if (resolvedViewTransitionTypes === false) {
