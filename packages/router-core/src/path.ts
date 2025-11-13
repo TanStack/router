@@ -377,7 +377,6 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
-  leaveParams?: boolean
   // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
   decodeCharMap?: Map<string, string>
   parseCache?: ParsePathnameCache
@@ -402,7 +401,6 @@ type InterPolatePathResult = {
 export function interpolatePath({
   path,
   params,
-  leaveParams,
   decodeCharMap,
   parseCache,
 }: InterpolatePathOptions): InterPolatePathResult {

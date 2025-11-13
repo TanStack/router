@@ -1684,14 +1684,13 @@ export class RouterCore<
       }
 
       const nextPathname = opts.leaveParams
-        ? nextTo
+        ? // Use the original template path for interpolation
+          // This preserves the original parameter syntax including optional parameters
+          nextTo
         : decodePath(
             interpolatePath({
-              // Use the original template path for interpolation
-              // This preserves the original parameter syntax including optional parameters
               path: nextTo,
               params: nextParams,
-              leaveParams: opts.leaveParams,
               decodeCharMap: this.pathParamsDecodeCharMap,
               parseCache: this.parsePathnameCache,
             }).interpolatedPath,
