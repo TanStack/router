@@ -2315,21 +2315,21 @@ export class RouterCore<
         transition,
         ...locationChangeInfo,
       })
-      transition.ready.then(() => {
+      transition.ready.finally(() => {
         this.emit({
           type: 'onViewTransitionReady',
           transition,
           ...locationChangeInfo,
         })
       })
-      transition.updateCallbackDone.then(() => {
+      transition.updateCallbackDone.finally(() => {
         this.emit({
           type: 'onViewTransitionUpdateCallbackDone',
           transition,
           ...locationChangeInfo,
         })
       })
-      transition.finished.then(() => {
+      transition.finished.finally(() => {
         this.emit({
           type: 'onViewTransitionFinish',
           transition,
