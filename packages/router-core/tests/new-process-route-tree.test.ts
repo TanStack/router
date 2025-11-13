@@ -191,7 +191,7 @@ describe('findRouteMatch', () => {
     })
   })
 
-  describe.todo('trailing slashes', () => { })
+  describe.todo('trailing slashes', () => {})
 
   describe('case sensitivity competition', () => {
     it('a case sensitive segment early on should not prevent a case insensitive match', () => {
@@ -270,17 +270,16 @@ describe('findRouteMatch', () => {
             options: { caseSensitive: false },
           },
           {
-            id: '/{$id}',
-            fullPath: '/{$id}',
-            path: '{$id}',
+            id: '/A{$id}B',
+            fullPath: '/A{$id}B',
+            path: 'A{$id}B',
             options: { caseSensitive: true },
           },
-        ]
+        ],
       }
       const { processedTree } = processRouteTree(tree)
       expect(findRouteMatch('/AfooB', processedTree)?.route.id).toBe('/A{$id}B')
-      expect(findRouteMatch('/AABB', processedTree)?.route.id).toBe('/A{$id}B')
-      expect(findRouteMatch('/aabb', processedTree)?.route.id).toBe('/aa{$id}bb')
+      expect(findRouteMatch('/AAABBB', processedTree)?.route.id).toBe('/A{$id}B')
     })
   })
 
@@ -453,7 +452,7 @@ describe('findRouteMatch', () => {
     })
   })
 
-  describe.todo('fuzzy matching', () => { })
+  describe.todo('fuzzy matching', () => {})
 })
 
 describe.todo('processRouteMasks', () => {

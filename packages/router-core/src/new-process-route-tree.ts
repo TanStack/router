@@ -311,8 +311,8 @@ function parseSegments<TRouteLike extends RouteLike>(
 }
 
 function sortDynamic(
-  a: { prefix?: string; suffix?: string },
-  b: { prefix?: string; suffix?: string },
+  a: { prefix?: string; suffix?: string; caseSensitive: boolean },
+  b: { prefix?: string; suffix?: string; caseSensitive: boolean },
 ) {
   if (a.prefix && b.prefix && a.prefix !== b.prefix) {
     if (a.prefix.startsWith(b.prefix)) return -1
@@ -326,6 +326,8 @@ function sortDynamic(
   if (!a.prefix && b.prefix) return 1
   if (a.suffix && !b.suffix) return -1
   if (!a.suffix && b.suffix) return 1
+  if (a.caseSensitive && !b.caseSensitive) return -1
+  if (!a.caseSensitive && b.caseSensitive) return 1
   return 0
 }
 
