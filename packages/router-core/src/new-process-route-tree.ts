@@ -194,19 +194,20 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_PARAM: {
           const prefix_raw = path.substring(start, data[1])
           const suffix_raw = path.substring(data[4]!, end)
+          const actuallyCaseSensitive = caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
             ? undefined
-            : caseSensitive
+            : actuallyCaseSensitive
               ? prefix_raw
               : prefix_raw.toLowerCase()
           const suffix = !suffix_raw
             ? undefined
-            : caseSensitive
+            : actuallyCaseSensitive
               ? suffix_raw
               : suffix_raw.toLowerCase()
           const existingNode = node.dynamic?.find(
             (s) =>
-              s.caseSensitive === caseSensitive &&
+              s.caseSensitive === actuallyCaseSensitive &&
               s.prefix === prefix &&
               s.suffix === suffix,
           )
@@ -216,7 +217,7 @@ function parseSegments<TRouteLike extends RouteLike>(
             const next = createDynamicNode<TRouteLike>(
               SEGMENT_TYPE_PARAM,
               route.fullPath ?? route.from,
-              caseSensitive,
+              actuallyCaseSensitive,
               prefix,
               suffix,
             )
@@ -231,19 +232,20 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_OPTIONAL_PARAM: {
           const prefix_raw = path.substring(start, data[1])
           const suffix_raw = path.substring(data[4]!, end)
+          const actuallyCaseSensitive = caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
             ? undefined
-            : caseSensitive
+            : actuallyCaseSensitive
               ? prefix_raw
               : prefix_raw.toLowerCase()
           const suffix = !suffix_raw
             ? undefined
-            : caseSensitive
+            : actuallyCaseSensitive
               ? suffix_raw
               : suffix_raw.toLowerCase()
           const existingNode = node.optional?.find(
             (s) =>
-              s.caseSensitive === caseSensitive &&
+              s.caseSensitive === actuallyCaseSensitive &&
               s.prefix === prefix &&
               s.suffix === suffix,
           )
@@ -253,7 +255,7 @@ function parseSegments<TRouteLike extends RouteLike>(
             const next = createDynamicNode<TRouteLike>(
               SEGMENT_TYPE_OPTIONAL_PARAM,
               route.fullPath ?? route.from,
-              caseSensitive,
+              actuallyCaseSensitive,
               prefix,
               suffix,
             )
@@ -268,20 +270,21 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_WILDCARD: {
           const prefix_raw = path.substring(start, data[1])
           const suffix_raw = path.substring(data[4]!, end)
+          const actuallyCaseSensitive = caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
             ? undefined
-            : caseSensitive
+            : actuallyCaseSensitive
               ? prefix_raw
               : prefix_raw.toLowerCase()
           const suffix = !suffix_raw
             ? undefined
-            : caseSensitive
+            : actuallyCaseSensitive
               ? suffix_raw
               : suffix_raw.toLowerCase()
           const next = createDynamicNode<TRouteLike>(
             SEGMENT_TYPE_WILDCARD,
             route.fullPath ?? route.from,
-            caseSensitive,
+            actuallyCaseSensitive,
             prefix,
             suffix,
           )
