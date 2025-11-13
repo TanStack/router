@@ -8,15 +8,18 @@ title: Server Entry Point
 > [!NOTE]
 > The server entry point is **optional** out of the box. If not provided, TanStack Start will automatically handle the server entry point for you using the below as a default.
 
-The Server Entry Point conforms to the [universal fetch handler](https://developers.cloudflare.com/workers/runtime-apis/handlers/fetch/) format, which means the default export must conform to the `ServerEntry` interface:
+The Server Entry Point supports the universal fetch handler format, commonly used by [Cloudflare Workers](https://developers.cloudflare.com/workers/runtime-apis/handlers/fetch/) and other WinterCG-compatible runtimes.
+
+To ensure interoperability, the default export must conform to our `ServerEntry` interface:
 
 ```ts
 export default {
-  fetch(req: Request, opts?: RequestOptions): Promise<Response> {
+  fetch(req: Request, opts?: RequestOptions): Response | Promise<Response> {
     // ...
   },
 }
 ```
+
 TanStack Start exposes a wrapper to make creation type-safe. This is done in the `src/server.ts` file.
 
 ```tsx

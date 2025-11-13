@@ -12,8 +12,8 @@ export type ServerEntry = { fetch: RequestHandler<Register> }
 
 export function createServerEntry(entry: ServerEntry): ServerEntry {
   return {
-    async fetch(request) {
-      return await entry.fetch(request)
+    async fetch(...args) {
+      return await entry.fetch(...args)
     },
   }
 }
