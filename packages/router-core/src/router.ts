@@ -545,6 +545,7 @@ type NavigationEventInfo = {
 }
 
 export type ViewTransitionEventInfo = {
+  // @ts-ignore -- ViewTransition support since ts 5.6
   transition: ViewTransition
 }
 
