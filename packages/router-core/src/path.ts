@@ -377,7 +377,6 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
-  leaveParams?: boolean
   // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
   decodeCharMap?: Map<string, string>
   parseCache?: ParsePathnameCache
@@ -393,7 +392,6 @@ type InterPolatePathResult = {
  *
  * - Encodes params safely (configurable allowed characters)
  * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
- * - Optionally leaves placeholders or wildcards in place
  */
 /**
  * Interpolate params and wildcards into a route path template.
@@ -402,7 +400,6 @@ type InterPolatePathResult = {
 export function interpolatePath({
   path,
   params,
-  leaveParams,
   decodeCharMap,
   parseCache,
 }: InterpolatePathOptions): InterPolatePathResult {
@@ -452,6 +449,7 @@ export function interpolatePath({
         }
 
         const value = encodeParam('_splat')
+
         return `${segmentPrefix}${value}${segmentSuffix}`
       }
 
@@ -464,10 +462,7 @@ export function interpolatePath({
 
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
-        if (leaveParams) {
-          const value = encodeParam(segment.value)
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
-        }
+
         return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
       }
 
@@ -489,10 +484,6 @@ export function interpolatePath({
 
         usedParams[key] = params[key]
 
-        if (leaveParams) {
-          const value = encodeParam(segment.value)
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
-        }
         return `${segmentPrefix}${encodeParam(key) ?? ''}${segmentSuffix}`
       }
 

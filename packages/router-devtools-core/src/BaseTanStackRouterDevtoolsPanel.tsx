@@ -178,7 +178,6 @@ function RouteComp({
     const interpolated = interpolatePath({
       path: route.fullPath,
       params: allParams,
-      leaveParams: false,
       decodeCharMap: router().pathParamsDecodeCharMap,
     })
 
