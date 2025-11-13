@@ -193,6 +193,27 @@ const invalidTestCases = invalidTestMatrix.map(
   }),
 )
 
+validTestCases.push({
+  name: 'verboseFileRoutes: false, createFileRoute valid order',
+  code: `export const Route = createFileRoute({
+  loaderDeps: () => null,
+  loader: () => null,
+})`,
+})
+
+invalidTestCases.push({
+  name: 'verboseFileRoutes: false, createFileRoute invalid order',
+  code: `export const Route = createFileRoute({
+  loader: () => null,
+  loaderDeps: () => null,
+})`,
+  errors: [{ messageId: 'invalidOrder' }],
+  output: `export const Route = createFileRoute({
+  loaderDeps: () => null,
+  loader: () => null,
+})`,
+})
+
 ruleTester.run(name, rule, {
   valid: validTestCases,
   invalid: invalidTestCases,
