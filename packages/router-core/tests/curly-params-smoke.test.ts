@@ -90,7 +90,7 @@ const testCases = [
     name: 'optional param with prefix and no value',
     path: '/optional-{-$id}',
     nav: '/optional-',
-    params: { id: '' },
+    params: {},
   },
   {
     name: 'optional param with suffix and value',
@@ -102,13 +102,13 @@ const testCases = [
     name: 'optional param with suffix and no value',
     path: '/{-$id}-optional',
     nav: '/-optional',
-    params: { id: '' },
+    params: {},
   },
   {
     name: 'optional param with required param, prefix, suffix, wildcard and no value',
     path: `/$foo/a{-$id}-optional/$`,
     nav: '/bar/a-optional/qux',
-    params: { foo: 'bar', _splat: 'qux', '*': 'qux', id: '' },
+    params: { foo: 'bar', _splat: 'qux', '*': 'qux' },
   },
   {
     name: 'optional param with required param, prefix, suffix, wildcard and value',

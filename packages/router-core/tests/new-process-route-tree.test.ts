@@ -121,7 +121,7 @@ describe('findRouteMatch', () => {
       it('dynamic at the root DOES NOT match /', () => {
         const tree = makeTree(['/$id'])
         const res = findRouteMatch('/', tree)
-        expect(res?.route.id).toBe('__root__')
+        expect(res).toBeNull()
       })
     })
 
@@ -176,13 +176,13 @@ describe('findRouteMatch', () => {
 
   describe('not found', () => {
     it('returns null when no match is found', () => {
-      const tree = makeTree(['/a/b/c', '/d/e/f'])
+      const tree = makeTree(['/', '/a/b/c', '/d/e/f'])
       expect(findRouteMatch('/x/y/z', tree)).toBeNull()
     })
     it('returns something w/ fuzzy matching enabled', () => {
-      const tree = makeTree(['/a/b/c', '/d/e/f'])
+      const tree = makeTree(['/', '/a/b/c', '/d/e/f'])
       const match = findRouteMatch('/x/y/z', tree, true)
-      expect(match?.route?.id).toBe('__root__')
+      expect(match?.route?.id).toBe('/')
       expect(match?.params).toMatchInlineSnapshot(`
         {
           "**": "x/y/z",
@@ -286,9 +286,9 @@ describe('findRouteMatch', () => {
   })
 
   describe('basic matching', () => {
-    it('root', () => {
+    it('root itself cannot match', () => {
       const tree = makeTree([])
-      expect(findRouteMatch('/', tree)?.route.id).toBe('__root__')
+      expect(findRouteMatch('/', tree)).toBeNull()
     })
     it('single static', () => {
       const tree = makeTree(['/a'])
@@ -301,8 +301,7 @@ describe('findRouteMatch', () => {
     it('single optional', () => {
       const tree = makeTree(['/{-$id}'])
       expect(findRouteMatch('/123', tree)?.route.id).toBe('/{-$id}')
-      // expect(findRouteMatch('/', tree)?.route.id).toBe('/{-$id}')
-      // // ^^^ fails, returns '__root__'
+      expect(findRouteMatch('/', tree)?.route.id).toBe('/{-$id}')
     })
     it('single wildcard', () => {
       const tree = makeTree(['/$'])
@@ -327,7 +326,7 @@ describe('findRouteMatch', () => {
       it('optional w/ prefix', () => {
         const tree = makeTree(['/{-$id}.txt'])
         expect(findRouteMatch('/123.txt', tree)?.route.id).toBe('/{-$id}.txt')
-        expect(findRouteMatch('.txt', tree)?.route.id).toBe('/{-$id}.txt')
+        expect(findRouteMatch('/.txt', tree)?.route.id).toBe('/{-$id}.txt')
       })
       it('optional w/ suffix', () => {
         const tree = makeTree(['/file{-$id}'])
@@ -446,8 +445,8 @@ describe('findRouteMatch', () => {
     it('matches the root child route', () => {
       expect(findRouteMatch('/a', processedTree)?.route.id).toBe('/a')
     })
-    it('matches the root route', () => {
-      expect(findRouteMatch('/', processedTree)?.route.id).toBe('__root__')
+    it('nothing can match the root route', () => {
+      expect(findRouteMatch('/', processedTree)).toBeNull()
     })
     it('does not match a route that doesnt exist', () => {
       expect(findRouteMatch('/a/b/c', processedTree)).toBeNull()

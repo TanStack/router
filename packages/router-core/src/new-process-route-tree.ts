@@ -658,7 +658,7 @@ function findMatch<T extends RouteLike>(
   fuzzy = false,
 ): { route: T; params: Record<string, string> } | null {
   const parts = path.split('/')
-  const leaf = getNodeMatch(parts, segmentTree, fuzzy)
+  const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
   if (!leaf) return null
   const params = extractParams(path, parts, leaf)
   if ('**' in leaf) params['**'] = leaf['**']!
@@ -706,7 +706,6 @@ function extractParams<T extends RouteLike>(
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
       if (leaf.skipped & (1 << nodeIndex)) {
         partIndex-- // stay on the same part
-        // params[name] = '' // ¿skipped optional params do not appear at all in the params object?
         continue
       }
       nodeParts ??= leaf.node.fullPath.split('/')
@@ -717,11 +716,11 @@ function extractParams<T extends RouteLike>(
         preLength + 3,
         nodePart.length - sufLength - 1,
       )
-      if (node.suffix || node.prefix) {
-        params[name] = part.substring(preLength, part.length - sufLength)
-      } else {
-        params[name] = part
-      }
+      const value =
+        node.suffix || node.prefix
+          ? part.substring(preLength, part.length - sufLength)
+          : part
+      if (value.length) params[name] = value
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
       const rest = path.substring(
@@ -747,11 +746,11 @@ function buildBranch<T extends RouteLike>(node: AnySegmentNode<T>) {
 }
 
 function getNodeMatch<T extends RouteLike>(
+  path: string,
   parts: Array<string>,
   segmentTree: AnySegmentNode<T>,
   fuzzy: boolean,
 ) {
-  parts = parts.filter(Boolean) // TODO: this is a bad idea, but idk how we're supposed to handle leading/trailing slashes
   const partsLength = parts.length
 
   type Frame = {
@@ -782,10 +781,10 @@ function getNodeMatch<T extends RouteLike>(
   const stack: Array<Frame> = [
     {
       node: segmentTree,
-      index: 0,
-      depth: 0,
+      index: 1,
+      depth: 1,
       skipped: 0,
-      statics: 0,
+      statics: 1,
       dynamics: 0,
       optionals: 0,
     },
@@ -870,8 +869,8 @@ function getNodeMatch<T extends RouteLike>(
 
     // 4. Try optional match
     if (node.optional) {
+      const nextSkipped = skipped | (1 << depth)
       const nextDepth = depth + 1
-      const nextSkipped = skipped | (1 << nextDepth)
       for (let i = node.optional.length - 1; i >= 0; i--) {
         const segment = node.optional[i]!
         // when skipping, node and depth advance by 1, but index doesn't
@@ -910,14 +909,14 @@ function getNodeMatch<T extends RouteLike>(
     }
 
     // 3. Try dynamic match
-    if (!isBeyondPath && node.dynamic) {
+    if (!isBeyondPath && node.dynamic && part) {
       for (let i = node.dynamic.length - 1; i >= 0; i--) {
         const segment = node.dynamic[i]!
         const { prefix, suffix } = segment
         if (prefix || suffix) {
           const casePart = segment.caseSensitive
-            ? part!
-            : (lowerPart ??= part!.toLowerCase())
+            ? part
+            : (lowerPart ??= part.toLowerCase())
           if (prefix && !casePart.startsWith(prefix)) continue
           if (suffix && !casePart.endsWith(suffix)) continue
         }
@@ -968,15 +967,19 @@ function getNodeMatch<T extends RouteLike>(
     }
   }
 
-  if (bestMatch) return bestMatch
+  if (bestMatch && bestMatch.index > 1) return bestMatch
 
   if (wildcardMatch) return wildcardMatch
 
   if (fuzzy && bestFuzzy) {
+    let sliceIndex = bestFuzzy.index
+    for (let i = 0; i < bestFuzzy.index; i++) {
+      sliceIndex += parts[i]!.length
+    }
     return {
       node: bestFuzzy.node,
       skipped: bestFuzzy.skipped,
-      '**': parts.slice(bestFuzzy.index).join('/'),
+      '**': path.slice(sliceIndex),
     }
   }
 
