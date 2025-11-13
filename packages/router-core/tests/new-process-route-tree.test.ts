@@ -10,6 +10,7 @@ import type { AnyRoute, RouteMask } from '../src'
 function makeTree(routes: Array<string>) {
   return processRouteTree({
     id: '__root__',
+    isRoot: true,
     fullPath: '/',
     path: '/',
     children: routes.map((route) => ({
@@ -197,6 +198,7 @@ describe('findRouteMatch', () => {
     it('a case sensitive segment early on should not prevent a case insensitive match', () => {
       const tree = {
         id: '__root__',
+        isRoot: true,
         fullPath: '/',
         path: '/',
         children: [
@@ -235,6 +237,7 @@ describe('findRouteMatch', () => {
     it('a case sensitive segment should have priority over a case insensitive one', () => {
       const tree = {
         id: '__root__',
+        isRoot: true,
         fullPath: '/',
         path: '/',
         children: [
@@ -260,6 +263,7 @@ describe('findRouteMatch', () => {
     it('a case sensitive prefix/suffix should have priority over a case insensitive one', () => {
       const tree = {
         id: '__root__',
+        isRoot: true,
         fullPath: '/',
         path: '/',
         children: [
@@ -409,6 +413,7 @@ describe('findRouteMatch', () => {
   describe('nested routes', () => {
     const routeTree = {
       id: '__root__',
+      isRoot: true,
       fullPath: '/',
       path: '/',
       children: [

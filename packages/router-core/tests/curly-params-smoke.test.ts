@@ -123,6 +123,7 @@ describe('curly params smoke tests', () => {
   test.each(testCases)('$name', ({ path, nav, params }) => {
     const tree = {
       id: '__root__',
+      isRoot: true,
       fullPath: '/',
       path: '/',
       children: [

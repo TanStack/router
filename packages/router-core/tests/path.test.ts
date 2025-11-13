@@ -506,6 +506,7 @@ describe('interpolatePath', () => {
 describe('matchPathname', () => {
   const { processedTree } = processRouteTree({
     id: '__root__',
+    isRoot: true,
     fullPath: '/',
     path: '/',
   })

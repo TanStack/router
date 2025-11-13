@@ -151,9 +151,9 @@ function parseSegments<TRouteLike extends RouteLike>(
     const length = path.length
     const caseSensitive = route.options?.caseSensitive ?? defaultCaseSensitive
     while (cursor < length) {
+      parseSegment(path, cursor, data)
       let nextNode: AnySegmentNode<TRouteLike>
       const start = cursor
-      parseSegment(path, start, data)
       const end = data[5]!
       cursor = end + 1
       const kind = data[0] as SegmentKind
@@ -301,7 +301,9 @@ function parseSegments<TRouteLike extends RouteLike>(
       }
       node = nextNode
     }
-    if (route.path || !route.children) node.route = route
+    if ((route.path || !route.children) && !route.isRoot) {
+      node.route = route
+    }
   }
   if (route.children)
     for (const child of route.children) {
@@ -481,6 +483,7 @@ type RouteLike = {
   path?: string // relative path from the parent,
   children?: Array<RouteLike> // child routes,
   parentRoute?: RouteLike // parent route,
+  isRoot?: boolean
   options?: {
     caseSensitive?: boolean
   }

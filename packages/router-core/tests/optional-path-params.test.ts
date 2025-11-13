@@ -336,6 +336,7 @@ describe('Optional Path Parameters', () => {
 
   const { processedTree } = processRouteTree({
     id: '__root__',
+    isRoot: true,
     fullPath: '/',
     path: '/',
   })
