@@ -82,7 +82,7 @@ describe('default path matching', () => {
 
   it.each([
     ['/a/b/c', '/a/$', { _splat: 'b/c', '*': 'b/c' }],
-    ['/a/', '/a/$', { _splat: '/', '*': '/' }],
+    ['/a/', '/a/$', { _splat: '', '*': '' }],
     ['/a', '/a/$', { _splat: '', '*': '' }],
     ['/a/b/c', '/a/$/foo', { _splat: 'b/c', '*': 'b/c' }],
   ])('wildcard %s => %s', (path, pattern, result) => {
@@ -138,7 +138,7 @@ describe('case insensitive path matching', () => {
 
   it.each([
     ['/a/b/c', '/A/$', { _splat: 'b/c', '*': 'b/c' }],
-    ['/a/', '/A/$', { _splat: '/', '*': '/' }],
+    ['/a/', '/A/$', { _splat: '', '*': '' }],
     ['/a', '/A/$', { _splat: '', '*': '' }],
     ['/a/b/c', '/A/$/foo', { _splat: 'b/c', '*': 'b/c' }],
   ])('wildcard %s => %s', (path, pattern, result) => {
@@ -198,7 +198,7 @@ describe('fuzzy path matching', () => {
 
   it.each([
     ['/a/b/c', '/a/$', { _splat: 'b/c', '*': 'b/c' }],
-    ['/a/', '/a/$', { _splat: '/', '*': '/' }],
+    ['/a/', '/a/$', { _splat: '', '*': '' }],
     ['/a', '/a/$', { _splat: '', '*': '' }],
     ['/a/b/c/d', '/a/$/foo', { _splat: 'b/c/d', '*': 'b/c/d' }],
   ])('wildcard %s => %s', (path, pattern, result) => {

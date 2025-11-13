@@ -836,7 +836,6 @@ describe('parsePathname', () => {
         expected: [
           { type: SEGMENT_TYPE_PATHNAME, value: '' },
           { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
-          { type: SEGMENT_TYPE_PATHNAME, value: '' },
         ],
       },
       {

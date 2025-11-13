@@ -117,7 +117,7 @@ describe('findRouteMatch', () => {
         const tree = makeTree(['/$'])
         const res = findRouteMatch('/', tree)
         expect(res?.route.id).toBe('/$')
-        expect(res?.params).toEqual({ '*': '/', _splat: '/' }) // should be '/' or '' ?
+        expect(res?.params).toEqual({ '*': '', _splat: '' })
       })
       it('dynamic at the root DOES NOT match /', () => {
         const tree = makeTree(['/$id'])
@@ -364,7 +364,7 @@ describe('findRouteMatch', () => {
       const tree = makeTree(['/a/{-$id}/$'])
       const result = findRouteMatch('/a', tree)
       expect(result?.route.id).toBe('/a/{-$id}/$')
-      expect(result?.params).toEqual({ '*': '', _splat: '' }) // should be '/' or '' ?
+      expect(result?.params).toEqual({ '*': '', _splat: '' })
     })
     it('multi-segment wildcard w/ prefix', () => {
       const tree = makeTree(['/file{$}'])
