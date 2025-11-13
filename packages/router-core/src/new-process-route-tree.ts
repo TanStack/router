@@ -1,5 +1,6 @@
 import invariant from 'tiny-invariant'
 import { createLRUCache } from './lru-cache'
+import { last } from './utils'
 import type { LRUCache } from './lru-cache'
 
 export const SEGMENT_TYPE_PATHNAME = 0
@@ -303,6 +304,7 @@ function parseSegments<TRouteLike extends RouteLike>(
     }
     if ((route.path || !route.children) && !route.isRoot) {
       node.route = route
+      node.isIndex = path.endsWith('/')
     }
   }
   if (route.children)
@@ -385,6 +387,7 @@ function createStaticNode<T extends RouteLike>(
     route: null,
     fullPath,
     parent: null,
+    isIndex: false,
   }
 }
 
@@ -416,6 +419,7 @@ function createDynamicNode<T extends RouteLike>(
     caseSensitive,
     prefix,
     suffix,
+    isIndex: false,
   }
 }
 
@@ -440,30 +444,33 @@ type AnySegmentNode<T extends RouteLike> =
 type SegmentNode<T extends RouteLike> = {
   kind: SegmentKind
 
-  // Static segments (highest priority)
+  /** Static segments (highest priority) */
   static: Map<string, StaticSegmentNode<T>> | null
 
-  // Case insensitive static segments (second highest priority)
+  /** Case insensitive static segments (second highest priority) */
   staticInsensitive: Map<string, StaticSegmentNode<T>> | null
 
-  // Dynamic segments ($param)
+  /** Dynamic segments ($param) */
   dynamic: Array<DynamicSegmentNode<T>> | null
 
-  // Optional dynamic segments ({-$param})
+  /** Optional dynamic segments ({-$param}) */
   optional: Array<DynamicSegmentNode<T>> | null
 
-  // Wildcard segments ($ - lowest priority)
+  /** Wildcard segments ($ - lowest priority) */
   wildcard: Array<DynamicSegmentNode<T>> | null
 
-  // Terminal route (if this path can end here)
+  /** Terminal route (if this path can end here) */
   route: T | null
 
-  // The full path for this segment node (will only be valid on leaf nodes)
+  /** The full path for this segment node (will only be valid on leaf nodes) */
   fullPath: string
 
   parent: AnySegmentNode<T> | null
 
   depth: number
+
+  /** is it an index route (trailing / path), only valid for nodes with a `route` */
+  isIndex: boolean
 }
 
 // function intoRouteLike(routeTree, parent) {
@@ -539,6 +546,7 @@ export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(
   /** The `processedTree` returned by the initial `processRouteTree` call. */
   processedTree: ProcessedTree<any, T, any>,
 ) {
+  path ||= '/'
   const cached = processedTree.flatCache!.get(path)
   if (cached) return cached
   const result = findMatch(path, processedTree.masksTree!)
@@ -556,6 +564,8 @@ export function findSingleMatch(
   path: string,
   processedTree: ProcessedTree<any, any, { from: string }>,
 ) {
+  from ||= '/'
+  path ||= '/'
   const key = caseSensitive ? `case|${from}` : from
   let tree = processedTree.singleCache.get(key)
   if (!tree) {
@@ -582,6 +592,7 @@ export function findRouteMatch<
   const key = fuzzy ? `fuzzy|${path}` : path
   const cached = processedTree.matchCache.get(key)
   if (cached) return cached
+  path ||= '/'
   const result = findMatch(path, processedTree.segmentTree, fuzzy)
   processedTree.matchCache.set(key, result)
   return result
@@ -754,7 +765,9 @@ function getNodeMatch<T extends RouteLike>(
   segmentTree: AnySegmentNode<T>,
   fuzzy: boolean,
 ) {
-  const partsLength = parts.length
+  const trailingSlash = !last(parts)
+  const pathIsIndex = trailingSlash && path !== '/'
+  const partsLength = parts.length - (trailingSlash ? 1 : 0)
 
   type Frame = {
     node: AnySegmentNode<T>
@@ -804,7 +817,7 @@ function getNodeMatch<T extends RouteLike>(
 
     const isBeyondPath = index === partsLength
     if (isBeyondPath) {
-      if (node.route) {
+      if (node.route && (!pathIsIndex || node.isIndex)) {
         if (
           !bestMatch ||
           statics > bestMatch.statics ||
