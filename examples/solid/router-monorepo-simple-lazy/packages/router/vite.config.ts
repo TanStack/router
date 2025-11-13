@@ -15,7 +15,7 @@ export default defineConfig({
       tsconfigPath: path.join(__dirname, 'tsconfig.json'),
     }),
     solid(),
-    tanstackRouter({ target: 'solid'}),
+    tanstackRouter({ target: 'solid' }),
   ],
   build: {
     outDir: './dist',
@@ -31,11 +31,7 @@ export default defineConfig({
     },
     rollupOptions: {
       // External packages that should not be bundled into your library.
-      external: [
-        'solid-js',
-        'solid-js/web',
-        '@tanstack/solid-router',
-      ],
+      external: ['solid-js', 'solid-js/web', '@tanstack/solid-router'],
     },
   },
 })

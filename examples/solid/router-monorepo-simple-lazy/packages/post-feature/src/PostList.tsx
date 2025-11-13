@@ -1,4 +1,8 @@
-import { Link, Outlet, createLazyRoute } from '@router-solid-mono-simple-lazy/router'
+import {
+  Link,
+  Outlet,
+  createLazyRoute,
+} from '@router-solid-mono-simple-lazy/router'
 
 export const PostRoute = createLazyRoute('/')({
   component: PostsListComponent,
