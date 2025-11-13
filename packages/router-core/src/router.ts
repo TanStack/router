@@ -1777,7 +1777,7 @@ export class RouterCore<
       let maskedNext = maskedDest ? build(maskedDest) : undefined
 
       if (!maskedNext) {
-        let params = {}
+        const params = {}
 
         if (this.options.routeMasks) {
           const match = findFlatMatch<RouteMask<TRouteTree>>(
@@ -1785,7 +1785,7 @@ export class RouterCore<
             this.processedTree,
           )
           if (match) {
-            params = match.params
+            Object.assign(params, match.params) // Copy params, because they're cached
             const { from: _from, ...maskProps } = match.route
             maskedDest = {
               from: opts.from,
@@ -2631,16 +2631,17 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesById: Record<string, TRouteLike>
   processedTree: ProcessedTree<any, any, any>
 }) {
-  let routeParams: Record<string, string>
+  const routeParams: Record<string, string> = {}
   const trimmedPath = trimPathRight(pathname)
 
   let foundRoute: TRouteLike | undefined = undefined
   const match = findRouteMatch<TRouteLike>(trimmedPath, processedTree, true)
   if (match) {
-    foundRoute = match.route
-    routeParams = match.params
-  } else {
-    routeParams = {}
+    // If match is fuzzy, it can't be '/'
+    if (match.route.path !== '/' || !('**' in match.params)) {
+      foundRoute = match.route
+      Object.assign(routeParams, match.params) // Copy params, because they're cached
+    }
   }
 
   let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!
