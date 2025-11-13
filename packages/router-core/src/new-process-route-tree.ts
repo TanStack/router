@@ -53,12 +53,13 @@ export function parseSegment(
 
   // $ (wildcard)
   if (part === '$') {
+    const total = path.length
     output[0] = SEGMENT_TYPE_WILDCARD
     output[1] = start
     output[2] = start
-    output[3] = end
-    output[4] = end
-    output[5] = end
+    output[3] = total
+    output[4] = total
+    output[5] = total
     return
   }
 
@@ -194,7 +195,8 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_PARAM: {
           const prefix_raw = path.substring(start, data[1])
           const suffix_raw = path.substring(data[4]!, end)
-          const actuallyCaseSensitive = caseSensitive && !!(prefix_raw || suffix_raw)
+          const actuallyCaseSensitive =
+            caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
             ? undefined
             : actuallyCaseSensitive
@@ -232,7 +234,8 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_OPTIONAL_PARAM: {
           const prefix_raw = path.substring(start, data[1])
           const suffix_raw = path.substring(data[4]!, end)
-          const actuallyCaseSensitive = caseSensitive && !!(prefix_raw || suffix_raw)
+          const actuallyCaseSensitive =
+            caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
             ? undefined
             : actuallyCaseSensitive
@@ -270,7 +273,8 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_WILDCARD: {
           const prefix_raw = path.substring(start, data[1])
           const suffix_raw = path.substring(data[4]!, end)
-          const actuallyCaseSensitive = caseSensitive && !!(prefix_raw || suffix_raw)
+          const actuallyCaseSensitive =
+            caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
             ? undefined
             : actuallyCaseSensitive

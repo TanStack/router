@@ -209,7 +209,6 @@ export function resolvePath({
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
-  leaveParams?: boolean
   // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
   decodeCharMap?: Map<string, string>
 }
@@ -219,12 +218,28 @@ type InterPolatePathResult = {
   usedParams: Record<string, unknown>
   isMissingParams: boolean // true if any params were not available when being looked up in the params object
 }
+
+function encodeParam(
+  key: string,
+  params: InterpolatePathOptions['params'],
+  decodeCharMap: InterpolatePathOptions['decodeCharMap'],
+): any {
+  const value = params[key]
+  if (typeof value !== 'string') return value
+
+  if (key === '_splat') {
+    // the splat/catch-all routes shouldn't have the '/' encoded out
+    return encodeURI(value)
+  } else {
+    return encodePathParam(value, decodeCharMap)
+  }
+}
+
 /**
  * Interpolate params and wildcards into a route path template.
  *
  * - Encodes params safely (configurable allowed characters)
  * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
- * - Optionally leaves placeholders or wildcards in place
  */
 /**
  * Interpolate params and wildcards into a route path template.
@@ -233,66 +248,62 @@ type InterPolatePathResult = {
 export function interpolatePath({
   path,
   params,
-  leaveParams,
   decodeCharMap,
 }: InterpolatePathOptions): InterPolatePathResult {
-  if (!path)
-    return { interpolatedPath: '/', usedParams: {}, isMissingParams: false }
-
-  function encodeParam(key: string): any {
-    const value = params[key]
-    const isValueString = typeof value === 'string'
-
-    if (key === '*' || key === '_splat') {
-      // the splat/catch-all routes shouldn't have the '/' encoded out
-      return isValueString ? encodeURI(value) : value
-    } else {
-      return isValueString ? encodePathParam(value, decodeCharMap) : value
-    }
-  }
-
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
   let isMissingParams = false
   const usedParams: Record<string, unknown> = {}
+
+  if (!path || path === '/')
+    return { interpolatedPath: '/', usedParams, isMissingParams }
+  if (!path.includes('$'))
+    return { interpolatedPath: path, usedParams, isMissingParams }
+
   let cursor = 0
   const data = new Uint16Array(6)
   const length = path.length
-  const interpolatedSegments: Array<string> = []
+  let joined = ''
   while (cursor < length) {
     const start = cursor
     parseSegment(path, start, data)
     const end = data[5]!
     cursor = end + 1
+
+    if (start === end) continue
+
     const kind = data[0] as SegmentKind
 
     if (kind === SEGMENT_TYPE_PATHNAME) {
-      interpolatedSegments.push(path.substring(start, end))
+      if (cursor > 0) joined += '/'
+      joined += path.substring(start, end)
       continue
     }
 
     if (kind === SEGMENT_TYPE_WILDCARD) {
-      usedParams._splat = params._splat
-
+      const splat = params._splat
+      usedParams._splat = splat
       // TODO: Deprecate *
-      usedParams['*'] = params._splat
+      usedParams['*'] = splat
 
       const prefix = path.substring(start, data[1])
       const suffix = path.substring(data[4]!, end)
 
       // Check if _splat parameter is missing. _splat could be missing if undefined or an empty string or some other falsy value.
-      if (!params._splat) {
+      if (!splat) {
         isMissingParams = true
         // For missing splat parameters, just return the prefix and suffix without the wildcard
         // If there is a prefix or suffix, return them joined, otherwise omit the segment
         if (prefix || suffix) {
-          interpolatedSegments.push(`${prefix}${suffix}`)
+          if (cursor > 0) joined += '/'
+          joined += prefix + suffix
         }
         continue
       }
 
-      const value = encodeParam('_splat')
-      interpolatedSegments.push(`${prefix}${value}${suffix}`)
+      const value = encodeParam('_splat', params, decodeCharMap)
+      if (cursor > 0) joined += '/'
+      joined += prefix + value + suffix
       continue
     }
 
@@ -305,28 +316,23 @@ export function interpolatePath({
 
       const prefix = path.substring(start, data[1])
       const suffix = path.substring(data[4]!, end)
-      if (leaveParams) {
-        const value = encodeParam(key)
-        interpolatedSegments.push(`${prefix}$${key}${value ?? ''}${suffix}`)
-      } else {
-        interpolatedSegments.push(
-          `${prefix}${encodeParam(key) ?? 'undefined'}${suffix}`,
-        )
-      }
+      const value = encodeParam(key, params, decodeCharMap) ?? 'undefined'
+      if (cursor > 0) joined += '/'
+      joined += prefix + value + suffix
       continue
     }
 
     if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
       const key = path.substring(data[2]!, data[3])
-
       const prefix = path.substring(start, data[1])
       const suffix = path.substring(data[4]!, end)
 
       // Check if optional parameter is missing or undefined
-      if (!(key in params) || params[key] == null) {
+      if (params[key] == null) {
         if (prefix || suffix) {
+          if (cursor > 0) joined += '/'
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
-          interpolatedSegments.push(`${prefix}${suffix}`)
+          joined += prefix + suffix
         }
         // If no prefix/suffix, omit the entire segment
         continue
@@ -334,17 +340,14 @@ export function interpolatePath({
 
       usedParams[key] = params[key]
 
-      const value = encodeParam(key) ?? ''
-      if (leaveParams) {
-        interpolatedSegments.push(`${prefix}${key}${value}${suffix}`)
-      } else {
-        interpolatedSegments.push(`${prefix}${value}${suffix}`)
-      }
+      const value = encodeParam(key, params, decodeCharMap) ?? ''
+      if (cursor > 0) joined += '/'
+      joined += prefix + value + suffix
       continue
     }
   }
 
-  const interpolatedPath = joinPaths(interpolatedSegments) || '/'
+  const interpolatedPath = joined || '/'
 
   return { usedParams, interpolatedPath, isMissingParams }
 }
