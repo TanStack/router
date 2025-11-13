@@ -279,7 +279,9 @@ describe('findRouteMatch', () => {
       }
       const { processedTree } = processRouteTree(tree)
       expect(findRouteMatch('/AfooB', processedTree)?.route.id).toBe('/A{$id}B')
-      expect(findRouteMatch('/AAABBB', processedTree)?.route.id).toBe('/A{$id}B')
+      expect(findRouteMatch('/AAABBB', processedTree)?.route.id).toBe(
+        '/A{$id}B',
+      )
     })
   })
 
