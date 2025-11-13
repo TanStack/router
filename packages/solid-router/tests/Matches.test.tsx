@@ -157,164 +157,207 @@ describe('matching on different param types', () => {
       path: '/$id',
       nav: '/1',
       params: { id: '1' },
+      matchParams: { id: '1' },
     },
     {
       name: 'param without braces',
       path: '/{$id}',
       nav: '/2',
       params: { id: '2' },
+      matchParams: { id: '2' },
     },
     {
       name: 'param with prefix',
       path: '/prefix-{$id}',
       nav: '/prefix-3',
       params: { id: '3' },
+      matchParams: { id: '3' },
     },
     {
       name: 'param with suffix',
       path: '/{$id}-suffix',
       nav: '/4-suffix',
       params: { id: '4' },
+      matchParams: { id: '4' },
     },
     {
       name: 'param with prefix and suffix',
       path: '/prefix-{$id}-suffix',
       nav: '/prefix-5-suffix',
       params: { id: '5' },
+      matchParams: { id: '5' },
     },
     {
       name: 'wildcard with no braces',
       path: '/abc/$',
       nav: '/abc/6',
       params: { '*': '6', _splat: '6' },
+      matchParams: { '*': '6', _splat: '6' },
     },
     {
       name: 'wildcard with braces',
       path: '/abc/{$}',
       nav: '/abc/7',
       params: { '*': '7', _splat: '7' },
+      matchParams: { '*': '7', _splat: '7' },
     },
     {
       name: 'wildcard with prefix',
       path: '/abc/prefix{$}',
       nav: '/abc/prefix/8',
       params: { '*': '/8', _splat: '/8' },
+      matchParams: { '*': '/8', _splat: '/8' },
     },
     {
       name: 'wildcard with suffix',
       path: '/abc/{$}suffix',
       nav: '/abc/9/suffix',
       params: { _splat: '9/', '*': '9/' },
+      matchParams: { _splat: '9/', '*': '9/' },
     },
     {
       name: 'optional param with no prefix/suffix and value',
       path: '/abc/{-$id}/def',
       nav: '/abc/10/def',
       params: { id: '10' },
+      matchParams: { id: '10' },
     },
     {
       name: 'optional param with no prefix/suffix and requiredParam and no value',
       path: '/abc/{-$id}/$foo/def',
       nav: '/abc/bar/def',
       params: { foo: 'bar' },
+      matchParams: { foo: 'bar' },
     },
     {
       name: 'optional param with no prefix/suffix and requiredParam and value',
       path: '/abc/{-$id}/$foo/def',
       nav: '/abc/10/bar/def',
       params: { id: '10', foo: 'bar' },
+      matchParams: { id: '10', foo: 'bar' },
     },
     {
       name: 'optional param with no prefix/suffix and no value',
       path: '/abc/{-$id}/def',
       nav: '/abc/def',
       params: {},
+      matchParams: {},
+    },
+    {
+      name: 'multiple optional params with no prefix/suffix and no value',
+      path: '/{-$a}/{-$b}/{-$c}',
+      nav: '/',
+      params: {},
+      matchParams: {},
+    },
+    {
+      name: 'multiple optional params with no prefix/suffix and values',
+      path: '/{-$a}/{-$b}/{-$c}',
+      nav: '/foo/bar/qux',
+      params: { a: 'foo', b: 'bar', c: 'qux' },
+      matchParams: { a: 'foo', b: 'bar', c: 'qux' },
+    },
+    {
+      name: 'multiple optional params with no prefix/suffix and mixed values',
+      path: '/{-$a}/{-$b}/{-$c}',
+      nav: '/foo/qux',
+      params: { a: 'foo', b: 'qux' },
+      matchParams: { a: 'foo', b: 'qux' },
     },
     {
       name: 'optional param with prefix and value',
       path: '/optional-{-$id}',
       nav: '/optional-12',
       params: { id: '12' },
+      matchParams: { id: '12' },
     },
     {
       name: 'optional param with prefix and no value',
       path: '/optional-{-$id}',
       nav: '/optional-',
-      params: {},
+      params: { id: '' },
+      matchParams: { id: '' },
     },
     {
       name: 'optional param with suffix and value',
       path: '/{-$id}-optional',
       nav: '/13-optional',
       params: { id: '13' },
+      matchParams: { id: '13' },
     },
     {
       name: 'optional param with suffix and no value',
       path: '/{-$id}-optional',
       nav: '/-optional',
-      params: {},
+      params: { id: '' },
+      matchParams: { id: '' },
     },
     {
       name: 'optional param with required param, prefix, suffix, wildcard and no value',
       path: `/$foo/a{-$id}-optional/$`,
       nav: '/bar/a-optional/qux',
-      params: { foo: 'bar', _splat: 'qux', '*': 'qux' },
+      params: { foo: 'bar', id: '', _splat: 'qux', '*': 'qux' },
+      matchParams: { foo: 'bar', id: '', _splat: 'qux', '*': 'qux' },
     },
     {
       name: 'optional param with required param, prefix, suffix, wildcard and value',
       path: `/$foo/a{-$id}-optional/$`,
       nav: '/bar/a14-optional/qux',
       params: { foo: 'bar', id: '14', _splat: 'qux', '*': 'qux' },
+      matchParams: { foo: 'bar', id: '14', _splat: 'qux', '*': 'qux' },
     },
   ]
 
   afterEach(() => cleanup())
-  test.each(testCases)('$name', async ({ name, path, params, nav }) => {
-    const rootRoute = createRootRoute()
+  test.each(testCases)(
+    '$name',
+    async ({ name, path, params, matchParams, nav }) => {
+      const rootRoute = createRootRoute()
 
-    const Route = createRoute({
-      getParentRoute: () => rootRoute,
-      path,
-      component: RouteComponent,
-    })
-
-    function RouteComponent() {
-      const routeParams = Route.useParams()
-      const matchRoute = useMatchRoute()
-      const matchRouteMatch = matchRoute({
-        to: path,
+      const Route = createRoute({
+        getParentRoute: () => rootRoute,
+        path,
+        component: RouteComponent,
       })
 
-      return (
-        <div>
-          <h1 data-testid="heading">{name}</h1>
+      function RouteComponent() {
+        const routeParams = Route.useParams()
+        const matchRoute = useMatchRoute()
+        const matchRouteMatch = matchRoute({
+          to: path,
+        })
+
+        return (
           <div>
-            Params{' '}
-            <span data-testid="params">{JSON.stringify(routeParams())}</span>
-            Matches{' '}
-            <span data-testid="matches">
-              {JSON.stringify(matchRouteMatch())}
-            </span>
+            <h1 data-testid="heading">{name}</h1>
+            <div>
+              Params{' '}
+              <span data-testid="params">{JSON.stringify(routeParams())}</span>
+              Matches{' '}
+              <span data-testid="matches">
+                {JSON.stringify(matchRouteMatch())}
+              </span>
+            </div>
           </div>
-        </div>
-      )
-    }
+        )
+      }
 
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([Route]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([Route]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
 
-    render(() => <RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
-    router.history.push(nav)
+      router.history.push(nav)
 
-    await waitFor(async () => {
-      const paramsToCheck = await screen.findByTestId('params')
-      const matchesToCheck = await screen.findByTestId('matches')
+      await waitFor(async () => {
+        const paramsToCheck = await screen.findByTestId('params')
+        const matchesToCheck = await screen.findByTestId('matches')
 
-      expect(JSON.parse(paramsToCheck.textContent)).toEqual(params)
-      expect(JSON.parse(matchesToCheck.textContent)).toEqual(params)
-    })
-  })
+        expect(JSON.parse(paramsToCheck.textContent)).toEqual(params)
+        expect(JSON.parse(matchesToCheck.textContent)).toEqual(matchParams)
+      })
+    },
+  )
 })
