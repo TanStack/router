@@ -675,7 +675,7 @@ function findMatch<T extends RouteLike>(
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
   if (!leaf) return null
   const params = extractParams(path, parts, leaf)
-  if ('**' in leaf) params['**'] = leaf['**']!
+  if ('**' in leaf) params['**'] = leaf['**']
   return {
     route: leaf.node.route!,
     params,
@@ -815,6 +815,17 @@ function getNodeMatch<T extends RouteLike>(
     // eslint-disable-next-line prefer-const
     let { node, index, skipped, depth, statics, dynamics, optionals } = frame
 
+    // In fuzzy mode, track the best partial match we've found so far
+    if (
+      fuzzy &&
+      node.route &&
+      (!bestFuzzy ||
+        index > bestFuzzy.index ||
+        (index === bestFuzzy.index && depth > bestFuzzy.depth))
+    ) {
+      bestFuzzy = frame
+    }
+
     const isBeyondPath = index === partsLength
     if (isBeyondPath) {
       if (node.route && (!pathIsIndex || node.isIndex)) {
@@ -834,17 +845,6 @@ function getNodeMatch<T extends RouteLike>(
       }
       // beyond the length of the path parts, only skipped optional segments or wildcard segments can match
       if (!node.optional && !node.wildcard) continue
-    }
-
-    // In fuzzy mode, track the best partial match we've found so far
-    if (
-      fuzzy &&
-      node.route &&
-      (!bestFuzzy ||
-        index > bestFuzzy.index ||
-        (index === bestFuzzy.index && depth > bestFuzzy.depth))
-    ) {
-      bestFuzzy = frame
     }
 
     const part = isBeyondPath ? undefined : parts[index]!
@@ -992,10 +992,11 @@ function getNodeMatch<T extends RouteLike>(
     for (let i = 0; i < bestFuzzy.index; i++) {
       sliceIndex += parts[i]!.length
     }
+    const splat = sliceIndex === path.length ? '/' : path.slice(sliceIndex)
     return {
       node: bestFuzzy.node,
       skipped: bestFuzzy.skipped,
-      '**': path.slice(sliceIndex),
+      '**': splat,
     }
   }
 
