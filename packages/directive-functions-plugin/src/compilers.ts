@@ -26,6 +26,7 @@ export type SupportedFunctionPath =
 export type GenerateFunctionIdFn = (opts: {
   filename: string
   functionName: string
+  extractedFilename: string
 }) => string
 
 export type ReplacerFn = (opts: {
@@ -40,35 +41,27 @@ export type ReplacerFn = (opts: {
 
 export type CompileDirectivesOpts = ParseAstOptions & {
   directive: string
-  directiveLabel: string
   getRuntimeCode?: (opts: {
     directiveFnsById: Record<string, DirectiveFn>
   }) => string
   generateFunctionId: GenerateFunctionIdFn
   replacer: ReplacerFn
-  // devSplitImporter: string
   filename: string
   root: string
-}
-
-function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
-  return `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
+  isDirectiveSplitParam: boolean
+  directiveSplitParam: string
 }
 
 export function compileDirectives(opts: CompileDirectivesOpts): {
   compiledResult: GeneratorResult
   directiveFnsById: Record<string, DirectiveFn>
-  isDirectiveSplitParam: boolean
 } {
-  const directiveSplitParam = buildDirectiveSplitParam(opts)
-  const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
-
   const ast = parseAst(opts)
   const refIdents = findReferencedIdentifiers(ast)
   const directiveFnsById = findDirectives(ast, {
     ...opts,
-    directiveSplitParam,
-    isDirectiveSplitParam,
+    directiveSplitParam: opts.directiveSplitParam,
+    isDirectiveSplitParam: opts.isDirectiveSplitParam,
   })
 
   // Add runtime code if there are directives
@@ -84,7 +77,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   // If we are in the source file, we need to remove all exports
   // then make sure that all of our functions are exported under their
   // directive name
-  if (isDirectiveSplitParam) {
+  if (opts.isDirectiveSplitParam) {
     safeRemoveExports(ast)
 
     // Export a single object with all of the functions
@@ -113,13 +106,12 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   return {
     compiledResult,
     directiveFnsById,
-    isDirectiveSplitParam,
   }
 }
 
 function findNearestVariableName(
   path: babel.NodePath,
-  directiveLabel: string,
+  directive: string,
 ): string {
   let currentPath: babel.NodePath | null = path
   const nameParts: Array<string> = []
@@ -189,7 +181,7 @@ function findNearestVariableName(
         babel.types.isObjectMethod(currentPath.node)
       ) {
         throw new Error(
-          `${directiveLabel} in ClassMethod or ObjectMethod not supported`,
+          `"${directive}" in ClassMethod or ObjectMethod not supported`,
         )
       }
 
@@ -219,7 +211,6 @@ export function findDirectives(
   ast: babel.types.File,
   opts: ParseAstOptions & {
     directive: string
-    directiveLabel: string
     replacer?: ReplacerFn
     generateFunctionId: GenerateFunctionIdFn
     directiveSplitParam: string
@@ -320,7 +311,7 @@ export function findDirectives(
             throw codeFrameError(
               opts.code,
               nearestBlock.node.loc,
-              `${opts.directiveLabel}s cannot be nested in other blocks or functions`,
+              `"${opts.directive}" cannot be nested in other blocks or functions`,
             )
           }
 
@@ -335,7 +326,7 @@ export function findDirectives(
             throw codeFrameError(
               opts.code,
               directiveFn.node.loc,
-              `${opts.directiveLabel}s must be function declarations or function expressions`,
+              `"${opts.directive}" must be function declarations or function expressions`,
             )
           }
 
@@ -397,7 +388,7 @@ export function findDirectives(
     }
 
     // Find the nearest variable name
-    let functionName = findNearestVariableName(directiveFn, opts.directiveLabel)
+    let functionName = findNearestVariableName(directiveFn, opts.directive)
 
     const incrementFunctionNameVersion = (functionName: string) => {
       const [realReferenceName, count] = functionName.split(/_(\d+)$/)
@@ -493,7 +484,8 @@ export function findDirectives(
     const relativeFilename = path.relative(opts.root, baseFilename)
     const functionId = opts.generateFunctionId({
       filename: relativeFilename,
-      functionName: functionName,
+      functionName,
+      extractedFilename,
     })
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {

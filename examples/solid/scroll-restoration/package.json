@@ -1,0 +1,25 @@
+{
+  "name": "tanstack-router-solid-example-scroll-restoration",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "vite build && tsc --noEmit",
+    "serve": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.15",
+    "@tanstack/solid-router": "^1.135.2",
+    "@tanstack/solid-router-devtools": "^1.136.0",
+    "@tanstack/solid-virtual": "^3.13.0",
+    "postcss": "^8.5.1",
+    "solid-js": "^1.9.10",
+    "tailwindcss": "^4.1.15"
+  },
+  "devDependencies": {
+    "vite-plugin-solid": "^2.11.10",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7"
+  }
+}

@@ -11,10 +11,10 @@
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.66.0",
-    "@tanstack/react-router": "^1.133.3",
-    "@tanstack/react-router-devtools": "^1.133.3",
-    "@tanstack/react-start": "^1.133.3",
+    "@tanstack/react-query": "^5.90.0",
+    "@tanstack/react-router": "^1.136.0",
+    "@tanstack/react-router-devtools": "^1.136.0",
+    "@tanstack/react-start": "^1.136.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
@@ -22,13 +22,13 @@
     "valibot": "^1.0.0-beta.15"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.15",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "postcss": "^8.5.1",
-    "autoprefixer": "^10.4.20",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.1.15",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4"

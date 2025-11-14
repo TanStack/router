@@ -1,8 +1,7 @@
-import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import { TRANSFORM_ID_REGEX } from '../constants'
 import { ServerFnCompiler } from './compiler'
 import type { LookupConfig, LookupKind } from './compiler'
 import type { CompileStartFrameworkOptions } from '../start-compiler-plugin/compilers'
-import type { ViteEnvironmentNames } from '../constants'
 import type { PluginOption } from 'vite'
 
 function cleanId(id: string): string {
@@ -39,76 +38,50 @@ const getLookupConfigurationsForEnv = (
     return [createServerFnConfig]
   }
 }
-export function createServerFnPlugin(
-  framework: CompileStartFrameworkOptions,
-): PluginOption {
-  const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
+const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
+export function createServerFnPlugin(opts: {
+  framework: CompileStartFrameworkOptions
+  directive: string
+  environments: Array<{ name: string; type: 'client' | 'server' }>
+}): PluginOption {
+  const compilers: Record<string /* envName */, ServerFnCompiler> = {}
 
-  const compilers: Partial<Record<ViteEnvironmentNames, ServerFnCompiler>> = {}
-  return [
-    {
-      name: 'tanstack-start-core:capture-server-fn-module-lookup',
-      // we only need this plugin in dev mode
-      apply: 'serve',
-      applyToEnvironment(env) {
-        return [
-          VITE_ENVIRONMENT_NAMES.client,
-          VITE_ENVIRONMENT_NAMES.server,
-        ].includes(env.name as ViteEnvironmentNames)
-      },
-      transform: {
-        filter: {
-          id: new RegExp(`${SERVER_FN_LOOKUP}$`),
-        },
-        handler(code, id) {
-          const compiler =
-            compilers[this.environment.name as ViteEnvironmentNames]
-          compiler?.ingestModule({ code, id: cleanId(id) })
-        },
-      },
-    },
-    {
-      name: 'tanstack-start-core::server-fn',
+  function perEnvServerFnPlugin(environment: {
+    name: string
+    type: 'client' | 'server'
+  }): PluginOption {
+    // in server environments, we don't transform middleware calls
+    const transformCodeFilter =
+      environment.type === 'client'
+        ? [/\.\s*handler\(/, /\.\s*createMiddleware\(\)/]
+        : [/\.\s*handler\(/]
+
+    return {
+      name: `tanstack-start-core::server-fn:${environment.name}`,
       enforce: 'pre',
-
       applyToEnvironment(env) {
-        return [
-          VITE_ENVIRONMENT_NAMES.client,
-          VITE_ENVIRONMENT_NAMES.server,
-        ].includes(env.name as ViteEnvironmentNames)
+        return env.name === environment.name
       },
       transform: {
         filter: {
           id: {
             exclude: new RegExp(`${SERVER_FN_LOOKUP}$`),
+            include: TRANSFORM_ID_REGEX,
           },
           code: {
-            // TODO apply this plugin with a different filter per environment so that .createMiddleware() calls are not scanned in server env
-            // only scan files that mention `.handler(` | `.createMiddleware()`
-            include: [/\.\s*handler\(/, /\.\s*createMiddleware\(\)/],
+            include: transformCodeFilter,
           },
         },
         async handler(code, id) {
-          let compiler =
-            compilers[this.environment.name as ViteEnvironmentNames]
+          let compiler = compilers[this.environment.name]
           if (!compiler) {
-            const env =
-              this.environment.name === VITE_ENVIRONMENT_NAMES.client
-                ? 'client'
-                : this.environment.name === VITE_ENVIRONMENT_NAMES.server
-                  ? 'server'
-                  : (() => {
-                      throw new Error(
-                        `Environment ${this.environment.name} not configured`,
-                      )
-                    })()
-
             compiler = new ServerFnCompiler({
-              env,
-              lookupKinds: LookupKindsPerEnv[env],
+              env: environment.type,
+              directive: opts.directive,
+              lookupKinds: LookupKindsPerEnv[environment.type],
               lookupConfigurations: getLookupConfigurationsForEnv(
-                env,
-                framework,
+                environment.type,
+                opts.framework,
               ),
               loadModule: async (id: string) => {
                 if (this.environment.mode === 'build') {
@@ -144,7 +117,7 @@ export function createServerFnPlugin(
                 return null
               },
             })
-            compilers[this.environment.name as ViteEnvironmentNames] = compiler
+            compilers[this.environment.name] = compiler
           }
 
           id = cleanId(id)
@@ -154,8 +127,7 @@ export function createServerFnPlugin(
       },
 
       hotUpdate(ctx) {
-        const compiler =
-          compilers[this.environment.name as ViteEnvironmentNames]
+        const compiler = compilers[this.environment.name]
 
         ctx.modules.forEach((m) => {
           if (m.id) {
@@ -169,6 +141,27 @@ export function createServerFnPlugin(
             }
           }
         })
+      },
+    }
+  }
+
+  return [
+    ...opts.environments.map(perEnvServerFnPlugin),
+    {
+      name: 'tanstack-start-core:capture-server-fn-module-lookup',
+      // we only need this plugin in dev mode
+      apply: 'serve',
+      applyToEnvironment(env) {
+        return !!opts.environments.find((e) => e.name === env.name)
+      },
+      transform: {
+        filter: {
+          id: new RegExp(`${SERVER_FN_LOOKUP}$`),
+        },
+        handler(code, id) {
+          const compiler = compilers[this.environment.name]
+          compiler?.ingestModule({ code, id: cleanId(id) })
+        },
       },
     },
   ]

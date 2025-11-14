@@ -29,20 +29,20 @@ To install TanStack Router in your project, run the following command using your
 [//]: # 'installCommand'
 
 ```sh
-npm install @tanstack/router
+npm install @tanstack/react-router
 # or
-pnpm add @tanstack/router
+pnpm add @tanstack/react-router
 #or
-yarn add @tanstack/router
+yarn add @tanstack/react-router
 # or
-bun add @tanstack/router
+bun add @tanstack/react-router
 # or
-deno add npm:@tanstack/router
+deno add npm:@tanstack/react-router
 ```
 
 [//]: # 'installCommand'
 
-Once installed, you can verify the installation by checking your `package.json` file for the `@tanstack/router` dependency.
+Once installed, you can verify the installation by checking your `package.json` file for the dependency.
 
 [//]: # 'packageJson'
 

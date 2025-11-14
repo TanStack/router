@@ -23,73 +23,41 @@ export type {
 export type DirectiveFunctionsViteEnvOptions = Pick<
   CompileDirectivesOpts,
   'getRuntimeCode' | 'replacer'
-> & {
-  envLabel: string
+>
+export type DirectiveFunctionsViteOptions = DirectiveFunctionsViteEnvOptions & {
+  directive: string
+  onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
+  generateFunctionId: GenerateFunctionIdFn
 }
-
-export type DirectiveFunctionsViteOptions = Pick<
-  CompileDirectivesOpts,
-  'directive' | 'directiveLabel'
-> &
-  DirectiveFunctionsViteEnvOptions & {
-    onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
-    generateFunctionId: GenerateFunctionIdFn
-  }
 
 const createDirectiveRx = (directive: string) =>
   new RegExp(`"${directive}"|'${directive}'`, 'gm')
 
-export function TanStackDirectiveFunctionsPlugin(
-  opts: DirectiveFunctionsViteOptions,
-): Plugin {
-  let root: string = process.cwd()
-
-  const directiveRx = createDirectiveRx(opts.directive)
-
-  return {
-    name: 'tanstack-start-directive-vite-plugin',
-    enforce: 'pre',
-    configResolved: (config) => {
-      root = config.root
-    },
-    transform(code, id) {
-      return transformCode({ ...opts, code, id, directiveRx, root })
-    },
-  }
-}
-
-export type DirectiveFunctionsVitePluginEnvOptions = Pick<
-  CompileDirectivesOpts,
-  'directive' | 'directiveLabel'
-> & {
-  environments: {
-    client: DirectiveFunctionsViteEnvOptions & { envName?: string }
-    server: DirectiveFunctionsViteEnvOptions & { envName?: string }
-  }
+export type DirectiveFunctionsVitePluginEnvOptions = {
+  directive: string
+  callers: Array<DirectiveFunctionsViteEnvOptions & { envName: string }>
+  provider: DirectiveFunctionsViteEnvOptions & { envName: string }
   onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
   generateFunctionId: GenerateFunctionIdFn
+}
+
+function buildDirectiveSplitParam(directive: string) {
+  return `tsr-directive-${directive.replace(/[^a-zA-Z0-9]/g, '-')}`
 }
 
 export function TanStackDirectiveFunctionsPluginEnv(
   opts: DirectiveFunctionsVitePluginEnvOptions,
 ): Plugin {
-  opts = {
-    ...opts,
-    environments: {
-      client: {
-        envName: 'client',
-        ...opts.environments.client,
-      },
-      server: {
-        envName: 'server',
-        ...opts.environments.server,
-      },
-    },
-  }
-
   let root: string = process.cwd()
 
   const directiveRx = createDirectiveRx(opts.directive)
+
+  const appliedEnvironments = new Set([
+    ...opts.callers.map((c) => c.envName),
+    opts.provider.envName,
+  ])
+
+  const directiveSplitParam = buildDirectiveSplitParam(opts.directive)
 
   return {
     name: 'tanstack-start-directive-vite-plugin',
@@ -98,87 +66,61 @@ export function TanStackDirectiveFunctionsPluginEnv(
       root = this.environment.config.root
     },
     applyToEnvironment(env) {
-      return [
-        opts.environments.client.envName,
-        opts.environments.server.envName,
-      ].includes(env.name)
+      return appliedEnvironments.has(env.name)
     },
     transform: {
       filter: {
         code: directiveRx,
       },
       handler(code, id) {
-        const envOptions = [
-          opts.environments.client,
-          opts.environments.server,
-        ].find((e) => e.envName === this.environment.name)
+        const url = pathToFileURL(id)
+        url.searchParams.delete('v')
+        id = fileURLToPath(url).replace(/\\/g, '/')
 
-        if (!envOptions) {
-          throw new Error(`Environment ${this.environment.name} not found`)
+        const isDirectiveSplitParam = id.includes(directiveSplitParam)
+
+        let envOptions: DirectiveFunctionsViteEnvOptions & { envName: string }
+        if (isDirectiveSplitParam) {
+          envOptions = opts.provider
+          if (debug)
+            console.info(
+              `Compiling Directives for provider in environment ${envOptions.envName}: `,
+              id,
+            )
+        } else {
+          envOptions = opts.callers.find(
+            (e) => e.envName === this.environment.name,
+          )!
+          if (debug)
+            console.info(
+              `Compiling Directives for caller in environment ${envOptions.envName}: `,
+              id,
+            )
+        }
+        const { compiledResult, directiveFnsById } = compileDirectives({
+          directive: opts.directive,
+          getRuntimeCode: envOptions.getRuntimeCode,
+          generateFunctionId: opts.generateFunctionId,
+          replacer: envOptions.replacer,
+          code,
+          root,
+          filename: id,
+          directiveSplitParam,
+          isDirectiveSplitParam,
+        })
+        // when we process a file with a directive split param, we have already encountered the directives in that file
+        // (otherwise we wouldn't have gotten here)
+        if (!isDirectiveSplitParam) {
+          opts.onDirectiveFnsById?.(directiveFnsById)
         }
 
-        return transformCode({
-          ...opts,
-          ...envOptions,
-          code,
-          id,
-          directiveRx,
-          root,
-        })
+        if (debug) {
+          logDiff(code, compiledResult.code)
+          console.log('Output:\n', compiledResult.code + '\n\n')
+        }
+
+        return compiledResult
       },
     },
   }
-}
-
-function transformCode({
-  code,
-  id,
-  directiveRx,
-  envLabel,
-  directive,
-  directiveLabel,
-  getRuntimeCode,
-  generateFunctionId,
-  replacer,
-  onDirectiveFnsById,
-  root,
-}: DirectiveFunctionsViteOptions & {
-  code: string
-  id: string
-  directiveRx: RegExp
-  root: string
-}) {
-  const url = pathToFileURL(id)
-  url.searchParams.delete('v')
-  id = fileURLToPath(url).replace(/\\/g, '/')
-
-  if (!code.match(directiveRx)) {
-    return null
-  }
-
-  if (debug) console.info(`${envLabel}: Compiling Directives: `, id)
-
-  const { compiledResult, directiveFnsById, isDirectiveSplitParam } =
-    compileDirectives({
-      directive,
-      directiveLabel,
-      getRuntimeCode,
-      generateFunctionId,
-      replacer,
-      code,
-      root,
-      filename: id,
-    })
-  // when we process a file with a directive split param, we have already encountered the directives in that file
-  // (otherwise we wouldn't have gotten here)
-  if (!isDirectiveSplitParam) {
-    onDirectiveFnsById?.(directiveFnsById)
-  }
-
-  if (debug) {
-    logDiff(code, compiledResult.code)
-    console.log('Output:\n', compiledResult.code + '\n\n')
-  }
-
-  return compiledResult
 }

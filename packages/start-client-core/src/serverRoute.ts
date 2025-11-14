@@ -287,7 +287,7 @@ export interface CreateMethodFnOpts<
   TMethodHeadMiddlewares,
   TServerContext,
 > {
-  ALL?: RouteMethodHandler<
+  ANY?: RouteMethodHandler<
     TRegister,
     TParentRoute,
     TFullPath,
@@ -425,7 +425,7 @@ export type ResolveAllServerContext<
     >
 
 export type RouteMethod =
-  | 'ALL'
+  | 'ANY'
   | 'GET'
   | 'POST'
   | 'PUT'

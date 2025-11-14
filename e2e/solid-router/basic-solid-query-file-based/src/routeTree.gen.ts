@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as TransitionCountQueryRouteImport } from './routes/transition/count/query'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 
@@ -46,6 +47,11 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
+const TransitionCountQueryRoute = TransitionCountQueryRouteImport.update({
+  id: '/transition/count/query',
+  path: '/transition/count/query',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/posts/': typeof PostsIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/transition/count/query': typeof TransitionCountQueryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/posts': typeof PostsIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/transition/count/query': typeof TransitionCountQueryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -82,6 +90,7 @@ export interface FileRoutesById {
   '/posts/': typeof PostsIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/transition/count/query': typeof TransitionCountQueryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -92,8 +101,15 @@ export interface FileRouteTypes {
     | '/posts/'
     | '/layout-a'
     | '/layout-b'
+    | '/transition/count/query'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
+  to:
+    | '/'
+    | '/posts/$postId'
+    | '/posts'
+    | '/layout-a'
+    | '/layout-b'
+    | '/transition/count/query'
   id:
     | '__root__'
     | '/'
@@ -104,12 +120,14 @@ export interface FileRouteTypes {
     | '/posts/'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/transition/count/query'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   PostsRoute: typeof PostsRouteWithChildren
+  TransitionCountQueryRoute: typeof TransitionCountQueryRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -155,6 +173,13 @@ declare module '@tanstack/solid-router' {
       fullPath: ''
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
+    }
+    '/transition/count/query': {
+      id: '/transition/count/query'
+      path: '/transition/count/query'
+      fullPath: '/transition/count/query'
+      preLoaderRoute: typeof TransitionCountQueryRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
@@ -214,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   PostsRoute: PostsRouteWithChildren,
+  TransitionCountQueryRoute: TransitionCountQueryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

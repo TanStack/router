@@ -33,6 +33,8 @@ import {
   removeGroups,
   removeLastSegmentFromPath,
   removeLayoutSegments,
+  removeLeadingUnderscores,
+  removeTrailingSlash,
   removeUnderscores,
   replaceBackslash,
   resetRegex,
@@ -397,7 +399,7 @@ export class Generator {
     }
 
     for (const node of routeFileResult) {
-      Generator.handleNode(node, acc)
+      Generator.handleNode(node, acc, this.config)
     }
 
     this.crawlingResult = { rootRouteNode, routeFileResult, acc }
@@ -676,14 +678,14 @@ export class Generator {
     if (!config.disableTypes) {
       fileRoutesByFullPath = [
         `export interface FileRoutesByFullPath {
-${[...createRouteNodesByFullPath(acc.routeNodes).entries()]
+${[...createRouteNodesByFullPath(acc.routeNodes, config).entries()]
   .filter(([fullPath]) => fullPath)
   .map(([fullPath, routeNode]) => {
     return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
         `export interface FileRoutesByTo {
-${[...createRouteNodesByTo(acc.routeNodes).entries()]
+${[...createRouteNodesByTo(acc.routeNodes, config).entries()]
   .filter(([to]) => to)
   .map(([to, routeNode]) => {
     return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
@@ -699,7 +701,7 @@ ${[...createRouteNodesById(acc.routeNodes).entries()].map(([id, routeNode]) => {
 fileRoutesByFullPath: FileRoutesByFullPath
 fullPaths: ${
           acc.routeNodes.length > 0
-            ? [...createRouteNodesByFullPath(acc.routeNodes).keys()]
+            ? [...createRouteNodesByFullPath(acc.routeNodes, config).keys()]
                 .filter((fullPath) => fullPath)
                 .map((fullPath) => `'${fullPath}'`)
                 .join('|')
@@ -708,7 +710,7 @@ fullPaths: ${
 fileRoutesByTo: FileRoutesByTo
 to: ${
           acc.routeNodes.length > 0
-            ? [...createRouteNodesByTo(acc.routeNodes).keys()]
+            ? [...createRouteNodesByTo(acc.routeNodes, config).keys()]
                 .filter((to) => to)
                 .map((to) => `'${to}'`)
                 .join('|')
@@ -726,6 +728,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         module: this.targetTemplate.fullPkg,
         interfaceName: 'FileRoutesByPath',
         routeNodes: sortedRouteNodes,
+        config,
       })
     }
 
@@ -1185,13 +1188,25 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     return this.crawlingResult
   }
 
-  private static handleNode(node: RouteNode, acc: HandleNodeAccumulator) {
+  private static handleNode(
+    node: RouteNode,
+    acc: HandleNodeAccumulator,
+    config?: Config,
+  ) {
     // Do not remove this as we need to set the lastIndex to 0 as it
     // is necessary to reset the regex's index when using the global flag
     // otherwise it might not match the next time it's used
+    const useExperimentalNonNestedRoutes =
+      config?.experimental?.nonNestedRoutes ?? false
+
     resetRegex(this.routeGroupPatternRegex)
 
-    let parentRoute = hasParentRoute(acc.routeNodes, node, node.routePath)
+    let parentRoute = hasParentRoute(
+      acc.routeNodes,
+      node,
+      node.routePath,
+      node.originalRoutePath,
+    )
 
     // if the parent route is a virtual parent route, we need to find the real parent route
     if (parentRoute?.isVirtualParentRoute && parentRoute.children?.length) {
@@ -1200,6 +1215,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         parentRoute.children,
         node,
         node.routePath,
+        node.originalRoutePath,
       )
       if (possibleParentRoute) {
         parentRoute = possibleParentRoute
@@ -1219,9 +1235,23 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       lastRouteSegment.startsWith('_') ||
       split.every((part) => this.routeGroupPatternRegex.test(part))
 
+    // with new nonNestedPaths feature we can be sure any remaining trailing underscores are escaped and should remain
+    // TODO with new major we can remove check and only remove leading underscores
     node.cleanedPath = removeGroups(
-      removeUnderscores(removeLayoutSegments(node.path)) ?? '',
+      (useExperimentalNonNestedRoutes
+        ? removeLeadingUnderscores(
+            removeLayoutSegments(node.path ?? ''),
+            config?.routeToken ?? '',
+          )
+        : removeUnderscores(removeLayoutSegments(node.path))) ?? '',
     )
+
+    if (
+      node._fsRouteType === 'layout' ||
+      node._fsRouteType === 'pathless_layout'
+    ) {
+      node.cleanedPath = removeTrailingSlash(node.cleanedPath)
+    }
 
     if (
       !node.isVirtual &&
@@ -1262,6 +1292,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
             _fsRouteType: 'static',
           },
           acc,
+          config,
         )
       }
       return
@@ -1308,7 +1339,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           node.path = determineNodePath(node)
         }
 
-        this.handleNode(parentNode, acc)
+        this.handleNode(parentNode, acc, config)
       } else {
         anchorRoute.children = anchorRoute.children ?? []
         anchorRoute.children.push(node)

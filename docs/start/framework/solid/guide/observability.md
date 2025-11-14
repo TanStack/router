@@ -47,7 +47,7 @@ const serverFn = createServerFn().handler(async () => {
 })
 ```
 
-[Get started with Sentry →](https://sentry.io/signup?utm_source=tanstack)
+[Get started with Sentry →](https://sentry.io/signup?utm_source=tanstack) | [View integration example →](https://github.com/TanStack/router/tree/main/e2e/solid-router/sentry-integration)
 
 ## Built-in Observability Patterns
 

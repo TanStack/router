@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { createEffect, createSignal } from 'solid-js'
+import { createEffect, createSignal, Suspense } from 'solid-js'
 
 export const Route = createFileRoute('/stream')({
   component: Home,
@@ -45,7 +45,7 @@ function Home() {
   })
 
   return (
-    <>
+    <Suspense>
       <Await
         promise={loaderData().promise}
         children={(promiseData) => (
@@ -59,6 +59,6 @@ function Home() {
           </div>
         )}
       />
-    </>
+    </Suspense>
   )
 }

@@ -443,3 +443,49 @@ test('factory', async ({ page }) => {
     )
   }
 })
+
+test('primitives', async ({ page }) => {
+  await page.goto('/primitives')
+
+  const testCases = await page
+    .locator('[data-testid^="expected-"]')
+    .elementHandles()
+  expect(testCases.length).not.toBe(0)
+
+  for (const testCase of testCases) {
+    const testId = await testCase.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('testcase is missing data-testid')
+    }
+
+    const suffix = testId.replace('expected-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-${suffix}`).textContent()) || ''
+    expect(expected).not.toBe('')
+
+    await expect(page.getByTestId(`result-${suffix}`)).toContainText(expected)
+  }
+})
+
+test('redirect in server function on direct navigation', async ({ page }) => {
+  // Test direct navigation to a route with a server function that redirects
+  await page.goto('/redirect-test')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test/target')
+})
+
+test('redirect in server function called in query during SSR', async ({
+  page,
+}) => {
+  // Test direct navigation to a route with a server function that redirects
+  // when called inside a query with ssr: true
+  await page.goto('/redirect-test-ssr')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test-ssr/target')
+})
