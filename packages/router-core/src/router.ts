@@ -1379,7 +1379,7 @@ export class RouterCore<
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
-      let paramsError: PathParamError | undefined = undefined
+      let paramsError: unknown = undefined
 
       if (!existingMatch) {
         const strictParseParams =
@@ -1392,9 +1392,13 @@ export class RouterCore<
               strictParseParams(strictParams as Record<string, string>),
             )
           } catch (err: any) {
-            paramsError = new PathParamError(err.message, {
-              cause: err,
-            })
+            if (isNotFound(err) || isRedirect(err)) {
+              paramsError = err
+            } else {
+              paramsError = new PathParamError(err.message, {
+                cause: err,
+              })
+            }
 
             if (opts?.throwOnError) {
               throw paramsError
