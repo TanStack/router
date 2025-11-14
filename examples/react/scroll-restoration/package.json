@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/react-router": "^1.136.0",
-    "@tanstack/react-router-devtools": "^1.136.0",
+    "@tanstack/react-router": "^1.136.1",
+    "@tanstack/react-router-devtools": "^1.136.1",
     "@tanstack/react-virtual": "^3.13.0",
     "postcss": "^8.5.1",
     "react": "^19.0.0",
