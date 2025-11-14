@@ -347,6 +347,8 @@ export function interpolatePath({
     }
   }
 
+  if (path.endsWith('/')) joined += '/'
+
   const interpolatedPath = joined || '/'
 
   return { usedParams, interpolatedPath, isMissingParams }
