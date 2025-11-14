@@ -126,7 +126,7 @@ export function resolvePath({
   let key
   if (cache) {
     // `trailingSlash` is static per router, so it doesn't need to be part of the cache key
-    key = isAbsolute ? to : isBase ? base : base + '\\\\' + to
+    key = isAbsolute ? to : isBase ? base : base + '\0' + to
     const cached = cache.get(key)
     if (cached) return cached
   }

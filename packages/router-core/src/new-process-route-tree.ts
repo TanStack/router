@@ -578,7 +578,7 @@ export function findSingleMatch(
 ) {
   from ||= '/'
   path ||= '/'
-  const key = caseSensitive ? `case|${from}` : from
+  const key = caseSensitive ? `case\0${from}` : from
   let tree = processedTree.singleCache.get(key)
   if (!tree) {
     // single flat routes (router.matchRoute) are not eagerly processed,
@@ -601,7 +601,7 @@ export function findRouteMatch<
   /** If `true`, allows fuzzy matching (partial matches), i.e. which node in the tree would have been an exact match if the `path` had been shorter? */
   fuzzy = false,
 ) {
-  const key = fuzzy ? `fuzzy|${path}` : path
+  const key = fuzzy ? `fuzzy\0${path}` : path
   const cached = processedTree.matchCache.get(key)
   if (cached) return cached
   path ||= '/'
