@@ -235,6 +235,40 @@ function encodeParam(
   }
 }
 
+const parseCache = new Map<string, Uint16Array>()
+
+function forEachSegment(
+  path: string,
+  cb: (start: number, end: number, data: Uint16Array) => void,
+) {
+  const cached = parseCache.get(path)
+  let cursor = 0
+  const length = path.length
+  const all = !cached ? Array<Uint16Array>() : null
+  while (cursor < length) {
+    const start = cursor
+    let data
+    if (cached) {
+      const i = cursor * 6
+      data = cached.subarray(i, i + 6)
+    } else {
+      data = new Uint16Array(6)
+      parseSegment(path, start, data)
+      all!.push(data)
+    }
+    const end = data[5]!
+    cursor = end + 1
+    if (start === end) continue
+    cb(start, end, data)
+  }
+  if (cached) return
+  const next = new Uint16Array(all!.length * 6)
+  for (let i = 0; i < all!.length; i++) {
+    next.set(all![i]!, i * 6)
+  }
+  parseCache.set(path, next)
+}
+
 /**
  * Interpolate params and wildcards into a route path template.
  *
@@ -260,24 +294,13 @@ export function interpolatePath({
   if (!path.includes('$'))
     return { interpolatedPath: path, usedParams, isMissingParams }
 
-  let cursor = 0
-  const data = new Uint16Array(6)
-  const length = path.length
   let joined = ''
-  while (cursor < length) {
-    const start = cursor
-    parseSegment(path, start, data)
-    const end = data[5]!
-    cursor = end + 1
-
-    if (start === end) continue
-
+  forEachSegment(path, (start, end, data) => {
     const kind = data[0] as SegmentKind
 
     if (kind === SEGMENT_TYPE_PATHNAME) {
-      if (cursor > 0) joined += '/'
-      joined += path.substring(start, end)
-      continue
+      joined += '/' + path.substring(start, end)
+      return
     }
 
     if (kind === SEGMENT_TYPE_WILDCARD) {
@@ -295,57 +318,53 @@ export function interpolatePath({
         // For missing splat parameters, just return the prefix and suffix without the wildcard
         // If there is a prefix or suffix, return them joined, otherwise omit the segment
         if (prefix || suffix) {
-          if (cursor > 0) joined += '/'
-          joined += prefix + suffix
+          joined += '/' + prefix + suffix
         }
-        continue
+        return
       }
 
       const value = encodeParam('_splat', params, decodeCharMap)
-      if (cursor > 0) joined += '/'
-      joined += prefix + value + suffix
-      continue
+      joined += '/' + prefix + value + suffix
+      return
     }
 
     if (kind === SEGMENT_TYPE_PARAM) {
+      const prefix = path.substring(start, data[1])
       const key = path.substring(data[2]!, data[3])
+      const suffix = path.substring(data[4]!, end)
       if (!isMissingParams && !(key in params)) {
         isMissingParams = true
       }
       usedParams[key] = params[key]
 
-      const prefix = path.substring(start, data[1])
-      const suffix = path.substring(data[4]!, end)
       const value = encodeParam(key, params, decodeCharMap) ?? 'undefined'
-      if (cursor > 0) joined += '/'
-      joined += prefix + value + suffix
-      continue
+      joined += '/' + prefix + value + suffix
+      return
     }
 
     if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-      const key = path.substring(data[2]!, data[3])
       const prefix = path.substring(start, data[1])
+      const key = path.substring(data[2]!, data[3])
       const suffix = path.substring(data[4]!, end)
+      const rawValue = params[key]
 
       // Check if optional parameter is missing or undefined
-      if (params[key] == null) {
+      if (rawValue == null) {
         if (prefix || suffix) {
-          if (cursor > 0) joined += '/'
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
-          joined += prefix + suffix
+          joined += '/' + prefix + suffix
         }
         // If no prefix/suffix, omit the entire segment
-        continue
+        return
       }
 
-      usedParams[key] = params[key]
+      usedParams[key] = rawValue
 
       const value = encodeParam(key, params, decodeCharMap) ?? ''
-      if (cursor > 0) joined += '/'
-      joined += prefix + value + suffix
-      continue
+      joined += '/' + prefix + value + suffix
+      return
     }
-  }
+  })
 
   if (path.endsWith('/')) joined += '/'
 
