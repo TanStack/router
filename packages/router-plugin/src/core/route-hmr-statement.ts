@@ -25,6 +25,7 @@ function handleRouteUpdate(
   router.processedTree.matchCache.clear()
   router.processedTree.flatCache?.clear()
   router.processedTree.singleCache.clear()
+  router.resolvePathCache.clear()
   // TODO: how to rebuild the tree if we add a new route?
   walkReplaceSegmentTree(newRoute, router.processedTree.segmentTree)
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
