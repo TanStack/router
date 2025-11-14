@@ -546,7 +546,6 @@ export function decodePath(
   part: string,
   decodeIgnore: Array<string> = DECODE_IGNORE_LIST,
 ): string {
-
   // if the path segment does not contain any encoded uri components return the path as is
   if (part === '' || !/%[0-9A-Fa-f]{2}/g.test(part)) return part
 
