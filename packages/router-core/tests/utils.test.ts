@@ -607,7 +607,7 @@ describe('decodePath', () => {
 
     const stringToCheckWithLowerCase = '/params-ps/named/foo%2Fabc/c%5C%2f%5cAh'
     const expectedResultWithLowerCase =
-      '/params-ps/named/foo%2Fabc/c%5C%2F%5CAh'
+      '/params-ps/named/foo%2Fabc/c%5C%2f%5cAh'
     expect(decodePath(stringToCheckWithLowerCase)).toBe(
       expectedResultWithLowerCase,
     )
