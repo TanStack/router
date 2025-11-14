@@ -4,7 +4,12 @@
     "esModuleInterop": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "target": "ESNext",
+    "moduleResolution": "Bundler",
+    "module": "ESNext",
+    "resolveJsonModule": true,
+    "allowJs": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": ["node_modules", "dist"]
 }

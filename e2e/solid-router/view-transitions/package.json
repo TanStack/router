@@ -4,9 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
+    "dev:e2e": "vite",
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
-    "start": "vite"
+    "start": "vite",
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
