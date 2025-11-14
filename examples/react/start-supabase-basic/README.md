@@ -4,9 +4,9 @@ This example demonstrates how to integrate Supabase authentication with TanStack
 
 ## Setup
 
-1. Create a Supabase project at https://supabase.com
+1. Create a Supabase project at [https://supabase.com](https://supabase.com)
 2. Copy `.env` and fill in your Supabase credentials:
-   ```
+   ```bash
    SUPABASE_URL=your-project-url
    SUPABASE_ANON_KEY=your-anon-key
    ```
@@ -100,7 +100,7 @@ return {
 
 ## Project Structure
 
-```
+```text
 src/
 ├── routes/
 │   ├── __root.tsx          # Root layout with user fetching
