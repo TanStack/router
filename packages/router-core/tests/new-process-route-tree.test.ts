@@ -591,6 +591,8 @@ describe('findRouteMatch', () => {
       )
       expect(match?.route.id).toBe('/dashboard')
       expect(match?.params).toEqual({ '**': 'foo' })
+      const actualMatch = findRouteMatch('/dashboard', processed.processedTree)
+      expect(actualMatch?.route.id).toBe('/dashboard/')
     })
   })
 })

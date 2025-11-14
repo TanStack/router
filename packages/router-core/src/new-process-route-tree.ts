@@ -304,12 +304,12 @@ function parseSegments<TRouteLike extends RouteLike>(
     }
     if ((route.path || !route.children) && !route.isRoot) {
       const isIndex = path.endsWith('/')
-      if (isIndex && node.route) {
-        // we cannot fuzzy match an index route, but if there is *also* a layout route at this path, we can use it to display the notFound in it
-        node.notFound = node.route
-      }
-      node.route = route
-      node.isIndex = isIndex
+      // we cannot fuzzy match an index route,
+      // but if there is *also* a layout route at this path, save it as notFound
+      // we can use it when fuzzy matching to display the NotFound component in the layout route
+      if (!isIndex) node.notFound = route
+      if (!node.route || (!node.isIndex && isIndex)) node.route = route
+      node.isIndex ||= isIndex
     }
   }
   if (route.children)
@@ -688,7 +688,7 @@ function findMatch<T extends RouteLike>(
   const isFuzzyMatch = '**' in leaf
   if (isFuzzyMatch) params['**'] = leaf['**']
   const route = isFuzzyMatch
-    ? leaf.node.notFound ?? leaf.node.route!
+    ? (leaf.node.notFound ?? leaf.node.route!)
     : leaf.node.route!
   return {
     route,
