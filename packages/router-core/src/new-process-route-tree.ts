@@ -303,8 +303,13 @@ function parseSegments<TRouteLike extends RouteLike>(
       node = nextNode
     }
     if ((route.path || !route.children) && !route.isRoot) {
+      const isIndex = path.endsWith('/')
+      if (isIndex && node.route) {
+        // we cannot fuzzy match an index route, but if there is *also* a layout route at this path, we can use it to display the notFound in it
+        node.notFound = node.route
+      }
       node.route = route
-      node.isIndex = path.endsWith('/')
+      node.isIndex = isIndex
     }
   }
   if (route.children)
@@ -388,6 +393,7 @@ function createStaticNode<T extends RouteLike>(
     fullPath,
     parent: null,
     isIndex: false,
+    notFound: null,
   }
 }
 
@@ -416,10 +422,11 @@ function createDynamicNode<T extends RouteLike>(
     route: null,
     fullPath,
     parent: null,
+    isIndex: false,
+    notFound: null,
     caseSensitive,
     prefix,
     suffix,
-    isIndex: false,
   }
 }
 
@@ -471,6 +478,9 @@ type SegmentNode<T extends RouteLike> = {
 
   /** is it an index route (trailing / path), only valid for nodes with a `route` */
   isIndex: boolean
+
+  /** Same as `route`, but only present if both an "index route" and a "layout route" exist at this path */
+  notFound: T | null
 }
 
 // function intoRouteLike(routeTree, parent) {
@@ -586,7 +596,7 @@ export function findRouteMatch<
   path: string,
   /** The `processedTree` returned by the initial `processRouteTree` call. */
   processedTree: ProcessedTree<T, any, any>,
-  /** If `true`, allows fuzzy matching (partial matches). */
+  /** If `true`, allows fuzzy matching (partial matches), i.e. which node in the tree would have been an exact match if the `path` had been shorter? */
   fuzzy = false,
 ) {
   const key = fuzzy ? `fuzzy|${path}` : path
@@ -675,9 +685,13 @@ function findMatch<T extends RouteLike>(
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
   if (!leaf) return null
   const params = extractParams(path, parts, leaf)
-  if ('**' in leaf) params['**'] = leaf['**']
+  const isFuzzyMatch = '**' in leaf
+  if (isFuzzyMatch) params['**'] = leaf['**']
+  const route = isFuzzyMatch
+    ? leaf.node.notFound ?? leaf.node.route!
+    : leaf.node.route!
   return {
-    route: leaf.node.route!,
+    route,
     params,
   }
 }
@@ -819,6 +833,7 @@ function getNodeMatch<T extends RouteLike>(
     if (
       fuzzy &&
       node.route &&
+      (!node.isIndex || node.notFound) &&
       (!bestFuzzy ||
         index > bestFuzzy.index ||
         (index === bestFuzzy.index && depth > bestFuzzy.depth))

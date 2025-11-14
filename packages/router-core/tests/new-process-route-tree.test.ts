@@ -175,23 +175,6 @@ describe('findRouteMatch', () => {
     })
   })
 
-  describe('not found', () => {
-    it('returns null when no match is found', () => {
-      const tree = makeTree(['/', '/a/b/c', '/d/e/f'])
-      expect(findRouteMatch('/x/y/z', tree)).toBeNull()
-    })
-    it('returns something w/ fuzzy matching enabled', () => {
-      const tree = makeTree(['/', '/a/b/c', '/d/e/f'])
-      const match = findRouteMatch('/x/y/z', tree, true)
-      expect(match?.route?.id).toBe('/')
-      expect(match?.params).toMatchInlineSnapshot(`
-        {
-          "**": "x/y/z",
-        }
-      `)
-    })
-  })
-
   describe.todo('trailing slashes', () => {})
 
   describe('case sensitivity competition', () => {
@@ -458,7 +441,158 @@ describe('findRouteMatch', () => {
     })
   })
 
-  describe.todo('fuzzy matching', () => {})
+  describe('not found / fuzzy matching', () => {
+    it('returns null when no match is found', () => {
+      const tree = makeTree(['/', '/a/b/c', '/d/e/f'])
+      expect(findRouteMatch('/x/y/z', tree)).toBeNull()
+    })
+
+    it('cannot consider the root route as a fuzzy match', () => {
+      const tree = makeTree(['/', '/a/b/c', '/d/e/f'])
+      const match = findRouteMatch('/x/y/z', tree, true)
+      expect(match).toBeNull()
+    })
+
+    it('finds the greatest partial match', () => {
+      const tree = makeTree(['/a/b/c', '/a/b', '/a'])
+      const match = findRouteMatch('/a/b/x/y', tree, true)
+      expect(match?.route?.id).toBe('/a/b')
+      expect(match?.params).toMatchInlineSnapshot(`
+        {
+          "**": "x/y",
+        }
+      `)
+    })
+
+    it('when both a layout route and an index route exist on the node that is fuzzy-matched, it uses the layout route', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/',
+            fullPath: '/',
+            path: '/',
+          },
+          {
+            id: '/dashboard',
+            fullPath: '/dashboard',
+            path: 'dashboard',
+            children: [
+              {
+                id: '/dashboard/',
+                fullPath: '/dashboard/',
+                path: '/',
+              },
+              {
+                id: '/dashboard/invoices',
+                fullPath: '/dashboard/invoices',
+                path: 'invoices',
+              },
+              {
+                id: '/dashboard/users',
+                fullPath: '/dashboard/users',
+                path: 'users',
+              },
+            ],
+          },
+          {
+            id: '/_auth',
+            fullPath: '/',
+            children: [
+              {
+                id: '/_auth/profile',
+                fullPath: '/profile',
+                path: 'profile',
+              },
+            ],
+          },
+        ],
+      }
+      const processed = processRouteTree(tree)
+      const match = findRouteMatch(
+        '/dashboard/foo',
+        processed.processedTree,
+        true,
+      )
+      expect(match?.route.id).toBe('/dashboard')
+      expect(match?.params).toEqual({ '**': 'foo' })
+    })
+
+    it('cannot use an index route as a fuzzy match', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/',
+            fullPath: '/',
+            path: '/',
+          },
+          {
+            id: '/dashboard/',
+            fullPath: '/dashboard/',
+            path: 'dashboard/',
+          },
+          {
+            id: '/dashboard',
+            fullPath: '/dashboard/invoices',
+            path: 'invoices',
+          },
+          {
+            id: '/dashboard/users',
+            fullPath: '/dashboard/users',
+            path: 'users',
+          },
+        ],
+      }
+      const processed = processRouteTree(tree)
+      const match = findRouteMatch(
+        '/dashboard/foo',
+        processed.processedTree,
+        true,
+      )
+      expect(match).toBeNull()
+    })
+
+    it('edge-case: index route is not a child of layout route', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/',
+            fullPath: '/',
+            path: '/',
+          },
+          {
+            id: '/dashboard/',
+            fullPath: '/dashboard/',
+            path: 'dashboard/',
+          },
+          {
+            id: '/dashboard',
+            fullPath: '/dashboard',
+            path: 'dashboard',
+          },
+        ],
+      }
+      const processed = processRouteTree(tree)
+      const match = findRouteMatch(
+        '/dashboard/foo',
+        processed.processedTree,
+        true,
+      )
+      expect(match?.route.id).toBe('/dashboard')
+      expect(match?.params).toEqual({ '**': 'foo' })
+    })
+  })
 })
 
 describe.todo('processRouteMasks', () => {

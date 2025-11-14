@@ -2637,11 +2637,8 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   let foundRoute: TRouteLike | undefined = undefined
   const match = findRouteMatch<TRouteLike>(trimmedPath, processedTree, true)
   if (match) {
-    // If match is fuzzy, it can't be '/'
-    if (match.route.path !== '/' || !('**' in match.params)) {
-      foundRoute = match.route
-      Object.assign(routeParams, match.params) // Copy params, because they're cached
-    }
+    foundRoute = match.route
+    Object.assign(routeParams, match.params) // Copy params, because they're cached
   }
 
   let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!
