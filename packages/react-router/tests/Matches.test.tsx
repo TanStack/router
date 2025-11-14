@@ -271,7 +271,7 @@ describe('matching on different param types', () => {
       path: '/optional-{-$id}',
       nav: '/optional-',
       params: {},
-      matchParams: { id: '' },
+      matchParams: {},
     },
     {
       name: 'optional param with suffix and value',
@@ -285,14 +285,14 @@ describe('matching on different param types', () => {
       path: '/{-$id}-optional',
       nav: '/-optional',
       params: {},
-      matchParams: { id: '' },
+      matchParams: {},
     },
     {
       name: 'optional param with required param, prefix, suffix, wildcard and no value',
       path: `/$foo/a{-$id}-optional/$`,
       nav: '/bar/a-optional/qux',
-      params: { foo: 'bar', id: '', _splat: 'qux', '*': 'qux' },
-      matchParams: { foo: 'bar', id: '', _splat: 'qux', '*': 'qux' },
+      params: { foo: 'bar', _splat: 'qux', '*': 'qux' },
+      matchParams: { foo: 'bar', _splat: 'qux', '*': 'qux' },
     },
     {
       name: 'optional param with required param, prefix, suffix, wildcard and value',
