@@ -489,50 +489,12 @@ export function findLast<T>(
   return undefined
 }
 
-const DECODE_IGNORE_LIST = [
-  '%25', // %
-  '%5C', // \
-]
-
-function splitAndDecode(
-  part: string,
-  decodeIgnore: Array<string>,
-  startIndex = 0,
-): string {
-  // decode the path / path segment by splitting it into parts defined by the ignore list.
-  // once these pieces have been decoded, join them back together to form the final decoded path segment with the ignored character in place.
-  // we walk through the ignore list linearly, breaking the segment up into pieces and decoding each piece individually.
-  // use index traversal to avoid making unnecessary copies of the array.
-  for (let i = startIndex; i < decodeIgnore.length; i++) {
-    const char = decodeIgnore[i]!.toUpperCase()
-
-    // check if the part includes the current ignore character
-    // if it doesn't continue to the next ignore character
-    if (part.includes(char)) {
-      // split the part into pieces that needs to be checked and decoded
-      const partsToDecode = part.split(char)
-      const partsToJoin = new Array<string>(partsToDecode.length)
-
-      // now check and decode each piece individually taking into consideration the remaining ignored characters.
-      // since we are walking through the list linearly, we only need to consider ignore items not yet traversed.
-      for (let j = 0; j < partsToDecode.length; j++) {
-        const partToDecode = partsToDecode[j]!
-        // once we have traversed the entire ignore list, each decoded part is returned.
-        partsToJoin[j] = splitAndDecode(partToDecode, decodeIgnore, i + 1)
-      }
-
-      // and join them back together to form the final decoded path segment with the ignored character in place.
-      return partsToJoin.join(char)
-    }
-  }
-
-  // once we have reached the end of the ignore list, we start walking back returning each decoded part.
-  // should there be no matching characters, the path segment as a whole will be decoded.
+function decodeSegment(segment: string): string {
   try {
-    return decodeURI(part)
+    return decodeURI(segment)
   } catch {
     // if the decoding fails, try to decode the various parts leaving the malformed tags in place
-    return part.replaceAll(/%[0-9A-F]{2}/g, (match) => {
+    return segment.replaceAll(/%[0-9A-F]{2}/gi, (match) => {
       try {
         return decodeURI(match)
       } catch {
@@ -542,17 +504,18 @@ function splitAndDecode(
   }
 }
 
-export function decodePath(
-  part: string,
-  decodeIgnore: Array<string> = DECODE_IGNORE_LIST,
-): string {
-  // if the path segment does not contain any encoded uri components return the path as is
-  if (part === '' || !/%[0-9A-Fa-f]{2}/g.test(part)) return part
-
-  // ensure all encoded characters are uppercase
-  const normalizedPart = part.replaceAll(/%[0-9a-f]{2}/g, (match) =>
-    match.toUpperCase(),
-  )
-
-  return splitAndDecode(normalizedPart, decodeIgnore)
+export function decodePath(path: string, decodeIgnore?: Array<string>): string {
+  const re = decodeIgnore
+    ? new RegExp(`${decodeIgnore.join('|')}`, 'gi')
+    : /%25|%5C/gi
+  let cursor = 0
+  let result = ''
+  let match
+  while (null !== (match = re.exec(path))) {
+    const i = match.index
+    const chunk = match[0]
+    result += decodeSegment(path.slice(cursor, i)) + chunk
+    cursor = i + chunk.length
+  }
+  return result + decodeSegment(path.slice(cursor))
 }
