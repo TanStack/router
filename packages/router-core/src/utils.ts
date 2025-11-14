@@ -505,6 +505,7 @@ function decodeSegment(segment: string): string {
 }
 
 export function decodePath(path: string, decodeIgnore?: Array<string>): string {
+  if (!path) return path
   const re = decodeIgnore
     ? new RegExp(`${decodeIgnore.join('|')}`, 'gi')
     : /%25|%5C/gi
@@ -512,10 +513,8 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   let result = ''
   let match
   while (null !== (match = re.exec(path))) {
-    const i = match.index
-    const chunk = match[0]
-    result += decodeSegment(path.slice(cursor, i)) + chunk
-    cursor = i + chunk.length
+    result += decodeSegment(path.slice(cursor, match.index)) + match[0]
+    cursor = re.lastIndex
   }
-  return result + decodeSegment(path.slice(cursor))
+  return result + decodeSegment(cursor ? path.slice(cursor) : path)
 }
