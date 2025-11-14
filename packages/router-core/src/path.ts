@@ -275,8 +275,7 @@ export function interpolatePath({
     const kind = data[0] as SegmentKind
 
     if (kind === SEGMENT_TYPE_PATHNAME) {
-      if (cursor > 0) joined += '/'
-      joined += path.substring(start, end)
+      joined += '/' + path.substring(start, end)
       continue
     }
 
@@ -295,15 +294,13 @@ export function interpolatePath({
         // For missing splat parameters, just return the prefix and suffix without the wildcard
         // If there is a prefix or suffix, return them joined, otherwise omit the segment
         if (prefix || suffix) {
-          if (cursor > 0) joined += '/'
-          joined += prefix + suffix
+          joined += '/' + prefix + suffix
         }
         continue
       }
 
       const value = encodeParam('_splat', params, decodeCharMap)
-      if (cursor > 0) joined += '/'
-      joined += prefix + value + suffix
+      joined += '/' + prefix + value + suffix
       continue
     }
 
@@ -317,8 +314,7 @@ export function interpolatePath({
       const prefix = path.substring(start, data[1])
       const suffix = path.substring(data[4]!, end)
       const value = encodeParam(key, params, decodeCharMap) ?? 'undefined'
-      if (cursor > 0) joined += '/'
-      joined += prefix + value + suffix
+      joined += '/' + prefix + value + suffix
       continue
     }
 
@@ -326,23 +322,22 @@ export function interpolatePath({
       const key = path.substring(data[2]!, data[3])
       const prefix = path.substring(start, data[1])
       const suffix = path.substring(data[4]!, end)
+      const valueRaw = params[key]
 
       // Check if optional parameter is missing or undefined
-      if (params[key] == null) {
+      if (valueRaw == null) {
         if (prefix || suffix) {
-          if (cursor > 0) joined += '/'
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
-          joined += prefix + suffix
+          joined += '/' + prefix + suffix
         }
         // If no prefix/suffix, omit the entire segment
         continue
       }
 
-      usedParams[key] = params[key]
+      usedParams[key] = valueRaw
 
       const value = encodeParam(key, params, decodeCharMap) ?? ''
-      if (cursor > 0) joined += '/'
-      joined += prefix + value + suffix
+      joined += '/' + prefix + value + suffix
       continue
     }
   }
