@@ -19,16 +19,25 @@ if (import.meta.hot) {
         const router = window.__TSR_ROUTER__;
         router.routesById[newRoute.id] = newRoute;
         router.routesByPath[newRoute.fullPath] = newRoute;
-        const oldRouteIndex = router.flatRoutes.indexOf(oldRoute);
-        if (oldRouteIndex > -1) {
-          router.flatRoutes[oldRouteIndex] = newRoute;
-        }
-        ;
+        router.processedTree.matchCache.clear();
+        router.processedTree.flatCache?.clear();
+        router.processedTree.singleCache.clear();
+        walkReplaceSegmentTree(newRoute, router.processedTree.segmentTree);
         const filter = m => m.routeId === oldRoute.id;
         if (router.state.matches.find(filter) || router.state.pendingMatches?.find(filter)) {
           router.invalidate({
             filter
           });
+        }
+        ;
+        function walkReplaceSegmentTree(route, node) {
+          if (node.route?.id === route.id) node.route = route;
+          if (node.notFound?.id === route.id) node.notFound = route;
+          node.static?.forEach(child => walkReplaceSegmentTree(route, child));
+          node.staticInsensitive?.forEach(child => walkReplaceSegmentTree(route, child));
+          node.dynamic?.forEach(child => walkReplaceSegmentTree(route, child));
+          node.optional?.forEach(child => walkReplaceSegmentTree(route, child));
+          node.wildcard?.forEach(child => walkReplaceSegmentTree(route, child));
         }
       })(Route, newModule.Route);
     }

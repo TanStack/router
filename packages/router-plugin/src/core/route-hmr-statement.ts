@@ -34,22 +34,21 @@ function handleRouteUpdate(
   ) {
     router.invalidate({ filter })
   }
-}
+  function walkReplaceSegmentTree(
+    route: AnyRouteWithPrivateProps,
+    node: AnyRouter['processedTree']['segmentTree'],
+  ) {
+    if (node.route?.id === route.id) node.route = route
+    if (node.notFound?.id === route.id) node.notFound = route
 
-function walkReplaceSegmentTree(
-  route: AnyRouteWithPrivateProps,
-  node: AnyRouter['processedTree']['segmentTree'],
-) {
-  if (node.route?.id === route.id) {
-    node.route = route
+    node.static?.forEach((child) => walkReplaceSegmentTree(route, child))
+    node.staticInsensitive?.forEach((child) =>
+      walkReplaceSegmentTree(route, child),
+    )
+    node.dynamic?.forEach((child) => walkReplaceSegmentTree(route, child))
+    node.optional?.forEach((child) => walkReplaceSegmentTree(route, child))
+    node.wildcard?.forEach((child) => walkReplaceSegmentTree(route, child))
   }
-  node.static?.forEach((child) => walkReplaceSegmentTree(route, child))
-  node.staticInsensitive?.forEach((child) =>
-    walkReplaceSegmentTree(route, child),
-  )
-  node.dynamic?.forEach((child) => walkReplaceSegmentTree(route, child))
-  node.optional?.forEach((child) => walkReplaceSegmentTree(route, child))
-  node.wildcard?.forEach((child) => walkReplaceSegmentTree(route, child))
 }
 
 export const routeHmrStatement = template.statement(
