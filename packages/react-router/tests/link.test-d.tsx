@@ -2369,6 +2369,65 @@ test('when navigating to a union of routes including the root', () => {
   }>()
 })
 
+test('when navigating to a union of routes including invalid paths', () => {
+  expectTypeOf(Link<DefaultRouter, '/', './wrong' | './posts/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'.' | './posts/$postId' | undefined>()
+
+  expectTypeOf(
+    Link<DefaultRouter, '/invoices/$invoiceId', '../$invoiceId' | '../wrong'>,
+  )
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../$invoiceId'
+      | '../$invoiceId/details'
+      | '../$invoiceId/details/$detailId'
+      | '../$invoiceId/details/$detailId/lines'
+      | '../$invoiceId/details/$detailId/lines/form'
+      | '../$invoiceId/details/$detailId/lines/form/edit'
+      | '../$invoiceId/edit'
+      | undefined
+    >()
+
+  expectTypeOf(Link<DefaultRouter, '/', '/' | './wrong/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '/'
+      | '/invoices'
+      | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+      | '/invoices/$invoiceId/edit'
+      | '/posts'
+      | '/posts/$postId'
+      | '.'
+      | undefined
+    >()
+
+  expectTypeOf(
+    Link<DefaultRouter, '/invoices/$invoiceId', '../$invoiceId' | './wrong'>,
+  )
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../$invoiceId'
+      | '../$invoiceId/details'
+      | '../$invoiceId/details/$detailId'
+      | '../$invoiceId/details/$detailId/lines'
+      | '../$invoiceId/details/$detailId/lines/form'
+      | '../$invoiceId/details/$detailId/lines/form/edit'
+      | '../$invoiceId/edit'
+      | '.'
+      | undefined
+    >()
+})
+
 test('when navigating from a route with search params to the same route', () => {
   const DefaultRouterLink = Link<DefaultRouter, '/invoices/$invoiceId', string>
 
