@@ -8,27 +8,29 @@ title: Server Entry Point
 > [!NOTE]
 > The server entry point is **optional** out of the box. If not provided, TanStack Start will automatically handle the server entry point for you using the below as a default.
 
-This is done via the `src/server.ts` file.
+The Server Entry Point supports the universal fetch handler format, commonly used by [Cloudflare Workers](https://developers.cloudflare.com/workers/runtime-apis/handlers/fetch/) and other WinterCG-compatible runtimes.
 
-```tsx
-// src/server.ts
-import handler, { type ServerEntry } from '@tanstack/react-start/server-entry'
-
-export default {
-  fetch(request) {
-    return handler.fetch(request)
-  },
-} satisfies ServerEntry
-```
-
-The default export must conform to the `ServerEntry` interface:
+To ensure interoperability, the default export must conform to our `ServerEntry` interface:
 
 ```ts
 export default {
-  fetch(req: Request, opts?: RequestOptions): Promise<Response> {
+  fetch(req: Request, opts?: RequestOptions): Response | Promise<Response> {
     // ...
   },
 }
+```
+
+TanStack Start exposes a wrapper to make creation type-safe. This is done in the `src/server.ts` file.
+
+```tsx
+// src/server.ts
+import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
+
+export default createServerEntry({
+  fetch(request) {
+    return handler.fetch(request)
+  },
+})
 ```
 
 Whether we are statically generating our app or serving it dynamically, the `server.ts` file is the entry point for doing all SSR-related work as well as for handling server routes and server function requests.
@@ -44,7 +46,7 @@ import {
   defaultStreamHandler,
   defineHandlerCallback,
 } from '@tanstack/react-start/server'
-import type { ServerEntry } from '@tanstack/react-start/server-entry'
+import { createServerEntry } from '@tanstack/react-start/server-entry'
 
 const customHandler = defineHandlerCallback((ctx) => {
   // add custom logic here
@@ -53,9 +55,9 @@ const customHandler = defineHandlerCallback((ctx) => {
 
 const fetch = createStartHandler(customHandler)
 
-export default {
+export default createServerEntry({
   fetch,
-} satisfies ServerEntry
+})
 ```
 
 ## Request context
@@ -65,7 +67,7 @@ When your server needs to pass additional, typed data into request handlers (for
 To add types for your request context, augment the `Register` interface from `@tanstack/react-start` with a `server.requestContext` property. The runtime `context` you pass to `handler.fetch` will then match that type. Example:
 
 ```tsx
-import handler, { type ServerEntry } from '@tanstack/react-start/server-entry'
+import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
 
 type MyRequestContext = {
   hello: string
@@ -80,11 +82,11 @@ declare module '@tanstack/react-start' {
   }
 }
 
-export default {
+export default createServerEntry({
   async fetch(request) {
     return handler.fetch(request, { context: { hello: 'world', foo: 123 } })
   },
-} satisfies ServerEntry
+})
 ```
 
 ## Server Configuration

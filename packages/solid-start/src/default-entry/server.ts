@@ -7,12 +7,15 @@ import type { RequestHandler } from '@tanstack/solid-start/server'
 
 const fetch = createStartHandler(defaultStreamHandler)
 
-const serverEntry = {
-  // Providing `RequestHandler` from `@tanstack/solid-start/server` is required so that the output types don't import it from `@tanstack/start-server-core`
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-  fetch: fetch as RequestHandler<Register>,
-} as const
+// Providing `RequestHandler` from `@tanstack/solid-start/server` is required so that the output types don't import it from `@tanstack/start-server-core`
+export type ServerEntry = { fetch: RequestHandler<Register> }
 
-export type ServerEntry = typeof serverEntry
+export function createServerEntry(entry: ServerEntry): ServerEntry {
+  return {
+    async fetch(...args) {
+      return await entry.fetch(...args)
+    },
+  }
+}
 
-export default serverEntry
+export default createServerEntry({ fetch })
