@@ -391,6 +391,34 @@ describe('findRouteMatch', () => {
         '/foo/{-$p}.tsx',
       )
     })
+
+    it('edge-case: two competing nodes at the same depth still produce a valid segment tree', () => {
+      // this case is not easy to explain, but at some point in the implementation
+      // the presence of `/a/c/{$foo}suffix` made `processRouteTree` assign an incorrect `depth`
+      // value to the `/a/b/$` node, causing the params extraction to return incorrect results.
+      const tree = {
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+        isRoot: true,
+        children: [
+          {
+            id: '/a/c/{$foo}suffix',
+            fullPath: '/a/c/{$foo}suffix',
+            path: 'a/c/{$foo}suffix',
+          },
+          {
+            id: '/a/b/$',
+            fullPath: '/a/b/$',
+            path: 'a/b/$',
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const res = findRouteMatch('/a/b/foo', processedTree, true)
+      expect(res?.route.id).toBe('/a/b/$')
+      expect(res?.params).toEqual({ _splat: 'foo', '*': 'foo' })
+    })
   })
 
   describe('nested routes', () => {

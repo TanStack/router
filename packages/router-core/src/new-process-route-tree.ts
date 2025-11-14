@@ -157,6 +157,7 @@ function parseSegments<TRouteLike extends RouteLike>(
       const start = cursor
       const end = data[5]!
       cursor = end + 1
+      depth++
       const kind = data[0] as SegmentKind
       switch (kind) {
         case SEGMENT_TYPE_PATHNAME: {
@@ -171,7 +172,7 @@ function parseSegments<TRouteLike extends RouteLike>(
                 route.fullPath ?? route.from,
               )
               next.parent = node
-              next.depth = ++depth
+              next.depth = depth
               nextNode = next
               node.static.set(value, next)
             }
@@ -186,7 +187,7 @@ function parseSegments<TRouteLike extends RouteLike>(
                 route.fullPath ?? route.from,
               )
               next.parent = node
-              next.depth = ++depth
+              next.depth = depth
               nextNode = next
               node.staticInsensitive.set(name, next)
             }
@@ -225,7 +226,7 @@ function parseSegments<TRouteLike extends RouteLike>(
               suffix,
             )
             nextNode = next
-            next.depth = ++depth
+            next.depth = depth
             next.parent = node
             node.dynamic ??= []
             node.dynamic.push(next)
@@ -265,7 +266,7 @@ function parseSegments<TRouteLike extends RouteLike>(
             )
             nextNode = next
             next.parent = node
-            next.depth = ++depth
+            next.depth = depth
             node.optional ??= []
             node.optional.push(next)
           }
@@ -295,7 +296,7 @@ function parseSegments<TRouteLike extends RouteLike>(
           )
           nextNode = next
           next.parent = node
-          next.depth = ++depth
+          next.depth = depth
           node.wildcard ??= []
           node.wildcard.push(next)
         }
@@ -488,6 +489,7 @@ type SegmentNode<T extends RouteLike> = {
 // 		id: routeTree.id,
 // 		fullPath: routeTree.fullPath,
 // 		path: routeTree.path,
+// 		isRoot: routeTree.isRoot,
 // 		options: routeTree.options && 'caseSensitive' in routeTree.options ? { caseSensitive: routeTree.options.caseSensitive } : undefined,
 // 	}
 // 	if (routeTree.children) {
