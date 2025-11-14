@@ -360,6 +360,41 @@ describe('interpolatePath', () => {
     })
   })
 
+  describe('preserve trailing slash', () => {
+    it.each([
+      {
+        path: '/',
+        params: {},
+        result: '/',
+      },
+      {
+        path: '/a/b/',
+        params: {},
+        result: '/a/b/',
+      },
+      {
+        path: '/a/$id/',
+        params: { id: '123' },
+        result: '/a/123/',
+      },
+      {
+        path: '/a/{-$id}/',
+        params: { id: '123' },
+        result: '/a/123/',
+      },
+    ])(
+      'should preserve trailing slash for $path',
+      ({ path, params, result }) => {
+        expect(
+          interpolatePath({
+            path,
+            params,
+          }).interpolatedPath,
+        ).toBe(result)
+      },
+    )
+  })
+
   describe('wildcard (prefix + suffix)', () => {
     it.each([
       {
@@ -501,6 +536,32 @@ describe('interpolatePath', () => {
       expect(result.isMissingParams).toBe(true)
     })
   })
+})
+
+describe('resolvePath + interpolatePath', () => {
+  it.each(['never', 'preserve', 'always'] as const)(
+    'trailing slash: %s',
+    (trailingSlash) => {
+      const tail = trailingSlash === 'always' ? '/' : ''
+      const defaultedFromPath = '/'
+      const fromPath = resolvePath({
+        base: defaultedFromPath,
+        to: '.',
+        trailingSlash,
+      })
+      const nextTo = resolvePath({
+        base: fromPath,
+        to: '/splat/$',
+        trailingSlash,
+      })
+      const nextParams = { _splat: '' }
+      const interpolatedNextTo = interpolatePath({
+        path: nextTo,
+        params: nextParams,
+      }).interpolatedPath
+      expect(interpolatedNextTo).toBe(`/splat${tail}`)
+    },
+  )
 })
 
 describe('matchPathname', () => {
