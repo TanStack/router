@@ -42,8 +42,8 @@ type MakeShouldBlockFnLocationUnion<
 type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
   | {
       status: 'blocked'
-      current: MakeShouldBlockFnLocationUnion<TRouter>
-      next: MakeShouldBlockFnLocationUnion<TRouter>
+      current: MakeShouldBlockFnLocationUnion<TRouter> | undefined
+      next: MakeShouldBlockFnLocationUnion<TRouter> | undefined
       action: HistoryAction
       proceed: () => void
       reset: () => void
@@ -58,8 +58,8 @@ type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
     }
 
 type ShouldBlockFnArgs<TRouter extends AnyRouter = RegisteredRouter> = {
-  current: MakeShouldBlockFnLocationUnion<TRouter>
-  next: MakeShouldBlockFnLocationUnion<TRouter>
+  current: MakeShouldBlockFnLocationUnion<TRouter> | undefined
+  next: MakeShouldBlockFnLocationUnion<TRouter> | undefined
   action: HistoryAction
 }
 
@@ -74,6 +74,7 @@ export type UseBlockerOpts<
   enableBeforeUnload?: boolean | (() => boolean)
   disabled?: boolean
   withResolver?: TWithResolver
+  throwOnUnknownRoute?: boolean
 }
 
 type LegacyBlockerFn = () => Promise<any> | any
@@ -165,6 +166,7 @@ export function useBlocker(
       enableBeforeUnload: true,
       disabled: false,
       withResolver: false,
+      throwOnUnknownRoute: true,
     },
     _resolveBlockerOpts(opts, condition),
   )
@@ -184,11 +186,11 @@ export function useBlocker(
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
       function getLocation(
         location: HistoryLocation,
-      ): AnyShouldBlockFnLocation {
+      ): AnyShouldBlockFnLocation | undefined {
         const parsedLocation = router.parseLocation(location)
         const matchedRoutes = router.getMatchedRoutes(parsedLocation.pathname)
         if (matchedRoutes.foundRoute === undefined) {
-          throw new Error(`No route found for location ${location.href}`)
+          return undefined
         }
         return {
           routeId: matchedRoutes.foundRoute.id,
@@ -200,7 +202,18 @@ export function useBlocker(
       }
 
       const current = getLocation(blockerFnArgs.currentLocation)
+      if (!current && props.throwOnUnknownRoute) {
+        throw new Error(
+          `No route found for location ${blockerFnArgs.currentLocation.href}`,
+        )
+      }
+
       const next = getLocation(blockerFnArgs.nextLocation)
+      if (!next && props.throwOnUnknownRoute) {
+        throw new Error(
+          `No route found for location ${blockerFnArgs.nextLocation.href}`,
+        )
+      }
 
       const shouldBlock = await props.shouldBlockFn({
         action: blockerFnArgs.action,
