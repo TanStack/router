@@ -155,7 +155,7 @@ export const useTags = () => {
     structuralSharing: true as any,
   })
 
-  const headScripts = useRouterState({
+  const headScripts: Array<RouterManagedTag> = useRouterState({
     select: (state) =>
       (
         state.matches
@@ -173,12 +173,29 @@ export const useTags = () => {
     structuralSharing: true as any,
   })
 
+  let serverHeadScript: RouterManagedTag | undefined = undefined
+
+  if (router.serverSsr) {
+    const bufferedScripts = router.serverSsr.takeBufferedScripts()
+    if (bufferedScripts) {
+      serverHeadScript = {
+        tag: 'script',
+        attrs: {
+          nonce,
+          className: '$tsr',
+        },
+        children: bufferedScripts,
+      }
+    }
+  }
+
   return uniqBy(
     [
       ...meta,
       ...preloadMeta,
       ...links,
       ...styles,
+      ...(serverHeadScript ? [serverHeadScript] : []),
       ...headScripts,
     ] as Array<RouterManagedTag>,
     (d) => {
