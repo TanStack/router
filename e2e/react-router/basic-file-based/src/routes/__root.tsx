@@ -131,14 +131,6 @@ function RootComponent() {
           relative routing
         </Link>{' '}
         <Link
-          to="/대한민국"
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          unicode path
-        </Link>{' '}
-        <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{
