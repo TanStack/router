@@ -868,7 +868,16 @@ function getNodeMatch<T extends RouteLike>(
     let lowerPart: string
 
     // 5. Try wildcard match
-    if (node.wildcard) {
+    if (
+      node.wildcard &&
+      (!wildcardMatch ||
+        statics > wildcardMatch.statics ||
+        (statics === wildcardMatch.statics &&
+          dynamics > wildcardMatch.dynamics) ||
+        (statics === wildcardMatch.statics &&
+          dynamics === wildcardMatch.dynamics &&
+          optionals > wildcardMatch.optionals))
+    ) {
       for (const segment of node.wildcard) {
         const { prefix, suffix } = segment
         if (prefix) {
@@ -884,17 +893,15 @@ function getNodeMatch<T extends RouteLike>(
           const casePart = segment.caseSensitive ? end : end.toLowerCase()
           if (casePart !== suffix) continue
         }
-        // a wildcard match terminates the loop, but we need to continue searching in case there's a longer match
-        if (!wildcardMatch || wildcardMatch.index <= index) {
-          wildcardMatch = {
-            node: segment,
-            index,
-            skipped,
-            depth,
-            statics,
-            dynamics,
-            optionals,
-          }
+        // the first wildcard match is the highest priority one
+        wildcardMatch = {
+          node: segment,
+          index,
+          skipped,
+          depth,
+          statics,
+          dynamics,
+          optionals,
         }
         break
       }

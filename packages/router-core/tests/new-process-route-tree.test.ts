@@ -172,6 +172,12 @@ describe('findRouteMatch', () => {
           '/$a/$b/c/d/$e',
         )
       })
+
+      it('a short wildcard match does not prevent a longer match', () => {
+        const tree = makeTree(['/a/$', '/a/b/c/$'])
+        expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe('/a/b/c/$')
+        expect(findRouteMatch('/a/d/e', tree)?.route.id).toBe('/a/$')
+      })
     })
   })
 
