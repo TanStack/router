@@ -6,7 +6,6 @@ import {
   SEGMENT_TYPE_WILDCARD,
   parseSegment,
 } from './new-process-route-tree'
-import type { SegmentKind } from './new-process-route-tree'
 import type { LRUCache } from './lru-cache'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
@@ -175,22 +174,22 @@ export function resolvePath({
     }
   }
 
-  const data = new Uint16Array(6)
+  let segment
   let joined = ''
   for (let i = 0; i < baseSegments.length; i++) {
     if (i > 0) joined += '/'
-    const segment = baseSegments[i]!
-    if (!segment) continue
-    parseSegment(segment, 0, data)
-    const kind = data[0] as SegmentKind
+    const part = baseSegments[i]!
+    if (!part) continue
+    segment = parseSegment(part, 0, segment)
+    const kind = segment[0]
     if (kind === SEGMENT_TYPE_PATHNAME) {
-      joined += segment
+      joined += part
       continue
     }
-    const end = data[5]!
-    const prefix = segment.substring(0, data[1])
-    const suffix = segment.substring(data[4]!, end)
-    const value = segment.substring(data[2]!, data[3])
+    const end = segment[5]
+    const prefix = part.substring(0, segment[1])
+    const suffix = part.substring(segment[4], end)
+    const value = part.substring(segment[2], segment[3])
     if (kind === SEGMENT_TYPE_PARAM) {
       joined += prefix || suffix ? `${prefix}{$${value}}${suffix}` : `$${value}`
     } else if (kind === SEGMENT_TYPE_WILDCARD) {
@@ -260,19 +259,19 @@ export function interpolatePath({
   if (!path.includes('$'))
     return { interpolatedPath: path, usedParams, isMissingParams }
 
-  let cursor = 0
-  const data = new Uint16Array(6)
   const length = path.length
+  let cursor = 0
+  let segment
   let joined = ''
   while (cursor < length) {
     const start = cursor
-    parseSegment(path, start, data)
-    const end = data[5]!
+    segment = parseSegment(path, start, segment)
+    const end = segment[5]
     cursor = end + 1
 
     if (start === end) continue
 
-    const kind = data[0] as SegmentKind
+    const kind = segment[0]
 
     if (kind === SEGMENT_TYPE_PATHNAME) {
       joined += '/' + path.substring(start, end)
@@ -285,8 +284,8 @@ export function interpolatePath({
       // TODO: Deprecate *
       usedParams['*'] = splat
 
-      const prefix = path.substring(start, data[1])
-      const suffix = path.substring(data[4]!, end)
+      const prefix = path.substring(start, segment[1])
+      const suffix = path.substring(segment[4], end)
 
       // Check if _splat parameter is missing. _splat could be missing if undefined or an empty string or some other falsy value.
       if (!splat) {
@@ -305,23 +304,23 @@ export function interpolatePath({
     }
 
     if (kind === SEGMENT_TYPE_PARAM) {
-      const key = path.substring(data[2]!, data[3])
+      const key = path.substring(segment[2], segment[3])
       if (!isMissingParams && !(key in params)) {
         isMissingParams = true
       }
       usedParams[key] = params[key]
 
-      const prefix = path.substring(start, data[1])
-      const suffix = path.substring(data[4]!, end)
+      const prefix = path.substring(start, segment[1])
+      const suffix = path.substring(segment[4], end)
       const value = encodeParam(key, params, decodeCharMap) ?? 'undefined'
       joined += '/' + prefix + value + suffix
       continue
     }
 
     if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-      const key = path.substring(data[2]!, data[3])
-      const prefix = path.substring(start, data[1])
-      const suffix = path.substring(data[4]!, end)
+      const key = path.substring(segment[2], segment[3])
+      const prefix = path.substring(start, segment[1])
+      const suffix = path.substring(segment[4], end)
       const valueRaw = params[key]
 
       // Check if optional parameter is missing or undefined

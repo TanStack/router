@@ -20,14 +20,36 @@ const OPTIONAL_PARAM_W_CURLY_BRACES_RE =
   /^([^{]*)\{-\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/ // prefix{-$paramName}suffix
 const WILDCARD_W_CURLY_BRACES_RE = /^([^{]*)\{\$\}([^}]*)$/ // prefix{$}suffix
 
+type ParsedSegment = Uint16Array & {
+  /** segment type (0 = pathname, 1 = param, 2 = wildcard, 3 = optional param) */
+  0: SegmentKind
+  /** index of the end of the prefix */
+  1: number
+  /** index of the start of the value */
+  2: number
+  /** index of the end of the value */
+  3: number
+  /** index of the start of the suffix */
+  4: number
+  /** index of the end of the segment */
+  5: number
+}
+
 /**
  * Populates the `output` array with the parsed representation of the given `segment` string.
- * - `output[0]` = segment type (0 = pathname, 1 = param, 2 = wildcard, 3 = optional param)
- * - `output[1]` = index of the end of the prefix
- * - `output[2]` = index of the start of the value
- * - `output[3]` = index of the end of the value
- * - `output[4]` = index of the start of the suffix
- * - `output[5]` = index of the end of the segment
+ * 
+ * Usage:
+ * ```ts
+ * let output
+ * let cursor = 0
+ * while (cursor < path.length) {
+ *   output = parseSegment(path, cursor, output)
+ *   const end = output[5]
+ *   cursor = end + 1
+ * ```
+ * 
+ * `output` is stored outside to avoid allocations during repeated calls. It doesn't need to be typed
+ * or initialized, it will be done automatically.
  */
 export function parseSegment(
   /** The full path string containing the segment. */
@@ -35,8 +57,8 @@ export function parseSegment(
   /** The starting index of the segment within the path. */
   start: number,
   /** A Uint16Array (length: 6) to populate with the parsed segment data. */
-  output: Uint16Array,
-) {
+  output: Uint16Array = new Uint16Array(6),
+): ParsedSegment {
   const next = path.indexOf('/', start)
   const end = next === -1 ? path.length : next
   const part = path.substring(start, end)
@@ -49,7 +71,7 @@ export function parseSegment(
     output[3] = end
     output[4] = end
     output[5] = end
-    return
+    return output as ParsedSegment
   }
 
   // $ (wildcard)
@@ -61,7 +83,7 @@ export function parseSegment(
     output[3] = total
     output[4] = total
     output[5] = total
-    return
+    return output as ParsedSegment
   }
 
   // $paramName
@@ -72,7 +94,7 @@ export function parseSegment(
     output[3] = end
     output[4] = end
     output[5] = end
-    return
+    return output as ParsedSegment
   }
 
   const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
@@ -85,7 +107,7 @@ export function parseSegment(
     output[3] = start + pLength + 2 // '$'
     output[4] = start + pLength + 3 // skip '}'
     output[5] = path.length
-    return
+    return output as ParsedSegment
   }
 
   const optionalParamBracesMatch = part.match(OPTIONAL_PARAM_W_CURLY_BRACES_RE)
@@ -100,7 +122,7 @@ export function parseSegment(
     output[3] = start + pLength + 3 + paramName.length
     output[4] = end - suffix.length
     output[5] = end
-    return
+    return output as ParsedSegment
   }
 
   const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
@@ -115,7 +137,7 @@ export function parseSegment(
     output[3] = start + pLength + 2 + paramName.length
     output[4] = end - suffix.length
     output[5] = end
-    return
+    return output as ParsedSegment
   }
 
   // fallback to static pathname (should never happen)
@@ -125,6 +147,7 @@ export function parseSegment(
   output[3] = end
   output[4] = end
   output[5] = end
+  return output as ParsedSegment
 }
 
 /**
@@ -152,16 +175,16 @@ function parseSegments<TRouteLike extends RouteLike>(
     const length = path.length
     const caseSensitive = route.options?.caseSensitive ?? defaultCaseSensitive
     while (cursor < length) {
-      parseSegment(path, cursor, data)
+      const segment = parseSegment(path, cursor, data)
       let nextNode: AnySegmentNode<TRouteLike>
       const start = cursor
-      const end = data[5]!
+      const end = segment[5]
       cursor = end + 1
       depth++
-      const kind = data[0] as SegmentKind
+      const kind = segment[0]
       switch (kind) {
         case SEGMENT_TYPE_PATHNAME: {
-          const value = path.substring(data[2]!, data[3])
+          const value = path.substring(segment[2], segment[3])
           if (caseSensitive) {
             const existingNode = node.static?.get(value)
             if (existingNode) {
@@ -195,8 +218,8 @@ function parseSegments<TRouteLike extends RouteLike>(
           break
         }
         case SEGMENT_TYPE_PARAM: {
-          const prefix_raw = path.substring(start, data[1])
-          const suffix_raw = path.substring(data[4]!, end)
+          const prefix_raw = path.substring(start, segment[1])
+          const suffix_raw = path.substring(segment[4], end)
           const actuallyCaseSensitive =
             caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
@@ -234,8 +257,8 @@ function parseSegments<TRouteLike extends RouteLike>(
           break
         }
         case SEGMENT_TYPE_OPTIONAL_PARAM: {
-          const prefix_raw = path.substring(start, data[1])
-          const suffix_raw = path.substring(data[4]!, end)
+          const prefix_raw = path.substring(start, segment[1])
+          const suffix_raw = path.substring(segment[4], end)
           const actuallyCaseSensitive =
             caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
@@ -273,8 +296,8 @@ function parseSegments<TRouteLike extends RouteLike>(
           break
         }
         case SEGMENT_TYPE_WILDCARD: {
-          const prefix_raw = path.substring(start, data[1])
-          const suffix_raw = path.substring(data[4]!, end)
+          const prefix_raw = path.substring(start, segment[1])
+          const suffix_raw = path.substring(segment[4], end)
           const actuallyCaseSensitive =
             caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
