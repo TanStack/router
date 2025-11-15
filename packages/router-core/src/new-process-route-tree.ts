@@ -37,7 +37,7 @@ type ParsedSegment = Uint16Array & {
 
 /**
  * Populates the `output` array with the parsed representation of the given `segment` string.
- * 
+ *
  * Usage:
  * ```ts
  * let output
@@ -47,7 +47,7 @@ type ParsedSegment = Uint16Array & {
  *   const end = output[5]
  *   cursor = end + 1
  * ```
- * 
+ *
  * `output` is stored outside to avoid allocations during repeated calls. It doesn't need to be typed
  * or initialized, it will be done automatically.
  */
@@ -857,11 +857,13 @@ function getNodeMatch<T extends RouteLike>(
     // In fuzzy mode, track the best partial match we've found so far
     if (
       fuzzy &&
-      node.route &&
-      (!node.isIndex || node.notFound) &&
+      node.notFound &&
       (!bestFuzzy ||
-        index > bestFuzzy.index ||
-        (index === bestFuzzy.index && depth > bestFuzzy.depth))
+        statics > bestFuzzy.statics ||
+        (statics === bestFuzzy.statics &&
+          (dynamics > bestFuzzy.dynamics ||
+            (dynamics === bestFuzzy.dynamics &&
+              optionals > bestFuzzy.optionals))))
     ) {
       bestFuzzy = frame
     }
