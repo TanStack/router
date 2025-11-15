@@ -109,7 +109,7 @@ const route = createRoute({
 ```tsx
 // Debug route tree in console
 console.log('Route tree:', router.routeTree)
-console.log('All routes:', router.flatRoutes)
+console.log('All routes:', router.routesById)
 ```
 
 3. **Check Parent Route Configuration**

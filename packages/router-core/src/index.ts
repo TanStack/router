@@ -100,12 +100,8 @@ export {
   removeTrailingSlash,
   exactPathTest,
   resolvePath,
-  parsePathname,
   interpolatePath,
-  matchPathname,
-  matchByPath,
 } from './path'
-export type { Segment } from './path'
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
@@ -193,8 +189,6 @@ export type {
   RootRoute,
   FilebaseRouteOptionsInterface,
 } from './route'
-export { processRouteTree } from './process-route-tree'
-export type { ProcessRouteTreeResult } from './process-route-tree'
 export {
   defaultSerializeError,
   getLocationChangeInfo,

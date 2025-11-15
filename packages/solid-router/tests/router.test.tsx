@@ -1326,18 +1326,6 @@ describe('route ids should be consistent after rebuilding the route tree', () =>
 })
 
 describe('route id uniqueness', () => {
-  it('flatRoute should not have routes with duplicated route ids', () => {
-    const { router } = createTestRouter({
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-    const routeIdSet = new Set<string>()
-
-    router.flatRoutes.forEach((route) => {
-      expect(routeIdSet.has(route.id)).toBe(false)
-      routeIdSet.add(route.id)
-    })
-  })
-
   it('routesById should not have routes duplicated route ids', () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/'] }),
