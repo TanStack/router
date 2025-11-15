@@ -126,6 +126,24 @@ describe('findRouteMatch', () => {
       })
     })
 
+    describe('root matches with root index', () => {
+      it('root index wins over root optional', () => {
+        const tree = makeTree(['/', '/{-$id}'])
+        const res = findRouteMatch('/', tree)
+        expect(res?.route.id).toBe('/')
+      })
+      it('root index wins over root wildcard', () => {
+        const tree = makeTree(['/', '/$'])
+        const res = findRouteMatch('/', tree)
+        expect(res?.route.id).toBe('/')
+      })
+      it('root index wins over root dynamic', () => {
+        const tree = makeTree(['/', '/$id'])
+        const res = findRouteMatch('/', tree)
+        expect(res?.route.id).toBe('/')
+      })
+    })
+
     describe('edge-case variations', () => {
       it('/static/optional/static vs /static/dynamic/static', () => {
         const tree = makeTree(['/a/{-$b}/c', '/a/$b/c'])
