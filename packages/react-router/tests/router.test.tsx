@@ -3023,6 +3023,72 @@ describe('basepath', () => {
     expect(router.state.location.pathname).toBe('/test')
   })
 
+  it('should handle basepath when accessing root path and maintain basepath in browser URL', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home">Home</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const history = createMemoryHistory({
+      initialEntries: ['/my-app/'],
+    })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      basepath: '/my-app',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/')
+    expect(history.location.pathname).toBe('/my-app/')
+  })
+
+  it('should handle basepath option for backward compatibility', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home">Home</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const history = createMemoryHistory({
+      initialEntries: ['/my-app/'],
+    })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      basepath: '/my-app',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/')
+    expect(history.location.pathname).toBe('/my-app/')
+  })
+
   it('should combine basepath with additional input rewrite logic', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
