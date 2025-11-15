@@ -36,7 +36,6 @@ export async function getStartManifest() {
   })
 
   const manifest = {
-    ...startManifest,
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).map(([k, v]) => {
         const { preloads, assets } = v
@@ -44,11 +43,17 @@ export async function getStartManifest() {
           preloads?: Array<string>
           assets?: Array<RouterManagedTag>
         }
-        if (preloads) {
+        let hasData = false
+        if (preloads && preloads.length > 0) {
           result['preloads'] = preloads
+          hasData = true
         }
-        if (assets) {
+        if (assets && assets.length > 0) {
           result['assets'] = assets
+          hasData = true
+        }
+        if (!hasData) {
+          return []
         }
         return [k, result]
       }),
