@@ -25,5 +25,6 @@ interface RouteMatch {
   abortController: AbortController
   cause: 'enter' | 'stay'
   ssr?: boolean | 'data-only'
+  staticData: StaticDataRouteOption
 }
 ```
