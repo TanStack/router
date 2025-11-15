@@ -20,7 +20,7 @@ const OPTIONAL_PARAM_W_CURLY_BRACES_RE =
   /^([^{]*)\{-\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/ // prefix{-$paramName}suffix
 const WILDCARD_W_CURLY_BRACES_RE = /^([^{]*)\{\$\}([^}]*)$/ // prefix{$}suffix
 
-type ParsedSegment = Uint16Array & {
+export type ParsedSegment = Uint16Array & {
   /** segment type (0 = pathname, 1 = param, 2 = wildcard, 3 = optional param) */
   0: SegmentKind
   /** index of the end of the prefix */

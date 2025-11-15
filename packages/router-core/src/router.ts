@@ -1244,6 +1244,8 @@ export class RouterCore<
     return this.matchRoutesInternal(pathnameOrNext, locationSearchOrOpts)
   }
 
+  private interpolateCache = createLRUCache<string, Uint16Array>(1000)
+
   private matchRoutesInternal(
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
@@ -1363,6 +1365,7 @@ export class RouterCore<
         path: route.fullPath,
         params: routeParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
+        cache: this.interpolateCache,
       })
 
       // Waste not, want not. If we already have a match for this route,
@@ -1660,6 +1663,7 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams,
+        cache: this.interpolateCache,
       }).interpolatedPath
 
       const destRoutes = this.matchRoutes(interpolatedNextTo, undefined, {
@@ -1686,6 +1690,7 @@ export class RouterCore<
               path: nextTo,
               params: nextParams,
               decodeCharMap: this.pathParamsDecodeCharMap,
+              cache: this.interpolateCache,
             }).interpolatedPath,
           )
 
