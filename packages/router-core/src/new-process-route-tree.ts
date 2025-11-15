@@ -368,6 +368,9 @@ function sortDynamic(
   if (!a.suffix && b.suffix) return 1
   if (a.caseSensitive && !b.caseSensitive) return -1
   if (!a.caseSensitive && b.caseSensitive) return 1
+
+  // we don't need a tiebreaker here
+  // at this point the 2 nodes cannot conflict during matching
   return 0
 }
 
@@ -506,20 +509,6 @@ type SegmentNode<T extends RouteLike> = {
   /** Same as `route`, but only present if both an "index route" and a "layout route" exist at this path */
   notFound: T | null
 }
-
-// function intoRouteLike(routeTree, parent) {
-// 	const route = {
-// 		id: routeTree.id,
-// 		fullPath: routeTree.fullPath,
-// 		path: routeTree.path,
-// 		isRoot: routeTree.isRoot,
-// 		options: routeTree.options && 'caseSensitive' in routeTree.options ? { caseSensitive: routeTree.options.caseSensitive } : undefined,
-// 	}
-// 	if (routeTree.children) {
-// 		route.children = routeTree.children.map(child => intoRouteLike(child, route))
-// 	}
-// 	return route
-// }
 
 type RouteLike = {
   path?: string // relative path from the parent,
@@ -774,7 +763,7 @@ function extractParams<T extends RouteLike>(
         node.suffix || node.prefix
           ? part!.substring(preLength, part!.length - sufLength)
           : part
-      if (value?.length) params[name] = decodeURIComponent(value)
+      if (value) params[name] = decodeURIComponent(value)
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
       const value = path.substring(
@@ -800,6 +789,24 @@ function buildBranch<T extends RouteLike>(node: AnySegmentNode<T>) {
   return list
 }
 
+type MatchStackFrame<T extends RouteLike> = {
+  node: AnySegmentNode<T>
+  /** index of the segment of path */
+  index: number
+  /** how many nodes between `node` and the root of the segment tree */
+  depth: number
+  /**
+   * Bitmask of skipped optional segments.
+   *
+   * This is a very performant way of storing an "array of booleans", but it means beyond 32 segments we can't track skipped optionals.
+   * If we really really need to support more than 32 segments we can switch to using a `BigInt` here. It's about 2x slower in worst case scenarios.
+   */
+  skipped: number
+  statics: number
+  dynamics: number
+  optionals: number
+}
+
 function getNodeMatch<T extends RouteLike>(
   path: string,
   parts: Array<string>,
@@ -810,23 +817,7 @@ function getNodeMatch<T extends RouteLike>(
   const pathIsIndex = trailingSlash && path !== '/'
   const partsLength = parts.length - (trailingSlash ? 1 : 0)
 
-  type Frame = {
-    node: AnySegmentNode<T>
-    /** index of the segment of path */
-    index: number
-    /** how many nodes between `node` and the root of the segment tree */
-    depth: number
-    /**
-     * Bitmask of skipped optional segments.
-     *
-     * This is a very performant way of storing an "array of booleans", but it means beyond 32 segments we can't track skipped optionals.
-     * If we really really need to support more than 32 segments we can switch to using a `BigInt` here. It's about 2x slower in worst case scenarios.
-     */
-    skipped: number
-    statics: number
-    dynamics: number
-    optionals: number
-  }
+  type Frame = MatchStackFrame<T>
 
   // use a stack to explore all possible paths (params cause branching)
   // iterate "backwards" (low priority first) so that we can push() each candidate, and pop() the highest priority candidate first
@@ -839,8 +830,8 @@ function getNodeMatch<T extends RouteLike>(
     {
       node: segmentTree,
       index: 1,
-      depth: 1,
       skipped: 0,
+      depth: 1,
       statics: 1,
       dynamics: 0,
       optionals: 0,
@@ -857,30 +848,14 @@ function getNodeMatch<T extends RouteLike>(
     let { node, index, skipped, depth, statics, dynamics, optionals } = frame
 
     // In fuzzy mode, track the best partial match we've found so far
-    if (
-      fuzzy &&
-      node.notFound &&
-      (!bestFuzzy ||
-        statics > bestFuzzy.statics ||
-        (statics === bestFuzzy.statics &&
-          (dynamics > bestFuzzy.dynamics ||
-            (dynamics === bestFuzzy.dynamics &&
-              optionals > bestFuzzy.optionals))))
-    ) {
+    if (fuzzy && node.notFound && isFrameMoreSpecific(bestFuzzy, frame)) {
       bestFuzzy = frame
     }
 
     const isBeyondPath = index === partsLength
     if (isBeyondPath) {
       if (node.route && (!pathIsIndex || node.isIndex)) {
-        if (
-          !bestMatch ||
-          statics > bestMatch.statics ||
-          (statics === bestMatch.statics &&
-            (dynamics > bestMatch.dynamics ||
-              (dynamics === bestMatch.dynamics &&
-                optionals > bestMatch.optionals)))
-        ) {
+        if (isFrameMoreSpecific(bestMatch, frame)) {
           bestMatch = frame
         }
 
@@ -895,16 +870,7 @@ function getNodeMatch<T extends RouteLike>(
     let lowerPart: string
 
     // 5. Try wildcard match
-    if (
-      node.wildcard &&
-      (!wildcardMatch ||
-        statics > wildcardMatch.statics ||
-        (statics === wildcardMatch.statics &&
-          dynamics > wildcardMatch.dynamics) ||
-        (statics === wildcardMatch.statics &&
-          dynamics === wildcardMatch.dynamics &&
-          optionals > wildcardMatch.optionals))
-    ) {
+    if (node.wildcard && isFrameMoreSpecific(wildcardMatch, frame)) {
       for (const segment of node.wildcard) {
         const { prefix, suffix } = segment
         if (prefix) {
@@ -1052,4 +1018,19 @@ function getNodeMatch<T extends RouteLike>(
   }
 
   return null
+}
+
+function isFrameMoreSpecific(
+  // the stack frame previously saved as "best match"
+  prev: MatchStackFrame<any> | null,
+  // the candidate stack frame
+  next: MatchStackFrame<any>,
+): boolean {
+  if (!prev) return true
+  return (
+    next.statics > prev.statics ||
+    (next.statics === prev.statics &&
+      (next.dynamics > prev.dynamics ||
+        (next.dynamics === prev.dynamics && next.optionals > prev.optionals)))
+  )
 }
