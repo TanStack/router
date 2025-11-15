@@ -509,6 +509,66 @@ test('cancelMatches after pending timeout', async () => {
   expect(cancelledFooMatch?._nonReactive.pendingTimeout).toBeUndefined()
 })
 
+describe('params.parse notFound', () => {
+  test('throws notFound on invalid params', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const testRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/test/$id',
+      params: {
+        parse: ({ id }: { id: string }) => {
+          const parsed = parseInt(id, 10)
+          if (Number.isNaN(parsed)) {
+            throw notFound()
+          }
+          return { id: parsed }
+        },
+      },
+    })
+    const routeTree = rootRoute.addChildren([testRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/test/invalid'] }),
+    })
+
+    await router.load()
+
+    const match = router.state.pendingMatches?.find(
+      (m) => m.routeId === testRoute.id,
+    )
+
+    expect(match?.status).toBe('notFound')
+  })
+
+  test('succeeds on valid params', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const testRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/test/$id',
+      params: {
+        parse: ({ id }: { id: string }) => {
+          const parsed = parseInt(id, 10)
+          if (Number.isNaN(parsed)) {
+            throw notFound()
+          }
+          return { id: parsed }
+        },
+      },
+    })
+    const routeTree = rootRoute.addChildren([testRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/test/123'] }),
+    })
+
+    await router.load()
+
+    const match = router.state.matches.find((m) => m.routeId === testRoute.id)
+    expect(match?.status).toBe('success')
+    expect(router.state.statusCode).toBe(200)
+  })
+})
+
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
