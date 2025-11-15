@@ -647,6 +647,64 @@ describe('findRouteMatch', () => {
       expect(actualMatch?.route.id).toBe('/dashboard/')
     })
   })
+
+  describe('param extraction', () => {
+    describe('URI decoding', () => {
+      const URISyntaxCharacters = [
+        [';', '%3B'],
+        [',', '%2C'],
+        ['/', '%2F'],
+        ['?', '%3F'],
+        [':', '%3A'],
+        ['@', '%40'],
+        ['&', '%26'],
+        ['=', '%3D'],
+        ['+', '%2B'],
+        ['$', '%24'],
+        ['#', '%23'],
+        ['\\', '%5C'],
+        ['%', '%25'],
+      ] as const
+      it.each(URISyntaxCharacters)(
+        'decodes %s in dynamic params',
+        (char, encoded) => {
+          const tree = makeTree([`/a/$id`])
+          const result = findRouteMatch(`/a/${encoded}`, tree)
+          expect(result?.params).toEqual({ id: char })
+        },
+      )
+      it.each(URISyntaxCharacters)(
+        'decodes %s in optional params',
+        (char, encoded) => {
+          const tree = makeTree([`/a/{-$id}`])
+          const result = findRouteMatch(`/a/${encoded}`, tree)
+          expect(result?.params).toEqual({ id: char })
+        },
+      )
+      it.each(URISyntaxCharacters)(
+        'decodes %s in wildcard params',
+        (char, encoded) => {
+          const tree = makeTree([`/a/$`])
+          const result = findRouteMatch(`/a/${encoded}`, tree)
+          expect(result?.params).toEqual({ '*': char, _splat: char })
+        },
+      )
+      it('wildcard splat supports multiple URI encoded characters in multiple URL segments', () => {
+        const tree = makeTree([`/a/$`])
+        const path = URISyntaxCharacters.map(([, encoded]) => encoded).join('/')
+        const decoded = URISyntaxCharacters.map(([char]) => char).join('/')
+        const result = findRouteMatch(`/a/${path}`, tree)
+        expect(result?.params).toEqual({ '*': decoded, _splat: decoded })
+      })
+      it('fuzzy splat supports multiple URI encoded characters in multiple URL segments', () => {
+        const tree = makeTree(['/a'])
+        const path = URISyntaxCharacters.map(([, encoded]) => encoded).join('/')
+        const decoded = URISyntaxCharacters.map(([char]) => char).join('/')
+        const result = findRouteMatch(`/a/${path}`, tree, true)
+        expect(result?.params).toEqual({ '**': decoded })
+      })
+    })
+  })
 })
 
 describe.todo('processRouteMasks', () => {

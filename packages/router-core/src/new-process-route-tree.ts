@@ -751,10 +751,11 @@ function extractParams<T extends RouteLike>(
           preLength + 2,
           nodePart.length - sufLength - 1,
         )
-        params[name] = part!.substring(preLength, part!.length - sufLength)
+        const value = part!.substring(preLength, part!.length - sufLength)
+        params[name] = decodeURIComponent(value)
       } else {
         const name = nodePart.substring(1)
-        params[name] = part!
+        params[name] = decodeURIComponent(part!)
       }
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
       if (leaf.skipped & (1 << nodeIndex)) {
@@ -773,16 +774,17 @@ function extractParams<T extends RouteLike>(
         node.suffix || node.prefix
           ? part!.substring(preLength, part!.length - sufLength)
           : part
-      if (value?.length) params[name] = value
+      if (value?.length) params[name] = decodeURIComponent(value)
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
-      const rest = path.substring(
+      const value = path.substring(
         currentPathIndex + (n.prefix?.length ?? 0),
         path.length - (n.suffix?.length ?? 0),
       )
+      const splat = decodeURIComponent(value)
       // TODO: Deprecate *
-      params['*'] = rest
-      params._splat = rest
+      params['*'] = splat
+      params._splat = splat
       break
     }
   }
@@ -1045,7 +1047,7 @@ function getNodeMatch<T extends RouteLike>(
     return {
       node: bestFuzzy.node,
       skipped: bestFuzzy.skipped,
-      '**': splat,
+      '**': decodeURIComponent(splat),
     }
   }
 
