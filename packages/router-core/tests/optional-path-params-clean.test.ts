@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { interpolatePath } from '../src/path'
 import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PATHNAME,
   findSingleMatch,
   parseSegment,
   processRouteTree,
-  SEGMENT_TYPE_OPTIONAL_PARAM,
-  SEGMENT_TYPE_PATHNAME,
-  type SegmentKind,
 } from '../src/new-process-route-tree'
+import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
   describe('Optional Dynamic Parameters {-$param}', () => {
@@ -23,18 +23,18 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
 
       const parsePathname = (to: string | undefined) => {
         let cursor = 0
-        const data = new Uint16Array(6)
+        let data
         const path = to ?? ''
         const segments: Array<PathSegment> = []
         while (cursor < path.length) {
           const start = cursor
-          parseSegment(path, start, data)
-          const end = data[5]!
+          data = parseSegment(path, start, data)
+          const end = data[5]
           cursor = end + 1
-          const type = data[0] as SegmentKind
-          const value = path.substring(data[2]!, data[3])
+          const type = data[0]
+          const value = path.substring(data[2], data[3])
           const prefix = path.substring(start, data[1])
-          const suffix = path.substring(data[4]!, end)
+          const suffix = path.substring(data[4], end)
           const segment: PathSegment = {
             type,
             value,

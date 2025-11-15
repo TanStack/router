@@ -7,15 +7,14 @@ import {
   trimPathLeft,
 } from '../src/path'
 import {
-  findSingleMatch,
-  parseSegment,
-  processRouteTree,
-  SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
-  type SegmentKind,
+  findSingleMatch,
+  parseSegment,
+  processRouteTree,
 } from '../src/new-process-route-tree'
+import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
   'removeTrailingSlash with basepath $basepath',
@@ -823,24 +822,22 @@ describe('parsePathname', () => {
     value: string
     prefixSegment?: string
     suffixSegment?: string
-    // Indicates if there is a static segment after this required/optional param
-    hasStaticAfter?: boolean
   }
 
   const parsePathname = (to: string | undefined) => {
     let cursor = 0
-    const data = new Uint16Array(6)
+    let data
     const path = to ?? ''
     const segments: Array<PathSegment> = []
     while (cursor < path.length) {
       const start = cursor
-      parseSegment(path, start, data)
-      const end = data[5]!
+      data = parseSegment(path, start, data)
+      const end = data[5]
       cursor = end + 1
-      const type = data[0] as SegmentKind
-      const value = path.substring(data[2]!, data[3])
+      const type = data[0]
+      const value = path.substring(data[2], data[3])
       const prefix = path.substring(start, data[1])
-      const suffix = path.substring(data[4]!, end)
+      const suffix = path.substring(data[4], end)
       const segment: PathSegment = {
         type,
         value,

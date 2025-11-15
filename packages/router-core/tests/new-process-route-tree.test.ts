@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
 import type { AnyRoute, RouteMask } from '../src'
 
-// import { createLRUCache } from '../src/lru-cache'
-// import { processRouteTree as oldProcessRouteTree } from './old-process-route-tree'
-// import { matchPathname } from './old-path'
-// import big from '../src/Untitled-4.json'
-
 function makeTree(routes: Array<string>) {
   return processRouteTree({
     id: '__root__',
