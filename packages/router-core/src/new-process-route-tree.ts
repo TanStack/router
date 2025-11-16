@@ -623,7 +623,11 @@ export function findRouteMatch<
   const cached = processedTree.matchCache.get(key)
   if (cached !== undefined) return cached
   path ||= '/'
-  const result = findMatch(path, processedTree.segmentTree, fuzzy) as RouteMatch<T> | null
+  const result = findMatch(
+    path,
+    processedTree.segmentTree,
+    fuzzy,
+  ) as RouteMatch<T> | null
   if (result) result.branch = buildRouteBranch(result.route)
   processedTree.matchCache.set(key, result)
   return result
@@ -683,10 +687,7 @@ export function processRouteTree<
   const processedTree: ProcessedTree<TRouteLike, any, any> = {
     segmentTree,
     singleCache: createLRUCache<string, AnySegmentNode<any>>(1000),
-    matchCache: createLRUCache<
-      string,
-      RouteMatch<TRouteLike> | null
-    >(1000),
+    matchCache: createLRUCache<string, RouteMatch<TRouteLike> | null>(1000),
     flatCache: null,
     masksTree: null,
   }
