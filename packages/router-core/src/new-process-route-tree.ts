@@ -606,7 +606,7 @@ export function findSingleMatch(
 type RouteMatch<T extends Extract<RouteLike, { fullPath: string }>> = {
   route: T
   params: Record<string, string>
-  branch: Array<T>
+  branch: ReadonlyArray<T>
 }
 
 export function findRouteMatch<
