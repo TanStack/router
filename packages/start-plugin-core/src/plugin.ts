@@ -281,7 +281,7 @@ export function TanStackStartVitePluginCore(
                 rollupOptions: {
                   input:
                     viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
-                      ?.build?.rollupOptions?.input ?? ENTRY_POINTS.server,
+                      ?.build?.rollupOptions?.input ?? serverAlias,
                 },
                 outDir: getServerOutputDirectory(viteConfig),
                 commonjsOptions: {
