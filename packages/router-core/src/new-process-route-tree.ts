@@ -537,7 +537,7 @@ export type ProcessedTree<
   /** @deprecated keep until v2 so that `router.matchRoute` can keep not caring about the actual route tree */
   singleCache: LRUCache<string, AnySegmentNode<TSingle>>
   /** a cache of route matches from the `segmentTree` */
-  matchCache: LRUCache<string, ReturnType<typeof findMatch<TTree>>>
+  matchCache: LRUCache<string, RouteMatch<TTree> | null>
   /** a cache of route matches from the `masksTree` */
   flatCache: LRUCache<string, ReturnType<typeof findMatch<TFlat>>> | null
 }
@@ -603,6 +603,12 @@ export function findSingleMatch(
   return findMatch(path, tree, fuzzy)
 }
 
+type RouteMatch<T extends Extract<RouteLike, { fullPath: string }>> = {
+  route: T
+  params: Record<string, string>
+  branch: Array<T>
+}
+
 export function findRouteMatch<
   T extends Extract<RouteLike, { fullPath: string }>,
 >(
@@ -612,12 +618,13 @@ export function findRouteMatch<
   processedTree: ProcessedTree<T, any, any>,
   /** If `true`, allows fuzzy matching (partial matches), i.e. which node in the tree would have been an exact match if the `path` had been shorter? */
   fuzzy = false,
-) {
-  const key = fuzzy ? `fuzzy\0${path}` : path
+): RouteMatch<T> | null {
+  const key = fuzzy ? path : `nofuzz\0${path}` // the main use for `findRouteMatch` is fuzzy:true, so we optimize for that case
   const cached = processedTree.matchCache.get(key)
-  if (cached) return cached
+  if (cached !== undefined) return cached
   path ||= '/'
-  const result = findMatch(path, processedTree.segmentTree, fuzzy)
+  const result = findMatch(path, processedTree.segmentTree, fuzzy) as RouteMatch<T> | null
+  if (result) result.branch = buildRouteBranch(result.route)
   processedTree.matchCache.set(key, result)
   return result
 }
@@ -678,7 +685,7 @@ export function processRouteTree<
     singleCache: createLRUCache<string, AnySegmentNode<any>>(1000),
     matchCache: createLRUCache<
       string,
-      ReturnType<typeof findMatch<TRouteLike>>
+      RouteMatch<TRouteLike> | null
     >(1000),
     flatCache: null,
     masksTree: null,
@@ -778,6 +785,16 @@ function extractParams<T extends RouteLike>(
     }
   }
   return params
+}
+
+function buildRouteBranch<T extends RouteLike>(route: T) {
+  const list = [route]
+  while (route.parentRoute) {
+    route = route.parentRoute as T
+    list.push(route)
+  }
+  list.reverse()
+  return list
 }
 
 function buildBranch<T extends RouteLike>(node: AnySegmentNode<T>) {

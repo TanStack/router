@@ -2642,15 +2642,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     Object.assign(routeParams, match.params) // Copy params, because they're cached
   }
 
-  let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!
-
-  const matchedRoutes: Array<TRouteLike> = [routeCursor]
-
-  while (routeCursor.parentRoute) {
-    routeCursor = routeCursor.parentRoute as TRouteLike
-    matchedRoutes.push(routeCursor)
-  }
-  matchedRoutes.reverse()
+  const matchedRoutes = match?.branch || [routesById[rootRouteId]!]
 
   return { matchedRoutes, routeParams, foundRoute }
 }
