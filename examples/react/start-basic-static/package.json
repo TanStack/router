@@ -11,8 +11,8 @@
   "dependencies": {
     "@tanstack/react-router": "^1.136.6",
     "@tanstack/react-router-devtools": "^1.136.6",
-    "@tanstack/react-start": "^1.136.6",
-    "@tanstack/start-static-server-functions": "^1.136.6",
+    "@tanstack/react-start": "^1.136.7",
+    "@tanstack/start-static-server-functions": "^1.136.7",
     "@vitejs/plugin-react": "^5.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
