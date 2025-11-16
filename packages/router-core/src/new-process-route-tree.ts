@@ -535,7 +535,7 @@ export type ProcessedTree<
   /** a mini route tree generated from the flat `routeMasks` list */
   masksTree: AnySegmentNode<TFlat> | null
   /** @deprecated keep until v2 so that `router.matchRoute` can keep not caring about the actual route tree */
-  singleCache: Map<any, AnySegmentNode<TSingle>>
+  singleCache: LRUCache<string, AnySegmentNode<TSingle>>
   /** a cache of route matches from the `segmentTree` */
   matchCache: LRUCache<string, ReturnType<typeof findMatch<TTree>>>
   /** a cache of route matches from the `masksTree` */
@@ -675,7 +675,7 @@ export function processRouteTree<
   sortTreeNodes(segmentTree)
   const processedTree: ProcessedTree<TRouteLike, any, any> = {
     segmentTree,
-    singleCache: new Map(),
+    singleCache: createLRUCache<string, AnySegmentNode<any>>(1000),
     matchCache: createLRUCache<
       string,
       ReturnType<typeof findMatch<TRouteLike>>
