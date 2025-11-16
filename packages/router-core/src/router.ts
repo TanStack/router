@@ -697,7 +697,7 @@ export type ParseLocationFn<TRouteTree extends AnyRoute> = (
 ) => ParsedLocation<FullSearchSchema<TRouteTree>>
 
 export type GetMatchRoutesFn = (pathname: string) => {
-  matchedRoutes: Array<AnyRoute>
+  matchedRoutes: ReadonlyArray<AnyRoute>
   routeParams: Record<string, string>
   foundRoute: AnyRoute | undefined
 }
@@ -1248,9 +1248,9 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const { foundRoute, matchedRoutes, routeParams } = this.getMatchedRoutes(
-      next.pathname,
-    )
+    const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
+    const { foundRoute, routeParams } = matchedRoutesResult
+    let { matchedRoutes } = matchedRoutesResult
     let isGlobalNotFound = false
 
     // Check to see if the route needs a 404 entry
@@ -1263,7 +1263,7 @@ export class RouterCore<
     ) {
       // If the user has defined an (old) 404 route, use it
       if (this.options.notFoundRoute) {
-        matchedRoutes.push(this.options.notFoundRoute)
+        matchedRoutes = [...matchedRoutes, this.options.notFoundRoute]
       } else {
         // If there is no routes found during path matching
         isGlobalNotFound = true
@@ -2642,15 +2642,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     Object.assign(routeParams, match.params) // Copy params, because they're cached
   }
 
-  let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!
-
-  const matchedRoutes: Array<TRouteLike> = [routeCursor]
-
-  while (routeCursor.parentRoute) {
-    routeCursor = routeCursor.parentRoute as TRouteLike
-    matchedRoutes.push(routeCursor)
-  }
-  matchedRoutes.reverse()
+  const matchedRoutes = match?.branch || [routesById[rootRouteId]!]
 
   return { matchedRoutes, routeParams, foundRoute }
 }
