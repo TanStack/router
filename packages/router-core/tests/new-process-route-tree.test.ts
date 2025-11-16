@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
+import {
+  findFlatMatch,
+  findRouteMatch,
+  processRouteMasks,
+  processRouteTree,
+} from '../src/new-process-route-tree'
 import type { AnyRoute, RouteMask } from '../src'
 
 function makeTree(routes: Array<string>) {
@@ -191,10 +196,92 @@ describe('findRouteMatch', () => {
         expect(findRouteMatch('/a/b/c/d/e', tree)?.route.id).toBe('/a/b/c/$')
         expect(findRouteMatch('/a/d/e', tree)?.route.id).toBe('/a/$')
       })
+
+      it('matching a single dynamic param is favored over matching any number of optional params', () => {
+        const tree = makeTree(['/$a/z', '/{-$a}/{-$b}/{-$c}/{-$d}/{-$e}/z'])
+        expect(findRouteMatch('/a/z', tree)?.route.id).toBe('/$a/z')
+        expect(findRouteMatch('/a/b/z', tree)?.route.id).toBe(
+          '/{-$a}/{-$b}/{-$c}/{-$d}/{-$e}/z',
+        )
+      })
+      it('matching a single dynamic param is favored over matching any number of optional params (2)', () => {
+        const tree = makeTree(['/{-$a}/$b', '/{-$a}'])
+        expect(findRouteMatch('/a', tree)?.route.id).toBe('/{-$a}/$b')
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/{-$a}/$b')
+      })
+      describe('optional param can be a route on its own, but matching a static or dynamic is preferred', () => {
+        it('on its own', () => {
+          const tree = makeTree(['/a/{-$b}/'])
+          expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/{-$b}/')
+        })
+        it('vs dynamic sibling', () => {
+          const tree = makeTree(['/a/{-$b}/', '/a/$b'])
+          expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/$b')
+        })
+        it('vs dynamic child', () => {
+          const tree = makeTree(['/a/{-$b}/', '/a/{-$b}/$c'])
+          expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/{-$b}/$c')
+        })
+      })
     })
   })
 
-  describe.todo('trailing slashes', () => {})
+  describe('trailing slashes (index routes)', () => {
+    describe('static routes', () => {
+      it('an index route can be matched by a path with a trailing slash', () => {
+        const tree = makeTree(['/a/'])
+        expect(findRouteMatch('/a/', tree)?.route.id).toBe('/a/')
+      })
+      it('an index route can be matched by a path without a trailing slash', () => {
+        const tree = makeTree(['/a/'])
+        expect(findRouteMatch('/a', tree)?.route.id).toBe('/a/')
+      })
+      it('a non-index route CANNOT be matched by a path with a trailing slash', () => {
+        const tree = makeTree(['/a'])
+        expect(findRouteMatch('/a/', tree)).toBeNull()
+      })
+      it('a non-index route can be matched by a path without a trailing slash', () => {
+        const tree = makeTree(['/a'])
+        expect(findRouteMatch('/a', tree)?.route.id).toBe('/a')
+      })
+    })
+    describe('dynamic routes', () => {
+      it('an index route can be matched by a path with a trailing slash', () => {
+        const tree = makeTree(['/$a/'])
+        expect(findRouteMatch('/a/', tree)?.route.id).toBe('/$a/')
+      })
+      it('an index route can be matched by a path without a trailing slash', () => {
+        const tree = makeTree(['/$a/'])
+        expect(findRouteMatch('/a', tree)?.route.id).toBe('/$a/')
+      })
+      it('a non-index route CANNOT be matched by a path with a trailing slash', () => {
+        const tree = makeTree(['/$a'])
+        expect(findRouteMatch('/a/', tree)).toBeNull()
+      })
+      it('a non-index route can be matched by a path without a trailing slash', () => {
+        const tree = makeTree(['/$a'])
+        expect(findRouteMatch('/a', tree)?.route.id).toBe('/$a')
+      })
+    })
+    describe('optional routes', () => {
+      it('an index route can be matched by a path with a trailing slash', () => {
+        const tree = makeTree(['/{-$a}/'])
+        expect(findRouteMatch('/a/', tree)?.route.id).toBe('/{-$a}/')
+      })
+      it('an index route can be matched by a path without a trailing slash', () => {
+        const tree = makeTree(['/{-$a}/'])
+        expect(findRouteMatch('/a', tree)?.route.id).toBe('/{-$a}/')
+      })
+      it('a non-index route CANNOT be matched by a path with a trailing slash', () => {
+        const tree = makeTree(['/{-$a}'])
+        expect(findRouteMatch('/a/', tree)).toBeNull()
+      })
+      it('a non-index route can be matched by a path without a trailing slash', () => {
+        const tree = makeTree(['/{-$a}'])
+        expect(findRouteMatch('/a', tree)?.route.id).toBe('/{-$a}')
+      })
+    })
+  })
 
   describe('case sensitivity competition', () => {
     it('a case sensitive segment early on should not prevent a case insensitive match', () => {
@@ -702,9 +789,14 @@ describe('findRouteMatch', () => {
   })
 })
 
-describe.todo('processRouteMasks', () => {
-  it('processes a route masks list', () => {
-    const routeTree = {} as AnyRoute
+describe('processRouteMasks', { sequential: true }, () => {
+  const routeTree = {
+    id: '__root__',
+    isRoot: true,
+    fullPath: '/',
+  } as AnyRoute
+  const { processedTree } = processRouteTree(routeTree)
+  it('processes a route masks list into a segment tree', () => {
     const routeMasks: Array<RouteMask<AnyRoute>> = [
       { from: '/a/b/c', routeTree },
       { from: '/a/b/d', routeTree },
@@ -712,6 +804,30 @@ describe.todo('processRouteMasks', () => {
       { from: '/a/{-$optional}/d', routeTree },
       { from: '/a/b/{$}.txt', routeTree },
     ]
-    // expect(processRouteMasks(routeMasks)).toMatchInlineSnapshot()
+    processRouteMasks(routeMasks, processedTree)
+    const aBranch = processedTree.masksTree?.staticInsensitive?.get('a')
+    expect(aBranch).toBeDefined()
+    expect(aBranch?.staticInsensitive?.get('b')).toBeDefined()
+    expect(aBranch?.dynamic).toHaveLength(1)
+    expect(aBranch?.optional).toHaveLength(1)
+  })
+  it('can match static routes masks w/ `findFlatMatch`', () => {
+    const res = findFlatMatch('/a/b/c', processedTree)
+    expect(res?.route.from).toBe('/a/b/c')
+  })
+  it('can match dynamic route masks w/ `findFlatMatch`', () => {
+    const res = findFlatMatch('/a/123/d', processedTree)
+    expect(res?.route.from).toBe('/a/$param/d')
+    expect(res?.params).toEqual({ param: '123' })
+  })
+  it('can match optional route masks w/ `findFlatMatch`', () => {
+    const res = findFlatMatch('/a/d', processedTree)
+    expect(res?.route.from).toBe('/a/{-$optional}/d')
+    expect(res?.params).toEqual({})
+  })
+  it('can match prefix/suffix wildcard route masks w/ `findFlatMatch`', () => {
+    const res = findFlatMatch('/a/b/file/path.txt', processedTree)
+    expect(res?.route.from).toBe('/a/b/{$}.txt')
+    expect(res?.params).toEqual({ '*': 'file/path', _splat: 'file/path' })
   })
 })
