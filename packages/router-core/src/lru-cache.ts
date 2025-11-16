@@ -13,6 +13,7 @@ export function createLRUCache<TKey, TValue>(
   let newest: Node | undefined
 
   const touch = (entry: Node) => {
+    if (entry === newest) return
     if (!entry.next) return
     if (!entry.prev) {
       entry.next.prev = undefined
