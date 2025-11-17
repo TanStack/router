@@ -1375,6 +1375,101 @@ describe('invalidate', () => {
       expect(match.invalid).toBe(false)
     })
   })
+
+  it('re-runs loaders that throw notFound() when invalidated via HMR filter', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/hmr-not-found'],
+    })
+    const loader = vi.fn(() => {
+      throw notFound()
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const hmrRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hmr-not-found',
+      loader,
+      component: () => <div data-testid="hmr-route">Route</div>,
+      notFoundComponent: () => (
+        <div data-testid="hmr-route-not-found">Route Not Found</div>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([hmrRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.load())
+
+    expect(
+      await screen.findByTestId('hmr-route-not-found'),
+    ).toBeInTheDocument()
+    const initialCalls = loader.mock.calls.length
+    expect(initialCalls).toBeGreaterThan(0)
+
+    await act(() =>
+      router.invalidate({
+        filter: (match) => match.routeId === hmrRoute.id,
+      }),
+    )
+
+    expect(loader).toHaveBeenCalledTimes(initialCalls + 1)
+    expect(
+      await screen.findByTestId('hmr-route-not-found'),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('hmr-route')).not.toBeInTheDocument()
+  })
+
+  it('keeps rendering a route notFoundComponent when loader returns notFound() after invalidate', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/loader-not-found'],
+    })
+    const loader = vi.fn(() => notFound())
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const loaderRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/loader-not-found',
+      loader,
+      component: () => <div data-testid="loader-route">Route</div>,
+      notFoundComponent: () => (
+        <div data-testid="loader-not-found-component">Route Not Found</div>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([loaderRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.load())
+
+    const notFoundElement = await screen.findByTestId(
+      'loader-not-found-component',
+    )
+    expect(notFoundElement).toBeInTheDocument()
+    const initialCalls = loader.mock.calls.length
+    expect(initialCalls).toBeGreaterThan(0)
+
+    await act(() => router.invalidate())
+
+    expect(loader).toHaveBeenCalledTimes(initialCalls + 1)
+    expect(
+      await screen.findByTestId('loader-not-found-component'),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId('loader-route')).not.toBeInTheDocument()
+  })
 })
 
 describe('search params in URL', () => {
