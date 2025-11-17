@@ -18,7 +18,7 @@ However, since hosting is one of the most crucial aspects of your application's 
 
 Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice:
 
-- [`cloudflare-workers`](#cloudflare-workers): Deploy to Cloudflare Workers
+- [`cloudflare-workers`](#cloudflare-workers--official-partner): Deploy to Cloudflare Workers
 - [`netlify`](#netlify): Deploy to Netlify
 - [`nitro`](#nitro): Deploy using Nitro
 - [`vercel`](#vercel): Deploy to Vercel
@@ -129,21 +129,45 @@ A full TanStack Start example for Cloudflare Workers is available [here](https:/
 
 ### Netlify
 
-Install and add the [`@netlify/vite-plugin-tanstack-start`](https://www.npmjs.com/package/@netlify/vite-plugin-tanstack-start) plugin, which configures your build for Netlify deployment and provides full Netlify production platform emulation in local dev.
+Install and add the [`@netlify/vite-plugin-tanstack-start`](https://www.npmjs.com/package/@netlify/vite-plugin-tanstack-start) plugin, which configures your build for Netlify deployment and provides full Netlify production platform emulation in local dev:
+
+```bash
+npm install --save-dev @netlify/vite-plugin-tanstack-start
+# or...
+pnpm add --save-dev @netlify/vite-plugin-tanstack-start
+# or yarn, bun, etc.
+```
 
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import netlify from '@netlify/vite-plugin-tanstack-start'
+import netlify from '@netlify/vite-plugin-tanstack-start' // ← add this
 import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [tanstackStart(), netlify(), viteReact()],
+  plugins: [
+    tanstackStart(),
+    netlify(), // ← add this (anywhere in the array is fine)
+    viteReact(),
+  ],
 })
 ```
 
-Add a `netlify.toml` file to your project root:
+Finally, use [Netlify CLI](https://developers.netlify.com/cli/) to deploy your app:
+
+```bash
+npx netlify deploy
+```
+
+If this is a new Netlify project, you'll be prompted to initialize it and build settings will be automatically configured for you.
+
+For more detailed documentation, check out the full [TanStack Start on Netlify
+docs](https://docs.netlify.com/build/frameworks/framework-setup-guides/tanstack-start/).
+
+#### Manual configuration
+
+Alternatively, if you prefer manual configuration, you can add a `netlify.toml` file to your project root:
 
 ```toml
 [build]
@@ -154,58 +178,34 @@ Add a `netlify.toml` file to your project root:
   port = 3000
 ```
 
-Deploy your application using their one-click deployment process, and you're ready to go!
+Or you can set the above settings directly [in the Netlify
+app](https://docs.netlify.com/build/configure-builds/overview/#build-settings).
+
+#### Other deployment methods
+
+Netlify also supports other deployment methods, such as [continuous deployment from a git repo
+hosted on GitHub, GitLab, or
+others](https://docs.netlify.com/start/quickstarts/deploy-from-repository/), [starting from a
+template](https://docs.netlify.com/start/quickstarts/deploy-from-template/), [deploying or
+importing from an AI code generation
+tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-tool/), and
+[more](https://docs.netlify.com/deploy/create-deploys/).
 
 ### Nitro
 
-[Nitro](https://nitro.build/) is an abstraction layer that allows you to deploy TanStack Start applications to [a wide range of providers](https://nitro.build/deploy).
+[Nitro](https://v3.nitro.build/) is an agnostic layer that allows you to deploy TanStack Start applications to [a wide range of hostings](https://v3.nitro.build/deploy).
 
-**⚠️ During TanStack Start 1.0 release candidate phase, we currently recommend using:**
-
-- [@tanstack/nitro-v2-vite-plugin (Temporary Compatibility Plugin)](https://www.npmjs.com/package/@tanstack/nitro-v2-vite-plugin) - A temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start.
-- [Nitro v3's Vite Plugin (ALPHA)](https://www.npmjs.com/package/nitro) - An **ALPHA** plugin for officially using Nitro v3 as the underlying build tool for TanStack Start.
-
-#### Using Nitro v2
-
-**⚠️ `@tanstack/nitro-v2-vite-plugin` is a temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start. Use this plugin if you experience issues with the Nitro v3 plugin. It does not support all of Nitro v3's features and is limited in its dev server capabilities, but should work as a safe fallback, even for production deployments for those who were using TanStack Start's alpha/beta versions.**
+**⚠️ The [`nitro/vite`](https://v3.nitro.build/) plugin natively integrates with Vite Environments API as the underlying build tool for TanStack Start. It is still under active development and receives regular updates. Please report any issues you encounter with reproduction so they can be investigated.**
 
 ```tsx
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
-import viteReact from '@vitejs/plugin-react'
-import { nitroV2Plugin } from '@tanstack/nitro-v2-vite-plugin'
-
-export default defineConfig({
-  plugins: [
-    tanstackStart(),
-    nitroV2Plugin(/* 
-      // nitro config goes here, e.g.
-      { preset: 'node-server' }
-    */),
-    viteReact(),
-  ],
-})
-```
-
-#### Using Nitro v3 (ALPHA)
-
-**⚠️ The [`nitro`](https://www.npmjs.com/package/nitro) vite plugin is an official **ALPHA** plugin from the Nitro team for using Nitro v3 as the underlying build tool for TanStack Start. It is still in development and is receiving regular updates.**
-
-```tsx
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import { defineConfig } from 'vite'
-import viteReact from '@vitejs/plugin-react'
 import { nitro } from 'nitro/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [
-    tanstackStart(),
-    nitro(/*
-      // nitro config goes here, e.g.
-      { config: { preset: 'node-server' } }
-    */)
-    viteReact(),
-  ],
+  plugins: [tanstackStart(), nitro(), viteReact()],
+  nitro: {},
 })
 ```
 
@@ -255,17 +255,11 @@ Depending on how you invoke the build, you might need to set the `'bun'` preset 
 // vite.config.ts
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { nitro } from 'nitro/vite'
 import viteReact from '@vitejs/plugin-react'
-import { nitroV2Plugin } from '@tanstack/nitro-v2-vite-plugin'
-// alternatively: import { nitro } from 'nitro/vite'
 
 export default defineConfig({
-  plugins: [
-    tanstackStart(),
-    nitroV2Plugin({ preset: 'bun' })
-    // alternatively: nitro( { config: { preset: 'bun' }} ),
-    viteReact(),
-  ],
+  plugins: [tanstackStart(), nitro({ preset: 'bun' }), viteReact()],
 })
 ```
 

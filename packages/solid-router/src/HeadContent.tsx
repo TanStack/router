@@ -166,6 +166,22 @@ export const useTags = () => {
       })),
   })
 
+  let serverHeadScript: RouterManagedTag | undefined = undefined
+
+  if (router.serverSsr) {
+    const bufferedScripts = router.serverSsr.takeBufferedScripts()
+    if (bufferedScripts) {
+      serverHeadScript = {
+        tag: 'script',
+        attrs: {
+          nonce,
+          class: '$tsr',
+        },
+        children: bufferedScripts,
+      }
+    }
+  }
+
   return () =>
     uniqBy(
       [
@@ -173,6 +189,7 @@ export const useTags = () => {
         ...preloadMeta(),
         ...links(),
         ...styles(),
+        ...(serverHeadScript ? [serverHeadScript] : []),
         ...headScripts(),
       ] as Array<RouterManagedTag>,
       (d) => {

@@ -134,14 +134,19 @@ export async function getRouteNodes(
           const filePathNoExt = removeExt(filePath)
           const {
             routePath: initialRoutePath,
-            originalRoutePath,
+            originalRoutePath: initialOriginalRoutePath,
             isExperimentalNonNestedRoute,
           } = determineInitialRoutePath(filePathNoExt, config)
 
           let routePath = initialRoutePath
+          let originalRoutePath = initialOriginalRoutePath
 
           if (routeFilePrefix) {
             routePath = routePath.replaceAll(routeFilePrefix, '')
+            originalRoutePath = originalRoutePath.replaceAll(
+              routeFilePrefix,
+              '',
+            )
           }
 
           if (disallowedRouteGroupConfiguration.test(dirent.name)) {
@@ -156,6 +161,7 @@ export async function getRouteNodes(
 
           if (routeType === 'lazy') {
             routePath = routePath.replace(/\/lazy$/, '')
+            originalRoutePath = originalRoutePath.replace(/\/lazy$/, '')
           }
 
           // this check needs to happen after the lazy route has been cleaned up
@@ -186,12 +192,29 @@ export async function getRouteNodes(
             '',
           )
 
+          originalRoutePath = originalRoutePath.replace(
+            new RegExp(
+              `/(component|errorComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
+            ),
+            '',
+          )
+
           if (routePath === config.indexToken) {
             routePath = '/'
           }
 
+          if (originalRoutePath === config.indexToken) {
+            originalRoutePath = '/'
+          }
+
           routePath =
             routePath.replace(new RegExp(`/${config.indexToken}$`), '/') || '/'
+
+          originalRoutePath =
+            originalRoutePath.replace(
+              new RegExp(`/${config.indexToken}$`),
+              '/',
+            ) || '/'
 
           routeNodes.push({
             filePath,

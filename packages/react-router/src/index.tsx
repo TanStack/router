@@ -8,10 +8,7 @@ export {
   trimPathRight,
   trimPath,
   resolvePath,
-  parsePathname,
   interpolatePath,
-  matchPathname,
-  matchByPath,
   rootRouteId,
   defaultSerializeError,
   defaultParseSearch,
@@ -37,7 +34,6 @@ export type {
   RemoveTrailingSlashes,
   RemoveLeadingSlashes,
   ActiveOptions,
-  Segment,
   ResolveRelativePath,
   RootRouteId,
   AnyPathParams,
@@ -130,7 +126,7 @@ export { useAwaited, Await } from './awaited'
 export type { AwaitOptions } from './awaited'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
-export { ClientOnly } from './ClientOnly'
+export { ClientOnly, useHydrated } from './ClientOnly'
 
 export {
   FileRoute,

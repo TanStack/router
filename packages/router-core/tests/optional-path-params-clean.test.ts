@@ -1,42 +1,82 @@
 import { describe, expect, it } from 'vitest'
+import { interpolatePath } from '../src/path'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PATHNAME,
-  interpolatePath,
-  matchPathname,
-  parsePathname,
-} from '../src/path'
+  findSingleMatch,
+  parseSegment,
+  processRouteTree,
+} from '../src/new-process-route-tree'
+import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
   describe('Optional Dynamic Parameters {-$param}', () => {
     describe('parsePathname', () => {
+      type PathSegment = {
+        type: SegmentKind
+        value: string
+        prefixSegment?: string
+        suffixSegment?: string
+        // Indicates if there is a static segment after this required/optional param
+        hasStaticAfter?: boolean
+      }
+
+      const parsePathname = (to: string | undefined) => {
+        let cursor = 0
+        let data
+        const path = to ?? ''
+        const segments: Array<PathSegment> = []
+        while (cursor < path.length) {
+          const start = cursor
+          data = parseSegment(path, start, data)
+          const end = data[5]
+          cursor = end + 1
+          const type = data[0]
+          const value = path.substring(data[2], data[3])
+          const prefix = path.substring(start, data[1])
+          const suffix = path.substring(data[4], end)
+          const segment: PathSegment = {
+            type,
+            value,
+          }
+          if (prefix) {
+            segment.prefixSegment = prefix
+          }
+          if (suffix) {
+            segment.suffixSegment = suffix
+          }
+          segments.push(segment)
+        }
+        return segments
+      }
+
       it('should parse single optional dynamic param', () => {
         const result = parsePathname('/posts/{-$category}')
         expect(result).toEqual([
-          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           { type: SEGMENT_TYPE_PATHNAME, value: 'posts' },
-          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: 'category' },
         ])
       })
 
       it('should parse multiple optional dynamic params', () => {
         const result = parsePathname('/posts/{-$category}/{-$slug}')
         expect(result).toEqual([
-          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           { type: SEGMENT_TYPE_PATHNAME, value: 'posts' },
-          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
-          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$slug' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: 'category' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: 'slug' },
         ])
       })
 
       it('should handle prefix/suffix with optional dynamic params', () => {
         const result = parsePathname('/api/v{-$version}/data')
         expect(result).toEqual([
-          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           { type: SEGMENT_TYPE_PATHNAME, value: 'api' },
           {
             type: SEGMENT_TYPE_OPTIONAL_PARAM,
-            value: '$version',
+            value: 'version',
             prefixSegment: 'v',
             suffixSegment: undefined,
           },
@@ -98,6 +138,27 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
     })
 
     describe('matchPathname', () => {
+      const { processedTree } = processRouteTree({
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+      })
+      const matchPathname = (
+        from: string,
+        options: { to: string; caseSensitive?: boolean; fuzzy?: boolean },
+      ) => {
+        const match = findSingleMatch(
+          options.to,
+          options.caseSensitive ?? false,
+          options.fuzzy ?? false,
+          from,
+          processedTree,
+        )
+        const result = match ? match.params : undefined
+        if (options.to && !result) return
+        return result ?? {}
+      }
       it('should match optional dynamic params when present', () => {
         const result = matchPathname('/posts/tech', {
           to: '/posts/{-$category}',
