@@ -1376,6 +1376,12 @@ describe('invalidate', () => {
     })
   })
 
+  /**
+   * Regression test:
+   * - When a route loader throws `notFound()`, the match enters a `'notFound'` status.
+   * - After an HMR-style `router.invalidate({ filter })`, the router should reset that match
+   *   back to `'pending'`, re-run its loader, and still render the route's `notFoundComponent`.
+   */
   it('re-runs loaders that throw notFound() when invalidated via HMR filter', async () => {
     const history = createMemoryHistory({
       initialEntries: ['/hmr-not-found'],
@@ -1426,6 +1432,12 @@ describe('invalidate', () => {
     expect(screen.queryByTestId('hmr-route')).not.toBeInTheDocument()
   })
 
+  /**
+   * Regression test:
+   * - When a route loader returns `notFound()`, the route's `notFoundComponent` should render.
+   * - After a global `router.invalidate()`, the route should re-run its loader and continue
+   *   to render the same `notFoundComponent` instead of falling back to a generic error boundary.
+   */
   it('keeps rendering a route notFoundComponent when loader returns notFound() after invalidate', async () => {
     const history = createMemoryHistory({
       initialEntries: ['/loader-not-found'],
