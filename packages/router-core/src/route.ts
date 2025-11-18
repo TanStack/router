@@ -1675,21 +1675,6 @@ export class BaseRoute<
       )
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      if (this.parentRoute) {
-        invariant(
-          this.parentRoute.isRoot || !this.parentRoute.fullPath.endsWith('/'),
-          `Parent route with id '${this.parentRoute.id}' returned by getParentRoute on '${this.id}' is an index route and cannot have child routes.`,
-        )
-      }
-      if (this.parentRoute) {
-        invariant(
-          this.parentRoute.children && this.parentRoute.children.includes(this),
-          `Parent route with id '${this.parentRoute.id}' returned by getParentRoute has no child route with id '${this.id}'. Did you forget to call .addChildren()?`,
-        )
-      }
-    }
-
     let path: undefined | string = isRoot ? rootRouteId : options?.path
 
     // If the path is anything other than an index path, trim it up
@@ -1722,6 +1707,23 @@ export class BaseRoute<
     this._id = id as TId
     this._fullPath = fullPath as TFullPath
     this._to = fullPath as TrimPathRight<TFullPath>
+
+    if (process.env.NODE_ENV !== 'production') {
+      if (this.parentRoute) {
+        invariant(
+          this.parentRoute.isRoot || !this.parentRoute.fullPath.endsWith('/'),
+          `Parent route with id '${this.parentRoute.id}' returned by getParentRoute on '${this.id}' is an index route and cannot have child routes.`,
+        )
+        invariant(
+          this.parentRoute.children && this.parentRoute.children.includes(this),
+          `Parent route with id '${this.parentRoute.id}' returned by getParentRoute has no child route with id '${this.id}'. Did you forget to call .addChildren()?`,
+        )
+      }
+      invariant(
+        this.children && (this.isRoot || !this.fullPath.endsWith('/')),
+        `Cannot add children to index route '${this.id}'. Index routes cannot have child routes.`,
+      )
+    }
   }
 
   addChildren: RouteAddChildrenFn<
@@ -1743,12 +1745,6 @@ export class BaseRoute<
     TServerMiddlewares,
     THandlers
   > = (children) => {
-    if (process.env.NODE_ENV !== 'production') {
-      invariant(
-        this.isRoot || !this.fullPath.endsWith('/'),
-        `Cannot add children to index route '${this.id}'. Index routes cannot have child routes.`,
-      )
-    }
     return this._addFileChildren(children) as any
   }
 
