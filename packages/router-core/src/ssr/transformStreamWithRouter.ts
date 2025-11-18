@@ -22,13 +22,10 @@ export function transformPipeableStreamWithRouter(
 export const TSR_SCRIPT_BARRIER_ID = '$tsr-stream-barrier'
 
 // regex pattern for matching closing body and html tags
-const patternBodyStart = /(<body)/
 const patternBodyEnd = /(<\/body>)/
 const patternHtmlEnd = /(<\/html>)/
 // regex pattern for matching closing tags
 const patternClosingTag = /(<\/[a-zA-Z][\w:.-]*?>)/g
-
-const textDecoder = new TextDecoder()
 
 type ReadablePassthrough = {
   stream: ReadableStream
@@ -100,6 +97,7 @@ export function transformStreamWithRouter(
   },
 ) {
   const finalPassThrough = createPassthrough()
+  const textDecoder = new TextDecoder()
 
   let isAppRendering = true as boolean
   let routerStreamBuffer = ''
