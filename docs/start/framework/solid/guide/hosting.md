@@ -187,54 +187,19 @@ tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-
 
 ### Nitro
 
-[Nitro](https://nitro.build/) is an abstraction layer that allows you to deploy TanStack Start applications to [a wide range of providers](https://nitro.build/deploy).
+[Nitro](https://v3.nitro.build/) is an agnostic layer that allows you to deploy TanStack Start applications to [a wide range of hostings](https://v3.nitro.build/deploy).
 
-**⚠️ During TanStack Start 1.0 release candidate phase, we currently recommend using:**
-
-- [@tanstack/nitro-v2-vite-plugin (Temporary Compatibility Plugin)](https://www.npmjs.com/package/@tanstack/nitro-v2-vite-plugin) - A temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start.
-- [Nitro v3's Vite Plugin (ALPHA)](https://www.npmjs.com/package/nitro) - An **ALPHA** plugin for officially using Nitro v3 as the underlying build tool for TanStack Start.
-
-#### Using Nitro v2
-
-**⚠️ `@tanstack/nitro-v2-vite-plugin` is a temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start. Use this plugin if you experience issues with the Nitro v3 plugin. It does not support all of Nitro v3's features and is limited in its dev server capabilities, but should work as a safe fallback, even for production deployments for those who were using TanStack Start's alpha/beta versions.**
+**⚠️ The [`nitro/vite`](https://v3.nitro.build/) plugin natively integrates with Vite Environments API as the underlying build tool for TanStack Start. It is still under active development and receives regular updates. Please report any issues you encounter with reproduction so they can be investigated.**
 
 ```tsx
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import { defineConfig } from 'vite'
-import viteSolid from 'vite-plugin-solid'
-import { nitroV2Plugin } from '@tanstack/nitro-v2-vite-plugin'
-
-export default defineConfig({
-  plugins: [
-    tanstackStart(),
-    nitroV2Plugin(/* 
-      // nitro config goes here, e.g.
-      { preset: 'node-server' }
-    */),
-    viteSolid({ ssr: true }),
-  ],
-})
-```
-
-#### Using Nitro v3 (ALPHA)
-
-**⚠️ The [`nitro`](https://www.npmjs.com/package/nitro) vite plugin is an official **ALPHA** plugin from the Nitro team for using Nitro v3 as the underlying build tool for TanStack Start. It is still in development and is receiving regular updates.**
-
-```tsx
-import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import { defineConfig } from 'vite'
-import viteSolid from 'vite-plugin-solid'
 import { nitro } from 'nitro/vite'
+import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
-  plugins: [
-    tanstackStart(),
-    nitro(/*
-      // nitro config goes here, e.g.
-      { config: { preset: 'node-server' } }
-    */)
-   viteSolid({ssr: true}),
-  ],
+  plugins: [tanstackStart(), nitro(), viteSolid({ ssr: true })],
+  nitro: {},
 })
 ```
 
@@ -276,18 +241,118 @@ Depending on how you invoke the build, you might need to set the `'bun'` preset 
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import { defineConfig } from 'vite'
 import viteSolid from 'vite-plugin-solid'
-import { nitroV2Plugin } from '@tanstack/nitro-v2-vite-plugin'
-// alternatively: import { nitro } from 'nitro/vite'
+import { nitro } from 'nitro/vite'
 
 export default defineConfig({
   plugins: [
     tanstackStart(),
-    nitroV2Plugin({ preset: 'bun' })
-    // alternatively: nitro( { config: { preset: 'bun' }} ),
-   viteSolid({ssr: true}),
+    nitro({ preset: 'bun' })
+    viteSolid({ssr: true}),
   ],
 })
 ```
+
+#### Production Server with Bun
+
+Alternatively, you can use a custom server implementation that leverages Bun's native APIs.
+
+We provide a reference implementation that demonstrates one approach to building a production-ready Bun server. This example uses Bun-native functions for optimal performance and includes features like intelligent asset preloading and memory management.
+
+**This is a starting point - feel free to adapt it to your needs or simplify it for your use case.**
+
+**What this example demonstrates:**
+
+- Serving static assets using Bun's native file handling
+- Hybrid loading strategy (preload small files, serve large files on-demand)
+- Optional features like ETag support and Gzip compression
+- Production-ready caching headers
+
+**Quick Setup:**
+
+1. Copy the [`server.ts`](https://github.com/tanstack/router/blob/main/examples/react/start-bun/server.ts) file from the example repository to your project root (or use it as inspiration for your own implementation)
+
+2. Build your application:
+
+   ```sh
+   bun run build
+   ```
+
+3. Start the server:
+
+   ```sh
+   bun run server.ts
+   ```
+
+**Configuration (Optional):**
+
+The reference server implementation includes several optional configuration options via environment variables. You can use these as-is, modify them, or remove features you don't need:
+
+```sh
+# Basic usage - just works out of the box
+bun run server.ts
+
+# Common configurations
+PORT=8080 bun run server.ts  # Custom port
+ASSET_PRELOAD_VERBOSE_LOGGING=true bun run server.ts  # See what's happening
+```
+
+**Available Environment Variables:**
+
+| Variable                         | Description                                        | Default                                                                       |
+| -------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `PORT`                           | Server port                                        | `3000`                                                                        |
+| `ASSET_PRELOAD_MAX_SIZE`         | Maximum file size to preload into memory (bytes)   | `5242880` (5MB)                                                               |
+| `ASSET_PRELOAD_INCLUDE_PATTERNS` | Comma-separated glob patterns for files to include | All files                                                                     |
+| `ASSET_PRELOAD_EXCLUDE_PATTERNS` | Comma-separated glob patterns for files to exclude | None                                                                          |
+| `ASSET_PRELOAD_VERBOSE_LOGGING`  | Enable detailed logging                            | `false`                                                                       |
+| `ASSET_PRELOAD_ENABLE_ETAG`      | Enable ETag generation                             | `true`                                                                        |
+| `ASSET_PRELOAD_ENABLE_GZIP`      | Enable Gzip compression                            | `true`                                                                        |
+| `ASSET_PRELOAD_GZIP_MIN_SIZE`    | Minimum file size for Gzip (bytes)                 | `1024` (1KB)                                                                  |
+| `ASSET_PRELOAD_GZIP_MIME_TYPES`  | MIME types eligible for Gzip                       | `text/,application/javascript,application/json,application/xml,image/svg+xml` |
+
+<details>
+<summary>Advanced configuration examples</summary>
+
+```sh
+# Optimize for minimal memory usage
+ASSET_PRELOAD_MAX_SIZE=1048576 bun run server.ts
+
+# Preload only critical assets
+ASSET_PRELOAD_INCLUDE_PATTERNS="*.js,*.css" \
+ASSET_PRELOAD_EXCLUDE_PATTERNS="*.map,vendor-*" \
+bun run server.ts
+
+# Disable optional features
+ASSET_PRELOAD_ENABLE_ETAG=false \
+ASSET_PRELOAD_ENABLE_GZIP=false \
+bun run server.ts
+
+# Custom Gzip configuration
+ASSET_PRELOAD_GZIP_MIN_SIZE=2048 \
+ASSET_PRELOAD_GZIP_MIME_TYPES="text/,application/javascript,application/json" \
+bun run server.ts
+```
+
+</details>
+
+**Example Output:**
+
+```txt
+📦 Loading static assets from ./dist/client...
+   Max preload size: 5.00 MB
+
+📁 Preloaded into memory:
+   /assets/index-a1b2c3d4.js           45.23 kB │ gzip:  15.83 kB
+   /assets/index-e5f6g7h8.css           12.45 kB │ gzip:   4.36 kB
+
+💾 Served on-demand:
+   /assets/vendor-i9j0k1l2.js          245.67 kB │ gzip:  86.98 kB
+
+✅ Preloaded 2 files (57.68 KB) into memory
+🚀 Server running at http://localhost:3000
+```
+
+For a complete working example, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
 
 ### Appwrite Sites
 

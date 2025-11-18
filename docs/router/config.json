@@ -578,6 +578,10 @@
               "to": "framework/react/examples/view-transitions"
             },
             {
+              "label": "Framer Motion",
+              "to": "framework/react/examples/with-framer-motion"
+            },
+            {
               "label": "With tRPC",
               "to": "framework/react/examples/with-trpc"
             },
@@ -607,6 +611,10 @@
               "to": "framework/solid/examples/quickstart-file-based"
             },
             {
+              "label": "Quickstart (code-based)",
+              "to": "framework/solid/examples/quickstart"
+            },
+            {
               "label": "Basic (file-based)",
               "to": "framework/solid/examples/basic-file-based"
             },
@@ -619,6 +627,18 @@
               "to": "framework/solid/examples/basic-solid-query"
             },
             {
+              "label": "Basic + SSR (file-based)",
+              "to": "framework/solid/examples/basic-ssr-file-based"
+            },
+            {
+              "label": "Basic + SSR Streaming (file-based)",
+              "to": "framework/solid/examples/basic-ssr-streaming-file-based"
+            },
+            {
+              "label": "Kitchen Sink (code-based)",
+              "to": "framework/solid/examples/kitchen-sink"
+            },
+            {
               "label": "Kitchen Sink (file-based)",
               "to": "framework/solid/examples/kitchen-sink-file-based"
             },
@@ -629,6 +649,50 @@
             {
               "label": "Kitchen Sink + Solid Query (code-based)",
               "to": "framework/solid/examples/kitchen-sink-solid-query"
+            },
+            {
+              "label": "Location Masking",
+              "to": "framework/solid/examples/location-masking"
+            },
+            {
+              "label": "Authenticated Routes",
+              "to": "framework/solid/examples/authenticated-routes"
+            },
+            {
+              "label": "Scroll Restoration",
+              "to": "framework/solid/examples/scroll-restoration"
+            },
+            {
+              "label": "Deferred Data",
+              "to": "framework/solid/examples/deferred-data"
+            },
+            {
+              "label": "Navigation Blocking",
+              "to": "framework/solid/examples/navigation-blocking"
+            },
+            {
+              "label": "View Transitions",
+              "to": "framework/solid/examples/view-transitions"
+            },
+            {
+              "label": "Framer Motion",
+              "to": "framework/solid/examples/with-framer-motion"
+            },
+            {
+              "label": "With tRPC",
+              "to": "framework/solid/examples/with-trpc"
+            },
+            {
+              "label": "Monorepo basic",
+              "to": "framework/solid/examples/router-monorepo-simple"
+            },
+            {
+              "label": "Monorepo basic (with lazy loading)",
+              "to": "framework/solid/examples/router-monorepo-simple-lazy"
+            },
+            {
+              "label": "Monorepo with Solid Query",
+              "to": "framework/solid/examples/router-monorepo-solid-query"
             }
           ]
         }

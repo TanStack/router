@@ -48,6 +48,54 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   return dehydratedMatch
 }
 
+const INITIAL_SCRIPTS = [
+  getCrossReferenceHeader(SCOPE_ID),
+  minifiedTsrBootStrapScript,
+]
+
+class ScriptBuffer {
+  constructor(private router: AnyRouter) {}
+  private _queue: Array<string> = [...INITIAL_SCRIPTS]
+  private _scriptBarrierLifted = false
+
+  enqueue(script: string) {
+    if (this._scriptBarrierLifted && this._queue.length === 0) {
+      queueMicrotask(() => {
+        this.injectBufferedScripts()
+      })
+    }
+    this._queue.push(script)
+  }
+
+  liftBarrier() {
+    if (this._scriptBarrierLifted) return
+    this._scriptBarrierLifted = true
+    if (this._queue.length > 0) {
+      queueMicrotask(() => {
+        this.injectBufferedScripts()
+      })
+    }
+  }
+
+  takeAll() {
+    const bufferedScripts = this._queue
+    this._queue = []
+    if (bufferedScripts.length === 0) {
+      return undefined
+    }
+    bufferedScripts.push(`${GLOBAL_TSR}.c()`)
+    const joinedScripts = bufferedScripts.join(';')
+    return joinedScripts
+  }
+
+  injectBufferedScripts() {
+    const scriptsToInject = this.takeAll()
+    if (scriptsToInject) {
+      this.router.serverSsr!.injectScript(() => scriptsToInject)
+    }
+  }
+}
+
 export function attachRouterServerSsrUtils({
   router,
   manifest,
@@ -58,16 +106,9 @@ export function attachRouterServerSsrUtils({
   router.ssr = {
     manifest,
   }
-  let initialScriptSent = false
-  const getInitialScript = () => {
-    if (initialScriptSent) {
-      return ''
-    }
-    initialScriptSent = true
-    return `${getCrossReferenceHeader(SCOPE_ID)};${minifiedTsrBootStrapScript};`
-  }
   let _dehydrated = false
   const listeners: Array<() => void> = []
+  const scriptBuffer = new ScriptBuffer(router)
 
   router.serverSsr = {
     injectedHtml: [],
@@ -84,7 +125,10 @@ export function attachRouterServerSsrUtils({
     injectScript: (getScript) => {
       return router.serverSsr!.injectHtml(async () => {
         const script = await getScript()
-        return `<script ${router.options.ssr?.nonce ? `nonce='${router.options.ssr.nonce}'` : ''} class='$tsr'>${getInitialScript()}${script};$_TSR.c()</script>`
+        if (!script) {
+          return ''
+        }
+        return `<script${router.options.ssr?.nonce ? `nonce='${router.options.ssr.nonce}' ` : ''} class='$tsr'>${script}</script>`
       })
     },
     dehydrate: async () => {
@@ -104,7 +148,10 @@ export function attachRouterServerSsrUtils({
       if (lastMatchId) {
         dehydratedRouter.lastMatchId = lastMatchId
       }
-      dehydratedRouter.dehydratedData = await router.options.dehydrate?.()
+      const dehydratedData = await router.options.dehydrate?.()
+      if (dehydratedData) {
+        dehydratedRouter.dehydratedData = dehydratedData
+      }
       _dehydrated = true
 
       const p = createControlledPromise<string>()
@@ -115,6 +162,7 @@ export function attachRouterServerSsrUtils({
             | Array<AnySerializationAdapter>
             | undefined
         )?.map((t) => makeSsrSerovalPlugin(t, trackPlugins)) ?? []
+
       crossSerializeStream(dehydratedRouter, {
         refs: new Map(),
         plugins: [...plugins, ...defaultSerovalPlugins],
@@ -123,10 +171,13 @@ export function attachRouterServerSsrUtils({
           if (trackPlugins.didRun) {
             serialized = GLOBAL_TSR + '.p(()=>' + serialized + ')'
           }
-          router.serverSsr!.injectScript(() => serialized)
+          scriptBuffer.enqueue(serialized)
         },
         scopeId: SCOPE_ID,
-        onDone: () => p.resolve(''),
+        onDone: () => {
+          scriptBuffer.enqueue(GLOBAL_TSR + '.streamEnd=true')
+          p.resolve('')
+        },
         onError: (err) => p.reject(err),
       })
       // make sure the stream is kept open until the promise is resolved
@@ -138,6 +189,12 @@ export function attachRouterServerSsrUtils({
     onRenderFinished: (listener) => listeners.push(listener),
     setRenderFinished: () => {
       listeners.forEach((l) => l())
+      scriptBuffer.liftBarrier()
+    },
+    takeBufferedScripts() {
+      const scripts = scriptBuffer.takeAll()
+      scriptBuffer.liftBarrier()
+      return scripts
     },
   }
 }
