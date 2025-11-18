@@ -51,10 +51,20 @@ export const Scripts = () => {
     }),
   })
 
+  let serverBufferedScript: RouterManagedTag | undefined = undefined
+
+  if (router.serverSsr) {
+    serverBufferedScript = router.serverSsr.takeBufferedScripts()
+  }
+
   const allScripts = [
     ...scripts().scripts,
     ...assetScripts(),
   ] as Array<RouterManagedTag>
+
+  if (serverBufferedScript) {
+    allScripts.unshift(serverBufferedScript)
+  }
 
   return (
     <>

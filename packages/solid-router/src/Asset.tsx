@@ -123,8 +123,9 @@ function Script({
     }
   })
 
-  if (router && !router.isServer) {
-    return null
+  if (!router.isServer) {
+    // render an empty script on the client just to avoid hydration errors
+    return <script />
   }
 
   if (attrs?.src && typeof attrs.src === 'string') {

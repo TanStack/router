@@ -29,7 +29,6 @@ export async function getStartManifest() {
     tag: 'script',
     attrs: {
       type: 'module',
-      suppressHydrationWarning: true,
       async: true,
     },
     children: script,
@@ -38,18 +37,17 @@ export async function getStartManifest() {
   const manifest = {
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).map(([k, v]) => {
-        const { preloads, assets } = v
         const result = {} as {
           preloads?: Array<string>
           assets?: Array<RouterManagedTag>
         }
         let hasData = false
-        if (preloads && preloads.length > 0) {
-          result['preloads'] = preloads
+        if (v.preloads && v.preloads.length > 0) {
+          result['preloads'] = v.preloads
           hasData = true
         }
-        if (assets && assets.length > 0) {
-          result['assets'] = assets
+        if (v.assets && v.assets.length > 0) {
+          result['assets'] = v.assets
           hasData = true
         }
         if (!hasData) {

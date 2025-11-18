@@ -5,12 +5,13 @@ import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR } from './constants'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
+import { TSR_SCRIPT_BARRIER_ID } from './transformStreamWithRouter'
+import type { AnySerializationAdapter} from './serializer/transformer';
 import type { AnyRouter } from '../router'
 import type { DehydratedMatch } from './ssr-client'
 import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
-import type { Manifest } from '../manifest'
-import type { AnySerializationAdapter } from './serializer/transformer'
+import type { Manifest, RouterManagedTag } from '../manifest'
 
 declare module '../router' {
   interface ServerSsr {
@@ -140,8 +141,21 @@ export function attachRouterServerSsrUtils({
       }
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
+      let manifestToDehydrate: Manifest | undefined = undefined
+      // only send manifest of the current routes to the client
+      if (manifest) {
+        const filteredRoutes = Object.fromEntries(
+          router.state.matches.map((k) => [
+            k.routeId,
+            manifest.routes[k.routeId],
+          ]),
+        )
+        manifestToDehydrate = {
+          routes: filteredRoutes,
+        }
+      }
       const dehydratedRouter: DehydratedRouter = {
-        manifest: router.ssr!.manifest,
+        manifest: manifestToDehydrate,
         matches,
       }
       const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
@@ -193,8 +207,19 @@ export function attachRouterServerSsrUtils({
     },
     takeBufferedScripts() {
       const scripts = scriptBuffer.takeAll()
+      const serverBufferedScript: RouterManagedTag = {
+        tag: 'script',
+        attrs: {
+          nonce: router.options.ssr?.nonce,
+          className: '$tsr',
+          id: TSR_SCRIPT_BARRIER_ID,
+        },
+        children: scripts,
+      }
+      return serverBufferedScript
+    },
+    liftScriptBarrier() {
       scriptBuffer.liftBarrier()
-      return scripts
     },
   }
 }

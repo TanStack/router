@@ -113,9 +113,9 @@ export const useTags = () => {
     structuralSharing: true as any,
   })
 
-  const preloadMeta = useRouterState({
+  const preloadLinks = useRouterState({
     select: (state) => {
-      const preloadMeta: Array<RouterManagedTag> = []
+      const preloadLinks: Array<RouterManagedTag> = []
 
       state.matches
         .map((match) => router.looseRoutesById[match.routeId]!)
@@ -123,7 +123,7 @@ export const useTags = () => {
           router.ssr?.manifest?.routes[route.id]?.preloads
             ?.filter(Boolean)
             .forEach((preload) => {
-              preloadMeta.push({
+              preloadLinks.push({
                 tag: 'link',
                 attrs: {
                   rel: 'modulepreload',
@@ -134,7 +134,7 @@ export const useTags = () => {
             }),
         )
 
-      return preloadMeta
+      return preloadLinks
     },
     structuralSharing: true as any,
   })
@@ -173,29 +173,12 @@ export const useTags = () => {
     structuralSharing: true as any,
   })
 
-  let serverHeadScript: RouterManagedTag | undefined = undefined
-
-  if (router.serverSsr) {
-    const bufferedScripts = router.serverSsr.takeBufferedScripts()
-    if (bufferedScripts) {
-      serverHeadScript = {
-        tag: 'script',
-        attrs: {
-          nonce,
-          className: '$tsr',
-        },
-        children: bufferedScripts,
-      }
-    }
-  }
-
   return uniqBy(
     [
       ...meta,
-      ...preloadMeta,
+      ...preloadLinks,
       ...links,
       ...styles,
-      ...(serverHeadScript ? [serverHeadScript] : []),
       ...headScripts,
     ] as Array<RouterManagedTag>,
     (d) => {
