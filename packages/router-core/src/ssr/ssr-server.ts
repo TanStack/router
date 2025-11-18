@@ -6,7 +6,7 @@ import { GLOBAL_TSR } from './constants'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
 import { TSR_SCRIPT_BARRIER_ID } from './transformStreamWithRouter'
-import type { AnySerializationAdapter} from './serializer/transformer';
+import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter } from '../router'
 import type { DehydratedMatch } from './ssr-client'
 import type { DehydratedRouter } from './client'
