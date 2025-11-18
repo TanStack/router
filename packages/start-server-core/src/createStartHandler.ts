@@ -87,6 +87,20 @@ export function createStartHandler<TRegister = Register>(
       const url = new URL(request.url)
       const href = url.href.replace(url.origin, '')
 
+      const startOptions: AnyStartInstanceOptions =
+        (await (await getEntries()).startEntry.startInstance?.getOptions()) ||
+        ({} as AnyStartInstanceOptions)
+
+      const serializationAdapters = [
+        ...(startOptions.serializationAdapters || []),
+        ServerFunctionSerializationAdapter,
+      ]
+
+      const requestStartOptions = {
+        ...startOptions,
+        serializationAdapters,
+      }
+
       const getRouter = async () => {
         if (router) return router
         router = await (await getEntries()).routerEntry.getRouter()
@@ -113,9 +127,9 @@ export function createStartHandler<TRegister = Register>(
           isPrerendering,
           origin: router.options.origin ?? origin,
           ...{
-            defaultSsr: startOptions.defaultSsr,
+            defaultSsr: requestStartOptions.defaultSsr,
             serializationAdapters: [
-              ...(startOptions.serializationAdapters || []),
+              ...requestStartOptions.serializationAdapters,
               ...(router.options.serializationAdapters || []),
             ],
           },
@@ -124,22 +138,12 @@ export function createStartHandler<TRegister = Register>(
         return router
       }
 
-      const startOptions: AnyStartInstanceOptions =
-        (await (await getEntries()).startEntry.startInstance?.getOptions()) ||
-        ({} as AnyStartInstanceOptions)
-      startOptions.serializationAdapters =
-        startOptions.serializationAdapters || []
-      // insert start specific default serialization adapters
-      startOptions.serializationAdapters.push(
-        ServerFunctionSerializationAdapter,
-      )
-
       const requestHandlerMiddleware = handlerToMiddleware(
         async ({ context }) => {
           const response = await runWithStartContext(
             {
               getRouter,
-              startOptions,
+              startOptions: requestStartOptions,
               contextAfterGlobalMiddlewares: context,
               request,
             },
@@ -309,7 +313,6 @@ export function createStartHandler<TRegister = Register>(
       return response
     } finally {
       if (router) {
-        router.serverSsr = undefined
         router = null
       }
     }
