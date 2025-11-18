@@ -1675,6 +1675,15 @@ export class BaseRoute<
       )
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      if (this.parentRoute && !this.parentRoute.isRoot && this.parentRoute.fullPath.endsWith('/')) {
+        invariant(
+          false,
+          `Parent route with id '${this.parentRoute.id}' returned by getParentRoute on '${this.id}' is an index route and cannot have child routes.`,
+        )
+      }
+    }
+
     let path: undefined | string = isRoot ? rootRouteId : options?.path
 
     // If the path is anything other than an index path, trim it up
@@ -1728,6 +1737,14 @@ export class BaseRoute<
     TServerMiddlewares,
     THandlers
   > = (children) => {
+     if (process.env.NODE_ENV !== 'production') {
+      if (!this.isRoot && this.fullPath.endsWith('/')) {
+        invariant(
+          false,
+          `Cannot add children to index route '${this.id}'. Index routes cannot have child routes.`,
+        )
+      }
+     }
     return this._addFileChildren(children) as any
   }
 
