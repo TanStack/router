@@ -1744,12 +1744,10 @@ export class BaseRoute<
     THandlers
   > = (children) => {
     if (process.env.NODE_ENV !== 'production') {
-      if (!this.isRoot && this.fullPath.endsWith('/')) {
-        invariant(
-          false,
-          `Cannot add children to index route '${this.id}'. Index routes cannot have child routes.`,
-        )
-      }
+      invariant(
+        this.isRoot || !this.fullPath.endsWith('/'),
+        `Cannot add children to index route '${this.id}'. Index routes cannot have child routes.`,
+      )
     }
     return this._addFileChildren(children) as any
   }
