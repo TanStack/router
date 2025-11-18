@@ -278,21 +278,21 @@ Example:
 
 ```ts
 // src/start.ts
-import { createStart } from "@tanstack/react-start";
-import { createSerializationAdapter } from "@tanstack/react-router";
+import { createStart } from '@tanstack/react-start'
+import { createSerializationAdapter } from '@tanstack/react-router'
 
 const bigIntAdapter = createSerializationAdapter({
-  key: "bigint",
-  test: (value: unknown): value is bigint => typeof value === "bigint",
+  key: 'bigint',
+  test: (value: unknown): value is bigint => typeof value === 'bigint',
   toSerializable: (bigInt) => bigInt.toString(),
   fromSerializable: (value) => BigInt(value),
-});
+})
 
 export const startInstance = createStart(() => {
   return {
     serializationAdapters: [bigIntAdapter],
-  };
-});
+  }
+})
 ```
 
 ---
