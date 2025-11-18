@@ -347,11 +347,16 @@ export function TanStackStartVitePluginCore(
                 // Build the SSR bundle
                 await builder.build(server)
               }
-              const serverBundle = getBundle(VITE_ENVIRONMENT_NAMES.server)
-              await postServerBuild({ builder, startConfig, serverBundle })
             },
           },
         }
+      },
+      buildApp: {
+        order: 'post',
+        async handler(builder) {
+          const { startConfig } = getConfig()
+          await postServerBuild({ builder, startConfig })
+        },
       },
     },
     tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),

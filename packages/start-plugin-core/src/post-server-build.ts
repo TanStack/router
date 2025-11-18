@@ -3,16 +3,14 @@ import { buildSitemap } from './build-sitemap'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { prerender } from './prerender'
 import type { TanStackStartOutputConfig } from './schema'
-import type { Rollup, ViteBuilder } from 'vite'
+import type { ViteBuilder } from 'vite'
 
 export async function postServerBuild({
   builder,
   startConfig,
-  serverBundle,
 }: {
   builder: ViteBuilder
   startConfig: TanStackStartOutputConfig
-  serverBundle: Rollup.OutputBundle
 }) {
   // If the user has not set a prerender option, we need to set it to true
   // if the pages array is not empty and has sub options requiring for prerendering
@@ -57,7 +55,6 @@ export async function postServerBuild({
     await prerender({
       startConfig,
       builder,
-      serverBundle,
     })
   }
 
