@@ -14,7 +14,7 @@ export function ScriptOnce({ children }: { children: string }) {
       nonce={router.options.ssr?.nonce}
       className="$tsr"
       dangerouslySetInnerHTML={{
-        __html: [children].filter(Boolean).join('\n') + ';$_TSR.c()',
+        __html: children + ';typeof $_TSR !== "undefined" && $_TSR.c()',
       }}
     />
   )

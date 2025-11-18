@@ -83,7 +83,7 @@ import type {
   CommitLocationOptions,
   NavigateFn,
 } from './RouterProvider'
-import type { Manifest } from './manifest'
+import type { Manifest, RouterManagedTag } from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
@@ -756,7 +756,8 @@ export interface ServerSsr {
   isDehydrated: () => boolean
   onRenderFinished: (listener: () => void) => void
   dehydrate: () => Promise<void>
-  takeBufferedScripts: () => string | undefined
+  takeBufferedScripts: () => RouterManagedTag | undefined
+  liftScriptBarrier: () => void
 }
 
 export type AnyRouterWithContext<TContext> = RouterCore<
@@ -2096,7 +2097,6 @@ export class RouterCore<
             updateMatch: this.updateMatch,
             // eslint-disable-next-line @typescript-eslint/require-await
             onReady: async () => {
-              // eslint-disable-next-line @typescript-eslint/require-await
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
                 this.startViewTransition(async () => {

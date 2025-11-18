@@ -19,19 +19,17 @@ export function transformPipeableStreamWithRouter(
   )
 }
 
+export const TSR_SCRIPT_BARRIER_ID = '$tsr-stream-barrier'
+
 // regex pattern for matching closing body and html tags
-const patternBodyStart = /(<body)/
 const patternBodyEnd = /(<\/body>)/
 const patternHtmlEnd = /(<\/html>)/
-const patternHeadStart = /(<head.*?>)/
 // regex pattern for matching closing tags
 const patternClosingTag = /(<\/[a-zA-Z][\w:.-]*?>)/g
 
-const textDecoder = new TextDecoder()
-
 type ReadablePassthrough = {
   stream: ReadableStream
-  write: (chunk: string) => void
+  write: (chunk: unknown) => void
   end: (chunk?: string) => void
   destroy: (error: unknown) => void
   destroyed: boolean
@@ -49,11 +47,15 @@ function createPassthrough() {
   const res: ReadablePassthrough = {
     stream,
     write: (chunk) => {
-      controller.enqueue(encoder.encode(chunk))
+      if (typeof chunk === 'string') {
+        controller.enqueue(encoder.encode(chunk))
+      } else {
+        controller.enqueue(chunk)
+      }
     },
     end: (chunk) => {
       if (chunk) {
-        controller.enqueue(encoder.encode(chunk))
+        res.write(chunk)
       }
       controller.close()
       res.destroyed = true
@@ -90,16 +92,20 @@ async function readStream(
 export function transformStreamWithRouter(
   router: AnyRouter,
   appStream: ReadableStream,
+  opts?: {
+    timeoutMs?: number
+  },
 ) {
   const finalPassThrough = createPassthrough()
+  const textDecoder = new TextDecoder()
 
   let isAppRendering = true as boolean
   let routerStreamBuffer = ''
   let pendingClosingTags = ''
-  let bodyStarted = false as boolean
-  let headStarted = false as boolean
+  let streamBarrierLifted = false as boolean
   let leftover = ''
   let leftoverHtml = ''
+  let timeoutHandle: NodeJS.Timeout
 
   function getBufferedRouterStream() {
     const html = routerStreamBuffer
@@ -109,7 +115,7 @@ export function transformStreamWithRouter(
 
   function decodeChunk(chunk: unknown): string {
     if (chunk instanceof Uint8Array) {
-      return textDecoder.decode(chunk)
+      return textDecoder.decode(chunk, { stream: true })
     }
     return String(chunk)
   }
@@ -136,7 +142,7 @@ export function transformStreamWithRouter(
 
     promise
       .then((html) => {
-        if (!bodyStarted) {
+        if (isAppRendering) {
           routerStreamBuffer += html
         } else {
           finalPassThrough.write(html)
@@ -147,7 +153,6 @@ export function transformStreamWithRouter(
         processingCount--
 
         if (!isAppRendering && processingCount === 0) {
-          stopListeningToInjectedHtml()
           injectedHtmlDonePromise.resolve()
         }
       })
@@ -155,6 +160,7 @@ export function transformStreamWithRouter(
 
   injectedHtmlDonePromise
     .then(() => {
+      clearTimeout(timeoutHandle)
       const finalHtml =
         leftoverHtml + getBufferedRouterStream() + pendingClosingTags
 
@@ -164,42 +170,24 @@ export function transformStreamWithRouter(
       console.error('Error reading routerStream:', err)
       finalPassThrough.destroy(err)
     })
+    .finally(stopListeningToInjectedHtml)
 
   // Transform the appStream
   readStream(appStream, {
     onData: (chunk) => {
       const text = decodeChunk(chunk.value)
-
-      let chunkString = leftover + text
+      const chunkString = leftover + text
       const bodyEndMatch = chunkString.match(patternBodyEnd)
       const htmlEndMatch = chunkString.match(patternHtmlEnd)
 
-      if (!bodyStarted) {
-        const bodyStartMatch = chunkString.match(patternBodyStart)
-        if (bodyStartMatch) {
-          bodyStarted = true
+      if (!streamBarrierLifted) {
+        const streamBarrierIdIncluded = chunkString.includes(
+          TSR_SCRIPT_BARRIER_ID,
+        )
+        if (streamBarrierIdIncluded) {
+          streamBarrierLifted = true
+          router.serverSsr!.liftScriptBarrier()
         }
-      }
-
-      if (!headStarted) {
-        const headStartMatch = chunkString.match(patternHeadStart)
-        if (headStartMatch) {
-          headStarted = true
-          const index = headStartMatch.index!
-          const headTag = headStartMatch[0]
-          const remaining = chunkString.slice(index + headTag.length)
-          finalPassThrough.write(
-            chunkString.slice(0, index) + headTag + getBufferedRouterStream(),
-          )
-          // make sure to only write `remaining` until the next closing tag
-          chunkString = remaining
-        }
-      }
-
-      if (!bodyStarted) {
-        finalPassThrough.write(chunkString)
-        leftover = ''
-        return
       }
 
       // If either the body end or html end is in the chunk,
@@ -247,11 +235,19 @@ export function transformStreamWithRouter(
       // If there are no pending promises, resolve the injectedHtmlDonePromise
       if (processingCount === 0) {
         injectedHtmlDonePromise.resolve()
+      } else {
+        const timeoutMs = opts?.timeoutMs ?? 60000
+        timeoutHandle = setTimeout(() => {
+          injectedHtmlDonePromise.reject(
+            new Error('Injected HTML timeout after app render finished'),
+          )
+        }, timeoutMs)
       }
     },
     onError: (error) => {
       console.error('Error reading appStream:', error)
       finalPassThrough.destroy(error)
+      injectedHtmlDonePromise.reject(error)
     },
   })
 
