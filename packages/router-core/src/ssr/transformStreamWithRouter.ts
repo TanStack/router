@@ -101,9 +101,11 @@ export function transformStreamWithRouter(
   },
 ) {
   let stopListeningToInjectedHtml: (() => void) | undefined = undefined
+  let timeoutHandle: NodeJS.Timeout
 
   const finalPassThrough = createPassthrough(() => {
     stopListeningToInjectedHtml?.()
+    clearTimeout(timeoutHandle)
   })
   const textDecoder = new TextDecoder()
 
@@ -113,7 +115,6 @@ export function transformStreamWithRouter(
   let streamBarrierLifted = false as boolean
   let leftover = ''
   let leftoverHtml = ''
-  let timeoutHandle: NodeJS.Timeout
 
   function getBufferedRouterStream() {
     const html = routerStreamBuffer
