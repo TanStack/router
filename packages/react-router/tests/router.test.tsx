@@ -1413,9 +1413,7 @@ describe('invalidate', () => {
 
     await act(() => router.load())
 
-    expect(
-      await screen.findByTestId('hmr-route-not-found'),
-    ).toBeInTheDocument()
+    expect(await screen.findByTestId('hmr-route-not-found')).toBeInTheDocument()
     const initialCalls = loader.mock.calls.length
     expect(initialCalls).toBeGreaterThan(0)
 
@@ -1426,9 +1424,7 @@ describe('invalidate', () => {
     )
 
     expect(loader).toHaveBeenCalledTimes(initialCalls + 1)
-    expect(
-      await screen.findByTestId('hmr-route-not-found'),
-    ).toBeInTheDocument()
+    expect(await screen.findByTestId('hmr-route-not-found')).toBeInTheDocument()
     expect(screen.queryByTestId('hmr-route')).not.toBeInTheDocument()
   })
 
