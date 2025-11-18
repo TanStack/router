@@ -2138,7 +2138,10 @@ export class RouterCore<
                          */
                         cachedMatches: [
                           ...s.cachedMatches,
-                          ...exitingMatches.filter((d) => d.status !== 'error' && d.status !== 'notFound'),
+                          ...exitingMatches.filter(
+                            (d) =>
+                              d.status !== 'error' && d.status !== 'notFound',
+                          ),
                         ],
                       }
                     })
