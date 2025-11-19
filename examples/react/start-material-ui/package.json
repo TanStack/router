@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && tsc --noEmit"
+    "build": "vite build && tsc --noEmit",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
     "@emotion/cache": "11.14.0",

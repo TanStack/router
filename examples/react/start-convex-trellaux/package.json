@@ -7,7 +7,8 @@
     "dev": "npx convex dev --once && concurrently -r npm:dev:web npm:dev:db",
     "dev:web": "vite dev",
     "dev:db": "convex dev --run board:seed",
-    "build": "vite build && tsc --noEmit"
+    "build": "vite build && tsc --noEmit",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
     "@convex-dev/react-query": "0.0.0-alpha.8",

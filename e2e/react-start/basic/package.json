@@ -9,7 +9,7 @@
     "build": "vite build && tsc --noEmit",
     "build:spa": "MODE=spa vite build && tsc --noEmit",
     "build:prerender": "MODE=prerender vite build && tsc --noEmit",
-    "start": "pnpx srvx --prod -s ../client  dist/server/server.js",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "start:spa": "node server.js",
     "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' &",
     "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
