@@ -9,7 +9,7 @@ const combinate = (combinateImport as any).default as typeof combinateImport
 test.use({
   whitelistErrors: [
     /Failed to load resource: the server responded with a status of 404/,
-    /NotFound error during hydration for routeId:.*/,
+    'NotFound error during hydration for routeId',
   ],
 })
 test.describe('not-found', () => {
