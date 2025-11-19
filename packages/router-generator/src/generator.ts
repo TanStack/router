@@ -1247,7 +1247,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     )
 
     if (
-      node._fsRouteType === 'layout' ||
+      (node._fsRouteType === 'layout' && node.cleanedPath !== '/') ||
       node._fsRouteType === 'pathless_layout'
     ) {
       node.cleanedPath = removeTrailingSlash(node.cleanedPath)
