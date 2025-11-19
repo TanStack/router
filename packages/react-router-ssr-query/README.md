@@ -2,7 +2,7 @@
 
 # TanStack React Router
 
-![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/header.png)
+![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/header_router.png)
 
 🤖 Type-safe router w/ built-in caching & URL state management for React!
 

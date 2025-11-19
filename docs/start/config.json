@@ -315,10 +315,6 @@
           "label": "solid",
           "children": [
             {
-              "label": "Bare",
-              "to": "framework/solid/examples/start-bare"
-            },
-            {
               "label": "Basic",
               "to": "framework/solid/examples/start-basic"
             },
@@ -329,6 +325,14 @@
             {
               "label": "Basic + DIY Auth",
               "to": "framework/solid/examples/start-basic-auth"
+            },
+            {
+              "label": "Basic + Supabase Auth",
+              "to": "framework/solid/examples/start-supabase-basic"
+            },
+            {
+              "label": "Bare + Convex + Better Auth",
+              "to": "framework/solid/examples/start-convex-better-auth"
             },
             {
               "label": "Basic + Static rendering",

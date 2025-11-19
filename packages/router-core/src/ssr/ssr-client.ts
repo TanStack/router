@@ -6,11 +6,12 @@ import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
 import type { AnySerializationAdapter } from './serializer/transformer'
-import type { GLOBAL_TSR } from './constants'
+import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
 
 declare global {
   interface Window {
     [GLOBAL_TSR]?: TsrSsrGlobal
+    [GLOBAL_SEROVAL]?: any
   }
 }
 
@@ -25,6 +26,10 @@ export interface TsrSsrGlobal {
   t?: Map<string, (value: any) => any>
   // this flag indicates whether the transformers were initialized
   initialized?: boolean
+  // router is hydrated and doesnt need the streamed values anymore
+  hydrated?: boolean
+  // stream has ended
+  streamEnd?: boolean
 }
 
 function hydrateMatch(
@@ -164,6 +169,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
 
   // Allow the user to handle custom hydration data
   await router.options.hydrate?.(dehydratedData)
+
+  window.$_TSR.hydrated = true
+  // potentially clean up streamed values IF stream has ended already
+  window.$_TSR.c()
 
   // now that all necessary data is hydrated:
   // 1) fully reconstruct the route context

@@ -107,9 +107,9 @@ export const useTags = () => {
     },
   })
 
-  const preloadMeta = useRouterState({
+  const preloadLinks = useRouterState({
     select: (state) => {
-      const preloadMeta: Array<RouterManagedTag> = []
+      const preloadLinks: Array<RouterManagedTag> = []
 
       state.matches
         .map((match) => router.looseRoutesById[match.routeId]!)
@@ -117,7 +117,7 @@ export const useTags = () => {
           router.ssr?.manifest?.routes[route.id]?.preloads
             ?.filter(Boolean)
             .forEach((preload) => {
-              preloadMeta.push({
+              preloadLinks.push({
                 tag: 'link',
                 attrs: {
                   rel: 'modulepreload',
@@ -128,7 +128,7 @@ export const useTags = () => {
             }),
         )
 
-      return preloadMeta
+      return preloadLinks
     },
   })
 
@@ -170,7 +170,7 @@ export const useTags = () => {
     uniqBy(
       [
         ...meta(),
-        ...preloadMeta(),
+        ...preloadLinks(),
         ...links(),
         ...styles(),
         ...headScripts(),

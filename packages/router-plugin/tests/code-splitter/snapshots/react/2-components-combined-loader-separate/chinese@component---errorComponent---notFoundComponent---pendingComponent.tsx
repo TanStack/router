@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { Route } from "chinese.tsx";
 function HomeComponent() {
   return <div className="p-2">
       <Demo title="标题很好看，谁说不是呢？" />

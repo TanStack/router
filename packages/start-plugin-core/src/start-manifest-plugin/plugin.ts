@@ -6,7 +6,7 @@ import { resolveViteId } from '../utils'
 import { ENTRY_POINTS } from '../constants'
 import type { GetConfigFn } from '../plugin'
 import type { PluginOption, Rollup } from 'vite'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type { Manifest, RouterManagedTag } from '@tanstack/router-core'
 
 const getCSSRecursively = (
   chunk: Rollup.OutputChunk,
@@ -97,7 +97,7 @@ export function startManifestPlugin(opts: {
 
           // This the manifest pulled from the generated route tree and later used by the Router.
           // i.e what's located in `src/routeTree.gen.ts`
-          const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST.routes
+          const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
 
           const cssPerChunkCache = new Map<
             Rollup.OutputChunk,
@@ -157,6 +157,7 @@ export function startManifestPlugin(opts: {
             }
           }
 
+          const manifest: Manifest = { routes: {} }
           // Add preloads to the routes from the vite manifest
           Object.entries(routeTreeRoutes).forEach(([routeId, v]) => {
             if (!v.filePath) {
@@ -168,8 +169,11 @@ export function startManifestPlugin(opts: {
                 // Map the relevant imports to their route paths,
                 // so that it can be imported in the browser.
                 const preloads = chunk.imports.map((d) => {
-                  const assetPath = joinURL(resolvedStartConfig.viteAppBase, d)
-                  return assetPath
+                  const preloadPath = joinURL(
+                    resolvedStartConfig.viteAppBase,
+                    d,
+                  )
+                  return preloadPath
                 })
 
                 // Since this is the most important JS entry for the route,
@@ -179,26 +183,30 @@ export function startManifestPlugin(opts: {
                   joinURL(resolvedStartConfig.viteAppBase, chunk.fileName),
                 )
 
-                const cssAssetsList = getCSSRecursively(
+                const assets = getCSSRecursively(
                   chunk,
                   chunksByFileName,
                   resolvedStartConfig.viteAppBase,
                   cssPerChunkCache,
                 )
 
-                routeTreeRoutes[routeId] = {
+                manifest.routes[routeId] = {
                   ...v,
-                  assets: [...(v.assets || []), ...cssAssetsList],
-                  preloads: [...(v.preloads || []), ...preloads],
+                  assets,
+                  preloads,
                 }
               })
+            } else {
+              manifest.routes[routeId] = v
             }
           })
 
           if (!entryFile) {
             throw new Error('No entry file found')
           }
-          routeTreeRoutes[rootRouteId]!.preloads = [
+
+          manifest.routes[rootRouteId] = manifest.routes[rootRouteId] || {}
+          manifest.routes[rootRouteId].preloads = [
             joinURL(resolvedStartConfig.viteAppBase, entryFile.fileName),
             ...entryFile.imports.map((d) =>
               joinURL(resolvedStartConfig.viteAppBase, d),
@@ -214,8 +222,8 @@ export function startManifestPlugin(opts: {
             cssPerChunkCache,
           )
 
-          routeTreeRoutes[rootRouteId]!.assets = [
-            ...(routeTreeRoutes[rootRouteId]!.assets || []),
+          manifest.routes[rootRouteId].assets = [
+            ...(manifest.routes[rootRouteId].assets || []),
             ...entryCssAssetsList,
           ]
 
@@ -236,17 +244,17 @@ export function startManifestPlugin(opts: {
 
             if (route.children) {
               route.children.forEach((child) => {
-                const childRoute = routeTreeRoutes[child]!
+                const childRoute = manifest.routes[child]!
                 recurseRoute(childRoute, { ...seenPreloads })
               })
             }
           }
 
-          recurseRoute(routeTreeRoutes[rootRouteId]!)
+          recurseRoute(manifest.routes[rootRouteId])
 
           // Filter out routes that have neither assets nor preloads
-          Object.keys(routeTreeRoutes).forEach((routeId) => {
-            const route = routeTreeRoutes[routeId]!
+          Object.keys(manifest.routes).forEach((routeId) => {
+            const route = manifest.routes[routeId]!
             const hasAssets = route.assets && route.assets.length > 0
             const hasPreloads = route.preloads && route.preloads.length > 0
             if (!hasAssets && !hasPreloads) {
@@ -255,7 +263,7 @@ export function startManifestPlugin(opts: {
           })
 
           const startManifest = {
-            routes: routeTreeRoutes,
+            routes: manifest.routes,
             clientEntry: joinURL(
               resolvedStartConfig.viteAppBase,
               entryFile.fileName,

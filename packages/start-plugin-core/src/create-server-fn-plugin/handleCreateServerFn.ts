@@ -10,6 +10,7 @@ export function handleCreateServerFn(
   opts: {
     env: 'client' | 'server'
     code: string
+    directive: string
   },
 ) {
   // Traverse the member expression and find the call expressions for
@@ -145,7 +146,7 @@ export function handleCreateServerFn(
             ),
           ),
         ],
-        [t.directive(t.directiveLiteral('use server'))],
+        [t.directive(t.directiveLiteral(opts.directive))],
       ),
     ),
   )
