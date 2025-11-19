@@ -195,7 +195,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
             context: parentContext ?? {},
             location: router.state.location,
             navigate: (opts: any) =>
-              router.navigate({ ...opts, _fromLocation: router.state.location }),
+              router.navigate({
+                ...opts,
+                _fromLocation: router.state.location,
+              }),
             buildLocation: router.buildLocation,
             cause: match.cause,
             abortController: match.abortController,
@@ -227,18 +230,21 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         match.headScripts = headFnContent?.scripts
         match.styles = headFnContent?.styles
         match.scripts = scripts
-        } catch (err) {
-          if (isNotFound(err)) {
-            match.error = { isNotFound: true }
-            console.error(
-              `NotFound error during hydration for routeId: ${match.routeId}`,
-              err,
-            )
-          } else {
-            match.error = err as any
-            console.error(`Error during hydration for route ${match.routeId}:`, err)
-            throw err
-          }
+      } catch (err) {
+        if (isNotFound(err)) {
+          match.error = { isNotFound: true }
+          console.error(
+            `NotFound error during hydration for routeId: ${match.routeId}`,
+            err,
+          )
+        } else {
+          match.error = err as any
+          console.error(
+            `Error during hydration for route ${match.routeId}:`,
+            err,
+          )
+          throw err
+        }
       }
     }),
   )
