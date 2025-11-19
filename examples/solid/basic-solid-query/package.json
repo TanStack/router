@@ -20,7 +20,7 @@
     "tailwindcss": "^4.1.15"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.136.17",
+    "@tanstack/router-plugin": "^1.136.18",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-plugin-solid": "^2.11.10"
