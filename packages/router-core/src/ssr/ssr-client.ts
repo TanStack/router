@@ -1,4 +1,5 @@
 import invariant from 'tiny-invariant'
+import { isNotFound } from '../not-found'
 import { batch } from '@tanstack/store'
 import { createControlledPromise } from '../utils'
 import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
@@ -179,56 +180,68 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // 2) execute `head()` and `scripts()` for each match
   await Promise.all(
     router.state.matches.map(async (match) => {
-      const route = router.looseRoutesById[match.routeId]!
+      try {
+        const route = router.looseRoutesById[match.routeId]!
 
-      const parentMatch = router.state.matches[match.index - 1]
-      const parentContext = parentMatch?.context ?? router.options.context
+        const parentMatch = router.state.matches[match.index - 1]
+        const parentContext = parentMatch?.context ?? router.options.context
 
-      // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
-      // so run it again and merge route context
-      if (route.options.context) {
-        const contextFnContext: RouteContextOptions<any, any, any, any> = {
-          deps: match.loaderDeps,
-          params: match.params,
-          context: parentContext ?? {},
-          location: router.state.location,
-          navigate: (opts: any) =>
-            router.navigate({ ...opts, _fromLocation: router.state.location }),
-          buildLocation: router.buildLocation,
-          cause: match.cause,
-          abortController: match.abortController,
-          preload: false,
-          matches,
+        // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
+        // so run it again and merge route context
+        if (route.options.context) {
+          const contextFnContext: RouteContextOptions<any, any, any, any> = {
+            deps: match.loaderDeps,
+            params: match.params,
+            context: parentContext ?? {},
+            location: router.state.location,
+            navigate: (opts: any) =>
+              router.navigate({ ...opts, _fromLocation: router.state.location }),
+            buildLocation: router.buildLocation,
+            cause: match.cause,
+            abortController: match.abortController,
+            preload: false,
+            matches,
+          }
+          match.__routeContext =
+            route.options.context(contextFnContext) ?? undefined
         }
-        match.__routeContext =
-          route.options.context(contextFnContext) ?? undefined
+
+        match.context = {
+          ...parentContext,
+          ...match.__routeContext,
+          ...match.__beforeLoadContext,
+        }
+
+        const assetContext = {
+          matches: router.state.matches,
+          match,
+          params: match.params,
+          loaderData: match.loaderData,
+        }
+        const headFnContent = await route.options.head?.(assetContext)
+
+        const scripts = await route.options.scripts?.(assetContext)
+
+        match.meta = headFnContent?.meta
+        match.links = headFnContent?.links
+        match.headScripts = headFnContent?.scripts
+        match.styles = headFnContent?.styles
+        match.scripts = scripts
+        } catch (err) {
+          if (isNotFound(err)) {
+            match.error = { isNotFound: true }
+            console.error(
+              `NotFound error during hydration for routeId: ${match.routeId}`,
+              err,
+            )
+          } else {
+            match.error = err as any
+            console.error(`Error during hydration for route ${match.routeId}:`, err)
+            throw err
+          }
       }
-
-      match.context = {
-        ...parentContext,
-        ...match.__routeContext,
-        ...match.__beforeLoadContext,
-      }
-
-      const assetContext = {
-        matches: router.state.matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData,
-      }
-      const headFnContent = await route.options.head?.(assetContext)
-
-      const scripts = await route.options.scripts?.(assetContext)
-
-      match.meta = headFnContent?.meta
-      match.links = headFnContent?.links
-      match.headScripts = headFnContent?.scripts
-      match.styles = headFnContent?.styles
-      match.scripts = scripts
     }),
-  ).catch((err) => {
-    console.error('Error during route context hydration:', err)
-  })
+  )
 
   const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
   const hasSsrFalseMatches = matches.some((m) => m.ssr === false)

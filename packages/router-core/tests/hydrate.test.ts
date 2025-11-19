@@ -251,8 +251,10 @@ describe('hydrate', () => {
     await hydrate(mockRouter)
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      'Error during route context hydration:',
-      { isNotFound: true },
+      'NotFound error during hydration for routeId: /',
+      expect.objectContaining({
+        isNotFound: true,
+      }),
     )
 
     consoleSpy.mockRestore()
