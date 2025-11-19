@@ -1,6 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { hydrate } from '../src/ssr/ssr-client'
-import type { TsrSsrGlobal } from '../src/ssr/ssr-client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -8,6 +6,8 @@ import {
   createRouter,
   notFound,
 } from '../../react-router/dist/esm'
+import { hydrate } from '../src/ssr/ssr-client'
+import type { TsrSsrGlobal } from '../src/ssr/ssr-client'
 import type { AnyRouteMatch } from '../src'
 
 describe('hydrate', () => {
