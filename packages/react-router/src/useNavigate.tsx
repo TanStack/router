@@ -67,7 +67,10 @@ export function Navigate<
     TMaskFrom,
     TMaskTo
   > | null>(null)
-  React.useEffect(() => {
+  const useIsomorphicLayoutEffect =
+    typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+
+  useIsomorphicLayoutEffect(() => {
     if (previousPropsRef.current !== props) {
       navigate(props)
       previousPropsRef.current = props
