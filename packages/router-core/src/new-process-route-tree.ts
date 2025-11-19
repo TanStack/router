@@ -43,7 +43,7 @@ type ParsedSegment = Uint16Array & {
  * let output
  * let cursor = 0
  * while (cursor < path.length) {
- *   output = parseSegment(path, cursor, output)
+ *   parseSegment(path, cursor, output)
  *   const end = output[5]
  *   cursor = end + 1
  * ```
@@ -58,7 +58,7 @@ export function parseSegment(
   start: number,
   /** A Uint16Array (length: 6) to populate with the parsed segment data. */
   output: Uint16Array = new Uint16Array(6),
-): ParsedSegment {
+): asserts output is ParsedSegment {
   const next = path.indexOf('/', start)
   const end = next === -1 ? path.length : next
   const part = path.substring(start, end)
@@ -71,7 +71,7 @@ export function parseSegment(
     output[3] = end
     output[4] = end
     output[5] = end
-    return output as ParsedSegment
+    return
   }
 
   // $ (wildcard)
@@ -83,7 +83,7 @@ export function parseSegment(
     output[3] = total
     output[4] = total
     output[5] = total
-    return output as ParsedSegment
+    return
   }
 
   // $paramName
@@ -94,7 +94,7 @@ export function parseSegment(
     output[3] = end
     output[4] = end
     output[5] = end
-    return output as ParsedSegment
+    return
   }
 
   const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
@@ -107,7 +107,7 @@ export function parseSegment(
     output[3] = start + pLength + 2 // '$'
     output[4] = start + pLength + 3 // skip '}'
     output[5] = path.length
-    return output as ParsedSegment
+    return
   }
 
   const optionalParamBracesMatch = part.match(OPTIONAL_PARAM_W_CURLY_BRACES_RE)
@@ -122,7 +122,7 @@ export function parseSegment(
     output[3] = start + pLength + 3 + paramName.length
     output[4] = end - suffix.length
     output[5] = end
-    return output as ParsedSegment
+    return
   }
 
   const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
@@ -137,7 +137,7 @@ export function parseSegment(
     output[3] = start + pLength + 2 + paramName.length
     output[4] = end - suffix.length
     output[5] = end
-    return output as ParsedSegment
+    return
   }
 
   // fallback to static pathname (should never happen)
@@ -147,13 +147,12 @@ export function parseSegment(
   output[3] = end
   output[4] = end
   output[5] = end
-  return output as ParsedSegment
 }
 
 /**
  * Recursively parses the segments of the given route tree and populates a segment trie.
  *
- * @param data A reusable Uint16Array for parsing segments. (non important, we're just avoiding allocations)
+ * @param segment A reusable Uint16Array for parsing segments. (non important, we're just avoiding allocations)
  * @param route The current route to parse.
  * @param start The starting index for parsing within the route's full path.
  * @param node The current segment node in the trie to populate.
@@ -161,7 +160,7 @@ export function parseSegment(
  */
 function parseSegments<TRouteLike extends RouteLike>(
   defaultCaseSensitive: boolean,
-  data: Uint16Array,
+  segment: Uint16Array,
   route: TRouteLike,
   start: number,
   node: AnySegmentNode<TRouteLike>,
@@ -175,7 +174,7 @@ function parseSegments<TRouteLike extends RouteLike>(
     const length = path.length
     const caseSensitive = route.options?.caseSensitive ?? defaultCaseSensitive
     while (cursor < length) {
-      const segment = parseSegment(path, cursor, data)
+      parseSegment(path, cursor, segment)
       let nextNode: AnySegmentNode<TRouteLike>
       const start = cursor
       const end = segment[5]
@@ -340,7 +339,7 @@ function parseSegments<TRouteLike extends RouteLike>(
     for (const child of route.children) {
       parseSegments(
         defaultCaseSensitive,
-        data,
+        segment,
         child as TRouteLike,
         cursor,
         node,

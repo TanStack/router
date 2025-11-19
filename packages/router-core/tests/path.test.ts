@@ -831,7 +831,7 @@ describe('parsePathname', () => {
     const segments: Array<PathSegment> = []
     while (cursor < path.length) {
       const start = cursor
-      data = parseSegment(path, start, data)
+      parseSegment(path, start, data)
       const end = data[5]
       cursor = end + 1
       const type = data[0]

@@ -180,7 +180,7 @@ export function resolvePath({
     if (i > 0) joined += '/'
     const part = baseSegments[i]!
     if (!part) continue
-    segment = parseSegment(part, 0, segment)
+    parseSegment(part, 0, segment)
     const kind = segment[0]
     if (kind === SEGMENT_TYPE_PATHNAME) {
       joined += part
@@ -265,7 +265,7 @@ export function interpolatePath({
   let joined = ''
   while (cursor < length) {
     const start = cursor
-    segment = parseSegment(path, start, segment)
+    parseSegment(path, start, segment)
     const end = segment[5]
     cursor = end + 1
 
