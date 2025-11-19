@@ -1,6 +1,6 @@
 import invariant from 'tiny-invariant'
-import { isNotFound } from '../not-found'
 import { batch } from '@tanstack/store'
+import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
 import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
