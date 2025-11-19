@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from '@tanstack/router-e2e-utils'
 
-test('merge-server-fn-middleware-context', async ({ page }) => {
-  await page.goto('/merge-server-fn-middleware-context')
+test('merge-middleware-context', async ({ page }) => {
+  await page.goto('/merge-middleware-context')
 
   await page.waitForLoadState('networkidle')
 
@@ -14,4 +15,33 @@ test('merge-server-fn-middleware-context', async ({ page }) => {
   const contextResult = await page.getByTestId('context-result').textContent()
   expect(contextResult).toContain('testParent')
   expect(contextResult).toContain('test')
+})
+
+test.describe('methods', () => {
+  test('only ANY', async ({ page }) => {
+    await page.goto('/methods/only-any')
+
+    // wait for page to be loaded by waiting for the route component to be rendered
+    await expect(page.getByTestId('route-component')).toBeInViewport()
+
+    const testCases = await page
+      .locator('[data-testid^="expected-"]')
+      .elementHandles()
+    expect(testCases.length).not.toBe(0)
+    for (const testCase of testCases) {
+      const testId = await testCase.getAttribute('data-testid')
+
+      if (!testId) {
+        throw new Error('testcase is missing data-testid')
+      }
+
+      const suffix = testId.replace('expected-', '')
+
+      const expected =
+        (await page.getByTestId(`expected-${suffix}`).textContent()) || ''
+      expect(expected).not.toBe('')
+
+      await expect(page.getByTestId(`result-${suffix}`)).toContainText(expected)
+    }
+  })
 })

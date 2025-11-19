@@ -1,14 +1,17 @@
 import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
-import { ReadableStreamPlugin } from 'seroval-plugins/web'
 import invariant from 'tiny-invariant'
 import { createControlledPromise } from '../utils'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
-import { ShallowErrorPlugin } from './seroval-plugins'
+import { GLOBAL_TSR } from './constants'
+import { defaultSerovalPlugins } from './serializer/seroval-plugins'
+import { makeSsrSerovalPlugin } from './serializer/transformer'
+import { TSR_SCRIPT_BARRIER_ID } from './transformStreamWithRouter'
+import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter } from '../router'
 import type { DehydratedMatch } from './ssr-client'
 import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
-import type { Manifest } from '../manifest'
+import type { Manifest, RouterManagedTag } from '../manifest'
 
 declare module '../router' {
   interface ServerSsr {
@@ -22,7 +25,6 @@ declare module '../router' {
   }
 }
 
-export const GLOBAL_TSR = '$_TSR'
 const SCOPE_ID = 'tsr'
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
@@ -47,25 +49,67 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   return dehydratedMatch
 }
 
-export function attachRouterServerSsrUtils(
-  router: AnyRouter,
-  manifest: Manifest | undefined,
-) {
+const INITIAL_SCRIPTS = [
+  getCrossReferenceHeader(SCOPE_ID),
+  minifiedTsrBootStrapScript,
+]
+
+class ScriptBuffer {
+  constructor(private router: AnyRouter) {}
+  private _queue: Array<string> = [...INITIAL_SCRIPTS]
+  private _scriptBarrierLifted = false
+
+  enqueue(script: string) {
+    if (this._scriptBarrierLifted && this._queue.length === 0) {
+      queueMicrotask(() => {
+        this.injectBufferedScripts()
+      })
+    }
+    this._queue.push(script)
+  }
+
+  liftBarrier() {
+    if (this._scriptBarrierLifted) return
+    this._scriptBarrierLifted = true
+    if (this._queue.length > 0) {
+      queueMicrotask(() => {
+        this.injectBufferedScripts()
+      })
+    }
+  }
+
+  takeAll() {
+    const bufferedScripts = this._queue
+    this._queue = []
+    if (bufferedScripts.length === 0) {
+      return undefined
+    }
+    bufferedScripts.push(`${GLOBAL_TSR}.c()`)
+    const joinedScripts = bufferedScripts.join(';')
+    return joinedScripts
+  }
+
+  injectBufferedScripts() {
+    const scriptsToInject = this.takeAll()
+    if (scriptsToInject) {
+      this.router.serverSsr!.injectScript(() => scriptsToInject)
+    }
+  }
+}
+
+export function attachRouterServerSsrUtils({
+  router,
+  manifest,
+}: {
+  router: AnyRouter
+  manifest: Manifest | undefined
+}) {
   router.ssr = {
     manifest,
   }
-  const serializationRefs = new Map<unknown, number>()
-
-  let initialScriptSent = false
-  const getInitialScript = () => {
-    if (initialScriptSent) {
-      return ''
-    }
-    initialScriptSent = true
-    return `${getCrossReferenceHeader(SCOPE_ID)};${minifiedTsrBootStrapScript};`
-  }
   let _dehydrated = false
   const listeners: Array<() => void> = []
+  const scriptBuffer = new ScriptBuffer(router)
 
   router.serverSsr = {
     injectedHtml: [],
@@ -82,7 +126,10 @@ export function attachRouterServerSsrUtils(
     injectScript: (getScript) => {
       return router.serverSsr!.injectHtml(async () => {
         const script = await getScript()
-        return `<script class='$tsr'>${getInitialScript()}${script};if (typeof $_TSR !== 'undefined') $_TSR.c()</script>`
+        if (!script) {
+          return ''
+        }
+        return `<script${router.options.ssr?.nonce ? `nonce='${router.options.ssr.nonce}' ` : ''} class='$tsr'>${script}</script>`
       })
     },
     dehydrate: async () => {
@@ -94,28 +141,57 @@ export function attachRouterServerSsrUtils(
       }
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
+      let manifestToDehydrate: Manifest | undefined = undefined
+      // only send manifest of the current routes to the client
+      if (manifest) {
+        const filteredRoutes = Object.fromEntries(
+          router.state.matches.map((k) => [
+            k.routeId,
+            manifest.routes[k.routeId],
+          ]),
+        )
+        manifestToDehydrate = {
+          routes: filteredRoutes,
+        }
+      }
       const dehydratedRouter: DehydratedRouter = {
-        manifest: router.ssr!.manifest,
+        manifest: manifestToDehydrate,
         matches,
       }
       const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
       if (lastMatchId) {
         dehydratedRouter.lastMatchId = lastMatchId
       }
-      dehydratedRouter.dehydratedData = await router.options.dehydrate?.()
+      const dehydratedData = await router.options.dehydrate?.()
+      if (dehydratedData) {
+        dehydratedRouter.dehydratedData = dehydratedData
+      }
       _dehydrated = true
 
       const p = createControlledPromise<string>()
+      const trackPlugins = { didRun: false }
+      const plugins =
+        (
+          router.options.serializationAdapters as
+            | Array<AnySerializationAdapter>
+            | undefined
+        )?.map((t) => makeSsrSerovalPlugin(t, trackPlugins)) ?? []
+
       crossSerializeStream(dehydratedRouter, {
-        refs: serializationRefs,
-        // TODO make plugins configurable
-        plugins: [ReadableStreamPlugin, ShallowErrorPlugin],
+        refs: new Map(),
+        plugins: [...plugins, ...defaultSerovalPlugins],
         onSerialize: (data, initial) => {
-          const serialized = initial ? `${GLOBAL_TSR}["router"]=` + data : data
-          router.serverSsr!.injectScript(() => serialized)
+          let serialized = initial ? GLOBAL_TSR + '.router=' + data : data
+          if (trackPlugins.didRun) {
+            serialized = GLOBAL_TSR + '.p(()=>' + serialized + ')'
+          }
+          scriptBuffer.enqueue(serialized)
         },
         scopeId: SCOPE_ID,
-        onDone: () => p.resolve(''),
+        onDone: () => {
+          scriptBuffer.enqueue(GLOBAL_TSR + '.streamEnd=true')
+          p.resolve('')
+        },
         onError: (err) => p.reject(err),
       })
       // make sure the stream is kept open until the promise is resolved
@@ -127,6 +203,37 @@ export function attachRouterServerSsrUtils(
     onRenderFinished: (listener) => listeners.push(listener),
     setRenderFinished: () => {
       listeners.forEach((l) => l())
+      scriptBuffer.liftBarrier()
+    },
+    takeBufferedScripts() {
+      const scripts = scriptBuffer.takeAll()
+      const serverBufferedScript: RouterManagedTag = {
+        tag: 'script',
+        attrs: {
+          nonce: router.options.ssr?.nonce,
+          className: '$tsr',
+          id: TSR_SCRIPT_BARRIER_ID,
+        },
+        children: scripts,
+      }
+      return serverBufferedScript
+    },
+    liftScriptBarrier() {
+      scriptBuffer.liftBarrier()
     },
   }
+}
+
+export function getOrigin(request: Request) {
+  const originHeader = request.headers.get('Origin')
+  if (originHeader) {
+    try {
+      new URL(originHeader)
+      return originHeader
+    } catch {}
+  }
+  try {
+    return new URL(request.url).origin
+  } catch {}
+  return 'http://localhost'
 }

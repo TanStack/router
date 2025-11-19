@@ -16,7 +16,15 @@ function RouteComponent() {
             to="./$foo/$bar"
             params={{ foo: 'foo', bar: 'bar' }}
           >
-            /params-ps/non-nested/$foo/$bar
+            /params-ps/non-nested/foo/bar
+          </Link>
+          <Link
+            from={Route.fullPath}
+            data-testid="l-to-non-nested-foo2-bar2"
+            to="./$foo/$bar"
+            params={{ foo: 'foo2', bar: 'bar2' }}
+          >
+            /params-ps/non-nested/foo2/bar2
           </Link>
         </li>
       </ul>

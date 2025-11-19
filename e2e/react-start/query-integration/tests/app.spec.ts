@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { test } from './fixture'
+import { test } from '@tanstack/router-e2e-utils'
 
 // if the query would not be streamed to the client, it would re-execute on the client
 // and thus cause a hydration mismatch since the query function returns 'client' when executed on the client

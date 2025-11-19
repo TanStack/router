@@ -1,5 +1,6 @@
-import { Meta, Style, Title } from '@solidjs/meta'
+import { Link, Meta, Style, Title } from '@solidjs/meta'
 import { onCleanup, onMount } from 'solid-js'
+import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { JSX } from 'solid-js'
 
@@ -14,7 +15,7 @@ export function Asset({
     case 'meta':
       return <Meta {...attrs} />
     case 'link':
-      return <link {...attrs} />
+      return <Link {...attrs} />
     case 'style':
       return <Style {...attrs} innerHTML={children} />
     case 'script':
@@ -36,8 +37,26 @@ function Script({
   attrs?: ScriptAttrs
   children?: string
 }): JSX.Element | null {
+  const router = useRouter()
+
   onMount(() => {
     if (attrs?.src) {
+      const normSrc = (() => {
+        try {
+          const base = document.baseURI || window.location.href
+          return new URL(attrs.src, base).href
+        } catch {
+          return attrs.src
+        }
+      })()
+      const existingScript = Array.from(
+        document.querySelectorAll('script[src]'),
+      ).find((el) => (el as HTMLScriptElement).src === normSrc)
+
+      if (existingScript) {
+        return
+      }
+
       const script = document.createElement('script')
 
       for (const [key, value] of Object.entries(attrs)) {
@@ -56,7 +75,30 @@ function Script({
           script.parentNode.removeChild(script)
         }
       })
-    } else if (typeof children === 'string') {
+    }
+
+    if (typeof children === 'string') {
+      const typeAttr =
+        typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
+      const nonceAttr =
+        typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
+      const existingScript = Array.from(
+        document.querySelectorAll('script:not([src])'),
+      ).find((el) => {
+        if (!(el instanceof HTMLScriptElement)) return false
+        const sType = el.getAttribute('type') ?? 'text/javascript'
+        const sNonce = el.getAttribute('nonce') ?? undefined
+        return (
+          el.textContent === children &&
+          sType === typeAttr &&
+          sNonce === nonceAttr
+        )
+      })
+
+      if (existingScript) {
+        return
+      }
+
       const script = document.createElement('script')
       script.textContent = children
 
@@ -80,6 +122,11 @@ function Script({
       })
     }
   })
+
+  if (!router.isServer) {
+    // render an empty script on the client just to avoid hydration errors
+    return <script />
+  }
 
   if (attrs?.src && typeof attrs.src === 'string') {
     return <script {...attrs} />

@@ -1,0 +1,25 @@
+{
+  "name": "tanstack-solid-start-streaming-data-from-server-functions",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "start": "vite start"
+  },
+  "dependencies": {
+    "@tanstack/solid-router": "^1.136.11",
+    "@tanstack/solid-router-devtools": "^1.136.11",
+    "@tanstack/solid-start": "^1.136.11",
+    "solid-js": "^1.9.10",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "vite-plugin-solid": "^2.11.10",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

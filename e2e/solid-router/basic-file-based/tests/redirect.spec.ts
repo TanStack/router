@@ -55,6 +55,7 @@ test.describe('redirects', () => {
           setTimeout(resolve, expectRequestHappened ? 5000 : 500),
         )
         await Promise.race([requestPromise, timeoutPromise])
+        await page.waitForLoadState('networkidle')
         expect(requestHappened).toBe(expectRequestHappened)
         await link.click()
         let fullPageLoad = false

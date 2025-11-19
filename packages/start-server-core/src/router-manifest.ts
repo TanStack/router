@@ -1,6 +1,5 @@
 import { rootRouteId } from '@tanstack/router-core'
-import { VIRTUAL_MODULES } from './virtual-modules'
-import { loadVirtualModule } from './loadVirtualModule'
+import type { RouterManagedTag } from '@tanstack/router-core'
 
 /**
  * @description Returns the router manifest that should be sent to the client.
@@ -8,10 +7,8 @@ import { loadVirtualModule } from './loadVirtualModule'
  * special assets that are needed for the client. It does not include relationships
  * between routes or any other data that is not needed for the client.
  */
-export async function getStartManifest(opts: { basePath: string }) {
-  const { tsrStartManifest } = await loadVirtualModule(
-    VIRTUAL_MODULES.startManifest,
-  )
+export async function getStartManifest() {
+  const { tsrStartManifest } = await import('tanstack-start-manifest:v')
   const startManifest = tsrStartManifest()
 
   const rootRoute = (startManifest.routes[rootRouteId] =
@@ -20,33 +17,43 @@ export async function getStartManifest(opts: { basePath: string }) {
   rootRoute.assets = rootRoute.assets || []
 
   let script = `import('${startManifest.clientEntry}')`
-  if (process.env.NODE_ENV === 'development') {
-    if (globalThis.TSS_INJECTED_HEAD_SCRIPTS) {
-      script = `${globalThis.TSS_INJECTED_HEAD_SCRIPTS + ';'}${script}`
+  if (process.env.TSS_DEV_SERVER === 'true') {
+    const { injectedHeadScripts } = await import(
+      'tanstack-start-injected-head-scripts:v'
+    )
+    if (injectedHeadScripts) {
+      script = `${injectedHeadScripts + ';'}${script}`
     }
   }
   rootRoute.assets.push({
     tag: 'script',
     attrs: {
       type: 'module',
-      suppressHydrationWarning: true,
       async: true,
     },
     children: script,
   })
 
   const manifest = {
-    ...startManifest,
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).map(([k, v]) => {
-        const { preloads, assets } = v
-        return [
-          k,
-          {
-            preloads,
-            assets,
-          },
-        ]
+        const result = {} as {
+          preloads?: Array<string>
+          assets?: Array<RouterManagedTag>
+        }
+        let hasData = false
+        if (v.preloads && v.preloads.length > 0) {
+          result['preloads'] = v.preloads
+          hasData = true
+        }
+        if (v.assets && v.assets.length > 0) {
+          result['assets'] = v.assets
+          hasData = true
+        }
+        if (!hasData) {
+          return []
+        }
+        return [k, result]
       }),
     ),
   }

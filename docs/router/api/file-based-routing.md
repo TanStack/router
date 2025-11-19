@@ -18,7 +18,6 @@ The following options are available for configuring the file-based routing:
 - [`routeToken`](#routetoken)
 - [`quoteStyle`](#quotestyle)
 - [`semicolons`](#semicolons)
-- [`apiBase`](#apibase)
 - [`autoCodeSplitting`](#autocodesplitting)
 - [`disableTypes`](#disabletypes)
 - [`addExtensions`](#addextensions)

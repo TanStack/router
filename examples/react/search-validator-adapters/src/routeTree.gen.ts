@@ -80,11 +80,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/arktype/': {
-      id: '/users/arktype/'
-      path: '/users/arktype'
-      fullPath: '/users/arktype'
-      preLoaderRoute: typeof UsersArktypeIndexRouteImport
+    '/users/zod/': {
+      id: '/users/zod/'
+      path: '/users/zod'
+      fullPath: '/users/zod'
+      preLoaderRoute: typeof UsersZodIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/users/valibot/': {
@@ -94,11 +94,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersValibotIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/zod/': {
-      id: '/users/zod/'
-      path: '/users/zod'
-      fullPath: '/users/zod'
-      preLoaderRoute: typeof UsersZodIndexRouteImport
+    '/users/arktype/': {
+      id: '/users/arktype/'
+      path: '/users/arktype'
+      fullPath: '/users/arktype'
+      preLoaderRoute: typeof UsersArktypeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

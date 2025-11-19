@@ -184,6 +184,10 @@ export type LooseAsyncReturnType<T> = T extends (
     : TReturn
   : never
 
+/**
+ * Return the last element of an array.
+ * Intended for non-empty arrays used within router internals.
+ */
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
 }
@@ -192,6 +196,10 @@ function isFunction(d: any): d is Function {
   return typeof d === 'function'
 }
 
+/**
+ * Apply a value-or-updater to a previous value.
+ * Accepts either a literal value or a function of the previous value.
+ */
 export function functionalUpdate<TPrevious, TResult = TPrevious>(
   updater: Updater<TPrevious, TResult> | NonNullableUpdater<TPrevious, TResult>,
   previous: TPrevious,
@@ -311,10 +319,17 @@ function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
 }
 
+/**
+ * Check if a value is a "plain" array (no extra enumerable keys).
+ */
 export function isPlainArray(value: unknown): value is Array<unknown> {
   return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
+/**
+ * Perform a deep equality check with options for partial comparison and
+ * ignoring `undefined` values. Optimized for router state comparisons.
+ */
 export function deepEqual(
   a: any,
   b: any,
@@ -407,6 +422,10 @@ export type ControlledPromise<T> = Promise<T> & {
   value?: T
 }
 
+/**
+ * Create a promise with exposed resolve/reject and status fields.
+ * Useful for coordinating async router lifecycle operations.
+ */
 export function createControlledPromise<T>(onResolve?: (value: T) => void) {
   let resolveLoadPromise!: (value: T) => void
   let rejectLoadPromise!: (value: any) => void
@@ -434,46 +453,9 @@ export function createControlledPromise<T>(onResolve?: (value: T) => void) {
 }
 
 /**
- *
- * @deprecated use `jsesc` instead
+ * Heuristically detect dynamic import "module not found" errors
+ * across major browsers for lazy route component handling.
  */
-export function escapeJSON(jsonString: string) {
-  return jsonString
-    .replace(/\\/g, '\\\\') // Escape backslashes
-    .replace(/'/g, "\\'") // Escape single quotes
-    .replace(/"/g, '\\"') // Escape double quotes
-}
-
-export function shallow<T>(objA: T, objB: T) {
-  if (Object.is(objA, objB)) {
-    return true
-  }
-
-  if (
-    typeof objA !== 'object' ||
-    objA === null ||
-    typeof objB !== 'object' ||
-    objB === null
-  ) {
-    return false
-  }
-
-  const keysA = Object.keys(objA)
-  if (keysA.length !== Object.keys(objB).length) {
-    return false
-  }
-
-  for (const item of keysA) {
-    if (
-      !hasOwn.call(objB, item) ||
-      !Object.is(objA[item as keyof T], objB[item as keyof T])
-    ) {
-      return false
-    }
-  }
-  return true
-}
-
 export function isModuleNotFoundError(error: any): boolean {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
@@ -505,4 +487,34 @@ export function findLast<T>(
     if (predicate(item)) return item
   }
   return undefined
+}
+
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURI(segment)
+  } catch {
+    // if the decoding fails, try to decode the various parts leaving the malformed tags in place
+    return segment.replaceAll(/%[0-9A-F]{2}/gi, (match) => {
+      try {
+        return decodeURI(match)
+      } catch {
+        return match
+      }
+    })
+  }
+}
+
+export function decodePath(path: string, decodeIgnore?: Array<string>): string {
+  if (!path) return path
+  const re = decodeIgnore
+    ? new RegExp(`${decodeIgnore.join('|')}`, 'gi')
+    : /%25|%5C/gi
+  let cursor = 0
+  let result = ''
+  let match
+  while (null !== (match = re.exec(path))) {
+    result += decodeSegment(path.slice(cursor, match.index)) + match[0]
+    cursor = re.lastIndex
+  }
+  return result + decodeSegment(cursor ? path.slice(cursor) : path)
 }

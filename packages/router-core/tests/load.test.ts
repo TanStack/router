@@ -7,9 +7,9 @@ import {
   notFound,
   redirect,
 } from '../src'
-import type { RouteOptions } from '../src'
+import type { RootRouteOptions } from '../src'
 
-type AnyRouteOptions = RouteOptions<any>
+type AnyRouteOptions = RootRouteOptions<any>
 type BeforeLoad = NonNullable<AnyRouteOptions['beforeLoad']>
 type Loader = NonNullable<AnyRouteOptions['loader']>
 
@@ -51,14 +51,14 @@ describe('beforeLoad skip or exec', () => {
     const navigation = router.navigate({ to: '/foo' })
     expect(beforeLoad).toHaveBeenCalledTimes(1)
     expect(router.state.pendingMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await navigation
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: '/foo',
+          id: '/foo/foo',
           context: {
             hello: 'world',
           },
@@ -73,7 +73,7 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     await router.preloadRoute({ to: '/foo' })
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
     await router.navigate({ to: '/foo' })
@@ -87,7 +87,7 @@ describe('beforeLoad skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await router.navigate({ to: '/foo' })
 
@@ -233,14 +233,14 @@ describe('loader skip or exec', () => {
     const navigation = router.navigate({ to: '/foo' })
     expect(loader).toHaveBeenCalledTimes(1)
     expect(router.state.pendingMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await navigation
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: '/foo',
+          id: '/foo/foo',
           loaderData: {
             hello: 'world',
           },
@@ -255,7 +255,7 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     await router.preloadRoute({ to: '/foo' })
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
     await router.navigate({ to: '/foo' })
@@ -268,7 +268,7 @@ describe('loader skip or exec', () => {
     const router = setup({ loader, staleTime: 1000 })
     await router.preloadRoute({ to: '/foo' })
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
     await router.navigate({ to: '/foo' })
@@ -282,7 +282,7 @@ describe('loader skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await router.navigate({ to: '/foo' })
 
@@ -460,6 +460,55 @@ test('exec on stay (beforeLoad & loader)', async () => {
   expect(layoutBeforeLoadResolved).toBe(true)
 })
 
+test('cancelMatches after pending timeout', async () => {
+  const WAIT_TIME = 5
+  const onAbortMock = vi.fn()
+  const rootRoute = new BaseRootRoute({})
+  const fooRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo',
+    pendingMs: WAIT_TIME * 20,
+    loader: async ({ abortController }) => {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          resolve()
+        }, WAIT_TIME * 40)
+        abortController.signal.addEventListener('abort', () => {
+          onAbortMock()
+          clearTimeout(timer)
+          resolve()
+        })
+      })
+    },
+    pendingComponent: {},
+  })
+  const barRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/bar',
+  })
+  const routeTree = rootRoute.addChildren([fooRoute, barRoute])
+  const router = new RouterCore({ routeTree, history: createMemoryHistory() })
+
+  await router.load()
+  router.navigate({ to: '/foo' })
+  await sleep(WAIT_TIME * 30)
+
+  // At this point, pending timeout should have triggered
+  const fooMatch = router.getMatch('/foo/foo')
+  expect(fooMatch).toBeDefined()
+
+  // Navigate away, which should cancel the pending match
+  await router.navigate({ to: '/bar' })
+  await router.latestLoadPromise
+
+  expect(router.state.location.pathname).toBe('/bar')
+
+  // Verify that abort was called and pending timeout was cleared
+  expect(onAbortMock).toHaveBeenCalled()
+  const cancelledFooMatch = router.getMatch('/foo/foo')
+  expect(cancelledFooMatch?._nonReactive.pendingTimeout).toBeUndefined()
+})
+
 function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }

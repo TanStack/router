@@ -4,15 +4,15 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Learn the Basics](../learn-the-basics.md) guide.
+> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](../guide/routing) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 
 This guide will help you build a **very** basic TanStack Start web application. Together, we will use TanStack Start to:
 
-- Serve an index page...
-- Which displays a counter...
-- With a button to increment the counter persistently.
+- Serve an index page
+- Display a counter
+- Increment the counter on the server and client
 
 [Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-counter)
 
@@ -52,7 +52,13 @@ TanStack Start is powered by [Vite](https://vite.dev/) and [TanStack Router](htt
 To install them, run:
 
 ```shell
-npm i @tanstack/react-start @tanstack/react-router vite
+npm i @tanstack/react-start @tanstack/react-router
+```
+
+We also need vite as a devDependency:
+
+```shell
+npm i -D vite
 ```
 
 You'll also need React:
@@ -61,10 +67,18 @@ You'll also need React:
 npm i react react-dom
 ```
 
+As well as React's Vite plugin:
+
+```shell
+npm i -D @vitejs/plugin-react
+```
+
+Alternatively, you can also use `@vitejs/plugin-react-oxc` or `@vitejs/plugin-react-swc`.
+
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths @vitejs/plugin-react
+npm i -D typescript @types/react @types/react-dom @types/node vite-tsconfig-paths
 ```
 
 ## Update Configuration Files
@@ -84,9 +98,6 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
 
 Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
-> [!NOTE]
-> TanStack Start will stop auto-configuring React/Solid Vite plugins. You’ll get full control - choose `@vitejs/plugin-react`, `@vitejs/plugin-react-oxc`, etc. Set `customViteReactPlugin: true` to opt in to this feature right now!
-
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
@@ -100,7 +111,8 @@ export default defineConfig({
   },
   plugins: [
     tsConfigPaths(),
-    tanstackStart({ customViteReactPlugin: true }),
+    tanstackStart(),
+    // react's vite plugin must come after start's vite plugin
     viteReact(),
   ],
 })
@@ -122,7 +134,6 @@ Once configuration is done, we'll have a file tree that looks like the following
 │   │   └── `__root.tsx`
 │   ├── `router.tsx`
 │   ├── `routeTree.gen.ts`
-├── `.gitignore`
 ├── `vite.config.ts`
 ├── `package.json`
 └── `tsconfig.json`
@@ -138,22 +149,16 @@ from the default [preloading functionality](/router/latest/docs/framework/react/
 
 ```tsx
 // src/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
 
   return router
-}
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: ReturnType<typeof createRouter>
-  }
 }
 ```
 
@@ -238,7 +243,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
+  .inputValidator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + data}`)
@@ -272,4 +277,4 @@ That's it! 🤯 You've now set up a TanStack Start project and written your firs
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
 
-You want to deploy your application? Check out the [hosting guide](../hosting.md).
+You want to deploy your application? Check out the [hosting guide](../guide/hosting.md).

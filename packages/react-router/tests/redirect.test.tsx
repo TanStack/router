@@ -359,6 +359,7 @@ describe('redirect', () => {
         _fromLocation: {
           hash: '',
           href: '/',
+          publicHref: '/',
           pathname: '/',
           search: {},
           searchStr: '',
@@ -367,6 +368,7 @@ describe('redirect', () => {
             __TSR_key: currentRedirect.options._fromLocation!.state.__TSR_key,
             key: currentRedirect.options._fromLocation!.state.key,
           },
+          url: 'http://localhost/',
         },
         href: '/about',
         to: '/about',

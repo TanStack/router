@@ -1,0 +1,36 @@
+{
+  "name": "tanstack-start-example-basic-rsc",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start"
+  },
+  "dependencies": {
+    "@babel/plugin-syntax-typescript": "^7.25.9",
+    "@tanstack/react-router": "^1.132.0-alpha.25",
+    "@tanstack/react-router-devtools": "^1.132.0-alpha.25",
+    "@tanstack/react-start": "^1.132.0-alpha.25",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "redaxios": "^0.5.1",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "postcss": "^8.5.1",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-tsconfig-paths": "^5.1.4"
+  },
+  "overrides": {
+    "react": "0.0.0-experimental-035a41c4e-20230704",
+    "react-dom": "0.0.0-experimental-035a41c4e-20230704"
+  }
+}

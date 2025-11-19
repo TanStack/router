@@ -7,4 +7,4 @@ export {
   transformStreamWithRouter,
   transformReadableStreamWithRouter,
 } from './transformStreamWithRouter'
-export { attachRouterServerSsrUtils } from './ssr-server'
+export { attachRouterServerSsrUtils, getOrigin } from './ssr-server'

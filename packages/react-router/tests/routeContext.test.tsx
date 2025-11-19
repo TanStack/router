@@ -1602,6 +1602,7 @@ describe('loader in the route definition', () => {
       path: '/',
     })
     const aboutRoute = createRoute({
+      ssr: false,
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async () => {
@@ -1652,7 +1653,9 @@ describe('loader in the route definition', () => {
         )
       },
     })
+
     const aboutRoute = createRoute({
+      ssr: false,
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async () => {

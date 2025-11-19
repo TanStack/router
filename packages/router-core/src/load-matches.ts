@@ -13,7 +13,7 @@ import type {
   SsrContextOptions,
 } from './route'
 import type { AnyRouteMatch, MakeRouteMatch } from './Matches'
-import type { AnyRouter, UpdateMatchFn } from './router'
+import type { AnyRouter, SSROption, UpdateMatchFn } from './router'
 
 /**
  * An object of this shape is created when calling `loadMatches`.
@@ -110,6 +110,8 @@ const handleRedirectAndNotFound = (
     match._nonReactive.loaderPromise = undefined
 
     const status = isRedirect(err) ? 'redirected' : 'notFound'
+
+    match._nonReactive.error = err
 
     inner.updateMatch(match.id, (prev) => ({
       ...prev,
@@ -211,7 +213,7 @@ const isBeforeLoadSsr = (
 
   // in SPA mode, only SSR the root route
   if (inner.router.isShell()) {
-    existingMatch.ssr = matchId === rootRouteId
+    existingMatch.ssr = route.id === rootRouteId
     return
   }
 
@@ -220,7 +222,7 @@ const isBeforeLoadSsr = (
     return
   }
 
-  const parentOverride = (tempSsr: boolean | 'data-only') => {
+  const parentOverride = (tempSsr: SSROption) => {
     if (tempSsr === true && parentMatch?.ssr === 'data-only') {
       return 'data-only'
     }
@@ -406,23 +408,32 @@ const executeBeforeLoad = (
 
   const { search, params, cause } = match
   const preload = resolvePreload(inner, matchId)
-  const beforeLoadFnContext: BeforeLoadContextOptions<any, any, any, any, any> =
-    {
-      search,
-      abortController,
-      params,
-      preload,
-      context,
-      location: inner.location,
-      navigate: (opts: any) =>
-        inner.router.navigate({
-          ...opts,
-          _fromLocation: inner.location,
-        }),
-      buildLocation: inner.router.buildLocation,
-      cause: preload ? 'preload' : cause,
-      matches: inner.matches,
-    }
+  const beforeLoadFnContext: BeforeLoadContextOptions<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  > = {
+    search,
+    abortController,
+    params,
+    preload,
+    context,
+    location: inner.location,
+    navigate: (opts: any) =>
+      inner.router.navigate({
+        ...opts,
+        _fromLocation: inner.location,
+      }),
+    buildLocation: inner.router.buildLocation,
+    cause: preload ? 'preload' : cause,
+    matches: inner.matches,
+    ...inner.router.options.additionalContext,
+  }
 
   const updateContext = (beforeLoadContext: any) => {
     if (beforeLoadContext === undefined) {
@@ -487,13 +498,13 @@ const handleBeforeLoad = (
     return queueExecution()
   }
 
+  const execute = () => executeBeforeLoad(inner, matchId, index, route)
+
   const queueExecution = () => {
     if (shouldSkipLoader(inner, matchId)) return
     const result = preBeforeLoadSetup(inner, matchId, route)
     return isPromise(result) ? result.then(execute) : execute()
   }
-
-  const execute = () => executeBeforeLoad(inner, matchId, index, route)
 
   return serverSsr()
 }
@@ -551,8 +562,22 @@ const getLoaderContext = (
   route: AnyRoute,
 ): LoaderFnContext => {
   const parentMatchPromise = inner.matchPromises[index - 1] as any
-  const { params, loaderDeps, abortController, context, cause } =
+  const { params, loaderDeps, abortController, cause } =
     inner.router.getMatch(matchId)!
+
+  let context = inner.router.options.context ?? {}
+
+  for (let i = 0; i <= index; i++) {
+    const innerMatch = inner.matches[i]
+    if (!innerMatch) continue
+    const m = inner.router.getMatch(innerMatch.id)
+    if (!m) continue
+    context = {
+      ...context,
+      ...(m.__routeContext ?? {}),
+      ...(m.__beforeLoadContext ?? {}),
+    }
+  }
 
   const preload = resolvePreload(inner, matchId)
 
@@ -571,6 +596,7 @@ const getLoaderContext = (
       }),
     cause: preload ? 'preload' : cause,
     route,
+    ...inner.router.options.additionalContext,
   }
 }
 
@@ -663,6 +689,10 @@ const runLoader = async (
       const pendingPromise = match._nonReactive.minPendingPromise
       if (pendingPromise) await pendingPromise
 
+      if (isNotFound(e)) {
+        await (route.options.notFoundComponent as any)?.preload?.()
+      }
+
       handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), e)
 
       try {
@@ -736,8 +766,9 @@ const loadRouteMatch = async (
       }
       await prevMatch._nonReactive.loaderPromise
       const match = inner.router.getMatch(matchId)!
-      if (match.error) {
-        handleRedirectAndNotFound(inner, match, match.error)
+      const error = match._nonReactive.error || match.error
+      if (error) {
+        handleRedirectAndNotFound(inner, match, error)
       }
     } else {
       // This is where all of the stale-while-revalidate magic happens

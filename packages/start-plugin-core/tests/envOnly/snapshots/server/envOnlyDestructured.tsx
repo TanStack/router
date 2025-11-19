@@ -1,5 +1,5 @@
-import { serverOnly, clientOnly } from '@tanstack/react-start';
+import { createServerOnlyFn, createClientOnlyFn } from '@tanstack/react-start';
 const serverFunc = () => 'server';
 const clientFunc = () => {
-  throw new Error("clientOnly() functions can only be called on the client!");
+  throw new Error("createClientOnlyFn() functions can only be called on the client!");
 };

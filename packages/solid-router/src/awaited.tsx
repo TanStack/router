@@ -30,7 +30,14 @@ export function Await<T>(
     children: (result: T) => SolidNode
   },
 ) {
-  const [resource] = Solid.createResource(() => props.promise)
+  const [resource] = Solid.createResource(
+    () => defer(props.promise),
+    // Simple passthrough - just return the promise for Solid to await
+    (p) => p,
+    {
+      deferStream: true,
+    },
+  )
 
   return (
     <Solid.Show fallback={props.fallback} when={resource()}>

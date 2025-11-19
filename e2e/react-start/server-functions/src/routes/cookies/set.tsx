@@ -18,14 +18,14 @@ export const Route = createFileRoute('/cookies/set')({
 })
 
 export const setCookieServerFn1 = createServerFn()
-  .validator(cookieSchema)
+  .inputValidator(cookieSchema)
   .handler(({ data }) => {
     setCookie(`cookie-1-${data.value}`, data.value)
     setCookie(`cookie-2-${data.value}`, data.value)
   })
 
 export const setCookieServerFn2 = createServerFn()
-  .validator(cookieSchema)
+  .inputValidator(cookieSchema)
   .handler(({ data }) => {
     setCookie(`cookie-3-${data.value}`, data.value)
     setCookie(`cookie-4-${data.value}`, data.value)

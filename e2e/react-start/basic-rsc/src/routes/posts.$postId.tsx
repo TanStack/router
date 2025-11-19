@@ -6,7 +6,7 @@ import { fetchPost } from '~/utils/posts'
 import { NotFound } from '~/components/NotFound'
 
 const renderPost = createServerFn({ method: 'GET' })
-  .validator((postId: string) => postId)
+  .inputValidator((postId: string) => postId)
   .handler(async ({ data: postId }) => {
     const post = await fetchPost(postId)
 

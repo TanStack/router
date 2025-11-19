@@ -1,6 +1,5 @@
 // @ts-check
 
-// @ts-expect-error
 import { tanstackConfig } from '@tanstack/config/eslint'
 
 import unusedImports from 'eslint-plugin-unused-imports'

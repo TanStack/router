@@ -6,7 +6,7 @@ import { Auth } from '~/components/Auth'
 import { useAppSession } from '~/utils/session'
 
 export const signupFn = createServerFn({ method: 'POST' })
-  .validator(
+  .inputValidator(
     (d: { email: string; password: string; redirectUrl?: string }) => d,
   )
   .handler(async ({ data }) => {

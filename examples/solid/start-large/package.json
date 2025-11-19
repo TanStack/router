@@ -1,0 +1,36 @@
+{
+  "name": "tanstack-solid-start-example-large",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "start": "vite start",
+    "gen": "node ./src/createRoutes.mjs",
+    "test:types": "tsc --extendedDiagnostics"
+  },
+  "dependencies": {
+    "@tanstack/solid-query": "^5.90.0",
+    "@tanstack/solid-router": "^1.136.11",
+    "@tanstack/solid-router-devtools": "^1.136.11",
+    "@tanstack/solid-start": "^1.136.11",
+    "solid-js": "^1.9.10",
+    "redaxios": "^0.5.1",
+    "tailwind-merge": "^2.6.0",
+    "valibot": "^1.0.0-beta.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.15",
+    "@types/node": "^22.5.4",
+    "vite-plugin-solid": "^2.11.10",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^4.1.15",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-tsconfig-paths": "^5.1.4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

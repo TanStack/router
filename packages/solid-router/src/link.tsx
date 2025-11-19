@@ -114,20 +114,6 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  // If this link simply reloads the current route,
-  // make sure it has a new key so it will trigger a data refresh
-
-  // If this `to` is a valid external URL, return
-  // null for LinkUtils
-
-  const type: Solid.Accessor<'internal' | 'external'> = () => {
-    try {
-      new URL(`${local.to}`)
-      return 'external'
-    } catch {}
-    return 'internal'
-  }
-
   const currentSearch = useRouterState({
     select: (s) => s.location.searchStr,
   })
@@ -146,8 +132,42 @@ export function useLinkProps<
     return router.buildLocation(_options() as any)
   })
 
+  const hrefOption = Solid.createMemo(() => {
+    if (_options().disabled) {
+      return undefined
+    }
+    let href
+    const maskedLocation = next().maskedLocation
+    if (maskedLocation) {
+      href = maskedLocation.url
+    } else {
+      href = next().url
+    }
+    let external = false
+    if (router.origin) {
+      if (href.startsWith(router.origin)) {
+        href = router.history.createHref(href.replace(router.origin, ''))
+      } else {
+        external = true
+      }
+    }
+    return { href, external }
+  })
+
+  const externalLink = Solid.createMemo(() => {
+    const _href = hrefOption()
+    if (_href?.external) {
+      return _href.href
+    }
+    try {
+      new URL(_options().to as any)
+      return _options().to
+    } catch {}
+    return undefined
+  })
+
   const preload = Solid.createMemo(() => {
-    if (_options().reloadDocument) {
+    if (_options().reloadDocument || externalLink()) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -157,6 +177,7 @@ export function useLinkProps<
 
   const isActive = useRouterState({
     select: (s) => {
+      if (externalLink()) return false
       if (local.activeOptions?.exact) {
         const testExact = exactPathTest(
           s.location.pathname,
@@ -234,17 +255,12 @@ export function useLinkProps<
     }
   })
 
-  if (type() === 'external') {
+  if (externalLink()) {
     return Solid.mergeProps(
       propsSafeToSpread,
       {
-        ref,
-        get type() {
-          return type()
-        },
-        get href() {
-          return local.to
-        },
+        ref: mergeRefs(setRef, _options().ref),
+        href: externalLink(),
       },
       Solid.splitProps(local, [
         'target',
@@ -264,11 +280,18 @@ export function useLinkProps<
 
   // The click handler
   const handleClick = (e: MouseEvent) => {
+    // Check actual element's target attribute as fallback
+    const elementTarget = (
+      e.currentTarget as HTMLAnchorElement | SVGAElement
+    ).getAttribute('target')
+    const effectiveTarget =
+      local.target !== undefined ? local.target : elementTarget
+
     if (
       !local.disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!local.target || local.target === '_self') &&
+      (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
@@ -306,7 +329,7 @@ export function useLinkProps<
 
   const handleEnter = (e: MouseEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
 
     if (preload()) {
       if (eventTarget.preloadTimeout) {
@@ -322,7 +345,7 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       clearTimeout(eventTarget.preloadTimeout)
@@ -380,24 +403,13 @@ export function useLinkProps<
     ...resolvedInactiveProps().style,
   })
 
-  const href = Solid.createMemo(() => {
-    const nextLocation = next()
-    const maskedLocation = nextLocation?.maskedLocation
-
-    return _options().disabled
-      ? undefined
-      : maskedLocation
-        ? router.history.createHref(maskedLocation.href)
-        : router.history.createHref(nextLocation?.href)
-  })
-
   return Solid.mergeProps(
     propsSafeToSpread,
     resolvedActiveProps,
     resolvedInactiveProps,
     () => {
       return {
-        href: href(),
+        href: hrefOption()?.href,
         ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
@@ -411,8 +423,14 @@ export function useLinkProps<
         ]),
         disabled: !!local.disabled,
         target: local.target,
-        ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
-        ...(resolvedClassName() && { class: resolvedClassName() }),
+        ...(() => {
+          const s = resolvedStyle()
+          return Object.keys(s).length ? { style: s } : {}
+        })(),
+        ...(() => {
+          const c = resolvedClassName()
+          return c ? { class: c } : {}
+        })(),
         ...(local.disabled && {
           role: 'link',
           'aria-disabled': true,
@@ -562,12 +580,23 @@ export const Link: LinkComponent<'a'> = (props) => {
         get isActive() {
           return (linkProps as any)['data-status'] === 'active'
         },
-        isTransitioning: false,
+        get isTransitioning() {
+          return (linkProps as any)['data-transitioning'] === 'transitioning'
+        },
       })
     }
 
     return ch satisfies Solid.JSX.Element
   })
+
+  if (local._asChild === 'svg') {
+    const [_, svgLinkProps] = Solid.splitProps(linkProps, ['class'])
+    return (
+      <svg>
+        <a {...svgLinkProps}>{children()}</a>
+      </svg>
+    )
+  }
 
   return (
     <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>

@@ -7,8 +7,11 @@ export default defineConfig({
   },
   plugins: [
     tanstackStart({
-      tsr: {
-        srcDirectory: './src/app',
+      srcDirectory: './src/app',
+      router: {
+        entry: '../router.tsx',
+        routesDirectory: '../routes',
+        generatedRouteTree: '../routeTree.gen.ts',
       },
     }),
   ],

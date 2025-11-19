@@ -37,7 +37,12 @@ export const configSchema = baseConfigSchema.extend({
   verboseFileRoutes: z.boolean().optional(),
   addExtensions: z.boolean().optional().default(false),
   enableRouteTreeFormatting: z.boolean().optional().default(true),
-  routeTreeFileFooter: z.array(z.string()).optional().default([]),
+  routeTreeFileFooter: z
+    .union([
+      z.array(z.string()).optional().default([]),
+      z.function().returns(z.array(z.string())),
+    ])
+    .optional(),
   autoCodeSplitting: z.boolean().optional(),
   customScaffolding: z
     .object({
@@ -49,10 +54,13 @@ export const configSchema = baseConfigSchema.extend({
     .object({
       // TODO: This has been made stable and is now "autoCodeSplitting". Remove in next major version.
       enableCodeSplitting: z.boolean().optional(),
+      // TODO: This resolves issues with non-nested paths in file-based routing. To be made default in next major version.
+      nonNestedRoutes: z.boolean().optional(),
     })
     .optional(),
   plugins: z.array(z.custom<GeneratorPlugin>()).optional(),
   tmpDir: z.string().optional().default(''),
+  importRoutesUsingAbsolutePaths: z.boolean().optional().default(false),
 })
 
 export type Config = z.infer<typeof configSchema>
