@@ -10,11 +10,13 @@
     "prisma-generate": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0",
+    "@libsql/client": "^0.15.15",
+    "@prisma/adapter-libsql": "^7.0.0",
+    "@prisma/client": "^7.0.0",
     "@tanstack/solid-router": "^1.136.17",
     "@tanstack/solid-router-devtools": "^1.136.17",
     "@tanstack/solid-start": "^1.136.17",
-    "prisma": "^5.22.0",
+    "prisma": "^7.0.0",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0"
