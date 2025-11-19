@@ -311,7 +311,9 @@ export const MatchInner = (props: { matchId: string }): any => {
           // Use Show with keyed to ensure re-render when routeId changes
           return (
             <Solid.Show when={matchState()!.routeId} keyed>
-              {(_routeId) => renderRouteNotFound(router, route(), match().error)}
+              {(_routeId) =>
+                renderRouteNotFound(router, route(), match().error)
+              }
             </Solid.Show>
           )
         }}
