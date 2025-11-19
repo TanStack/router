@@ -35,12 +35,16 @@ type ReadablePassthrough = {
   destroyed: boolean
 }
 
-function createPassthrough() {
+function createPassthrough(onCancel?: () => void) {
   let controller: ReadableStreamDefaultController<any>
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
     start(c) {
       controller = c
+    },
+    cancel() {
+      res.destroyed = true
+      onCancel?.()
     },
   })
 
@@ -96,7 +100,13 @@ export function transformStreamWithRouter(
     timeoutMs?: number
   },
 ) {
-  const finalPassThrough = createPassthrough()
+  let stopListeningToInjectedHtml: (() => void) | undefined = undefined
+  let timeoutHandle: NodeJS.Timeout
+
+  const finalPassThrough = createPassthrough(() => {
+    stopListeningToInjectedHtml?.()
+    clearTimeout(timeoutHandle)
+  })
   const textDecoder = new TextDecoder()
 
   let isAppRendering = true as boolean
@@ -105,7 +115,6 @@ export function transformStreamWithRouter(
   let streamBarrierLifted = false as boolean
   let leftover = ''
   let leftoverHtml = ''
-  let timeoutHandle: NodeJS.Timeout
 
   function getBufferedRouterStream() {
     const html = routerStreamBuffer
@@ -130,12 +139,9 @@ export function transformStreamWithRouter(
   })
 
   // Listen for any new injected HTML
-  const stopListeningToInjectedHtml = router.subscribe(
-    'onInjectedHtml',
-    (e) => {
-      handleInjectedHtml(e.promise)
-    },
-  )
+  stopListeningToInjectedHtml = router.subscribe('onInjectedHtml', (e) => {
+    handleInjectedHtml(e.promise)
+  })
 
   function handleInjectedHtml(promise: Promise<string>) {
     processingCount++
@@ -170,7 +176,7 @@ export function transformStreamWithRouter(
       console.error('Error reading routerStream:', err)
       finalPassThrough.destroy(err)
     })
-    .finally(stopListeningToInjectedHtml)
+    .finally(() => stopListeningToInjectedHtml?.())
 
   // Transform the appStream
   readStream(appStream, {

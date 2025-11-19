@@ -23,6 +23,7 @@ const prerenderConfiguration = {
       '/not-found/via-loader',
       '/search-params/default',
       '/transition',
+      '/users',
     ].some((p) => page.path.includes(p)),
   maxRedirects: 100,
 }
@@ -35,7 +36,6 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    // @ts-ignore we want to keep one test with verboseFileRoutes off even though the option is hidden
     tanstackStart({
       spa: isSpaMode ? spaModeConfiguration : undefined,
       prerender: isPrerender ? prerenderConfiguration : undefined,

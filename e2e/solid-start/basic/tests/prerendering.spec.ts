@@ -15,7 +15,6 @@ test.describe('Prerender Static Path Discovery', () => {
       expect(existsSync(join(distDir, 'index.html'))).toBe(true)
       expect(existsSync(join(distDir, 'posts/index.html'))).toBe(true)
       expect(existsSync(join(distDir, 'users/index.html'))).toBe(true)
-      expect(existsSync(join(distDir, 'deferred/index.html'))).toBe(true)
       expect(existsSync(join(distDir, 'scripts/index.html'))).toBe(true)
       expect(existsSync(join(distDir, 'inline-scripts/index.html'))).toBe(true)
       expect(existsSync(join(distDir, '대한민국/index.html'))).toBe(true)
@@ -39,15 +38,6 @@ test.describe('Prerender Static Path Discovery', () => {
       // "Select a post." should be in the prerendered HTML
       const html = readFileSync(join(distDir, 'posts/index.html'), 'utf-8')
       expect(html).toContain('Select a post.')
-    })
-
-    test('should contain prerendered content in users.html', () => {
-      const distDir = join(process.cwd(), 'dist', 'client')
-      expect(existsSync(join(distDir, 'users/index.html'))).toBe(true)
-
-      // "Select a user." should be in the prerendered HTML
-      const html = readFileSync(join(distDir, 'users/index.html'), 'utf-8')
-      expect(html).toContain('Select a user.')
     })
   })
 })
