@@ -3,6 +3,14 @@ import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+/**
+ * Render body script tags collected from route matches and SSR manifests.
+ * Should be placed near the end of the document body.
+ */
+/**
+ * Render body script tags collected from route matches and SSR manifests.
+ * Should be placed near the end of the document body.
+ */
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
@@ -54,7 +62,17 @@ export const Scripts = () => {
     structuralSharing: true as any,
   })
 
+  let serverBufferedScript: RouterManagedTag | undefined = undefined
+
+  if (router.serverSsr) {
+    serverBufferedScript = router.serverSsr.takeBufferedScripts()
+  }
+
   const allScripts = [...scripts, ...assetScripts] as Array<RouterManagedTag>
+
+  if (serverBufferedScript) {
+    allScripts.unshift(serverBufferedScript)
+  }
 
   return (
     <>

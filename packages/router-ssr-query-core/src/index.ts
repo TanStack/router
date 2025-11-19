@@ -80,14 +80,14 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       if (sentQueries.has(event.query.queryHash)) {
         return
       }
+      // promise not yet set on the query, so we cannot stream it yet
+      if (!event.query.promise) {
+        return
+      }
       if (queryStream.isClosed()) {
         console.warn(
           `tried to stream query ${event.query.queryHash} after stream was already closed`,
         )
-        return
-      }
-      // promise not yet set on the query, so we cannot stream it yet
-      if (!event.query.promise) {
         return
       }
       sentQueries.add(event.query.queryHash)

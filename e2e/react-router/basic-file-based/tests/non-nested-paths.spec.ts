@@ -190,3 +190,161 @@ test.describe('Non-nested paths', () => {
     },
   )
 })
+
+test.describe('Deeply nested non-nested paths', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/non-nested/deep')
+    await page.waitForURL('/non-nested/deep')
+  })
+
+  test('It should nest nested paths 1 level deep', async ({ page }) => {
+    const rootRouteHeading = page.getByTestId(
+      `non-nested-deep-root-route-heading`,
+    )
+
+    await expect(rootRouteHeading).toBeVisible()
+
+    const bazLink = page.getByTestId('to-deep-baz')
+    await bazLink.click()
+    await page.waitForURL('/non-nested/deep/baz')
+    const bazRouteHeading = page.getByTestId(
+      'non-nested-deep-baz-route-heading',
+    )
+    const bazIndexHeading = page.getByTestId(
+      'non-nested-deep-baz-index-heading',
+    )
+    const bazIndexParams = page.getByTestId('non-nested-deep-baz-index-param')
+
+    await expect(bazRouteHeading).toBeVisible()
+    await expect(bazIndexHeading).toBeVisible()
+    expect(await bazIndexParams.innerText()).toBe(
+      JSON.stringify({ baz: 'baz' }),
+    )
+  })
+
+  test('It should not nest non-nested paths 1 level deep', async ({ page }) => {
+    const rootRouteHeading = page.getByTestId(
+      `non-nested-deep-root-route-heading`,
+    )
+
+    await expect(rootRouteHeading).toBeVisible()
+    const bazBarLink = page.getByTestId('to-deep-baz-bar')
+
+    await bazBarLink.click()
+    await page.waitForURL('/non-nested/deep/baz-bar/bar')
+    const bazRouteHeading = page.getByTestId(
+      'non-nested-deep-baz-route-heading',
+    )
+    const bazBarRouteHeading = page.getByTestId(
+      'non-nested-deep-baz-bar-route-heading',
+    )
+    const bazBarIndexHeading = page.getByTestId(
+      'non-nested-deep-baz-bar-index-heading',
+    )
+    const bazBarIndexParams = page.getByTestId(
+      'non-nested-deep-baz-bar-index-param',
+    )
+
+    await expect(bazRouteHeading).not.toBeVisible()
+    await expect(bazBarRouteHeading).toBeVisible()
+    await expect(bazBarIndexHeading).toBeVisible()
+    expect(await bazBarIndexParams.innerText()).toBe(
+      JSON.stringify({ baz: 'baz-bar' }),
+    )
+  })
+
+  test('It should not nest non-nested paths 2 levels deep', async ({
+    page,
+  }) => {
+    const rootRouteHeading = page.getByTestId(
+      `non-nested-deep-root-route-heading`,
+    )
+
+    await expect(rootRouteHeading).toBeVisible()
+
+    const bazBarQuxLink = page.getByTestId('to-deep-baz-bar-qux')
+    await bazBarQuxLink.click()
+
+    await page.waitForURL('/non-nested/deep/baz-bar-qux/bar/qux')
+    const bazRouteHeading = page.getByTestId(
+      'non-nested-deep-baz-route-heading',
+    )
+    const bazBarRouteHeading = page.getByTestId(
+      'non-nested-deep-baz-bar-route-heading',
+    )
+    const bazBarQuxHeading = page.getByTestId(
+      'non-nested-deep-baz-bar-qux-heading',
+    )
+    const bazBarQuxParams = page.getByTestId(
+      'non-nested-deep-baz-bar-qux-param',
+    )
+
+    await expect(bazRouteHeading).not.toBeVisible()
+    await expect(bazBarRouteHeading).not.toBeVisible()
+    await expect(bazBarQuxHeading).toBeVisible()
+    await expect(bazBarQuxParams).toBeVisible()
+    expect(await bazBarQuxParams.innerText()).toBe(
+      JSON.stringify({ baz: 'baz-bar-qux' }),
+    )
+  })
+
+  test('It should nest and un-nest non-nested across paths multiple levels deep', async ({
+    page,
+  }) => {
+    const rootRouteHeading = page.getByTestId(
+      `non-nested-deep-root-route-heading`,
+    )
+
+    await expect(rootRouteHeading).toBeVisible()
+
+    const bazBarFooLink = page.getByTestId('to-deep-baz-bar-foo')
+    await bazBarFooLink.click()
+
+    await page.waitForURL('/non-nested/deep/baz-bar/bar/foo')
+
+    const bazRouteHeading = page.getByTestId(
+      'non-nested-deep-baz-route-heading',
+    )
+    const bazBarRouteHeading = page.getByTestId(
+      'non-nested-deep-baz-bar-route-heading',
+    )
+    const bazBarFooRouteHeading = page.getByTestId(
+      'non-nested-deep-baz-bar-foo-route-heading',
+    )
+    const bazBarFooIndexHeading = page.getByTestId(
+      'non-nested-deep-baz-bar-foo-index-heading',
+    )
+    const bazBarFooIndexParams = page.getByTestId(
+      'non-nested-deep-baz-bar-foo-index-param',
+    )
+
+    await expect(bazRouteHeading).not.toBeVisible()
+    await expect(bazBarRouteHeading).toBeVisible()
+    await expect(bazBarFooRouteHeading).toBeVisible()
+    await expect(bazBarFooIndexHeading).toBeVisible()
+    await expect(bazBarFooIndexParams).toBeVisible()
+    expect(await bazBarFooIndexParams.innerText()).toBe(
+      JSON.stringify({ baz: 'baz-bar', foo: 'foo' }),
+    )
+
+    const bazBarFooQuxLink = page.getByTestId('to-deep-baz-bar-foo-qux')
+    await bazBarFooQuxLink.click()
+    await page.waitForURL('/non-nested/deep/baz-bar-qux/bar/foo/qux')
+
+    const bazBarFooQuxHeading = page.getByTestId(
+      'non-nested-deep-baz-bar-foo-qux-heading',
+    )
+    const bazBarFooQuxParams = page.getByTestId(
+      'non-nested-deep-baz-bar-foo-qux-param',
+    )
+
+    await expect(bazRouteHeading).not.toBeVisible()
+    await expect(bazBarRouteHeading).toBeVisible()
+    await expect(bazBarFooRouteHeading).not.toBeVisible()
+    await expect(bazBarFooQuxHeading).toBeVisible()
+    await expect(bazBarFooQuxParams).toBeVisible()
+    expect(await bazBarFooQuxParams.innerText()).toBe(
+      JSON.stringify({ baz: 'baz-bar-qux', foo: 'foo' }),
+    )
+  })
+})

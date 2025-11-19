@@ -138,7 +138,7 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
           setAcceptColumnDrop('none')
         }}
         className={twMerge(
-          'border-l-transparent border-r-transparent border-l-2 border-r-2 -mr-[2px] last:mr-0 cursor-grab active:cursor-grabbing px-2 flex-shrink-0 flex flex-col  max-h-full',
+          'border-l-transparent border-r-transparent border-l-2 border-r-2 -mr-[2px] last:mr-0 cursor-grab active:cursor-grabbing px-2 shrink-0 flex flex-col  max-h-full',
           acceptColumnDrop === 'left'
             ? 'border-l-red-500 border-r-transparent'
             : acceptColumnDrop === 'right'
@@ -157,8 +157,8 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
           }}
           {...(!items.length ? cardDndProps : {})}
           className={twMerge(
-            'flex-shrink-0 flex flex-col max-h-full w-80 border-slate-400 rounded-xl shadow-sm shadow-slate-400 bg-slate-100 relative',
-            acceptCardDrop && `outline outline-2 outline-red-500`,
+            'shrink-0 flex flex-col max-h-full w-80 border-slate-400 rounded-xl shadow-xs shadow-slate-400 bg-slate-100 relative',
+            acceptCardDrop && `outline-solid outline-2 outline-red-500`,
           )}
         >
           <div className="p-2" {...(items.length ? cardDndProps : {})}>
@@ -188,7 +188,7 @@ export const Column = forwardRef<HTMLDivElement, ColumnProps>(
             />
           </div>
 
-          <ul ref={listRef} className="flex-grow overflow-auto">
+          <ul ref={listRef} className="grow overflow-auto">
             {sortedItems.map((item, index, items) => (
               <Card
                 ref={itemRef}

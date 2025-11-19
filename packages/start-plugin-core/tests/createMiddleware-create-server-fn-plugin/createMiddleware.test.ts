@@ -31,6 +31,7 @@ async function compile(opts: {
     resolveId: async (id) => {
       return id
     },
+    directive: 'use server',
   })
   const result = await compiler.compile({ code: opts.code, id: opts.id })
   return result

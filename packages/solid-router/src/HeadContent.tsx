@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { MetaProvider } from '@solidjs/meta'
+import { For } from 'solid-js'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -106,9 +107,9 @@ export const useTags = () => {
     },
   })
 
-  const preloadMeta = useRouterState({
+  const preloadLinks = useRouterState({
     select: (state) => {
-      const preloadMeta: Array<RouterManagedTag> = []
+      const preloadLinks: Array<RouterManagedTag> = []
 
       state.matches
         .map((match) => router.looseRoutesById[match.routeId]!)
@@ -116,7 +117,7 @@ export const useTags = () => {
           router.ssr?.manifest?.routes[route.id]?.preloads
             ?.filter(Boolean)
             .forEach((preload) => {
-              preloadMeta.push({
+              preloadLinks.push({
                 tag: 'link',
                 attrs: {
                   rel: 'modulepreload',
@@ -127,7 +128,7 @@ export const useTags = () => {
             }),
         )
 
-      return preloadMeta
+      return preloadLinks
     },
   })
 
@@ -169,7 +170,7 @@ export const useTags = () => {
     uniqBy(
       [
         ...meta(),
-        ...preloadMeta(),
+        ...preloadLinks(),
         ...links(),
         ...styles(),
         ...headScripts(),
@@ -182,16 +183,16 @@ export const useTags = () => {
 
 /**
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
- * It should be rendered in the `<head>` of your document.
+ * When using full document hydration (hydrating from `<html>`), this component should be rendered in the `<body>`
+ * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
+ * The component uses portals internally to render content into the `<head>` element.
  */
 export function HeadContent() {
   const tags = useTags()
 
   return (
     <MetaProvider>
-      {tags().map((tag) => (
-        <Asset {...tag} />
-      ))}
+      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
     </MetaProvider>
   )
 }
