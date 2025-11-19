@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && tsc --noEmit",
-    "start": "vite start"
+    "build": "vite build && tsc --noEmit"
   },
   "dependencies": {
     "@emotion/cache": "11.14.0",

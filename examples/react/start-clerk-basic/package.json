@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && tsc --noEmit",
-    "start": "vite start"
+    "build": "vite build && tsc --noEmit"
   },
   "dependencies": {
     "@clerk/tanstack-react-start": "^0.26.3",

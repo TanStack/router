@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
-    "start": "vite start"
+    "build": "vite build"
   },
   "dependencies": {
     "@babel/plugin-syntax-typescript": "^7.25.9",

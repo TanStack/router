@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "convex:dev": "convex dev",
-    "build": "vite build && tsc --noEmit",
-    "start": "vite start"
+    "build": "vite build && tsc --noEmit"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.9.7",
