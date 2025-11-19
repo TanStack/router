@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build"
+    "build": "vite build",
+    "start": "pnpx srvx --prod -s ../client  dist/server/server.js"
   },
   "dependencies": {
     "@babel/plugin-syntax-typescript": "^7.25.9",
