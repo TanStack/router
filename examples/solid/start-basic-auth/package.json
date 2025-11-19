@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "vite start",
     "prisma-generate": "prisma generate"
   },
   "dependencies": {

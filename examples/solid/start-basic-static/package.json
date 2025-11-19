@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
-    "start": "vite start"
+    "build": "vite build"
   },
   "dependencies": {
     "@tanstack/solid-router": "^1.136.17",
