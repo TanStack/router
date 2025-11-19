@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -67,10 +68,7 @@ export function Navigate<
     TMaskFrom,
     TMaskTo
   > | null>(null)
-  const useIsomorphicLayoutEffect =
-    typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
-
-  useIsomorphicLayoutEffect(() => {
+  useLayoutEffect(() => {
     if (previousPropsRef.current !== props) {
       navigate(props)
       previousPropsRef.current = props
