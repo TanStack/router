@@ -36,7 +36,8 @@ export function trimPathLeft(path: string) {
 /** Trim trailing slashes (except preserving root '/'). */
 /** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
-  return path === '/' ? path : path.replace(/\/{1,}$/, '')
+  const len = path.length
+  return len > 1 && path[len - 1] === '/' ? path.replace(/\/{1,}$/, '') : path
 }
 
 /** Trim both leading and trailing slashes. */
