@@ -8309,7 +8309,7 @@ importers:
     devDependencies:
       '@netlify/vite-plugin-tanstack-start':
         specifier: ^1.1.4
-        version: 1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -9878,8 +9878,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       xmlbuilder2:
-        specifier: ^3.1.1
-        version: 3.1.1
+        specifier: ^4.0.0
+        version: 4.0.0
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -12255,21 +12255,21 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@oozcitak/dom@1.15.10':
-    resolution: {integrity: sha512-0JT29/LaxVgRcGKvHmSrUTEvZ8BXvZhGl2LASRUgHqDTC1M5g1pLmVv56IYNyt3bG2CUjDkc67wnyZC14pbQrQ==}
-    engines: {node: '>=8.0'}
+  '@oozcitak/dom@2.0.1':
+    resolution: {integrity: sha512-Un5k8MKqGak1LQM/behcHylmGdRopBXZax19weVedEAIrOCRZooY+MvX4Ehcz0ftOEPgYZ7vjIm/+MokVBFO3w==}
+    engines: {node: '>=20.0'}
 
-  '@oozcitak/infra@1.0.8':
-    resolution: {integrity: sha512-JRAUc9VR6IGHOL7OGF+yrvs0LO8SlqGnPAMqyzOuFZPSZSXI7Xf2O9+awQPSMXgIWGtgUf/dA6Hs6X6ySEaWTg==}
-    engines: {node: '>=6.0'}
+  '@oozcitak/infra@2.0.1':
+    resolution: {integrity: sha512-TtjI+kducm0ExL3OTKglPLkAIQ3alq0Otbokml62haZESfQaL3ojLJxl7+UTBhWCkBBuCshzGEEYmX5MXo8WOg==}
+    engines: {node: '>=20.0'}
 
-  '@oozcitak/url@1.0.4':
-    resolution: {integrity: sha512-kDcD8y+y3FCSOvnBI6HJgl00viO/nGbQoCINmQ0h98OhnGITrWR3bOGfwYCthgcrV8AnTJz8MzslTQbC3SOAmw==}
-    engines: {node: '>=8.0'}
+  '@oozcitak/url@2.0.1':
+    resolution: {integrity: sha512-lLHUQUyYy86q+qbALr0TMVh+VQAYwNGbsxBx4LhfjvkNYG0hgAwWtq7ePebGs2nEhZmmIFl24ikuCpH2r5d3+A==}
+    engines: {node: '>=20.0'}
 
-  '@oozcitak/util@8.3.8':
-    resolution: {integrity: sha512-T8TbSnGsxo6TDBJx/Sgv/BlVJL3tshxZP7Aq5R1mSnM5OcHY2dQaxLMu2+E8u3gN0MLOzdjurqN4ZRVuzQycOQ==}
-    engines: {node: '>=8.0'}
+  '@oozcitak/util@9.0.4':
+    resolution: {integrity: sha512-kmx1hRJlsvxiTCpK97off59LqSEOtkWOPe4rdfFL8TjZtihYSTVNObIfc86jtLngfnuIuuTRt+TUCgRS220RSQ==}
+    engines: {node: '>=20.0'}
 
   '@open-draft/deferred-promise@2.2.0':
     resolution: {integrity: sha512-CecwLWx3rhxVQF6V4bAgPS5t+So2sTbPgAzafKkVizyi7tlwpcFpdFqq+wqF2OwNBmqFuu6tOyouTuxgpMfzmA==}
@@ -20932,9 +20932,9 @@ packages:
     resolution: {integrity: sha512-EvGK8EJ3DhaHfbRlETOWAS5pO9MZITeauHKJyb8wyajUfQUenkIg2MvLDTZ4T/TgIcm3HU0TFBgWWboAZ30UHg==}
     engines: {node: '>=18'}
 
-  xmlbuilder2@3.1.1:
-    resolution: {integrity: sha512-WCSfbfZnQDdLQLiMdGUQpMxxckeQ4oZNMNhLVkcekTu7xhD4tuUDyAPoY8CwXvBYE6LwBHd6QW2WZXlOWr1vCw==}
-    engines: {node: '>=12.0'}
+  xmlbuilder2@4.0.0:
+    resolution: {integrity: sha512-zIoY033NGmbzHX1cYOGKNfeWpZyiGLzXGHNoxQ6tR/R+WqT7mqz+EDtFdPwqnhIms6vHz9BNtMS47DiGPyGfwg==}
+    engines: {node: '>=20.0'}
 
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
@@ -23334,13 +23334,13 @@ snapshots:
       uuid: 11.1.0
       write-file-atomic: 5.0.1
 
-  '@netlify/dev@4.6.3(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)':
+  '@netlify/dev@4.6.3(db0@0.3.4)(ioredis@5.8.0)(rollup@4.52.5)':
     dependencies:
       '@netlify/blobs': 10.1.0
       '@netlify/config': 23.2.0
       '@netlify/dev-utils': 4.3.0
       '@netlify/edge-functions-dev': 1.0.0
-      '@netlify/functions-dev': 1.0.0(encoding@0.1.13)(rollup@4.52.5)
+      '@netlify/functions-dev': 1.0.0(rollup@4.52.5)
       '@netlify/headers': 2.1.0
       '@netlify/images': 1.3.0(@netlify/blobs@10.1.0)(db0@0.3.4)(ioredis@5.8.0)
       '@netlify/redirects': 3.1.0
@@ -23408,12 +23408,12 @@ snapshots:
     dependencies:
       '@netlify/types': 2.1.0
 
-  '@netlify/functions-dev@1.0.0(encoding@0.1.13)(rollup@4.52.5)':
+  '@netlify/functions-dev@1.0.0(rollup@4.52.5)':
     dependencies:
       '@netlify/blobs': 10.1.0
       '@netlify/dev-utils': 4.3.0
       '@netlify/functions': 5.0.0
-      '@netlify/zip-it-and-ship-it': 14.1.11(encoding@0.1.13)(rollup@4.52.5)
+      '@netlify/zip-it-and-ship-it': 14.1.11(rollup@4.52.5)
       cron-parser: 4.9.0
       decache: 4.6.2
       extract-zip: 2.0.1
@@ -23503,9 +23503,9 @@ snapshots:
 
   '@netlify/types@2.1.0': {}
 
-  '@netlify/vite-plugin-tanstack-start@1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
+  '@netlify/vite-plugin-tanstack-start@1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
-      '@netlify/vite-plugin': 2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@netlify/vite-plugin': 2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     optionalDependencies:
       '@tanstack/solid-start': link:packages/solid-start
@@ -23533,9 +23533,9 @@ snapshots:
       - supports-color
       - uploadthing
 
-  '@netlify/vite-plugin@2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
+  '@netlify/vite-plugin@2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
-      '@netlify/dev': 4.6.3(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)
+      '@netlify/dev': 4.6.3(db0@0.3.4)(ioredis@5.8.0)(rollup@4.52.5)
       '@netlify/dev-utils': 4.3.0
       dedent: 1.7.0(babel-plugin-macros@3.1.0)
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -23563,13 +23563,13 @@ snapshots:
       - supports-color
       - uploadthing
 
-  '@netlify/zip-it-and-ship-it@14.1.11(encoding@0.1.13)(rollup@4.52.5)':
+  '@netlify/zip-it-and-ship-it@14.1.11(rollup@4.52.5)':
     dependencies:
       '@babel/parser': 7.28.5
       '@babel/types': 7.28.4
       '@netlify/binary-info': 1.0.0
       '@netlify/serverless-functions-api': 2.7.1
-      '@vercel/nft': 0.29.4(encoding@0.1.13)(rollup@4.52.5)
+      '@vercel/nft': 0.29.4(rollup@4.52.5)
       archiver: 7.0.1
       common-path-prefix: 3.0.0
       copy-file: 11.1.0
@@ -23650,22 +23650,22 @@ snapshots:
   '@nx/nx-win32-x64-msvc@21.3.7':
     optional: true
 
-  '@oozcitak/dom@1.15.10':
+  '@oozcitak/dom@2.0.1':
     dependencies:
-      '@oozcitak/infra': 1.0.8
-      '@oozcitak/url': 1.0.4
-      '@oozcitak/util': 8.3.8
+      '@oozcitak/infra': 2.0.1
+      '@oozcitak/url': 2.0.1
+      '@oozcitak/util': 9.0.4
 
-  '@oozcitak/infra@1.0.8':
+  '@oozcitak/infra@2.0.1':
     dependencies:
-      '@oozcitak/util': 8.3.8
+      '@oozcitak/util': 9.0.4
 
-  '@oozcitak/url@1.0.4':
+  '@oozcitak/url@2.0.1':
     dependencies:
-      '@oozcitak/infra': 1.0.8
-      '@oozcitak/util': 8.3.8
+      '@oozcitak/infra': 2.0.1
+      '@oozcitak/util': 9.0.4
 
-  '@oozcitak/util@8.3.8': {}
+  '@oozcitak/util@9.0.4': {}
 
   '@open-draft/deferred-promise@2.2.0': {}
 
@@ -26492,7 +26492,7 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
-  '@vercel/nft@0.29.4(encoding@0.1.13)(rollup@4.52.5)':
+  '@vercel/nft@0.29.4(rollup@4.52.5)':
     dependencies:
       '@mapbox/node-pre-gyp': 2.0.0(encoding@0.1.13)
       '@rollup/pluginutils': 5.1.4(rollup@4.52.5)
@@ -33221,12 +33221,12 @@ snapshots:
 
   xml-name-validator@5.0.0: {}
 
-  xmlbuilder2@3.1.1:
+  xmlbuilder2@4.0.0:
     dependencies:
-      '@oozcitak/dom': 1.15.10
-      '@oozcitak/infra': 1.0.8
-      '@oozcitak/util': 8.3.8
-      js-yaml: 3.14.1
+      '@oozcitak/dom': 2.0.1
+      '@oozcitak/infra': 2.0.1
+      '@oozcitak/util': 9.0.4
+      js-yaml: 4.1.0
 
   xmlchars@2.2.0: {}
 
