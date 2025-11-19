@@ -250,6 +250,9 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
+    const match = mockRouter.state.matches[0] as AnyRouteMatch
+    expect(match.error).toEqual({ isNotFound: true })
+
     expect(consoleSpy).toHaveBeenCalledWith(
       'NotFound error during hydration for routeId: /',
       expect.objectContaining({
