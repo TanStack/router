@@ -14,7 +14,7 @@ test.describe('Prerender Static Path Discovery', () => {
       // These static routes should be automatically discovered and prerendered
       expect(existsSync(join(distDir, 'index.html'))).toBe(true)
       expect(existsSync(join(distDir, 'posts/index.html'))).toBe(true)
-      expect(existsSync(join(distDir, 'users/index.html'))).toBe(true)
+      expect(existsSync(join(distDir, 'deferred/index.html'))).toBe(true)
       expect(existsSync(join(distDir, 'scripts/index.html'))).toBe(true)
       expect(existsSync(join(distDir, 'inline-scripts/index.html'))).toBe(true)
       expect(existsSync(join(distDir, '대한민국/index.html'))).toBe(true)
