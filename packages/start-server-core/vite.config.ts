@@ -15,13 +15,24 @@ const config = defineConfig({
   },
   resolve: {
     alias: {
-      '#tanstack-router-entry': path.resolve(__dirname, './tests/mocks/router-entry.ts'),
-      '#tanstack-start-entry': path.resolve(__dirname, './tests/mocks/start-entry.ts'),
-      'tanstack-start-manifest:v': path.resolve(__dirname, './tests/mocks/start-manifest.ts'),
-      'tanstack-start-injected-head-scripts:v': path.resolve(__dirname, './tests/mocks/injected-head-scripts.ts'),
-
-    }
-  }
+      '#tanstack-router-entry': path.resolve(
+        __dirname,
+        './tests/mocks/router-entry.ts',
+      ),
+      '#tanstack-start-entry': path.resolve(
+        __dirname,
+        './tests/mocks/start-entry.ts',
+      ),
+      'tanstack-start-manifest:v': path.resolve(
+        __dirname,
+        './tests/mocks/start-manifest.ts',
+      ),
+      'tanstack-start-injected-head-scripts:v': path.resolve(
+        __dirname,
+        './tests/mocks/injected-head-scripts.ts',
+      ),
+    },
+  },
 })
 
 export default mergeConfig(

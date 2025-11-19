@@ -386,18 +386,18 @@ async function handleServerRoutes({
       }
 
       let requestMethod = request.method.toUpperCase() as RouteMethod
-      if (requestMethod === 'HEAD' && normalizedHandlers["GET"]) {
+      if (requestMethod === 'HEAD' && normalizedHandlers['GET']) {
         requestMethod = 'GET' as RouteMethod
       }
-      const hasAny = !!normalizedHandlers["ANY"]
+      const hasAny = !!normalizedHandlers['ANY']
       // Attempt to find the method in the handlers
-      const handler = normalizedHandlers[requestMethod] ?? normalizedHandlers["ANY"]
+      const handler =
+        normalizedHandlers[requestMethod] ?? normalizedHandlers['ANY']
       if (!handler && !hasAny) {
-
         if (request.method.toUpperCase() === 'HEAD') {
           return new Response(null, {
             status: 404,
-            headers: { 'Content-Type': 'application/json' }, 
+            headers: { 'Content-Type': 'application/json' },
           })
         }
 

@@ -10,12 +10,12 @@ function makeFakeRouter(): AnyRouter {
       foundRoute: {
         options: {
           server: { handlers: currentHandlers },
-          component: undefined, 
+          component: undefined,
         },
       },
       routeParams: {},
     }),
-    
+
     update: () => {},
     load: async () => {},
     state: { redirect: null } as any,

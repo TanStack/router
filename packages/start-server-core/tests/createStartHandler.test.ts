@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createStartHandler } from '../src'
 import { currentHandlers } from './mocks/router-entry'
 
-
 const spaFallback = async () =>
   new Response('<!doctype html><div>spa</div>', {
     status: 200,
@@ -13,7 +12,7 @@ function makeApp() {
   return createStartHandler(async () => await spaFallback())
 }
 beforeEach(() => {
-  Object.keys(currentHandlers).forEach(key => delete currentHandlers[key])
+  Object.keys(currentHandlers).forEach((key) => delete currentHandlers[key])
 })
 
 describe('createStartHandler — server route HTTP method handling', function () {
@@ -78,4 +77,3 @@ describe('createStartHandler — server route HTTP method handling', function ()
     expect(await res.text()).toBe('ok-any')
   })
 })
-
