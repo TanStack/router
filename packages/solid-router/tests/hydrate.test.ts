@@ -5,9 +5,9 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  notFound
+  notFound,
 } from '../src'
-import type {AnyRouteMatch} from '../src';
+import type { AnyRouteMatch } from '../src'
 import type { TsrSsrGlobal } from '@tanstack/router-core/ssr/client'
 
 describe('hydrate', () => {
