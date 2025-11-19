@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "convex:dev": "convex dev",
     "build": "vite build && tsc --noEmit",
-    "start": "pnpx srvx --prod -s ../client  dist/server/server.js"
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.9.7",

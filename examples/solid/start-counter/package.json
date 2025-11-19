@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "pnpx srvx --prod -s ../client  dist/server/server.js"
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
     "@tanstack/solid-router": "^1.136.17",
