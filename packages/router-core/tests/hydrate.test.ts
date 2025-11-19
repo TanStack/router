@@ -5,7 +5,7 @@ import {
   createRoute,
   createRouter,
   notFound,
-} from '../../react-router/dist/esm'
+} from '../../react-router'
 import { hydrate } from '../src/ssr/ssr-client'
 import type { TsrSsrGlobal } from '../src/ssr/ssr-client'
 import type { AnyRouteMatch } from '../src'
@@ -108,13 +108,13 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    expect(mockWindow.$_TSR!.t).toBeInstanceOf(Map)
-    expect(mockWindow.$_TSR!.t?.get('testAdapter')).toBe(
+    expect(mockWindow.$_TSR.t).toBeInstanceOf(Map)
+    expect(mockWindow.$_TSR.t?.get('testAdapter')).toBe(
       mockSerializer.fromSerializable,
     )
     expect(mockBuffer[0]).toHaveBeenCalled()
     expect(mockBuffer[1]).toHaveBeenCalled()
-    expect(mockWindow.$_TSR!.initialized).toBe(true)
+    expect(mockWindow.$_TSR.initialized).toBe(true)
   })
 
   it('should handle empty serialization adapters', async () => {
@@ -135,8 +135,8 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    expect(mockWindow.$_TSR!.t).toBeUndefined()
-    expect(mockWindow.$_TSR!.initialized).toBe(true)
+    expect(mockWindow.$_TSR.t).toBeUndefined()
+    expect(mockWindow.$_TSR.initialized).toBe(true)
   })
 
   it('should set manifest in router.ssr', async () => {
