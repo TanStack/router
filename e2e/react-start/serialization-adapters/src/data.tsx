@@ -88,6 +88,38 @@ export function makeData() {
     },
   }
 }
+export class NestedOuter {
+  constructor(public inner: NestedInner) {}
+  whisper() {
+    return this.inner.value.toLowerCase()
+  }
+}
+
+export class NestedInner {
+  constructor(public value: string) {}
+  shout() {
+    return this.value.toUpperCase()
+  }
+}
+
+export const nestedInnerAdapter = createSerializationAdapter({
+  key: 'nestedInner',
+  test: (value): value is NestedInner => value instanceof NestedInner,
+  toSerializable: (inner) => inner.value,
+  fromSerializable: (value) => new NestedInner(value),
+})
+
+export const nestedOuterAdapter = createSerializationAdapter({
+  key: 'nestedOuter',
+  extends: [nestedInnerAdapter],
+  test: (value) => value instanceof NestedOuter,
+  toSerializable: (outer) => outer.inner,
+  fromSerializable: (value) => new NestedOuter(value),
+})
+
+export function makeNested() {
+  return new NestedOuter(new NestedInner('Hello World'))
+}
 
 export function RenderData({
   id,
@@ -124,4 +156,50 @@ export function RenderData({
       </div>
     </div>
   )
+}
+
+export function RenderNestedData({ nested }: { nested: NestedOuter }) {
+  {
+    const localData = makeNested()
+    const expectedShoutState = localData.inner.shout()
+    const expectedWhisperState = localData.whisper()
+    const shoutState = nested.inner.shout()
+    const whisperState = nested.whisper()
+
+    return (
+      <div data-testid="data-only-container">
+        <h2 data-testid="data-only-heading">data-only</h2>
+        <div data-testid="shout-container">
+          <h3>shout</h3>
+          <div>
+            expected:{' '}
+            <div data-testid="shout-expected-state">
+              {JSON.stringify(expectedShoutState)}
+            </div>
+          </div>
+          <div>
+            actual:{' '}
+            <div data-testid="shout-actual-state">
+              {JSON.stringify(shoutState)}
+            </div>
+          </div>
+        </div>
+        <div data-testid="whisper-container">
+          <h3>whisper</h3>
+          <div>
+            expected:{' '}
+            <div data-testid="whisper-expected-state">
+              {JSON.stringify(expectedWhisperState)}
+            </div>
+          </div>
+          <div>
+            actual:{' '}
+            <div data-testid="whisper-actual-state">
+              {JSON.stringify(whisperState)}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 }

@@ -6,7 +6,7 @@ export function loadEnvPlugin(): Plugin {
     name: 'tanstack-start-core:load-env',
     enforce: 'pre',
     configResolved(config) {
-      Object.assign(process.env, loadEnv(config.mode, config.root))
+      Object.assign(process.env, loadEnv(config.mode, config.root, ''))
     },
   }
 }

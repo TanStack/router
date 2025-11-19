@@ -1,7 +1,17 @@
 import { clsx as cx } from 'clsx'
 import { default as invariant } from 'tiny-invariant'
 import { interpolatePath, rootRouteId, trimPath } from '@tanstack/router-core'
-import { Show, createMemo, createSignal, onCleanup } from 'solid-js'
+import {
+  For,
+  Match,
+  Show,
+  Switch,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  untrack,
+} from 'solid-js'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'
@@ -14,6 +24,7 @@ import { NavigateButton } from './NavigateButton'
 import type {
   AnyContext,
   AnyRoute,
+  AnyRouteMatch,
   AnyRouter,
   FileRouteTypes,
   MakeRouteMatchUnion,
@@ -53,6 +64,8 @@ export interface BaseDevtoolsPanelOptions {
    */
   shadowDOMTarget?: ShadowRoot
 }
+
+const HISTORY_LIMIT = 15
 
 function Logo(props: any) {
   const { className, ...rest } = props
@@ -165,8 +178,6 @@ function RouteComp({
     const interpolated = interpolatePath({
       path: route.fullPath,
       params: allParams,
-      leaveWildcards: false,
-      leaveParams: false,
       decodeCharMap: router().pathParamsDecodeCharMap,
     })
 
@@ -257,15 +268,44 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     // useStore(router.__store)
 
-    const [showMatches, setShowMatches] = useLocalStorage(
-      'tanstackRouterDevtoolsShowMatches',
-      true,
-    )
+    const [currentTab, setCurrentTab] = useLocalStorage<
+      'routes' | 'matches' | 'history'
+    >('tanstackRouterDevtoolsActiveTab', 'routes')
 
     const [activeId, setActiveId] = useLocalStorage(
       'tanstackRouterDevtoolsActiveRouteId',
       '',
     )
+
+    const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
+    const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
+
+    createEffect(() => {
+      const matches = routerState().matches
+      const currentMatch = matches[matches.length - 1]
+      if (!currentMatch) {
+        return
+      }
+      // Read history WITHOUT tracking it to avoid infinite loops
+      const historyUntracked = untrack(() => history())
+      const lastMatch = historyUntracked[0]
+      const sameLocation =
+        lastMatch &&
+        lastMatch.pathname === currentMatch.pathname &&
+        JSON.stringify(lastMatch.search ?? {}) ===
+          JSON.stringify(currentMatch.search ?? {})
+      if (!lastMatch || !sameLocation) {
+        if (historyUntracked.length >= HISTORY_LIMIT) {
+          setHasHistoryOverflowed(true)
+        }
+        setHistory((prev) => {
+          const newHistory = [currentMatch, ...prev]
+          // truncate to ensure we don't overflow too much the ui
+          newHistory.splice(HISTORY_LIMIT)
+          return newHistory
+        })
+      }
+    })
 
     const activeMatch = createMemo(() => {
       const matches = [
@@ -298,7 +338,6 @@ export const BaseTanStackRouterDevtoolsPanel =
               'state',
               'routesById',
               'routesByPath',
-              'flatRoutes',
               'options',
               'manifest',
             ] as const
@@ -421,11 +460,14 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <button
                   type="button"
                   onClick={() => {
-                    setShowMatches(false)
+                    setCurrentTab('routes')
                   }}
-                  disabled={!showMatches()}
+                  disabled={currentTab() === 'routes'}
                   class={cx(
-                    styles().routeMatchesToggleBtn(!showMatches(), true),
+                    styles().routeMatchesToggleBtn(
+                      currentTab() === 'routes',
+                      true,
+                    ),
                   )}
                 >
                   Routes
@@ -433,14 +475,32 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <button
                   type="button"
                   onClick={() => {
-                    setShowMatches(true)
+                    setCurrentTab('matches')
                   }}
-                  disabled={showMatches()}
+                  disabled={currentTab() === 'matches'}
                   class={cx(
-                    styles().routeMatchesToggleBtn(!!showMatches(), false),
+                    styles().routeMatchesToggleBtn(
+                      currentTab() === 'matches',
+                      true,
+                    ),
                   )}
                 >
                   Matches
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentTab('history')
+                  }}
+                  disabled={currentTab() === 'history'}
+                  class={cx(
+                    styles().routeMatchesToggleBtn(
+                      currentTab() === 'history',
+                      false,
+                    ),
+                  )}
+                >
+                  History
                 </button>
               </div>
               <div class={styles().detailsHeaderInfo}>
@@ -448,55 +508,104 @@ export const BaseTanStackRouterDevtoolsPanel =
               </div>
             </div>
             <div class={cx(styles().routesContainer)}>
-              {!showMatches() ? (
-                <RouteComp
-                  routerState={routerState}
-                  router={router}
-                  route={router().routeTree}
-                  isRoot
-                  activeId={activeId}
-                  setActiveId={setActiveId}
-                />
-              ) : (
-                <div>
-                  {(routerState().pendingMatches?.length
-                    ? routerState().pendingMatches
-                    : routerState().matches
-                  )?.map((match: any, _i: any) => {
-                    return (
-                      <div
-                        role="button"
-                        aria-label={`Open match details for ${match.id}`}
-                        onClick={() =>
-                          setActiveId(activeId() === match.id ? '' : match.id)
-                        }
-                        class={cx(styles().matchRow(match === activeMatch()))}
-                      >
+              <Switch>
+                <Match when={currentTab() === 'routes'}>
+                  <RouteComp
+                    routerState={routerState}
+                    router={router}
+                    route={router().routeTree}
+                    isRoot
+                    activeId={activeId}
+                    setActiveId={setActiveId}
+                  />
+                </Match>
+                <Match when={currentTab() === 'matches'}>
+                  <div>
+                    {(routerState().pendingMatches?.length
+                      ? routerState().pendingMatches
+                      : routerState().matches
+                    )?.map((match: any, _i: any) => {
+                      return (
                         <div
-                          class={cx(
-                            styles().matchIndicator(getStatusColor(match)),
-                          )}
-                        />
-                        <NavigateLink
-                          left={
-                            <NavigateButton
-                              to={match.pathname}
-                              params={match.params}
-                              search={match.search}
-                              router={router}
-                            />
+                          role="button"
+                          aria-label={`Open match details for ${match.id}`}
+                          onClick={() =>
+                            setActiveId(activeId() === match.id ? '' : match.id)
                           }
-                          right={<AgeTicker match={match} router={router} />}
+                          class={cx(styles().matchRow(match === activeMatch()))}
                         >
-                          <code class={styles().matchID}>
-                            {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
-                          </code>
-                        </NavigateLink>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+                          <div
+                            class={cx(
+                              styles().matchIndicator(getStatusColor(match)),
+                            )}
+                          />
+                          <NavigateLink
+                            left={
+                              <NavigateButton
+                                to={match.pathname}
+                                params={match.params}
+                                search={match.search}
+                                router={router}
+                              />
+                            }
+                            right={<AgeTicker match={match} router={router} />}
+                          >
+                            <code class={styles().matchID}>
+                              {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
+                            </code>
+                          </NavigateLink>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </Match>
+                <Match when={currentTab() === 'history'}>
+                  <div>
+                    <ul>
+                      <For each={history()}>
+                        {(match, index) => (
+                          <li
+                            class={cx(
+                              styles().matchRow(match === activeMatch()),
+                            )}
+                          >
+                            <div
+                              class={cx(
+                                styles().matchIndicator(
+                                  index() === 0 ? 'green' : 'gray',
+                                ),
+                              )}
+                            />
+                            <NavigateLink
+                              left={
+                                <NavigateButton
+                                  to={match.pathname}
+                                  params={match.params}
+                                  search={match.search}
+                                  router={router}
+                                />
+                              }
+                              right={
+                                <AgeTicker match={match} router={router} />
+                              }
+                            >
+                              <code class={styles().matchID}>
+                                {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
+                              </code>
+                            </NavigateLink>
+                          </li>
+                        )}
+                      </For>
+                      {hasHistoryOverflowed() ? (
+                        <li class={styles().historyOverflowContainer}>
+                          This panel displays the most recent {HISTORY_LIMIT}{' '}
+                          navigations.
+                        </li>
+                      ) : null}
+                    </ul>
+                  </div>
+                </Match>
+              </Switch>
             </div>
           </div>
           {routerState().cachedMatches.length ? (

@@ -44,7 +44,7 @@ function RouteComponent() {
         This server function writes to a file as a side effect, then reads it.
       </p>
       <button
-        className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         data-testid="test-dead-code-fn-call-btn"
         onClick={async () => {
           await writeFileServerFn({ headers: { 'X-Test': 'test' } })

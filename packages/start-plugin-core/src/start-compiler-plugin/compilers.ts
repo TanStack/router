@@ -6,6 +6,7 @@ import {
   findReferencedIdentifiers,
 } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import { handleCreateMiddleware } from '../create-server-fn-plugin/handleCreateMiddleware'
 import { transformFuncs } from './constants'
 import { handleCreateIsomorphicFnCallExpression } from './isomorphicFn'
 import {
@@ -22,7 +23,7 @@ export function compileStartOutputFactory(
   framework: CompileStartFrameworkOptions,
 ) {
   return function compileStartOutput(opts: CompileOptions): GeneratorResult {
-    const identifiers: Identifiers = {
+    const identifiers: Partial<Identifiers> = {
       createServerOnlyFn: {
         name: 'createServerOnlyFn',
         handleCallExpression: handleCreateServerOnlyFnCallExpression,
@@ -40,18 +41,32 @@ export function compileStartOutputFactory(
       },
     }
 
+    // createMiddleware only performs modifications in the client environment
+    // so we can avoid executing this on the server
+    if (opts.env === 'client') {
+      identifiers.createMiddleware = {
+        name: 'createMiddleware',
+        handleCallExpression: handleCreateMiddleware,
+        paths: [],
+      }
+    }
+
     const ast = parseAst(opts)
 
     const doDce = opts.dce ?? true
     // find referenced identifiers *before* we transform anything
     const refIdents = doDce ? findReferencedIdentifiers(ast) : undefined
 
+    const validImportSources = [
+      `@tanstack/${framework}-start`,
+      '@tanstack/start-client-core',
+    ]
     babel.traverse(ast, {
       Program: {
         enter(programPath) {
           programPath.traverse({
             ImportDeclaration: (path) => {
-              if (path.node.source.value !== `@tanstack/${framework}-start`) {
+              if (!validImportSources.includes(path.node.source.value)) {
                 return
               }
 
@@ -59,7 +74,9 @@ export function compileStartOutputFactory(
               path.node.specifiers.forEach((specifier) => {
                 transformFuncs.forEach((identifierKey) => {
                   const identifier = identifiers[identifierKey]
-
+                  if (!identifier) {
+                    return
+                  }
                   if (
                     specifier.type === 'ImportSpecifier' &&
                     specifier.imported.type === 'Identifier'
@@ -78,11 +95,15 @@ export function compileStartOutputFactory(
             },
             CallExpression: (path) => {
               transformFuncs.forEach((identifierKey) => {
+                const identifier = identifiers[identifierKey]
+                if (!identifier) {
+                  return
+                }
                 // Check to see if the call expression is a call to the
                 // identifiers[identifierKey].name
                 if (
                   t.isIdentifier(path.node.callee) &&
-                  path.node.callee.name === identifiers[identifierKey].name
+                  path.node.callee.name === identifier.name
                 ) {
                   // The identifier could be a call to the original function
                   // in the source code. If this is case, we need to ignore it.
@@ -90,13 +111,13 @@ export function compileStartOutputFactory(
                   // if it is, then we can ignore it.
 
                   if (
-                    path.scope.getBinding(identifiers[identifierKey].name)?.path
-                      .node.type === 'FunctionDeclaration'
+                    path.scope.getBinding(identifier.name)?.path.node.type ===
+                    'FunctionDeclaration'
                   ) {
                     return
                   }
 
-                  return identifiers[identifierKey].paths.push(path)
+                  return identifier.paths.push(path)
                 }
 
                 // handle namespace imports like "import * as TanStackStart from '@tanstack/react-start';"
@@ -111,8 +132,8 @@ export function compileStartOutputFactory(
                       path.node.callee.property.name,
                     ].join('.')
 
-                    if (callname === identifiers[identifierKey].name) {
-                      identifiers[identifierKey].paths.push(path)
+                    if (callname === identifier.name) {
+                      identifier.paths.push(path)
                     }
                   }
                 }
@@ -123,8 +144,12 @@ export function compileStartOutputFactory(
           })
 
           transformFuncs.forEach((identifierKey) => {
-            identifiers[identifierKey].paths.forEach((path) => {
-              identifiers[identifierKey].handleCallExpression(
+            const identifier = identifiers[identifierKey]
+            if (!identifier) {
+              return
+            }
+            identifier.paths.forEach((path) => {
+              identifier.handleCallExpression(
                 path as babel.NodePath<t.CallExpression>,
                 opts,
               )

@@ -9,6 +9,8 @@ test.use({
 test('Navigating to post', async ({ page }) => {
   await page.goto('/')
 
+  await page.waitForURL('/')
+
   await page.getByRole('link', { name: 'Posts' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await page.getByRole('link', { name: 'Deep View' }).click()
@@ -18,6 +20,8 @@ test('Navigating to post', async ({ page }) => {
 test('Navigating to user', async ({ page }) => {
   await page.goto('/')
 
+  await page.waitForURL('/')
+
   await page.getByRole('link', { name: 'Users' }).click()
   await page.getByRole('link', { name: 'Leanne Graham' }).click()
   await expect(page.getByRole('heading')).toContainText('Leanne Graham')
@@ -25,6 +29,8 @@ test('Navigating to user', async ({ page }) => {
 
 test('Navigating nested layouts', async ({ page }) => {
   await page.goto('/')
+
+  await page.waitForURL('/')
 
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
@@ -40,6 +46,8 @@ test('Navigating nested layouts', async ({ page }) => {
 
 test('client side navigating to a route with scripts', async ({ page }) => {
   await page.goto('/')
+
+  await page.waitForURL('/')
   await page.getByRole('link', { name: 'Scripts', exact: true }).click()
   await expect(page.getByTestId('scripts-test-heading')).toBeInViewport()
   expect(await page.evaluate('window.SCRIPT_1')).toBe(true)
@@ -48,12 +56,17 @@ test('client side navigating to a route with scripts', async ({ page }) => {
 
 test('directly going to a route with scripts', async ({ page }) => {
   await page.goto('/scripts')
+
+  await page.waitForURL('/scripts')
+  await page.waitForLoadState('networkidle')
   expect(await page.evaluate('window.SCRIPT_1')).toBe(true)
   expect(await page.evaluate('window.SCRIPT_2')).toBe(undefined)
 })
 
 test('Navigating to a not-found route', async ({ page }) => {
   await page.goto('/')
+
+  await page.waitForURL('/')
 
   await page.getByRole('link', { name: 'This Route Does Not Exist' }).click()
   await page.getByRole('link', { name: 'Start Over' }).click()
@@ -62,6 +75,8 @@ test('Navigating to a not-found route', async ({ page }) => {
 
 test('Should change title on client side navigation', async ({ page }) => {
   await page.goto('/')
+
+  await page.waitForURL('/')
 
   await page.getByRole('link', { name: 'Posts' }).click()
 

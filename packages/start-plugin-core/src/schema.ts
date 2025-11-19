@@ -17,11 +17,13 @@ export function parseStartConfig(
   const srcDirectory = options.srcDirectory
 
   const routesDirectory = path.resolve(
+    root,
     srcDirectory,
     options.router.routesDirectory ?? 'routes',
   )
 
   const generatedRouteTree = path.resolve(
+    root,
     srcDirectory,
     options.router.generatedRouteTree ?? 'routeTree.gen.ts',
   )
@@ -136,6 +138,7 @@ const tanstackStartOptionsSchema = z
     router: z
       .object({
         entry: z.string().optional(),
+        basepath: z.string().optional(),
       })
       .and(tsrConfig.optional().default({}))
       .optional()
@@ -156,13 +159,16 @@ const tanstackStartOptionsSchema = z
     serverFns: z
       .object({
         base: z.string().optional().default('/_serverFn'),
-      })
-      .optional()
-      .default({}),
-    public: z
-      .object({
-        dir: z.string().optional().default('public'),
-        base: z.string().optional().default('/'),
+        generateFunctionId: z
+          .function()
+          .args(
+            z.object({
+              filename: z.string(),
+              functionName: z.string(),
+            }),
+          )
+          .returns(z.string().optional())
+          .optional(),
       })
       .optional()
       .default({}),
@@ -180,6 +186,8 @@ const tanstackStartOptionsSchema = z
         concurrency: z.number().optional(),
         filter: z.function().args(pageSchema).returns(z.any()).optional(),
         failOnError: z.boolean().optional(),
+        autoStaticPathsDiscovery: z.boolean().optional(),
+        maxRedirects: z.number().min(0).optional(),
       })
       .and(pagePrerenderOptionsSchema.optional())
       .optional(),

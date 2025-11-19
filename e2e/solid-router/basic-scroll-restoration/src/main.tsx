@@ -114,10 +114,10 @@ function ByElementComponent() {
   })
 
   // Let's use TanStack Virtual to virtualize some content!
-  const virtualizerParentRef: any = null
+  let virtualizerParentRef: HTMLDivElement | undefined
   const virtualizer = createVirtualizer({
     count: 10000,
-    getScrollElement: () => virtualizerParentRef?.current,
+    getScrollElement: () => virtualizerParentRef ?? null,
     estimateSize: () => 100,
     // We pass the scrollY from the scroll restoration entry to the virtualizer
     // as the initial offset

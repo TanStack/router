@@ -24,6 +24,15 @@ function RouteComponent() {
             Client Middleware can send server function reference in context
           </Route.Link>
         </li>
+        <li>
+          <Route.Link
+            to="./request-middleware"
+            data-testid="request-middleware-link"
+            reloadDocument={true}
+          >
+            Request Middleware in combination with server function
+          </Route.Link>
+        </li>
       </ul>
     </div>
   )

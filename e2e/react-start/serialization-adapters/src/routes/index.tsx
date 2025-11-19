@@ -24,6 +24,14 @@ function Home() {
         >
           Stream
         </Link>
+        <br />
+        <Link
+          data-testid="ssr-nested-link"
+          to="/ssr/nested"
+          reloadDocument={true}
+        >
+          Nested Classes
+        </Link>
       </div>
       <div>
         <h2>Server Functions</h2>
@@ -33,6 +41,14 @@ function Home() {
           reloadDocument={true}
         >
           Custom Error Serialization
+        </Link>
+        <br />
+        <Link
+          data-testid="server-functions-nested-link"
+          to="/server-function/nested"
+          reloadDocument={true}
+        >
+          Nested Classes returned from Server Function
         </Link>
       </div>
     </>

@@ -1,2 +1,2 @@
 export { StartClient } from './StartClient'
-export { createClientRpc } from '@tanstack/start-client-core/client'
+export { hydrateStart } from '@tanstack/start-client-core/client'

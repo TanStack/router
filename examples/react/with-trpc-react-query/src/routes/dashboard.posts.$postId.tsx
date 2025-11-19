@@ -46,7 +46,7 @@ function DashboardPostsPostIdComponent() {
         <h2 className="font-bold text-lg">
           <input
             defaultValue={post.id}
-            className="border border-opacity-50 rounded p-2 w-full"
+            className="border border-opacity-50 rounded-sm p-2 w-full"
             disabled
           />
         </h2>
@@ -54,7 +54,7 @@ function DashboardPostsPostIdComponent() {
           <textarea
             defaultValue={post.title}
             rows={6}
-            className="border border-opacity-50 p-2 rounded w-full"
+            className="border border-opacity-50 p-2 rounded-sm w-full"
             disabled
           />
         </div>
@@ -79,7 +79,7 @@ function DashboardPostsPostIdComponent() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={5}
-                className="shadow w-full p-2 rounded"
+                className="shadow-sm w-full p-2 rounded-sm"
                 placeholder="Write some notes here..."
               />
               <div className="italic text-xs">

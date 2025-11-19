@@ -2,6 +2,7 @@ import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import {
   TSS_FORMDATA_CONTEXT,
+  X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
   getDefaultSerovalPlugins,
 } from '@tanstack/start-client-core'
@@ -9,15 +10,7 @@ import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
 
-function sanitizeBase(base: string | undefined) {
-  if (!base) {
-    throw new Error(
-      '🚨 process.env.TSS_SERVER_FN_BASE is required in start/server-handler/index',
-    )
-  }
-
-  return base.replace(/^\/|\/$/g, '')
-}
+let regex: RegExp | undefined = undefined
 
 export const handleServerAction = async ({
   request,
@@ -31,13 +24,14 @@ export const handleServerAction = async ({
   const abort = () => controller.abort()
   request.signal.addEventListener('abort', abort)
 
+  if (regex === undefined) {
+    regex = new RegExp(`${process.env.TSS_SERVER_FN_BASE}([^/?#]+)`)
+  }
+
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
   // extract the serverFnId from the url as host/_serverFn/:serverFnId
   // Define a regex to match the path and extract the :thing part
-  const regex = new RegExp(
-    `${sanitizeBase(process.env.TSS_SERVER_FN_BASE)}/([^/?#]+)`,
-  )
 
   // Execute the regex
   const match = url.pathname.match(regex)
@@ -112,7 +106,7 @@ export const handleServerAction = async ({
           // By default the payload is the search params
           let payload: any = search.payload
           // If there's a payload, we should try to parse it
-          payload = payload ? parsePayload(JSON.parse(payload)) : payload
+          payload = payload ? parsePayload(JSON.parse(payload)) : {}
           payload.context = { ...context, ...payload.context }
           // Send it through!
           return await action(payload, signal)
@@ -122,16 +116,15 @@ export const handleServerAction = async ({
           throw new Error('expected POST method')
         }
 
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('expected application/json content type')
+        let jsonPayload
+        if (contentType?.includes('application/json')) {
+          jsonPayload = await request.json()
         }
-
-        const jsonPayload = await request.json()
 
         // If this POST request was created by createServerFn,
         // its payload  will be the only argument
         if (isCreateServerFn) {
-          const payload = parsePayload(jsonPayload)
+          const payload = jsonPayload ? parsePayload(jsonPayload) : {}
           payload.context = { ...payload.context, ...context }
           return await action(payload, signal)
         }
@@ -145,6 +138,7 @@ export const handleServerAction = async ({
       // Any time we get a Response back, we should just
       // return it immediately.
       if (result.result instanceof Response) {
+        result.result.headers.set(X_TSS_RAW_RESPONSE, 'true')
         return result.result
       }
 

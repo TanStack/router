@@ -19,7 +19,7 @@ import {
   unsealSession as h3_unsealSession,
   updateSession as h3_updateSession,
   useSession as h3_useSession,
-} from 'h3'
+} from 'h3-v2'
 import type {
   RequestHeaderMap,
   RequestHeaderName,
@@ -143,7 +143,7 @@ export function setResponseHeaders(
 
 export function getResponseHeaders(): TypedHeaders<ResponseHeaderMap> {
   const event = getH3Event()
-  return Object.fromEntries(event.res.headers.entries()) as any
+  return event.res.headers
 }
 
 export function getResponseHeader(

@@ -6,6 +6,20 @@ import type { Page } from '@playwright/test'
 
 const PORT = await getTestServerPort(packageJson.name)
 
+test('Server function URLs correctly include constant ids', async ({
+  page,
+}) => {
+  for (const currentPage of ['/submit-post-formdata', '/formdata-redirect']) {
+    await page.goto(currentPage)
+    await page.waitForLoadState('networkidle')
+
+    const form = page.locator('form')
+    const actionUrl = await form.getAttribute('action')
+
+    expect(actionUrl).toMatch(/^\/_serverFn\/constant_id/)
+  }
+})
+
 test('invoking a server function with custom response status code', async ({
   page,
 }) => {
@@ -368,6 +382,32 @@ test.describe('middleware', () => {
       await runTest(page)
     })
   })
+
+  test('server function in combination with request middleware', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/request-middleware')
+
+    await page.waitForLoadState('networkidle')
+
+    async function checkEqual(prefix: string) {
+      const requestParam = await page
+        .getByTestId(`${prefix}-data-request-param`)
+        .textContent()
+      expect(requestParam).not.toBe('')
+      const requestFunc = await page
+        .getByTestId(`${prefix}-data-request-func`)
+        .textContent()
+      expect(requestParam).toBe(requestFunc)
+    }
+
+    await checkEqual('loader')
+
+    await page.getByTestId('client-call-button').click()
+    await page.waitForLoadState('networkidle')
+
+    await checkEqual('client')
+  })
 })
 
 test('factory', async ({ page }) => {
@@ -402,4 +442,50 @@ test('factory', async ({ page }) => {
       'equal',
     )
   }
+})
+
+test('primitives', async ({ page }) => {
+  await page.goto('/primitives')
+
+  const testCases = await page
+    .locator('[data-testid^="expected-"]')
+    .elementHandles()
+  expect(testCases.length).not.toBe(0)
+
+  for (const testCase of testCases) {
+    const testId = await testCase.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('testcase is missing data-testid')
+    }
+
+    const suffix = testId.replace('expected-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-${suffix}`).textContent()) || ''
+    expect(expected).not.toBe('')
+
+    await expect(page.getByTestId(`result-${suffix}`)).toContainText(expected)
+  }
+})
+
+test('redirect in server function on direct navigation', async ({ page }) => {
+  // Test direct navigation to a route with a server function that redirects
+  await page.goto('/redirect-test')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test/target')
+})
+
+test('redirect in server function called in query during SSR', async ({
+  page,
+}) => {
+  // Test direct navigation to a route with a server function that redirects
+  // when called inside a query with ssr: true
+  await page.goto('/redirect-test-ssr')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test-ssr/target')
 })

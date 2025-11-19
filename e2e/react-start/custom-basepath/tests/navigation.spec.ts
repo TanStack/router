@@ -41,7 +41,30 @@ test('Server function URLs correctly include app basepath', async ({
   const form = page.locator('form')
   const actionUrl = await form.getAttribute('action')
 
-  expect(actionUrl).toBe(
-    '/custom/basepath/_serverFn/src_routes_logout_tsx--logoutFn_createServerFn_handler',
-  )
+  expect(actionUrl).toMatch(/^\/custom\/basepath\/_serverFn\//)
+})
+
+test('client-side redirect', async ({ page, baseURL }) => {
+  await page.goto('/redirect')
+  await page.getByTestId('link-to-throw-it').click()
+  await page.waitForLoadState('networkidle')
+
+  expect(await page.getByTestId('post-view').isVisible()).toBe(true)
+  expect(page.url()).toBe(`${baseURL}/posts/1`)
+})
+
+test('server-side redirect', async ({ page, baseURL }) => {
+  await page.goto('/redirect/throw-it')
+  await page.waitForLoadState('networkidle')
+
+  expect(await page.getByTestId('post-view').isVisible()).toBe(true)
+  expect(page.url()).toBe(`${baseURL}/posts/1`)
+
+  // do not follow redirects since we want to test the Location header
+  await page.request
+    .get('/redirect/throw-it', { maxRedirects: 0 })
+    .then((res) => {
+      const headers = new Headers(res.headers())
+      expect(headers.get('location')).toBe('/custom/basepath/posts/1')
+    })
 })

@@ -7,10 +7,4 @@ export {
   transformStreamWithRouter,
   transformReadableStreamWithRouter,
 } from './transformStreamWithRouter'
-export { attachRouterServerSsrUtils } from './ssr-server'
-
-// declare module '../router' {
-//   export interface RegisterSsr {
-//     ssr: true
-//   }
-// }
+export { attachRouterServerSsrUtils, getOrigin } from './ssr-server'

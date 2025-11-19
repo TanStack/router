@@ -1,5 +1,8 @@
 import { fileURLToPath } from 'node:url'
-import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
+import {
+  TanStackStartVitePluginCore,
+  VITE_ENVIRONMENT_NAMES,
+} from '@tanstack/start-plugin-core'
 import path from 'pathe'
 import type { TanStackStartInputConfig } from '@tanstack/start-plugin-core'
 import type { PluginOption } from 'vite'
@@ -13,15 +16,36 @@ const defaultEntryDir = path.resolve(
   'default-entry',
 )
 const defaultEntryPaths = {
-  client: path.resolve(defaultEntryDir, 'client'),
-  server: path.resolve(defaultEntryDir, 'server'),
-  start: path.resolve(defaultEntryDir, 'start'),
+  client: path.resolve(defaultEntryDir, 'client.tsx'),
+  server: path.resolve(defaultEntryDir, 'server.ts'),
+  start: path.resolve(defaultEntryDir, 'start.ts'),
 }
 
 export function tanstackStart(
   options?: TanStackStartInputConfig,
 ): Array<PluginOption> {
   return [
+    {
+      name: 'tanstack-solid-start:config',
+      configEnvironment(environmentName, options) {
+        return {
+          optimizeDeps:
+            environmentName === VITE_ENVIRONMENT_NAMES.client ||
+            (environmentName === VITE_ENVIRONMENT_NAMES.server &&
+              // This indicates that the server environment has opted in to dependency optimization
+              options.optimizeDeps?.noDiscovery === false)
+              ? {
+                  // As `@tanstack/solid-start` depends on `@tanstack/solid-router`, we should exclude both.
+                  exclude: [
+                    '@tanstack/solid-start',
+                    '@tanstack/solid-router',
+                    '@tanstack/start-static-server-functions',
+                  ],
+                }
+              : undefined,
+        }
+      },
+    },
     TanStackStartVitePluginCore(
       {
         framework: 'solid',

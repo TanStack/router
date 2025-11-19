@@ -4,7 +4,7 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](../routing) guide.
+> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](../guide/routing) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 
@@ -52,13 +52,25 @@ TanStack Start is powered by [Vite](https://vite.dev/) and [TanStack Router](htt
 To install them, run:
 
 ```shell
-npm i @tanstack/react-start @tanstack/react-router vite
+npm i @tanstack/react-start @tanstack/react-router
+```
+
+We also need vite as a devDependency:
+
+```shell
+npm i -D vite
 ```
 
 You'll also need React:
 
 ```shell
-npm i react react-dom @vitejs/plugin-react
+npm i react react-dom
+```
+
+As well as React's Vite plugin:
+
+```shell
+npm i -D @vitejs/plugin-react
 ```
 
 Alternatively, you can also use `@vitejs/plugin-react-oxc` or `@vitejs/plugin-react-swc`.
@@ -66,7 +78,7 @@ Alternatively, you can also use `@vitejs/plugin-react-oxc` or `@vitejs/plugin-re
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths
+npm i -D typescript @types/react @types/react-dom @types/node vite-tsconfig-paths
 ```
 
 ## Update Configuration Files
@@ -122,7 +134,6 @@ Once configuration is done, we'll have a file tree that looks like the following
 │   │   └── `__root.tsx`
 │   ├── `router.tsx`
 │   ├── `routeTree.gen.ts`
-├── `.gitignore`
 ├── `vite.config.ts`
 ├── `package.json`
 └── `tsconfig.json`
@@ -137,7 +148,7 @@ from the default [preloading functionality](/router/latest/docs/framework/react/
 > You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
 
 ```tsx
-// src/start.tsx
+// src/router.tsx
 import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
@@ -266,4 +277,4 @@ That's it! 🤯 You've now set up a TanStack Start project and written your firs
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
 
-You want to deploy your application? Check out the [hosting guide](../hosting.md).
+You want to deploy your application? Check out the [hosting guide](../guide/hosting.md).

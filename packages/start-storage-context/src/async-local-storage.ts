@@ -3,7 +3,7 @@ import type { Awaitable, RegisteredRouter } from '@tanstack/router-core'
 
 export interface StartStorageContext {
   getRouter: () => Awaitable<RegisteredRouter>
-
+  request: Request
   // TODO type this properly
   startOptions: /* AnyStartInstanceOptions*/ any
 

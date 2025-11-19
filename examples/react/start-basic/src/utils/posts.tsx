@@ -2,7 +2,7 @@ import { notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 
 export type PostType = {
-  id: string
+  id: number
   title: string
   body: string
 }
@@ -23,9 +23,9 @@ export const fetchPost = createServerFn({ method: 'POST' })
       throw new Error('Failed to fetch post')
     }
 
-    const post = (await res.json()) as PostType
+    const post = await res.json()
 
-    return post
+    return post as PostType
   })
 
 export const fetchPosts = createServerFn().handler(async () => {
@@ -35,7 +35,7 @@ export const fetchPosts = createServerFn().handler(async () => {
     throw new Error('Failed to fetch posts')
   }
 
-  const posts = (await res.json()) as Array<PostType>
+  const posts = await res.json()
 
-  return posts.slice(0, 10)
+  return (posts as Array<PostType>).slice(0, 10)
 })
