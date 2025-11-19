@@ -2130,9 +2130,18 @@ export class RouterCore<
                         loadedAt: Date.now(),
                         matches: newMatches,
                         pendingMatches: undefined,
+                        /**
+                         * When committing new matches, cache any exiting matches that are still usable.
+                         * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
+                         * deliberately excluded from `cachedMatches` so that subsequent invalidations
+                         * or reloads re-run their loaders instead of reusing the failed/not-found data.
+                         */
                         cachedMatches: [
                           ...s.cachedMatches,
-                          ...exitingMatches.filter((d) => d.status !== 'error'),
+                          ...exitingMatches.filter(
+                            (d) =>
+                              d.status !== 'error' && d.status !== 'notFound',
+                          ),
                         ],
                       }
                     })
@@ -2304,6 +2313,14 @@ export class RouterCore<
     )
   }
 
+  /**
+   * Invalidate the current matches and optionally force them back into a pending state.
+   *
+   * - Marks all matches that pass the optional `filter` as `invalid: true`.
+   * - If `forcePending` is true, or a match is currently in `'error'` or `'notFound'` status,
+   *   its status is reset to `'pending'` and its `error` cleared so that the loader is re-run
+   *   on the next `load()` call (eg. after HMR or a manual invalidation).
+   */
   invalidate: InvalidateFn<
     RouterCore<
       TRouteTree,
@@ -2318,7 +2335,9 @@ export class RouterCore<
         return {
           ...d,
           invalid: true,
-          ...(opts?.forcePending || d.status === 'error'
+          ...(opts?.forcePending ||
+          d.status === 'error' ||
+          d.status === 'notFound'
             ? ({ status: 'pending', error: undefined } as const)
             : undefined),
         }
