@@ -5,9 +5,9 @@ import {
   createRoute,
   createRouter,
   notFound,
-} from '../../react-router'
-import { hydrate } from '../src/ssr/ssr-client'
-import type { TsrSsrGlobal } from '../src/ssr/ssr-client'
+} from '../src'
+import { hydrate } from '../../router-core/src/ssr/ssr-client'
+import type { TsrSsrGlobal } from '../../router-core/src/ssr/ssr-client'
 import type { AnyRouteMatch } from '../src'
 
 describe('hydrate', () => {
