@@ -308,7 +308,12 @@ export const MatchInner = (props: { matchId: string }): any => {
         {(_) => {
           invariant(isNotFound(match().error), 'Expected a notFound error')
 
-          return renderRouteNotFound(router, route(), match().error)
+          // Use Show with keyed to ensure re-render when routeId changes
+          return (
+            <Solid.Show when={matchState()!.routeId} keyed>
+              {(_routeId) => renderRouteNotFound(router, route(), match().error)}
+            </Solid.Show>
+          )
         }}
       </Solid.Match>
       <Solid.Match when={match().status === 'redirected'}>
