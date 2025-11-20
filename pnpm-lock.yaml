@@ -3343,9 +3343,6 @@ importers:
       postcss:
         specifier: ^8.5.1
         version: 8.5.6
-      seroval:
-        specifier: ^1.3.2
-        version: 1.3.2
       srvx:
         specifier: ^0.8.6
         version: 0.8.15
@@ -9416,11 +9413,11 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0
       seroval:
-        specifier: ^1.3.2
-        version: 1.3.2
+        specifier: ^1.4.0
+        version: 1.4.0
       seroval-plugins:
-        specifier: ^1.3.2
-        version: 1.3.2(seroval@1.3.2)
+        specifier: ^1.4.0
+        version: 1.4.0(seroval@1.4.0)
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -9897,8 +9894,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       seroval:
-        specifier: ^1.3.2
-        version: 1.3.2
+        specifier: ^1.4.0
+        version: 1.4.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -10000,8 +9997,8 @@ importers:
         specifier: npm:h3@2.0.0-beta.4
         version: h3@2.0.0-beta.4(crossws@0.4.1(srvx@0.8.15))
       seroval:
-        specifier: ^1.3.2
-        version: 1.3.2
+        specifier: ^1.4.0
+        version: 1.4.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -10028,8 +10025,8 @@ importers:
         specifier: workspace:*
         version: link:../start-client-core
       seroval:
-        specifier: ^1.3.2
-        version: 1.3.2
+        specifier: ^1.4.0
+        version: 1.4.0
 
   packages/start-storage-context:
     dependencies:
@@ -20010,8 +20007,18 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
+  seroval-plugins@1.4.0:
+    resolution: {integrity: sha512-zir1aWzoiax6pbBVjoYVd0O1QQXgIL3eVGBMsBsNmM8Ukq90yGaWlfx0AB9dTS8GPqrOrbXn79vmItCUP9U3BQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      seroval: ^1.0
+
   seroval@1.3.2:
     resolution: {integrity: sha512-RbcPH1n5cfwKrru7v7+zrZvjLurgHhGyso3HTyGtRivGWgYjbOmGuivCQaORNELjNONoK35nj28EoWul9sb1zQ==}
+    engines: {node: '>=10'}
+
+  seroval@1.4.0:
+    resolution: {integrity: sha512-BdrNXdzlofomLTiRnwJTSEAaGKyHHZkbMXIywOh7zlzp4uZnXErEwl9XZ+N1hJSNpeTtNxWvVwN0wUzAIQ4Hpg==}
     engines: {node: '>=10'}
 
   serve-index@1.9.1:
@@ -32600,7 +32607,13 @@ snapshots:
     dependencies:
       seroval: 1.3.2
 
+  seroval-plugins@1.4.0(seroval@1.4.0):
+    dependencies:
+      seroval: 1.4.0
+
   seroval@1.3.2: {}
+
+  seroval@1.4.0: {}
 
   serve-index@1.9.1:
     dependencies:
