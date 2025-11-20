@@ -13,6 +13,7 @@
     "test:e2e": "exit 0; rm -rf port*.txt; pnpm run prisma-generate && playwright test --project=chromium"
   },
   "dependencies": {
+    "@libsql/client": "^0.15.15",
     "@prisma/adapter-libsql": "^7.0.0",
     "@prisma/client": "^7.0.0",
     "@tanstack/solid-router": "workspace:^",
@@ -29,8 +30,8 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "dotenv": "^17.2.3",
-    "prisma": "^7.0.0",
     "postcss": "^8.5.1",
+    "prisma": "^7.0.0",
     "tailwindcss": "^4.1.15",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.10",
