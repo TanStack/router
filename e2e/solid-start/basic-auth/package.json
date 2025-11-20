@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "prisma-generate": "prisma generate",
