@@ -16,11 +16,7 @@ export function Asset({
 }: RouterManagedTag & { nonce?: string }): React.ReactElement | null {
   switch (tag) {
     case 'title':
-      return (
-        <title {...attrs} suppressHydrationWarning>
-          {children}
-        </title>
-      )
+      return <Title attrs={attrs}>{children}</Title>
     case 'meta':
       return <meta {...attrs} suppressHydrationWarning />
     case 'link':
@@ -38,6 +34,48 @@ export function Asset({
     default:
       return null
   }
+}
+
+// Track if we've taken control of the title
+let titleControlled = false
+
+function Title({
+  attrs,
+  children,
+}: {
+  attrs?: Record<string, any>
+  children?: string
+}) {
+  const router = useRouter()
+
+  React.useEffect(() => {
+    if (typeof children === 'string') {
+      // On the first title update, clean up any existing titles
+      if (!titleControlled) {
+        // Remove all existing title tags - router will now manage the title
+        const existingTitles = Array.from(document.querySelectorAll('title'))
+        existingTitles.forEach(titleEl => {
+          titleEl.remove()
+        })
+        titleControlled = true
+      }
+      
+      // Set document.title directly - no DOM title tags needed on client
+      document.title = children
+    }
+  }, [children])
+
+  if (!router.isServer) {
+    // On client, don't render title tag - we manage document.title directly
+    return null
+  }
+
+  // On server, render title tag normally for SSR
+  return (
+    <title {...attrs} suppressHydrationWarning>
+      {children}
+    </title>
+  )
 }
 
 function Script({
