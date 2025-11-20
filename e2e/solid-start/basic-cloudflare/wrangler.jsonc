@@ -5,6 +5,6 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/solid-start/server-entry",
   "vars": {
-    "MY_VAR": "Hello from Cloudflare"
-  }
+    "MY_VAR": "Hello from Cloudflare",
+  },
 }
