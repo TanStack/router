@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
-    "build": "vite build",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "prisma-generate": "prisma generate",
     "test:e2e": "exit 0; rm -rf port*.txt; pnpm run prisma-generate && playwright test --project=chromium"
