@@ -73,6 +73,11 @@ export function tanstackStart(
                     )
                       ? ['@tanstack/react-form > @tanstack/react-store']
                       : []),
+                    ...(options.optimizeDeps?.exclude?.find(
+                      (x) => x === '@tanstack/react-form-start',
+                    )
+                      ? ['@tanstack/react-form-start > @tanstack/react-store']
+                      : []),
                   ],
                 }
               : undefined,
