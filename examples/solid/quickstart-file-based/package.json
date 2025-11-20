@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build && tsc --noEmit",
-    "serve": "vite preview",
+    "preview": "vite preview",
     "start": "vite"
   },
   "dependencies": {
@@ -19,7 +19,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.136.17",
+    "@tanstack/router-plugin": "^1.136.18",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-plugin-solid": "^2.11.10"

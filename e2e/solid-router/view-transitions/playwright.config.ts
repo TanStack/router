@@ -26,7 +26,7 @@ export default defineConfig({
   globalTeardown: './tests/setup/global.teardown.ts',
 
   webServer: {
-    command: `VITE_NODE_ENV="test" VITE_SERVER_PORT=${PORT} VITE_EXTERNAL_PORT=${EXTERNAL_PORT} pnpm build && pnpm serve --port ${PORT}`,
+    command: `VITE_NODE_ENV="test" VITE_SERVER_PORT=${PORT} VITE_EXTERNAL_PORT=${EXTERNAL_PORT} pnpm build && pnpm preview --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
