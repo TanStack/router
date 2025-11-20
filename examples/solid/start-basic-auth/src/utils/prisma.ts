@@ -1,13 +1,10 @@
 import crypto from 'node:crypto'
-import { PrismaClient } from '@prisma/client'
-import { PrismaLibSQL } from '@prisma/adapter-libsql'
-import { createClient } from '@libsql/client'
+import { PrismaLibSql } from '@prisma/adapter-libsql'
+import { PrismaClient } from '../prisma-generated/client'
 
-const libsql = createClient({
+const adapter = new PrismaLibSql({
   url: process.env.DATABASE_URL || 'file:./prisma/dev.db',
 })
-
-const adapter = new PrismaLibSQL(libsql)
 export const prismaClient = new PrismaClient({ adapter })
 
 export function hashPassword(password: string) {
