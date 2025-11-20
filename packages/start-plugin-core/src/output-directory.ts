@@ -3,16 +3,20 @@ import { VITE_ENVIRONMENT_NAMES } from './constants'
 import type { ViteEnvironmentNames } from './constants'
 import type * as vite from 'vite'
 
-export function getClientOutputDirectory(userConfig: vite.UserConfig) {
+export function getClientOutputDirectory(
+  userConfig: vite.UserConfig | vite.ResolvedConfig,
+) {
   return getOutputDirectory(userConfig, VITE_ENVIRONMENT_NAMES.client, 'client')
 }
 
-export function getServerOutputDirectory(userConfig: vite.UserConfig) {
+export function getServerOutputDirectory(
+  userConfig: vite.UserConfig | vite.ResolvedConfig,
+) {
   return getOutputDirectory(userConfig, VITE_ENVIRONMENT_NAMES.server, 'server')
 }
 
 function getOutputDirectory(
-  userConfig: vite.UserConfig,
+  userConfig: vite.UserConfig | vite.ResolvedConfig,
   environmentName: ViteEnvironmentNames,
   directoryName: string,
 ) {

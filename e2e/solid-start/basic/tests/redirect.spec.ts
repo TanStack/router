@@ -8,12 +8,13 @@ import {
 } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 import { isSpaMode } from '../tests/utils/isSpaMode'
+import { isPreview } from '../tests/utils/isPreview'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
 const PORT = await getTestServerPort(
-  `${packageJson.name}${isSpaMode ? '_spa' : ''}`,
+  `${packageJson.name}${isSpaMode ? '_spa' : ''}${isPreview ? '_preview' : ''}`,
 )
 const EXTERNAL_HOST_PORT = await getDummyServerPort(packageJson.name)
 
