@@ -5960,7 +5960,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.52.0)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+        version: 3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -8134,7 +8134,7 @@ importers:
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10
-        version: 0.8.10(solid-js@1.9.10)
+        version: 0.8.10(@solidjs/router@0.15.3(solid-js@1.9.10))(solid-js@1.9.10)
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -8517,7 +8517,7 @@ importers:
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10
-        version: 0.8.10(solid-js@1.9.10)
+        version: 0.8.10(@solidjs/router@0.15.3(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/eslint-config':
         specifier: ^0.3.2
         version: 0.3.2(@typescript-eslint/utils@8.44.1(eslint@9.22.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint@9.22.0(jiti@2.6.1))(typescript@5.9.2)
@@ -8551,6 +8551,61 @@ importers:
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
+
+  examples/solid/start-clerk-basic:
+    dependencies:
+      '@clerk/tanstack-react-start':
+        specifier: ^0.26.3
+        version: 0.26.3(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@tanstack/solid-router':
+        specifier: ^1.134.15
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../../packages/solid-start
+      clerk-solidjs:
+        specifier: ^2.0.10
+        version: 2.0.10(@solidjs/router@0.15.3(solid-js@1.9.10))(@solidjs/start@1.2.0(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: 1.9.10
+        version: 1.9.10
+      srvx:
+        specifier: 0.8.15
+        version: 0.8.15
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vite-plugin-solid:
+        specifier: ^2.11.10
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.15
+        version: 4.1.15
+      '@types/node':
+        specifier: 22.10.2
+        version: 22.10.2
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^4.1.15
+        version: 4.1.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/start-convex-better-auth:
     dependencies:
@@ -10356,8 +10411,8 @@ packages:
     resolution: {integrity: sha512-VWBeddOJVa3sqUPdvquaaQYw4h5hACSG3EUDOW7eSu2F6W3BXUozyLJQPBJ9C0MuoeHhOe/DeV8x2KqOgxVZaQ==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
-      react: ^19.0.0
-      react-dom: ^19.0.0
+      react: ^19.2.0
+      react-dom: ^19.2.0
     peerDependenciesMeta:
       react:
         optional: true
@@ -13822,6 +13877,11 @@ packages:
 
   '@solid-primitives/bounds@0.0.122':
     resolution: {integrity: sha512-kUq/IprOdFr/rg2upon5lQGOoTnDAmxQS4ASKK2l+VwoKSctdPwgu/4qJxEITZikL+nB0myYZzBZWptySV0cRg==}
+    peerDependencies:
+      solid-js: 1.9.10
+
+  '@solid-primitives/context@0.2.3':
+    resolution: {integrity: sha512-6/e8qu9qJf48FJ+sxc/B782NdgFw5TvI8+r6U0gHizumfZcWZg8FAJqvRZAiwlygkUNiTQOGTeO10LVbMm0kvg==}
     peerDependencies:
       solid-js: 1.9.10
 
@@ -21329,6 +21389,9 @@ packages:
   zod@4.1.12:
     resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
 
+  zwitch@2.0.4:
+    resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
+
 snapshots:
 
   '@adobe/css-tools@4.4.1': {}
@@ -21914,6 +21977,17 @@ snapshots:
       '@types/tough-cookie': 4.0.5
       tough-cookie: 4.1.4
 
+  '@clerk/backend@1.34.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@clerk/shared': 3.28.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@clerk/types': 4.95.0
+      cookie: 1.0.2
+      snakecase-keys: 8.0.1
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - react
+      - react-dom
+
   '@clerk/backend@2.18.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@clerk/shared': 3.28.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -21932,6 +22006,18 @@ snapshots:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       tslib: 2.8.1
+
+  '@clerk/shared@2.22.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@clerk/types': 4.95.0
+      dequal: 2.0.3
+      glob-to-regexp: 0.4.1
+      js-cookie: 3.0.5
+      std-env: 3.9.0
+      swr: 2.3.4(react@19.2.0)
+    optionalDependencies:
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
 
   '@clerk/shared@3.28.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
@@ -25571,6 +25657,10 @@ snapshots:
       '@solid-primitives/utils': 6.3.0(solid-js@1.9.10)
       solid-js: 1.9.10
 
+  '@solid-primitives/context@0.2.3(solid-js@1.9.10)':
+    dependencies:
+      solid-js: 1.9.10
+
   '@solid-primitives/context@0.3.2(solid-js@1.9.10)':
     dependencies:
       solid-js: 1.9.10
@@ -25582,7 +25672,7 @@ snapshots:
 
   '@solid-primitives/destructure@0.1.17(solid-js@1.9.10)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.10)
+      '@solid-primitives/utils': 6.3.2(solid-js@1.9.10)
       solid-js: 1.9.10
 
   '@solid-primitives/event-listener@2.4.0(solid-js@1.9.10)':
@@ -26477,6 +26567,8 @@ snapshots:
     dependencies:
       '@types/node': 22.10.2
 
+  '@types/braces@3.0.5': {}
+
   '@types/bun@1.2.22(@types/react@19.2.2)':
     dependencies:
       bun-types: 1.2.22(@types/react@19.2.2)
@@ -26956,7 +27048,7 @@ snapshots:
 
   '@vinxi/plugin-directives@0.5.1(vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
-      '@babel/parser': 7.28.4
+      '@babel/parser': 7.28.5
       acorn: 8.15.0
       acorn-jsx: 5.3.2(acorn@8.15.0)
       acorn-loose: 8.5.2
@@ -27956,10 +28048,10 @@ snapshots:
     dependencies:
       source-map: 0.6.1
 
-  clerk-solidjs@2.0.10(@solidjs/router@0.15.3(solid-js@1.9.10))(@solidjs/start@1.2.0(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.10):
+  clerk-solidjs@2.0.10(@solidjs/router@0.15.3(solid-js@1.9.10))(@solidjs/start@1.2.0(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10):
     dependencies:
-      '@clerk/backend': 1.34.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/shared': 2.22.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/backend': 1.34.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@clerk/shared': 2.22.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@solid-primitives/context': 0.2.3(solid-js@1.9.10)
       '@solid-primitives/destructure': 0.1.17(solid-js@1.9.10)
       '@solid-primitives/memo': 1.4.3(solid-js@1.9.10)
@@ -30619,8 +30711,8 @@ snapshots:
 
   magicast@0.2.11:
     dependencies:
-      '@babel/parser': 7.28.4
-      '@babel/types': 7.28.4
+      '@babel/parser': 7.28.5
+      '@babel/types': 7.28.5
       recast: 0.23.11
 
   magicast@0.3.5:
@@ -32016,7 +32108,6 @@ snapshots:
       is-core-module: 2.16.1
       path-parse: 1.0.7
       supports-preserve-symlinks-flag: 1.0.0
-    optional: true
 
   resolve@2.0.0-next.5:
     dependencies:
@@ -33337,9 +33428,9 @@ snapshots:
 
   vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1):
     dependencies:
-      '@babel/core': 7.28.4
-      '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.28.4)
-      '@babel/plugin-syntax-typescript': 7.27.1(@babel/core@7.28.4)
+      '@babel/core': 7.28.5
+      '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.28.5)
+      '@babel/plugin-syntax-typescript': 7.27.1(@babel/core@7.28.5)
       '@types/micromatch': 4.0.10
       '@vinxi/listhen': 1.5.6
       boxen: 8.0.1
@@ -33361,7 +33452,7 @@ snapshots:
       path-to-regexp: 6.3.0
       pathe: 1.1.2
       radix3: 1.1.2
-      resolve: 1.22.10
+      resolve: 1.22.11
       serve-placeholder: 2.0.2
       serve-static: 1.16.2
       tinyglobby: 0.2.15
@@ -33584,50 +33675,6 @@ snapshots:
   vitefu@1.1.1(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
     optionalDependencies:
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-
-  vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.52.0)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1):
-    dependencies:
-      '@types/chai': 5.2.2
-      '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      '@vitest/pretty-format': 3.2.4
-      '@vitest/runner': 3.2.4
-      '@vitest/snapshot': 3.2.4
-      '@vitest/spy': 3.2.4
-      '@vitest/utils': 3.2.4
-      chai: 5.2.0
-      debug: 4.4.3
-      expect-type: 1.2.2
-      magic-string: 0.30.17
-      pathe: 2.0.3
-      picomatch: 4.0.2
-      std-env: 3.9.0
-      tinybench: 2.9.0
-      tinyexec: 0.3.2
-      tinyglobby: 0.2.15
-      tinypool: 1.1.1
-      tinyrainbow: 2.0.0
-      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-      vite-node: 3.2.4(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@types/node': 22.10.2
-      '@vitest/browser': 3.0.6(@types/node@22.10.2)(playwright@1.52.0)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4)
-      '@vitest/ui': 3.0.6(vitest@3.2.4)
-      jsdom: 27.0.0(postcss@8.5.6)
-    transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
-      - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - yaml
 
   vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1):
     dependencies:
@@ -34150,3 +34197,5 @@ snapshots:
   zod@3.25.57: {}
 
   zod@4.1.12: {}
+
+  zwitch@2.0.4: {}
