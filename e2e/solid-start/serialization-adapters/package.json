@@ -25,7 +25,6 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "postcss": "^8.5.1",
-    "seroval": "^1.3.2",
     "srvx": "^0.8.6",
     "tailwindcss": "^4.1.15",
     "typescript": "^5.7.2",
