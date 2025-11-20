@@ -2845,9 +2845,12 @@ importers:
 
   e2e/solid-start/basic-auth:
     dependencies:
+      '@prisma/adapter-libsql':
+        specifier: ^7.0.0
+        version: 7.0.0
       '@prisma/client':
-        specifier: 5.22.0
-        version: 5.22.0(prisma@5.22.0)
+        specifier: ^7.0.0
+        version: 7.0.0(prisma@7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2))(typescript@5.9.2)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -2857,9 +2860,6 @@ importers:
       '@tanstack/solid-start':
         specifier: workspace:*
         version: link:../../../packages/solid-start
-      prisma:
-        specifier: ^5.22.0
-        version: 5.22.0
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2885,9 +2885,15 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       postcss:
         specifier: ^8.5.1
         version: 8.5.6
+      prisma:
+        specifier: ^7.0.0
+        version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
