@@ -17,7 +17,7 @@ export const renderRouterToString = async ({
     const injectedHtml = await Promise.all(router.serverSsr!.injectedHtml).then(
       (htmls) => htmls.join(''),
     )
-    html = html.replace(`</body>`, `${injectedHtml}</body>`)
+    html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
     return new Response(`<!DOCTYPE html>${html}`, {
       status: router.state.statusCode,
       headers: responseHeaders,

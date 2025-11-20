@@ -6,14 +6,14 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "vite start",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "prisma-generate": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
-    "@tanstack/solid-router": "^1.136.8",
-    "@tanstack/solid-router-devtools": "^1.136.8",
-    "@tanstack/solid-start": "^1.136.8",
+    "@tanstack/solid-router": "^1.136.17",
+    "@tanstack/solid-router-devtools": "^1.136.17",
+    "@tanstack/solid-start": "^1.136.18",
     "prisma": "^5.22.0",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",

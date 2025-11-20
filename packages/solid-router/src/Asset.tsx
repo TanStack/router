@@ -123,7 +123,8 @@ function Script({
     }
   })
 
-  if (router && !router.isServer) {
+  if (!router.isServer) {
+    // render an empty script on the client just to avoid hydration errors
     return null
   }
 

@@ -6838,7 +6838,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6878,7 +6878,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6921,7 +6921,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6964,7 +6964,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7001,7 +7001,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7035,7 +7035,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7075,7 +7075,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7121,7 +7121,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7164,7 +7164,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7204,7 +7204,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       compression:
         specifier: ^1.8.0
@@ -7244,7 +7244,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7302,7 +7302,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7345,7 +7345,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7385,7 +7385,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7425,7 +7425,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       solid-js:
         specifier: 1.9.10
@@ -7456,7 +7456,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7496,7 +7496,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7545,7 +7545,7 @@ importers:
         specifier: ^5.72.0
         version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7594,7 +7594,7 @@ importers:
         specifier: ^5.72.0
         version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7640,7 +7640,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7680,7 +7680,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7717,7 +7717,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7751,7 +7751,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7782,7 +7782,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7813,7 +7813,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7853,7 +7853,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7887,7 +7887,7 @@ importers:
   examples/solid/quickstart-webpack-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7951,7 +7951,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7985,7 +7985,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8025,7 +8025,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8059,7 +8059,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8102,7 +8102,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8151,7 +8151,7 @@ importers:
   examples/solid/start-basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8200,7 +8200,7 @@ importers:
         specifier: 5.22.0
         version: 5.22.0(prisma@5.22.0)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8249,7 +8249,7 @@ importers:
   examples/solid/start-basic-cloudflare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8295,7 +8295,7 @@ importers:
   examples/solid/start-basic-netlify:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8338,7 +8338,7 @@ importers:
   examples/solid/start-basic-nitro:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8387,7 +8387,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8436,7 +8436,7 @@ importers:
   examples/solid/start-basic-static:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8494,7 +8494,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.1.3)(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8561,7 +8561,7 @@ importers:
         specifier: ^4.1.17
         version: 4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8619,7 +8619,7 @@ importers:
   examples/solid/start-counter:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8665,7 +8665,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.1.3)(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8708,7 +8708,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8757,7 +8757,7 @@ importers:
   examples/solid/start-streaming-data-from-server-functions:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8797,7 +8797,7 @@ importers:
         specifier: ^2.48.1
         version: 2.48.1
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8837,7 +8837,7 @@ importers:
   examples/solid/start-tailwind-v4:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8889,7 +8889,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8926,7 +8926,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8969,7 +8969,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.136.8
+        specifier: ^1.136.17
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9878,8 +9878,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       xmlbuilder2:
-        specifier: ^3.1.1
-        version: 3.1.1
+        specifier: ^4.0.0
+        version: 4.0.0
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -12255,21 +12255,21 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@oozcitak/dom@1.15.10':
-    resolution: {integrity: sha512-0JT29/LaxVgRcGKvHmSrUTEvZ8BXvZhGl2LASRUgHqDTC1M5g1pLmVv56IYNyt3bG2CUjDkc67wnyZC14pbQrQ==}
-    engines: {node: '>=8.0'}
+  '@oozcitak/dom@2.0.1':
+    resolution: {integrity: sha512-Un5k8MKqGak1LQM/behcHylmGdRopBXZax19weVedEAIrOCRZooY+MvX4Ehcz0ftOEPgYZ7vjIm/+MokVBFO3w==}
+    engines: {node: '>=20.0'}
 
-  '@oozcitak/infra@1.0.8':
-    resolution: {integrity: sha512-JRAUc9VR6IGHOL7OGF+yrvs0LO8SlqGnPAMqyzOuFZPSZSXI7Xf2O9+awQPSMXgIWGtgUf/dA6Hs6X6ySEaWTg==}
-    engines: {node: '>=6.0'}
+  '@oozcitak/infra@2.0.1':
+    resolution: {integrity: sha512-TtjI+kducm0ExL3OTKglPLkAIQ3alq0Otbokml62haZESfQaL3ojLJxl7+UTBhWCkBBuCshzGEEYmX5MXo8WOg==}
+    engines: {node: '>=20.0'}
 
-  '@oozcitak/url@1.0.4':
-    resolution: {integrity: sha512-kDcD8y+y3FCSOvnBI6HJgl00viO/nGbQoCINmQ0h98OhnGITrWR3bOGfwYCthgcrV8AnTJz8MzslTQbC3SOAmw==}
-    engines: {node: '>=8.0'}
+  '@oozcitak/url@2.0.1':
+    resolution: {integrity: sha512-lLHUQUyYy86q+qbALr0TMVh+VQAYwNGbsxBx4LhfjvkNYG0hgAwWtq7ePebGs2nEhZmmIFl24ikuCpH2r5d3+A==}
+    engines: {node: '>=20.0'}
 
-  '@oozcitak/util@8.3.8':
-    resolution: {integrity: sha512-T8TbSnGsxo6TDBJx/Sgv/BlVJL3tshxZP7Aq5R1mSnM5OcHY2dQaxLMu2+E8u3gN0MLOzdjurqN4ZRVuzQycOQ==}
-    engines: {node: '>=8.0'}
+  '@oozcitak/util@9.0.4':
+    resolution: {integrity: sha512-kmx1hRJlsvxiTCpK97off59LqSEOtkWOPe4rdfFL8TjZtihYSTVNObIfc86jtLngfnuIuuTRt+TUCgRS220RSQ==}
+    engines: {node: '>=20.0'}
 
   '@open-draft/deferred-promise@2.2.0':
     resolution: {integrity: sha512-CecwLWx3rhxVQF6V4bAgPS5t+So2sTbPgAzafKkVizyi7tlwpcFpdFqq+wqF2OwNBmqFuu6tOyouTuxgpMfzmA==}
@@ -20932,9 +20932,9 @@ packages:
     resolution: {integrity: sha512-EvGK8EJ3DhaHfbRlETOWAS5pO9MZITeauHKJyb8wyajUfQUenkIg2MvLDTZ4T/TgIcm3HU0TFBgWWboAZ30UHg==}
     engines: {node: '>=18'}
 
-  xmlbuilder2@3.1.1:
-    resolution: {integrity: sha512-WCSfbfZnQDdLQLiMdGUQpMxxckeQ4oZNMNhLVkcekTu7xhD4tuUDyAPoY8CwXvBYE6LwBHd6QW2WZXlOWr1vCw==}
-    engines: {node: '>=12.0'}
+  xmlbuilder2@4.0.0:
+    resolution: {integrity: sha512-zIoY033NGmbzHX1cYOGKNfeWpZyiGLzXGHNoxQ6tR/R+WqT7mqz+EDtFdPwqnhIms6vHz9BNtMS47DiGPyGfwg==}
+    engines: {node: '>=20.0'}
 
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
@@ -23650,22 +23650,22 @@ snapshots:
   '@nx/nx-win32-x64-msvc@21.3.7':
     optional: true
 
-  '@oozcitak/dom@1.15.10':
+  '@oozcitak/dom@2.0.1':
     dependencies:
-      '@oozcitak/infra': 1.0.8
-      '@oozcitak/url': 1.0.4
-      '@oozcitak/util': 8.3.8
+      '@oozcitak/infra': 2.0.1
+      '@oozcitak/url': 2.0.1
+      '@oozcitak/util': 9.0.4
 
-  '@oozcitak/infra@1.0.8':
+  '@oozcitak/infra@2.0.1':
     dependencies:
-      '@oozcitak/util': 8.3.8
+      '@oozcitak/util': 9.0.4
 
-  '@oozcitak/url@1.0.4':
+  '@oozcitak/url@2.0.1':
     dependencies:
-      '@oozcitak/infra': 1.0.8
-      '@oozcitak/util': 8.3.8
+      '@oozcitak/infra': 2.0.1
+      '@oozcitak/util': 9.0.4
 
-  '@oozcitak/util@8.3.8': {}
+  '@oozcitak/util@9.0.4': {}
 
   '@open-draft/deferred-promise@2.2.0': {}
 
@@ -33221,12 +33221,12 @@ snapshots:
 
   xml-name-validator@5.0.0: {}
 
-  xmlbuilder2@3.1.1:
+  xmlbuilder2@4.0.0:
     dependencies:
-      '@oozcitak/dom': 1.15.10
-      '@oozcitak/infra': 1.0.8
-      '@oozcitak/util': 8.3.8
-      js-yaml: 3.14.1
+      '@oozcitak/dom': 2.0.1
+      '@oozcitak/infra': 2.0.1
+      '@oozcitak/util': 9.0.4
+      js-yaml: 4.1.0
 
   xmlchars@2.2.0: {}
 

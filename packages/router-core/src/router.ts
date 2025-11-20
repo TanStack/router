@@ -83,7 +83,7 @@ import type {
   CommitLocationOptions,
   NavigateFn,
 } from './RouterProvider'
-import type { Manifest } from './manifest'
+import type { Manifest, RouterManagedTag } from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
@@ -756,7 +756,8 @@ export interface ServerSsr {
   isDehydrated: () => boolean
   onRenderFinished: (listener: () => void) => void
   dehydrate: () => Promise<void>
-  takeBufferedScripts: () => string | undefined
+  takeBufferedScripts: () => RouterManagedTag | undefined
+  liftScriptBarrier: () => void
 }
 
 export type AnyRouterWithContext<TContext> = RouterCore<
@@ -1387,7 +1388,7 @@ export class RouterCore<
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
-      let paramsError: PathParamError | undefined = undefined
+      let paramsError: unknown = undefined
 
       if (!existingMatch) {
         const strictParseParams =
@@ -1400,9 +1401,13 @@ export class RouterCore<
               strictParseParams(strictParams as Record<string, string>),
             )
           } catch (err: any) {
-            paramsError = new PathParamError(err.message, {
-              cause: err,
-            })
+            if (isNotFound(err) || isRedirect(err)) {
+              paramsError = err
+            } else {
+              paramsError = new PathParamError(err.message, {
+                cause: err,
+              })
+            }
 
             if (opts?.throwOnError) {
               throw paramsError
@@ -2096,7 +2101,6 @@ export class RouterCore<
             updateMatch: this.updateMatch,
             // eslint-disable-next-line @typescript-eslint/require-await
             onReady: async () => {
-              // eslint-disable-next-line @typescript-eslint/require-await
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
                 this.startViewTransition(async () => {
@@ -2130,9 +2134,18 @@ export class RouterCore<
                         loadedAt: Date.now(),
                         matches: newMatches,
                         pendingMatches: undefined,
+                        /**
+                         * When committing new matches, cache any exiting matches that are still usable.
+                         * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
+                         * deliberately excluded from `cachedMatches` so that subsequent invalidations
+                         * or reloads re-run their loaders instead of reusing the failed/not-found data.
+                         */
                         cachedMatches: [
                           ...s.cachedMatches,
-                          ...exitingMatches.filter((d) => d.status !== 'error'),
+                          ...exitingMatches.filter(
+                            (d) =>
+                              d.status !== 'error' && d.status !== 'notFound',
+                          ),
                         ],
                       }
                     })
@@ -2304,6 +2317,14 @@ export class RouterCore<
     )
   }
 
+  /**
+   * Invalidate the current matches and optionally force them back into a pending state.
+   *
+   * - Marks all matches that pass the optional `filter` as `invalid: true`.
+   * - If `forcePending` is true, or a match is currently in `'error'` or `'notFound'` status,
+   *   its status is reset to `'pending'` and its `error` cleared so that the loader is re-run
+   *   on the next `load()` call (eg. after HMR or a manual invalidation).
+   */
   invalidate: InvalidateFn<
     RouterCore<
       TRouteTree,
@@ -2318,7 +2339,9 @@ export class RouterCore<
         return {
           ...d,
           invalid: true,
-          ...(opts?.forcePending || d.status === 'error'
+          ...(opts?.forcePending ||
+          d.status === 'error' ||
+          d.status === 'notFound'
             ? ({ status: 'pending', error: undefined } as const)
             : undefined),
         }
