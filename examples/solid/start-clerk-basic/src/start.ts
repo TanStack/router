@@ -1,9 +1,8 @@
-import { clerkMiddleware } from '@clerk/tanstack-solid-start/server'
+import { clerkMiddleware } from 'clerk-solidjs-tanstack-start/server'
 import { createStart } from '@tanstack/solid-start'
-import type { AnyRequestMiddleware } from '@tanstack/solid-start'
 
 export const startInstance = createStart(() => {
   return {
-    requestMiddleware: [clerkMiddleware() as AnyRequestMiddleware],
+    requestMiddleware: [clerkMiddleware()],
   }
 })

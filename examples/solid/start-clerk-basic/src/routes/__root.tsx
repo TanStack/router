@@ -5,7 +5,7 @@ import {
   SignedIn,
   SignedOut,
   UserButton,
-} from '@clerk/tanstack-solid-start'
+} from 'clerk-solidjs-tanstack-start'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { createServerFn } from '@tanstack/solid-start'
 
@@ -16,7 +16,7 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/solid-router'
-import { auth } from '@clerk/tanstack-solid-start/server'
+import { auth } from 'clerk-solidjs-tanstack-start/server'
 import { HydrationScript } from 'solid-js/web'
 import type { JSXElement } from 'solid-js'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
