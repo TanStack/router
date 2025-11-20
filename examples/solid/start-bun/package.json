@@ -6,7 +6,7 @@
     "dev": "vite dev --port 3000",
     "start": "bun run server.ts",
     "build": "vite build",
-    "serve": "vite preview",
+    "preview": "vite preview",
     "test": "vitest run",
     "lint": "eslint",
     "format": "prettier",

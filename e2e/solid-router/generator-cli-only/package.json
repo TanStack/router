@@ -6,7 +6,7 @@
     "dev": "tsr generate && vite --port 3000",
     "dev:e2e": "tsr generate && vite",
     "build": "tsr generate && vite build && tsc --noEmit",
-    "serve": "vite preview",
+    "preview": "vite preview",
     "start": "tsr generate && vite",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },

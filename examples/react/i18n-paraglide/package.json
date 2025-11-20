@@ -6,7 +6,7 @@
     "dev": "vite --port 3000",
     "start": "vite --port 3000",
     "build": "vite build && tsc",
-    "serve": "vite preview",
+    "preview": "vite preview",
     "test": "vitest run"
   },
   "dependencies": {

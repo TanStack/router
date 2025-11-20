@@ -9,8 +9,8 @@ import { useExperimentalNonNestedRoutes } from './tests/utils/useExperimentalNon
 const PORT = await getTestServerPort(packageJson.name)
 const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
-const experimentalNonNestedPathsModeCommand = `pnpm build:nonnested && pnpm serve:nonnested --port ${PORT}`
-const defaultCommand = `pnpm build && pnpm serve --port ${PORT}`
+const experimentalNonNestedPathsModeCommand = `pnpm build:nonnested && pnpm preview:nonnested --port ${PORT}`
+const defaultCommand = `pnpm build && pnpm preview --port ${PORT}`
 const command = useExperimentalNonNestedRoutes
   ? experimentalNonNestedPathsModeCommand
   : defaultCommand

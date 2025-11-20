@@ -6,7 +6,7 @@
     "dev": "vite dev --port 3000",
     "start": "node .output/server/index.mjs",
     "build": "vite build",
-    "serve": "vite preview"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@tanstack/react-devtools": "^0.7.0",
