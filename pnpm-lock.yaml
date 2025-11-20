@@ -8554,9 +8554,6 @@ importers:
 
   examples/solid/start-clerk-basic:
     dependencies:
-      '@clerk/tanstack-react-start':
-        specifier: ^0.26.3
-        version: 0.26.3(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@tanstack/solid-router':
         specifier: ^1.134.15
         version: link:../../../packages/solid-router
@@ -8569,6 +8566,9 @@ importers:
       clerk-solidjs:
         specifier: ^2.0.10
         version: 2.0.10(@solidjs/router@0.15.3(solid-js@1.9.10))(@solidjs/start@1.2.0(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)
+      clerk-solidjs-tanstack-start:
+        specifier: ^0.0.3
+        version: 0.0.3(@solidjs/router@0.15.3(solid-js@1.9.10))(@solidjs/start@1.2.0(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)))(@tanstack/solid-router@packages+solid-router)(@tanstack/solid-start@packages+solid-start)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -10400,6 +10400,10 @@ packages:
     resolution: {integrity: sha512-fWMq/Tb2hgfUXLKJN8jr6pbpA5XLUwC4BjWz7lB5Y+YhXhBrO7GtfpZIS91L/aDhNb17X6IaE6XvS6tDJBCUUw==}
     engines: {node: '>=18.17.0'}
 
+  '@clerk/backend@2.23.0':
+    resolution: {integrity: sha512-2wqdnYMtBdmqTOSyl8aEVaUezcDlizOY4hnXIRQ1A6ss1QjYiZJofjhpFJgC9SxNA29Nb9szkOsXQ7eI+gLY9g==}
+    engines: {node: '>=18.17.0'}
+
   '@clerk/clerk-react@5.53.2':
     resolution: {integrity: sha512-/ckRJC1dDS6hUVv+zzNX5VUCC49/UlbhKElN5LQqv172ntrx4Mw1TKBCJ3aO5Rct/RiJxhf1PfTUEohtY4QjUg==}
     engines: {node: '>=18.17.0'}
@@ -10431,6 +10435,18 @@ packages:
       react-dom:
         optional: true
 
+  '@clerk/shared@3.35.0':
+    resolution: {integrity: sha512-UjENPnS7HLejzjMbUI9mDYJONsJR3Q3EChlamlNZfZQzMbvEE8ybETLPXxnm/JA6e1binyUJsYnaghlb+aZ6aw==}
+    engines: {node: '>=18.17.0'}
+    peerDependencies:
+      react: ^19.2.0
+      react-dom: ^19.2.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
   '@clerk/tanstack-react-start@0.26.3':
     resolution: {integrity: sha512-ZMiNTDyqHmczw08rb3o0KwVEFn1EJmaEtAY2VH8qvnyDY61fwtAXpM9jBseBhw/iYllYlv8QN/q/AIhVszXdNw==}
     engines: {node: '>=18.17.0'}
@@ -10439,6 +10455,10 @@ packages:
       '@tanstack/react-start': workspace:*
       react: ^19.2.0
       react-dom: ^19.2.0
+
+  '@clerk/types@4.101.0':
+    resolution: {integrity: sha512-Y9fRBgNoztH42a0sVIcNGdMX7KZl7i/+07fi35lw2K2Tqpc3cFUlZ5J4KAEAT8EN3/E6iPgsxHOyvCrTmQ2V+A==}
+    engines: {node: '>=18.17.0'}
 
   '@clerk/types@4.95.0':
     resolution: {integrity: sha512-K1kI3BjvufG1mZBZJ5Q8Yu9wV6AFpjjITml5vhvP95xibJWOi3eYvlRCTKXDNKBFGvQfrTJbwn67jSG2VdyLKw==}
@@ -15943,6 +15963,14 @@ packages:
     resolution: {integrity: sha512-D5J+kHaVb/wKSFcyyV75uCn8fiY4sV38XJoe4CUyGQ+mOU/fMVYUdH1hJC+CJQ5uY3EnW27SbJYS4X8BiLrAFg==}
     engines: {node: '>= 10.0'}
 
+  clerk-solidjs-tanstack-start@0.0.3:
+    resolution: {integrity: sha512-+Op7YY7fs6pVygWT7Jr4eV35bOmi+9HyGo98jallEP03bT+ZwCgFQ/HcNVA0jWHQzj/NcDq6bHs8GAvkABAn4Q==}
+    engines: {node: '>=18.17.0'}
+    peerDependencies:
+      '@tanstack/solid-router': ^1.132.0
+      '@tanstack/solid-start': workspace:*
+      solid-js: 1.9.10
+
   clerk-solidjs@2.0.10:
     resolution: {integrity: sha512-SQsnRAh5ew4+Cq8M8p59BHYFxcDzQXsR1csB2Z0eC/b87+FKpA1qM1WFB5dOKUbAGJFw9Lt6lmI7ipiBUfkc2Q==}
     engines: {node: '>=18'}
@@ -20874,11 +20902,6 @@ packages:
       '@types/react':
         optional: true
 
-  use-sync-external-store@1.5.0:
-    resolution: {integrity: sha512-Rb46I4cGGVBmjamjphe8L/UnvJD+uPPtTkNvX5mZgqdbavhI4EbgIWJiIHXJ8bc/i9EQGPRh4DwEURJ552Do0A==}
-    peerDependencies:
-      react: ^19.2.0
-
   use-sync-external-store@1.6.0:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
     peerDependencies:
@@ -21999,6 +22022,17 @@ snapshots:
       - react
       - react-dom
 
+  '@clerk/backend@2.23.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@clerk/shared': 3.35.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@clerk/types': 4.101.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      cookie: 1.0.2
+      standardwebhooks: 1.0.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - react
+      - react-dom
+
   '@clerk/clerk-react@5.53.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@clerk/shared': 3.28.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -22031,6 +22065,18 @@ snapshots:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
+  '@clerk/shared@3.35.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      csstype: 3.1.3
+      dequal: 2.0.3
+      glob-to-regexp: 0.4.1
+      js-cookie: 3.0.5
+      std-env: 3.9.0
+      swr: 2.3.4(react@19.2.0)
+    optionalDependencies:
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
+
   '@clerk/tanstack-react-start@0.26.3(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@clerk/backend': 2.18.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -22042,6 +22088,13 @@ snapshots:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       tslib: 2.8.1
+
+  '@clerk/types@4.101.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@clerk/shared': 3.35.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+    transitivePeerDependencies:
+      - react
+      - react-dom
 
   '@clerk/types@4.95.0':
     dependencies:
@@ -28048,6 +28101,23 @@ snapshots:
     dependencies:
       source-map: 0.6.1
 
+  clerk-solidjs-tanstack-start@0.0.3(@solidjs/router@0.15.3(solid-js@1.9.10))(@solidjs/start@1.2.0(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)))(@tanstack/solid-router@packages+solid-router)(@tanstack/solid-start@packages+solid-start)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10):
+    dependencies:
+      '@clerk/backend': 2.23.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@clerk/shared': 3.35.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@clerk/types': 4.101.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@tanstack/solid-router': link:packages/solid-router
+      '@tanstack/solid-start': link:packages/solid-start
+      clerk-solidjs: 2.0.10(@solidjs/router@0.15.3(solid-js@1.9.10))(@solidjs/start@1.2.0(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)
+      solid-js: 1.9.10
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@solidjs/router'
+      - '@solidjs/start'
+      - react
+      - react-dom
+      - svix
+
   clerk-solidjs@2.0.10(@solidjs/router@0.15.3(solid-js@1.9.10))(@solidjs/start@1.2.0(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vinxi@0.5.8(@netlify/blobs@10.1.0)(@types/node@22.10.2)(db0@0.3.4)(encoding@0.1.13)(ioredis@5.8.0)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10):
     dependencies:
       '@clerk/backend': 1.34.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -32775,7 +32845,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
       react: 19.2.0
-      use-sync-external-store: 1.5.0(react@19.2.0)
+      use-sync-external-store: 1.6.0(react@19.2.0)
 
   symbol-tree@3.2.4: {}
 
@@ -33370,10 +33440,6 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.2.2
-
-  use-sync-external-store@1.5.0(react@19.2.0):
-    dependencies:
-      react: 19.2.0
 
   use-sync-external-store@1.6.0(react@19.2.0):
     dependencies:
