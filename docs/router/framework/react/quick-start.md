@@ -21,7 +21,6 @@ Before installing TanStack router, please ensure your project meets the followin
 > [!NOTE]
 > Using TypeScript (`v5.3.x or higher`) is recommended for the best development experience, though not strictly required. We aim to support the last 5 minor versions of TypeScript, but using the latest version will help avoid potential issues.
 
-
 TanStack Router is currently only compatible with React (with ReactDOM) and Solid. If you're interested in contributing to support other frameworks, such as React Native, Angular, or Vue, please reach out to us on [Discord](https://tlinz.com/discord).
 
 ### Download and Install
@@ -64,7 +63,6 @@ To quickly scaffold a new project with TanStack Router, you can use the `create-
 
 > [!TIP]
 > For full details on available options and templates, visit the [`create-tsrouter-app` documentation](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app).
-
 
 To create a new project, run the following command in your terminal:
 

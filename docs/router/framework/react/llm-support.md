@@ -26,7 +26,6 @@ vibe-rules install cursor
 > [!IMPORTANT]
 > If you're using [Yarn Workspaces](https://yarnpkg.com/features/workspaces), you will need to add the following configuration to your `.yarnrc.yaml` file of your application that uses TanStack Router:
 
->
 > ```yaml
 > pnpFallbackMode: all
 > pnpMode: loose
