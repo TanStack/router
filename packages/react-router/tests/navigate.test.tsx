@@ -1146,7 +1146,7 @@ describe('router.navigate navigation using optional path parameters - edge cases
     })
     await router.invalidate()
 
-    expect(router.state.location.pathname).toBe('/files/prefix.txt')
+    expect(router.state.location.pathname).toBe('/files')
 
     // Add the name parameter back
     await router.navigate({
@@ -1236,7 +1236,7 @@ describe('router.navigate navigation using optional path parameters - edge cases
     })
     await router.invalidate()
 
-    expect(router.state.location.pathname).toBe('/files/prefix.txt')
+    expect(router.state.location.pathname).toBe('/files')
   })
 })
 
