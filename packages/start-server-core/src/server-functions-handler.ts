@@ -88,8 +88,9 @@ export const handleServerAction = async ({
           if (typeof serializedContext === 'string') {
             try {
               const parsedContext = JSON.parse(serializedContext)
-              if (typeof parsedContext === 'object' && parsedContext) {
-                params.context = { ...context, ...parsedContext }
+              const deserializedContext = fromJSON(parsedContext, { plugins: serovalPlugins })
+              if (typeof deserializedContext === 'object' && deserializedContext) {
+                params.context = { ...context, ...deserializedContext }
               }
             } catch {}
           }
