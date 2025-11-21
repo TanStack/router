@@ -228,7 +228,7 @@ describe('Optional Path Parameters', () => {
       {
         name: 'optional param with suffix - empty string',
         path: '/posts/{-$category}.html',
-        params: {category: ''},
+        params: { category: '' },
         result: '/posts/.html',
       },
       {
