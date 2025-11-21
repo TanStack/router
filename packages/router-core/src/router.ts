@@ -1185,7 +1185,7 @@ export class RouterCore<
         pathname: decodePath(pathname),
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
-        hash: hash.split('#').reverse()[0] ?? '',
+        hash: last(hash.split('#')) ?? '',
         state: replaceEqualDeep(previousLocation?.state, state),
       }
     }
@@ -1686,13 +1686,11 @@ export class RouterCore<
         ? // Use the original template path for interpolation
           // This preserves the original parameter syntax including optional parameters
           nextTo
-        : decodePath(
-            interpolatePath({
-              path: nextTo,
-              params: nextParams,
-              decodeCharMap: this.pathParamsDecodeCharMap,
-            }).interpolatedPath,
-          )
+        : interpolatePath({
+            path: nextTo,
+            params: nextParams,
+            encode: false,
+          }).interpolatedPath
 
       // Resolve the next search
       let nextSearch = fromSearch

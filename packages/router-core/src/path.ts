@@ -209,8 +209,10 @@ export function resolvePath({
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
-  // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
+  /** Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params */
   decodeCharMap?: Map<string, string>
+  /** whether to encode the interpolated params (defaults: true) */
+  encode?: boolean
 }
 
 type InterPolatePathResult = {
@@ -249,6 +251,7 @@ export function interpolatePath({
   path,
   params,
   decodeCharMap,
+  encode = true,
 }: InterpolatePathOptions): InterPolatePathResult {
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
@@ -299,7 +302,9 @@ export function interpolatePath({
         continue
       }
 
-      const value = encodeParam('_splat', params, decodeCharMap)
+      const value = encode
+        ? encodeParam('_splat', params, decodeCharMap)
+        : params._splat
       joined += '/' + prefix + value + suffix
       continue
     }
@@ -313,7 +318,9 @@ export function interpolatePath({
 
       const prefix = path.substring(start, segment[1])
       const suffix = path.substring(segment[4], end)
-      const value = encodeParam(key, params, decodeCharMap) ?? 'undefined'
+      const value =
+        (encode ? encodeParam(key, params, decodeCharMap) : params[key]) ??
+        'undefined'
       joined += '/' + prefix + value + suffix
       continue
     }
@@ -336,7 +343,8 @@ export function interpolatePath({
 
       usedParams[key] = valueRaw
 
-      const value = encodeParam(key, params, decodeCharMap) ?? ''
+      const value =
+        (encode ? encodeParam(key, params, decodeCharMap) : params[key]) ?? ''
       joined += '/' + prefix + value + suffix
       continue
     }
