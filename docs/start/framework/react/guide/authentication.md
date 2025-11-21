@@ -143,8 +143,10 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: user, isLoading, refetch } = useServerFn(getCurrentUserFn)
-
+  const { data: user, isLoading, refetch } = useQuery({
+    queryKey: ["auth"],
+    queryFn: useServerFn(getCurrentUserFn),
+  })
   return (
     <AuthContext.Provider value={{ user, isLoading, refetch }}>
       {children}
