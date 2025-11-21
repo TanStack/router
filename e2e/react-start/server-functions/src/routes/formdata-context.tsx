@@ -114,7 +114,9 @@ function FormDataContextComponent() {
           data-testid="test-formdata-context-btn"
           className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
         >
-          {loading === 'formdata' ? 'Calling...' : 'Call Server Function (FormData)'}
+          {loading === 'formdata'
+            ? 'Calling...'
+            : 'Call Server Function (FormData)'}
         </button>
         <button
           type="button"
@@ -123,7 +125,9 @@ function FormDataContextComponent() {
           data-testid="test-simple-context-btn"
           className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
         >
-          {loading === 'simple' ? 'Calling...' : 'Call Server Function (No Params)'}
+          {loading === 'simple'
+            ? 'Calling...'
+            : 'Call Server Function (No Params)'}
         </button>
       </div>
       {error && (

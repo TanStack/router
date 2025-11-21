@@ -192,9 +192,8 @@ test('server function correctly passes context when using FormData', async ({
   await page.waitForLoadState('networkidle')
 
   const expectedContextValue =
-    (await page
-      .getByTestId('expected-formdata-context-value')
-      .textContent()) || ''
+    (await page.getByTestId('expected-formdata-context-value').textContent()) ||
+    ''
   expect(expectedContextValue).toBe('context-from-middleware')
 
   // Test FormData function
