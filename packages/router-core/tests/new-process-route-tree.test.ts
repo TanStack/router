@@ -167,7 +167,9 @@ describe('findRouteMatch', () => {
       })
       it('/optional/static/static vs /static/static', () => {
         const tree = makeTree(['/{-$other}/posts/new', '/posts/new'])
-        expect(findRouteMatch('/posts/new', tree)?.route.id).toBe('/posts/new')
+        expect(findRouteMatch('/posts/new', tree)?.route.id).toBe(
+          '/{-$other}/posts/new',
+        )
       })
       it('/optional/static/static/dynamic vs /static/dynamic/static/dynamic', () => {
         const tree = makeTree(['/{-$other}/posts/a/b/$c', '/posts/$a/b/$c'])
@@ -222,6 +224,14 @@ describe('findRouteMatch', () => {
           const tree = makeTree(['/a/{-$b}/', '/a/{-$b}/$c'])
           expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/{-$b}/$c')
         })
+      })
+      it('optional child vs. shorter route', () => {
+        const tree = makeTree(['/a', '/a/{-$b}'])
+        expect(findRouteMatch('/a', tree)?.route.id).toBe('/a/{-$b}')
+
+        // but index can still win over optional child
+        const treeWithIndex = makeTree(['/a/', '/a/{-$b}'])
+        expect(findRouteMatch('/a', treeWithIndex)?.route.id).toBe('/a/')
       })
     })
   })
@@ -487,14 +497,25 @@ describe('findRouteMatch', () => {
       const present = findRouteMatch('/yo/foo123bar/ma', tree)
       expect(present?.route.id).toBe('/yo/foo{-$id}bar/ma')
     })
-    it('edge-case: ???', () => {
+    it('edge-case: deeper optional chain vs. shallower optional chain', () => {
       // This test comes from the previous processRouteTree tests.
-      // > This demonstrates that `/foo/{-$p}.tsx` will be matched, not `/foo/{-$p}/{-$x}.tsx`
-      // > This route has 1 optional parameter, making it more specific than the route with 2
+      // > This demonstrates that `/foo/{-$p}/{-$x}.tsx` will be matched, not `/foo/{-$p}.tsx`
+      // > This route has 2 optional parameter, making it more specific than the route with 1
       const tree = makeTree(['/foo/{-$p}.tsx', '/foo/{-$p}/{-$x}.tsx'])
-      expect(findRouteMatch('/foo', tree)?.route.id).toBe('/foo/{-$p}.tsx')
+      expect(findRouteMatch('/foo', tree)?.route.id).toBe(
+        '/foo/{-$p}/{-$x}.tsx',
+      )
       expect(findRouteMatch('/foo/bar.tsx', tree)?.route.id).toBe(
-        '/foo/{-$p}.tsx',
+        '/foo/{-$p}/{-$x}.tsx',
+      )
+
+      // but index can still win over deeper optional chain
+      const treeWithIndex = makeTree([
+        '/foo/{-$p}.tsx/',
+        '/foo/{-$p}/{-$x}.tsx',
+      ])
+      expect(findRouteMatch('/foo/', treeWithIndex)?.route.id).toBe(
+        '/foo/{-$p}.tsx/',
       )
     })
 
