@@ -320,22 +320,15 @@ export function interpolatePath({
 
     if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
       const key = path.substring(segment[2], segment[3])
-      const prefix = path.substring(start, segment[1])
-      const suffix = path.substring(segment[4], end)
       const valueRaw = params[key]
 
       // Check if optional parameter is missing or undefined
-      if (valueRaw == null) {
-        if (prefix || suffix) {
-          // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
-          joined += '/' + prefix + suffix
-        }
-        // If no prefix/suffix, omit the entire segment
-        continue
-      }
+      if (valueRaw == null) continue
 
       usedParams[key] = valueRaw
 
+      const prefix = path.substring(start, segment[1])
+      const suffix = path.substring(segment[4], end)
       const value = encodeParam(key, params, decodeCharMap) ?? ''
       joined += '/' + prefix + value + suffix
       continue
