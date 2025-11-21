@@ -6,6 +6,7 @@ import {
   SEGMENT_TYPE_WILDCARD,
   parseSegment,
 } from './new-process-route-tree'
+import type { ParsedSegment } from './new-process-route-tree'
 import type { LRUCache } from './lru-cache'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
@@ -211,6 +212,7 @@ interface InterpolatePathOptions {
   params: Record<string, unknown>
   // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
   decodeCharMap?: Map<string, string>
+  cache?: LRUCache<string, Uint16Array>
 }
 
 type InterPolatePathResult = {
@@ -235,6 +237,41 @@ function encodeParam(
   }
 }
 
+const SEGMENT_DATA_LENGTH = 6
+
+function forEachSegment(
+  path: string,
+  cache: LRUCache<string, Uint16Array> | undefined,
+  cb: (start: number, end: number, data: ParsedSegment) => void,
+) {
+  const cached = cache?.get(path)
+  let cursor = 0
+  const length = path.length
+  const all = !cached ? Array<ParsedSegment>() : null
+  let i = 0
+  while (cursor < length) {
+    const start = cursor
+    let data
+    if (cached) {
+      data = cached.subarray(i, i + SEGMENT_DATA_LENGTH) as ParsedSegment
+      i += SEGMENT_DATA_LENGTH
+    } else {
+      data = parseSegment(path, start)
+      all!.push(data)
+    }
+    const end = data[5]
+    cursor = end + 1
+    if (start === end) continue
+    cb(start, end, data)
+  }
+  if (!all) return
+  const next = new Uint16Array(all.length * SEGMENT_DATA_LENGTH)
+  for (let i = 0; i < all.length; i++) {
+    next.set(all[i]!, i * SEGMENT_DATA_LENGTH)
+  }
+  cache?.set(path, next)
+}
+
 /**
  * Interpolate params and wildcards into a route path template.
  *
@@ -249,6 +286,7 @@ export function interpolatePath({
   path,
   params,
   decodeCharMap,
+  cache,
 }: InterpolatePathOptions): InterPolatePathResult {
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
@@ -260,23 +298,13 @@ export function interpolatePath({
   if (!path.includes('$'))
     return { interpolatedPath: path, usedParams, isMissingParams }
 
-  const length = path.length
-  let cursor = 0
-  let segment
   let joined = ''
-  while (cursor < length) {
-    const start = cursor
-    segment = parseSegment(path, start, segment)
-    const end = segment[5]
-    cursor = end + 1
-
-    if (start === end) continue
-
+  forEachSegment(path, cache, (start, end, segment) => {
     const kind = segment[0]
 
     if (kind === SEGMENT_TYPE_PATHNAME) {
       joined += '/' + path.substring(start, end)
-      continue
+      return
     }
 
     if (kind === SEGMENT_TYPE_WILDCARD) {
@@ -296,51 +324,51 @@ export function interpolatePath({
         if (prefix || suffix) {
           joined += '/' + prefix + suffix
         }
-        continue
+        return
       }
 
       const value = encodeParam('_splat', params, decodeCharMap)
       joined += '/' + prefix + value + suffix
-      continue
+      return
     }
 
     if (kind === SEGMENT_TYPE_PARAM) {
+      const prefix = path.substring(start, segment[1])
       const key = path.substring(segment[2], segment[3])
+      const suffix = path.substring(segment[4], end)
       if (!isMissingParams && !(key in params)) {
         isMissingParams = true
       }
       usedParams[key] = params[key]
 
-      const prefix = path.substring(start, segment[1])
-      const suffix = path.substring(segment[4], end)
       const value = encodeParam(key, params, decodeCharMap) ?? 'undefined'
       joined += '/' + prefix + value + suffix
-      continue
+      return
     }
 
     if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-      const key = path.substring(segment[2], segment[3])
       const prefix = path.substring(start, segment[1])
+      const key = path.substring(segment[2], segment[3])
       const suffix = path.substring(segment[4], end)
-      const valueRaw = params[key]
+      const rawValue = params[key]
 
       // Check if optional parameter is missing or undefined
-      if (valueRaw == null) {
+      if (rawValue == null) {
         if (prefix || suffix) {
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
           joined += '/' + prefix + suffix
         }
         // If no prefix/suffix, omit the entire segment
-        continue
+        return
       }
 
-      usedParams[key] = valueRaw
+      usedParams[key] = rawValue
 
       const value = encodeParam(key, params, decodeCharMap) ?? ''
       joined += '/' + prefix + value + suffix
-      continue
+      return
     }
-  }
+  })
 
   if (path.endsWith('/')) joined += '/'
 
