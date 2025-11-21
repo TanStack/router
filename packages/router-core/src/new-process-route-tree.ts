@@ -1052,7 +1052,8 @@ function isFrameMoreSpecific(
         (next.dynamics === prev.dynamics &&
           (next.optionals > prev.optionals ||
             (next.optionals === prev.optionals &&
-              (next.depth > prev.depth ||
-                (next.node.isIndex && !prev.node.isIndex)))))))
+              (next.node.isIndex > prev.node.isIndex ||
+                (next.node.isIndex === prev.node.isIndex &&
+                  next.depth > prev.depth)))))))
   )
 }
