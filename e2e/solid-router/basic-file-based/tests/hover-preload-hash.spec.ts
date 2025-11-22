@@ -3,7 +3,9 @@ import { toRuntimePath } from '@tanstack/router-e2e-utils'
 
 // Solid variant of the hover-preload hash scroll regression test.
 
-test('hovering links does not trigger hash scroll (no navigation) [solid]', async ({ page }) => {
+test('hovering links does not trigger hash scroll (no navigation) [solid]', async ({
+  page,
+}) => {
   // Go to a page with a hash target at the bottom
   await page.goto(toRuntimePath('/normal-page#at-the-bottom'))
   await expect(page.getByTestId('at-the-bottom')).toBeInViewport()

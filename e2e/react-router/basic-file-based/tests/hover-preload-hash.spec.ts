@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test'
 import { toRuntimePath } from '@tanstack/router-e2e-utils'
 
 // This test guards against a regression where hovering (intent preload)
-test('hovering links does not trigger hash scroll (no navigation)', async ({ page }) => {
+test('hovering links does not trigger hash scroll (no navigation)', async ({
+  page,
+}) => {
   // Go to a page with a hash target at the bottom
   await page.goto(toRuntimePath('/normal-page#at-the-bottom'))
   await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
