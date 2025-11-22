@@ -108,20 +108,22 @@ export function Transitioner() {
   }, [isPagePending, previousIsPagePending, router])
 
   useLayoutEffect(() => {
-    // The router was pending and now it's not
     if (previousIsAnyPending && !isAnyPending) {
+      const changeInfo = getLocationChangeInfo(router.state)
       router.emit({
         type: 'onResolved',
-        ...getLocationChangeInfo(router.state),
+        ...changeInfo,
       })
 
-      router.__store.setState((s) => ({
+      router.__store.setState((s: typeof router.state) => ({
         ...s,
         status: 'idle',
         resolvedLocation: s.location,
       }))
 
-      handleHashScroll(router)
+      if (changeInfo.hrefChanged) {
+        handleHashScroll(router)
+      }
     }
   }, [isAnyPending, previousIsAnyPending, router])
 
