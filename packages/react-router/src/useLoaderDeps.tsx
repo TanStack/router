@@ -51,10 +51,6 @@ export type UseLoaderDepsRoute<out TId> = <
  * @returns The loader deps (or selected value) for the matched route.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLoaderDepsHook
  */
-/**
- * Read and select the current route's loader dependencies object.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLoaderDepsHook
- */
 export function useLoaderDeps<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string | undefined = undefined,

@@ -9,10 +9,6 @@ type EncryptionAlgorithm = 'aes-128-ctr' | 'aes-256-cbc'
 type IntegrityAlgorithm = 'sha256'
 /** @internal */
 type _Algorithm = EncryptionAlgorithm | IntegrityAlgorithm
-/**
- * Options for customizing the key derivation algorithm used to generate encryption and integrity verification keys as well as the algorithms and salt sizes used.
- */
-type SealOptions = Readonly<{
   /** Encryption step options. */
   encryption: SealOptionsSub<EncryptionAlgorithm>
   /** Integrity step options. */

@@ -7,10 +7,6 @@ import type { RouterManagedTag } from '@tanstack/router-core'
  * Render body script tags collected from route matches and SSR manifests.
  * Should be placed near the end of the document body.
  */
-/**
- * Render body script tags collected from route matches and SSR manifests.
- * Should be placed near the end of the document body.
- */
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce

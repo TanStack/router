@@ -140,10 +140,6 @@ export function useBlocker<
  */
 export function useBlocker(blockerFnOrOpts?: LegacyBlockerOpts): BlockerResolver
 
-/**
- * @deprecated Use the UseBlockerOpts object syntax instead
- */
-export function useBlocker(
   blockerFn?: LegacyBlockerFn,
   condition?: boolean | any,
 ): BlockerResolver
