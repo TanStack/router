@@ -816,11 +816,6 @@ export const trailingSlashOptions = {
 export type TrailingSlashOption =
   (typeof trailingSlashOptions)[keyof typeof trailingSlashOptions]
 
-/**
- * Compute whether path, href or hash changed between previous and current
- * resolved locations in router state.
- */
-export function getLocationChangeInfo(routerState: {
   resolvedLocation?: ParsedLocation
   location: ParsedLocation
 }) {
@@ -856,16 +851,6 @@ export type CreateRouterFn = <
   TDehydrated
 >
 
-/**
- * Core, framework-agnostic router engine that powers TanStack Router.
- *
- * Provides navigation, matching, loading, preloading, caching and event APIs
- * used by framework adapters (React/Solid). Prefer framework helpers like
- * `createRouter` in app code.
- *
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType
- */
-export class RouterCore<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
   in out TDefaultStructuralSharingOption extends boolean,
@@ -2580,11 +2565,6 @@ function comparePaths(a: string, b: string) {
   return normalize(a) === normalize(b)
 }
 
-/**
- * Lazily import a module function and forward arguments to it, retaining
- * parameter and return types for the selected export key.
- */
-export function lazyFn<
   T extends Record<string, (...args: Array<any>) => any>,
   TKey extends keyof T = 'default',
 >(fn: () => Promise<T>, key?: TKey) {
@@ -2642,11 +2622,6 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
-/**
- * Build the matched route chain and extract params for a pathname.
- * Falls back to the root route if no specific route is found.
- */
-export function getMatchedRoutes<TRouteLike extends RouteLike>({
   pathname,
   routesById,
   processedTree,

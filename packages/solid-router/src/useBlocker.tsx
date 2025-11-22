@@ -148,10 +148,6 @@ export function useBlocker(
   blockerFnOrOpts?: LegacyBlockerOpts,
 ): Solid.Accessor<BlockerResolver>
 
-/**
- * @deprecated Use the UseBlockerOpts object syntax instead
- */
-export function useBlocker(
   blockerFn?: LegacyBlockerFn,
   condition?: boolean | any,
 ): Solid.Accessor<BlockerResolver>

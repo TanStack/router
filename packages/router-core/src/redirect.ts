@@ -71,10 +71,6 @@ export type ResolvedRedirect<
  * @returns A Response augmented with router navigation options.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
  */
-/**
- * Create a redirect Response understood by TanStack Router.
- * Use inside loaders/beforeLoad or server handlers to trigger navigation.
- */
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
   const TTo extends string | undefined = '.',
