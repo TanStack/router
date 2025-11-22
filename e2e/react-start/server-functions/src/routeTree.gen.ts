@@ -17,6 +17,7 @@ import { Route as RawResponseRouteImport } from './routes/raw-response'
 import { Route as MultipartRouteImport } from './routes/multipart'
 import { Route as IsomorphicFnsRouteImport } from './routes/isomorphic-fns'
 import { Route as HeadersRouteImport } from './routes/headers'
+import { Route as FormdataContextRouteImport } from './routes/formdata-context'
 import { Route as EnvOnlyRouteImport } from './routes/env-only'
 import { Route as DeadCodePreserveRouteImport } from './routes/dead-code-preserve'
 import { Route as ConsistentRouteImport } from './routes/consistent'
@@ -75,6 +76,11 @@ const IsomorphicFnsRoute = IsomorphicFnsRouteImport.update({
 const HeadersRoute = HeadersRouteImport.update({
   id: '/headers',
   path: '/headers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FormdataContextRoute = FormdataContextRouteImport.update({
+  id: '/formdata-context',
+  path: '/formdata-context',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EnvOnlyRoute = EnvOnlyRouteImport.update({
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
+  '/formdata-context': typeof FormdataContextRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/multipart': typeof MultipartRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByTo {
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
+  '/formdata-context': typeof FormdataContextRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/multipart': typeof MultipartRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
+  '/formdata-context': typeof FormdataContextRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
   '/multipart': typeof MultipartRoute
@@ -272,6 +281,7 @@ export interface FileRouteTypes {
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
+    | '/formdata-context'
     | '/headers'
     | '/isomorphic-fns'
     | '/multipart'
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
+    | '/formdata-context'
     | '/headers'
     | '/isomorphic-fns'
     | '/multipart'
@@ -330,6 +341,7 @@ export interface FileRouteTypes {
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
+    | '/formdata-context'
     | '/headers'
     | '/isomorphic-fns'
     | '/multipart'
@@ -360,6 +372,7 @@ export interface RootRouteChildren {
   ConsistentRoute: typeof ConsistentRoute
   DeadCodePreserveRoute: typeof DeadCodePreserveRoute
   EnvOnlyRoute: typeof EnvOnlyRoute
+  FormdataContextRoute: typeof FormdataContextRoute
   HeadersRoute: typeof HeadersRoute
   IsomorphicFnsRoute: typeof IsomorphicFnsRoute
   MultipartRoute: typeof MultipartRoute
@@ -440,6 +453,13 @@ declare module '@tanstack/react-router' {
       path: '/headers'
       fullPath: '/headers'
       preLoaderRoute: typeof HeadersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/formdata-context': {
+      id: '/formdata-context'
+      path: '/formdata-context'
+      fullPath: '/formdata-context'
+      preLoaderRoute: typeof FormdataContextRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/env-only': {
@@ -584,6 +604,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConsistentRoute: ConsistentRoute,
   DeadCodePreserveRoute: DeadCodePreserveRoute,
   EnvOnlyRoute: EnvOnlyRoute,
+  FormdataContextRoute: FormdataContextRoute,
   HeadersRoute: HeadersRoute,
   IsomorphicFnsRoute: IsomorphicFnsRoute,
   MultipartRoute: MultipartRoute,

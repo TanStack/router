@@ -15,7 +15,7 @@
     "@tanstack/solid-router": "^1.139.1",
     "@tanstack/solid-router-devtools": "^1.139.1",
     "@tanstack/solid-router-ssr-query": "^1.139.1",
-    "@tanstack/solid-start": "^1.139.1",
+    "@tanstack/solid-start": "^1.139.2",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0"
