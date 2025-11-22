@@ -13,6 +13,7 @@ import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
 import { Route as LazyPageRouteImport } from './routes/lazy-page'
+import { Route as HoverPreloadHashRouteImport } from './routes/hover-preload-hash'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
 import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
@@ -130,6 +131,11 @@ const NotRemountDepsRoute = NotRemountDepsRouteImport.update({
 const LazyPageRoute = LazyPageRouteImport.update({
   id: '/lazy-page',
   path: '/lazy-page',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HoverPreloadHashRoute = HoverPreloadHashRouteImport.update({
+  id: '/hover-preload-hash',
+  path: '/hover-preload-hash',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EditingBRoute = EditingBRouteImport.update({
@@ -671,6 +677,7 @@ export interface FileRoutesByFullPath {
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/hover-preload-hash': typeof HoverPreloadHashRoute
   '/lazy-page': typeof LazyPageRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
@@ -771,6 +778,7 @@ export interface FileRoutesByTo {
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/hover-preload-hash': typeof HoverPreloadHashRoute
   '/lazy-page': typeof LazyPageRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
@@ -865,6 +873,7 @@ export interface FileRoutesById {
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/hover-preload-hash': typeof HoverPreloadHashRoute
   '/lazy-page': typeof LazyPageRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
@@ -970,6 +979,7 @@ export interface FileRouteTypes {
     | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
+    | '/hover-preload-hash'
     | '/lazy-page'
     | '/notRemountDeps'
     | '/posts'
@@ -1070,6 +1080,7 @@ export interface FileRouteTypes {
     | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
+    | '/hover-preload-hash'
     | '/lazy-page'
     | '/notRemountDeps'
     | '/remountDeps'
@@ -1163,6 +1174,7 @@ export interface FileRouteTypes {
     | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
+    | '/hover-preload-hash'
     | '/lazy-page'
     | '/notRemountDeps'
     | '/posts'
@@ -1268,6 +1280,7 @@ export interface RootRouteChildren {
   ComponentTypesTestRoute: typeof ComponentTypesTestRoute
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
+  HoverPreloadHashRoute: typeof HoverPreloadHashRoute
   LazyPageRoute: typeof LazyPageRoute
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
@@ -1331,6 +1344,13 @@ declare module '@tanstack/react-router' {
       path: '/lazy-page'
       fullPath: '/lazy-page'
       preLoaderRoute: typeof LazyPageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hover-preload-hash': {
+      id: '/hover-preload-hash'
+      path: '/hover-preload-hash'
+      fullPath: '/hover-preload-hash'
+      preLoaderRoute: typeof HoverPreloadHashRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/editing-b': {
@@ -2442,6 +2462,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentTypesTestRoute: ComponentTypesTestRoute,
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
+  HoverPreloadHashRoute: HoverPreloadHashRoute,
   LazyPageRoute: LazyPageRoute,
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
