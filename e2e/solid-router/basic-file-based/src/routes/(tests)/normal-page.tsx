@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/solid-router'
+import { Link, createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/(tests)/normal-page')({
   component: NormalPage,
