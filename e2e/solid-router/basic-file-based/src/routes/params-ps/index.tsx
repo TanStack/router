@@ -20,15 +20,6 @@ function RouteComponent() {
         </li>
         <li>
           <Link
-            data-testid="l-to-named-foo-special-characters"
-            to="/params-ps/named/$foo"
-            params={{ foo: 'foo%\\/🚀대' }}
-          >
-            /params-ps/named/$foo - with special characters
-          </Link>
-        </li>
-        <li>
-          <Link
             data-testid="l-to-named-prefixfoo"
             to="/params-ps/named/prefix{$foo}"
             params={{ foo: 'foo' }}
@@ -65,15 +56,6 @@ function RouteComponent() {
             params={{ _splat: 'test[s\\/.\\/parameter%!🚀]' }}
           >
             /params-ps/wildcard/$ with escaped params
-          </Link>
-        </li>
-        <li>
-          <Link
-            data-testid="l-to-wildcard-encoded"
-            to="/params-ps/wildcard/$"
-            params={{ _splat: '%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD' }}
-          >
-            /params-ps/wildcard/$ with encoded params
           </Link>
         </li>
         <li>
