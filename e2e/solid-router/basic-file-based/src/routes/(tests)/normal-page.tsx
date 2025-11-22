@@ -8,27 +8,27 @@ function NormalPage() {
   return (
     <div class="p-2">
       <h3>Normal Page</h3>
-      
+
       {/* Add the link that the test is looking for */}
       <div style={{ 'margin-bottom': '1rem' }}>
         <Link to="/lazy-page" class="header-link">
           Head-/lazy-page
         </Link>
       </div>
-      
+
       <div style={{ height: '200vh' }}>
         Scroll down to see the target element
       </div>
-      
-      <div 
-        id="at-the-bottom" 
+
+      <div
+        id="at-the-bottom"
         data-testid="at-the-bottom"
         style={{
           height: '100px',
           background: '#f0f0f0',
           border: '1px solid #ccc',
           padding: '1rem',
-          'margin-top': '2rem'
+          'margin-top': '2rem',
         }}
       >
         This is the target element at the bottom of the page
