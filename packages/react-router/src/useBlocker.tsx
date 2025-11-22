@@ -181,8 +181,8 @@ export function useBlocker(
         if (matchedRoutes.foundRoute === undefined) {
           return {
             routeId: '__notFound__',
-            fullPath: pathname,
-            pathname: pathname,
+            fullPath: parsedLocation.pathname,
+            pathname: parsedLocation.pathname,
             params: matchedRoutes.routeParams,
             search: router.options.parseSearch(location.search),
           }
@@ -191,7 +191,7 @@ export function useBlocker(
         return {
           routeId: matchedRoutes.foundRoute.id,
           fullPath: matchedRoutes.foundRoute.fullPath,
-          pathname: pathname,
+          pathname: parsedLocation.pathname,
           params: matchedRoutes.routeParams,
           search: router.options.parseSearch(location.search),
         }
