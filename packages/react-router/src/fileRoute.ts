@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 import warning from 'tiny-warning'
 import { createRoute } from './route'
 
@@ -45,13 +44,6 @@ import type { UseRouteContextRoute } from './useRouteContext'
  *
  * @param path File path literal for the route (usually auto-generated).
  * @returns A function that accepts Route options and returns a Route instance.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createFileRouteFunction
- */
-/**
- * Creates a file-based Route factory for a given path.
- * Used by file-based routing to associate a file with a route. The returned
- * function accepts standard route options; the path is typically auto-managed
- * by the generator.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createFileRouteFunction
  */
 export function createFileRoute<
@@ -167,11 +159,6 @@ export class FileRoute<
   }
 }
 
-/** 
-  @deprecated It's recommended not to split loaders into separate files.
-  Instead, place the loader function in the the main route file, inside the
-  `createFileRoute('/path/to/file)(options)` options.
-*/
 /**
   @deprecated It's recommended not to split loaders into separate files.
   Instead, place the loader function in the main route file via `createFileRoute`.
@@ -288,10 +275,6 @@ export class LazyRoute<TRoute extends AnyRoute> {
  * @returns A function that accepts lazy route options and returns a `LazyRoute`.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyRouteFunction
  */
-/**
- * Create a lazily-configurable code-based route stub by ID.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyRouteFunction
- */
 export function createLazyRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   TId extends string = string,
@@ -314,10 +297,6 @@ export function createLazyRoute<
  *
  * @param id File path literal for the route file.
  * @returns A function that accepts lazy route options and returns a `LazyRoute`.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyFileRouteFunction
- */
-/**
- * Create a lazily-configurable file-based route stub by file path.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyFileRouteFunction
  */
 export function createLazyFileRoute<

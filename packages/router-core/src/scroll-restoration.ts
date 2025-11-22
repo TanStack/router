@@ -86,9 +86,6 @@ export const scrollRestorationCache = createScrollRestorationCache()
 /**
  * Default scroll restoration cache key: location state key or full href.
  */
-/**
- * Default scroll restoration cache key: location state key or full href.
- */
 export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
   return location.state.__TSR_key! || location.href
 }
