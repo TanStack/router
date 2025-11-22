@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
-import { Route as LazyPageRouteImport } from './routes/lazy-page'
 import { Route as HoverPreloadHashRouteImport } from './routes/hover-preload-hash'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
@@ -33,7 +32,6 @@ import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
-import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
 import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
 import { Route as groupInsideRouteImport } from './routes/(group)/inside'
 import { Route as groupLayoutRouteImport } from './routes/(group)/_layout'
@@ -126,11 +124,6 @@ const PostsRoute = PostsRouteImport.update({
 const NotRemountDepsRoute = NotRemountDepsRouteImport.update({
   id: '/notRemountDeps',
   path: '/notRemountDeps',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LazyPageRoute = LazyPageRouteImport.update({
-  id: '/lazy-page',
-  path: '/lazy-page',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HoverPreloadHashRoute = HoverPreloadHashRouteImport.update({
@@ -232,11 +225,6 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
-} as any)
-const testsNormalPageRoute = testsNormalPageRouteImport.update({
-  id: '/(tests)/normal-page',
-  path: '/normal-page',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const groupLazyinsideRoute = groupLazyinsideRouteImport
   .update({
@@ -678,7 +666,6 @@ export interface FileRoutesByFullPath {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
-  '/lazy-page': typeof LazyPageRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
@@ -693,7 +680,6 @@ export interface FileRoutesByFullPath {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
-  '/normal-page': typeof testsNormalPageRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -779,7 +765,6 @@ export interface FileRoutesByTo {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
-  '/lazy-page': typeof LazyPageRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
   '/non-nested/deep': typeof NonNestedDeepRouteRouteWithChildren
@@ -793,7 +778,6 @@ export interface FileRoutesByTo {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
-  '/normal-page': typeof testsNormalPageRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
@@ -874,7 +858,6 @@ export interface FileRoutesById {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
-  '/lazy-page': typeof LazyPageRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
@@ -890,7 +873,6 @@ export interface FileRoutesById {
   '/(group)/_layout': typeof groupLayoutRouteWithChildren
   '/(group)/inside': typeof groupInsideRoute
   '/(group)/lazyinside': typeof groupLazyinsideRoute
-  '/(tests)/normal-page': typeof testsNormalPageRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
@@ -980,7 +962,6 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
-    | '/lazy-page'
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
@@ -995,7 +976,6 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
-    | '/normal-page'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -1081,7 +1061,6 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
-    | '/lazy-page'
     | '/notRemountDeps'
     | '/remountDeps'
     | '/non-nested/deep'
@@ -1095,7 +1074,6 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
-    | '/normal-page'
     | '/posts/$postId'
     | '/search-params/default'
     | '/structural-sharing/$enabled'
@@ -1175,7 +1153,6 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
-    | '/lazy-page'
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
@@ -1191,7 +1168,6 @@ export interface FileRouteTypes {
     | '/(group)/_layout'
     | '/(group)/inside'
     | '/(group)/lazyinside'
-    | '/(tests)/normal-page'
     | '/_layout/_layout-2'
     | '/posts/$postId'
     | '/redirect/$target'
@@ -1281,7 +1257,6 @@ export interface RootRouteChildren {
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
   HoverPreloadHashRoute: typeof HoverPreloadHashRoute
-  LazyPageRoute: typeof LazyPageRoute
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
@@ -1292,7 +1267,6 @@ export interface RootRouteChildren {
   groupLayoutRoute: typeof groupLayoutRouteWithChildren
   groupInsideRoute: typeof groupInsideRoute
   groupLazyinsideRoute: typeof groupLazyinsideRoute
-  testsNormalPageRoute: typeof testsNormalPageRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
@@ -1337,13 +1311,6 @@ declare module '@tanstack/react-router' {
       path: '/notRemountDeps'
       fullPath: '/notRemountDeps'
       preLoaderRoute: typeof NotRemountDepsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lazy-page': {
-      id: '/lazy-page'
-      path: '/lazy-page'
-      fullPath: '/lazy-page'
-      preLoaderRoute: typeof LazyPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hover-preload-hash': {
@@ -1485,13 +1452,6 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
-    }
-    '/(tests)/normal-page': {
-      id: '/(tests)/normal-page'
-      path: '/normal-page'
-      fullPath: '/normal-page'
-      preLoaderRoute: typeof testsNormalPageRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/(group)/lazyinside': {
       id: '/(group)/lazyinside'
@@ -2463,7 +2423,6 @@ const rootRouteChildren: RootRouteChildren = {
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
   HoverPreloadHashRoute: HoverPreloadHashRoute,
-  LazyPageRoute: LazyPageRoute,
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
   RemountDepsRoute: RemountDepsRoute,
@@ -2474,7 +2433,6 @@ const rootRouteChildren: RootRouteChildren = {
   groupLayoutRoute: groupLayoutRouteWithChildren,
   groupInsideRoute: groupInsideRoute,
   groupLazyinsideRoute: groupLazyinsideRoute,
-  testsNormalPageRoute: testsNormalPageRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
   ParamsPsIndexRoute: ParamsPsIndexRoute,
