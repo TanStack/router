@@ -81,16 +81,34 @@ function addSplitSearchParamToFilename(
 ) {
   const [bareFilename] = filename.split('?')
 
+  // Don't modify absolute paths - they're used internally by bundlers
+  // Only ensure relative import specifier for relative paths
+  const relativeFilename =
+    bareFilename!.startsWith('/') || // Unix absolute path
+    /^[a-zA-Z]:/.test(bareFilename!) || // Windows absolute path (C:\ or C:/)
+    bareFilename!.startsWith('./') ||
+    bareFilename!.startsWith('../')
+      ? bareFilename!
+      : `./${bareFilename!}`
+
   const params = new URLSearchParams()
   params.append(tsrSplit, createIdentifier(grouping))
 
-  const result = `${bareFilename}?${params.toString()}`
+  const result = `${relativeFilename}?${params.toString()}`
   return result
 }
 
 function removeSplitSearchParamFromFilename(filename: string) {
   const [bareFilename] = filename.split('?')
-  return bareFilename!
+
+  // Don't modify absolute paths - they're used internally by bundlers
+  // Only ensure relative import specifier for relative paths
+  return bareFilename!.startsWith('/') || // Unix absolute path
+    /^[a-zA-Z]:/.test(bareFilename!) || // Windows absolute path (C:\ or C:/)
+    bareFilename!.startsWith('./') ||
+    bareFilename!.startsWith('../')
+    ? bareFilename!
+    : `./${bareFilename!}`
 }
 
 const splittableCreateRouteFns = ['createFileRoute']
@@ -103,6 +121,31 @@ const allCreateRouteFns = [
   ...unsplittableCreateRouteFns,
 ]
 
+/**
+ * Helper to check if a VariableDeclarator is at module level.
+ * Handles both:
+ * - `const x = ...` (Program > VariableDeclaration > VariableDeclarator)
+ * - `export const x = ...` (Program > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator)
+ */
+function isTopLevelVarDecl(
+  declaratorPath: babel.NodePath<t.VariableDeclarator>,
+): boolean {
+  const varDecl = declaratorPath.parentPath
+  if (!varDecl.isVariableDeclaration()) return false
+
+  const parent = varDecl.parentPath
+
+  // Direct: Program > VariableDeclaration
+  if (parent.isProgram()) return true
+
+  // Exported: Program > ExportNamedDeclaration > VariableDeclaration
+  if (parent.isExportNamedDeclaration() && parent.parentPath.isProgram()) {
+    return true
+  }
+
+  return false
+}
+
 export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions & {
     codeSplitGroupings: CodeSplitGroupings
@@ -111,6 +154,7 @@ export function compileCodeSplitReferenceRoute(
     filename: string
     id: string
     addHmr?: boolean
+    sharedExports?: Set<string>
   },
 ): GeneratorResult | null {
   const ast = parseAst(opts)
@@ -118,6 +162,7 @@ export function compileCodeSplitReferenceRoute(
   const refIdents = findReferencedIdentifiers(ast)
 
   const knownExportedIdents = new Set<string>()
+  const sharedModuleLevelIdents = new Set<string>()
 
   function findIndexForSplitNode(str: string) {
     return opts.codeSplitGroupings.findIndex((group) =>
@@ -165,6 +210,52 @@ export function compileCodeSplitReferenceRoute(
                 return programPath.scope.hasBinding(name)
               }
 
+              // Helper to collect all identifiers referenced by a node
+              const collectReferencedIdentifiers = (
+                propPath: babel.NodePath<t.ObjectProperty>,
+              ): Set<string> => {
+                const identifiers = new Set<string>()
+                const valuePath = propPath.get('value')
+
+                // If the value is an identifier, we need to follow it to its definition
+                const pathsToAnalyze: Array<babel.NodePath> = []
+
+                if (valuePath.isIdentifier()) {
+                  const binding = valuePath.scope.getBinding(
+                    valuePath.node.name,
+                  )
+                  if (binding) {
+                    pathsToAnalyze.push(binding.path)
+                  }
+                } else {
+                  pathsToAnalyze.push(valuePath)
+                }
+
+                // Traverse each path to find all referenced identifiers
+                pathsToAnalyze.forEach((analyzePath) => {
+                  analyzePath.traverse({
+                    Identifier(idPath) {
+                      // Only collect identifiers that are references (not declarations)
+                      if (!idPath.isReferencedIdentifier()) return
+
+                      const name = idPath.node.name
+                      // Use idPath.scope to properly handle shadowing
+                      const binding = idPath.scope.getBinding(name)
+
+                      // Only include identifiers that are defined at module level
+                      if (binding && binding.path.isVariableDeclarator()) {
+                        // Use the helper to check for top-level (handles both direct and exported)
+                        if (isTopLevelVarDecl(binding.path)) {
+                          identifiers.add(name)
+                        }
+                      }
+                    },
+                  })
+                })
+
+                return identifiers
+              }
+
               if (t.isObjectExpression(routeOptions)) {
                 if (opts.deleteNodes && opts.deleteNodes.size > 0) {
                   routeOptions.properties = routeOptions.properties.filter(
@@ -191,6 +282,43 @@ export function compileCodeSplitReferenceRoute(
                   // exit traversal so this route is not split
                   return programPath.stop()
                 }
+
+                // First pass: collect identifiers used by split vs non-split properties
+                const splitPropertyIdents = new Set<string>()
+                const nonSplitPropertyIdents = new Set<string>()
+
+                // We need to analyze the route options object to find shared identifiers
+                // Since routeOptions might be a resolved node, we traverse from programPath
+                // to find all ObjectProperty paths and analyze them
+                programPath.traverse({
+                  ObjectProperty(propPath) {
+                    // Check if this property belongs to the route options by checking its parent
+                    if (!t.isObjectExpression(propPath.parent)) return
+                    if (propPath.parent !== routeOptions) return
+                    if (!t.isIdentifier(propPath.node.key)) return
+
+                    const key = propPath.node.key.name
+                    const willBeSplit =
+                      findIndexForSplitNode(key) !== -1 &&
+                      SPLIT_NODES_CONFIG.has(key as any)
+
+                    const idents = collectReferencedIdentifiers(propPath)
+
+                    if (willBeSplit) {
+                      idents.forEach((id) => splitPropertyIdents.add(id))
+                    } else {
+                      idents.forEach((id) => nonSplitPropertyIdents.add(id))
+                    }
+                  },
+                })
+
+                // Find shared identifiers that need to be exported
+                splitPropertyIdents.forEach((ident) => {
+                  if (nonSplitPropertyIdents.has(ident)) {
+                    sharedModuleLevelIdents.add(ident)
+                  }
+                })
+
                 routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
                     if (t.isIdentifier(prop.key)) {
@@ -423,6 +551,116 @@ export function compileCodeSplitReferenceRoute(
             },
           })
         }
+
+        /**
+         * Export shared module-level variables that are used by both
+         * split properties (e.g., component) and non-split properties (e.g., loader)
+         * This prevents double initialization when the split file is loaded
+         */
+        if (sharedModuleLevelIdents.size > 0) {
+          modified = true
+
+          // Track which variable declarations we've already processed to avoid duplicate processing
+          const processedVarDecls = new Set<
+            babel.NodePath<t.VariableDeclaration>
+          >()
+
+          sharedModuleLevelIdents.forEach((identName) => {
+            const binding = programPath.scope.getBinding(identName)
+            if (!binding) return
+
+            const bindingPath = binding.path
+
+            // Check if it's a variable declaration at the top level
+            // (handles both `const x = ...` and `export const x = ...`)
+            if (
+              bindingPath.isVariableDeclarator() &&
+              isTopLevelVarDecl(bindingPath)
+            ) {
+              const varDecl =
+                bindingPath.parentPath as babel.NodePath<t.VariableDeclaration>
+
+              // Only export const/let declarations (not imports or functions)
+              if (
+                varDecl.node.kind === 'const' ||
+                varDecl.node.kind === 'let'
+              ) {
+                // Skip if we've already processed this declaration
+                if (processedVarDecls.has(varDecl)) {
+                  return
+                }
+                processedVarDecls.add(varDecl)
+
+                // If already exported, just track it - don't re-export
+                if (varDecl.parentPath.isExportNamedDeclaration()) {
+                  knownExportedIdents.add(identName)
+                  opts.sharedExports?.add(identName)
+                  return
+                }
+
+                // Check if this declaration has multiple declarators
+                const declarators = varDecl.node.declarations
+                if (declarators.length > 1) {
+                  // Split declarators: shared ones get exported, others stay local
+                  const sharedDeclarators: Array<t.VariableDeclarator> = []
+                  const localDeclarators: Array<t.VariableDeclarator> = []
+
+                  declarators.forEach((declarator) => {
+                    if (
+                      t.isIdentifier(declarator.id) &&
+                      sharedModuleLevelIdents.has(declarator.id.name)
+                    ) {
+                      sharedDeclarators.push(declarator)
+                      knownExportedIdents.add(declarator.id.name)
+                      opts.sharedExports?.add(declarator.id.name)
+                    } else {
+                      localDeclarators.push(declarator)
+                    }
+                  })
+
+                  // Replace with split declarations
+                  if (
+                    sharedDeclarators.length > 0 &&
+                    localDeclarators.length > 0
+                  ) {
+                    // Both shared and local declarators
+                    const localVarDecl = t.variableDeclaration(
+                      varDecl.node.kind,
+                      localDeclarators,
+                    )
+                    const sharedVarDecl = t.variableDeclaration(
+                      varDecl.node.kind,
+                      sharedDeclarators,
+                    )
+                    const exportDecl = t.exportNamedDeclaration(
+                      sharedVarDecl,
+                      [],
+                    )
+
+                    varDecl.replaceWithMultiple([localVarDecl, exportDecl])
+                  } else if (sharedDeclarators.length > 0) {
+                    // All declarators are shared
+                    const sharedVarDecl = t.variableDeclaration(
+                      varDecl.node.kind,
+                      sharedDeclarators,
+                    )
+                    const exportDecl = t.exportNamedDeclaration(
+                      sharedVarDecl,
+                      [],
+                    )
+                    varDecl.replaceWith(exportDecl)
+                  }
+                } else {
+                  // Single declarator - export the whole thing
+                  const exportDecl = t.exportNamedDeclaration(varDecl.node, [])
+                  varDecl.replaceWith(exportDecl)
+                  knownExportedIdents.add(identName)
+                  opts.sharedExports?.add(identName)
+                }
+              }
+            }
+          })
+        }
       },
     },
   })
@@ -463,6 +701,7 @@ export function compileCodeSplitVirtualRoute(
   opts: ParseAstOptions & {
     splitTargets: Array<SplitRouteIdentNodes>
     filename: string
+    sharedExports?: Set<string>
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -762,6 +1001,121 @@ export function compileCodeSplitVirtualRoute(
             }
           },
         })
+
+        // Import shared module-level variables that were exported in the reference file
+        // Only process variables confirmed to be in the sharedExports set
+        if (opts.sharedExports && opts.sharedExports.size > 0) {
+          const candidateVariables: Array<string> = []
+          const reassignedVariables = new Set<string>()
+
+          // First pass: find candidate variables to import
+          programPath.traverse({
+            VariableDeclaration(varDeclPath) {
+              // Only process top-level const/let declarations
+              if (!varDeclPath.parentPath.isProgram()) return
+              if (
+                varDeclPath.node.kind !== 'const' &&
+                varDeclPath.node.kind !== 'let'
+              )
+                return
+
+              varDeclPath.node.declarations.forEach((declarator) => {
+                if (!t.isIdentifier(declarator.id)) return
+
+                const varName = declarator.id.name
+
+                // Only import if this variable is in the confirmed shared exports set
+                if (opts.sharedExports!.has(varName)) {
+                  candidateVariables.push(varName)
+                }
+              })
+            },
+          })
+
+          // Second pass: detect reassignments/updates to candidate variables
+          // Reassigned imports produce invalid ESM, so we must skip them
+          programPath.traverse({
+            AssignmentExpression(path) {
+              if (t.isIdentifier(path.node.left)) {
+                const name = path.node.left.name
+                if (candidateVariables.includes(name)) {
+                  reassignedVariables.add(name)
+                }
+              }
+            },
+            UpdateExpression(path) {
+              if (t.isIdentifier(path.node.argument)) {
+                const name = path.node.argument.name
+                if (candidateVariables.includes(name)) {
+                  reassignedVariables.add(name)
+                }
+              }
+            },
+          })
+
+          // Warn about reassigned variables and filter them out
+          if (reassignedVariables.size > 0) {
+            const varList = Array.from(reassignedVariables).join(', ')
+            console.warn(
+              `[tanstack-router] Cannot import shared variable(s) [${varList}] in "${opts.filename}" because they are reassigned in the split file. ` +
+                `Imported bindings are read-only in ESM. Consider using 'const' with an object and mutating properties instead of reassigning the binding.`,
+            )
+          }
+
+          // Only import variables that are not reassigned
+          const variablesToImport = candidateVariables.filter(
+            (name) => !reassignedVariables.has(name),
+          )
+
+          // Remove shared variable declarations and add imports
+          if (variablesToImport.length > 0) {
+            programPath.traverse({
+              VariableDeclaration(varDeclPath) {
+                if (!varDeclPath.parentPath.isProgram()) return
+
+                const declaratorsToKeep = varDeclPath.node.declarations.filter(
+                  (declarator) => {
+                    if (!t.isIdentifier(declarator.id)) return true
+                    return !variablesToImport.includes(declarator.id.name)
+                  },
+                )
+
+                if (declaratorsToKeep.length === 0) {
+                  varDeclPath.remove()
+                } else if (
+                  declaratorsToKeep.length <
+                  varDeclPath.node.declarations.length
+                ) {
+                  varDeclPath.node.declarations = declaratorsToKeep
+                }
+              },
+            })
+
+            // Add import statement for shared variables
+            const importDecl = t.importDeclaration(
+              variablesToImport.map((name) =>
+                t.importSpecifier(t.identifier(name), t.identifier(name)),
+              ),
+              t.stringLiteral(
+                removeSplitSearchParamFromFilename(opts.filename),
+              ),
+            )
+            programPath.unshiftContainer('body', importDecl)
+
+            // Track imported identifiers for dead code elimination
+            const importPath = programPath.get('body')[0] as babel.NodePath
+            importPath.traverse({
+              Identifier(identPath) {
+                if (
+                  identPath.parentPath.isImportSpecifier() &&
+                  identPath.key === 'local'
+                ) {
+                  refIdents.add(identPath)
+                }
+              },
+            })
+          }
+        }
       },
     },
   })

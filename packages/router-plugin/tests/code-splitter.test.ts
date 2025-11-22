@@ -52,12 +52,16 @@ describe('code-splitter works', () => {
         const dirs = getFrameworkDir(framework)
         const filenames = await readdir(dirs.files)
 
+        // Cache for shared exports per filename
+        const sharedExportsCache = new Map<string, Set<string>>()
+
         it.each(filenames)(
           `should compile "reference" for "%s"`,
           async (filename) => {
             const file = await readFile(path.join(dirs.files, filename))
             const code = file.toString()
 
+            const sharedExports = new Set<string>()
             const compileResult = compileCodeSplitReferenceRoute({
               code,
               filename,
@@ -65,7 +69,13 @@ describe('code-splitter works', () => {
               addHmr: false,
               codeSplitGroupings: grouping,
               targetFramework: framework,
+              sharedExports,
             })
+
+            // Cache shared exports for virtual compilation
+            if (sharedExports.size > 0) {
+              sharedExportsCache.set(filename, sharedExports)
+            }
 
             await expect(compileResult?.code || code).toMatchFileSnapshot(
               path.join(dirs.snapshots, groupName, filename),
@@ -79,6 +89,9 @@ describe('code-splitter works', () => {
             const file = await readFile(path.join(dirs.files, filename))
             const code = file.toString()
 
+            // Get shared exports from cache
+            const sharedExports = sharedExportsCache.get(filename)
+
             for (const targets of grouping) {
               const ident = createIdentifier(targets)
 
@@ -86,6 +99,7 @@ describe('code-splitter works', () => {
                 code,
                 filename: `${filename}?${ident}`,
                 splitTargets: targets,
+                sharedExports,
               })
 
               const snapshotFilename = path.join(
