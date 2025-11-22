@@ -5,16 +5,13 @@ export const Route = createFileRoute('/hover-preload-hash')({
 })
 
 function Page() {
-  return (
-    <>
-      <div class="p-2">Hello from About!</div>
-      <Link
-        to="/hover-preload-hash"
-        hash={'position1'}
-        class="[&.active]:font-bold"
-      >
-        To hash
-      </Link>
+  
+    return <>
+    
+    <div class="p-2">Hello from About!</div>
+    <Link to="/hover-preload-hash" hash={"position1"} class="[&.active]:font-bold" data-testid="link-to-hash">
+          To hash
+    </Link>
 
       <p>
         Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy

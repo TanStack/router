@@ -8,7 +8,7 @@ test('clicking hash link then hovering another link does not scroll back to hash
   await page.goto(toRuntimePath('/hover-preload-hash'))
 
   // Click the hash link to navigate to position1
-  await page.getByRole('link', { name: 'To hash' }).click()
+  await page.getByTestId('link-to-hash').click()
   await expect(page.locator('#position1')).toBeInViewport()
 
   // Scroll up so position1 is no longer in view
