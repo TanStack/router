@@ -13,9 +13,9 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/solid-query": "^5.90.0",
-    "@tanstack/solid-router": "^1.139.1",
-    "@tanstack/solid-router-devtools": "^1.139.1",
-    "@tanstack/router-plugin": "^1.139.1",
+    "@tanstack/solid-router": "^1.139.3",
+    "@tanstack/solid-router-devtools": "^1.139.3",
+    "@tanstack/router-plugin": "^1.139.3",
     "postcss": "^8.5.1",
     "solid-js": "^1.9.10",
     "redaxios": "^0.5.1",
