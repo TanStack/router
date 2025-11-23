@@ -1,13 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import { createFileRoute } from '../src/fileRoute'
-import type { 
-  ValidateLinkOptions, 
-  ValidateUseSearchOptions, 
-  ValidateUseParamsOptions 
+import type {
+  ValidateLinkOptions,
+  ValidateUseSearchOptions,
+  ValidateUseParamsOptions,
 } from '../src/typePrimitives'
-import type { 
-  ValidateNavigateOptions, 
-  ValidateRedirectOptions 
+import type {
+  ValidateNavigateOptions,
+  ValidateRedirectOptions,
 } from '@tanstack/router-core'
 
 describe('Validation types regression tests', () => {
@@ -15,19 +15,19 @@ describe('Validation types regression tests', () => {
     // This test ensures that ValidateLinkOptions can be used in loader return types
     // without causing the TypeScript error:
     // 'loader' implicitly has return type 'any' because it does not have a return type annotation
-    
+
     const route = createFileRoute('/user/$userId')({
       loader: (): { breadcrumbs: ValidateLinkOptions } => {
         const breadcrumbs: ValidateLinkOptions = {
           to: '/user/$userId',
-          params: { userId: '123' }
+          params: { userId: '123' },
         }
-        
+
         return {
-          breadcrumbs
+          breadcrumbs,
         }
       },
-      component: () => <div>User</div>
+      component: () => <div>User</div>,
     })
 
     expect(route).toBeDefined()
@@ -38,14 +38,14 @@ describe('Validation types regression tests', () => {
       loader: () => {
         const linkOptions: ValidateLinkOptions = {
           to: '/profile/$userId',
-          params: { userId: '456' }
+          params: { userId: '456' },
         }
-        
+
         return {
-          navigation: linkOptions
+          navigation: linkOptions,
         }
       },
-      component: () => <div>Profile</div>
+      component: () => <div>Profile</div>,
     })
 
     expect(route).toBeDefined()
@@ -56,82 +56,86 @@ describe('Validation types regression tests', () => {
       loader: () => {
         const breadcrumbs: ValidateLinkOptions[] = [
           { to: '/' },
-          { to: '/dashboard' }
+          { to: '/dashboard' },
         ]
-        
+
         return {
-          breadcrumbs
+          breadcrumbs,
         }
       },
-      component: () => <div>Dashboard</div>
+      component: () => <div>Dashboard</div>,
     })
 
     expect(route).toBeDefined()
   })
 
   test('should work with ValidateNavigateOptions in loader', () => {
-    const route = createFileRoute('/navigate-test')({  
+    const route = createFileRoute('/navigate-test')({
       loader: () => {
         const navOptions: ValidateNavigateOptions = {
-          to: '/dashboard'
+          to: '/dashboard',
         }
-        
+
         return {
-          navOptions
+          navOptions,
         }
       },
-      component: () => <div>Navigate Test</div>
+      component: () => <div>Navigate Test</div>,
     })
 
     expect(route).toBeDefined()
   })
 
   test('should work with ValidateRedirectOptions in loader', () => {
-    const route = createFileRoute('/redirect-test')({  
+    const route = createFileRoute('/redirect-test')({
       loader: () => {
         const redirectOptions: ValidateRedirectOptions = {
-          to: '/login'
+          to: '/login',
         }
-        
+
         return {
-          redirectOptions
+          redirectOptions,
         }
       },
-      component: () => <div>Redirect Test</div>
+      component: () => <div>Redirect Test</div>,
     })
 
     expect(route).toBeDefined()
   })
 
   test('should work with ValidateUseSearchOptions in loader', () => {
-    const route = createFileRoute('/search-test')({  
+    const route = createFileRoute('/search-test')({
       loader: () => {
-        const searchOptions: ValidateUseSearchOptions<{ from: '/search-test' }> = {
+        const searchOptions: ValidateUseSearchOptions<{
           from: '/search-test'
+        }> = {
+          from: '/search-test',
         }
-        
+
         return {
-          searchOptions
+          searchOptions,
         }
       },
-      component: () => <div>Search Test</div>
+      component: () => <div>Search Test</div>,
     })
 
     expect(route).toBeDefined()
   })
 
   test('should work with ValidateUseParamsOptions in loader', () => {
-    const route = createFileRoute('/params-test/$id')({  
+    const route = createFileRoute('/params-test/$id')({
       loader: () => {
-        const paramsOptions: ValidateUseParamsOptions<{ from: '/params-test/$id' }> = {
+        const paramsOptions: ValidateUseParamsOptions<{
           from: '/params-test/$id'
+        }> = {
+          from: '/params-test/$id',
         }
-        
+
         return {
-          paramsOptions
+          paramsOptions,
         }
       },
-      component: () => <div>Params Test</div>
+      component: () => <div>Params Test</div>,
     })
 
     expect(route).toBeDefined()

@@ -75,21 +75,22 @@ export type ValidateNavigateOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TOptions = unknown,
   TDefaultFrom extends string = string,
-> = TOptions extends NavigateOptions<
-  TRouter,
-  InferFrom<TOptions, TDefaultFrom>,
-  InferTo<TOptions>,
-  InferMaskFrom<TOptions>,
-  InferMaskTo<TOptions>
->
-  ? TOptions
-  : NavigateOptions<
-      TRouter,
-      InferFrom<TOptions, TDefaultFrom>,
-      InferTo<TOptions>,
-      InferMaskFrom<TOptions>,
-      InferMaskTo<TOptions>
-    >
+> =
+  TOptions extends NavigateOptions<
+    TRouter,
+    InferFrom<TOptions, TDefaultFrom>,
+    InferTo<TOptions>,
+    InferMaskFrom<TOptions>,
+    InferMaskTo<TOptions>
+  >
+    ? TOptions
+    : NavigateOptions<
+        TRouter,
+        InferFrom<TOptions, TDefaultFrom>,
+        InferTo<TOptions>,
+        InferMaskFrom<TOptions>,
+        InferMaskTo<TOptions>
+      >
 
 export type ValidateNavigateOptionsArray<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -107,21 +108,22 @@ export type ValidateRedirectOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TOptions = unknown,
   TDefaultFrom extends string = string,
-> = TOptions extends RedirectOptions<
-  TRouter,
-  InferFrom<TOptions, TDefaultFrom>,
-  InferTo<TOptions>,
-  InferMaskFrom<TOptions>,
-  InferMaskTo<TOptions>
->
-  ? TOptions
-  : RedirectOptions<
-      TRouter,
-      InferFrom<TOptions, TDefaultFrom>,
-      InferTo<TOptions>,
-      InferMaskFrom<TOptions>,
-      InferMaskTo<TOptions>
-    >
+> =
+  TOptions extends RedirectOptions<
+    TRouter,
+    InferFrom<TOptions, TDefaultFrom>,
+    InferTo<TOptions>,
+    InferMaskFrom<TOptions>,
+    InferMaskTo<TOptions>
+  >
+    ? TOptions
+    : RedirectOptions<
+        TRouter,
+        InferFrom<TOptions, TDefaultFrom>,
+        InferTo<TOptions>,
+        InferMaskFrom<TOptions>,
+        InferMaskTo<TOptions>
+      >
 
 export type ValidateRedirectOptionsArray<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -180,16 +182,17 @@ export type ValidateUseSearchResult<
 export type ValidateUseParamsResult<
   TOptions,
   TRouter extends AnyRouter = RegisteredRouter,
-> = TOptions extends UseParamsResult<
-  TRouter,
-  InferFrom<TOptions>,
-  InferStrict<TOptions>,
-  InferSelected<TOptions>
->
-  ? TOptions
-  : UseParamsResult<
-      TRouter,
-      InferFrom<TOptions>,
-      InferStrict<TOptions>,
-      InferSelected<TOptions>
-    >
+> =
+  TOptions extends UseParamsResult<
+    TRouter,
+    InferFrom<TOptions>,
+    InferStrict<TOptions>,
+    InferSelected<TOptions>
+  >
+    ? TOptions
+    : UseParamsResult<
+        TRouter,
+        InferFrom<TOptions>,
+        InferStrict<TOptions>,
+        InferSelected<TOptions>
+      >
