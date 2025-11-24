@@ -1,6 +1,5 @@
 import type {
   AnyRouter,
-  Constrain,
   InferFrom,
   InferMaskFrom,
   InferMaskTo,

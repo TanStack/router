@@ -2,8 +2,8 @@ import { describe, expect, test } from 'vitest'
 import { createFileRoute } from '../src/fileRoute'
 import type {
   ValidateLinkOptions,
-  ValidateUseSearchOptions,
   ValidateUseParamsOptions,
+  ValidateUseSearchOptions,
 } from '../src/typePrimitives'
 import type {
   ValidateNavigateOptions,
@@ -54,7 +54,7 @@ describe('Validation types regression tests', () => {
   test('should work with array of ValidateLinkOptions', () => {
     const route = createFileRoute('/dashboard')({
       loader: () => {
-        const breadcrumbs: ValidateLinkOptions[] = [
+        const breadcrumbs: Array<ValidateLinkOptions> = [
           { to: '/' },
           { to: '/dashboard' },
         ]

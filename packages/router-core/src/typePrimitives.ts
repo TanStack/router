@@ -10,7 +10,7 @@ import type { RouteIds } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { UseParamsResult } from './useParams'
 import type { UseSearchResult } from './useSearch'
-import type { Constrain, ConstrainLiteral } from './utils'
+import type { ConstrainLiteral } from './utils'
 
 export type ValidateFromPath<
   TRouter extends AnyRouter = RegisteredRouter,
