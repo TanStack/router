@@ -4,4 +4,3 @@ node_modules
 .env
 dist
 .wrangler
-worker-configuration.d.ts
