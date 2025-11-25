@@ -1,17 +1,17 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-export const Route = createFileRoute("/protected")({
+export const Route = createFileRoute('/protected')({
   beforeLoad: ({ context }) => {
     if (!context.session) {
-      throw redirect({ to: "/login" });
+      throw redirect({ to: '/login' })
     }
   },
   component: Protected,
-});
+})
 
 function Protected() {
-  const { session } = Route.useRouteContext();
-  const user = session?.user;
+  const { session } = Route.useRouteContext()
+  const user = session?.user
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -22,13 +22,13 @@ function Protected() {
 
       <div className="bg-green-50 border border-green-200 rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4 text-green-800">
-          Welcome, {user?.name ?? "User"}!
+          Welcome, {user?.name ?? 'User'}!
         </h2>
 
         {user && (
           <div className="space-y-2 text-green-700">
             <p>
-              <strong>Email:</strong> {user?.email ?? "N/A"}
+              <strong>Email:</strong> {user?.email ?? 'N/A'}
             </p>
             {user?.image && (
               <div>
@@ -51,5 +51,5 @@ function Protected() {
         </pre>
       </div>
     </div>
-  );
+  )
 }

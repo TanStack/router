@@ -1,61 +1,61 @@
 /// <reference types="vite/client" />
-import type { ReactNode } from "react";
-import type { AuthSession } from "start-authjs";
+import type { ReactNode } from 'react'
+import type { AuthSession } from 'start-authjs'
 import {
   HeadContent,
   Link,
   Outlet,
   Scripts,
   createRootRouteWithContext,
-} from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { createServerFn } from "@tanstack/react-start";
-import { getRequest } from "@tanstack/react-start/server";
-import { getSession } from "start-authjs";
-import { authConfig } from "~/utils/auth";
-import appCss from "~/styles/app.css?url";
+} from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { createServerFn } from '@tanstack/react-start'
+import { getRequest } from '@tanstack/react-start/server'
+import { getSession } from 'start-authjs'
+import { authConfig } from '~/utils/auth'
+import appCss from '~/styles/app.css?url'
 
 interface RouterContext {
-  session: AuthSession | null;
+  session: AuthSession | null
 }
 
-const fetchSession = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getRequest();
-  const session = await getSession(request, authConfig);
-  return session;
-});
+const fetchSession = createServerFn({ method: 'GET' }).handler(async () => {
+  const request = getRequest()
+  const session = await getSession(request, authConfig)
+  return session
+})
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async () => {
-    const session = await fetchSession();
+    const session = await fetchSession()
     return {
       session,
-    };
+    }
   },
   head: () => ({
     meta: [
       {
-        charSet: "utf-8",
+        charSet: 'utf-8',
       },
       {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
       },
       {
-        title: "TanStack Start Auth Example",
+        title: 'TanStack Start Auth Example',
       },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   component: RootComponent,
-});
+})
 
 function RootComponent() {
   return (
     <RootDocument>
       <Outlet />
     </RootDocument>
-  );
+  )
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
@@ -71,22 +71,22 @@ function RootDocument({ children }: { children: ReactNode }) {
         <Scripts />
       </body>
     </html>
-  );
+  )
 }
 
 function NavBar() {
-  const routeContext = Route.useRouteContext();
+  const routeContext = Route.useRouteContext()
 
   return (
     <nav className="p-4 flex gap-4 items-center bg-gray-100">
       <Link
         to="/"
-        activeProps={{ className: "font-bold" }}
+        activeProps={{ className: 'font-bold' }}
         activeOptions={{ exact: true }}
       >
         Home
       </Link>
-      <Link to="/protected" activeProps={{ className: "font-bold" }}>
+      <Link to="/protected" activeProps={{ className: 'font-bold' }}>
         Protected
       </Link>
       <div className="ml-auto flex items-center gap-4">
@@ -113,5 +113,5 @@ function NavBar() {
         )}
       </div>
     </nav>
-  );
+  )
 }
