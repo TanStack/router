@@ -1446,6 +1446,7 @@ export class RouterCore<
 
         match = {
           id: matchId,
+          ssr: this.isServer ? undefined : route.options.ssr,
           index,
           routeId: route.id,
           params: previousMatch
