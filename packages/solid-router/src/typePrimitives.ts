@@ -19,23 +19,24 @@ export type ValidateLinkOptions<
   TOptions = unknown,
   TDefaultFrom extends string = string,
   TComp = 'a',
-> = TOptions extends LinkComponentProps<
-  TComp,
-  TRouter,
-  InferFrom<TOptions, TDefaultFrom>,
-  InferTo<TOptions>,
-  InferMaskFrom<TOptions>,
-  InferMaskTo<TOptions>
->
-  ? TOptions
-  : LinkComponentProps<
-      TComp,
-      TRouter,
-      InferFrom<TOptions, TDefaultFrom>,
-      InferTo<TOptions>,
-      InferMaskFrom<TOptions>,
-      InferMaskTo<TOptions>
-    >
+> =
+  TOptions extends LinkComponentProps<
+    TComp,
+    TRouter,
+    InferFrom<TOptions, TDefaultFrom>,
+    InferTo<TOptions>,
+    InferMaskFrom<TOptions>,
+    InferMaskTo<TOptions>
+  >
+    ? TOptions
+    : LinkComponentProps<
+        TComp,
+        TRouter,
+        InferFrom<TOptions, TDefaultFrom>,
+        InferTo<TOptions>,
+        InferMaskFrom<TOptions>,
+        InferMaskTo<TOptions>
+      >
 
 export type ValidateLinkOptionsArray<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -54,37 +55,39 @@ export type ValidateLinkOptionsArray<
 export type ValidateUseSearchOptions<
   TOptions,
   TRouter extends AnyRouter = RegisteredRouter,
-> = TOptions extends UseSearchOptions<
-  TRouter,
-  InferFrom<TOptions>,
-  InferStrict<TOptions>,
-  InferShouldThrow<TOptions>,
-  InferSelected<TOptions>
->
-  ? TOptions
-  : UseSearchOptions<
-      TRouter,
-      InferFrom<TOptions>,
-      InferStrict<TOptions>,
-      InferShouldThrow<TOptions>,
-      InferSelected<TOptions>
-    >
+> =
+  TOptions extends UseSearchOptions<
+    TRouter,
+    InferFrom<TOptions>,
+    InferStrict<TOptions>,
+    InferShouldThrow<TOptions>,
+    InferSelected<TOptions>
+  >
+    ? TOptions
+    : UseSearchOptions<
+        TRouter,
+        InferFrom<TOptions>,
+        InferStrict<TOptions>,
+        InferShouldThrow<TOptions>,
+        InferSelected<TOptions>
+      >
 
 export type ValidateUseParamsOptions<
   TOptions,
   TRouter extends AnyRouter = RegisteredRouter,
-> = TOptions extends UseParamsOptions<
-  TRouter,
-  InferFrom<TOptions>,
-  InferStrict<TOptions>,
-  InferShouldThrow<TOptions>,
-  InferSelected<TOptions>
->
-  ? TOptions
-  : UseParamsOptions<
-      TRouter,
-      InferFrom<TOptions>,
-      InferStrict<TOptions>,
-      InferShouldThrow<TOptions>,
-      InferSelected<TOptions>
-    >
+> =
+  TOptions extends UseParamsOptions<
+    TRouter,
+    InferFrom<TOptions>,
+    InferStrict<TOptions>,
+    InferShouldThrow<TOptions>,
+    InferSelected<TOptions>
+  >
+    ? TOptions
+    : UseParamsOptions<
+        TRouter,
+        InferFrom<TOptions>,
+        InferStrict<TOptions>,
+        InferShouldThrow<TOptions>,
+        InferSelected<TOptions>
+      >
