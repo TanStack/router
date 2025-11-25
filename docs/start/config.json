@@ -303,7 +303,7 @@
             },
             {
               "label": "Basic + Auth.js",
-              "to": "framework/solid/examples/start-basic-authjs"
+              "to": "framework/react/examples/start-basic-authjs"
             },
             {
               "label": "Basic + Static rendering",
