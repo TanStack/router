@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/router-plugin": "^1.139.3",
+    "@tanstack/router-plugin": "^1.139.4",
     "@tanstack/solid-query": "^5.72.0",
     "@tanstack/solid-query-devtools": "^5.72.0",
     "@tanstack/solid-router": "^1.139.3",
