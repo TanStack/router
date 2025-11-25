@@ -136,6 +136,12 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }
   }
 
+  function setRouteSsr(match: AnyRouteMatch) {
+    const route = router.looseRoutesById[match.routeId]
+    if (route) {
+      route.options.ssr = match.ssr
+    }
+  }
   // Right after hydration and before the first render, we need to rehydrate each match
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
@@ -146,10 +152,12 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     if (!dehydratedMatch) {
       match._nonReactive.dehydrated = false
       match.ssr = false
+      setRouteSsr(match)
       return
     }
 
     hydrateMatch(match, dehydratedMatch)
+    setRouteSsr(match)
 
     match._nonReactive.dehydrated = match.ssr !== false
 
