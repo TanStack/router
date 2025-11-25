@@ -549,6 +549,11 @@ type NavigationEventInfo = {
   hashChanged: boolean
 }
 
+export type ViewTransitionEventInfo = {
+  // @ts-ignore -- ViewTransition support since ts 5.6
+  transition: ViewTransition
+}
+
 export interface RouterEvents {
   onBeforeNavigate: {
     type: 'onBeforeNavigate'
@@ -568,6 +573,22 @@ export interface RouterEvents {
   onRendered: {
     type: 'onRendered'
   } & NavigationEventInfo
+  onViewTransitionStart: {
+    type: 'onViewTransitionStart'
+  } & ViewTransitionEventInfo &
+    NavigationEventInfo
+  onViewTransitionReady: {
+    type: 'onViewTransitionReady'
+  } & ViewTransitionEventInfo &
+    NavigationEventInfo
+  onViewTransitionUpdateCallbackDone: {
+    type: 'onViewTransitionUpdateCallbackDone'
+  } & ViewTransitionEventInfo &
+    NavigationEventInfo
+  onViewTransitionFinish: {
+    type: 'onViewTransitionFinish'
+  } & ViewTransitionEventInfo &
+    NavigationEventInfo
 }
 
 export type RouterEvent = RouterEvents[keyof RouterEvents]
@@ -770,16 +791,18 @@ export type AnyRouterWithContext<TContext> = RouterCore<
 
 export type AnyRouter = RouterCore<any, any, any, any, any>
 
+export interface LocationChangeInfo {
+  fromLocation?: ParsedLocation
+  toLocation: ParsedLocation
+  pathChanged: boolean
+  hrefChanged: boolean
+  hashChanged: boolean
+}
+
 export interface ViewTransitionOptions {
   types:
     | Array<string>
-    | ((locationChangeInfo: {
-        fromLocation?: ParsedLocation
-        toLocation: ParsedLocation
-        pathChanged: boolean
-        hrefChanged: boolean
-        hashChanged: boolean
-      }) => Array<string> | false)
+    | ((locationChangeInfo: LocationChangeInfo) => Array<string> | false)
 }
 
 // TODO where is this used? can we remove this?
@@ -823,7 +846,7 @@ export type TrailingSlashOption =
 export function getLocationChangeInfo(routerState: {
   resolvedLocation?: ParsedLocation
   location: ParsedLocation
-}) {
+}): LocationChangeInfo {
   const fromLocation = routerState.resolvedLocation
   const toLocation = routerState.location
   const pathChanged = fromLocation?.pathname !== toLocation.pathname
@@ -2096,22 +2119,21 @@ export class RouterCore<
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
 
+          const locationChangeInfo = getLocationChangeInfo({
+            resolvedLocation: prevLocation,
+            location: next,
+          })
+
           if (!this.state.redirect) {
             this.emit({
               type: 'onBeforeNavigate',
-              ...getLocationChangeInfo({
-                resolvedLocation: prevLocation,
-                location: next,
-              }),
+              ...locationChangeInfo,
             })
           }
 
           this.emit({
             type: 'onBeforeLoad',
-            ...getLocationChangeInfo({
-              resolvedLocation: prevLocation,
-              location: next,
-            }),
+            ...locationChangeInfo,
           })
 
           await loadMatches({
@@ -2272,21 +2294,21 @@ export class RouterCore<
       // TODO: Fix this when dom types are updated
       let startViewTransitionParams: any
 
+      const next = this.latestLocation
+      const prevLocation = this.state.resolvedLocation
+
+      const locationChangeInfo = getLocationChangeInfo({
+        resolvedLocation: prevLocation,
+        location: next,
+      })
+
       if (
         typeof shouldViewTransition === 'object' &&
         this.isViewTransitionTypesSupported
       ) {
-        const next = this.latestLocation
-        const prevLocation = this.state.resolvedLocation
-
         const resolvedViewTransitionTypes =
           typeof shouldViewTransition.types === 'function'
-            ? shouldViewTransition.types(
-                getLocationChangeInfo({
-                  resolvedLocation: prevLocation,
-                  location: next,
-                }),
-              )
+            ? shouldViewTransition.types(locationChangeInfo)
             : shouldViewTransition.types
 
         if (resolvedViewTransitionTypes === false) {
@@ -2302,7 +2324,33 @@ export class RouterCore<
         startViewTransitionParams = fn
       }
 
-      document.startViewTransition(startViewTransitionParams)
+      const transition = document.startViewTransition(startViewTransitionParams)
+      this.emit({
+        type: 'onViewTransitionStart',
+        transition,
+        ...locationChangeInfo,
+      })
+      transition.ready.finally(() => {
+        this.emit({
+          type: 'onViewTransitionReady',
+          transition,
+          ...locationChangeInfo,
+        })
+      })
+      transition.updateCallbackDone.finally(() => {
+        this.emit({
+          type: 'onViewTransitionUpdateCallbackDone',
+          transition,
+          ...locationChangeInfo,
+        })
+      })
+      transition.finished.finally(() => {
+        this.emit({
+          type: 'onViewTransitionFinish',
+          transition,
+          ...locationChangeInfo,
+        })
+      })
     } else {
       fn()
     }

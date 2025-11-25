@@ -202,6 +202,7 @@ export {
 } from './router'
 
 export type {
+  LocationChangeInfo,
   ViewTransitionOptions,
   TrailingSlashOption,
   Register,
