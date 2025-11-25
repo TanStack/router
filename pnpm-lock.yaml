@@ -5806,8 +5806,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
       start-authjs:
-        specifier: ^0.1.1
-        version: 0.1.1(@auth/core@0.41.1)
+        specifier: ^1.0.0
+        version: 1.0.0(@auth/core@0.41.1)
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -8407,8 +8407,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       start-authjs:
-        specifier: ^0.1.1
-        version: 0.1.1(@auth/core@0.41.1)
+        specifier: ^1.0.0
+        version: 1.0.0(@auth/core@0.41.1)
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -20369,8 +20369,8 @@ packages:
   standardwebhooks@1.0.0:
     resolution: {integrity: sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg==}
 
-  start-authjs@0.1.1:
-    resolution: {integrity: sha512-ymw3tCjIiof/hS7NDwK3rCb3BHe8rrCkTw+HXdDWan99VJ3Upqu363nURI11w0WAOcsAJlE15aEG1j7kYcZwmg==}
+  start-authjs@1.0.0:
+    resolution: {integrity: sha512-RM0zGg15kB8Kua7ZNWv6p4oxz7LepTXKLMrfRSi01faSYgDcCQDoaOk27ig1qBLXSuDChvwTPdGYNWI5ImDjIQ==}
     engines: {node: '>=22.12.0'}
     peerDependencies:
       '@auth/core': '>=0.41.1'
@@ -33072,7 +33072,7 @@ snapshots:
       '@stablelib/base64': 1.0.1
       fast-sha256: 1.3.0
 
-  start-authjs@0.1.1(@auth/core@0.41.1):
+  start-authjs@1.0.0(@auth/core@0.41.1):
     dependencies:
       '@auth/core': 0.41.1
       set-cookie-parser: 2.7.2
