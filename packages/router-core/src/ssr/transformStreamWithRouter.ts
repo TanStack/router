@@ -104,7 +104,10 @@ export function transformStreamWithRouter(
   let timeoutHandle: NodeJS.Timeout
 
   const finalPassThrough = createPassthrough(() => {
-    stopListeningToInjectedHtml?.()
+    if (stopListeningToInjectedHtml) {
+      stopListeningToInjectedHtml()
+      stopListeningToInjectedHtml = undefined
+    }
     clearTimeout(timeoutHandle)
   })
   const textDecoder = new TextDecoder()
@@ -134,34 +137,36 @@ export function transformStreamWithRouter(
   let processingCount = 0
 
   // Process any already-injected HTML
-  router.serverSsr!.injectedHtml.forEach((promise) => {
-    handleInjectedHtml(promise)
-  })
+  handleInjectedHtml()
 
   // Listen for any new injected HTML
-  stopListeningToInjectedHtml = router.subscribe('onInjectedHtml', (e) => {
-    handleInjectedHtml(e.promise)
-  })
+  stopListeningToInjectedHtml = router.subscribe(
+    'onInjectedHtml',
+    handleInjectedHtml,
+  )
 
-  function handleInjectedHtml(promise: Promise<string>) {
-    processingCount++
+  function handleInjectedHtml() {
+    router.serverSsr!.injectedHtml.forEach((promise) => {
+      processingCount++
 
-    promise
-      .then((html) => {
-        if (isAppRendering) {
-          routerStreamBuffer += html
-        } else {
-          finalPassThrough.write(html)
-        }
-      })
-      .catch(injectedHtmlDonePromise.reject)
-      .finally(() => {
-        processingCount--
+      promise
+        .then((html) => {
+          if (isAppRendering) {
+            routerStreamBuffer += html
+          } else {
+            finalPassThrough.write(html)
+          }
+        })
+        .catch(injectedHtmlDonePromise.reject)
+        .finally(() => {
+          processingCount--
 
-        if (!isAppRendering && processingCount === 0) {
-          injectedHtmlDonePromise.resolve()
-        }
-      })
+          if (!isAppRendering && processingCount === 0) {
+            injectedHtmlDonePromise.resolve()
+          }
+        })
+    })
+    router.serverSsr!.injectedHtml = []
   }
 
   injectedHtmlDonePromise
@@ -176,7 +181,12 @@ export function transformStreamWithRouter(
       console.error('Error reading routerStream:', err)
       finalPassThrough.destroy(err)
     })
-    .finally(() => stopListeningToInjectedHtml?.())
+    .finally(() => {
+      if (stopListeningToInjectedHtml) {
+        stopListeningToInjectedHtml()
+        stopListeningToInjectedHtml = undefined
+      }
+    })
 
   // Transform the appStream
   readStream(appStream, {
