@@ -16,6 +16,7 @@ You have several options for authentication in your TanStack Start application:
 1. **[Clerk](https://clerk.dev)** - Complete authentication platform with UI components
 2. **[WorkOS](https://workos.com)** - Enterprise-focused with SSO and compliance features
 3. **[Better Auth](https://www.better-auth.com/)** - Open-source TypeScript library
+4. **[Auth.js](https://authjs.dev/)** - Open-source library supporting 80+ OAuth providers
 
 **DIY Implementation Benefits:**
 
