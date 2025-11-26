@@ -564,7 +564,9 @@ describe('findRouteMatch', () => {
       })
       it('edge-case: deeper index route through skipped optional segments (should not match)', () => {
         const tree = makeTree(['/{-$foo}/{-$bar}/a/', '/a/$'])
-        expect(findRouteMatch('/a/', tree)?.route.id).toBe('/{-$foo}/{-$bar}/a/')
+        expect(findRouteMatch('/a/', tree)?.route.id).toBe(
+          '/{-$foo}/{-$bar}/a/',
+        )
         expect(findRouteMatch('/a', tree)?.route.id).toBe('/{-$foo}/{-$bar}/a/')
       })
     })
