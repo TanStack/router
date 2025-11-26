@@ -235,6 +235,9 @@ test.describe('redirects', () => {
     // This test verifies that multiple Set-Cookie headers are not lost during redirect
     await page.goto('/multi-cookie-redirect')
 
+    // Wait for redirect to complete
+    await page.waitForURL(/\/multi-cookie-redirect\/target/)
+
     // Should redirect to target page
     await expect(page.getByTestId('multi-cookie-redirect-target')).toBeVisible()
     expect(page.url()).toContain('/multi-cookie-redirect/target')
