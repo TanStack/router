@@ -1018,6 +1018,12 @@ function getNodeMatch<T extends RouteLike>(
     }
   }
 
+  if (bestMatch && wildcardMatch) {
+    return isFrameMoreSpecific(wildcardMatch, bestMatch)
+      ? bestMatch
+      : wildcardMatch
+  }
+
   if (bestMatch) return bestMatch
 
   if (wildcardMatch) return wildcardMatch
