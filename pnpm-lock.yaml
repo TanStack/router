@@ -1054,6 +1054,9 @@ importers:
       http-proxy-middleware:
         specifier: ^3.0.5
         version: 3.0.5
+      js-cookie:
+        specifier: ^3.0.5
+        version: 3.0.5
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -1076,6 +1079,9 @@ importers:
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
+      '@types/js-cookie':
+        specifier: ^3.0.6
+        version: 3.0.6
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
@@ -2802,6 +2808,9 @@ importers:
       http-proxy-middleware:
         specifier: ^3.0.5
         version: 3.0.5
+      js-cookie:
+        specifier: ^3.0.5
+        version: 3.0.5
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2827,6 +2836,9 @@ importers:
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
+      '@types/js-cookie':
+        specifier: ^3.0.6
+        version: 3.0.6
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
