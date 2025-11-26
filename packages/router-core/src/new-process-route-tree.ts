@@ -320,6 +320,7 @@ function parseSegments<TRouteLike extends RouteLike>(
           nextNode = next
           next.parent = node
           next.depth = depth
+          next.isIndex = true
           node.wildcard ??= []
           node.wildcard.push(next)
         }
@@ -856,7 +857,6 @@ function getNodeMatch<T extends RouteLike>(
     },
   ]
 
-  let wildcardMatch: Frame | null = null
   let bestFuzzy: Frame | null = null
   let bestMatch: Frame | null = null
 
@@ -888,7 +888,7 @@ function getNodeMatch<T extends RouteLike>(
     let lowerPart: string
 
     // 5. Try wildcard match
-    if (node.wildcard && isFrameMoreSpecific(wildcardMatch, frame)) {
+    if (node.wildcard) {
       for (const segment of node.wildcard) {
         const { prefix, suffix } = segment
         if (prefix) {
@@ -905,15 +905,15 @@ function getNodeMatch<T extends RouteLike>(
           if (casePart !== suffix) continue
         }
         // the first wildcard match is the highest priority one
-        wildcardMatch = {
+        stack.push({
           node: segment,
-          index,
+          index: partsLength,
           skipped,
-          depth,
+          depth: depth + 1,
           statics,
           dynamics,
           optionals,
-        }
+        })
         break
       }
     }
@@ -1019,8 +1019,6 @@ function getNodeMatch<T extends RouteLike>(
   }
 
   if (bestMatch) return bestMatch
-
-  if (wildcardMatch) return wildcardMatch
 
   if (fuzzy && bestFuzzy) {
     let sliceIndex = bestFuzzy.index
