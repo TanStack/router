@@ -579,7 +579,7 @@ describe('Solid Router - Optional Path Parameters', () => {
       const filesLink = await screen.findByTestId('files-link')
       const docLink = await screen.findByTestId('doc-link')
 
-      expect(filesLink).toHaveAttribute('href', '/files/prefix.txt')
+      expect(filesLink).toHaveAttribute('href', '/files')
       expect(docLink).toHaveAttribute('href', '/files/prefixdocument.txt')
     })
   })

@@ -302,6 +302,10 @@
               "to": "framework/react/examples/start-material-ui"
             },
             {
+              "label": "Basic + Auth.js",
+              "to": "framework/react/examples/start-basic-authjs"
+            },
+            {
               "label": "Basic + Static rendering",
               "to": "framework/react/examples/start-basic-static"
             },
@@ -331,8 +335,12 @@
               "to": "framework/solid/examples/start-supabase-basic"
             },
             {
-              "label": "Bare + Convex + Better Auth",
+              "label": "Basic + Convex + Better Auth",
               "to": "framework/solid/examples/start-convex-better-auth"
+            },
+            {
+              "label": "Basic + Auth.js",
+              "to": "framework/solid/examples/start-basic-authjs"
             },
             {
               "label": "Basic + Static rendering",

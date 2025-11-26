@@ -932,7 +932,7 @@ function getNodeMatch<T extends RouteLike>(
         }
 
         // perfect match, no need to continue
-        if (statics === partsLength) return bestMatch
+        if (statics === partsLength && node.isIndex) return bestMatch
       }
       // beyond the length of the path parts, only skipped optional segments or wildcard segments can match
       if (!node.optional && !node.wildcard) continue
@@ -1084,6 +1084,12 @@ function getNodeMatch<T extends RouteLike>(
     }
   }
 
+  if (bestMatch && wildcardMatch) {
+    return isFrameMoreSpecific(wildcardMatch, bestMatch)
+      ? bestMatch
+      : wildcardMatch
+  }
+
   if (bestMatch) return bestMatch
 
   if (wildcardMatch) return wildcardMatch
@@ -1117,6 +1123,11 @@ function isFrameMoreSpecific(
     next.statics > prev.statics ||
     (next.statics === prev.statics &&
       (next.dynamics > prev.dynamics ||
-        (next.dynamics === prev.dynamics && next.optionals > prev.optionals)))
+        (next.dynamics === prev.dynamics &&
+          (next.optionals > prev.optionals ||
+            (next.optionals === prev.optionals &&
+              (next.node.isIndex > prev.node.isIndex ||
+                (next.node.isIndex === prev.node.isIndex &&
+                  next.depth > prev.depth)))))))
   )
 }

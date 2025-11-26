@@ -122,11 +122,11 @@ export function Transitioner() {
     Solid.on(
       [isAnyPending, previousIsAnyPending],
       ([isAnyPending, previousIsAnyPending]) => {
-        // The router was pending and now it's not
         if (previousIsAnyPending.previous && !isAnyPending) {
+          const changeInfo = getLocationChangeInfo(router.state)
           router.emit({
             type: 'onResolved',
-            ...getLocationChangeInfo(router.state),
+            ...changeInfo,
           })
 
           router.__store.setState((s) => ({
@@ -135,7 +135,9 @@ export function Transitioner() {
             resolvedLocation: s.location,
           }))
 
-          handleHashScroll(router)
+          if (changeInfo.hrefChanged) {
+            handleHashScroll(router)
+          }
         }
       },
     ),

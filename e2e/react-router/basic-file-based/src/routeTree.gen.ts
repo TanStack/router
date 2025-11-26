@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
+import { Route as HoverPreloadHashRouteImport } from './routes/hover-preload-hash'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
 import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
@@ -123,6 +124,11 @@ const PostsRoute = PostsRouteImport.update({
 const NotRemountDepsRoute = NotRemountDepsRouteImport.update({
   id: '/notRemountDeps',
   path: '/notRemountDeps',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HoverPreloadHashRoute = HoverPreloadHashRouteImport.update({
+  id: '/hover-preload-hash',
+  path: '/hover-preload-hash',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EditingBRoute = EditingBRouteImport.update({
@@ -659,6 +665,7 @@ export interface FileRoutesByFullPath {
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/hover-preload-hash': typeof HoverPreloadHashRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
@@ -757,6 +764,7 @@ export interface FileRoutesByTo {
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/hover-preload-hash': typeof HoverPreloadHashRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
   '/non-nested/deep': typeof NonNestedDeepRouteRouteWithChildren
@@ -849,6 +857,7 @@ export interface FileRoutesById {
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/hover-preload-hash': typeof HoverPreloadHashRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
@@ -952,6 +961,7 @@ export interface FileRouteTypes {
     | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
+    | '/hover-preload-hash'
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
@@ -1050,6 +1060,7 @@ export interface FileRouteTypes {
     | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
+    | '/hover-preload-hash'
     | '/notRemountDeps'
     | '/remountDeps'
     | '/non-nested/deep'
@@ -1141,6 +1152,7 @@ export interface FileRouteTypes {
     | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
+    | '/hover-preload-hash'
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
@@ -1244,6 +1256,7 @@ export interface RootRouteChildren {
   ComponentTypesTestRoute: typeof ComponentTypesTestRoute
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
+  HoverPreloadHashRoute: typeof HoverPreloadHashRoute
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
@@ -1298,6 +1311,13 @@ declare module '@tanstack/react-router' {
       path: '/notRemountDeps'
       fullPath: '/notRemountDeps'
       preLoaderRoute: typeof NotRemountDepsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hover-preload-hash': {
+      id: '/hover-preload-hash'
+      path: '/hover-preload-hash'
+      fullPath: '/hover-preload-hash'
+      preLoaderRoute: typeof HoverPreloadHashRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/editing-b': {
@@ -2402,6 +2422,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentTypesTestRoute: ComponentTypesTestRoute,
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
+  HoverPreloadHashRoute: HoverPreloadHashRoute,
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
   RemountDepsRoute: RemountDepsRoute,
