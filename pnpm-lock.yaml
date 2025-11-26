@@ -10101,8 +10101,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       h3-v2:
-        specifier: npm:h3@2.0.1-rc.5
-        version: h3@2.0.1-rc.5(crossws@0.4.1(srvx@0.9.6))
+        specifier: npm:h3@2.0.0-beta.4
+        version: h3@2.0.0-beta.4(crossws@0.4.1(srvx@0.8.15))
       seroval:
         specifier: ^1.4.0
         version: 1.4.0
@@ -17718,8 +17718,8 @@ packages:
   h3@1.15.4:
     resolution: {integrity: sha512-z5cFQWDffyOe4vQ9xIqNfCZdV4p//vy6fBnr8Q1AWnVZ0teurKMG66rLj++TKwKPUP3u7iMUvrvKaEUiQw2QWQ==}
 
-  h3@2.0.1-rc.2:
-    resolution: {integrity: sha512-2vS7OETzPDzGQxmmcs6ttu7p0NW25zAdkPXYOr43dn4GZf81uUljJvupa158mcpUGpsQUqIy4O4THWUQT1yVeA==}
+  h3@2.0.0-beta.4:
+    resolution: {integrity: sha512-/JdwHUGuHjbBXAVxQN7T7QeI9cVlhsqMKVNFHebZVs9RoEYH85Ogh9O1DEy/1ZiJkmMwa1gNg6bBcGhc1Itjdg==}
     engines: {node: '>=20.11.1'}
     peerDependencies:
       crossws: ^0.4.1
@@ -17727,8 +17727,8 @@ packages:
       crossws:
         optional: true
 
-  h3@2.0.1-rc.5:
-    resolution: {integrity: sha512-qkohAzCab0nLzXNm78tBjZDvtKMTmtygS8BJLT3VPczAQofdqlFXDPkXdLMJN4r05+xqneG8snZJ0HgkERCZTg==}
+  h3@2.0.1-rc.2:
+    resolution: {integrity: sha512-2vS7OETzPDzGQxmmcs6ttu7p0NW25zAdkPXYOr43dn4GZf81uUljJvupa158mcpUGpsQUqIy4O4THWUQT1yVeA==}
     engines: {node: '>=20.11.1'}
     peerDependencies:
       crossws: ^0.4.1
@@ -20032,8 +20032,8 @@ packages:
   rou3@0.5.1:
     resolution: {integrity: sha512-OXMmJ3zRk2xeXFGfA3K+EOPHC5u7RDFG7lIOx0X1pdnhUkI8MdVrbV+sNsD80ElpUZ+MRHdyxPnFthq9VHs8uQ==}
 
-  rou3@0.7.10:
-    resolution: {integrity: sha512-aoFj6f7MJZ5muJ+Of79nrhs9N3oLGqi2VEMe94Zbkjb6Wupha46EuoYgpWSOZlXww3bbd8ojgXTAA2mzimX5Ww==}
+  rou3@0.7.5:
+    resolution: {integrity: sha512-bwUHDHw1HSARty7TWNV71R0NZs5fOt74OM+hcMdJyPfchfRktEmxLoMSNa7PwEp6WqJ0a3feKztsIfTUEYhskw==}
 
   rou3@0.7.8:
     resolution: {integrity: sha512-21X/el5fdOaEsqwl3an/d9kpZ8hshVIyrwFCpsoleJ4ccAGRbN+PVoxyXzWXkHDxfMkVnLe4yzx+imz2qoem2Q==}
@@ -20342,11 +20342,6 @@ packages:
 
   srvx@0.8.7:
     resolution: {integrity: sha512-g3+15LlwVOGL2QpoTPZlvRjg+9a5Tx/69CatXjFP6txvhIaW2FmGyzJfb8yft5wyfGddvJmP/Yx+e/uNDMRSLQ==}
-    engines: {node: '>=20.16.0'}
-    hasBin: true
-
-  srvx@0.9.6:
-    resolution: {integrity: sha512-5L4rT6qQqqb+xcoDoklUgCNdmzqJ6vbcDRwPVGRXewF55IJH0pqh0lQlrJ266ZWTKJ4mfeioqHQJeAYesS+RrQ==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
@@ -28764,11 +28759,6 @@ snapshots:
     optionalDependencies:
       srvx: 0.8.15
 
-  crossws@0.4.1(srvx@0.9.6):
-    optionalDependencies:
-      srvx: 0.9.6
-    optional: true
-
   css-loader@7.1.2(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1):
     dependencies:
       icss-utils: 5.1.0(postcss@8.5.6)
@@ -30123,6 +30113,15 @@ snapshots:
       ufo: 1.6.1
       uncrypto: 0.1.3
 
+  h3@2.0.0-beta.4(crossws@0.4.1(srvx@0.8.15)):
+    dependencies:
+      cookie-es: 2.0.0
+      fetchdts: 0.1.7
+      rou3: 0.7.5
+      srvx: 0.8.15
+    optionalDependencies:
+      crossws: 0.4.1(srvx@0.8.15)
+
   h3@2.0.1-rc.2(crossws@0.4.1(srvx@0.8.15)):
     dependencies:
       cookie-es: 2.0.0
@@ -30131,13 +30130,6 @@ snapshots:
       srvx: 0.8.15
     optionalDependencies:
       crossws: 0.4.1(srvx@0.8.15)
-
-  h3@2.0.1-rc.5(crossws@0.4.1(srvx@0.9.6)):
-    dependencies:
-      rou3: 0.7.10
-      srvx: 0.9.6
-    optionalDependencies:
-      crossws: 0.4.1(srvx@0.9.6)
 
   handle-thing@2.0.1: {}
 
@@ -32650,7 +32642,7 @@ snapshots:
 
   rou3@0.5.1: {}
 
-  rou3@0.7.10: {}
+  rou3@0.7.5: {}
 
   rou3@0.7.8: {}
 
@@ -33054,8 +33046,6 @@ snapshots:
   srvx@0.8.7:
     dependencies:
       cookie-es: 2.0.0
-
-  srvx@0.9.6: {}
 
   stable-hash-x@0.2.0: {}
 
