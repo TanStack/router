@@ -499,7 +499,7 @@ test('redirect in server function called in query during SSR', async ({
 test('multiple Set-Cookie headers are preserved on redirect', async ({
   page,
 }) => {
-	// This test verifies that multiple Set-Cookie headers are not lost during redirect
+  // This test verifies that multiple Set-Cookie headers are not lost during redirect
   await page.goto('/multi-cookie-redirect')
 
   // Should redirect to target page

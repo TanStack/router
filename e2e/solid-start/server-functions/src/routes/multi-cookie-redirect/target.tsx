@@ -31,7 +31,8 @@ function RouteComponent() {
           CSRF cookie: <span data-testid="cookie-csrf">{cookies().csrf}</span>
         </p>
         <p>
-          Theme cookie: <span data-testid="cookie-theme">{cookies().theme}</span>
+          Theme cookie:{' '}
+          <span data-testid="cookie-theme">{cookies().theme}</span>
         </p>
       </div>
     </div>
