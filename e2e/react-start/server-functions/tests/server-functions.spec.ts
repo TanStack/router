@@ -541,3 +541,19 @@ test('redirect in server function called in query during SSR', async ({
   await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
   expect(page.url()).toContain('/redirect-test-ssr/target')
 })
+
+test('multiple Set-Cookie headers are preserved on redirect', async ({
+  page,
+}) => {
+  // This test verifies that multiple Set-Cookie headers are not lost during redirect
+  await page.goto('/multi-cookie-redirect')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('multi-cookie-redirect-target')).toBeVisible()
+  expect(page.url()).toContain('/multi-cookie-redirect/target')
+
+  // Verify all three cookies were preserved during the redirect
+  await expect(page.getByTestId('cookie-session')).toHaveText('session-value')
+  await expect(page.getByTestId('cookie-csrf')).toHaveText('csrf-token-value')
+  await expect(page.getByTestId('cookie-theme')).toHaveText('dark')
+})
