@@ -221,8 +221,8 @@ export const handleServerAction = async ({
           return new Response(
             nonStreamingBody ? JSON.stringify(nonStreamingBody) : undefined,
             {
-              status: response.status,
-              statusText: response.statusText,
+              status: response?.status,
+              statusText: response?.statusText,
               headers: {
                 'Content-Type': 'application/json',
                 [X_TSS_SERIALIZED]: 'true',
@@ -251,8 +251,8 @@ export const handleServerAction = async ({
           },
         })
         return new Response(stream, {
-          status: response.status,
-          statusText: response.statusText,
+          status: response?.status,
+          statusText: response?.statusText,
           headers: {
             'Content-Type': 'application/x-ndjson',
             [X_TSS_SERIALIZED]: 'true',
@@ -261,8 +261,8 @@ export const handleServerAction = async ({
       }
 
       return new Response(undefined, {
-        status: response.status,
-        statusText: response.statusText,
+        status: response?.status,
+        statusText: response?.statusText,
       })
     } catch (error: any) {
       if (error instanceof Response) {
@@ -301,8 +301,8 @@ export const handleServerAction = async ({
       )
       const response = getResponse()
       return new Response(serializedError, {
-        status: response.status ?? 500,
-        statusText: response.statusText,
+        status: response?.status ?? 500,
+        statusText: response?.statusText,
         headers: {
           'Content-Type': 'application/json',
           [X_TSS_SERIALIZED]: 'true',

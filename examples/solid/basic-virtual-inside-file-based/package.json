@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/solid-router": "^1.139.3",
-    "@tanstack/solid-router-devtools": "^1.139.3",
-    "@tanstack/router-plugin": "^1.139.4",
+    "@tanstack/solid-router": "^1.139.10",
+    "@tanstack/solid-router-devtools": "^1.139.10",
+    "@tanstack/router-plugin": "^1.139.10",
     "@tanstack/virtual-file-routes": "^1.139.0",
     "postcss": "^8.5.1",
     "solid-js": "^1.9.10",

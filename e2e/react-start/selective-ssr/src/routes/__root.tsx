@@ -42,13 +42,6 @@ export const Route = createRootRoute({
     }
   },
   beforeLoad: ({ search }) => {
-    if (typeof window !== 'undefined') {
-      if (Route.options.ssr !== undefined) {
-        const error = `ssr() for ${Route.id} should have been deleted from the Route options on the client`
-        console.error(error)
-        throw new Error(error)
-      }
-    }
     console.log(
       `beforeLoad for ${Route.id} called on the ${typeof window !== 'undefined' ? 'client' : 'server'}`,
     )
