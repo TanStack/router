@@ -355,10 +355,45 @@ export function TanStackStartVitePluginCore(
         order: 'post',
         async handler(builder) {
           const { startConfig } = getConfig()
-          await postServerBuild({ builder, startConfig })
+          // Check if Nitro is being used - if so, defer prerendering to after Nitro build
+          const hasNitro = builder.config.plugins.some(
+            (p) =>
+              p &&
+              typeof p === 'object' &&
+              'name' in p &&
+              typeof p.name === 'string' &&
+              p.name.startsWith('nitro:'),
+          )
+          await postServerBuild({ builder, startConfig, skipPrerender: hasNitro })
         },
       },
     },
+		{
+      name: 'tanstack-start-core:nitro-prerender',
+      // This property is read by Nitro's vite plugin to register modules
+      nitro: {
+        name: 'tanstack-start-prerender',
+        setup(nitro: any) {
+          nitro.hooks.hook('compiled', async () => {
+            const { startConfig } = getConfig()
+            // Only run prerendering if enabled
+            if (!startConfig.prerender?.enabled && !startConfig.spa?.enabled) {
+              return
+            }
+
+            const { prerenderWithNitro } = await import('./prerender-nitro')
+            await prerenderWithNitro({
+              startConfig,
+              nitroOutputDir: nitro.options.output.publicDir,
+              nitroOptions: {
+                preset: nitro.options.preset,
+                output: { dir: nitro.options.output.dir },
+              },
+            })
+          })
+        },
+      },
+    } as PluginOption,
     // Server function plugin handles:
     // 1. Identifying createServerFn().handler() calls
     // 2. Extracting server functions to separate modules

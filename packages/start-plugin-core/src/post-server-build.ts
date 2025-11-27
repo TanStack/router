@@ -8,9 +8,12 @@ import type { ViteBuilder } from 'vite'
 export async function postServerBuild({
   builder,
   startConfig,
+  skipPrerender = false,
 }: {
   builder: ViteBuilder
   startConfig: TanStackStartOutputConfig
+  /** Skip prerendering - used when Nitro handles prerendering after its build */
+  skipPrerender?: boolean
 }) {
   // If the user has not set a prerender option, we need to set it to true
   // if the pages array is not empty and has sub options requiring for prerendering
@@ -50,8 +53,8 @@ export async function postServerBuild({
     })
   }
 
-  // Run the prerendering process
-  if (startConfig.prerender.enabled) {
+  // Run the prerendering process (unless skipPrerender is set, e.g., for Nitro)
+  if (startConfig.prerender.enabled && !skipPrerender) {
     await prerender({
       startConfig,
       builder,
