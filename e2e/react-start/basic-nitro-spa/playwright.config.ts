@@ -20,7 +20,10 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `PORT=${PORT} pnpm build && PORT=${PORT} pnpm preview`,
+    // Note: We run node directly instead of vite preview because Nitro's
+    // configurePreviewServer spawns on a random port. The prerendering during
+    // build uses vite.preview() correctly.
+    command: `pnpm build && PORT=${PORT} node .output/server/index.mjs`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
