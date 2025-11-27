@@ -68,6 +68,7 @@ export default defineConfig({
   ],
 })
 ```
+Note: Prerendering on Cloudflare Workers is not yet supported, but is currently under development.
 
 ## Automatic Static Route Discovery
 
