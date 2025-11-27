@@ -355,10 +355,8 @@ export function TanStackStartVitePluginCore(
         order: 'post',
         async handler(builder) {
           const { startConfig } = getConfig()
-          // Check if Nitro is being used - if so, defer prerendering to after Nitro build
           const hasNitro = builder.config.plugins.some(
-            (p) =>
-              p &&
+            (p): p is { name: string } =>
               typeof p === 'object' &&
               'name' in p &&
               typeof p.name === 'string' &&
