@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/solid-router": "^1.139.7",
-    "@tanstack/solid-router-devtools": "^1.139.7",
-    "@tanstack/router-plugin": "^1.139.9",
+    "@tanstack/solid-router": "^1.139.10",
+    "@tanstack/solid-router-devtools": "^1.139.10",
+    "@tanstack/router-plugin": "^1.139.10",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
     "express": "^4.21.2",
