@@ -129,7 +129,7 @@ export function attachRouterServerSsrUtils({
         if (!script) {
           return ''
         }
-        return `<script${router.options.ssr?.nonce ? `nonce='${router.options.ssr.nonce}' ` : ''} class='$tsr'>${script}</script>`
+        return `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''} class='$tsr'>${script}</script>`
       })
     },
     dehydrate: async () => {
