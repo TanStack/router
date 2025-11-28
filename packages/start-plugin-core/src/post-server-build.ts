@@ -5,19 +5,7 @@ import { prerender } from './prerender'
 import type { TanStackStartOutputConfig } from './schema'
 import type { ViteBuilder } from 'vite'
 
-export async function postServerBuild({
-  builder,
-  startConfig,
-  skipPrerender = false,
-}: {
-  builder: ViteBuilder
-  startConfig: TanStackStartOutputConfig
-  /** Skip prerendering - used when Nitro handles prerendering after its build */
-  skipPrerender?: boolean
-}) {
-  // If the user has not set a prerender option, we need to set it to true
-  // if the pages array is not empty and has sub options requiring for prerendering
-  // If the user has explicitly set prerender.enabled, this should be respected
+function setupPrerenderConfig(startConfig: TanStackStartOutputConfig) {
   if (startConfig.prerender?.enabled !== false) {
     startConfig.prerender = {
       ...startConfig.prerender,
@@ -29,7 +17,6 @@ export async function postServerBuild({
     }
   }
 
-  // Setup the options for prerendering the SPA shell (i.e `src/routes/__root.tsx`)
   if (startConfig.spa?.enabled) {
     startConfig.prerender = {
       ...startConfig.prerender,
@@ -52,9 +39,20 @@ export async function postServerBuild({
       },
     })
   }
+}
 
-  // Run the prerendering process (unless skipPrerender is set, e.g., for Nitro)
-  if (startConfig.prerender.enabled && !skipPrerender) {
+export async function postServerBuild({
+  builder,
+  startConfig,
+  skipPrerender = false,
+}: {
+  builder: ViteBuilder
+  startConfig: TanStackStartOutputConfig
+  skipPrerender?: boolean
+}) {
+  setupPrerenderConfig(startConfig)
+
+  if (startConfig.prerender?.enabled && !skipPrerender) {
     await prerender({
       startConfig,
       builder,
@@ -68,6 +66,33 @@ export async function postServerBuild({
       publicDir:
         builder.environments[VITE_ENVIRONMENT_NAMES.client]?.config.build
           .outDir ?? builder.config.build.outDir,
+    })
+  }
+}
+
+export async function postServerBuildForNitro({
+  startConfig,
+  outputDir,
+  nitroServerPath,
+}: {
+  startConfig: TanStackStartOutputConfig
+  outputDir: string
+  nitroServerPath: string
+}) {
+  setupPrerenderConfig(startConfig)
+
+  if (startConfig.prerender?.enabled) {
+    await prerender({
+      startConfig,
+      outputDir,
+      nitroServerPath,
+    })
+  }
+
+  if (startConfig.pages.length) {
+    buildSitemap({
+      startConfig,
+      publicDir: outputDir,
     })
   }
 }

@@ -351,6 +351,9 @@ export function TanStackStartVitePluginCore(
     // would cause this hook to run before those others' buildApp, breaking prerendering.
     {
       name: 'tanstack-start-core:post-build',
+      configResolved(config) {
+        resolvedStartConfig.viteConfigFile = config.configFile || undefined
+      },
       buildApp: {
         order: 'post',
         async handler(builder) {
@@ -366,27 +369,28 @@ export function TanStackStartVitePluginCore(
         },
       },
     },
-		{
+    // Nitro module plugin - runs prerendering after Nitro build
+    {
       name: 'tanstack-start-core:nitro-prerender',
-      // This property is read by Nitro's vite plugin to register modules
       nitro: {
         name: 'tanstack-start-prerender',
         setup(nitro: any) {
           nitro.hooks.hook('compiled', async () => {
             const { startConfig } = getConfig()
-            // Only run prerendering if enabled
             if (!startConfig.prerender?.enabled && !startConfig.spa?.enabled) {
               return
             }
 
-            const { prerenderWithNitro } = await import('./prerender-nitro')
-            await prerenderWithNitro({
+            const { postServerBuildForNitro } = await import(
+              './post-server-build'
+            )
+            await postServerBuildForNitro({
               startConfig,
-              nitroOutputDir: nitro.options.output.publicDir,
-              nitroOptions: {
-                preset: nitro.options.preset,
-                output: { dir: nitro.options.output.dir },
-              },
+              outputDir: nitro.options.output.publicDir,
+              nitroServerPath: join(
+                nitro.options.output.serverDir,
+                'index.mjs',
+              ),
             })
           })
         },

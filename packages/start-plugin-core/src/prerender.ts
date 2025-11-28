@@ -1,19 +1,27 @@
 import { promises as fsp } from 'node:fs'
+import { spawn, type ChildProcess } from 'node:child_process'
 import os from 'node:os'
 import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { createLogger } from './utils'
 import { Queue } from './queue'
-import type { PreviewServer, ResolvedConfig, ViteBuilder } from 'vite'
+import type { PreviewServer, ViteBuilder } from 'vite'
 import type { Page, TanStackStartOutputConfig } from './schema'
 
 export async function prerender({
   startConfig,
   builder,
+  outputDir: outputDirOverride,
+  configFile: configFileOverride,
+  nitroServerPath,
 }: {
   startConfig: TanStackStartOutputConfig
-  builder: ViteBuilder
+  builder?: ViteBuilder
+  outputDir?: string
+  configFile?: string
+  /** Path to Nitro's compiled server entry (e.g., .output/server/index.mjs) */
+  nitroServerPath?: string
 }) {
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
@@ -40,38 +48,54 @@ export async function prerender({
     startConfig.pages = pages
   }
 
-  const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
+  let outputDir: string
 
-  if (!serverEnv) {
-    throw new Error(
-      `Vite's "${VITE_ENVIRONMENT_NAMES.server}" environment not found`,
-    )
+  if (outputDirOverride) {
+    outputDir = outputDirOverride
+  } else if (builder) {
+    const clientEnv = builder.environments[VITE_ENVIRONMENT_NAMES.client]
+    if (!clientEnv) {
+      throw new Error(
+        `Vite's "${VITE_ENVIRONMENT_NAMES.client}" environment not found`,
+      )
+    }
+    outputDir = clientEnv.config.build.outDir
+  } else {
+    throw new Error('Either builder or outputDir must be provided')
   }
-
-  const clientEnv = builder.environments[VITE_ENVIRONMENT_NAMES.client]
-  if (!clientEnv) {
-    throw new Error(
-      `Vite's "${VITE_ENVIRONMENT_NAMES.client}" environment not found`,
-    )
-  }
-
-  const outputDir = clientEnv.config.build.outDir
 
   process.env.TSS_PRERENDERING = 'true'
 
-  // Start Vite preview server instead of importing module
-  const previewServer = await startPreviewServer(serverEnv.config)
-  const baseUrl = getResolvedUrl(previewServer)
+  let cleanup: () => Promise<void>
+  let baseUrl: URL
+
+  if (nitroServerPath) {
+    // Start Nitro server as a subprocess
+    const { url, close } = await startNitroServer(nitroServerPath)
+    baseUrl = url
+    cleanup = close
+  } else {
+    // Start Vite preview server
+    const configFile =
+      configFileOverride ??
+      builder?.environments[VITE_ENVIRONMENT_NAMES.server]?.config.configFile
+    const previewServer = await startPreviewServer(configFile)
+    baseUrl = getResolvedUrl(previewServer)
+    cleanup = async () => {
+      await previewServer.close()
+    }
+  }
 
   const isRedirectResponse = (res: Response) => {
     return res.status >= 300 && res.status < 400 && res.headers.get('location')
   }
+
   async function localFetch(
-    path: string,
+    fetchPath: string,
     options?: RequestInit,
     maxRedirects: number = 5,
   ): Promise<Response> {
-    const url = new URL(path, baseUrl)
+    const url = new URL(fetchPath, baseUrl)
     const request = new Request(url, options)
     const response = await fetch(request)
 
@@ -98,8 +122,9 @@ export async function prerender({
     })
   } catch (error) {
     logger.error(error)
+    throw error
   } finally {
-    await previewServer.close()
+    await cleanup()
   }
 
   function extractLinks(html: string): Array<string> {
@@ -166,9 +191,7 @@ export async function prerender({
           const res = await localFetch(
             withBase(page.path, routerBasePath),
             {
-              headers: {
-                ...(prerenderOptions.headers ?? {}),
-              },
+              headers: prerenderOptions.headers,
             },
             prerenderOptions.maxRedirects,
           )
@@ -262,14 +285,74 @@ export async function prerender({
   }
 }
 
+async function startNitroServer(
+  serverPath: string,
+): Promise<{ url: URL; close: () => Promise<void> }> {
+  return new Promise((resolve, reject) => {
+    // Find a random port
+    const port = 3000 + Math.floor(Math.random() * 10000)
+    const env = { ...process.env, PORT: String(port) }
+
+    const child: ChildProcess = spawn('node', [serverPath], {
+      env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    let resolved = false
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        child.kill()
+        reject(new Error('Nitro server startup timed out'))
+      }
+    }, 30000)
+
+    const checkServer = async () => {
+      try {
+        const res = await fetch(`http://localhost:${port}/`)
+        if (res.ok || res.status < 500) {
+          resolved = true
+          clearTimeout(timeout)
+          resolve({
+            url: new URL(`http://localhost:${port}`),
+            close: async () => {
+              child.kill('SIGTERM')
+              // Wait a bit for graceful shutdown
+              await new Promise((r) => setTimeout(r, 500))
+            },
+          })
+        }
+      } catch {
+        // Server not ready yet, retry
+        if (!resolved) {
+          setTimeout(checkServer, 100)
+        }
+      }
+    }
+
+    child.on('error', (err) => {
+      if (!resolved) {
+        clearTimeout(timeout)
+        reject(err)
+      }
+    })
+
+    child.stderr?.on('data', (data) => {
+      console.error('[nitro]', data.toString())
+    })
+
+    // Start checking after a short delay
+    setTimeout(checkServer, 200)
+  })
+}
+
 async function startPreviewServer(
-  viteConfig: ResolvedConfig,
+  configFile?: string | false,
 ): Promise<PreviewServer> {
   const vite = await import('vite')
 
   try {
     return await vite.preview({
-      configFile: viteConfig.configFile,
+      configFile,
       preview: {
         port: 0,
         open: false,
