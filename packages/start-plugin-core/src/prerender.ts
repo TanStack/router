@@ -1,11 +1,12 @@
 import { promises as fsp } from 'node:fs'
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import os from 'node:os'
 import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { createLogger } from './utils'
 import { Queue } from './queue'
+import type { ChildProcess } from 'node:child_process'
 import type { PreviewServer, ViteBuilder } from 'vite'
 import type { Page, TanStackStartOutputConfig } from './schema'
 
