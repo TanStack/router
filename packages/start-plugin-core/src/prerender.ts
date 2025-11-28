@@ -85,6 +85,9 @@ export async function prerender({
     cleanup = async () => {
       await previewServer.close()
     }
+
+    // Wait for the server to be ready (handles Nitro's child process startup time)
+    await waitForServerReady(baseUrl, logger)
   }
 
   const isRedirectResponse = (res: Response) => {
@@ -352,13 +355,48 @@ async function startPreviewServer(
   const vite = await import('vite')
 
   try {
-    return await vite.preview({
+    const server = await vite.preview({
       configFile,
       preview: {
         port: 0,
         open: false,
       },
     })
+
+    // Check if Nitro's vite plugin is active (it spawns a child process)
+    const hasNitroPlugin = server.config.plugins.some((p) => {
+      if (typeof p !== 'object' || p === null) return false
+      if (!('name' in p)) return false
+      return typeof p.name === 'string' && p.name.startsWith('nitro:')
+    })
+
+    if (hasNitroPlugin) {
+      // Wrap the close method to handle Nitro's child process cleanup
+      // Nitro's configurePreviewServer spawns a child process and registers
+      // SIGINT/SIGHUP handlers to kill it. Since previewServer.close() doesn't
+      // trigger these signals, we need to emit SIGHUP ourselves.
+      const originalClose = server.close.bind(server)
+      server.close = async () => {
+        // Temporarily override process.exit to prevent Nitro's handler from
+        // exiting our process when we emit SIGHUP
+        const originalExit = process.exit
+        process.exit = (() => {}) as typeof process.exit
+
+        // Emit SIGHUP to trigger Nitro's child process cleanup
+        process.emit('SIGHUP', 'SIGHUP')
+
+        // Restore process.exit
+        process.exit = originalExit
+
+        // Give the child process a moment to terminate
+        await new Promise((resolve) => setTimeout(resolve, 100))
+
+        // Now close the preview server
+        return originalClose()
+      }
+    }
+
+    return server
   } catch (error) {
     throw new Error(
       'Failed to start the Vite preview server for prerendering',
@@ -377,4 +415,31 @@ function getResolvedUrl(previewServer: PreviewServer): URL {
   }
 
   return new URL(baseUrl)
+}
+
+async function waitForServerReady(
+  baseUrl: URL,
+  logger: ReturnType<typeof createLogger>,
+  timeout = 30000,
+): Promise<void> {
+  const startTime = Date.now()
+  const checkInterval = 100
+
+  while (Date.now() - startTime < timeout) {
+    try {
+      const response = await fetch(new URL('/', baseUrl))
+      // Server is ready if we get any response (even 404 is fine, we just need it to not error)
+      if (response.status < 500) {
+        logger.info('Server is ready')
+        return
+      }
+    } catch {
+      // Server not ready yet, retry
+    }
+    await new Promise((resolve) => setTimeout(resolve, checkInterval))
+  }
+
+  throw new Error(
+    `Server at ${baseUrl} did not become ready within ${timeout}ms`,
+  )
 }
