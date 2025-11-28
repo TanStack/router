@@ -365,9 +365,12 @@ async function startPreviewServer(
 
     // Check if Nitro's vite plugin is active (it spawns a child process)
     const hasNitroPlugin = server.config.plugins.some((p) => {
-      if (typeof p !== 'object' || p === null) return false
-      if (!('name' in p)) return false
-      return typeof p.name === 'string' && p.name.startsWith('nitro:')
+      return (
+        typeof p === 'object' &&
+        'name' in p &&
+        typeof p.name === 'string' &&
+        p.name.startsWith('nitro:')
+      )
     })
 
     if (hasNitroPlugin) {
