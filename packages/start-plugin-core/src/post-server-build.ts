@@ -1,9 +1,41 @@
+import { promises as fsp } from 'node:fs'
+import path from 'pathe'
 import { HEADERS } from '@tanstack/start-server-core'
 import { buildSitemap } from './build-sitemap'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { prerender } from './prerender'
+import { createLogger } from './utils'
 import type { TanStackStartOutputConfig } from './schema'
 import type { ViteBuilder } from 'vite'
+
+/**
+ * Write a minimal nitro.json file for vite.preview() to work with Nitro's
+ * configurePreviewServer hook. This is needed because the 'compiled' hook
+ * runs before Nitro writes its build info.
+ */
+export async function writeNitroBuildInfo({
+  outputDir,
+  preset,
+}: {
+  outputDir: string
+  preset: string
+}) {
+  const logger = createLogger('prerender')
+  logger.info('Writing nitro.json for vite.preview()...')
+
+  const buildInfo = {
+    date: new Date().toJSON(),
+    preset,
+    framework: { name: 'tanstack-start' },
+    versions: {},
+    commands: {
+      preview: `node ${path.join(outputDir, 'server/index.mjs')}`,
+    },
+  }
+
+  const buildInfoPath = path.join(outputDir, 'nitro.json')
+  await fsp.writeFile(buildInfoPath, JSON.stringify(buildInfo, null, 2))
+}
 
 function setupPrerenderConfig(startConfig: TanStackStartOutputConfig) {
   if (startConfig.prerender?.enabled !== false) {
@@ -73,11 +105,11 @@ export async function postServerBuild({
 export async function postServerBuildForNitro({
   startConfig,
   outputDir,
-  nitroServerPath,
+  configFile,
 }: {
   startConfig: TanStackStartOutputConfig
   outputDir: string
-  nitroServerPath: string
+  configFile?: string
 }) {
   setupPrerenderConfig(startConfig)
 
@@ -85,7 +117,7 @@ export async function postServerBuildForNitro({
     await prerender({
       startConfig,
       outputDir,
-      nitroServerPath,
+      configFile,
     })
   }
 

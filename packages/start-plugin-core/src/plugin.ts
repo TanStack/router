@@ -373,28 +373,33 @@ export function TanStackStartVitePluginCore(
         },
       },
     },
-    // Nitro module plugin - runs prerendering after Nitro build
+    // Nitro module plugin - runs prerendering after Nitro build using vite preview
     {
       name: 'tanstack-start-core:nitro-prerender',
       nitro: {
         name: 'tanstack-start-prerender',
         setup(nitro: any) {
           nitro.hooks.hook('compiled', async () => {
-            const { startConfig } = getConfig()
+            const { startConfig, resolvedStartConfig } = getConfig()
             if (!startConfig.prerender?.enabled && !startConfig.spa?.enabled) {
               return
             }
 
-            const { postServerBuildForNitro } = await import(
-              './post-server-build'
-            )
+            // Write nitro.json before calling vite.preview() since Nitro's
+            // configurePreviewServer hook requires it to exist. The 'compiled'
+            // hook runs before Nitro writes the build info, so we need to
+            // write a minimal version ourselves.
+            const { writeNitroBuildInfo, postServerBuildForNitro } =
+              await import('./post-server-build')
+            await writeNitroBuildInfo({
+              outputDir: nitro.options.output.dir,
+              preset: nitro.options.preset,
+            })
+
             await postServerBuildForNitro({
               startConfig,
               outputDir: nitro.options.output.publicDir,
-              nitroServerPath: join(
-                nitro.options.output.serverDir,
-                'index.mjs',
-              ),
+              configFile: resolvedStartConfig.viteConfigFile,
             })
           })
         },
