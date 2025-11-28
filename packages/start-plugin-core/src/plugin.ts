@@ -367,7 +367,11 @@ export function TanStackStartVitePluginCore(
               typeof p.name === 'string' &&
               p.name.startsWith('nitro:'),
           )
-          await postServerBuild({ builder, startConfig, skipPrerender: hasNitro })
+          await postServerBuild({
+            builder,
+            startConfig,
+            skipPrerender: hasNitro,
+          })
         },
       },
     },

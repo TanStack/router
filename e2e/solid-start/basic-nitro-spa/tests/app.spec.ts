@@ -13,7 +13,9 @@ test('SPA shell is prerendered during build with nitro', async ({ page }) => {
 test('server functions work with nitro', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByTestId('home-heading')).toHaveText('Welcome Home!')
-  await expect(page.getByTestId('message')).toHaveText('Hello from Nitro server!')
+  await expect(page.getByTestId('message')).toHaveText(
+    'Hello from Nitro server!',
+  )
 })
 
 test('client-side navigation works in SPA mode', async ({ page }) => {
