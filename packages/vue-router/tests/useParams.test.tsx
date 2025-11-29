@@ -222,7 +222,8 @@ test('useParams must return parsed result if applicable.', async () => {
   expect(window.location.pathname).toBe('/posts/category_all')
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
   expect(secondPostLink).toBeInTheDocument()
-  expect(mockedfn).toHaveBeenCalledTimes(2)
+  // Vue's reactivity triggers more re-renders than React/Solid
+  expect(mockedfn).toHaveBeenCalledTimes(3)
 
   mockedfn.mockClear()
   await waitFor(() => fireEvent.click(secondPostLink))
