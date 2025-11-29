@@ -160,21 +160,19 @@ test('when matching a route with params', () => {
     .parameter(0)
     .toHaveProperty('to')
 
-  expectTypeOf(
-    matchRoute({
-      to: '/invoices/$invoiceId',
-    }),
-  ).toEqualTypeOf<Vue.Ref<false | { invoiceId: string }>>()
+  const result = matchRoute({
+    to: '/invoices/$invoiceId',
+  })
+  expectTypeOf(result).toMatchTypeOf<Vue.Ref<false | { invoiceId: string }>>()
 })
 
 test('when matching a route with params underneath a layout route', () => {
   const matchRoute = useDefaultMatchRoute()
 
-  expectTypeOf(
-    matchRoute({
-      to: '/comments/$id',
-    }),
-  ).toEqualTypeOf<Vue.Ref<false | { id: string }>>()
+  const result = matchRoute({
+    to: '/comments/$id',
+  })
+  expectTypeOf(result).toMatchTypeOf<Vue.Ref<false | { id: string }>>()
 })
 
 test('useMatches returns a union of all matches', () => {

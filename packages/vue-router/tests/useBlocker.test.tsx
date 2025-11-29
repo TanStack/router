@@ -428,28 +428,28 @@ describe('useBlocker', () => {
   test('<Block /> disabled property is reactive', async () => {
     const rootRoute = createRootRoute()
 
-    let _setDisabled: (val: boolean) => void = null!
+    // Use a shared reactive ref for the disabled state
+    const disabled = Vue.ref(false)
 
-    const IndexComponent = () => {
-      const navigate = useNavigate()
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        const navigate = useNavigate()
 
-      const disabled = Vue.ref(false)
-      _setDisabled = (val: boolean) => { disabled.value = val }
-
-      return (
-        <>
-          <Block shouldBlockFn={() => true} disabled={disabled.value} />
-          <h1>Index</h1>
-          <button onClick={() => navigate({ to: '/' })}>Index</button>
-          <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </>
-      )
-    }
+        return () => (
+          <>
+            <Block shouldBlockFn={() => true} disabled={disabled.value} />
+            <h1>Index</h1>
+            <button onClick={() => navigate({ to: '/' })}>Index</button>
+            <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+          </>
+        )
+      }
+    })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: IndexComponent,
+      component: IndexComponent as any,
     })
 
     const postsRoute = createRoute({
@@ -480,7 +480,8 @@ describe('useBlocker', () => {
 
     expect(window.location.pathname).toBe('/')
 
-    _setDisabled(true)
+    // Update the shared ref - Vue's reactivity will propagate the change
+    disabled.value = true
 
     postsButton = await screen.findByRole('button', { name: 'Posts' })
 

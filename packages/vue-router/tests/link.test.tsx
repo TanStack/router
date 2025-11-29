@@ -3859,30 +3859,34 @@ describe('Link', () => {
 
   test('when navigating from /posts to /invoices with conditionally rendering Link on the root', async () => {
     const ErrorComponent = vi.fn(() => <div>Something went wrong!</div>)
-    const RootComponent = () => {
-      const matchRoute = useMatchRoute()
-      const matchPosts = matchRoute({ to: '/posts' })
-      const matchInvoices = matchRoute({ to: '/invoices' })
+    // Vue requires defineComponent with setup for proper reactivity with hooks
+    const RootComponent = Vue.defineComponent({
+      setup() {
+        const matchRoute = useMatchRoute()
+        // Create the computed refs in setup so they persist across renders
+        const matchPosts = matchRoute({ to: '/posts' })
+        const matchInvoices = matchRoute({ to: '/invoices' })
 
-      return (
-        <>
-          {Boolean(matchPosts.value) && (
-            <Link from="/posts" to="/posts">
-              From posts
-            </Link>
-          )}
-          {Boolean(matchInvoices.value) && (
-            <Link from="/invoices" to="/invoices">
-              From invoices
-            </Link>
-          )}
-          <Outlet />
-        </>
-      )
-    }
+        return () => (
+          <>
+            {Boolean(matchPosts.value) && (
+              <Link from="/posts" to="/posts">
+                From posts
+              </Link>
+            )}
+            {Boolean(matchInvoices.value) && (
+              <Link from="/invoices" to="/invoices">
+                From invoices
+              </Link>
+            )}
+            <Outlet />
+          </>
+        )
+      }
+    })
 
     const rootRoute = createRootRoute({
-      component: RootComponent,
+      component: RootComponent as any,
       errorComponent: ErrorComponent,
     })
 
@@ -6269,8 +6273,9 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
 
       const LinkViaRouteApi = () => {
         // RouteApi.Link is not available in Vue, use Link with from prop instead
+        // Use postsRoute.fullPath which resolves correctly, not the route ID string
         return (
-          <Link from="/_layout/posts" to="../" data-testid="link-to-home">
+          <Link from={postsRoute.fullPath} to="../" data-testid="link-to-home">
             To Home
           </Link>
         )
@@ -6607,7 +6612,8 @@ describe('encoded and unicode paths', () => {
       expect(window.location.pathname).toBe(expectedPath)
       expect(router.latestLocation.pathname).toBe(expectedLocation)
 
-      expect(paramsToValidate.textContent).toEqual(JSON.stringify(params))
+      // Compare as objects to avoid key ordering issues
+      expect(JSON.parse(paramsToValidate.textContent!)).toEqual(params)
     },
   )
 })

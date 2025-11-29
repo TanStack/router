@@ -43,6 +43,7 @@ interface HTMLAttributes {
 interface StyledProps {
   class?: string
   style?: Record<string, string | number>
+  [key: string]: any
 }
 
 export function useLinkProps<
@@ -257,11 +258,17 @@ export function useLinkProps<
 
   // The click handler
   const handleClick = (e: MouseEvent): void => {
+    // Check actual element's target attribute as fallback
+    const elementTarget = (
+      e.currentTarget as HTMLAnchorElement | SVGAElement
+    )?.getAttribute('target')
+    const effectiveTarget = target !== undefined ? target : elementTarget
+
     if (
       !disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!target || target === '_self') &&
+      (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       // Don't prevent default or handle navigation if reloadDocument is true
@@ -556,11 +563,18 @@ export type LinkComponent<TComp> = <
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => Vue.VNode>,
 ): LinkComponent<TComp> {
-  return ((props: any) => Vue.h(Link, { ...props, _asChild: Comp })) as any
+  return Vue.defineComponent({
+    name: 'CreatedLink',
+    inheritAttrs: false,
+    setup(_, { attrs, slots }) {
+      return () => Vue.h(Link, { ...attrs, _asChild: Comp }, slots)
+    },
+  }) as any
 }
 
 const LinkImpl = Vue.defineComponent({
   name: 'Link',
+  inheritAttrs: false,
   props: [
     '_asChild',
     'to',
@@ -603,6 +617,12 @@ const LinkImpl = Vue.defineComponent({
           isTransitioning
         }) :
         []
+
+      // For custom functional components (non-string), pass children as a prop
+      // since they may expect children as a prop like in Solid
+      if (typeof Component !== 'string') {
+        return Vue.h(Component, { ...linkProps, children: slotContent }, slotContent)
+      }
 
       // Return the component with props and children
       return Vue.h(Component, linkProps, slotContent)

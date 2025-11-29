@@ -20,14 +20,17 @@ describe('RouterProvider', () => {
     const routeTree = rootRoute.addChildren([])
 
     // Vue RouterProvider supports Wrap via router.options.Wrap, not as a prop
-    const WrapComponent = (props: { children: any }) => {
-      Vue.provide(ctxKey, 'findMe')
-      return props.children
-    }
+    // Use defineComponent to properly call provide() in setup
+    const WrapComponent = Vue.defineComponent({
+      setup(_, { slots }) {
+        Vue.provide(ctxKey, 'findMe')
+        return () => slots.default?.()
+      }
+    })
 
     const router = createRouter({
       routeTree,
-      Wrap: WrapComponent,
+      Wrap: WrapComponent as any,
     })
 
     const app = render(<RouterProvider router={router} />)

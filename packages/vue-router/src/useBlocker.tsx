@@ -287,6 +287,182 @@ const _resolvePromptBlockerArgs = (
   }
 }
 
+// Internal Block implementation as a proper Vue component for reactivity
+const BlockImpl = Vue.defineComponent({
+  name: 'Block',
+  props: {
+    shouldBlockFn: {
+      type: Function as Vue.PropType<ShouldBlockFn<any>>,
+      required: false,
+    },
+    enableBeforeUnload: {
+      type: [Boolean, Function] as Vue.PropType<boolean | (() => boolean)>,
+      default: true,
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+    withResolver: {
+      type: Boolean,
+      default: false,
+    },
+    // Legacy props
+    blockerFn: {
+      type: Function as Vue.PropType<LegacyBlockerFn>,
+      required: false,
+    },
+    condition: {
+      type: [Boolean, Object] as Vue.PropType<boolean | any>,
+      required: false,
+    },
+  },
+  setup(props, { slots }) {
+    // Create a computed that resolves the blocker args reactively
+    const blockerArgs = Vue.computed<UseBlockerOpts>(() => {
+      if (props.shouldBlockFn) {
+        return {
+          shouldBlockFn: props.shouldBlockFn,
+          enableBeforeUnload: props.enableBeforeUnload,
+          disabled: props.disabled,
+          withResolver: props.withResolver,
+        }
+      }
+
+      // Legacy handling
+      const shouldBlock = Boolean(props.condition ?? true)
+      const fn = props.blockerFn
+
+      const _customBlockerFn = async () => {
+        if (shouldBlock && fn !== undefined) {
+          return await fn()
+        }
+        return shouldBlock
+      }
+
+      return {
+        shouldBlockFn: _customBlockerFn,
+        enableBeforeUnload: shouldBlock,
+        disabled: props.disabled,
+        withResolver: fn === undefined,
+      }
+    })
+
+    // Use a reactive useBlocker that re-subscribes when args change
+    const router = useRouter()
+    const { history } = router
+
+    const resolver = Vue.ref<BlockerResolver>({
+      status: 'idle',
+      current: undefined,
+      next: undefined,
+      action: undefined,
+      proceed: undefined,
+      reset: undefined,
+    })
+
+    Vue.watchEffect((onCleanup) => {
+      const args = blockerArgs.value
+
+      if (args.disabled) {
+        return
+      }
+
+      const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
+        function getLocation(
+          location: HistoryLocation,
+        ): AnyShouldBlockFnLocation {
+          const parsedLocation = router.parseLocation(location)
+          const matchedRoutes = router.getMatchedRoutes(parsedLocation.pathname)
+          if (matchedRoutes.foundRoute === undefined) {
+            return {
+              routeId: '__notFound__',
+              fullPath: parsedLocation.pathname,
+              pathname: parsedLocation.pathname,
+              params: matchedRoutes.routeParams,
+              search: parsedLocation.search,
+            }
+          }
+          return {
+            routeId: matchedRoutes.foundRoute.id,
+            fullPath: matchedRoutes.foundRoute.fullPath,
+            pathname: parsedLocation.pathname,
+            params: matchedRoutes.routeParams,
+            search: parsedLocation.search,
+          }
+        }
+
+        const current = getLocation(blockerFnArgs.currentLocation)
+        const next = getLocation(blockerFnArgs.nextLocation)
+
+        // Allow navigation away from 404 pages to valid routes
+        if (
+          current.routeId === '__notFound__' &&
+          next.routeId !== '__notFound__'
+        ) {
+          return false
+        }
+
+        const shouldBlock = await args.shouldBlockFn({
+          action: blockerFnArgs.action,
+          current,
+          next,
+        })
+        if (!args.withResolver) {
+          return shouldBlock
+        }
+
+        if (!shouldBlock) {
+          return false
+        }
+
+        const promise = new Promise<boolean>((resolve) => {
+          resolver.value = {
+            status: 'blocked',
+            current,
+            next,
+            action: blockerFnArgs.action,
+            proceed: () => resolve(false),
+            reset: () => resolve(true),
+          }
+        })
+
+        const canNavigateAsync = await promise
+        resolver.value = {
+          status: 'idle',
+          current: undefined,
+          next: undefined,
+          action: undefined,
+          proceed: undefined,
+          reset: undefined,
+        }
+
+        return canNavigateAsync
+      }
+
+      const unsubscribe = history.block({
+        blockerFn: blockerFnComposed,
+        enableBeforeUnload: args.enableBeforeUnload,
+      })
+
+      onCleanup(() => {
+        if (unsubscribe) unsubscribe()
+      })
+    })
+
+    return () => {
+      const defaultSlot = slots.default
+      if (!defaultSlot) {
+        return Vue.h(Vue.Fragment, null)
+      }
+
+      // If slot is a function that takes resolver, call it with the resolver
+      const slotContent = defaultSlot(resolver.value as any)
+      return Vue.h(Vue.Fragment, null, slotContent)
+    }
+  },
+})
+
 export function Block<
   TRouter extends AnyRouter = RegisteredRouter,
   TWithResolver extends boolean = boolean,
@@ -299,17 +475,15 @@ export function Block(opts: LegacyPromptProps): Vue.VNode
 
 export function Block(opts: PromptProps | LegacyPromptProps): Vue.VNode {
   const { children, ...rest } = opts
-  const args = _resolvePromptBlockerArgs(rest)
 
-  const resolver = useBlocker(args)
-  
-  if (!children) {
-    return Vue.h(Vue.Fragment, null)
-  }
-  
-  return typeof children === 'function'
-    ? children(resolver as any)
-    : children
+  // Convert children to slot format for the component
+  const slots = children
+    ? typeof children === 'function'
+      ? { default: children }
+      : { default: () => children }
+    : undefined
+
+  return Vue.h(BlockImpl, rest as any, slots)
 }
 
 type LegacyPromptProps = {
