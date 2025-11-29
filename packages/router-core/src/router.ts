@@ -1852,8 +1852,12 @@ export class RouterCore<
       return isEqual
     }
 
+    const latestPublicHref =
+      this.latestLocation.publicHref ?? this.latestLocation.href
+    const nextPublicHref = next.publicHref ?? next.href
+
     const isSameUrl =
-      trimPathRight(this.latestLocation.href) === trimPathRight(next.href)
+      trimPathRight(latestPublicHref) === trimPathRight(nextPublicHref)
 
     const previousCommitPromise = this.commitLocationPromise
     this.commitLocationPromise = createControlledPromise<void>(() => {
@@ -1983,10 +1987,26 @@ export class RouterCore<
       } catch {}
     }
 
+    const nextLocation = this.buildLocation({
+      to,
+      ...rest,
+      _includeValidateSearch: true,
+      _isNavigate: true,
+    } as any)
+
+    if (!reloadDocument) {
+      const currentOrigin = new URL(this.latestLocation.url).origin
+      const nextOrigin = new URL(nextLocation.url).origin
+
+      if (currentOrigin !== nextOrigin) {
+        reloadDocument = true
+        href = nextLocation.url
+      }
+    }
+
     if (reloadDocument) {
       if (!href) {
-        const location = this.buildLocation({ to, ...rest } as any)
-        href = location.url
+        href = nextLocation.url
       }
 
       // Check blockers for external URLs unless ignoreBlocker is true
@@ -2016,11 +2036,13 @@ export class RouterCore<
       return Promise.resolve()
     }
 
-    return this.buildAndCommitLocation({
-      ...rest,
-      href,
-      to: to as string,
-      _isNavigate: true,
+    return this.commitLocation({
+      ...nextLocation,
+      replace: rest.replace,
+      resetScroll: rest.resetScroll,
+      hashScrollIntoView: rest.hashScrollIntoView,
+      viewTransition: rest.viewTransition,
+      ignoreBlocker: rest.ignoreBlocker,
     })
   }
 
