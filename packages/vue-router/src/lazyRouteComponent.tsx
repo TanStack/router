@@ -96,71 +96,78 @@ export function lazyRouteComponent<
     return loadPromise
   }
 
-  // Create a lazy component wrapper
-  const lazyComp = function LazyComponent(props: any) {
-    // Create refs to track component state
-    const component = Vue.ref<any>(comp)
-    const errorState = Vue.ref<any>(error)
-    const loading = Vue.ref(!component.value && !errorState.value)
-    
-    // Setup effect to load the component when this component is used
-    Vue.onMounted(() => {
-      if (!component.value && !errorState.value) {
-        loading.value = true
-        
-        load()
-          .then((result) => {
-            component.value = result
-            loading.value = false
-          })
-          .catch((err) => {
-            errorState.value = err
-            loading.value = false
-          })
-      }
-    })
-    
-    // Handle module not found error with reload attempt
-    if (errorState.value && isModuleNotFoundError(errorState.value) && !attemptedReload) {
+  // Create a lazy component wrapper using defineComponent so it works in Vue SFC templates
+  const lazyComp = Vue.defineComponent({
+    name: 'LazyRouteComponent',
+    setup(props: any) {
+      // Create refs to track component state
+      const component = Vue.ref<any>(comp)
+      const errorState = Vue.ref<any>(error)
+      const loading = Vue.ref(!component.value && !errorState.value)
+
+      // Setup effect to load the component when this component is used
+      Vue.onMounted(() => {
+        if (!component.value && !errorState.value) {
+          loading.value = true
+
+          load()
+            .then((result) => {
+              component.value = result
+              loading.value = false
+            })
+            .catch((err) => {
+              errorState.value = err
+              loading.value = false
+            })
+        }
+      })
+
+      // Handle module not found error with reload attempt
       if (
-        typeof window !== 'undefined' &&
-        typeof sessionStorage !== 'undefined'
+        errorState.value &&
+        isModuleNotFoundError(errorState.value) &&
+        !attemptedReload
       ) {
-        // Try to reload once on module not found error
-        const storageKey = `tanstack_router_reload:${errorState.value.message}`
-        if (!sessionStorage.getItem(storageKey)) {
-          sessionStorage.setItem(storageKey, '1')
-          attemptedReload = true
-          window.location.reload()
-          return () => null // Return empty while reloading
+        if (
+          typeof window !== 'undefined' &&
+          typeof sessionStorage !== 'undefined'
+        ) {
+          // Try to reload once on module not found error
+          const storageKey = `tanstack_router_reload:${errorState.value.message}`
+          if (!sessionStorage.getItem(storageKey)) {
+            sessionStorage.setItem(storageKey, '1')
+            attemptedReload = true
+            window.location.reload()
+            return () => null // Return empty while reloading
+          }
         }
       }
-    }
-    
-    // If we have a non-module-not-found error, throw it
-    if (errorState.value && !isModuleNotFoundError(errorState.value)) {
-      throw errorState.value
-    }
-    
-    // Return a render function
-    return () => {
-      // If we're still loading or don't have a component yet, use a suspense pattern
-      if (loading.value || !component.value) {
-        return Vue.h('div', null) // Empty div while loading
+
+      // If we have a non-module-not-found error, throw it
+      if (errorState.value && !isModuleNotFoundError(errorState.value)) {
+        throw errorState.value
       }
-      
-      // If SSR is disabled for this component
-      if (ssr?.() === false) {
-        return Vue.h(ClientOnly, {
-          fallback: Vue.h(Outlet),
-          children: Vue.h(component.value, props)
-        })
+
+      // Return a render function
+      return () => {
+        // If we're still loading or don't have a component yet, use a suspense pattern
+        if (loading.value || !component.value) {
+          return Vue.h('div', null) // Empty div while loading
+        }
+
+        // If SSR is disabled for this component
+        if (ssr?.() === false) {
+          return Vue.h(ClientOnly, {
+            fallback: Vue.h(Outlet),
+            children: Vue.h(component.value, props),
+          })
+        }
+
+        // Regular render with the loaded component
+        return Vue.h(component.value, props)
       }
-      
-      // Regular render with the loaded component
-      return Vue.h(component.value, props)
-    }
-  }
+    },
+  })
 
   // Add preload method
   ;(lazyComp as any).preload = load
