@@ -368,12 +368,32 @@ async function handleServerRoutes({
               createHandlers: (d: any) => d,
             })
           : server.handlers
+      const normalizedHandlers: Record<string, any> = {}
+      for (const [k, v] of Object.entries(handlers)) {
+        normalizedHandlers[k.toUpperCase()] = v
+      }
 
-      const requestMethod = request.method.toUpperCase() as RouteMethod
-
+      let requestMethod = request.method.toUpperCase() as RouteMethod
+      if (requestMethod === 'HEAD' && normalizedHandlers['GET']) {
+        requestMethod = 'GET' as RouteMethod
+      }
+      const hasAny = !!normalizedHandlers['ANY']
       // Attempt to find the method in the handlers
-      const handler = handlers[requestMethod] ?? handlers['ANY']
+      const handler =
+        normalizedHandlers[requestMethod] ?? normalizedHandlers['ANY']
+      if (!handler && !hasAny) {
+        if (request.method.toUpperCase() === 'HEAD') {
+          return new Response(null, {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
 
+        return new Response(JSON.stringify({ error: 'Not Found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
       // If a method is found, execute the handler
       if (handler) {
         const mayDefer = !!foundRoute.options.component
