@@ -262,23 +262,28 @@ export const MatchInner = Vue.defineComponent({
       }
 
       if (match.value.status === 'error') {
-        // In Vue, we render the error component directly instead of throwing
-        // because Vue's error boundary behavior differs from React's
+        // Check if this route or any parent has an error component
         const RouteErrorComponent =
-          (route.value.options.errorComponent ??
-            router.options.defaultErrorComponent) ||
-          ErrorComponent
+          route.value.options.errorComponent ??
+          router.options.defaultErrorComponent
 
-        return Vue.h(RouteErrorComponent, {
-          error: match.value.error,
-          reset: () => {
-            // Reset error by reloading the route
-            router.invalidate()
-          },
-          info: {
-            componentStack: '',
-          }
-        })
+        // If this route has an error component, render it directly
+        // This is more reliable than relying on Vue's error boundary
+        if (RouteErrorComponent) {
+          return Vue.h(RouteErrorComponent, {
+            error: match.value.error,
+            reset: () => {
+              router.invalidate()
+            },
+            info: {
+              componentStack: '',
+            }
+          })
+        }
+
+        // If there's no error component for this route, throw the error
+        // so it can bubble up to the nearest parent with an error component
+        throw match.value.error
       }
 
       if (match.value.status === 'pending') {

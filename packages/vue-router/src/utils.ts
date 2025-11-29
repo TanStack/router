@@ -48,32 +48,56 @@ export const usePrevious = (fn: ()=> boolean ) => {
  * return <div ref={ref} />
  * ```
  */
+// WeakMap to track which refs already have an IntersectionObserver attached
+const observerMap = new WeakMap<Vue.Ref<Element | null>, Vue.Ref<IntersectionObserver | null>>()
+
 export function useIntersectionObserver<T extends Element>(
   ref: Vue.Ref<T | null>,
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean } = {},
 ): Vue.Ref<IntersectionObserver | null> {
+  // Check if we already have an observer for this ref
+  // This prevents duplicate observers when useLinkProps is called multiple times
+  const existingObserverRef = observerMap.get(ref as Vue.Ref<Element | null>)
+  if (existingObserverRef) {
+    return existingObserverRef
+  }
+
   const isIntersectionObserverAvailable =
     typeof IntersectionObserver === 'function'
   const observerRef = Vue.ref<IntersectionObserver | null>(null)
 
-  Vue.effect(() => {
+  // Store the observer ref in the map to prevent duplicates
+  observerMap.set(ref as Vue.Ref<Element | null>, observerRef)
+
+  // Use watchEffect with cleanup to properly manage the observer lifecycle
+  Vue.watchEffect((onCleanup) => {
     const r = ref.value
     if (!r || !isIntersectionObserverAvailable || options.disabled) {
       return
     }
 
-    observerRef.value = new IntersectionObserver(([entry]) => {
+    const observer = new IntersectionObserver(([entry]) => {
       callback(entry)
     }, intersectionObserverOptions)
 
-    observerRef.value.observe(r)
+    observerRef.value = observer
+    observer.observe(r)
 
-    Vue.onScopeDispose(() => {
-      observerRef.value?.disconnect()
+    onCleanup(() => {
+      observer.disconnect()
+      observerRef.value = null
     })
   })
+
+  // Clean up the map entry when the scope is disposed
+  // Only register the cleanup if we're in an active effect scope
+  if (Vue.getCurrentScope()) {
+    Vue.onScopeDispose(() => {
+      observerMap.delete(ref as Vue.Ref<Element | null>)
+    })
+  }
 
   return observerRef
 }
