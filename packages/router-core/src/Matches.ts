@@ -256,12 +256,6 @@ export type MakeRouteMatchUnion<
     >
   : never
 
-/**
- * The `MatchRouteOptions` type is used to describe the options that can be used when matching a route.
- *
- * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/MatchRouteOptionsType#matchrouteoptions-type)
- */
-export interface MatchRouteOptions {
   /**
    * If `true`, will match against pending location instead of the current location.
    *
