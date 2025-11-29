@@ -97,7 +97,15 @@ export const Transitioner = Vue.defineComponent({
       }
     })
 
+    // Track if component is mounted to prevent updates after unmount
+    const isMounted = Vue.ref(false)
+
+    Vue.onMounted(() => {
+      isMounted.value = true
+    })
+
     Vue.onUnmounted(() => {
+      isMounted.value = false
       if (unsubscribe) {
         unsubscribe()
       }
@@ -123,14 +131,20 @@ export const Transitioner = Vue.defineComponent({
     })
 
     // Setup watchers for emitting events
+    // All watchers check isMounted to prevent updates after unmount
     Vue.watch(
       () => isLoading.value,
       (newValue) => {
-        if (previousIsLoading.value.previous && !newValue) {
-          router.emit({
-            type: 'onLoad',
-            ...getLocationChangeInfo(router.state),
-          })
+        if (!isMounted.value) return
+        try {
+          if (previousIsLoading.value.previous && !newValue) {
+            router.emit({
+              type: 'onLoad',
+              ...getLocationChangeInfo(router.state),
+            })
+          }
+        } catch {
+          // Ignore errors if component is unmounted
         }
       }
     )
@@ -138,12 +152,17 @@ export const Transitioner = Vue.defineComponent({
     Vue.watch(
       isPagePending,
       (newValue) => {
-        // emit onBeforeRouteMount
-        if (previousIsPagePending.value.previous && !newValue) {
-          router.emit({
-            type: 'onBeforeRouteMount',
-            ...getLocationChangeInfo(router.state),
-          })
+        if (!isMounted.value) return
+        try {
+          // emit onBeforeRouteMount
+          if (previousIsPagePending.value.previous && !newValue) {
+            router.emit({
+              type: 'onBeforeRouteMount',
+              ...getLocationChangeInfo(router.state),
+            })
+          }
+        } catch {
+          // Ignore errors if component is unmounted
         }
       }
     )
@@ -151,23 +170,28 @@ export const Transitioner = Vue.defineComponent({
     Vue.watch(
       isAnyPending,
       (newValue) => {
-        // The router was pending and now it's not
-        if (previousIsAnyPending.value.previous && !newValue) {
-          const changeInfo = getLocationChangeInfo(router.state)
-          router.emit({
-            type: 'onResolved',
-            ...changeInfo,
-          })
+        if (!isMounted.value) return
+        try {
+          // The router was pending and now it's not
+          if (previousIsAnyPending.value.previous && !newValue) {
+            const changeInfo = getLocationChangeInfo(router.state)
+            router.emit({
+              type: 'onResolved',
+              ...changeInfo,
+            })
 
-          router.__store.setState((s) => ({
-            ...s,
-            status: 'idle',
-            resolvedLocation: s.location,
-          }))
+            router.__store.setState((s) => ({
+              ...s,
+              status: 'idle',
+              resolvedLocation: s.location,
+            }))
 
-          if (changeInfo.hrefChanged) {
-            handleHashScroll(router)
+            if (changeInfo.hrefChanged) {
+              handleHashScroll(router)
+            }
           }
+        } catch {
+          // Ignore errors if component is unmounted
         }
       }
     )

@@ -134,12 +134,12 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => (
-        <template>
+        <>
           <h1>Index</h1>
           <Link to="/posts" disabled>
             Posts
           </Link>
-        </template>
+        </>
       ),
     })
 
@@ -176,7 +176,7 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/" activeProps={{ class: 'active' }}>
               Index
@@ -184,7 +184,7 @@ describe('Link', () => {
             <Link to="/posts" inactiveProps={{ class: 'inactive' }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -228,7 +228,7 @@ describe('Link', () => {
         path: '/',
         component: () => {
           return (
-            <template>
+            <>
               <h1>Index</h1>
               <Link
                 to="/"
@@ -265,7 +265,7 @@ describe('Link', () => {
               >
                 Index foo=bar
               </Link>
-            </template>
+            </>
           )
         },
       })
@@ -421,7 +421,7 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/" activeProps={{ class: 'active' }}>
               Index
@@ -429,7 +429,7 @@ describe('Link', () => {
             <Link to="/posts" inactiveProps={{ class: 'inactive' }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -460,11 +460,11 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/">Index</Link>
             <Link to="/posts">Posts</Link>
-          </template>
+          </>
         )
       },
     })
@@ -474,13 +474,13 @@ describe('Link', () => {
       path: '/posts',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Posts</h1>
             <Link to="/">Index</Link>
             <Link to="/posts" activeProps={{ class: 'active' }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -520,11 +520,11 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/">Index</Link>
             <Link to="/posts">Posts</Link>
-          </template>
+          </>
         )
       },
     })
@@ -534,13 +534,13 @@ describe('Link', () => {
       path: '/posts',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Posts</h1>
             <Link to="/">Index</Link>
             <Link to="/posts" activeProps={{ class: 'active' }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -579,12 +579,12 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts" search={{ page: 0 }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -592,10 +592,10 @@ describe('Link', () => {
     const PostsComponent = () => {
       const search = useSearch({ strict: false })
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <span>Page: {search.value.page}</span>
-        </template>
+        </>
       )
     }
 
@@ -640,12 +640,12 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts" search={{ page: 'invalid' }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -653,10 +653,10 @@ describe('Link', () => {
     const PostsComponent = () => {
       const search = useSearch({ strict: false })
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <span>Page: {search.value.page}</span>
-        </template>
+        </>
       )
     }
 
@@ -711,12 +711,12 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts" search={{ page: 2 }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -724,10 +724,10 @@ describe('Link', () => {
     const PostsComponent = () => {
       const data = useLoaderData({ strict: false })
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <span>Page: {data.value.pageDoubled}</span>
-        </template>
+        </>
       )
     }
 
@@ -774,12 +774,12 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts" search={{ page: 2 }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -787,10 +787,10 @@ describe('Link', () => {
     const PostsComponent = () => {
       const loader = useLoaderData({ strict: false })
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <span>Page: {loader.value.pageDoubled}</span>
-        </template>
+        </>
       )
     }
 
@@ -838,13 +838,13 @@ describe('Link', () => {
     const indexOnError = vi.fn()
     const rootRoute = createRootRoute({
       component: () => (
-        <template>
+        <>
           <div>
             <Link to="/">Index</Link> <Link to="/posts">Posts</Link>
           </div>
           <hr />
           <Outlet />
-        </template>
+        </>
       ),
     })
     const indexRoute = createRoute({
@@ -852,9 +852,9 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
-          </template>
+          </>
         )
       },
       onError: indexOnError,
@@ -874,9 +874,9 @@ describe('Link', () => {
       errorComponent: () => <span>PostsError</span>,
       component: () => {
         return (
-          <template>
+          <>
             <h1>Posts</h1>
-          </template>
+          </>
         )
       },
     })
@@ -913,12 +913,12 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts" search={{ page: 2 }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -967,10 +967,10 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
-          </template>
+          </>
         )
       },
     })
@@ -978,11 +978,11 @@ describe('Link', () => {
     const PostsComponent = () => {
       const context = useRouteContext({ strict: false })
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <span>UserId: {context.value.userId}</span>
           <span>Username: {context.value.username}</span>
-        </template>
+        </>
       )
     }
 
@@ -1020,10 +1020,10 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
-          </template>
+          </>
         )
       },
     })
@@ -1070,10 +1070,10 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
-          </template>
+          </>
         )
       },
     })
@@ -1116,22 +1116,22 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts/$postId" params={{ postId: 'id1' }}>
               Post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1206,23 +1206,23 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts/$postId" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Link to="/">Index</Link>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1271,23 +1271,23 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link to="/posts/$postId" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1299,12 +1299,12 @@ describe('Link', () => {
 
     const PostsIndexComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts Index</h1>
           <Link from="/posts/" to="./$postId" params={{ postId: 'id1' }}>
             To the first post
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -1317,10 +1317,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Link to="/">Index</Link>
-        </template>
+        </>
       )
     }
 
@@ -1369,23 +1369,23 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link to="/posts/$postId" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1397,12 +1397,12 @@ describe('Link', () => {
 
     const PostsIndexComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts Index</h1>
           <Link from="/posts/" to="../posts/$postId" params={{ postId: 'id1' }}>
             To the first post
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -1415,10 +1415,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Link to="/">Index</Link>
-        </template>
+        </>
       )
     }
 
@@ -1470,13 +1470,13 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link to="/posts/$postId/details" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -1486,20 +1486,20 @@ describe('Link', () => {
       id: '_layout',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Layout</h1>
             <Outlet />
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1512,10 +1512,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1527,12 +1527,12 @@ describe('Link', () => {
 
     const DetailsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Details!</h1>
           <Link from="/posts/$postId" to="/posts/$postId/info">
             To Information
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -1607,13 +1607,13 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link to="/posts/$postId/details" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -1623,20 +1623,20 @@ describe('Link', () => {
       id: '_layout',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Layout</h1>
             <Outlet />
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1649,10 +1649,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1664,12 +1664,12 @@ describe('Link', () => {
 
     const DetailsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Details!</h1>
           <Link from="/posts/$postId" to="/posts/$postId/info">
             To Information
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -1744,13 +1744,13 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link to="/posts/$postId/details" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -1760,20 +1760,20 @@ describe('Link', () => {
       id: '_layout',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Layout</h1>
             <Outlet />
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1786,10 +1786,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1801,12 +1801,12 @@ describe('Link', () => {
 
     const DetailsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Details!</h1>
           <Link from="/posts/$postId" to="./info">
             To Information
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -1881,13 +1881,13 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link to="/posts/$postId/details" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -1897,20 +1897,20 @@ describe('Link', () => {
       id: '_layout',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Layout</h1>
             <Outlet />
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1923,10 +1923,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -1938,12 +1938,12 @@ describe('Link', () => {
 
     const DetailsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Details!</h1>
           <Link from="/posts/$postId" to="/">
             To Root
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -2003,7 +2003,7 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link
@@ -2013,7 +2013,7 @@ describe('Link', () => {
             >
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -2023,20 +2023,20 @@ describe('Link', () => {
       id: '_layout',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Layout</h1>
             <Outlet />
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2050,10 +2050,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2065,7 +2065,7 @@ describe('Link', () => {
 
     const DetailsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Details!</h1>
           <Link
             from="/posts/$postId"
@@ -2074,7 +2074,7 @@ describe('Link', () => {
           >
             To Information
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -2153,13 +2153,13 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link to="/posts/$postId/details" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -2169,20 +2169,20 @@ describe('Link', () => {
       id: '_layout',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Layout</h1>
             <Outlet />
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2195,10 +2195,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2210,12 +2210,12 @@ describe('Link', () => {
 
     const DetailsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Details!</h1>
           <Link from="/posts/$postId" to="../$postId">
             To Post
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -2287,13 +2287,13 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link to="/posts/$postId/details" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -2303,20 +2303,20 @@ describe('Link', () => {
       id: '_layout',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Layout</h1>
             <Outlet />
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2329,10 +2329,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2350,12 +2350,12 @@ describe('Link', () => {
 
     const DetailsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Details!</h1>
           <Link from="/posts/$postId" to="../$postId">
             To Post
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -2429,13 +2429,13 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts">Posts</Link>
             <Link to="/posts/$postId/details" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -2445,20 +2445,20 @@ describe('Link', () => {
       id: '_layout',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Layout</h1>
             <Outlet />
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2471,10 +2471,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2486,7 +2486,7 @@ describe('Link', () => {
 
     const DetailsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Details!</h1>
           <Link
             from="/invoices"
@@ -2495,7 +2495,7 @@ describe('Link', () => {
           >
             To Invoices
           </Link>
-        </template>
+        </>
       )
     }
 
@@ -2519,10 +2519,10 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: 'invoices',
       component: () => (
-        <template>
+        <>
           <h1>Invoices!</h1>
           <Outlet />
-        </template>
+        </>
       ),
     })
 
@@ -2575,22 +2575,22 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts/$postId/info" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2603,10 +2603,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2665,7 +2665,7 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link
               to="/posts/$postId/info"
@@ -2674,17 +2674,17 @@ describe('Link', () => {
             >
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2697,10 +2697,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2752,22 +2752,22 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts/$postId" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2782,10 +2782,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2824,7 +2824,7 @@ describe('Link', () => {
         onLoad()
       })
 
-      return <template>{status.value === 'success' ? 'Login!' : 'Waiting...'}</template>
+      return <>{status.value === 'success' ? 'Login!' : 'Waiting...'}</>
     }
 
     const loginRoute = createRoute({
@@ -2879,22 +2879,22 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts/$postId" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2907,10 +2907,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -2931,7 +2931,7 @@ describe('Link', () => {
     })
 
     const LoginComponent = () => {
-      return <template>Login!</template>
+      return <>Login!</>
     }
 
     const loginRoute = createRoute({
@@ -2979,22 +2979,22 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts/$postId" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -3007,10 +3007,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -3031,7 +3031,7 @@ describe('Link', () => {
     })
 
     const LoginComponent = () => {
-      return <template>Login!</template>
+      return <>Login!</>
     }
 
     const loginRoute = createRoute({
@@ -3079,22 +3079,22 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts/$postId" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -3107,10 +3107,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -3125,7 +3125,7 @@ describe('Link', () => {
     })
 
     const LoginComponent = () => {
-      return <template>Login!</template>
+      return <>Login!</>
     }
 
     const loginRoute = createRoute({
@@ -3180,22 +3180,22 @@ describe('Link', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts/$postId" params={{ postId: 'id1' }}>
               To first post
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -3208,10 +3208,10 @@ describe('Link', () => {
     const PostComponent = () => {
       const params = useParams({ strict: false })
       return (
-        <template>
+        <>
           <span>Params: {params.value.postId}</span>
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -3228,7 +3228,7 @@ describe('Link', () => {
     })
 
     const LoginComponent = () => {
-      return <template>Login!</template>
+      return <>Login!</>
     }
 
     const loginRoute = createRoute({
@@ -3277,7 +3277,7 @@ describe('Link', () => {
       const matchInvoices = matchRoute({ to: '/invoices' })
 
       return (
-        <template>
+        <>
           {Boolean(matchPosts.value) && (
             <Link from="/posts" to="/posts">
               From posts
@@ -3289,7 +3289,7 @@ describe('Link', () => {
             </Link>
           )}
           <Outlet />
-        </template>
+        </>
       )
     }
 
@@ -3302,10 +3302,10 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => (
-        <template>
+        <>
           <h1>Index Route</h1>
           <Link to="/posts">Go to posts</Link>
-        </template>
+        </>
       ),
     })
 
@@ -3313,10 +3313,10 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: 'posts',
       component: () => (
-        <template>
+        <>
           <h1>On Posts</h1>
           <Link to="/invoices">To invoices</Link>
-        </template>
+        </>
       ),
     })
 
@@ -3324,10 +3324,10 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: 'invoices',
       component: () => (
-        <template>
+        <>
           <h1>On Invoices</h1>
           <Link to="/posts">To posts</Link>
-        </template>
+        </>
       ),
     })
 
@@ -3562,14 +3562,14 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => (
-        <template>
+        <>
           <Link to="/$postId" params={{ postId: 2 }}>
             Go to post 2
           </Link>
           <Link to="/$postId" params={{ postId: 0 }}>
             Go to post 0
           </Link>
-        </template>
+        </>
       ),
     })
 
@@ -3630,10 +3630,10 @@ describe('Link', () => {
         getParentRoute: () => rootRoute,
         path: '/',
         component: () => (
-          <template>
+          <>
             <h1>Index Heading</h1>
             <Link to="/">Index Link</Link>
-          </template>
+          </>
         ),
       })
 
@@ -3660,12 +3660,12 @@ describe('Link', () => {
         getParentRoute: () => rootRoute,
         path: '/',
         component: () => (
-          <template>
+          <>
             <h1>Index Heading</h1>
             <Link to="/" preload={false}>
               Index Link
             </Link>
-          </template>
+          </>
         ),
       })
 
@@ -3689,10 +3689,10 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => (
-        <template>
+        <>
           <h1>Index Heading</h1>
           <Link to="/">Index Link</Link>
-        </template>
+        </>
       ),
     })
 
@@ -3721,19 +3721,19 @@ describe('Link', () => {
         mock()
       },
       component: () => (
-        <template>
+        <>
           <h1>Index Heading</h1>
           <Link to="/about">About Link</Link>
-        </template>
+        </>
       ),
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/about',
       component: () => (
-        <template>
+        <>
           <h1>About Heading</h1>
-        </template>
+        </>
       ),
     })
 
@@ -3812,7 +3812,7 @@ describe('Link', () => {
       const rootRoute = createRootRoute({
         component: () => {
           return (
-            <template>
+            <>
               <Link
                 data-testid="link-1"
                 to="/posts/$postId"
@@ -3828,7 +3828,7 @@ describe('Link', () => {
                 To second post
               </Link>
               <Outlet />
-            </template>
+            </>
           )
         },
       })
@@ -3838,19 +3838,19 @@ describe('Link', () => {
         path: '/',
         component: () => {
           return (
-            <template>
+            <>
               <h1>Index</h1>
-            </template>
+            </>
           )
         },
       })
 
       const PostsComponent = () => {
         return (
-          <template>
+          <>
             <h1>Posts</h1>
             <Outlet />
-          </template>
+          </>
         )
       }
 
@@ -3868,9 +3868,9 @@ describe('Link', () => {
       const PostComponent = () => {
         const params = useParams({ strict: false })
         return (
-          <template>
+          <>
             <span>Params: {params.value.postId}</span>
-          </template>
+          </>
         )
       }
 
@@ -4002,7 +4002,7 @@ describe('createLink', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => (
-        <template>
+        <>
           <ButtonLink
             to="/"
             overrideMeIfYouWant="Button1"
@@ -4042,7 +4042,7 @@ describe('createLink', () => {
           >
             Button3
           </ButtonLink>
-        </template>
+        </>
       ),
     })
     const postsRoute = createRoute({
@@ -4097,21 +4097,21 @@ describe('search middleware', () => {
       path: '/',
       component: () => {
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <Link to="/posts" search={(p: any) => ({ page: 123, foo: p.foo })}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
-        </template>
+        </>
       )
     }
 
@@ -4172,7 +4172,7 @@ describe('search middleware', () => {
       component: () => {
         const search = indexRoute.useSearch()
         return (
-          <template>
+          <>
             <h1>Index</h1>
             <div data-testid="search">{search.value.root ?? '$undefined'}</div>
             <Link
@@ -4185,16 +4185,16 @@ describe('search middleware', () => {
             <Link to="/posts" search={{ page: 123 }}>
               Posts
             </Link>
-          </template>
+          </>
         )
       },
     })
 
     const PostsComponent = () => {
       return (
-        <template>
+        <>
           <h1>Posts</h1>
-        </template>
+        </>
       )
     }
 
@@ -4246,7 +4246,7 @@ describe('search middleware', () => {
       validateSearch: z.object({ root: z.string().optional() }),
       component: () => {
         return (
-          <template>
+          <>
             <h1>Root</h1>
             <Link
               data-testid="root-link-posts"
@@ -4259,7 +4259,7 @@ describe('search middleware', () => {
               invoices
             </Link>
             <Outlet />
-          </template>
+          </>
         )
       },
     })
@@ -4288,13 +4288,13 @@ describe('search middleware', () => {
       component: () => {
         const search = postsRoute.useSearch()
         return (
-          <template>
+          <>
             <h1>Posts</h1>
             <div data-testid="posts-search">{search.value.foo}</div>
             <Link data-testid="posts-link-new" to="/posts/new">
               new
             </Link>
-          </template>
+          </>
         )
       },
     })
@@ -4358,7 +4358,7 @@ describe('search middleware', () => {
         path: '/',
         component: () => {
           return (
-            <template>
+            <>
               <h1>Index</h1>
               <Link
                 to="/posts/$postId"
@@ -4368,18 +4368,18 @@ describe('search middleware', () => {
               >
                 To first post
               </Link>
-            </template>
+            </>
           )
         },
       })
 
       const PostsComponent = () => {
         return (
-          <template>
+          <>
             <h1>Posts</h1>
             <Link to="/">Index</Link>
             <Outlet />
-          </template>
+          </>
         )
       }
 
