@@ -3957,7 +3957,8 @@ describe('Link', () => {
 
     expect(fromInvoicesLink).toBeInTheDocument()
 
-    expect(fromPostsLink).not.toBeInTheDocument()
+    // Query for 'From posts' link again after navigation - it should not exist
+    expect(screen.queryByRole('link', { name: 'From posts' })).not.toBeInTheDocument()
 
     const toPostsLink = await screen.findByRole('link', {
       name: 'To posts',
@@ -3968,7 +3969,8 @@ describe('Link', () => {
     const onPostsText = await screen.findByText('On Posts')
     expect(onPostsText).toBeInTheDocument()
 
-    expect(fromInvoicesLink).not.toBeInTheDocument()
+    // Query for 'From invoices' link again after navigation - it should not exist
+    expect(screen.queryByRole('link', { name: 'From invoices' })).not.toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })

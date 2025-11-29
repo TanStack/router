@@ -262,21 +262,23 @@ export const MatchInner = Vue.defineComponent({
       }
 
       if (match.value.status === 'error') {
-        if (router.isServer) {
-          const RouteErrorComponent =
-            (route.value.options.errorComponent ??
-              router.options.defaultErrorComponent) ||
-            ErrorComponent
+        // In Vue, we render the error component directly instead of throwing
+        // because Vue's error boundary behavior differs from React's
+        const RouteErrorComponent =
+          (route.value.options.errorComponent ??
+            router.options.defaultErrorComponent) ||
+          ErrorComponent
 
-          return Vue.h(RouteErrorComponent, {
-            error: match.value.error,
-            info: {
-              componentStack: '',
-            }
-          })
-        }
-
-        throw match.value.error
+        return Vue.h(RouteErrorComponent, {
+          error: match.value.error,
+          reset: () => {
+            // Reset error by reloading the route
+            router.invalidate()
+          },
+          info: {
+            componentStack: '',
+          }
+        })
       }
 
       if (match.value.status === 'pending') {
@@ -299,7 +301,17 @@ export const MatchInner = Vue.defineComponent({
           }
         }
 
-        throw router.getMatch(match.value.id)?._nonReactive.loadPromise
+        // In Vue, we render the pending component directly instead of throwing a promise
+        // because Vue's Suspense doesn't catch thrown promises like React does
+        const PendingComponent = route.value.options.pendingComponent ??
+          router.options.defaultPendingComponent
+
+        if (PendingComponent) {
+          return Vue.h(PendingComponent)
+        }
+
+        // If no pending component, return null while loading
+        return null
       }
 
       // Success status - render the component
