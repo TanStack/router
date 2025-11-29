@@ -4,7 +4,7 @@ title: How to Navigate with Search Parameters
 
 This guide covers updating and managing search parameters during navigation using TanStack Router's Link components and programmatic navigation methods.
 
-**Prerequisites:** [Set Up Basic Search Parameters](../setup-basic-search-params.md) - Foundation concepts for reading and validating search params.
+**Prerequisites:** [Set Up Basic Search Parameters](./setup-basic-search-params.md) - Foundation concepts for reading and validating search params.
 
 ## Quick Start
 
