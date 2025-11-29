@@ -1,8 +1,3 @@
-/** @jsxImportSource vue */
-/** @jsx preserve */
-
-
-
 import { beforeEach, describe, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 import {
