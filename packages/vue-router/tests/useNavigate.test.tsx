@@ -2056,7 +2056,7 @@ describe('relative navigate to current route', () => {
             <div data-testid={`detail-heading-${props.id}`}>
               Post Path "/{params.value.postId}/detail-{props.id}"!
             </div>
-            {currentTest() ? (
+            {currentTest.value ? (
               <button
                 data-testid={`detail-btn-remove-${props.id}`}
                 onClick={() => setTest(false)}
