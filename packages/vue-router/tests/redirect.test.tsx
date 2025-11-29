@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import invariant from 'tiny-invariant'
 
 import {
   Link,
@@ -273,11 +274,18 @@ describe('redirect', () => {
         routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
         // Mock server mode
         isServer: true,
+        history: createMemoryHistory({
+          initialEntries: ['/'],
+        }),
       })
 
       await router.load()
 
-      expect(router.state.redirect).toEqual({
+      expect(router.state.redirect).toBeDefined()
+      expect(router.state.redirect).toBeInstanceOf(Response)
+      invariant(router.state.redirect)
+
+      expect(router.state.redirect.options).toEqual({
         _fromLocation: expect.objectContaining({
           hash: '',
           href: '/',
@@ -286,12 +294,7 @@ describe('redirect', () => {
           searchStr: '',
         }),
         to: '/about',
-        headers: {},
-        reloadDocument: false,
         href: '/about',
-        isRedirect: true,
-        routeId: '/',
-        routerCode: 'BEFORE_LOAD',
         statusCode: 307,
       })
     })
@@ -322,14 +325,19 @@ describe('redirect', () => {
           initialEntries: ['/'],
         }),
         routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+        // Mock server mode
+        isServer: true,
       })
-
-      // Mock server mode
-      router.isServer = true
 
       await router.load()
 
-      expect(router.state.redirect).toEqual({
+      const currentRedirect = router.state.redirect
+
+      expect(currentRedirect).toBeDefined()
+      expect(currentRedirect).toBeInstanceOf(Response)
+      invariant(currentRedirect)
+
+      expect(currentRedirect.options).toEqual({
         _fromLocation: expect.objectContaining({
           hash: '',
           href: '/',
@@ -338,11 +346,7 @@ describe('redirect', () => {
           searchStr: '',
         }),
         to: '/about',
-        headers: {},
         href: '/about',
-        isRedirect: true,
-        reloadDocument: false,
-        routeId: '/',
         statusCode: 307,
       })
     })
