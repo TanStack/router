@@ -597,5 +597,15 @@ const rootRouteChildren: RootRouteChildren = {
   PostsPostIdEditRouteRoute: PostsPostIdEditRouteRoute,
 }
 export const routeTree = rootRouteImport
+  .update({
+    component: lazyRouteComponent(
+      () => import('./routes/__root.component.vue'),
+      'default',
+    ),
+    notFoundComponent: lazyRouteComponent(
+      () => import('./routes/__root.notFoundComponent.vue'),
+      'default',
+    ),
+  })
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
