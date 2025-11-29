@@ -178,6 +178,7 @@ export async function getRouteNodes(
               [
                 ['component', 'component'],
                 ['errorComponent', 'errorComponent'],
+                ['notFoundComponent', 'notFoundComponent'],
                 ['pendingComponent', 'pendingComponent'],
                 ['loader', 'loader'],
               ] satisfies Array<[FsRouteType, string]>
@@ -192,14 +193,14 @@ export async function getRouteNodes(
 
           routePath = routePath.replace(
             new RegExp(
-              `/(component|errorComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
+              `/(component|errorComponent|notFoundComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
             ),
             '',
           )
 
           originalRoutePath = originalRoutePath.replace(
             new RegExp(
-              `/(component|errorComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
+              `/(component|errorComponent|notFoundComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
             ),
             '',
           )
@@ -239,7 +240,12 @@ export async function getRouteNodes(
 
   await recurse('./')
 
-  const rootRouteNode = routeNodes.find((d) => d.routePath === `/${rootPathId}`)
+  // Find the root route node - prefer the actual route file over component/loader files
+  const rootRouteNode = routeNodes.find(
+    (d) =>
+      d.routePath === `/${rootPathId}` &&
+      !['component', 'errorComponent', 'notFoundComponent', 'pendingComponent', 'loader', 'lazy'].includes(d._fsRouteType),
+  ) ?? routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
     rootRouteNode._fsRouteType = '__root'
     rootRouteNode.variableName = 'root'
@@ -275,6 +281,7 @@ export function getRouteMeta(
     | 'component'
     | 'pendingComponent'
     | 'errorComponent'
+    | 'notFoundComponent'
   >
   variableName: string
 } {
@@ -298,6 +305,9 @@ export function getRouteMeta(
   } else if (routePath.endsWith('/errorComponent')) {
     // error component routes, i.e. `/foo.errorComponent.tsx`
     fsRouteType = 'errorComponent'
+  } else if (routePath.endsWith('/notFoundComponent')) {
+    // not found component routes, i.e. `/foo.notFoundComponent.tsx`
+    fsRouteType = 'notFoundComponent'
   }
 
   const variableName = routePathToVariable(routePath)

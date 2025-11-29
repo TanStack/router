@@ -35,8 +35,8 @@
 | `.route.ts` | Route configuration (loader, validateSearch, head, etc.) |
 | `.component.vue` | The component rendered for the route |
 | `.errorComponent.vue` | Error boundary component for the route |
+| `.notFoundComponent.vue` | Not found component for the route |
 | `.lazy.ts` | Lazy-loaded route configuration |
-| `-RootComponent.vue` | The root/layout component (prefixed with `-`) |
 | `_layout` prefix | Layout routes that wrap child routes |
 | `_` suffix (e.g., `posts_.$postId`) | Unnested routes (break out of parent layout) |
 | `(groupName)` directory | Route groups (organizational, don't affect URL) |
@@ -46,8 +46,9 @@
 
 ```
 src/routes/
-├── -RootComponent.vue          # Root layout component
 ├── __root.ts                   # Root route config
+├── __root.component.vue        # Root layout component
+├── __root.notFoundComponent.vue # Global not found component
 ├── index.route.ts              # "/" route config
 ├── index.component.vue         # "/" component
 ├── posts.route.ts              # "/posts" route config
