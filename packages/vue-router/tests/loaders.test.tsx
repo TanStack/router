@@ -339,7 +339,7 @@ test('reproducer #4245', async () => {
           <Link to="/foo" data-testid="link-to-foo">
             foo
           </Link>
-          {data()}
+          {data.value}
         </div>
       )
     },
@@ -464,7 +464,7 @@ test('reproducer #4546', async () => {
 
     return (
       <div>
-        Header Counter: <p data-testid="header-counter">{ctx().counter}</p>
+        Header Counter: <p data-testid="header-counter">{ctx.value.counter}</p>
         <button
           onClick={() => {
             router.invalidate()
@@ -503,10 +503,10 @@ test('reproducer #4546', async () => {
           <div>Index route</div>
           <div>
             route context:{' '}
-            <p data-testid="index-route-context">{ctx().counter}</p>
+            <p data-testid="index-route-context">{ctx.value.counter}</p>
           </div>
           <div>
-            loader data: <p data-testid="index-loader-data">{data().counter}</p>
+            loader data: <p data-testid="index-loader-data">{data.value.counter}</p>
           </div>
         </div>
       )
@@ -534,10 +534,10 @@ test('reproducer #4546', async () => {
         >
           <div>$id route</div>
           <div>
-            route context: <p data-testid="id-route-context">{ctx().counter}</p>
+            route context: <p data-testid="id-route-context">{ctx.value.counter}</p>
           </div>
           <div>
-            loader data: <p data-testid="id-loader-data">{data().counter}</p>
+            loader data: <p data-testid="id-loader-data">{data.value.counter}</p>
           </div>
         </div>
       )
