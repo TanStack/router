@@ -11,15 +11,48 @@
 import { lazyRouteComponent } from '@tanstack/vue-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char45824Char54620Char48124Char44397RouteRouteImport } from './routes/대한민국.route'
+import { Route as RemountDepsRouteRouteImport } from './routes/remountDeps.route'
 import { Route as PostsRouteRouteImport } from './routes/posts.route'
+import { Route as NotRemountDepsRouteRouteImport } from './routes/notRemountDeps.route'
+import { Route as EditingBRouteRouteImport } from './routes/editing-b.route'
+import { Route as EditingARouteRouteImport } from './routes/editing-a.route'
 import { Route as LayoutRouteRouteImport } from './routes/_layout.route'
 import { Route as IndexRouteRouteImport } from './routes/index.route'
 import { Route as PostsIndexRouteRouteImport } from './routes/posts.index.route'
 import { Route as PostsPostIdRouteRouteImport } from './routes/posts.$postId.route'
 import { Route as LayoutLayout2RouteRouteImport } from './routes/_layout/_layout-2.route'
+import { Route as groupLazyinsideRouteRouteImport } from './routes/(group)/lazyinside.route'
+import { Route as groupInsideRouteRouteImport } from './routes/(group)/inside.route'
+import { Route as groupLayoutRouteRouteImport } from './routes/(group)/_layout.route'
+import { Route as anotherGroupOnlyrouteinsideRouteRouteImport } from './routes/(another-group)/onlyrouteinside.route'
+import { Route as PostsPostIdEditRouteRouteImport } from './routes/posts_.$postId.edit.route'
 import { Route as LayoutLayout2LayoutBRouteRouteImport } from './routes/_layout/_layout-2/layout-b.route'
 import { Route as LayoutLayout2LayoutARouteRouteImport } from './routes/_layout/_layout-2/layout-a.route'
+import { Route as groupSubfolderInsideRouteRouteImport } from './routes/(group)/subfolder/inside.route'
+import { Route as groupLayoutInsidelayoutRouteRouteImport } from './routes/(group)/_layout.insidelayout.route'
 
+const Char45824Char54620Char48124Char44397RouteRoute =
+  Char45824Char54620Char48124Char44397RouteRouteImport.update({
+    id: '/대한민국',
+    path: '/대한민국',
+    getParentRoute: () => rootRouteImport,
+  } as any).update({
+    component: lazyRouteComponent(
+      () => import('./routes/대한민국.component.vue'),
+      'default',
+    ),
+  })
+const RemountDepsRouteRoute = RemountDepsRouteRouteImport.update({
+  id: '/remountDeps',
+  path: '/remountDeps',
+  getParentRoute: () => rootRouteImport,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/remountDeps.component.vue'),
+    'default',
+  ),
+})
 const PostsRouteRoute = PostsRouteRouteImport.update({
   id: '/posts',
   path: '/posts',
@@ -27,6 +60,36 @@ const PostsRouteRoute = PostsRouteRouteImport.update({
 } as any).update({
   component: lazyRouteComponent(
     () => import('./routes/posts.component.vue'),
+    'default',
+  ),
+})
+const NotRemountDepsRouteRoute = NotRemountDepsRouteRouteImport.update({
+  id: '/notRemountDeps',
+  path: '/notRemountDeps',
+  getParentRoute: () => rootRouteImport,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/notRemountDeps.component.vue'),
+    'default',
+  ),
+})
+const EditingBRouteRoute = EditingBRouteRouteImport.update({
+  id: '/editing-b',
+  path: '/editing-b',
+  getParentRoute: () => rootRouteImport,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/editing-b.component.vue'),
+    'default',
+  ),
+})
+const EditingARouteRoute = EditingARouteRouteImport.update({
+  id: '/editing-a',
+  path: '/editing-a',
+  getParentRoute: () => rootRouteImport,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/editing-a.component.vue'),
     'default',
   ),
 })
@@ -82,6 +145,64 @@ const LayoutLayout2RouteRoute = LayoutLayout2RouteRouteImport.update({
     'default',
   ),
 })
+const groupLazyinsideRouteRoute = groupLazyinsideRouteRouteImport
+  .update({
+    id: '/(group)/lazyinside',
+    path: '/lazyinside',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+  .update({
+    component: lazyRouteComponent(
+      () => import('./routes/(group)/lazyinside.component.vue'),
+      'default',
+    ),
+  })
+const groupInsideRouteRoute = groupInsideRouteRouteImport
+  .update({
+    id: '/(group)/inside',
+    path: '/inside',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+  .update({
+    component: lazyRouteComponent(
+      () => import('./routes/(group)/inside.component.vue'),
+      'default',
+    ),
+  })
+const groupLayoutRouteRoute = groupLayoutRouteRouteImport
+  .update({
+    id: '/(group)/_layout',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+  .update({
+    component: lazyRouteComponent(
+      () => import('./routes/(group)/_layout.component.vue'),
+      'default',
+    ),
+  })
+const anotherGroupOnlyrouteinsideRouteRoute =
+  anotherGroupOnlyrouteinsideRouteRouteImport
+    .update({
+      id: '/(another-group)/onlyrouteinside',
+      path: '/onlyrouteinside',
+      getParentRoute: () => rootRouteImport,
+    } as any)
+    .update({
+      component: lazyRouteComponent(
+        () => import('./routes/(another-group)/onlyrouteinside.component.vue'),
+        'default',
+      ),
+    })
+const PostsPostIdEditRouteRoute = PostsPostIdEditRouteRouteImport.update({
+  id: '/posts_/$postId/edit',
+  path: '/posts/$postId/edit',
+  getParentRoute: () => rootRouteImport,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/posts_.$postId.edit.component.vue'),
+    'default',
+  ),
+})
 const LayoutLayout2LayoutBRouteRoute =
   LayoutLayout2LayoutBRouteRouteImport.update({
     id: '/layout-b',
@@ -104,60 +225,207 @@ const LayoutLayout2LayoutARouteRoute =
       'default',
     ),
   })
+const groupSubfolderInsideRouteRoute = groupSubfolderInsideRouteRouteImport
+  .update({
+    id: '/(group)/subfolder/inside',
+    path: '/subfolder/inside',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+  .update({
+    component: lazyRouteComponent(
+      () => import('./routes/(group)/subfolder/inside.component.vue'),
+      'default',
+    ),
+  })
+const groupLayoutInsidelayoutRouteRoute =
+  groupLayoutInsidelayoutRouteRouteImport
+    .update({
+      id: '/insidelayout',
+      path: '/insidelayout',
+      getParentRoute: () => groupLayoutRouteRoute,
+    } as any)
+    .update({
+      component: lazyRouteComponent(
+        () => import('./routes/(group)/_layout.insidelayout.component.vue'),
+        'default',
+      ),
+    })
 
 export interface FileRoutesByFullPath {
+  '/editing-a': typeof EditingARouteRoute
+  '/editing-b': typeof EditingBRouteRoute
+  '/notRemountDeps': typeof NotRemountDepsRouteRoute
   '/posts': typeof PostsIndexRouteRoute
+  '/remountDeps': typeof RemountDepsRouteRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRoute
+  '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRouteRoute
+  '/inside': typeof groupInsideRouteRoute
+  '/lazyinside': typeof groupLazyinsideRouteRoute
   '/posts/$postId': typeof PostsPostIdRouteRoute
+  '/insidelayout': typeof groupLayoutInsidelayoutRouteRoute
+  '/subfolder/inside': typeof groupSubfolderInsideRouteRoute
   '/layout-a': typeof LayoutLayout2LayoutARouteRoute
   '/layout-b': typeof LayoutLayout2LayoutBRouteRoute
+  '/posts/$postId/edit': typeof PostsPostIdEditRouteRoute
 }
 export interface FileRoutesByTo {
+  '/editing-a': typeof EditingARouteRoute
+  '/editing-b': typeof EditingBRouteRoute
+  '/notRemountDeps': typeof NotRemountDepsRouteRoute
   '/posts': typeof PostsIndexRouteRoute
+  '/remountDeps': typeof RemountDepsRouteRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRoute
+  '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRouteRoute
+  '/inside': typeof groupInsideRouteRoute
+  '/lazyinside': typeof groupLazyinsideRouteRoute
   '/posts/$postId': typeof PostsPostIdRouteRoute
+  '/insidelayout': typeof groupLayoutInsidelayoutRouteRoute
+  '/subfolder/inside': typeof groupSubfolderInsideRouteRoute
   '/layout-a': typeof LayoutLayout2LayoutARouteRoute
   '/layout-b': typeof LayoutLayout2LayoutBRouteRoute
+  '/posts/$postId/edit': typeof PostsPostIdEditRouteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRouteRoute
   '/_layout': typeof LayoutRouteRouteWithChildren
+  '/editing-a': typeof EditingARouteRoute
+  '/editing-b': typeof EditingBRouteRoute
+  '/notRemountDeps': typeof NotRemountDepsRouteRoute
   '/posts': typeof PostsRouteRouteWithChildren
+  '/remountDeps': typeof RemountDepsRouteRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRoute
+  '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRouteRoute
+  '/(group)/_layout': typeof groupLayoutRouteRouteWithChildren
+  '/(group)/inside': typeof groupInsideRouteRoute
+  '/(group)/lazyinside': typeof groupLazyinsideRouteRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRouteRoute
   '/posts/': typeof PostsIndexRouteRoute
+  '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRouteRoute
+  '/(group)/subfolder/inside': typeof groupSubfolderInsideRouteRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARouteRoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRouteRoute
+  '/posts_/$postId/edit': typeof PostsPostIdEditRouteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/posts' | '/posts/$postId' | '/layout-a' | '/layout-b'
+  fullPaths:
+    | '/editing-a'
+    | '/editing-b'
+    | '/notRemountDeps'
+    | '/posts'
+    | '/remountDeps'
+    | '/대한민국'
+    | '/onlyrouteinside'
+    | '/inside'
+    | '/lazyinside'
+    | '/posts/$postId'
+    | '/insidelayout'
+    | '/subfolder/inside'
+    | '/layout-a'
+    | '/layout-b'
+    | '/posts/$postId/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/posts' | '/posts/$postId' | '/layout-a' | '/layout-b'
+  to:
+    | '/editing-a'
+    | '/editing-b'
+    | '/notRemountDeps'
+    | '/posts'
+    | '/remountDeps'
+    | '/대한민국'
+    | '/onlyrouteinside'
+    | '/inside'
+    | '/lazyinside'
+    | '/posts/$postId'
+    | '/insidelayout'
+    | '/subfolder/inside'
+    | '/layout-a'
+    | '/layout-b'
+    | '/posts/$postId/edit'
   id:
     | '__root__'
     | '/'
     | '/_layout'
+    | '/editing-a'
+    | '/editing-b'
+    | '/notRemountDeps'
     | '/posts'
+    | '/remountDeps'
+    | '/대한민국'
+    | '/(another-group)/onlyrouteinside'
+    | '/(group)/_layout'
+    | '/(group)/inside'
+    | '/(group)/lazyinside'
     | '/_layout/_layout-2'
     | '/posts/$postId'
     | '/posts/'
+    | '/(group)/_layout/insidelayout'
+    | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/posts_/$postId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRouteRoute: typeof IndexRouteRoute
   LayoutRouteRoute: typeof LayoutRouteRouteWithChildren
+  EditingARouteRoute: typeof EditingARouteRoute
+  EditingBRouteRoute: typeof EditingBRouteRoute
+  NotRemountDepsRouteRoute: typeof NotRemountDepsRouteRoute
   PostsRouteRoute: typeof PostsRouteRouteWithChildren
+  RemountDepsRouteRoute: typeof RemountDepsRouteRoute
+  Char45824Char54620Char48124Char44397RouteRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
+  anotherGroupOnlyrouteinsideRouteRoute: typeof anotherGroupOnlyrouteinsideRouteRoute
+  groupLayoutRouteRoute: typeof groupLayoutRouteRouteWithChildren
+  groupInsideRouteRoute: typeof groupInsideRouteRoute
+  groupLazyinsideRouteRoute: typeof groupLazyinsideRouteRoute
+  groupSubfolderInsideRouteRoute: typeof groupSubfolderInsideRouteRoute
+  PostsPostIdEditRouteRoute: typeof PostsPostIdEditRouteRoute
 }
 
 declare module '@tanstack/vue-router' {
   interface FileRoutesByPath {
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/remountDeps': {
+      id: '/remountDeps'
+      path: '/remountDeps'
+      fullPath: '/remountDeps'
+      preLoaderRoute: typeof RemountDepsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notRemountDeps': {
+      id: '/notRemountDeps'
+      path: '/notRemountDeps'
+      fullPath: '/notRemountDeps'
+      preLoaderRoute: typeof NotRemountDepsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editing-b': {
+      id: '/editing-b'
+      path: '/editing-b'
+      fullPath: '/editing-b'
+      preLoaderRoute: typeof EditingBRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editing-a': {
+      id: '/editing-a'
+      path: '/editing-a'
+      fullPath: '/editing-a'
+      preLoaderRoute: typeof EditingARouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -195,6 +463,41 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof LayoutLayout2RouteRouteImport
       parentRoute: typeof LayoutRouteRoute
     }
+    '/(group)/lazyinside': {
+      id: '/(group)/lazyinside'
+      path: '/lazyinside'
+      fullPath: '/lazyinside'
+      preLoaderRoute: typeof groupLazyinsideRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(group)/inside': {
+      id: '/(group)/inside'
+      path: '/inside'
+      fullPath: '/inside'
+      preLoaderRoute: typeof groupInsideRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(group)/_layout': {
+      id: '/(group)/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof groupLayoutRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(another-group)/onlyrouteinside': {
+      id: '/(another-group)/onlyrouteinside'
+      path: '/onlyrouteinside'
+      fullPath: '/onlyrouteinside'
+      preLoaderRoute: typeof anotherGroupOnlyrouteinsideRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts_/$postId/edit': {
+      id: '/posts_/$postId/edit'
+      path: '/posts/$postId/edit'
+      fullPath: '/posts/$postId/edit'
+      preLoaderRoute: typeof PostsPostIdEditRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
       path: '/layout-b'
@@ -208,6 +511,20 @@ declare module '@tanstack/vue-router' {
       fullPath: '/layout-a'
       preLoaderRoute: typeof LayoutLayout2LayoutARouteRouteImport
       parentRoute: typeof LayoutLayout2RouteRoute
+    }
+    '/(group)/subfolder/inside': {
+      id: '/(group)/subfolder/inside'
+      path: '/subfolder/inside'
+      fullPath: '/subfolder/inside'
+      preLoaderRoute: typeof groupSubfolderInsideRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(group)/_layout/insidelayout': {
+      id: '/(group)/_layout/insidelayout'
+      path: '/insidelayout'
+      fullPath: '/insidelayout'
+      preLoaderRoute: typeof groupLayoutInsidelayoutRouteRouteImport
+      parentRoute: typeof groupLayoutRouteRoute
     }
   }
 }
@@ -251,10 +568,33 @@ const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
   PostsRouteRouteChildren,
 )
 
+interface groupLayoutRouteRouteChildren {
+  groupLayoutInsidelayoutRouteRoute: typeof groupLayoutInsidelayoutRouteRoute
+}
+
+const groupLayoutRouteRouteChildren: groupLayoutRouteRouteChildren = {
+  groupLayoutInsidelayoutRouteRoute: groupLayoutInsidelayoutRouteRoute,
+}
+
+const groupLayoutRouteRouteWithChildren =
+  groupLayoutRouteRoute._addFileChildren(groupLayoutRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRouteRoute: IndexRouteRoute,
   LayoutRouteRoute: LayoutRouteRouteWithChildren,
+  EditingARouteRoute: EditingARouteRoute,
+  EditingBRouteRoute: EditingBRouteRoute,
+  NotRemountDepsRouteRoute: NotRemountDepsRouteRoute,
   PostsRouteRoute: PostsRouteRouteWithChildren,
+  RemountDepsRouteRoute: RemountDepsRouteRoute,
+  Char45824Char54620Char48124Char44397RouteRoute:
+    Char45824Char54620Char48124Char44397RouteRoute,
+  anotherGroupOnlyrouteinsideRouteRoute: anotherGroupOnlyrouteinsideRouteRoute,
+  groupLayoutRouteRoute: groupLayoutRouteRouteWithChildren,
+  groupInsideRouteRoute: groupInsideRouteRoute,
+  groupLazyinsideRouteRoute: groupLazyinsideRouteRoute,
+  groupSubfolderInsideRouteRoute: groupSubfolderInsideRouteRoute,
+  PostsPostIdEditRouteRoute: PostsPostIdEditRouteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
