@@ -71,15 +71,9 @@ export function useMatch<
 > {
   const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
 
-  // Track if the component is mounted to prevent throwing after unmount
-  const isMounted = Vue.ref(true)
-  Vue.onUnmounted(() => {
-    isMounted.value = false
-  })
-
-  // Create a ref to track error state separately from the match
-  // This pattern matches Solid's approach of throwing outside the reactive selector
-  const matchState = useRouterState({
+  // Select the match from router state
+  // Similar to Solid's approach, we check isTransitioning for all match lookups
+  const matchSelection = useRouterState({
     select: (state: any) => {
       const match = state.matches.find((d: any) =>
         opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
@@ -91,32 +85,26 @@ export function useMatch<
           opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
         )
 
-        // Determine if we should throw an error
-        const shouldThrowError =
-          isMounted.value &&
-          !pendingMatch &&
-          !state.isTransitioning &&
-          (opts.shouldThrow ?? true)
+        // If there's a pending match or we're transitioning, return undefined
+        // This matches Solid's behavior which only throws when NOT transitioning
+        if (pendingMatch || state.isTransitioning) {
+          return undefined
+        }
 
-        return { match: undefined, shouldThrowError }
+        // Only throw if shouldThrow is true (default) and we're not in a transition
+        if (opts.shouldThrow ?? true) {
+          invariant(
+            false,
+            `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+          )
+        }
+
+        return undefined
       }
 
-      return {
-        match: opts.select ? opts.select(match) : match,
-        shouldThrowError: false,
-      }
+      return opts.select ? opts.select(match) : match
     },
   } as any)
 
-  // Throw synchronously during component render if needed
-  // This allows error boundaries to catch the error
-  const state = matchState.value
-  if (state?.shouldThrowError) {
-    throw new Error(
-      `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-    )
-  }
-
-  // Return a computed that extracts just the match value
-  return Vue.computed(() => matchState.value?.match) as any
+  return matchSelection as any
 }
