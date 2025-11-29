@@ -9,5 +9,6 @@ packages:
   - 'e2e/e2e-utils'
   - 'e2e/react-router/*'
   - 'e2e/solid-router/*'
+  - 'e2e/vue-router/*'
   - 'e2e/react-start/*'
   - 'e2e/solid-start/*'
