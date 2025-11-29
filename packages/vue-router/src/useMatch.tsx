@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'
-import { dummyMatchContext, matchContext, injectMatch, injectDummyMatch } from './matchContext'
+import { injectMatch, injectDummyMatch } from './matchContext'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -74,15 +74,25 @@ export function useMatch<
   const matchSelection = useRouterState({
     select: (state: any) => {
       const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value
+        opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
       )
 
-      invariant(
-        !((opts.shouldThrow ?? true) && !match),
-        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-      )
+      // During transitions, don't throw - just return undefined
+      // Vue doesn't have startTransition like React/Solid, so we need to be defensive
+      if (!match) {
+        // Check if we're in a transition or if there's a pending match
+        const pendingMatch = state.pendingMatches?.find((d: any) =>
+          opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
+        )
 
-      if (match === undefined) {
+        // Only throw if explicitly requested and we're not in a transition
+        if ((opts.shouldThrow ?? true) && !pendingMatch && !state.isTransitioning) {
+          invariant(
+            false,
+            `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+          )
+        }
+
         return undefined
       }
 

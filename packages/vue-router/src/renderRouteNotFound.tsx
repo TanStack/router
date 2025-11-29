@@ -1,40 +1,35 @@
 import * as Vue from 'vue'
-import { useRouter } from './useRouter'
+import warning from 'tiny-warning'
 import { DefaultGlobalNotFound } from './not-found'
-import type { AnyRoute } from '@tanstack/router-core'
+import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
 
-// Simplified type for NotFoundError
-interface NotFoundError {
-  routeId?: string
-  pathname?: string
-  search?: string
-  href?: string
-}
-
+/**
+ * Renders a not found component for a route when no matching route is found.
+ *
+ * @param router - The router instance containing the route configuration
+ * @param route - The route that triggered the not found state
+ * @param data - Additional data to pass to the not found component
+ * @returns The rendered not found component or a default fallback component
+ */
 export function renderRouteNotFound(
-  router: ReturnType<typeof useRouter>,
+  router: AnyRouter,
   route: AnyRoute,
-  error?: NotFoundError,
+  data: any,
 ): Vue.VNode {
-  // Prepare the props
-  const data: NotFoundError = {
-    routeId: route.id,
-    pathname: error?.pathname || router.state.location.pathname,
-    search: error?.search || router.state.location.search,
-    href: error?.href || router.state.location.href,
+  if (!route.options.notFoundComponent) {
+    if (router.options.defaultNotFoundComponent) {
+      return Vue.h(router.options.defaultNotFoundComponent as any, data)
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      warning(
+        route.options.notFoundComponent,
+        `A notFoundError was encountered on the route with ID "${route.id}", but a notFoundComponent option was not configured, nor was a router level defaultNotFoundComponent configured. Consider configuring at least one of these to avoid TanStack Router's overly generic defaultNotFoundComponent (<p>Not Found</p>)`,
+      )
+    }
+
+    return Vue.h(DefaultGlobalNotFound)
   }
 
-  if (route.isRoot && router.options.defaultNotFoundComponent) {
-    return Vue.h(router.options.defaultNotFoundComponent, { data })
-  }
-
-  if (router.options.defaultNotFoundComponent && !route.options.notFoundComponent) {
-    return Vue.h(router.options.defaultNotFoundComponent, { data })
-  }
-
-  if (route.options.notFoundComponent) {
-    return Vue.h(route.options.notFoundComponent, { data })
-  }
-
-  return Vue.h(DefaultGlobalNotFound)
+  return Vue.h(route.options.notFoundComponent as any, data)
 }

@@ -10313,8 +10313,8 @@ importers:
         specifier: workspace:*
         version: link:../router-core
       '@tanstack/vue-store':
-        specifier: ^0.7.0
-        version: 0.7.7(vue@3.5.25(typescript@5.9.2))
+        specifier: ^0.8.0
+        version: 0.8.0(vue@3.5.25(typescript@5.9.2))
       jsesc:
         specifier: ^3.0.2
         version: 3.1.0
@@ -10344,7 +10344,7 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       vue:
-        specifier: ^3.3.0
+        specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
         specifier: ^3.23.8
@@ -15151,9 +15151,6 @@ packages:
     peerDependencies:
       solid-js: 1.9.10
 
-  '@tanstack/store@0.7.7':
-    resolution: {integrity: sha512-xa6pTan1bcaqYDS9BDpSiS63qa6EoDkPN9RsRaxHuDdVDNntzq3xNwR5YKTU/V3SkSyC9T4YVOPh2zRQN0nhIQ==}
-
   '@tanstack/store@0.8.0':
     resolution: {integrity: sha512-Om+BO0YfMZe//X2z0uLF2j+75nQga6TpTJgLJQBiq85aOyZNIhkCgleNcud2KQg4k4v9Y9l+Uhru3qWMPGTOzQ==}
 
@@ -15171,8 +15168,8 @@ packages:
     resolution: {integrity: sha512-sTlzLXTvFwtPFAFrRNmU93ppl+atpX9ehWQDu+ZqfEX9vXxX/d1hUQp3wcbpgudA2SsIV7z0a8Hv6MBU63sGwQ==}
     engines: {node: '>=18'}
 
-  '@tanstack/vue-store@0.7.7':
-    resolution: {integrity: sha512-6iv1Odmreff6TgEjQN11xoddsCnpn+/ul7MZ2DadHT3/RSY1YdoFafK8lCa889MEFi/5K0zAhf8psIkgTrRa9A==}
+  '@tanstack/vue-store@0.8.0':
+    resolution: {integrity: sha512-YLsinYboBLIjNkxDpAn1ydaMS35dKq3M3a788JRCJi4/stWcN7Swp0pxxJ+p0IwKSY4tBXx7vMz22OYWQ1QsUQ==}
     peerDependencies:
       '@vue/composition-api': ^1.2.1
       vue: ^2.5.0 || ^3.0.0
@@ -27392,8 +27389,6 @@ snapshots:
       '@tanstack/virtual-core': 3.13.12
       solid-js: 1.9.10
 
-  '@tanstack/store@0.7.7': {}
-
   '@tanstack/store@0.8.0': {}
 
   '@tanstack/typedoc-config@0.3.0(typescript@5.9.2)':
@@ -27421,9 +27416,9 @@ snapshots:
       - typescript
       - vite
 
-  '@tanstack/vue-store@0.7.7(vue@3.5.25(typescript@5.9.2))':
+  '@tanstack/vue-store@0.8.0(vue@3.5.25(typescript@5.9.2))':
     dependencies:
-      '@tanstack/store': 0.7.7
+      '@tanstack/store': 0.8.0
       vue: 3.5.25(typescript@5.9.2)
       vue-demi: 0.14.10(vue@3.5.25(typescript@5.9.2))
 

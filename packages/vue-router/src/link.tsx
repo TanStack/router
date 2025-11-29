@@ -255,7 +255,7 @@ export function useLinkProps<
   }
 
   // The click handler
-  const handleClick = (e: MouseEvent) => {
+  const handleClick = (e: MouseEvent): void => {
     if (
       !disabled &&
       !isCtrlEvent(e) &&
@@ -265,9 +265,9 @@ export function useLinkProps<
     ) {
       // Don't prevent default or handle navigation if reloadDocument is true
       if (_options.value.reloadDocument) {
-        return;
+        return
       }
-      
+
       e.preventDefault()
 
       isTransitioning.value = true
@@ -278,7 +278,7 @@ export function useLinkProps<
       })
 
       // All is well? Navigate!
-      return router.navigate({
+      router.navigate({
         ..._options.value,
         replace,
         resetScroll,

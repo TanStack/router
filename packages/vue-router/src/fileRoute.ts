@@ -20,6 +20,7 @@ import type {
   FileBaseRouteOptions,
   FileRoutesByPath,
   LazyRouteOptions,
+  Register,
   RegisteredRouter,
   ResolveParams,
   Route,
@@ -28,6 +29,7 @@ import type {
   RouteIds,
   RouteLoaderFn,
   UpdatableRouteOptions,
+  UseNavigateResult,
 } from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
@@ -41,14 +43,19 @@ export function createFileRoute<
   TFullPath extends
     RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
 >(
-  path: TFilePath,
+  path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
+  if (typeof path === 'object') {
+    return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
+      silent: true,
+    }).createRoute(path) as any
+  }
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
   }).createRoute
 }
 
-/** 
+/**
   @deprecated It's no longer recommended to use the `FileRoute` class directly.
   Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
 */
@@ -63,13 +70,14 @@ export class FileRoute<
   silent?: boolean
 
   constructor(
-    public path: TFilePath,
+    public path?: TFilePath,
     _opts?: { silent: boolean },
   ) {
     this.silent = _opts?.silent
   }
 
   createRoute = <
+    TRegister = Register,
     TSearchValidator = undefined,
     TParams = ResolveParams<TPath>,
     TRouteContextFn = AnyContext,
@@ -77,8 +85,12 @@ export class FileRoute<
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
     TChildren = unknown,
+    TSSR = unknown,
+    TMiddlewares = unknown,
+    THandlers = undefined,
   >(
     options?: FileBaseRouteOptions<
+      TRegister,
       TParentRoute,
       TId,
       TPath,
@@ -88,7 +100,11 @@ export class FileRoute<
       TLoaderFn,
       AnyContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      AnyContext,
+      TSSR,
+      TMiddlewares,
+      THandlers
     > &
       UpdatableRouteOptions<
         TParentRoute,
@@ -103,6 +119,7 @@ export class FileRoute<
         TBeforeLoadFn
       >,
   ): Route<
+    TRegister,
     TParentRoute,
     TPath,
     TFullPath,
@@ -116,7 +133,10 @@ export class FileRoute<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
-    unknown
+    unknown,
+    TSSR,
+    TMiddlewares,
+    THandlers
   > => {
     warning(
       this.silent,
@@ -128,7 +148,7 @@ export class FileRoute<
   }
 }
 
-/** 
+/**
   @deprecated It's recommended not to split loaders into separate files.
   Instead, place the loader function in the the main route file, inside the
   `createFileRoute('/path/to/file)(options)` options.
@@ -142,6 +162,7 @@ export function FileRouteLoader<
   loaderFn: Constrain<
     TLoaderFn,
     RouteLoaderFn<
+      Register,
       TRoute['parentRoute'],
       TRoute['types']['id'],
       TRoute['types']['params'],
@@ -157,6 +178,18 @@ export function FileRouteLoader<
     `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
   )
   return (loaderFn) => loaderFn as any
+}
+
+declare module '@tanstack/router-core' {
+  export interface LazyRoute<in out TRoute extends AnyRoute> {
+    useMatch: UseMatchRoute<TRoute['id']>
+    useRouteContext: UseRouteContextRoute<TRoute['id']>
+    useSearch: UseSearchRoute<TRoute['id']>
+    useParams: UseParamsRoute<TRoute['id']>
+    useLoaderDeps: UseLoaderDepsRoute<TRoute['id']>
+    useLoaderData: UseLoaderDataRoute<TRoute['id']>
+    useNavigate: () => UseNavigateResult<TRoute['fullPath']>
+  }
 }
 
 export class LazyRoute<TRoute extends AnyRoute> {
@@ -208,7 +241,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
     return useLoaderData({ ...opts, from: this.options.id } as any)
   }
 
-  useNavigate = () => {
+  useNavigate = (): UseNavigateResult<TRoute['fullPath']> => {
     const router = useRouter()
     return useNavigate({ from: router.routesById[this.options.id].fullPath })
   }
@@ -229,6 +262,10 @@ export function createLazyRoute<
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
->(id: TFilePath) {
+>(id: TFilePath): (opts: LazyRouteOptions) => LazyRoute<TRoute> {
+  if (typeof id === 'object') {
+    return new LazyRoute<TRoute>(id) as any
+  }
+
   return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
 }
