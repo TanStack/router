@@ -1,3 +1,3 @@
 <template>
-  <div>Select a post.</div>
+  <div data-testid="PostsIndexComponent">Select a post.</div>
 </template>

@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { useRouterState } from '@tanstack/vue-router'
-import { NotFoundError } from '../posts'
+import { ErrorComponent } from '@tanstack/vue-router'
+import type { ErrorComponentProps } from '@tanstack/vue-router'
 
-const routerState = useRouterState()
-const error = routerState.value.error as Error | undefined
+const props = defineProps<ErrorComponentProps>()
 </script>
 
 <template>
-  <div v-if="error instanceof NotFoundError">
-    {{ error.message }}
-  </div>
-  <div v-else-if="error">An error occurred: {{ error.message }}</div>
+  <ErrorComponent :error="props.error" />
 </template>

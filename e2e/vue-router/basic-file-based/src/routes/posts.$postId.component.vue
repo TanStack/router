@@ -7,8 +7,7 @@ const post = useLoaderData({ from: '/posts/$postId' }) as unknown as PostType
 
 <template>
   <div class="space-y-2">
-    <h4 class="text-xl font-bold">{{ post.title }}</h4>
-    <hr class="opacity-20" />
+    <h4 class="text-xl font-bold underline" data-testid="post-title">{{ post.title }}</h4>
     <div class="text-sm">{{ post.body }}</div>
   </div>
 </template>

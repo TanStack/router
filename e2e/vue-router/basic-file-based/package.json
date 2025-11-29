@@ -15,10 +15,12 @@
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
+    "@tanstack/zod-adapter": "workspace:^",
     "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
     "tailwindcss": "^4.1.15",
-    "vue": "^3.5.16"
+    "vue": "^3.5.16",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
