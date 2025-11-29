@@ -42,8 +42,7 @@ test('Navigating to a post page with viewTransition', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
-// TODO: viewTransition is not fully implemented in vue-router yet
-test.skip('Navigating to a post page with viewTransition types', async ({
+test('Navigating to a post page with viewTransition types', async ({
   page,
 }) => {
   await page.getByRole('link', { name: 'View Transition types' }).click()
