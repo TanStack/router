@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import { Link, Outlet } from '@tanstack/vue-router'
-import type { PostType } from '../../posts'
+import { Link, Outlet, useLoaderData } from '@tanstack/vue-router'
+import type { PostType } from '../posts'
 
-const props = defineProps<{
-  posts: Array<PostType>
-}>()
+const posts = useLoaderData({ from: '/posts' }) as unknown as Array<PostType>
 </script>
 
 <template>
   <div class="p-2 flex gap-2">
     <ul class="list-disc pl-4">
       <li
-        v-for="post in [...props.posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]"
+        v-for="post in [...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]"
         :key="post.id"
         class="whitespace-nowrap"
       >

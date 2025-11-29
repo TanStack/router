@@ -8,92 +8,131 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as PostsRouteImport } from './routes/posts'
-import { Route as LayoutRouteImport } from './routes/_layout'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as PostsIndexRouteImport } from './routes/posts.index'
-import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
-import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
-import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { lazyRouteComponent } from '@tanstack/vue-router'
 
-const PostsRoute = PostsRouteImport.update({
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as PostsRouteRouteImport } from './routes/posts.route'
+import { Route as LayoutRouteRouteImport } from './routes/_layout.route'
+import { Route as IndexRouteRouteImport } from './routes/index.route'
+import { Route as PostsIndexRouteRouteImport } from './routes/posts.index.route'
+import { Route as PostsPostIdRouteRouteImport } from './routes/posts.$postId.route'
+import { Route as LayoutLayout2RouteRouteImport } from './routes/_layout/_layout-2.route'
+import { Route as LayoutLayout2LayoutBRouteRouteImport } from './routes/_layout/_layout-2/layout-b.route'
+import { Route as LayoutLayout2LayoutARouteRouteImport } from './routes/_layout/_layout-2/layout-a.route'
+
+const PostsRouteRoute = PostsRouteRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRouteImport,
-} as any)
-const LayoutRoute = LayoutRouteImport.update({
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/posts.component.vue'),
+    'default',
+  ),
+})
+const LayoutRouteRoute = LayoutRouteRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/_layout.component.vue'),
+    'default',
+  ),
+})
+const IndexRouteRoute = IndexRouteRouteImport.update({
   id: '/',
-  path: '/',
+  path: '',
   getParentRoute: () => rootRouteImport,
-} as any)
-const PostsIndexRoute = PostsIndexRouteImport.update({
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/index.component.vue'),
+    'default',
+  ),
+})
+const PostsIndexRouteRoute = PostsIndexRouteRouteImport.update({
   id: '/',
-  path: '/',
-  getParentRoute: () => PostsRoute,
-} as any)
-const PostsPostIdRoute = PostsPostIdRouteImport.update({
+  path: '',
+  getParentRoute: () => PostsRouteRoute,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/posts.index.component.vue'),
+    'default',
+  ),
+})
+const PostsPostIdRouteRoute = PostsPostIdRouteRouteImport.update({
   id: '/$postId',
   path: '/$postId',
-  getParentRoute: () => PostsRoute,
-} as any)
-const LayoutLayout2Route = LayoutLayout2RouteImport.update({
+  getParentRoute: () => PostsRouteRoute,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/posts.$postId.component.vue'),
+    'default',
+  ),
+  errorComponent: lazyRouteComponent(
+    () => import('./routes/posts.$postId.errorComponent.vue'),
+    'default',
+  ),
+})
+const LayoutLayout2RouteRoute = LayoutLayout2RouteRouteImport.update({
   id: '/_layout-2',
-  getParentRoute: () => LayoutRoute,
-} as any)
-const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
-  id: '/layout-b',
-  path: '/layout-b',
-  getParentRoute: () => LayoutLayout2Route,
-} as any)
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
-  id: '/layout-a',
-  path: '/layout-a',
-  getParentRoute: () => LayoutLayout2Route,
-} as any)
+  getParentRoute: () => LayoutRouteRoute,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/_layout/_layout-2.component.vue'),
+    'default',
+  ),
+})
+const LayoutLayout2LayoutBRouteRoute =
+  LayoutLayout2LayoutBRouteRouteImport.update({
+    id: '/layout-b',
+    path: '/layout-b',
+    getParentRoute: () => LayoutLayout2RouteRoute,
+  } as any).update({
+    component: lazyRouteComponent(
+      () => import('./routes/_layout/_layout-2/layout-b.component.vue'),
+      'default',
+    ),
+  })
+const LayoutLayout2LayoutARouteRoute =
+  LayoutLayout2LayoutARouteRouteImport.update({
+    id: '/layout-a',
+    path: '/layout-a',
+    getParentRoute: () => LayoutLayout2RouteRoute,
+  } as any).update({
+    component: lazyRouteComponent(
+      () => import('./routes/_layout/_layout-2/layout-a.component.vue'),
+      'default',
+    ),
+  })
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/posts': typeof PostsRouteWithChildren
-  '/posts/$postId': typeof PostsPostIdRoute
-  '/posts/': typeof PostsIndexRoute
-  '/layout-a': typeof LayoutLayout2LayoutARoute
-  '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/posts': typeof PostsIndexRouteRoute
+  '/posts/$postId': typeof PostsPostIdRouteRoute
+  '/layout-a': typeof LayoutLayout2LayoutARouteRoute
+  '/layout-b': typeof LayoutLayout2LayoutBRouteRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/posts/$postId': typeof PostsPostIdRoute
-  '/posts': typeof PostsIndexRoute
-  '/layout-a': typeof LayoutLayout2LayoutARoute
-  '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/posts': typeof PostsIndexRouteRoute
+  '/posts/$postId': typeof PostsPostIdRouteRoute
+  '/layout-a': typeof LayoutLayout2LayoutARouteRoute
+  '/layout-b': typeof LayoutLayout2LayoutBRouteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/_layout': typeof LayoutRouteWithChildren
-  '/posts': typeof PostsRouteWithChildren
-  '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
-  '/posts/$postId': typeof PostsPostIdRoute
-  '/posts/': typeof PostsIndexRoute
-  '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
-  '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/': typeof IndexRouteRoute
+  '/_layout': typeof LayoutRouteRouteWithChildren
+  '/posts': typeof PostsRouteRouteWithChildren
+  '/_layout/_layout-2': typeof LayoutLayout2RouteRouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRouteRoute
+  '/posts/': typeof PostsIndexRouteRoute
+  '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARouteRoute
+  '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRouteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/posts'
-    | '/posts/$postId'
-    | '/posts/'
-    | '/layout-a'
-    | '/layout-b'
+  fullPaths: '/posts' | '/posts/$postId' | '/layout-a' | '/layout-b'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
+  to: '/posts' | '/posts/$postId' | '/layout-a' | '/layout-b'
   id:
     | '__root__'
     | '/'
@@ -107,9 +146,9 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  LayoutRoute: typeof LayoutRouteWithChildren
-  PostsRoute: typeof PostsRouteWithChildren
+  IndexRouteRoute: typeof IndexRouteRoute
+  LayoutRouteRoute: typeof LayoutRouteRouteWithChildren
+  PostsRouteRoute: typeof PostsRouteRouteWithChildren
 }
 
 declare module '@tanstack/vue-router' {
@@ -118,102 +157,104 @@ declare module '@tanstack/vue-router' {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
+      preLoaderRoute: typeof PostsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
       id: '/_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutRouteImport
+      preLoaderRoute: typeof LayoutRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
       id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof IndexRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts/': {
       id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexRouteImport
-      parentRoute: typeof PostsRoute
+      path: ''
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsIndexRouteRouteImport
+      parentRoute: typeof PostsRouteRoute
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRoute
+      preLoaderRoute: typeof PostsPostIdRouteRouteImport
+      parentRoute: typeof PostsRouteRoute
     }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutLayout2RouteImport
-      parentRoute: typeof LayoutRoute
+      preLoaderRoute: typeof LayoutLayout2RouteRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
       path: '/layout-b'
       fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
-      parentRoute: typeof LayoutLayout2Route
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteRouteImport
+      parentRoute: typeof LayoutLayout2RouteRoute
     }
     '/_layout/_layout-2/layout-a': {
       id: '/_layout/_layout-2/layout-a'
       path: '/layout-a'
       fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
-      parentRoute: typeof LayoutLayout2Route
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteRouteImport
+      parentRoute: typeof LayoutLayout2RouteRoute
     }
   }
 }
 
-interface LayoutLayout2RouteChildren {
-  LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
-  LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
+interface LayoutLayout2RouteRouteChildren {
+  LayoutLayout2LayoutARouteRoute: typeof LayoutLayout2LayoutARouteRoute
+  LayoutLayout2LayoutBRouteRoute: typeof LayoutLayout2LayoutBRouteRoute
 }
 
-const LayoutLayout2RouteChildren: LayoutLayout2RouteChildren = {
-  LayoutLayout2LayoutARoute: LayoutLayout2LayoutARoute,
-  LayoutLayout2LayoutBRoute: LayoutLayout2LayoutBRoute,
+const LayoutLayout2RouteRouteChildren: LayoutLayout2RouteRouteChildren = {
+  LayoutLayout2LayoutARouteRoute: LayoutLayout2LayoutARouteRoute,
+  LayoutLayout2LayoutBRouteRoute: LayoutLayout2LayoutBRouteRoute,
 }
 
-const LayoutLayout2RouteWithChildren = LayoutLayout2Route._addFileChildren(
-  LayoutLayout2RouteChildren,
+const LayoutLayout2RouteRouteWithChildren =
+  LayoutLayout2RouteRoute._addFileChildren(LayoutLayout2RouteRouteChildren)
+
+interface LayoutRouteRouteChildren {
+  LayoutLayout2RouteRoute: typeof LayoutLayout2RouteRouteWithChildren
+}
+
+const LayoutRouteRouteChildren: LayoutRouteRouteChildren = {
+  LayoutLayout2RouteRoute: LayoutLayout2RouteRouteWithChildren,
+}
+
+const LayoutRouteRouteWithChildren = LayoutRouteRoute._addFileChildren(
+  LayoutRouteRouteChildren,
 )
 
-interface LayoutRouteChildren {
-  LayoutLayout2Route: typeof LayoutLayout2RouteWithChildren
+interface PostsRouteRouteChildren {
+  PostsPostIdRouteRoute: typeof PostsPostIdRouteRoute
+  PostsIndexRouteRoute: typeof PostsIndexRouteRoute
 }
 
-const LayoutRouteChildren: LayoutRouteChildren = {
-  LayoutLayout2Route: LayoutLayout2RouteWithChildren,
+const PostsRouteRouteChildren: PostsRouteRouteChildren = {
+  PostsPostIdRouteRoute: PostsPostIdRouteRoute,
+  PostsIndexRouteRoute: PostsIndexRouteRoute,
 }
 
-const LayoutRouteWithChildren =
-  LayoutRoute._addFileChildren(LayoutRouteChildren)
-
-interface PostsRouteChildren {
-  PostsPostIdRoute: typeof PostsPostIdRoute
-  PostsIndexRoute: typeof PostsIndexRoute
-}
-
-const PostsRouteChildren: PostsRouteChildren = {
-  PostsPostIdRoute: PostsPostIdRoute,
-  PostsIndexRoute: PostsIndexRoute,
-}
-
-const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
+  PostsRouteRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  LayoutRoute: LayoutRouteWithChildren,
-  PostsRoute: PostsRouteWithChildren,
+  IndexRouteRoute: IndexRouteRoute,
+  LayoutRouteRoute: LayoutRouteRouteWithChildren,
+  PostsRouteRoute: PostsRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
