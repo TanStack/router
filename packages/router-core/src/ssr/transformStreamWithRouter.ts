@@ -238,6 +238,7 @@ export function transformStreamWithRouter(
 
         finalPassThrough.write(processed)
         leftover = chunkString.slice(lastIndex)
+        leftoverHtml = ''
       } else {
         leftover = chunkString
         leftoverHtml += getBufferedRouterStream()
