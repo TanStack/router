@@ -353,7 +353,7 @@ export class Generator {
           : -1,
       (d) =>
         d.filePath.match(
-          /[./](component|errorComponent|pendingComponent|loader|lazy)[.]/,
+          /[./](component|errorComponent|notFoundComponent|pendingComponent|loader|lazy)[.]/,
         )
           ? 1
           : -1,
@@ -567,6 +567,7 @@ export class Generator {
       (node) =>
         acc.routePiecesByPath[node.routePath!]?.component ||
         acc.routePiecesByPath[node.routePath!]?.errorComponent ||
+        acc.routePiecesByPath[node.routePath!]?.notFoundComponent ||
         acc.routePiecesByPath[node.routePath!]?.pendingComponent,
     )
     // Add lazyFn import if there are loader pieces
@@ -626,6 +627,8 @@ export class Generator {
       const componentNode = acc.routePiecesByPath[node.routePath!]?.component
       const errorComponentNode =
         acc.routePiecesByPath[node.routePath!]?.errorComponent
+      const notFoundComponentNode =
+        acc.routePiecesByPath[node.routePath!]?.notFoundComponent
       const pendingComponentNode =
         acc.routePiecesByPath[node.routePath!]?.pendingComponent
       const lazyComponentNode = acc.routePiecesByPath[node.routePath!]?.lazy
@@ -652,12 +655,16 @@ export class Generator {
                 ),
               )}'), 'loader') })`
             : '',
-          componentNode || errorComponentNode || pendingComponentNode
+          componentNode ||
+          errorComponentNode ||
+          notFoundComponentNode ||
+          pendingComponentNode
             ? `.update({
                 ${(
                   [
                     ['component', componentNode],
                     ['errorComponent', errorComponentNode],
+                    ['notFoundComponent', notFoundComponentNode],
                     ['pendingComponent', pendingComponentNode],
                   ] as const
                 )
@@ -943,6 +950,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
             'component',
             'pendingComponent',
             'errorComponent',
+            'notFoundComponent',
             'loader',
           ] satisfies Array<FsRouteType>
         ).every((d) => d !== node._fsRouteType)
@@ -1318,6 +1326,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           'component',
           'pendingComponent',
           'errorComponent',
+          'notFoundComponent',
         ] satisfies Array<FsRouteType>
       ).some((d) => d === node._fsRouteType)
     ) {
@@ -1331,9 +1340,11 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
             ? 'loader'
             : node._fsRouteType === 'errorComponent'
               ? 'errorComponent'
-              : node._fsRouteType === 'pendingComponent'
-                ? 'pendingComponent'
-                : 'component'
+              : node._fsRouteType === 'notFoundComponent'
+                ? 'notFoundComponent'
+                : node._fsRouteType === 'pendingComponent'
+                  ? 'pendingComponent'
+                  : 'component'
       ] = node
 
       const anchorRoute = acc.routeNodes.find(

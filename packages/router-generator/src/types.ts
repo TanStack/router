@@ -33,10 +33,12 @@ export type FsRouteType =
   | 'component' // @deprecated
   | 'pendingComponent' // @deprecated
   | 'errorComponent' // @deprecated
+  | 'notFoundComponent' // @deprecated
 
 export type RouteSubNode = {
   component?: RouteNode
   errorComponent?: RouteNode
+  notFoundComponent?: RouteNode
   pendingComponent?: RouteNode
   loader?: RouteNode
   lazy?: RouteNode
