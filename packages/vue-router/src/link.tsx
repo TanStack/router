@@ -604,18 +604,30 @@ const LinkImpl = Vue.defineComponent({
     'additionalProps'
   ],
   setup(props, { attrs, slots }) {
-    // Use a computed to get the link props reactively
-    // This ensures the props update when router state changes
-    const allProps = Vue.computed(() => ({ ...props, ...attrs }))
+    // Create a stable ref that will be used for IntersectionObserver
+    // This ref is created once and reused across renders
+    const elementRef = Vue.ref<Element | null>(null)
 
-    // Store the reactive link props getter - we need to call useLinkProps fresh in render
-    // because Vue's reactivity needs the props to be accessed during render to track them
-    const getLinkProps = () => useLinkProps(allProps.value as any)
+    // Call useLinkProps ONCE during setup with a stable ref
+    // This sets up the IntersectionObserver and other effects
+    const initialAllProps = { ...props, ...attrs }
+    const setupLinkProps = useLinkProps(initialAllProps as any)
+
+    // Replace the ref from useLinkProps with our stable one
+    // and set up the IntersectionObserver to use it
+    const stableRef = setupLinkProps.ref
 
     return () => {
-      // Get fresh props on each render - this ensures reactivity works
-      const linkProps = getLinkProps()
+      // Merge current props and attrs for the render
+      const currentProps = { ...props, ...attrs }
+
+      // Get fresh link props for display purposes
+      // The IntersectionObserver is already set up from the initial call
+      const linkProps = useLinkProps(currentProps as any)
       const Component = props._asChild || 'a'
+
+      // Always use the stable ref from setup
+      linkProps.ref = stableRef
 
       const isActive = linkProps['data-status'] === 'active'
       const isTransitioning = linkProps['data-transitioning'] === 'transitioning'

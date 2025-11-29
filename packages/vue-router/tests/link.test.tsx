@@ -3393,27 +3393,30 @@ describe('Link', () => {
       },
     })
 
-    const LoginComponent = () => {
-      const status = Vue.ref<'idle' | 'success' | 'error'>('idle')
+    const LoginComponent = Vue.defineComponent({
+      name: 'LoginComponent',
+      setup() {
+        const status = Vue.ref<'idle' | 'success' | 'error'>('idle')
 
-      Vue.onMounted(() => {
-        const onLoad = async () => {
-          try {
-            await router.preloadRoute({
-              to: '/posts/$postId',
-              params: { postId: 'id1' },
-              search: { postPage: 0 },
-            })
-            status.value = 'success'
-          } catch (e) {
-            status.value = 'error'
+        Vue.onMounted(() => {
+          const onLoad = async () => {
+            try {
+              await router.preloadRoute({
+                to: '/posts/$postId',
+                params: { postId: 'id1' },
+                search: { postPage: 0 },
+              })
+              status.value = 'success'
+            } catch (e) {
+              status.value = 'error'
+            }
           }
-        }
-        onLoad()
-      })
+          onLoad()
+        })
 
-      return <>{status.value === 'success' ? 'Login!' : 'Waiting...'}</>
-    }
+        return () => <>{status.value === 'success' ? 'Login!' : 'Waiting...'}</>
+      }
+    })
 
     const loginRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -4279,21 +4282,24 @@ describe('Link', () => {
 
   test('Router.preload="viewport", should trigger the IntersectionObserver\'s observe and disconnect methods', async () => {
     const rootRoute = createRootRoute()
-    const RouteComponent = () => {
-      const count = Vue.ref(0)
-      return (
-        <>
-          <h1>Index Heading</h1>
-          <output>{count.value}</output>
-          <button onClick={() => count.value++}>Render</button>
-          <Link to="/">Index Link</Link>
-        </>
-      )
-    }
+    const RouteComponent = Vue.defineComponent({
+      name: 'RouteComponent',
+      setup() {
+        const count = Vue.ref(0)
+        return () => (
+          <>
+            <h1>Index Heading</h1>
+            <output>{count.value}</output>
+            <button onClick={() => count.value++}>Render</button>
+            <Link to="/">Index Link</Link>
+          </>
+        )
+      }
+    })
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: RouteComponent,
+      component: RouteComponent as any,
     })
 
     const router = createRouter({
