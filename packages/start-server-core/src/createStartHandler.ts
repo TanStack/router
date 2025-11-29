@@ -81,6 +81,8 @@ export function createStartHandler<TRegister = Register>(
     requestOpts,
   ) => {
     let router: AnyRouter | null = null as AnyRouter | null
+    // Track whether the callback will handle cleanup
+    let cbWillCleanup = false as boolean
     try {
       const origin = getOrigin(request)
 
@@ -207,6 +209,8 @@ export function createStartHandler<TRegister = Register>(
                   await router.serverSsr!.dehydrate()
 
                   const responseHeaders = getStartResponseHeaders({ router })
+                  // Mark that the callback will handle cleanup
+                  cbWillCleanup = true
                   const response = await cb({
                     request,
                     router,
@@ -312,9 +316,14 @@ export function createStartHandler<TRegister = Register>(
 
       return response
     } finally {
-      if (router) {
-        router = null
+      if (router && !cbWillCleanup) {
+        // Clean up router SSR state if it was set up but won't be cleaned up by the callback
+        // (e.g., in redirect cases or early returns before the callback is invoked).
+        // When the callback runs, it handles cleanup (either via transformStreamWithRouter
+        // for streaming, or directly in renderRouterToString for non-streaming).
+        router.serverSsr?.cleanup()
       }
+      router = null
     }
   }
 
