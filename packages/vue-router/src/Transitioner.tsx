@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
+import { getLocationChangeInfo, handleHashScroll, trimPathRight } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
@@ -9,37 +9,62 @@ export const Transitioner = Vue.defineComponent({
   setup() {
     const router = useRouter()
     let mountLoadForRouter = { router, mounted: false }
+
+    if (router.isServer) {
+      return () => null
+    }
+
     const isLoading = useRouterState({
       select: ({ isLoading }) => isLoading,
     })
 
+    // Track if we're in a transition - using a ref to track async transitions
     const isTransitioning = Vue.ref(false)
+
     // Track pending state changes
     const hasPendingMatches = useRouterState({
       select: (s) => s.matches.some((d) => d.status === 'pending'),
     })
 
-    const previousIsLoading = usePrevious(()=>isLoading.value)
+    const previousIsLoading = usePrevious(() => isLoading.value)
 
-    const isAnyPending = () =>
+    const isAnyPending = Vue.computed(() =>
       isLoading.value || isTransitioning.value || hasPendingMatches.value
-    const previousIsAnyPending = usePrevious(isAnyPending)
+    )
+    const previousIsAnyPending = usePrevious(() => isAnyPending.value)
 
-    const isPagePending = () => isLoading.value || hasPendingMatches.value
-    const previousIsPagePending = usePrevious(isPagePending)
+    const isPagePending = Vue.computed(() => isLoading.value || hasPendingMatches.value)
+    const previousIsPagePending = usePrevious(() => isPagePending.value)
 
-    if (!router.isServer) {
-      router.startTransition = (fn: () => void) => {
-        isTransitioning.value = true
-        fn()
-        isTransitioning.value = false
+    // Implement startTransition similar to React/Solid
+    // Vue doesn't have a native useTransition, so we simulate it
+    router.startTransition = (fn: () => void | Promise<void>) => {
+      isTransitioning.value = true
+
+      // Execute the function
+      const result = fn()
+
+      // If the function returns a promise, wait for it
+      if (result && typeof result.then === 'function') {
+        result.finally(() => {
+          // Use nextTick to ensure Vue has processed all reactive updates
+          Vue.nextTick(() => {
+            isTransitioning.value = false
+          })
+        })
+      } else {
+        // For synchronous functions, defer the transition end to next tick
+        // This allows Vue to batch any reactive updates
+        Vue.nextTick(() => {
+          isTransitioning.value = false
+        })
       }
     }
 
     // Subscribe to location changes
     // and try to load the new location
     let unsubscribe: (() => void) | undefined
-    
+
     Vue.onMounted(() => {
       unsubscribe = router.history.subscribe(router.load)
 
@@ -88,8 +113,8 @@ export const Transitioner = Vue.defineComponent({
     // Setup watchers for emitting events
     Vue.watch(
       () => isLoading.value,
-      (newValue, oldValue) => {
-        if (oldValue && !newValue) {
+      (newValue) => {
+        if (previousIsLoading.value.previous && !newValue) {
           router.emit({
             type: 'onLoad',
             ...getLocationChangeInfo(router.state),
@@ -97,12 +122,12 @@ export const Transitioner = Vue.defineComponent({
         }
       }
     )
-    
+
     Vue.watch(
       isPagePending,
-      (newValue, oldValue) => {
+      (newValue) => {
         // emit onBeforeRouteMount
-        if (oldValue && !newValue) {
+        if (previousIsPagePending.value.previous && !newValue) {
           router.emit({
             type: 'onBeforeRouteMount',
             ...getLocationChangeInfo(router.state),
@@ -113,12 +138,13 @@ export const Transitioner = Vue.defineComponent({
 
     Vue.watch(
       isAnyPending,
-      (newValue, oldValue) => {
+      (newValue) => {
         // The router was pending and now it's not
-        if (oldValue && !newValue) {
+        if (previousIsAnyPending.value.previous && !newValue) {
+          const changeInfo = getLocationChangeInfo(router.state)
           router.emit({
             type: 'onResolved',
-            ...getLocationChangeInfo(router.state),
+            ...changeInfo,
           })
 
           router.__store.setState((s) => ({
@@ -127,22 +153,8 @@ export const Transitioner = Vue.defineComponent({
             resolvedLocation: s.location,
           }))
 
-          if (
-            typeof document !== 'undefined' &&
-            (document as any).querySelector
-          ) {
-            const hashScrollIntoViewOptions =
-              router.state.location.state.__hashScrollIntoViewOptions ?? true
-
-            if (
-              hashScrollIntoViewOptions &&
-              router.state.location.hash !== ''
-            ) {
-              const el = document.getElementById(router.state.location.hash)
-              if (el) {
-                el.scrollIntoView(hashScrollIntoViewOptions)
-              }
-            }
+          if (changeInfo.hrefChanged) {
+            handleHashScroll(router)
           }
         }
       }
