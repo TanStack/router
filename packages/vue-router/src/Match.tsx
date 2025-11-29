@@ -8,7 +8,7 @@ import {
   isRedirect,
   rootRouteId,
 } from '@tanstack/router-core'
-import { ErrorComponent } from './CatchBoundary'
+import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
@@ -109,9 +109,9 @@ export const Match = Vue.defineComponent({
 
       // Wrap in error boundary if needed
       if (routeErrorComponent.value) {
-        content = Vue.h(ErrorComponent, {
+        content = CatchBoundary({
           getResetKey: () => resetKey.value,
-          errorComponent: routeErrorComponent.value,
+          errorComponent: routeErrorComponent.value || ErrorComponent,
           onCatch: (error: Error) => {
             // Forward not found errors (we don't want to show the error component for these)
             if (isNotFound(error)) throw error
