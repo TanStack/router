@@ -17,7 +17,7 @@ import type {
 import type { FsRouteType, GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 
-const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
+const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx|vue)/
 
 const virtualConfigFileRegExp = /__virtual\.[mc]?[jt]s$/
 export function isVirtualConfigFile(fileName: string): boolean {
@@ -129,7 +129,7 @@ export async function getRouteNodes(
 
         if (dirent.isDirectory()) {
           await recurse(relativePath)
-        } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
+        } else if (fullPath.match(/\.(tsx|ts|jsx|js|vue)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
           const {
@@ -170,20 +170,25 @@ export async function getRouteNodes(
             routeType = 'pathless_layout'
           }
 
-          ;(
-            [
-              ['component', 'component'],
-              ['errorComponent', 'errorComponent'],
-              ['pendingComponent', 'pendingComponent'],
-              ['loader', 'loader'],
-            ] satisfies Array<[FsRouteType, string]>
-          ).forEach(([matcher, type]) => {
-            if (routeType === matcher) {
-              logger.warn(
-                `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
-              )
-            }
-          })
+          // Only show deprecation warning for .tsx/.ts files, not .vue files
+          // Vue files using .component.vue is the Vue-native way
+          const isVueFile = filePath.endsWith('.vue')
+          if (!isVueFile) {
+            ;(
+              [
+                ['component', 'component'],
+                ['errorComponent', 'errorComponent'],
+                ['pendingComponent', 'pendingComponent'],
+                ['loader', 'loader'],
+              ] satisfies Array<[FsRouteType, string]>
+            ).forEach(([matcher, type]) => {
+              if (routeType === matcher) {
+                logger.warn(
+                  `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
+                )
+              }
+            })
+          }
 
           routePath = routePath.replace(
             new RegExp(

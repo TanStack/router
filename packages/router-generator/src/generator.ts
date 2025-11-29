@@ -562,6 +562,30 @@ export class Generator {
         source: this.targetTemplate.fullPkg,
       })
     }
+    // Add lazyRouteComponent import if there are component pieces
+    const hasComponentPieces = sortedRouteNodes.some(
+      (node) =>
+        acc.routePiecesByPath[node.routePath!]?.component ||
+        acc.routePiecesByPath[node.routePath!]?.errorComponent ||
+        acc.routePiecesByPath[node.routePath!]?.pendingComponent,
+    )
+    // Add lazyFn import if there are loader pieces
+    const hasLoaderPieces = sortedRouteNodes.some(
+      (node) => acc.routePiecesByPath[node.routePath!]?.loader,
+    )
+    if (hasComponentPieces || hasLoaderPieces) {
+      const runtimeImport: ImportDeclaration = {
+        specifiers: [],
+        source: this.targetTemplate.fullPkg,
+      }
+      if (hasComponentPieces) {
+        runtimeImport.specifiers.push({ imported: 'lazyRouteComponent' })
+      }
+      if (hasLoaderPieces) {
+        runtimeImport.specifiers.push({ imported: 'lazyFn' })
+      }
+      imports.push(runtimeImport)
+    }
     if (config.verboseFileRoutes === false) {
       const typeImport: ImportDeclaration = {
         specifiers: [],
@@ -639,34 +663,59 @@ export class Generator {
                 )
                   .filter((d) => d[1])
                   .map((d) => {
+                    // For .vue files, use 'default' as the export name since Vue SFCs export default
+                    const isVueFile = d[1]!.filePath.endsWith('.vue')
+                    const exportName = isVueFile ? 'default' : d[0]
+                    // Keep .vue extension for Vue files since Vite requires it
+                    const importPath = replaceBackslash(
+                      isVueFile
+                        ? path.relative(
+                            path.dirname(config.generatedRouteTree),
+                            path.resolve(config.routesDirectory, d[1]!.filePath),
+                          )
+                        : removeExt(
+                            path.relative(
+                              path.dirname(config.generatedRouteTree),
+                              path.resolve(config.routesDirectory, d[1]!.filePath),
+                            ),
+                            config.addExtensions,
+                          ),
+                    )
                     return `${
                       d[0]
-                    }: lazyRouteComponent(() => import('./${replaceBackslash(
-                      removeExt(
-                        path.relative(
-                          path.dirname(config.generatedRouteTree),
-                          path.resolve(config.routesDirectory, d[1]!.filePath),
-                        ),
-                        config.addExtensions,
-                      ),
-                    )}'), '${d[0]}')`
+                    }: lazyRouteComponent(() => import('./${importPath}'), '${exportName}')`
                   })
                   .join('\n,')}
               })`
             : '',
           lazyComponentNode
-            ? `.lazy(() => import('./${replaceBackslash(
-                removeExt(
-                  path.relative(
-                    path.dirname(config.generatedRouteTree),
-                    path.resolve(
-                      config.routesDirectory,
-                      lazyComponentNode.filePath,
-                    ),
-                  ),
-                  config.addExtensions,
-                ),
-              )}').then((d) => d.Route))`
+            ? (() => {
+                // For .vue files, use 'default' export since Vue SFCs export default
+                const isVueFile = lazyComponentNode.filePath.endsWith('.vue')
+                const exportAccessor = isVueFile ? 'd.default' : 'd.Route'
+                // Keep .vue extension for Vue files since Vite requires it
+                const importPath = replaceBackslash(
+                  isVueFile
+                    ? path.relative(
+                        path.dirname(config.generatedRouteTree),
+                        path.resolve(
+                          config.routesDirectory,
+                          lazyComponentNode.filePath,
+                        ),
+                      )
+                    : removeExt(
+                        path.relative(
+                          path.dirname(config.generatedRouteTree),
+                          path.resolve(
+                            config.routesDirectory,
+                            lazyComponentNode.filePath,
+                          ),
+                        ),
+                        config.addExtensions,
+                      ),
+                )
+                return `.lazy(() => import('./${importPath}').then((d) => ${exportAccessor}))`
+              })()
             : '',
         ].join(''),
       ].join('\n\n')
@@ -915,32 +964,39 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         return null
       }
     }
-    // transform the file
-    const transformResult = await transform({
-      source: updatedCacheEntry.fileContent,
-      ctx: {
-        target: this.config.target,
-        routeId: escapedRoutePath,
-        lazy: node._fsRouteType === 'lazy',
-        verboseFileRoutes: !(this.config.verboseFileRoutes === false),
-      },
-      node,
-    })
 
-    if (transformResult.result === 'no-route-export') {
-      this.logger.warn(
-        `Route file "${node.fullPath}" does not contain any route piece. This is likely a mistake.`,
-      )
-      return null
-    }
-    if (transformResult.result === 'error') {
-      throw new Error(
-        `Error transforming route file ${node.fullPath}: ${transformResult.error}`,
-      )
-    }
-    if (transformResult.result === 'modified') {
-      updatedCacheEntry.fileContent = transformResult.output
-      shouldWriteRouteFile = true
+    // Check if this is a Vue component file
+    // Vue SFC files (.vue) don't need transformation as they can't have a Route export
+    const isVueFile = node.filePath.endsWith('.vue')
+
+    if (!isVueFile) {
+      // transform the file
+      const transformResult = await transform({
+        source: updatedCacheEntry.fileContent,
+        ctx: {
+          target: this.config.target,
+          routeId: escapedRoutePath,
+          lazy: node._fsRouteType === 'lazy',
+          verboseFileRoutes: !(this.config.verboseFileRoutes === false),
+        },
+        node,
+      })
+
+      if (transformResult.result === 'no-route-export') {
+        this.logger.warn(
+          `Route file "${node.fullPath}" does not contain any route piece. This is likely a mistake.`,
+        )
+        return null
+      }
+      if (transformResult.result === 'error') {
+        throw new Error(
+          `Error transforming route file ${node.fullPath}: ${transformResult.error}`,
+        )
+      }
+      if (transformResult.result === 'modified') {
+        updatedCacheEntry.fileContent = transformResult.output
+        shouldWriteRouteFile = true
+      }
     }
 
     for (const plugin of this.plugins) {
