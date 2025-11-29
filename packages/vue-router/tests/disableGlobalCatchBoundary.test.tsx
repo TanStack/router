@@ -58,8 +58,8 @@ describe('disableGlobalCatchBoundary option', () => {
 
     render(<RouterProvider router={router} />)
 
-    // The global CatchBoundary shows "Something went wrong!" by default
-    const errorElement = await screen.findByText('Something went wrong!')
+    // The global CatchBoundary shows "Error" as heading and the error message in the body
+    const errorElement = await screen.findByText('Test error')
     expect(errorElement).toBeInTheDocument()
   })
 
