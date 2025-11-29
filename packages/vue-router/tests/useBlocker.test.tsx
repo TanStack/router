@@ -2,8 +2,8 @@ import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
+import * as Vue from 'vue'
 import { z } from 'zod'
-import { createSignal } from 'solid-js'
 import {
   Block,
   RouterProvider,
@@ -14,7 +14,6 @@ import {
   useBlocker,
   useNavigate,
 } from '../src'
-import type { Setter } from 'solid-js'
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
@@ -429,17 +428,17 @@ describe('useBlocker', () => {
   test('<Block /> disabled property is reactive', async () => {
     const rootRoute = createRootRoute()
 
-    let _setDisabled: Setter<boolean> = null!
+    let _setDisabled: (val: boolean) => void = null!
 
     const IndexComponent = () => {
       const navigate = useNavigate()
 
-      const [disabled, setDisabled] = createSignal(false)
-      _setDisabled = setDisabled
+      const disabled = Vue.ref(false)
+      _setDisabled = (val: boolean) => { disabled.value = val }
 
       return (
         <>
-          <Block shouldBlockFn={() => true} disabled={disabled()} />
+          <Block shouldBlockFn={() => true} disabled={disabled.value} />
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
