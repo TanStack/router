@@ -1793,11 +1793,25 @@ export class RouterCore<
           )
           if (match) {
             Object.assign(params, match.params) // Copy params, because they're cached
-            const { from: _from, ...maskProps } = match.route
+            const {
+              from: _from,
+              params: maskParams,
+              ...maskProps
+            } = match.route
+
+            // If mask has a params function, call it with the matched params as context
+            // Otherwise, use the matched params or the provided params value
+            const nextParams =
+              maskParams === false || maskParams === null
+                ? {}
+                : (maskParams ?? true) === true
+                  ? params
+                  : Object.assign(params, functionalUpdate(maskParams, params))
+
             maskedDest = {
               from: opts.from,
               ...maskProps,
-              params,
+              params: nextParams,
             }
             maskedNext = build(maskedDest)
           }
