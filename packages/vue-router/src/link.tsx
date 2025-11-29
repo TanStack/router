@@ -612,7 +612,14 @@ const LinkImpl = Vue.defineComponent({
     'mask',
     'reloadDocument',
     'disabled',
-    'additionalProps'
+    'additionalProps',
+    'viewTransition',
+    'resetScroll',
+    'startTransition',
+    'hashScrollIntoView',
+    'replace',
+    'ignoreBlocker',
+    'target',
   ],
   setup(props, { attrs, slots }) {
     // Call useLinkProps ONCE during setup with combined props and attrs
@@ -633,6 +640,16 @@ const LinkImpl = Vue.defineComponent({
           isTransitioning
         }) :
         []
+
+      // Special handling for SVG links - wrap an <a> inside the SVG
+      if (Component === 'svg') {
+        // Create props without class for svg link
+        const svgLinkProps = { ...linkProps }
+        delete (svgLinkProps as any).class
+        return Vue.h('svg', {}, [
+          Vue.h('a', svgLinkProps, slotContent)
+        ])
+      }
 
       // For custom functional components (non-string), pass children as a prop
       // since they may expect children as a prop like in Solid
