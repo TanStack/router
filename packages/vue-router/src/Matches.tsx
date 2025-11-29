@@ -84,6 +84,8 @@ const errorComponentFn: ErrorRouteComponentType = (props: ErrorComponentProps) =
 const MatchesInner = Vue.defineComponent({
   name: 'MatchesInner',
   setup() {
+    const router = useRouter()
+
     const matchId = useRouterState({
       select: (s) => {
         return s.matches[0]?.id
@@ -96,16 +98,21 @@ const MatchesInner = Vue.defineComponent({
 
     // Create a ref for the match id to provide
     const matchIdRef = Vue.computed(() => matchId.value)
-    
+
     // Provide the matchId for child components using the InjectionKey
     Vue.provide(matchContext, matchIdRef)
 
     return () => {
       // Generate a placeholder element if matchId.value is not present
-      const childElement = matchId.value 
-        ? Vue.h(Match, { matchId: matchId.value }) 
+      const childElement = matchId.value
+        ? Vue.h(Match, { matchId: matchId.value })
         : Vue.h('div')
-      
+
+      // If disableGlobalCatchBoundary is true, don't wrap in CatchBoundary
+      if (router.options.disableGlobalCatchBoundary) {
+        return childElement
+      }
+
       return Vue.h(CatchBoundary, {
         getResetKey: () => resetKey.value,
         errorComponent: errorComponentFn,
