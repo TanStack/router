@@ -391,14 +391,25 @@ export function useLinkProps<
   })
 
   const href = Vue.computed(() => {
+    if (disabled) {
+      return undefined
+    }
     const nextLocation = next.value
     const maskedLocation = nextLocation?.maskedLocation
 
-    return disabled
-      ? undefined
-      : maskedLocation
-        ? router.history.createHref(maskedLocation.href)
-        : router.history.createHref(nextLocation?.href)
+    let hrefValue: string
+    if (maskedLocation) {
+      hrefValue = maskedLocation.url
+    } else {
+      hrefValue = nextLocation?.url
+    }
+
+    // Handle origin stripping like Solid does
+    if (router.origin && hrefValue?.startsWith(router.origin)) {
+      hrefValue = router.history.createHref(hrefValue.replace(router.origin, ''))
+    }
+
+    return hrefValue
   })
 
   // Combine all props
