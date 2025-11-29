@@ -74,6 +74,8 @@ export function CatchBoundary(props: {
 }) {
   // Create a component to use in the template
   const CatchBoundaryWrapper = Vue.defineComponent({
+    name: 'CatchBoundaryWrapper',
+    inheritAttrs: false,
     setup() {
       const resetKey = Vue.computed(() => props.getResetKey())
       
