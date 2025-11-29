@@ -99,7 +99,8 @@ export function useLinkProps<
       'resetScroll', 'viewTransition', 'children', 'target', 'disabled',
       'style', 'class', 'onClick', 'onFocus', 'onMouseEnter', 'onMouseLeave',
       'onMouseOver', 'onMouseOut', 'onTouchStart', 'ignoreBlocker',
-      'params', 'search', 'hash', 'state', 'mask', 'reloadDocument'
+      'params', 'search', 'hash', 'state', 'mask', 'reloadDocument',
+      '_asChild', 'from', 'additionalProps'
     ].includes(key)) {
       propsSafeToSpread[key] = options[key]
     }

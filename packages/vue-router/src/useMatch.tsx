@@ -71,8 +71,10 @@ export function useMatch<
 > {
   const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
 
+  // Store to track pending error for deferred throwing
+  const pendingError = Vue.ref<Error | null>(null)
+
   // Select the match from router state
-  // Similar to Solid's approach, we check isTransitioning for all match lookups
   const matchSelection = useRouterState({
     select: (state: any) => {
       const match = state.matches.find((d: any) =>
@@ -85,26 +87,42 @@ export function useMatch<
           opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
         )
 
-        // If there's a pending match or we're transitioning, return undefined
-        // This matches Solid's behavior which only throws when NOT transitioning
+        // If there's a pending match or we're transitioning, return undefined without throwing
         if (pendingMatch || state.isTransitioning) {
+          pendingError.value = null
           return undefined
         }
 
-        // Only throw if shouldThrow is true (default) and we're not in a transition
+        // Store the error to throw later if shouldThrow is enabled
         if (opts.shouldThrow ?? true) {
-          invariant(
-            false,
-            `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+          pendingError.value = new Error(
+            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
           )
         }
 
         return undefined
       }
 
+      pendingError.value = null
       return opts.select ? opts.select(match) : match
     },
   } as any)
 
-  return matchSelection as any
+  // Throw the error if we have one - this happens after the selector runs
+  // Using a computed so the error is thrown when the return value is accessed
+  const result = Vue.computed(() => {
+    // Check for pending error first
+    if (pendingError.value) {
+      throw pendingError.value
+    }
+    return matchSelection.value
+  })
+
+  // Also immediately throw if there's already an error from initial render
+  // This ensures errors are thrown even if the returned ref is never accessed
+  if (pendingError.value) {
+    throw pendingError.value
+  }
+
+  return result as any
 }
