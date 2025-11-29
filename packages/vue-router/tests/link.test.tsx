@@ -3421,7 +3421,7 @@ describe('Link', () => {
     const loginRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'login',
-      component: LoginComponent,
+      component: LoginComponent as any,
       validateSearch: () => ({ page: 0 }),
     })
 
