@@ -6714,6 +6714,9 @@ importers:
       '@workos-inc/node':
         specifier: ^7.45.0
         version: 7.46.0(express@5.1.0)
+      '@workos/authkit-tanstack-react-start':
+        specifier: ^0.1.0
+        version: 0.1.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       iron-session:
         specifier: ^8.0.4
         version: 8.0.4
@@ -15680,6 +15683,23 @@ packages:
   '@workos-inc/node@7.46.0':
     resolution: {integrity: sha512-r/j+l/nlHkOqgIt0U70shZMKIQwLYFFU9aYmFW53l16+FwG+61SfldaK3ckjb3gscoGxWq+t7RlxcEe7Tz5eRA==}
     engines: {node: '>=16'}
+
+  '@workos-inc/node@8.0.0-beta.4':
+    resolution: {integrity: sha512-eJBfCXiMxbXYHdb67ecZHQUSa/9Ocnjoj/JE2t+DEmuIMEXc1fC3S8j67XMPvYVmTW8/G6gxWQEkwUeL/hU7QQ==}
+    engines: {node: '>=18'}
+
+  '@workos/authkit-session@0.1.2':
+    resolution: {integrity: sha512-7yA4sDq40d6KuYTF5Ojj1/PdRUGxHMnQ5950h9l5s3dxCj2LVZswIHx+kg+xX+mZXn8HyZMEX8SbFVji9Ng22w==}
+    engines: {node: '>=20.0.0'}
+
+  '@workos/authkit-tanstack-react-start@0.1.0':
+    resolution: {integrity: sha512-o+LejdHMZbR102qlf7+sNCDIjGhbEjhvlMHtKTshRwhI2Gr8BO2cPWtbCGnFIzuFCgaCulgG/5RAUAgjoVATbg==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@tanstack/react-router': workspace:*
+      '@tanstack/react-start': workspace:*
+      react: ^19.0.0
+      react-dom: ^19.0.0
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -27578,7 +27598,7 @@ snapshots:
     dependencies:
       '@vitest/spy': 3.2.4
       estree-walker: 3.0.3
-      magic-string: 0.30.17
+      magic-string: 0.30.19
     optionalDependencies:
       msw: 2.7.0(@types/node@22.10.2)(typescript@5.9.2)
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -27856,6 +27876,29 @@ snapshots:
       - express
       - koa
       - next
+
+  '@workos-inc/node@8.0.0-beta.4':
+    dependencies:
+      iron-session: 8.0.4
+      jose: 5.6.3
+      leb: 1.0.0
+      pluralize: 8.0.0
+      qs: 6.14.0
+
+  '@workos/authkit-session@0.1.2':
+    dependencies:
+      '@workos-inc/node': 8.0.0-beta.4
+      iron-session: 8.0.4
+      iron-webcrypto: 1.2.1
+      jose: 6.1.0
+
+  '@workos/authkit-tanstack-react-start@0.1.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@tanstack/react-router': link:packages/react-router
+      '@tanstack/react-start': link:packages/react-start
+      '@workos/authkit-session': 0.1.2
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
 
   '@xtuc/ieee754@1.2.0': {}
 
