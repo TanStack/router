@@ -8,7 +8,7 @@ import {
   createRouter,
 } from '../src'
 
-function ThrowingComponent() {
+function ThrowingComponent(): Vue.VNode {
   throw new Error('Test error')
 }
 

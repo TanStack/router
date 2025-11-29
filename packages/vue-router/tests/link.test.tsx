@@ -860,9 +860,10 @@ describe('Link', () => {
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
       history,
+      basepath: '/Dashboard',
     })
 
-    render(<RouterProvider router={router} basepath={'/Dashboard'} />)
+    render(<RouterProvider router={router} />)
 
     // Start at index page
     const toPostsLink = await screen.findByTestId('to-posts')
@@ -1005,7 +1006,7 @@ describe('Link', () => {
       return (
         <>
           <h1>Posts</h1>
-          <span>Page: {data().pageDoubled}</span>
+          <span>Page: {data.value.pageDoubled}</span>
         </>
       )
     }
@@ -1068,7 +1069,7 @@ describe('Link', () => {
       return (
         <>
           <h1>Posts</h1>
-          <span>Page: {loader().pageDoubled}</span>
+          <span>Page: {loader.value.pageDoubled}</span>
         </>
       )
     }
@@ -4567,7 +4568,7 @@ describe('createLink', () => {
       component: () => (
         <CustomLink
           to="/"
-          // @ts-expect-error
+          // @ts-ignore - Vue's type system allows extra props
           foo="bar"
         >
           Index
@@ -4590,14 +4591,14 @@ describe('createLink', () => {
     const Button = (props: {
       active?: boolean
       foo?: boolean
-      overrideMeIfYouWant: string
+      overrideMeIfYouWant?: string
       children?: Vue.VNode
-      [key: string]: any
+      onClick?: (e: MouseEvent) => void
     }) => {
-      const { active, foo, children, ...rest } = props
+      const { active, foo, children, overrideMeIfYouWant, onClick } = props
 
       return (
-        <button {...rest}>
+        <button onClick={onClick} data-override={overrideMeIfYouWant}>
           active: {active ? 'yes' : 'no'} - foo:{' '}
           {foo ? 'yes' : 'no'} - {children}
         </button>
