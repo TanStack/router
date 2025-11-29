@@ -550,12 +550,12 @@ export function createLink<const TComp>(
 const LinkImpl = Vue.defineComponent({
   name: 'Link',
   props: [
-    '_asChild', 
-    'to', 
-    'preload', 
-    'preloadDelay', 
-    'activeProps', 
-    'inactiveProps', 
+    '_asChild',
+    'to',
+    'preload',
+    'preloadDelay',
+    'activeProps',
+    'inactiveProps',
     'activeOptions',
     'from',
     'search',
@@ -568,23 +568,30 @@ const LinkImpl = Vue.defineComponent({
     'additionalProps'
   ],
   setup(props, { attrs, slots }) {
+    // Use a computed to get the link props reactively
+    // This ensures the props update when router state changes
     const allProps = Vue.computed(() => ({ ...props, ...attrs }))
-    const linkProps = useLinkProps(allProps.value as any)
-    
-    const isActive = Vue.computed(() => linkProps['data-status'] === 'active')
-    const isTransitioning = Vue.computed(() => linkProps['data-transitioning'] === 'transitioning')
-    
+
+    // Store the reactive link props getter - we need to call useLinkProps fresh in render
+    // because Vue's reactivity needs the props to be accessed during render to track them
+    const getLinkProps = () => useLinkProps(allProps.value as any)
+
     return () => {
+      // Get fresh props on each render - this ensures reactivity works
+      const linkProps = getLinkProps()
       const Component = props._asChild || 'a'
-      
+
+      const isActive = linkProps['data-status'] === 'active'
+      const isTransitioning = linkProps['data-transitioning'] === 'transitioning'
+
       // Create the slot content or empty array if no default slot
-      const slotContent = slots.default ? 
+      const slotContent = slots.default ?
         slots.default({
-          isActive: isActive.value,
-          isTransitioning: isTransitioning.value
-        }) : 
+          isActive,
+          isTransitioning
+        }) :
         []
-      
+
       // Return the component with props and children
       return Vue.h(Component, linkProps, slotContent)
     }
