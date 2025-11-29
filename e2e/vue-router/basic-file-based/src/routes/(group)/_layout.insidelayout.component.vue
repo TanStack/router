@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useSearch, getRouteApi } from '@tanstack/vue-router'
+import { getRouteApi, useSearch } from '@tanstack/vue-router'
 
 const routeApi = getRouteApi('/(group)/_layout/insidelayout')
 
