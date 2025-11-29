@@ -1,7 +1,6 @@
 import * as Vue from 'vue'
-import invariant from 'tiny-invariant'
 import { useRouterState } from './useRouterState'
-import { injectMatch, injectDummyMatch } from './matchContext'
+import { injectDummyMatch, injectMatch } from './matchContext'
 import type {
   AnyRouter,
   MakeRouteMatch,
