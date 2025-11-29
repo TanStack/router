@@ -16,6 +16,7 @@ import type { Manifest, RouterManagedTag } from '../manifest'
 declare module '../router' {
   interface ServerSsr {
     setRenderFinished: () => void
+    cleanup: () => void
   }
   interface RouterEvents {
     onInjectedHtml: {
@@ -55,11 +56,17 @@ const INITIAL_SCRIPTS = [
 ]
 
 class ScriptBuffer {
-  constructor(private router: AnyRouter) {}
+  private router: AnyRouter | undefined
   private _queue: Array<string> = [...INITIAL_SCRIPTS]
   private _scriptBarrierLifted = false
+  private _cleanedUp = false
+
+  constructor(router: AnyRouter) {
+    this.router = router
+  }
 
   enqueue(script: string) {
+    if (this._cleanedUp) return
     if (this._scriptBarrierLifted && this._queue.length === 0) {
       queueMicrotask(() => {
         this.injectBufferedScripts()
@@ -69,7 +76,7 @@ class ScriptBuffer {
   }
 
   liftBarrier() {
-    if (this._scriptBarrierLifted) return
+    if (this._scriptBarrierLifted || this._cleanedUp) return
     this._scriptBarrierLifted = true
     if (this._queue.length > 0) {
       queueMicrotask(() => {
@@ -90,10 +97,17 @@ class ScriptBuffer {
   }
 
   injectBufferedScripts() {
+    if (this._cleanedUp) return
     const scriptsToInject = this.takeAll()
-    if (scriptsToInject) {
-      this.router.serverSsr!.injectScript(() => scriptsToInject)
+    if (scriptsToInject && this.router?.serverSsr) {
+      this.router.serverSsr.injectScript(() => scriptsToInject)
     }
+  }
+
+  cleanup() {
+    this._cleanedUp = true
+    this._queue = []
+    this.router = undefined
   }
 }
 
@@ -203,6 +217,8 @@ export function attachRouterServerSsrUtils({
     onRenderFinished: (listener) => listeners.push(listener),
     setRenderFinished: () => {
       listeners.forEach((l) => l())
+      // Clear listeners after calling them to prevent memory leaks
+      listeners.length = 0
       scriptBuffer.liftBarrier()
     },
     takeBufferedScripts() {
@@ -220,6 +236,14 @@ export function attachRouterServerSsrUtils({
     },
     liftScriptBarrier() {
       scriptBuffer.liftBarrier()
+    },
+    cleanup() {
+      // Guard against multiple cleanup calls
+      if (!router.serverSsr) return
+      listeners.length = 0
+      scriptBuffer.cleanup()
+      router.serverSsr.injectedHtml = []
+      router.serverSsr = undefined
     },
   }
 }
