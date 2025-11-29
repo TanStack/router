@@ -4594,11 +4594,12 @@ describe('createLink', () => {
       overrideMeIfYouWant?: string
       children?: Vue.VNode
       onClick?: (e: MouseEvent) => void
+      [key: string]: any
     }) => {
-      const { active, foo, children, overrideMeIfYouWant, onClick } = props
+      const { active, foo, children, ...rest } = props
 
       return (
-        <button onClick={onClick} data-override={overrideMeIfYouWant}>
+        <button {...rest}>
           active: {active ? 'yes' : 'no'} - foo:{' '}
           {foo ? 'yes' : 'no'} - {children}
         </button>
@@ -4686,9 +4687,15 @@ describe('createLink', () => {
       href?: string
       children?: Vue.VNode
       ref?: Vue.Ref<HTMLAnchorElement | null>
-    }) => (
-      <a ref={props.ref as any} {...props} target="_blank" rel="noopener noreferrer" />
-    )
+      [key: string]: any
+    }) => {
+      const { children, ref, ...rest } = props
+      return (
+        <a ref={ref as any} {...rest} target="_blank" rel="noopener noreferrer">
+          {children}
+        </a>
+      )
+    }
 
     const CreatedCustomLink = createLink(CustomLinkWithTarget)
 
@@ -4747,7 +4754,15 @@ describe('createLink', () => {
       children?: Vue.VNode
       target?: string
       ref?: Vue.Ref<HTMLAnchorElement | null>
-    }) => <a ref={props.ref as any} target="_blank" {...props} />
+      [key: string]: any
+    }) => {
+      const { children, ref, ...rest } = props
+      return (
+        <a ref={ref as any} target="_blank" {...rest}>
+          {children}
+        </a>
+      )
+    }
 
     const CreatedCustomLink = createLink(CustomLinkWithDefaultTarget)
 

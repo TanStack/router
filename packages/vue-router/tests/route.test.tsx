@@ -205,7 +205,7 @@ describe('onEnter event', () => {
 })
 
 describe('useLoaderDeps', () => {
-  test('returns an Accessor', async () => {
+  test('returns a Ref', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -213,9 +213,9 @@ describe('useLoaderDeps', () => {
       loaderDeps: ({ search }) => ({ testDep: 'value' }),
       component: () => {
         const deps = indexRoute.useLoaderDeps()
-        // deps should be an Accessor, so we need to call it to get the value
-        expect(typeof deps).toBe('function')
-        expect(deps()).toEqual({ testDep: 'value' })
+        // deps should be a Vue ref, so we access .value to get the value
+        expect(typeof deps).toBe('object')
+        expect(deps.value).toEqual({ testDep: 'value' })
         return <div>Index</div>
       },
     })
@@ -226,7 +226,7 @@ describe('useLoaderDeps', () => {
     expect(indexElem).toBeInTheDocument()
   })
 
-  test('returns an Accessor via Route API', async () => {
+  test('returns a Ref via Route API', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -235,9 +235,9 @@ describe('useLoaderDeps', () => {
       component: () => {
         const api = getRouteApi('/')
         const deps = api.useLoaderDeps()
-        // deps should be an Accessor, so we need to call it to get the value
-        expect(typeof deps).toBe('function')
-        expect(deps()).toEqual({ testDep: 'api-value' })
+        // deps should be a Vue ref, so we access .value to get the value
+        expect(typeof deps).toBe('object')
+        expect(deps.value).toEqual({ testDep: 'api-value' })
         return <div>Index with API</div>
       },
     })

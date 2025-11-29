@@ -56,10 +56,10 @@ export const Scripts = () => {
   ] as Array<RouterManagedTag>
 
   return (
-    <template>
+    <>
       {allScripts.map((asset, i) => (
-        <Asset {...asset} />
+        <Asset {...asset} key={i} />
       ))}
-    </template>
+    </>
   )
 }

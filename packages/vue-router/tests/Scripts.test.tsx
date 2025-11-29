@@ -101,9 +101,11 @@ describe('ssr scripts', () => {
 
     const { container } = render(<RouterProvider router={router} />)
 
-    expect(container.innerHTML).toEqual(
-      `<script src="script.js"></script><script src="script3.js"></script>`,
-    )
+    // Vue adds comment markers for fragments, so check scripts individually
+    const scripts = container.querySelectorAll('script')
+    expect(scripts.length).toBe(2)
+    expect(scripts[0]!.getAttribute('src')).toBe('script.js')
+    expect(scripts[1]!.getAttribute('src')).toBe('script3.js')
   })
 })
 
