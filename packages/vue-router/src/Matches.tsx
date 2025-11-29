@@ -144,8 +144,9 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const status = useRouterState({
-    select: (s) => s.status,
+  // Track location changes to trigger re-computation
+  const location = useRouterState({
+    select: (s) => s.location,
   })
 
   return <
@@ -161,7 +162,8 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
     const matchRoute = Vue.computed(() => {
-      status.value
+      // Depend on location to re-evaluate when route changes
+      location.value
       return router.matchRoute(rest as any, {
         pending,
         caseSensitive,

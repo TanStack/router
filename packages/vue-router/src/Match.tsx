@@ -123,7 +123,8 @@ export const Match = Vue.defineComponent({
       }
 
       // Wrap in suspense if needed
-      const needsSuspense = (route.value && (!route.value.isRoot || route.value.options.wrapInSuspense)) &&
+      // Root routes should also wrap in Suspense if they have a pendingComponent
+      const needsSuspense = route.value &&
         (route.value?.options?.wrapInSuspense ?? PendingComponent.value ?? false)
       
       if (needsSuspense) {
@@ -135,7 +136,7 @@ export const Match = Vue.defineComponent({
       }
 
       // Add scroll restoration if needed
-      const withScrollRestoration: VNode[] = [
+      const withScrollRestoration: Array<VNode> = [
         content,
         parentRouteId.value === rootRouteId && router.options.scrollRestoration 
           ? Vue.h(Vue.Fragment, null, [
@@ -143,7 +144,7 @@ export const Match = Vue.defineComponent({
               Vue.h(ScrollRestoration)
             ]) 
           : null
-      ].filter(Boolean) as VNode[]
+      ].filter(Boolean) as Array<VNode>
 
       return Vue.h(Vue.Fragment, null, withScrollRestoration)
     }
