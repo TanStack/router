@@ -37,7 +37,7 @@ export const Transitioner = Vue.defineComponent({
     const previousIsPagePending = usePrevious(() => isPagePending.value)
 
     // Implement startTransition similar to React/Solid
-    // Vue doesn't have a native useTransition, so we simulate it
+    // Vue doesn't have a native useTransition like React 18, so we simulate it
     // We also update the router state's isTransitioning flag so useMatch can check it
     router.startTransition = (fn: () => void | Promise<void>) => {
       isTransitioning.value = true
@@ -47,9 +47,6 @@ export const Transitioner = Vue.defineComponent({
       } catch {
         // Ignore errors if component is unmounted
       }
-
-      // Execute the function
-      const result = fn()
 
       // Helper to end the transition
       const endTransition = () => {
@@ -64,13 +61,28 @@ export const Transitioner = Vue.defineComponent({
         })
       }
 
-      // If the function returns a promise, wait for it
-      if (result && typeof result.then === 'function') {
-        result.finally(endTransition)
-      } else {
-        // For synchronous functions, defer the transition end to next tick
-        endTransition()
-      }
+      // Execute the function synchronously
+      // The function internally may call startViewTransition which schedules async work
+      // via document.startViewTransition, but we don't need to wait for it here
+      // because Vue's reactivity will trigger re-renders when state changes
+      fn()
+
+      // End the transition on next tick to allow Vue to process reactive updates
+      endTransition()
+    }
+
+    // For Vue, we need to completely override startViewTransition because Vue's
+    // async rendering doesn't work well with the View Transitions API's requirement
+    // for synchronous DOM updates. The browser expects the DOM to be updated
+    // when the callback promise resolves, but Vue updates asynchronously.
+    //
+    // Our approach: Skip the actual view transition animation but still update state.
+    // This ensures navigation works correctly even without the visual transition.
+    // In the future, we could explore using viewTransition.captured like vue-view-transitions does.
+    router.startViewTransition = (fn: () => Promise<void>) => {
+      // Just run the callback directly without wrapping in document.startViewTransition
+      // This ensures the state updates happen and Vue can render them normally
+      fn()
     }
 
     // Subscribe to location changes
