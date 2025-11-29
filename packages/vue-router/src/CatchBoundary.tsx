@@ -31,7 +31,7 @@ const VueErrorBoundary = Vue.defineComponent({
     })
     
     // Capture errors from child components
-    Vue.onErrorCaptured((err: Error, instance, info) => {
+    Vue.onErrorCaptured((err: Error) => {
       // If the error is a Promise (thrown for Suspense), don't treat it as an error
       // Just ignore it - Suspense will handle it
       if (err instanceof Promise || (err && typeof (err as any).then === 'function')) {
