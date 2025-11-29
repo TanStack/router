@@ -38,26 +38,38 @@ export const Transitioner = Vue.defineComponent({
 
     // Implement startTransition similar to React/Solid
     // Vue doesn't have a native useTransition, so we simulate it
+    // We also update the router state's isTransitioning flag so useMatch can check it
     router.startTransition = (fn: () => void | Promise<void>) => {
       isTransitioning.value = true
+      // Also update the router state so useMatch knows we're transitioning
+      try {
+        router.__store.setState((s) => ({ ...s, isTransitioning: true }))
+      } catch {
+        // Ignore errors if component is unmounted
+      }
 
       // Execute the function
       const result = fn()
 
+      // Helper to end the transition
+      const endTransition = () => {
+        // Use nextTick to ensure Vue has processed all reactive updates
+        Vue.nextTick(() => {
+          try {
+            isTransitioning.value = false
+            router.__store.setState((s) => ({ ...s, isTransitioning: false }))
+          } catch {
+            // Ignore errors if component is unmounted
+          }
+        })
+      }
+
       // If the function returns a promise, wait for it
       if (result && typeof result.then === 'function') {
-        result.finally(() => {
-          // Use nextTick to ensure Vue has processed all reactive updates
-          Vue.nextTick(() => {
-            isTransitioning.value = false
-          })
-        })
+        result.finally(endTransition)
       } else {
         // For synchronous functions, defer the transition end to next tick
-        // This allows Vue to batch any reactive updates
-        Vue.nextTick(() => {
-          isTransitioning.value = false
-        })
+        endTransition()
       }
     }
 
