@@ -1,30 +1,35 @@
+import * as Vue from 'vue'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/vue'
-import { ErrorBoundary } from 'solid-js'
 import {
   RouterProvider,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
-import type { JSX } from 'solid-js'
 
 function ThrowingComponent() {
   throw new Error('Test error')
 }
 
-// Custom error boundary to catch errors that bubble up
-function TestErrorBoundary(props: { children: JSX.Element }) {
-  return (
-    <ErrorBoundary
-      fallback={(err) => (
-        <div>External Error Boundary Caught: {err.message}</div>
-      )}
-    >
-      {props.children}
-    </ErrorBoundary>
-  )
-}
+// Custom error boundary component for Vue
+const TestErrorBoundary = Vue.defineComponent({
+  setup(_, { slots }) {
+    const error = Vue.ref<Error | null>(null)
+
+    Vue.onErrorCaptured((err) => {
+      error.value = err as Error
+      return false // Stop propagation
+    })
+
+    return () => {
+      if (error.value) {
+        return <div>External Error Boundary Caught: {error.value.message}</div>
+      }
+      return slots.default?.()
+    }
+  },
+})
 
 function createTestRouter(disableGlobalCatchBoundary: boolean) {
   const rootRoute = createRootRoute({})
@@ -62,11 +67,11 @@ describe('disableGlobalCatchBoundary option', () => {
     const router = createTestRouter(true)
 
     // Wrap RouterProvider in an external error boundary
-    render((
+    render(
       <TestErrorBoundary>
         <RouterProvider router={router} />
       </TestErrorBoundary>
-    ))
+    )
 
     // Error should bubble up and be caught by the external error boundary
     const externalErrorElement = await screen.findByText(

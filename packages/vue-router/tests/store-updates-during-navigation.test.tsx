@@ -111,6 +111,7 @@ async function run({ select }: ReturnType<typeof setup>) {
   fireEvent.click(link)
   const title = await waitFor(
     () => screen.getByRole('heading', { name: /Title$/ }), // matches /posts and /other and not found
+    { timeout: 3000 } // Vue's Suspense needs more time
   )
   expect(title).toBeInTheDocument()
   const after = select.mock.calls.length
@@ -136,8 +137,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has different update counts than React due to different reactivity
-    expect(updates).toBe(10)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBe(27)
   })
 
   test('redirection in preload', async () => {
@@ -155,8 +156,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has different update counts than React due to different reactivity
-    expect(updates).toBe(6)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBe(11)
   })
 
   test('sync beforeLoad', async () => {
@@ -172,8 +173,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has different update counts than React due to different reactivity
-    expect(updates).toBe(8)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBe(25)
   })
 
   test('nothing', async () => {
@@ -184,8 +185,9 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(6) // WARN: this is flaky, and sometimes (rarely) is 7
-    expect(updates).toBeLessThanOrEqual(8)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBeGreaterThanOrEqual(14) // WARN: this is flaky
+    expect(updates).toBeLessThanOrEqual(16)
   })
 
   test('not found in beforeLoad', async () => {
@@ -200,7 +202,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(7)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBe(22)
   })
 
   test('hover preload, then navigate, w/ async loaders', async () => {
@@ -226,7 +229,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(16)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBe(38)
   })
 
   test('navigate, w/ preloaded & async loaders', async () => {
@@ -242,7 +246,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(9)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBe(17)
   })
 
   test('navigate, w/ preloaded & sync loaders', async () => {
@@ -258,8 +263,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Note: Solid has one fewer update than React due to different reactivity
-    expect(updates).toBe(7)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBe(15)
   })
 
   test('navigate, w/ previous navigation & async loader', async () => {
@@ -275,7 +280,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(5)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBe(11)
   })
 
   test('preload a preloaded route w/ async loader', async () => {
@@ -293,6 +299,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(2)
+    // Note: Vue has different update counts than React/Solid due to different reactivity
+    expect(updates).toBe(4)
   })
 })

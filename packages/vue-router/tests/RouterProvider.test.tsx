@@ -1,16 +1,16 @@
+import * as Vue from 'vue'
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/vue'
-import { createContext, useContext } from 'solid-js'
 import { createRootRoute, createRouter } from '../src'
 import { RouterProvider } from '../src/RouterProvider'
 
 describe('RouterProvider', () => {
-  it('should provide context through RouterProvider Wrap', async () => {
-    const ctx = createContext<string>()
+  it('should provide context through RouterProvider Wrap (via router options)', async () => {
+    const ctxKey = Symbol('ctx') as Vue.InjectionKey<string>
 
     const rootRoute = createRootRoute({
       component: () => {
-        const contextValue = useContext(ctx)
+        const contextValue = Vue.inject(ctxKey)
         expect(contextValue, 'Context is not provided').not.toBeUndefined()
 
         return <div>{contextValue}</div>
@@ -18,18 +18,21 @@ describe('RouterProvider', () => {
     })
 
     const routeTree = rootRoute.addChildren([])
-    const router = createRouter({
-      routeTree,
+
+    // Vue RouterProvider supports Wrap via router.options.Wrap, not as a prop
+    const WrapComponent = Vue.defineComponent({
+      setup(_, { slots }) {
+        Vue.provide(ctxKey, 'findMe')
+        return () => slots.default?.()
+      }
     })
 
-    const app = render((
-      <RouterProvider
-        router={router}
-        Wrap={(props) => {
-          return <ctx.Provider value={'findMe'}>{props.children}</ctx.Provider>
-        }}
-      />
-    ))
+    const router = createRouter({
+      routeTree,
+      Wrap: WrapComponent,
+    })
+
+    const app = render(<RouterProvider router={router} />)
 
     const indexElem = await app.findByText('findMe')
     expect(indexElem).toBeInTheDocument()
