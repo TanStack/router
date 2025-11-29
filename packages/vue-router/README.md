@@ -27,3 +27,39 @@
 </a>
 
 ## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!
+
+## File-Based Routing Conventions
+
+| Suffix/Pattern | Purpose |
+|---------------|---------|
+| `.route.ts` | Route configuration (loader, validateSearch, head, etc.) |
+| `.component.vue` | The component rendered for the route |
+| `.errorComponent.vue` | Error boundary component for the route |
+| `.lazy.ts` | Lazy-loaded route configuration |
+| `-RootComponent.vue` | The root/layout component (prefixed with `-`) |
+| `_layout` prefix | Layout routes that wrap child routes |
+| `_` suffix (e.g., `posts_.$postId`) | Unnested routes (break out of parent layout) |
+| `(groupName)` directory | Route groups (organizational, don't affect URL) |
+| `$param` | Dynamic route parameters |
+
+### Examples from e2e/basic-file-routes/ project
+
+```
+src/routes/
+├── -RootComponent.vue          # Root layout component
+├── __root.ts                   # Root route config
+├── index.route.ts              # "/" route config
+├── index.component.vue         # "/" component
+├── posts.route.ts              # "/posts" route config
+├── posts.component.vue         # "/posts" layout component
+├── posts.index.component.vue   # "/posts" index component
+├── posts.$postId.route.ts      # "/posts/:postId" route config
+├── posts.$postId.component.vue # "/posts/:postId" component
+├── posts.$postId.errorComponent.vue  # Error boundary for post
+├── posts_.$postId.edit.route.ts      # "/posts/:postId/edit" (unnested)
+├── (group)/                    # Route group (no URL impact)
+│   ├── _layout.route.ts        # Layout for group
+│   ├── _layout.component.vue
+│   └── inside.component.vue    # "/inside"
+└── 대한민국.component.vue        # Unicode routes supported
+```
