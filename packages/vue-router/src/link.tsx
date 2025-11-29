@@ -32,6 +32,13 @@ interface HTMLAttributes {
   style?: Record<string, string | number>
   onClick?: EventHandler<MouseEvent>
   onFocus?: EventHandler<FocusEvent>
+  // Vue 3's h() function expects lowercase event names after 'on' prefix
+  onMouseenter?: EventHandler<MouseEvent>
+  onMouseleave?: EventHandler<MouseEvent>
+  onMouseover?: EventHandler<MouseEvent>
+  onMouseout?: EventHandler<MouseEvent>
+  onTouchstart?: EventHandler<TouchEvent>
+  // Also accept the camelCase versions for external API compatibility
   onMouseEnter?: EventHandler<MouseEvent>
   onMouseLeave?: EventHandler<MouseEvent>
   onMouseOver?: EventHandler<MouseEvent>
@@ -315,7 +322,8 @@ export function useLinkProps<
 
   const handleEnter = (e: MouseEvent) => {
     if (disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    // Use currentTarget (the element with the handler) instead of target (which may be a child)
+    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
 
     if (preload.value) {
       if (eventTarget.preloadTimeout) {
@@ -331,7 +339,8 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent) => {
     if (disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    // Use currentTarget (the element with the handler) instead of target (which may be a child)
+    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       clearTimeout(eventTarget.preloadTimeout)
@@ -427,14 +436,15 @@ export function useLinkProps<
       ...(resolvedInactiveProps.value || {}),
       href: href.value,
       ref,
-      // Explicitly cast handlers to any to work around type issues
+      // Vue 3's h() function expects lowercase event names after 'on' prefix
+      // e.g., onMouseenter (not onMouseEnter), onMouseover (not onMouseOver)
       onClick: composeEventHandlers<MouseEvent>([onClick, handleClick]) as any,
       onFocus: composeEventHandlers<FocusEvent>([onFocus, handleFocus]) as any,
-      onMouseEnter: composeEventHandlers<MouseEvent>([onMouseEnter, handleEnter]) as any,
-      onMouseOver: composeEventHandlers<MouseEvent>([onMouseOver, handleEnter]) as any,
-      onMouseLeave: composeEventHandlers<MouseEvent>([onMouseLeave, handleLeave]) as any,
-      onMouseOut: composeEventHandlers<MouseEvent>([onMouseOut, handleLeave]) as any,
-      onTouchStart: composeEventHandlers<TouchEvent>([onTouchStart, handleTouchStart]) as any,
+      onMouseenter: composeEventHandlers<MouseEvent>([onMouseEnter, handleEnter]) as any,
+      onMouseover: composeEventHandlers<MouseEvent>([onMouseOver, handleEnter]) as any,
+      onMouseleave: composeEventHandlers<MouseEvent>([onMouseLeave, handleLeave]) as any,
+      onMouseout: composeEventHandlers<MouseEvent>([onMouseOut, handleLeave]) as any,
+      onTouchstart: composeEventHandlers<TouchEvent>([onTouchStart, handleTouchStart]) as any,
       disabled: !!disabled,
       target,
     }
