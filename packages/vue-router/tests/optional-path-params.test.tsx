@@ -850,7 +850,7 @@ describe('Solid Router - Optional Path Parameters', () => {
           <div>
             <h1>Posts</h1>
             <div data-testid="params">{JSON.stringify(params.value)}</div>
-            <div data-testid="search">{JSON.stringify(search())}</div>
+            <div data-testid="search">{JSON.stringify(search.value)}</div>
           </div>
         )
       }
@@ -1005,7 +1005,7 @@ describe('Solid Router - Optional Path Parameters', () => {
             <div>
               <h1>Posts</h1>
               <div data-testid="params">{JSON.stringify(params.value)}</div>
-              <div data-testid="loader-data">{JSON.stringify(data())}</div>
+              <div data-testid="loader-data">{JSON.stringify(data.value)}</div>
             </div>
           )
         },

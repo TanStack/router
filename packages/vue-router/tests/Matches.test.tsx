@@ -39,15 +39,15 @@ const invoicesRoute = createRoute({
 const InvoicesIndex = () => {
   const matches = useMatches<DefaultRouter>()
 
-  const loaderDataMatches = matches().filter((match) =>
+  const loaderDataMatches = matches.value.filter((match: any) =>
     isMatch(match, 'loaderData.0.id'),
   )
 
-  const contextMatches = matches().filter((match) =>
+  const contextMatches = matches.value.filter((match: any) =>
     isMatch(match, 'context.permissions'),
   )
 
-  const incorrectMatches = matches().filter((match) =>
+  const incorrectMatches = matches.value.filter((match: any) =>
     isMatch(match, 'loaderData.6.id'),
   )
 
@@ -55,15 +55,15 @@ const InvoicesIndex = () => {
     <div>
       <section>
         Loader Matches -{' '}
-        {loaderDataMatches.map((match) => match.fullPath).join(',')}
+        {loaderDataMatches.map((match: any) => match.fullPath).join(',')}
       </section>
       <section>
         Context Matches -{' '}
-        {contextMatches.map((match) => match.fullPath).join(',')}
+        {contextMatches.map((match: any) => match.fullPath).join(',')}
       </section>
       <section>
         Incorrect Matches -{' '}
-        {incorrectMatches.map((match) => match.fullPath).join(',')}
+        {incorrectMatches.map((match: any) => match.fullPath).join(',')}
       </section>
     </div>
   )
@@ -332,10 +332,10 @@ describe('matching on different param types', () => {
             <h1 data-testid="heading">{name}</h1>
             <div>
               Params{' '}
-              <span data-testid="params">{JSON.stringify(routeParams())}</span>
+              <span data-testid="params">{JSON.stringify(routeParams.value)}</span>
               Matches{' '}
               <span data-testid="matches">
-                {JSON.stringify(matchRouteMatch())}
+                {JSON.stringify(matchRouteMatch.value)}
               </span>
             </div>
           </div>
