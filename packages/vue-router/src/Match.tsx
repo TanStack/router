@@ -324,10 +324,13 @@ export const Outlet = Vue.defineComponent({
       select: (s) => {
         const matches = s.matches
         const parentMatch = matches.find((d) => d.id === safeMatchId.value)
-        invariant(
-          parentMatch,
-          `Could not find parent match for matchId "${safeMatchId.value}"`,
-        )
+
+        // During navigation transitions, parent match can be temporarily removed
+        // Return false to avoid errors - the component will handle this gracefully
+        if (!parentMatch) {
+          return false
+        }
+
         return parentMatch.globalNotFound
       },
     })
