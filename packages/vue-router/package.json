@@ -64,7 +64,7 @@
   "dependencies": {
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
-    "@tanstack/vue-store": "^0.7.0",
+    "@tanstack/vue-store": "^0.8.0",
     "jsesc": "^3.0.2",
     "tiny-invariant": "^1.3.3",
     "tiny-warning": "^1.0.3"
@@ -76,7 +76,7 @@
     "@vitejs/plugin-vue": "^5.2.3",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "combinate": "^1.1.11",
-    "vue": "^3.3.0",
+    "vue": "^3.5.25",
     "zod": "^3.23.8"
   },
   "peerDependencies": {

@@ -69,7 +69,7 @@ export const Transitioner = Vue.defineComponent({
     // Try to load the initial location
     Vue.onMounted(() => {
       if (
-        (typeof window !== 'undefined' && router.clientSsr) ||
+        (typeof window !== 'undefined' && router.ssr) ||
         (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
       ) {
         return

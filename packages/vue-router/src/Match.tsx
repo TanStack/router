@@ -6,7 +6,6 @@ import {
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
-  pick,
   rootRouteId,
 } from '@tanstack/router-core'
 import { ErrorComponent } from './CatchBoundary'
@@ -196,8 +195,13 @@ export const MatchInner = Vue.defineComponent({
     // { match, key, routeId } =
     const matchState = useRouterState({
       select: (s) => {
-        const matchIndex = s.matches.findIndex((d) => d.id === props.matchId)
-        const match = s.matches[matchIndex]!
+        const match = s.matches.find((d) => d.id === props.matchId)
+
+        // During navigation transitions, matches can be temporarily removed
+        if (!match) {
+          return null
+        }
+
         const routeId = match.routeId as string
 
         const remountFn =
@@ -214,42 +218,55 @@ export const MatchInner = Vue.defineComponent({
         return {
           key,
           routeId,
-          match: pick(match, ['id', 'status', 'error']),
+          match: {
+            id: match.id,
+            status: match.status,
+            error: match.error,
+          },
         }
       },
     })
 
-    const route = Vue.computed(() => router.routesById[matchState.value.routeId]!)
+    const route = Vue.computed(() => {
+      if (!matchState.value) return null
+      return router.routesById[matchState.value.routeId]!
+    })
 
-    const match = Vue.computed(() => matchState.value.match)
+    const match = Vue.computed(() => matchState.value?.match)
 
-    const out = Vue.computed((): VNode => {
+    const out = Vue.computed((): VNode | null => {
+      if (!route.value) return null
       const Comp = route.value.options.component ?? router.options.defaultComponent
       if (Comp) {
         return Vue.h(Comp)
       }
       return Vue.h(Outlet)
     })
-    
+
     return (): VNode | null => {
+      // If match doesn't exist, return null (component is being unmounted or not ready)
+      if (!matchState.value || !match.value || !route.value) {
+        return null
+      }
+
       // Handle different match statuses
       if (match.value.status === 'notFound') {
         invariant(isNotFound(match.value.error), 'Expected a notFound error')
         return renderRouteNotFound(router, route.value, match.value.error)
       }
-      
+
       if (match.value.status === 'redirected') {
         invariant(isRedirect(match.value.error), 'Expected a redirect error')
-        throw router.getMatch(match.value.id)?.loadPromise
+        throw router.getMatch(match.value.id)?._nonReactive.loadPromise
       }
-      
+
       if (match.value.status === 'error') {
         if (router.isServer) {
           const RouteErrorComponent =
             (route.value.options.errorComponent ??
               router.options.defaultErrorComponent) ||
             ErrorComponent
-  
+
           return Vue.h(RouteErrorComponent, {
             error: match.value.error,
             info: {
@@ -257,41 +274,33 @@ export const MatchInner = Vue.defineComponent({
             }
           })
         }
-  
+
         throw match.value.error
       }
-      
+
       if (match.value.status === 'pending') {
         const pendingMinMs =
           route.value.options.pendingMinMs ?? router.options.defaultPendingMinMs
-  
-        if (pendingMinMs && !router.getMatch(match.value.id)?.minPendingPromise) {
+
+        const routerMatch = router.getMatch(match.value.id)
+        if (pendingMinMs && routerMatch && !routerMatch._nonReactive.minPendingPromise) {
           // Create a promise that will resolve after the minPendingMs
           if (!router.isServer) {
             const minPendingPromise = createControlledPromise<void>()
-  
-            Promise.resolve().then(() => {
-              router.updateMatch(match.value.id, (prev) => ({
-                ...prev,
-                minPendingPromise,
-              }))
-            })
-  
+
+            routerMatch._nonReactive.minPendingPromise = minPendingPromise
+
             setTimeout(() => {
               minPendingPromise.resolve()
-  
               // We've handled the minPendingPromise, so we can delete it
-              router.updateMatch(match.value.id, (prev) => ({
-                ...prev,
-                minPendingPromise: undefined,
-              }))
+              routerMatch._nonReactive.minPendingPromise = undefined
             }, pendingMinMs)
           }
         }
-        
-        throw router.getMatch(match.value.id)?.loadPromise
+
+        throw router.getMatch(match.value.id)?._nonReactive.loadPromise
       }
-      
+
       // Success status - render the component
       return out.value
     }

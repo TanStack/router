@@ -59,7 +59,7 @@ export const Matches = Vue.defineComponent({
         : null
 
       // Do not render a root Suspense during SSR or hydrating from SSR
-      const inner = router?.isServer || (typeof document !== 'undefined' && router?.clientSsr)
+      const inner = router?.isServer || (typeof document !== 'undefined' && router?.ssr)
         ? Vue.h(MatchesContent)
         : Vue.h(Vue.Suspense, { fallback: pendingElement }, {
             default: () => Vue.h(MatchesContent)

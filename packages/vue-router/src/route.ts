@@ -19,13 +19,16 @@ import type {
   ErrorComponentProps,
   NotFoundError,
   NotFoundRouteProps,
+  Register,
   RegisteredRouter,
   ResolveFullPath,
   ResolveId,
   ResolveParams,
+  RootRoute as RootRouteCore,
   RootRouteId,
   RootRouteOptions,
   RouteConstraints,
+  Route as RouteCore,
   RouteIds,
   RouteMask,
   RouteOptions,
@@ -45,14 +48,14 @@ import type { UseRouteContextRoute } from './useRouteContext'
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
     component?: RouteComponent
-    errorComponent?: false | null | ErrorRouteComponent
+    errorComponent?: false | null | undefined | ErrorRouteComponent
     notFoundComponent?: NotFoundRouteComponent
     pendingComponent?: RouteComponent
   }
 
   export interface RouteExtensions<
-    TId extends string,
-    TFullPath extends string,
+    in out TId extends string,
+    in out TFullPath extends string,
   > {
     useMatch: UseMatchRoute<TId>
     useRouteContext: UseRouteContextRoute<TId>
@@ -131,48 +134,80 @@ export class RouteApi<
 }
 
 export class Route<
-  in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
-  in out TPath extends RouteConstraints['TPath'] = '/',
-  in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+    in out TRegister = unknown,
+    in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+    in out TPath extends RouteConstraints['TPath'] = '/',
+    in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+      TParentRoute,
+      TPath
+    >,
+    in out TCustomId extends RouteConstraints['TCustomId'] = string,
+    in out TId extends RouteConstraints['TId'] = ResolveId<
+      TParentRoute,
+      TCustomId,
+      TPath
+    >,
+    in out TSearchValidator = undefined,
+    in out TParams = ResolveParams<TPath>,
+    in out TRouterContext = AnyContext,
+    in out TRouteContextFn = AnyContext,
+    in out TBeforeLoadFn = AnyContext,
+    in out TLoaderDeps extends Record<string, any> = {},
+    in out TLoaderFn = undefined,
+    in out TChildren = unknown,
+    in out TFileRouteTypes = unknown,
+    in out TSSR = unknown,
+    in out TMiddlewares = unknown,
+    in out THandlers = undefined,
+  >
+  extends BaseRoute<
+    TRegister,
     TParentRoute,
-    TPath
-  >,
-  in out TCustomId extends RouteConstraints['TCustomId'] = string,
-  in out TId extends RouteConstraints['TId'] = ResolveId<
-    TParentRoute,
+    TPath,
+    TFullPath,
     TCustomId,
-    TPath
-  >,
-  in out TSearchValidator = undefined,
-  in out TParams = ResolveParams<TPath>,
-  in out TRouterContext = AnyContext,
-  in out TRouteContextFn = AnyContext,
-  in out TBeforeLoadFn = AnyContext,
-  in out TLoaderDeps extends Record<string, any> = {},
-  in out TLoaderFn = undefined,
-  in out TChildren = unknown,
-  in out TFileRouteTypes = unknown,
-> extends BaseRoute<
-  TParentRoute,
-  TPath,
-  TFullPath,
-  TCustomId,
-  TId,
-  TSearchValidator,
-  TParams,
-  TRouterContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
-  TLoaderDeps,
-  TLoaderFn,
-  TChildren,
-  TFileRouteTypes
-> {
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    TFileRouteTypes,
+    TSSR,
+    TMiddlewares,
+    THandlers
+  >
+  implements
+    RouteCore<
+      TRegister,
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes,
+      TSSR,
+      TMiddlewares,
+      THandlers
+    >
+{
   /**
    * @deprecated Use the `createRoute` function instead.
    */
   constructor(
     options?: RouteOptions<
+      TRegister,
       TParentRoute,
       TId,
       TCustomId,
@@ -184,7 +219,10 @@ export class Route<
       TLoaderFn,
       TRouterContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      TSSR,
+      TMiddlewares,
+      THandlers
     >,
   ) {
     super(options)
@@ -233,6 +271,7 @@ export class Route<
 }
 
 export function createRoute<
+  TRegister = unknown,
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   TPath extends RouteConstraints['TPath'] = '/',
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -252,8 +291,11 @@ export function createRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TChildren = unknown,
+  TSSR = unknown,
+  THandlers = undefined,
 >(
   options: RouteOptions<
+    TRegister,
     TParentRoute,
     TId,
     TCustomId,
@@ -265,9 +307,12 @@ export function createRoute<
     TLoaderFn,
     AnyContext,
     TRouteContextFn,
-    TBeforeLoadFn
+    TBeforeLoadFn,
+    TSSR,
+    THandlers
   >,
 ): Route<
+  TRegister,
   TParentRoute,
   TPath,
   TFullPath,
@@ -281,9 +326,12 @@ export function createRoute<
   TLoaderDeps,
   TLoaderFn,
   TChildren,
-  unknown
+  unknown,
+  TSSR,
+  THandlers
 > {
   return new Route<
+    TRegister,
     TParentRoute,
     TPath,
     TFullPath,
@@ -297,36 +345,58 @@ export function createRoute<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
-    unknown
+    unknown,
+    TSSR,
+    THandlers
   >(options)
 }
 
-export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any, any>
+export type AnyRootRoute = RootRoute<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
+    TRegister = Register,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
+    TSSR = unknown,
+    THandlers = undefined,
   >(
     options?: RootRouteOptions<
+      TRegister,
       TSearchValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
-      TLoaderFn
+      TLoaderFn,
+      TSSR,
+      THandlers
     >,
   ) => {
     return createRootRoute<
+      TRegister,
       TSearchValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
-      TLoaderFn
+      TLoaderFn,
+      TSSR,
+      THandlers
     >(options as any)
   }
 }
@@ -337,35 +407,60 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-  in out TSearchValidator = undefined,
-  in out TRouterContext = {},
-  in out TRouteContextFn = AnyContext,
-  in out TBeforeLoadFn = AnyContext,
-  in out TLoaderDeps extends Record<string, any> = {},
-  in out TLoaderFn = undefined,
-  in out TChildren = unknown,
-  in out TFileRouteTypes = unknown,
-> extends BaseRootRoute<
-  TSearchValidator,
-  TRouterContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
-  TLoaderDeps,
-  TLoaderFn,
-  TChildren,
-  TFileRouteTypes
-> {
-  /**
-   * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
-   */
-  constructor(
-    options?: RootRouteOptions<
+    in out TRegister = Register,
+    in out TSearchValidator = undefined,
+    in out TRouterContext = {},
+    in out TRouteContextFn = AnyContext,
+    in out TBeforeLoadFn = AnyContext,
+    in out TLoaderDeps extends Record<string, any> = {},
+    in out TLoaderFn = undefined,
+    in out TChildren = unknown,
+    in out TFileRouteTypes = unknown,
+    in out TSSR = unknown,
+    in out THandlers = undefined,
+  >
+  extends BaseRootRoute<
+    TRegister,
+    TSearchValidator,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    TFileRouteTypes,
+    TSSR,
+    THandlers
+  >
+  implements
+    RootRouteCore<
+      TRegister,
       TSearchValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
-      TLoaderFn
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes,
+      TSSR,
+      THandlers
+    >
+{
+  /**
+   * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
+   */
+  constructor(
+    options?: RootRouteOptions<
+      TRegister,
+      TSearchValidator,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TSSR,
+      THandlers
     >,
   ) {
     super(options)
@@ -440,6 +535,7 @@ export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
 export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
 
 export class NotFoundRoute<
+  TRegister,
   TParentRoute extends AnyRootRoute,
   TRouterContext = AnyContext,
   TRouteContextFn = AnyContext,
@@ -448,7 +544,10 @@ export class NotFoundRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TChildren = unknown,
+  TSSR = unknown,
+  THandlers = undefined,
 > extends Route<
+  TRegister,
   TParentRoute,
   '/404',
   '/404',
@@ -461,11 +560,14 @@ export class NotFoundRoute<
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
-  TChildren
+  TChildren,
+  TSSR,
+  THandlers
 > {
   constructor(
     options: Omit<
       RouteOptions<
+        TRegister,
         TParentRoute,
         string,
         string,
@@ -477,7 +579,9 @@ export class NotFoundRoute<
         TLoaderFn,
         TRouterContext,
         TRouteContextFn,
-        TBeforeLoadFn
+        TBeforeLoadFn,
+        TSSR,
+        THandlers
       >,
       | 'caseSensitive'
       | 'parseParams'
@@ -495,22 +599,29 @@ export class NotFoundRoute<
 }
 
 export function createRootRoute<
+  TRegister = Register,
   TSearchValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
+  TSSR = unknown,
+  THandlers = undefined,
 >(
   options?: RootRouteOptions<
+    TRegister,
     TSearchValidator,
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
-    TLoaderFn
+    TLoaderFn,
+    TSSR,
+    THandlers
   >,
 ): RootRoute<
+  TRegister,
   TSearchValidator,
   TRouterContext,
   TRouteContextFn,
@@ -518,14 +629,21 @@ export function createRootRoute<
   TLoaderDeps,
   TLoaderFn,
   unknown,
-  unknown
+  unknown,
+  TSSR,
+  THandlers
 > {
   return new RootRoute<
+    TRegister,
     TSearchValidator,
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
-    TLoaderFn
+    TLoaderFn,
+    unknown,
+    unknown,
+    TSSR,
+    THandlers
   >(options)
 }
