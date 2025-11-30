@@ -2,8 +2,7 @@ import * as Vue from 'vue'
 import { isNotFound } from '@tanstack/router-core'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
-import type { NotFoundError } from '@tanstack/router-core'
-import type { ErrorComponentProps } from '@tanstack/router-core'
+import type { ErrorComponentProps, NotFoundError  } from '@tanstack/router-core'
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => Vue.VNode

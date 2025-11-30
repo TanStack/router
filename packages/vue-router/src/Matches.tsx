@@ -6,10 +6,10 @@ import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
-import { SafeFragment } from './SafeFragment'
 import type {
   AnyRouter,
   DeepPartial,
+  ErrorComponentProps,
   MakeOptionalPathParams,
   MakeOptionalSearchParams,
   MakeRouteMatchUnion,
@@ -21,8 +21,7 @@ import type {
   ResolveRoute,
   RouteByPath,
   RouterState,
-  ToSubOptionsProps,
-  ErrorComponentProps
+  ToSubOptionsProps
 } from '@tanstack/router-core'
 
 // Define a type for the error component function
@@ -168,7 +167,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
     const matchRoute = Vue.computed(() => {
       // Access routerState to establish dependency
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+       
       routerState.value
       return router.matchRoute(rest as any, {
         pending,

@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { Matches } from './Matches'
-import { getRouterContext, provideRouter } from './routerContext'
+import { provideRouter } from './routerContext'
 import type {
   AnyRouter,
   RegisteredRouter,

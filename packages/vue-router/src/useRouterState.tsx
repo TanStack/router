@@ -1,11 +1,11 @@
 import { useStore } from '@tanstack/vue-store'
+import * as Vue from 'vue'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
-import * as Vue from 'vue'
 
 export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected> = {
   router?: TRouter

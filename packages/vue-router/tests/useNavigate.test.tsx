@@ -2757,7 +2757,7 @@ describe('encoded and unicode paths', () => {
         expect(window.location.pathname).toBe(expectedPath)
         expect(router.latestLocation.pathname).toBe(expectedLocation)
         // Parse JSON to compare objects since key ordering may differ
-        expect(JSON.parse(paramsToValidate.textContent!)).toEqual(params)
+        expect(JSON.parse(paramsToValidate.textContent)).toEqual(params)
       })
     },
   )
