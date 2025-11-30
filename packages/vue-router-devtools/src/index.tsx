@@ -1,39 +1,25 @@
+import { defineComponent } from 'vue'
 import { TanStackRouterDevtools as DevToolsComponent } from './TanStackRouterDevtools'
 import { TanStackRouterDevtoolsPanel as DevToolsPanelComponent } from './TanStackRouterDevtoolsPanel'
-import { defineComponent, h } from 'vue'
+
+// Re-export types
+export type { TanStackRouterDevtoolsOptions } from './TanStackRouterDevtools'
+export type { TanStackRouterDevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
 
 // Create a null component for production
-const NullDevToolsComponent = defineComponent({
+const NullComponent = /* #__PURE__ */ defineComponent({
   name: 'NullTanStackRouterDevtools',
   setup() {
     return () => null
-  }
+  },
 })
 
-// Create a null panel component for production
-const NullDevToolsPanelComponent = defineComponent({
-  name: 'NullTanStackRouterDevtoolsPanel',
-  setup() {
-    return () => null
-  }
-})
+export const TanStackRouterDevtools =
+  process.env.NODE_ENV !== 'development' ? NullComponent : DevToolsComponent
 
-// Export conditionally based on NODE_ENV
-export const TanStackRouterDevtools = 
-  process.env.NODE_ENV === 'development'
-    ? DevToolsComponent
-    : NullDevToolsComponent
-
-// Always export the real component
 export const TanStackRouterDevtoolsInProd = DevToolsComponent
 
-// Re-export interfaces
-export type { DevtoolsOptions } from './TanStackRouterDevtools'
-export type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
-
 export const TanStackRouterDevtoolsPanel =
-  process.env.NODE_ENV === 'development'
-    ? DevToolsPanelComponent
-    : NullDevToolsPanelComponent
+  process.env.NODE_ENV !== 'development' ? NullComponent : DevToolsPanelComponent
 
 export const TanStackRouterDevtoolsPanelInProd = DevToolsPanelComponent

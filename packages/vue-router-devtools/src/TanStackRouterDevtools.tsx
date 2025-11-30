@@ -1,13 +1,9 @@
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
-import { defineComponent, ref, onMounted, onBeforeUnmount, watch, h, markRaw, nextTick } from 'vue'
-// Import JSX from 'solid-js' since the props will be passed to Solid components
-import type { JSX } from 'solid-js'
+import { defineComponent, h, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter, useRouterState } from '@tanstack/vue-router'
+import type { AnyRouter } from '@tanstack/vue-router'
 
-// Use type aliases for any router and router state to avoid generic arguments requirement
-type AnyRouter = any
-type AnyRouterState = any
-
-export interface DevtoolsOptions {
+export interface TanStackRouterDevtoolsOptions {
   /**
    * Set this true if you want the dev tools to default to being open
    */
@@ -15,15 +11,15 @@ export interface DevtoolsOptions {
   /**
    * Use this to add props to the panel. For example, you can add className, style (merge and override default style), etc.
    */
-  panelProps?: JSX.HTMLAttributes<HTMLDivElement>
+  panelProps?: Record<string, any>
   /**
    * Use this to add props to the close button. For example, you can add className, style (merge and override default style), onClick (extend default handler), etc.
    */
-  closeButtonProps?: JSX.ButtonHTMLAttributes<HTMLButtonElement>
+  closeButtonProps?: Record<string, any>
   /**
    * Use this to add props to the toggle button. For example, you can add className, style (merge and override default style), onClick (extend default handler), etc.
    */
-  toggleButtonProps?: JSX.ButtonHTMLAttributes<HTMLButtonElement>
+  toggleButtonProps?: Record<string, any>
   /**
    * The position of the TanStack Router logo to open and close the devtools panel.
    * Defaults to 'bottom-left'.
@@ -40,16 +36,12 @@ export interface DevtoolsOptions {
    */
   router?: AnyRouter
   /**
-   * The router state to use for the devtools.
-   */
-  routerState?: AnyRouterState
-  /**
    * Use this to attach the devtool's styles to specific element in the DOM.
    */
   shadowDOMTarget?: ShadowRoot
 }
 
-export const TanStackRouterDevtools = /*#__PURE__*/ defineComponent<DevtoolsOptions>({
+export const TanStackRouterDevtools = /* #__PURE__ */ defineComponent({
   name: 'TanStackRouterDevtools',
   props: [
     'initialIsOpen',
@@ -59,90 +51,17 @@ export const TanStackRouterDevtools = /*#__PURE__*/ defineComponent<DevtoolsOpti
     'position',
     'containerElement',
     'router',
-    'routerState',
-    'shadowDOMTarget'
-  ],
-  setup(props) {
+    'shadowDOMTarget',
+  ] as unknown as undefined,
+  setup(props: TanStackRouterDevtoolsOptions) {
     const devToolRef = ref<HTMLDivElement | null>(null)
-    // Don't store the devtools instance in a ref to avoid Vue's reactivity
-    let devtools: TanStackRouterDevtoolsCore | null = null
-    
-    // Helper function to safely get router state
-    const getRouterState = () => {
-      if (!props.router) return null
-      
-      // Try to access router state safely
-      try {
-        return props.routerState || (props.router.state 
-          ? markRaw(props.router.state) 
-          : null)
-      } catch (e) {
-        console.warn('Failed to access router state:', e)
-        return null
-      }
-    }
-    
-    // Initialize devtools
-    onMounted(() => {
-      // Delay initialization to ensure router is ready
-      nextTick(() => {
-        if (!props.router) {
-          console.warn('TanStackRouterDevtools: No router provided')
-          return
-        }
-        
-        // Get router state safely
-        const routerState = getRouterState()
-        
-        // Create a raw instance that's not tracked by Vue's reactivity
-        devtools = markRaw(new TanStackRouterDevtoolsCore({
-          initialIsOpen: props.initialIsOpen,
-          panelProps: props.panelProps,
-          closeButtonProps: props.closeButtonProps,
-          toggleButtonProps: props.toggleButtonProps,
-          position: props.position,
-          containerElement: props.containerElement,
-          router: markRaw(props.router),
-          routerState: routerState,
-          shadowDOMTarget: props.shadowDOMTarget,
-        }))
-        
-        if (devToolRef.value) {
-          devtools.mount(devToolRef.value)
-        }
-      })
-    })
-    
-    // Cleanup on unmount
-    onBeforeUnmount(() => {
-      if (devtools) {
-        devtools.unmount()
-        devtools = null
-      }
-    })
-    
-    // Watch for changes to props and update devtools
-    watch(() => props.router, (newRouter) => {
-      if (devtools && newRouter) {
-        // Pass raw router instance to avoid Vue's reactivity
-        devtools.setRouter(markRaw(newRouter))
-        
-        // Update router state as well when router changes
-        const routerState = getRouterState()
-        if (routerState) {
-          devtools.setRouterState(routerState)
-        }
-      }
-    }, { immediate: true })
-    
-    watch(() => props.routerState, (newRouterState) => {
-      if (devtools && newRouterState) {
-        // Pass raw router state to avoid Vue's reactivity
-        devtools.setRouterState(markRaw(newRouterState))
-      }
-    }, { immediate: true })
-    
-    watch(() => ({
+
+    const hookRouter = useRouter({ warn: false })
+    const activeRouter = props.router ?? hookRouter
+
+    const activeRouterState = useRouterState({ router: activeRouter })
+
+    const devtools = new TanStackRouterDevtoolsCore({
       initialIsOpen: props.initialIsOpen,
       panelProps: props.panelProps,
       closeButtonProps: props.closeButtonProps,
@@ -150,13 +69,60 @@ export const TanStackRouterDevtools = /*#__PURE__*/ defineComponent<DevtoolsOpti
       position: props.position,
       containerElement: props.containerElement,
       shadowDOMTarget: props.shadowDOMTarget,
-    }), (newOptions) => {
-      if (devtools) {
-        // Pass raw options to avoid Vue's reactivity
-        devtools.setOptions(markRaw(newOptions))
+      router: activeRouter,
+      routerState: activeRouterState.value,
+    })
+
+    // Update devtools when router changes
+    watch(
+      () => activeRouter,
+      (router) => {
+        devtools.setRouter(router)
+      },
+    )
+
+    // Update devtools when router state changes
+    watch(
+      activeRouterState,
+      (routerState) => {
+        devtools.setRouterState(routerState)
+      },
+    )
+
+    // Update devtools when options change
+    watch(
+      () => [
+        props.initialIsOpen,
+        props.panelProps,
+        props.closeButtonProps,
+        props.toggleButtonProps,
+        props.position,
+        props.containerElement,
+        props.shadowDOMTarget,
+      ],
+      () => {
+        devtools.setOptions({
+          initialIsOpen: props.initialIsOpen,
+          panelProps: props.panelProps,
+          closeButtonProps: props.closeButtonProps,
+          toggleButtonProps: props.toggleButtonProps,
+          position: props.position,
+          containerElement: props.containerElement,
+          shadowDOMTarget: props.shadowDOMTarget,
+        })
+      },
+    )
+
+    onMounted(() => {
+      if (devToolRef.value) {
+        devtools.mount(devToolRef.value)
       }
-    }, { deep: true })
-    
+    })
+
+    onUnmounted(() => {
+      devtools.unmount()
+    })
+
     return () => h('div', { ref: devToolRef })
-  }
+  },
 })
