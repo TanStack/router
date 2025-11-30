@@ -10444,12 +10444,18 @@ importers:
 
   packages/vue-router-devtools:
     dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/router-devtools-core':
         specifier: workspace:^
         version: link:../router-devtools-core
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../vue-router
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     devDependencies:
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
