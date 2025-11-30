@@ -494,11 +494,7 @@ export const inferFullPath = (
       : removeUnderscores(removeLayoutSegments(routeNode.routePath))) ?? '',
   )
 
-  // Index routes have cleanedPath of '' or '/' - both should return '/' for fullPath
-  if (routeNode.cleanedPath === '/' || routeNode.cleanedPath === '') {
-    return fullPath || '/'
-  }
-  return fullPath.replace(/\/$/, '')
+  return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')
 }
 
 /**
