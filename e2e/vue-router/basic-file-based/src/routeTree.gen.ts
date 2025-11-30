@@ -252,6 +252,7 @@ const groupLayoutInsidelayoutRouteRoute =
     })
 
 export interface FileRoutesByFullPath {
+  '/': typeof groupLayoutRouteRouteWithChildren
   '/editing-a': typeof EditingARouteRoute
   '/editing-b': typeof EditingBRouteRoute
   '/notRemountDeps': typeof NotRemountDepsRouteRoute
@@ -269,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/posts/$postId/edit': typeof PostsPostIdEditRouteRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof groupLayoutRouteRouteWithChildren
   '/editing-a': typeof EditingARouteRoute
   '/editing-b': typeof EditingBRouteRoute
   '/notRemountDeps': typeof NotRemountDepsRouteRoute
@@ -311,6 +313,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/editing-a'
     | '/editing-b'
     | '/notRemountDeps'
@@ -328,6 +331,7 @@ export interface FileRouteTypes {
     | '/posts/$postId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/editing-a'
     | '/editing-b'
     | '/notRemountDeps'
@@ -438,7 +442,7 @@ declare module '@tanstack/vue-router' {
     '/': {
       id: '/'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof IndexRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -480,7 +484,7 @@ declare module '@tanstack/vue-router' {
     '/(group)/_layout': {
       id: '/(group)/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof groupLayoutRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
