@@ -25,7 +25,7 @@ import type {
 } from './typePrimitives'
 
 // Type definitions to replace missing Vue JSX types
-type EventHandler<E = Event> = (e: E) => void
+type EventHandler<TEvent = Event> = (e: TEvent) => void
 interface HTMLAttributes {
   class?: string
   style?: Record<string, string | number>
@@ -509,7 +509,7 @@ export type ActiveLinkOptions<
 > = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
   ActiveLinkOptionProps<TComp>
 
-type ActiveLinkProps<_TComp> = Partial<
+type ActiveLinkProps<TComp> = Partial<
   HTMLAttributes & {
     [key: `data-${string}`]: unknown
   }
