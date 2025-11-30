@@ -10450,9 +10450,6 @@ importers:
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../vue-router
-      solid-js:
-        specifier: 1.9.10
-        version: 1.9.10
     devDependencies:
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
