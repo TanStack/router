@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.139.7",
-    "@tanstack/solid-router-devtools": "^1.139.7",
-    "@tanstack/solid-start": "^1.139.8",
+    "@tanstack/solid-router": "^1.139.12",
+    "@tanstack/solid-router-devtools": "^1.139.12",
+    "@tanstack/solid-start": "^1.139.12",
     "solid-js": "^1.9.10"
   },
   "devDependencies": {

@@ -12,15 +12,15 @@
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-query-devtools": "^5.71.9",
-    "@tanstack/solid-router": "^1.139.7",
-    "@tanstack/solid-router-devtools": "^1.139.7",
+    "@tanstack/solid-router": "^1.139.12",
+    "@tanstack/solid-router-devtools": "^1.139.12",
     "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.1.15"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.139.7",
+    "@tanstack/router-plugin": "^1.139.12",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-plugin-solid": "^2.11.10"

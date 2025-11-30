@@ -35,7 +35,7 @@ type ReadablePassthrough = {
   destroyed: boolean
 }
 
-function createPassthrough(onCancel?: () => void) {
+function createPassthrough(onCancel: () => void) {
   let controller: ReadableStreamDefaultController<any>
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
@@ -44,13 +44,15 @@ function createPassthrough(onCancel?: () => void) {
     },
     cancel() {
       res.destroyed = true
-      onCancel?.()
+      onCancel()
     },
   })
 
   const res: ReadablePassthrough = {
     stream,
     write: (chunk) => {
+      // Don't write to destroyed stream
+      if (res.destroyed) return
       if (typeof chunk === 'string') {
         controller.enqueue(encoder.encode(chunk))
       } else {
@@ -58,13 +60,18 @@ function createPassthrough(onCancel?: () => void) {
       }
     },
     end: (chunk) => {
+      // Don't end already destroyed stream
+      if (res.destroyed) return
       if (chunk) {
         res.write(chunk)
       }
-      controller.close()
       res.destroyed = true
+      controller.close()
     },
     destroy: (error) => {
+      // Don't destroy already destroyed stream
+      if (res.destroyed) return
+      res.destroyed = true
       controller.error(error)
     },
     destroyed: false,
@@ -81,8 +88,8 @@ async function readStream(
     onError?: (error: unknown) => void
   },
 ) {
+  const reader = stream.getReader()
   try {
-    const reader = stream.getReader()
     let chunk
     while (!(chunk = await reader.read()).done) {
       opts.onData?.(chunk)
@@ -90,6 +97,8 @@ async function readStream(
     opts.onEnd?.()
   } catch (error) {
     opts.onError?.(error)
+  } finally {
+    reader.releaseLock()
   }
 }
 
@@ -102,20 +111,26 @@ export function transformStreamWithRouter(
 ) {
   let stopListeningToInjectedHtml: (() => void) | undefined = undefined
   let timeoutHandle: NodeJS.Timeout
+  let cleanedUp = false
 
-  const finalPassThrough = createPassthrough(() => {
+  function cleanup() {
+    if (cleanedUp) return
+    cleanedUp = true
     if (stopListeningToInjectedHtml) {
       stopListeningToInjectedHtml()
       stopListeningToInjectedHtml = undefined
     }
     clearTimeout(timeoutHandle)
-  })
+    router.serverSsr?.cleanup()
+  }
+
+  const finalPassThrough = createPassthrough(cleanup)
   const textDecoder = new TextDecoder()
 
-  let isAppRendering = true as boolean
+  let isAppRendering = true
   let routerStreamBuffer = ''
   let pendingClosingTags = ''
-  let streamBarrierLifted = false as boolean
+  let streamBarrierLifted = false
   let leftover = ''
   let leftoverHtml = ''
 
@@ -146,18 +161,27 @@ export function transformStreamWithRouter(
   )
 
   function handleInjectedHtml() {
+    // Don't process if already cleaned up
+    if (cleanedUp) return
+
     router.serverSsr!.injectedHtml.forEach((promise) => {
       processingCount++
 
       promise
         .then((html) => {
+          // Don't write to destroyed stream or after cleanup
+          if (cleanedUp || finalPassThrough.destroyed) {
+            return
+          }
           if (isAppRendering) {
             routerStreamBuffer += html
           } else {
             finalPassThrough.write(html)
           }
         })
-        .catch(injectedHtmlDonePromise.reject)
+        .catch((err) => {
+          injectedHtmlDonePromise.reject(err)
+        })
         .finally(() => {
           processingCount--
 
@@ -171,26 +195,40 @@ export function transformStreamWithRouter(
 
   injectedHtmlDonePromise
     .then(() => {
+      // Don't process if already cleaned up or destroyed
+      if (cleanedUp || finalPassThrough.destroyed) {
+        return
+      }
+
       clearTimeout(timeoutHandle)
       const finalHtml =
-        leftoverHtml + getBufferedRouterStream() + pendingClosingTags
+        leftover + leftoverHtml + getBufferedRouterStream() + pendingClosingTags
+
+      leftover = ''
+      leftoverHtml = ''
+      pendingClosingTags = ''
 
       finalPassThrough.end(finalHtml)
     })
     .catch((err) => {
+      // Don't process if already cleaned up
+      if (cleanedUp || finalPassThrough.destroyed) {
+        return
+      }
+
       console.error('Error reading routerStream:', err)
       finalPassThrough.destroy(err)
     })
-    .finally(() => {
-      if (stopListeningToInjectedHtml) {
-        stopListeningToInjectedHtml()
-        stopListeningToInjectedHtml = undefined
-      }
-    })
+    .finally(cleanup)
 
   // Transform the appStream
   readStream(appStream, {
     onData: (chunk) => {
+      // Don't process if already cleaned up
+      if (cleanedUp || finalPassThrough.destroyed) {
+        return
+      }
+
       const text = decodeChunk(chunk.value)
       const chunkString = leftover + text
       const bodyEndMatch = chunkString.match(patternBodyEnd)
@@ -217,15 +255,20 @@ export function transformStreamWithRouter(
         pendingClosingTags = chunkString.slice(bodyEndIndex)
 
         finalPassThrough.write(
-          chunkString.slice(0, bodyEndIndex) + getBufferedRouterStream(),
+          chunkString.slice(0, bodyEndIndex) +
+            getBufferedRouterStream() +
+            leftoverHtml,
         )
 
         leftover = ''
+        leftoverHtml = ''
         return
       }
 
       let result: RegExpExecArray | null
       let lastIndex = 0
+      // Reset regex lastIndex since it's global and stateful across exec() calls
+      patternClosingTag.lastIndex = 0
       while ((result = patternClosingTag.exec(chunkString)) !== null) {
         lastIndex = result.index + result[0].length
       }
@@ -238,12 +281,18 @@ export function transformStreamWithRouter(
 
         finalPassThrough.write(processed)
         leftover = chunkString.slice(lastIndex)
+        leftoverHtml = ''
       } else {
         leftover = chunkString
         leftoverHtml += getBufferedRouterStream()
       }
     },
     onEnd: () => {
+      // Don't process if stream was already destroyed/cancelled or cleaned up
+      if (cleanedUp || finalPassThrough.destroyed) {
+        return
+      }
+
       // Mark the app as done rendering
       isAppRendering = false
       router.serverSsr!.setRenderFinished()
@@ -261,7 +310,21 @@ export function transformStreamWithRouter(
       }
     },
     onError: (error) => {
+      // Don't process if already cleaned up
+      if (cleanedUp) {
+        return
+      }
+
       console.error('Error reading appStream:', error)
+      isAppRendering = false
+      router.serverSsr!.setRenderFinished()
+      // Clear timeout to prevent it from firing after error
+      clearTimeout(timeoutHandle)
+      // Clear string buffers to prevent memory leaks
+      leftover = ''
+      leftoverHtml = ''
+      routerStreamBuffer = ''
+      pendingClosingTags = ''
       finalPassThrough.destroy(error)
       injectedHtmlDonePromise.reject(error)
     },

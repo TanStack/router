@@ -40,5 +40,7 @@ export const renderRouterToString = async ({
       status: 500,
       headers: responseHeaders,
     })
+  } finally {
+    router.serverSsr?.cleanup()
   }
 }
