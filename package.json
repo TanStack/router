@@ -111,6 +111,8 @@
       "@tanstack/start-client-core": "workspace:*",
       "@tanstack/start-server-core": "workspace:*",
       "@tanstack/start-storage-context": "workspace:*",
+      "@tanstack/vue-router": "workspace:*",
+      "@tanstack/vue-router-devtools": "workspace:*",
       "@tanstack/eslint-plugin-router": "workspace:*",
       "@tanstack/server-functions-plugin": "workspace:*",
       "@tanstack/directive-functions-plugin": "workspace:*",
