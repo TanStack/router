@@ -18,7 +18,7 @@ const TestErrorBoundary = Vue.defineComponent({
     const error = Vue.ref<Error | null>(null)
 
     Vue.onErrorCaptured((err) => {
-      error.value = err as Error
+      error.value = err
       return false // Stop propagation
     })
 

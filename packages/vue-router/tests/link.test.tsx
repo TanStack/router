@@ -24,7 +24,6 @@ import {
   createRoute,
   createRouteMask,
   createRouter,
-  getRouteApi,
   redirect,
   retainSearchParams,
   stripSearchParams,
@@ -6621,7 +6620,7 @@ describe('encoded and unicode paths', () => {
       expect(router.latestLocation.pathname).toBe(expectedLocation)
 
       // Compare as objects to avoid key ordering issues
-      expect(JSON.parse(paramsToValidate.textContent!)).toEqual(params)
+      expect(JSON.parse(paramsToValidate.textContent)).toEqual(params)
     },
   )
 })

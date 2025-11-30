@@ -15,7 +15,6 @@ import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import { SafeFragment } from './SafeFragment'
 import type { VNode } from 'vue'
 import type { AnyRoute } from '@tanstack/router-core'
 

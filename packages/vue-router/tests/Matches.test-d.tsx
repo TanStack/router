@@ -1,6 +1,4 @@
-import type { AnyRouteMatch, RouteMatch } from '@tanstack/router-core'
 import { expectTypeOf, test } from 'vitest'
-import type * as Vue from 'vue'
 import {
   MatchRoute,
   createRootRoute,
@@ -10,6 +8,8 @@ import {
   useMatchRoute,
   useMatches,
 } from '../src'
+import type { AnyRouteMatch, RouteMatch } from '@tanstack/router-core'
+import type * as Vue from 'vue'
 
 const rootRoute = createRootRoute()
 

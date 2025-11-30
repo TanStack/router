@@ -1,6 +1,5 @@
 import { resolve } from 'node:path'
 import { defineConfig, mergeConfig } from 'vitest/config'
-import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { tanstackViteConfig } from '@tanstack/config/vite'
 import packageJson from './package.json'

@@ -1,4 +1,3 @@
-import * as Vue from 'vue'
 import { afterEach, describe, expect, test } from 'vitest'
 import {
   cleanup,
