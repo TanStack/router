@@ -700,6 +700,7 @@ export type GetMatchRoutesFn = (pathname: string) => {
   matchedRoutes: ReadonlyArray<AnyRoute>
   routeParams: Record<string, string>
   foundRoute: AnyRoute | undefined
+  parseError?: unknown
 }
 
 export type EmitFn = (routerEvent: RouterEvent) => void
@@ -2680,15 +2681,17 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   const trimmedPath = trimPathRight(pathname)
 
   let foundRoute: TRouteLike | undefined = undefined
+  let parseError: unknown = undefined
   const match = findRouteMatch<TRouteLike>(trimmedPath, processedTree, true)
   if (match) {
     foundRoute = match.route
     Object.assign(routeParams, match.params) // Copy params, because they're cached
+    parseError = match.error
   }
 
   const matchedRoutes = match?.branch || [routesById[rootRouteId]!]
 
-  return { matchedRoutes, routeParams, foundRoute }
+  return { matchedRoutes, routeParams, foundRoute, parseError }
 }
 
 function applySearchMiddleware({
