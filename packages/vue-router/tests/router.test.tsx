@@ -1718,7 +1718,7 @@ describe('statusCode reset on navigation', () => {
 
   describe.each([true, false])(
     'status code is set when loader/beforeLoad throws (isAsync=%s)',
-    async (isAsync) => {
+    (isAsync) => {
       const throwingFun = isAsync
         ? (toThrow: () => void) => async () => {
             await new Promise((resolve) => setTimeout(resolve, 10))
