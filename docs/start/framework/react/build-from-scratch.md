@@ -24,7 +24,8 @@ cd myApp
 npm init -y
 ```
 
-> [!NOTE] > We use `npm` in all of these examples, but you can use your package manager of choice instead.
+> [!NOTE]
+> We use `npm` in all of these examples, but you can use your package manager of choice instead.
 
 ## TypeScript Configuration
 
@@ -43,7 +44,8 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 }
 ```
 
-> [!NOTE] > Enabling `verbatimModuleSyntax` can result in server bundles leaking into client bundles. It is recommended to keep this option disabled.
+> [!NOTE]
+> Enabling `verbatimModuleSyntax` can result in server bundles leaking into client bundles. It is recommended to keep this option disabled.
 
 ## Install Dependencies
 

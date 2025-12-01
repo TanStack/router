@@ -11,6 +11,7 @@ import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
+import { previewServerPlugin } from './preview-server-plugin/plugin'
 import { parseStartConfig } from './schema'
 import { resolveEntry } from './resolve-entries'
 import {
@@ -346,11 +347,16 @@ export function TanStackStartVitePluginCore(
                 // Build the SSR bundle
                 await builder.build(server)
               }
-              const serverBundle = getBundle(VITE_ENVIRONMENT_NAMES.server)
-              await postServerBuild({ builder, startConfig, serverBundle })
             },
           },
         }
+      },
+      buildApp: {
+        order: 'post',
+        async handler(builder) {
+          const { startConfig } = getConfig()
+          await postServerBuild({ builder, startConfig })
+        },
       },
     },
     tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
@@ -399,6 +405,7 @@ export function TanStackStartVitePluginCore(
       getConfig,
     }),
     devServerPlugin({ getConfig }),
+    previewServerPlugin(),
     {
       name: 'tanstack-start:core:capture-bundle',
       applyToEnvironment(e) {

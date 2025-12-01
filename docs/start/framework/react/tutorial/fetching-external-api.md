@@ -67,9 +67,9 @@ At this point, the project structure should look like this:
 
 ```
 
-Once your project is set up, you can access your app at localhost:3000. You should see the default TanStack Start welcome page.
+Once your project is set up, you can access your app at `localhost:3000`. You should see the default TanStack Start welcome page.
 
-## Step 1: Setup a .env file with TMDB_AUTH_TOKEN
+## Step 1: Setup a `.env` file with TMDB_AUTH_TOKEN
 
 To fetch movies from the TMDB API, you need an authentication token. You can get this for free at themoviedb.org.
 
@@ -115,36 +115,34 @@ export interface TMDBResponse {
 
 ## Step 3: Creating the Route with API Fetch Function
 
-Now let's create our route that fetches data from the TMDB API. Create a new file at `src/routes/fetch-movies.tsx`:
+To call the TMDB API, we're going to create a server function that fetches data on the server. This approach keeps our API credentials secure by never exposing them to the client.
+Let's create our route that fetches data from the TMDB API. Create a new file at `src/routes/fetch-movies.tsx`:
 
 ```typescript
 // src/routes/fetch-movies.tsx
 import { createFileRoute } from '@tanstack/react-router'
 import type { Movie, TMDBResponse } from '../types/movie'
+import { createServerFn } from '@tanstack/react-start'
 
 const API_URL =
   'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc'
 
-async function fetchPopularMovies(): Promise<TMDBResponse> {
-  const token = process.env.TMDB_AUTH_TOKEN
-  if (!token) {
-    throw new Error('Missing TMDB_AUTH_TOKEN environment variable')
-  }
+const fetchPopularMovies = createServerFn().handler(
+  async (): Promise<TMDBResponse> => {
+    const response = await fetch(API_URL, {
+      headers: {
+        accept: 'application/json',
+        Authorization: `Bearer ${process.env.TMDB_AUTH_TOKEN}`,
+      },
+    })
 
-  const response = await fetch(API_URL, {
-    headers: {
-      accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  })
+    if (!response.ok) {
+      throw new Error(`Failed to fetch movies: ${response.statusText}`)
+    }
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch movies: ${response.statusText}`)
-  }
-
-  const data = (await response.json()) as TMDBResponse
-  return data
-}
+    return response.json()
+  },
+)
 
 export const Route = createFileRoute('/fetch-movies')({
   component: MoviesPage,
@@ -159,6 +157,13 @@ export const Route = createFileRoute('/fetch-movies')({
   },
 })
 ```
+
+_What's happening here:_
+
+- `createServerFn()` creates a server-only function that runs exclusively on the server, ensuring our `TMDB_AUTH_TOKEN` environment variable never gets exposed to the client. The server function makes an authenticated request to the TMDB API and returns the parsed JSON response.
+- The route loader runs on the server when a user visits /fetch-movies, calling our server function before the page renders
+- Error handling ensures the component always receives valid data structure - either the movies or an empty array with an error message
+- This pattern provides server-side rendering, automatic type safety, and secure API credential handling out of the box.
 
 ## Step 4: Building the Movie Components
 

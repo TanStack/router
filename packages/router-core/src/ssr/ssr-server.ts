@@ -5,16 +5,18 @@ import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR } from './constants'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
+import { TSR_SCRIPT_BARRIER_ID } from './transformStreamWithRouter'
+import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter } from '../router'
 import type { DehydratedMatch } from './ssr-client'
 import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
-import type { Manifest } from '../manifest'
-import type { AnySerializationAdapter } from './serializer/transformer'
+import type { Manifest, RouterManagedTag } from '../manifest'
 
 declare module '../router' {
   interface ServerSsr {
     setRenderFinished: () => void
+    cleanup: () => void
   }
   interface RouterEvents {
     onInjectedHtml: {
@@ -54,11 +56,17 @@ const INITIAL_SCRIPTS = [
 ]
 
 class ScriptBuffer {
-  constructor(private router: AnyRouter) {}
+  private router: AnyRouter | undefined
   private _queue: Array<string> = [...INITIAL_SCRIPTS]
   private _scriptBarrierLifted = false
+  private _cleanedUp = false
+
+  constructor(router: AnyRouter) {
+    this.router = router
+  }
 
   enqueue(script: string) {
+    if (this._cleanedUp) return
     if (this._scriptBarrierLifted && this._queue.length === 0) {
       queueMicrotask(() => {
         this.injectBufferedScripts()
@@ -68,7 +76,7 @@ class ScriptBuffer {
   }
 
   liftBarrier() {
-    if (this._scriptBarrierLifted) return
+    if (this._scriptBarrierLifted || this._cleanedUp) return
     this._scriptBarrierLifted = true
     if (this._queue.length > 0) {
       queueMicrotask(() => {
@@ -89,10 +97,17 @@ class ScriptBuffer {
   }
 
   injectBufferedScripts() {
+    if (this._cleanedUp) return
     const scriptsToInject = this.takeAll()
-    if (scriptsToInject) {
-      this.router.serverSsr!.injectScript(() => scriptsToInject)
+    if (scriptsToInject && this.router?.serverSsr) {
+      this.router.serverSsr.injectScript(() => scriptsToInject)
     }
+  }
+
+  cleanup() {
+    this._cleanedUp = true
+    this._queue = []
+    this.router = undefined
   }
 }
 
@@ -128,7 +143,7 @@ export function attachRouterServerSsrUtils({
         if (!script) {
           return ''
         }
-        return `<script${router.options.ssr?.nonce ? `nonce='${router.options.ssr.nonce}' ` : ''} class='$tsr'>${script}</script>`
+        return `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''} class='$tsr'>${script}</script>`
       })
     },
     dehydrate: async () => {
@@ -140,8 +155,21 @@ export function attachRouterServerSsrUtils({
       }
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
+      let manifestToDehydrate: Manifest | undefined = undefined
+      // only send manifest of the current routes to the client
+      if (manifest) {
+        const filteredRoutes = Object.fromEntries(
+          router.state.matches.map((k) => [
+            k.routeId,
+            manifest.routes[k.routeId],
+          ]),
+        )
+        manifestToDehydrate = {
+          routes: filteredRoutes,
+        }
+      }
       const dehydratedRouter: DehydratedRouter = {
-        manifest: router.ssr!.manifest,
+        manifest: manifestToDehydrate,
         matches,
       }
       const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
@@ -189,12 +217,33 @@ export function attachRouterServerSsrUtils({
     onRenderFinished: (listener) => listeners.push(listener),
     setRenderFinished: () => {
       listeners.forEach((l) => l())
+      // Clear listeners after calling them to prevent memory leaks
+      listeners.length = 0
       scriptBuffer.liftBarrier()
     },
     takeBufferedScripts() {
       const scripts = scriptBuffer.takeAll()
+      const serverBufferedScript: RouterManagedTag = {
+        tag: 'script',
+        attrs: {
+          nonce: router.options.ssr?.nonce,
+          className: '$tsr',
+          id: TSR_SCRIPT_BARRIER_ID,
+        },
+        children: scripts,
+      }
+      return serverBufferedScript
+    },
+    liftScriptBarrier() {
       scriptBuffer.liftBarrier()
-      return scripts
+    },
+    cleanup() {
+      // Guard against multiple cleanup calls
+      if (!router.serverSsr) return
+      listeners.length = 0
+      scriptBuffer.cleanup()
+      router.serverSsr.injectedHtml = []
+      router.serverSsr = undefined
     },
   }
 }

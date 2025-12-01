@@ -6,13 +6,13 @@
     "dev": "vite dev --port 3000",
     "start": "node .output/server/index.mjs",
     "build": "vite build",
-    "serve": "vite preview"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@tanstack/react-devtools": "^0.7.0",
-    "@tanstack/react-router": "^1.136.8",
-    "@tanstack/react-router-devtools": "^1.136.8",
-    "@tanstack/react-start": "^1.136.8",
+    "@tanstack/react-router": "^1.139.12",
+    "@tanstack/react-router-devtools": "^1.139.12",
+    "@tanstack/react-start": "^1.139.12",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

@@ -6,15 +6,16 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "vite start"
+    "preview": "vite preview",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-query-devtools": "^5.90.0",
-    "@tanstack/react-router": "^1.136.8",
-    "@tanstack/react-router-devtools": "^1.136.8",
-    "@tanstack/react-router-ssr-query": "^1.136.8",
-    "@tanstack/react-start": "^1.136.8",
+    "@tanstack/react-router": "^1.139.12",
+    "@tanstack/react-router-devtools": "^1.139.12",
+    "@tanstack/react-router-ssr-query": "^1.139.12",
+    "@tanstack/react-start": "^1.139.12",
     "ky": "^1.7.4",
     "msw": "^2.7.0",
     "react": "^19.0.0",

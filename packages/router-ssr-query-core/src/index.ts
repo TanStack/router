@@ -38,10 +38,14 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   if (router.isServer) {
     const sentQueries = new Set<string>()
     const queryStream = createPushableStream()
-
+    let unsubscribe: (() => void) | undefined = undefined
     router.options.dehydrate =
       async (): Promise<DehydratedRouterQueryState> => {
-        router.serverSsr!.onRenderFinished(() => queryStream.close())
+        router.serverSsr!.onRenderFinished(() => {
+          queryStream.close()
+          unsubscribe?.()
+          unsubscribe = undefined
+        })
         const ogDehydrated = await ogDehydrate?.()
 
         const dehydratedRouter = {
@@ -70,7 +74,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       },
     })
 
-    queryClient.getQueryCache().subscribe((event) => {
+    unsubscribe = queryClient.getQueryCache().subscribe((event) => {
       // before rendering starts, we do not stream individual queries
       // instead we dehydrate the entire query client in router's dehydrate()
       // if attachRouterServerSsrUtils() has not been called yet, `router.serverSsr` will be undefined and we also do not stream

@@ -19,7 +19,8 @@ File-based routing requires that you follow a few simple file naming conventions
 
 > **💡 Remember:** The file-naming conventions for your project could be affected by what [options](../../../../api/file-based-routing.md) are configured.
 
-> [!NOTE] To escape a trailing underscore, for example `/posts[_].tsx`, usage of the upgraded [Non-Nested Routes](../routing-concepts#non-nested-routes) is required.
+> [!NOTE]
+> To escape a trailing underscore, for example `/posts[_].tsx`, usage of the upgraded [Non-Nested Routes](../routing-concepts#non-nested-routes) is required.
 
 ## Dynamic Path Params
 

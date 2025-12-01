@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/eslint-plugin-router",
-  "version": "1.133.19",
+  "version": "1.139.0",
   "description": "ESLint plugin for TanStack Router",
   "author": "Manuel Schiller",
   "license": "MIT",
