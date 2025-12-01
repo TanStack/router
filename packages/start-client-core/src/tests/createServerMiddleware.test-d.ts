@@ -17,7 +17,7 @@ test('createServeMiddleware removes middleware after middleware,', () => {
   expectTypeOf(middlewareAfterMiddleware).toHaveProperty('server')
   expectTypeOf(middlewareAfterMiddleware).not.toHaveProperty('middleware')
 
-  const middlewareAfterInput = middleware.inputValidator(() => {})
+  const middlewareAfterInput = middleware.inputValidator(() => { })
 
   expectTypeOf(middlewareAfterInput).toHaveProperty('server')
   expectTypeOf(middlewareAfterInput).not.toHaveProperty('middleware')
@@ -740,4 +740,54 @@ test('createMiddleware with type request, middleware and context', () => {
 
       return result
     })
+})
+
+test('createMiddleware with type request can return Response directly', () => {
+  createMiddleware({ type: 'request' }).server(async (options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      request: Request
+      next: RequestServerNextFn<{}, undefined>
+      pathname: string
+      context: undefined
+    }>()
+
+    // Should be able to return a Response directly
+    if (Math.random() > 0.5) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Or return the result from next()
+    return options.next()
+  })
+})
+
+test('createMiddleware with type request can return Promise<Response>', () => {
+  createMiddleware({ type: 'request' }).server(async (options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      request: Request
+      next: RequestServerNextFn<{}, undefined>
+      pathname: string
+      context: undefined
+    }>()
+
+    // Should be able to return a Promise<Response>
+    return Promise.resolve(new Response('OK', { status: 200 }))
+  })
+})
+
+test('createMiddleware with type request can return sync Response', () => {
+  createMiddleware({ type: 'request' }).server((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      request: Request
+      next: RequestServerNextFn<{}, undefined>
+      pathname: string
+      context: undefined
+    }>()
+
+    // Should be able to return a synchronous Response
+    return new Response(JSON.stringify({ error: 'Not Found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
 })
