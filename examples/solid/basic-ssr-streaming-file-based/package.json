@@ -15,7 +15,7 @@
     "@tanstack/solid-router": "^1.139.12",
     "@tanstack/solid-router-devtools": "^1.139.12",
     "compression": "^1.7.5",
-    "express": "^4.21.2",
+    "express": "^5.0.0",
     "get-port": "^7.1.0",
     "node-fetch": "^3.3.2",
     "postcss": "^8.5.1",
