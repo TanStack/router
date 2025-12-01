@@ -668,7 +668,7 @@ test('createMiddleware with type request, no middleware or context', () => {
       pathname: string
       request: Request
       response: Response
-    }>()
+    } | Response>()
 
     return result
   })
@@ -690,7 +690,7 @@ test('createMiddleware with type request, no middleware with context', () => {
       pathname: string
       request: Request
       response: Response
-    }>()
+    } | Response>()
 
     return result
   })
@@ -713,7 +713,7 @@ test('createMiddleware with type request, middleware and context', () => {
         pathname: string
         request: Request
         response: Response
-      }>()
+      } | Response>()
 
       return result
     },
@@ -736,7 +736,7 @@ test('createMiddleware with type request, middleware and context', () => {
         pathname: string
         request: Request
         response: Response
-      }>()
+      } | Response>()
 
       return result
     })
