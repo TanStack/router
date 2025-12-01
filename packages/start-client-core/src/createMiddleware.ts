@@ -771,8 +771,9 @@ export type RequestMiddlewareServerFnResult<
   TMiddlewares,
   TServerContext,
 > =
-  | Promise<RequestServerResult<TRegister, TMiddlewares, TServerContext>>
+  | Promise<RequestServerResult<TRegister, TMiddlewares, TServerContext> | Response>
   | RequestServerResult<TRegister, TMiddlewares, TServerContext>
+  | Response
 
 export interface RequestServerResult<TRegister, TMiddlewares, TServerContext> {
   request: Request
