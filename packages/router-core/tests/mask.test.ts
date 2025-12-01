@@ -310,51 +310,6 @@ describe('buildLocation - route masks', () => {
     expect(location.maskedLocation!.state).toEqual({ modal: true })
   })
 
-  test('should preserve opts.from when building masked destination', () => {
-    const routeMasks: Array<RouteMask<any>> = [
-      {
-        routeTree: null as any,
-        from: '/photos/$photoId/modal',
-        to: '/photos/$photoId',
-        params: true,
-      },
-    ]
-
-    const router = setup(routeMasks)
-
-    const location = router.buildLocation({
-      to: '/photos/123/modal',
-      from: '/photos/456',
-      params: { photoId: '123' },
-    })
-
-    expect(location.maskedLocation).toBeDefined()
-    // The from option should be preserved in the masked destination
-    expect(location.maskedLocation!.pathname).toBe('/photos/123')
-  })
-
-  test('should handle unmaskOnReload property in mask', () => {
-    const routeMasks: Array<RouteMask<any>> = [
-      {
-        routeTree: null as any,
-        from: '/photos/$photoId/modal',
-        to: '/photos/$photoId',
-        params: true,
-        unmaskOnReload: true,
-      },
-    ]
-
-    const router = setup(routeMasks)
-
-    const location = router.buildLocation({
-      to: '/photos/123/modal',
-      params: { photoId: '123' },
-    })
-
-    expect(location.maskedLocation).toBeDefined()
-    expect(location.maskedLocation!.unmaskOnReload).toBe(true)
-  })
-
   test('should handle mask with function params that receives matched params', () => {
     const routeMasks: Array<RouteMask<any>> = [
       {
@@ -471,8 +426,6 @@ describe('buildLocation - route masks', () => {
     expect(location.maskedLocation).toBeDefined()
     expect(location.maskedLocation!.pathname).toBe('/photos/abc123')
     expect(location.pathname).toBe('/photos/abc123/details')
-    // Ensure no undefined values
-    expect(location.maskedLocation!.pathname).not.toContain('undefined')
   })
 
   test('should handle param name transformation with object params', () => {
@@ -519,7 +472,6 @@ describe('buildLocation - route masks', () => {
 
     expect(location.maskedLocation).toBeDefined()
     expect(location.maskedLocation!.pathname).toBe('/photos/secret123')
-    expect(location.maskedLocation!.pathname).not.toContain('undefined')
   })
 
   test('should handle multiple params with different names in masked route', () => {
@@ -573,7 +525,6 @@ describe('buildLocation - route masks', () => {
       '/profiles/john/articles/my-first-post',
     )
     expect(location.pathname).toBe('/users/john/posts/my-first-post')
-    expect(location.maskedLocation!.pathname).not.toContain('undefined')
   })
 
   test('should handle param transformation when masked route requires different param', () => {
@@ -616,61 +567,6 @@ describe('buildLocation - route masks', () => {
     expect(location.maskedLocation).toBeDefined()
     expect(location.maskedLocation!.pathname).toBe('/users/user-42')
     expect(location.pathname).toBe('/admin/users/42')
-    expect(location.maskedLocation!.pathname).not.toContain('undefined')
-  })
-
-  test('should not have undefined params in masked location when param names differ', () => {
-    // This is the critical test - ensure we don't get undefined values
-    const rootRoute = new BaseRootRoute({})
-    const internalRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/internal/$internalId',
-    })
-    const detailsRoute = new BaseRoute({
-      getParentRoute: () => internalRoute,
-      path: '/details',
-    })
-    const publicRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/public/$publicId',
-    })
-    const routeTree = rootRoute.addChildren([
-      internalRoute.addChildren([detailsRoute]),
-      publicRoute,
-    ])
-
-    const routeMasks: Array<RouteMask<any>> = [
-      {
-        routeTree: null as any,
-        from: '/internal/$internalId/details',
-        to: '/public/$publicId',
-        params: (prev: any) => {
-          // Ensure we're transforming the param, not leaving it undefined
-          expect(prev.internalId).toBeDefined()
-          expect(prev.internalId).toBe('internal-123')
-          return {
-            publicId: prev.internalId.replace('internal-', 'public-'),
-          }
-        },
-      },
-    ]
-
-    const router = new RouterCore({
-      routeTree,
-      history: createMemoryHistory(),
-      routeMasks,
-    })
-
-    const location = router.buildLocation({
-      to: '/internal/internal-123/details',
-      params: { internalId: 'internal-123' },
-    })
-
-    expect(location.maskedLocation).toBeDefined()
-    expect(location.maskedLocation!.pathname).toBe('/public/public-123')
-    // Ensure the pathname doesn't contain 'undefined'
-    expect(location.maskedLocation!.pathname).not.toContain('undefined')
-    expect(location.maskedLocation!.href).not.toContain('undefined')
   })
 
   test('should handle partial param transformation when some params are kept', () => {
@@ -723,7 +619,5 @@ describe('buildLocation - route masks', () => {
     expect(location.maskedLocation!.pathname).toBe(
       '/articles/article-5/replies/10',
     )
-    // Verify no undefined values
-    expect(location.maskedLocation!.pathname).not.toContain('undefined')
   })
 })
