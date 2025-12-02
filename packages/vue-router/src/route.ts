@@ -529,42 +529,20 @@ export type AsyncRouteComponentFn<TProps> = SyncRouteComponentFn<TProps> & {
   preload?: () => Promise<void>
 }
 
-// Vue DefineComponent type (what .vue files export)
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export type VueComponent<TProps = {}> = Vue.DefineComponent<
-  TProps,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any
->
-
-// Combined types that accept both function components and Vue SFC components
-export type SyncRouteComponent<TProps = any> =
+// Combined types that accept both function components and Vue SFC components (DefineComponent)
+export type SyncRouteComponent<TProps = unknown> =
   | SyncRouteComponentFn<TProps>
-  | VueComponent<TProps>
+  | Vue.Component
 
-export type AsyncRouteComponent<TProps = any> =
+export type AsyncRouteComponent<TProps = unknown> =
   | AsyncRouteComponentFn<TProps>
-  | VueComponent<TProps>
+  | Vue.Component
 
-export type RouteComponent<TProps = any> = AsyncRouteComponent<TProps>
+export type RouteComponent<TProps = unknown> = AsyncRouteComponent<TProps>
 
-export type ErrorRouteComponent =
-  | RouteComponent<ErrorComponentProps>
-  | VueComponent<ErrorComponentProps>
+export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
 
-export type NotFoundRouteComponent =
-  | SyncRouteComponent<NotFoundRouteProps>
-  | VueComponent<NotFoundRouteProps>
+export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
 
 export class NotFoundRoute<
   TRegister,
