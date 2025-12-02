@@ -831,6 +831,37 @@ describe('findRouteMatch', () => {
         expect(result?.params).toEqual({ '**': decoded })
       })
     })
+    describe('edge-cases', () => {
+      it('#6012: optional index at root with param extraction', () => {
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/{-$year}/{-$month}/{-$day}',
+              fullPath: '/{-$year}/{-$month}/{-$day}',
+              path: '{-$year}/{-$month}/{-$day}',
+              isRoot: false,
+              options: {},
+            },
+            {
+              id: '/_pathless/{-$language}/',
+              fullPath: '/{-$language}/',
+              path: '{-$language}/',
+              isRoot: false,
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch(`/sv`, processedTree)
+        expect(result?.route.id).toBe('/_pathless/{-$language}/')
+        expect(result?.params).toEqual({ language: 'sv' })
+      })
+    })
   })
 })
 
