@@ -730,7 +730,6 @@ function extractParams<T extends RouteLike>(
   leaf: { node: AnySegmentNode<T>; skipped: number },
 ) {
   const list = buildBranch(leaf.node)
-  console.log(list)
   let nodeParts: Array<string> | null = null
   const params: Record<string, string> = {}
   for (
