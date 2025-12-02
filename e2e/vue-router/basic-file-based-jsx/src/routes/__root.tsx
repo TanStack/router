@@ -8,20 +8,13 @@ import {
   useRouterState,
 } from '@tanstack/vue-router'
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
+import NotFoundComponent from '../components/NotFoundComponent.vue'
+import type { NotFoundRouteComponent } from '@tanstack/vue-router'
 
 export const Route = createRootRoute({
   component: RootComponent,
-  notFoundComponent: NotFoundComponent,
+  notFoundComponent: NotFoundComponent as unknown as NotFoundRouteComponent,
 })
-
-function NotFoundComponent() {
-  return (
-    <div>
-      <p>This is the notFoundComponent configured on root route</p>
-      <Link to="/">Start Over</Link>
-    </div>
-  )
-}
 
 function RootComponent() {
   const router = useRouter()

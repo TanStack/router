@@ -1,6 +1,20 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
+const props = withDefaults(
+  defineProps<{
+    /**
+     * Accepts any valid CSS color value as a string.
+     * Note: TypeScript cannot strictly check for all valid CSS colors at type level.
+     * For runtime validation, you could use a library or custom validator if desired.
+     */
+    textColor?: string
+  }>(),
+  {
+    textColor: 'gray',
+  },
+)
+
 const count = ref(0)
 
 const countLabel = computed(() => {
@@ -35,7 +49,7 @@ function reset() {
         fill="#34495e"
       />
     </svg>
-    <p class="count-label">{{ countLabel }}</p>
+    <p class="count-label" :style="{ color: props.textColor }">{{ countLabel }}</p>
     <button v-if="count > 0" class="reset-btn" @click="reset">Reset</button>
   </div>
 </template>
