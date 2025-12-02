@@ -8,6 +8,14 @@ It's deployed automagically with Netlify!
 
 - [Netlify](https://netlify.com/)
 
+## Start a new project
+
+To start a new project, run:
+
+```sh
+npx gitpick TanStack/router/tree/main/examples/react/start-basic start-basic
+```
+
 ## Development
 
 From your terminal:
