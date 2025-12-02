@@ -2,6 +2,17 @@
 
 An optimized production server for TanStack Start applications using Bun, implementing intelligent static asset loading with configurable memory management.
 
+- [TanStack Router Docs](https://tanstack.com/router)
+- [Bun Documentation](https://bun.sh/docs)
+
+## Start a new project based on this example
+
+To start a new project based on this example, run:
+
+```sh
+npx gitpick TanStack/router/tree/main/examples/react/start-bun start-bun
+```
+
 ## 🚀 Features
 
 - **Hybrid Loading Strategy**: Small files are preloaded into memory, large files are served on-demand
@@ -148,6 +159,31 @@ The server displays a clear overview of all loaded assets at startup:
 ℹ️  1 files will be served on-demand (1 too large, 0 filtered)
 
 🚀 Server running at http://localhost:3000
+```
+
+## Development
+
+From your terminal:
+
+```sh
+pnpm install
+pnpm dev
+```
+
+## Build
+
+Build for production:
+
+```sh
+pnpm build
+```
+
+## Production
+
+Start the production server:
+
+```sh
+pnpm start
 ```
 
 ## Testing
