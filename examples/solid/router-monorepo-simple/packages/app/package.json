@@ -16,7 +16,7 @@
   "devDependencies": {
     "vite-plugin-solid": "^2.11.10",
     "typescript": "^5.7.2",
-    "@tanstack/solid-router-devtools": "^1.139.12",
+    "@tanstack/solid-router-devtools": "^1.139.13",
     "vite": "^7.1.7",
     "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",
