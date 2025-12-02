@@ -522,27 +522,36 @@ export function createRouteMask<
 
 export type VueNode = Vue.VNode
 
-// Function component type
-export type SyncRouteComponentFn<TProps> = (props: TProps) => Vue.VNode
+export type SyncRouteComponent<TProps> = (props: TProps) => Vue.VNode
 
-export type AsyncRouteComponentFn<TProps> = SyncRouteComponentFn<TProps> & {
+export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>
 }
 
-// Combined types that accept both function components and Vue SFC components (DefineComponent)
-export type SyncRouteComponent<TProps = unknown> =
-  | SyncRouteComponentFn<TProps>
-  | Vue.Component
-
-export type AsyncRouteComponent<TProps = unknown> =
-  | AsyncRouteComponentFn<TProps>
-  | Vue.Component
-
-export type RouteComponent<TProps = unknown> = AsyncRouteComponent<TProps>
+export type RouteComponent<TProps = any> = AsyncRouteComponent<TProps>
 
 export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
 
 export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
+
+/**
+ * Helper to use Vue SFC components (.vue files) as route components.
+ * This provides proper typing when using DefineComponent with route options.
+ *
+ * @example
+ * ```ts
+ * import MyComponent from './MyComponent.vue'
+ *
+ * const route = createFileRoute('/path')({
+ *   component: vueComponent(MyComponent),
+ * })
+ * ```
+ */
+export function vueComponent<TProps = unknown>(
+  component: Vue.Component,
+): RouteComponent<TProps> {
+  return component as RouteComponent<TProps>
+}
 
 export class NotFoundRoute<
   TRegister,
