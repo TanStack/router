@@ -8,7 +8,7 @@ export const Route = createFileRoute('/')({
 function IndexComponent() {
   return (
     <div class="p-2">
-      <h3>Vue JSX!</h3>
+      <h3>Welcome Home!</h3>
       <VueLogo textColor="orange" />
     </div>
   )

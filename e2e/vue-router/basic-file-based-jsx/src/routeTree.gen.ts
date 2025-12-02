@@ -12,6 +12,7 @@ import { lazyRouteComponent } from '@tanstack/vue-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
+import { Route as SfcComponentRouteImport } from './routes/sfcComponent'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
@@ -38,6 +39,16 @@ const Char45824Char54620Char48124Char44397Route =
     path: '/대한민국',
     getParentRoute: () => rootRouteImport,
   } as any)
+const SfcComponentRoute = SfcComponentRouteImport.update({
+  id: '/sfcComponent',
+  path: '/sfcComponent',
+  getParentRoute: () => rootRouteImport,
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/sfcComponent.component.vue'),
+    'default',
+  ),
+})
 const RemountDepsRoute = RemountDepsRouteImport.update({
   id: '/remountDeps',
   path: '/remountDeps',
@@ -71,12 +82,7 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any).update({
-  component: lazyRouteComponent(
-    () => import('./routes/index.component.vue'),
-    'default',
-  ),
-})
+} as any)
 const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -138,12 +144,13 @@ const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof groupLayoutRouteWithChildren
+  '/': typeof IndexRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/sfcComponent': typeof SfcComponentRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
@@ -157,11 +164,12 @@ export interface FileRoutesByFullPath {
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof groupLayoutRouteWithChildren
+  '/': typeof IndexRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
+  '/sfcComponent': typeof SfcComponentRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/sfcComponent': typeof SfcComponentRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/(group)/_layout': typeof groupLayoutRouteWithChildren
@@ -206,6 +215,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/sfcComponent'
     | '/대한민국'
     | '/onlyrouteinside'
     | '/inside'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/editing-b'
     | '/notRemountDeps'
     | '/remountDeps'
+    | '/sfcComponent'
     | '/대한민국'
     | '/onlyrouteinside'
     | '/inside'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/sfcComponent'
     | '/대한민국'
     | '/(another-group)/onlyrouteinside'
     | '/(group)/_layout'
@@ -267,6 +279,7 @@ export interface RootRouteChildren {
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
+  SfcComponentRoute: typeof SfcComponentRoute
   Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupLayoutRoute: typeof groupLayoutRouteWithChildren
@@ -283,6 +296,13 @@ declare module '@tanstack/vue-router' {
       path: '/대한민국'
       fullPath: '/대한민국'
       preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sfcComponent': {
+      id: '/sfcComponent'
+      path: '/sfcComponent'
+      fullPath: '/sfcComponent'
+      preLoaderRoute: typeof SfcComponentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/remountDeps': {
@@ -372,7 +392,7 @@ declare module '@tanstack/vue-router' {
     '/(group)/_layout': {
       id: '/(group)/_layout'
       path: ''
-      fullPath: '/'
+      fullPath: ''
       preLoaderRoute: typeof groupLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -478,6 +498,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
   RemountDepsRoute: RemountDepsRoute,
+  SfcComponentRoute: SfcComponentRoute,
   Char45824Char54620Char48124Char44397Route:
     Char45824Char54620Char48124Char44397Route,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
