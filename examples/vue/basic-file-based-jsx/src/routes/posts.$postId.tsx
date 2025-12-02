@@ -1,6 +1,10 @@
-import { createFileRoute } from '@tanstack/vue-router'
+import { ErrorComponent, createFileRoute } from '@tanstack/vue-router'
 import { fetchPost } from '../posts'
-import { PostErrorComponent } from './-components/PostErrorComponent'
+import type { ErrorComponentProps } from '@tanstack/vue-router'
+
+export function PostErrorComponent({ error }: ErrorComponentProps) {
+  return <ErrorComponent error={error} />
+}
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId } }) => fetchPost(postId),

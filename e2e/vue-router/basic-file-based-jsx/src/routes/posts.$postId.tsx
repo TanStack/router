@@ -1,6 +1,6 @@
 import { ErrorComponent, createFileRoute } from '@tanstack/vue-router'
-import type { ErrorComponentProps } from '@tanstack/vue-router'
 import { fetchPost } from '../posts'
+import type { ErrorComponentProps } from '@tanstack/vue-router'
 import type { PostType } from '../posts'
 
 export const Route = createFileRoute('/posts/$postId')({
