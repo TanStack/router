@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite --port 3000",
     "dev:e2e": "vite",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && vue-tsc --noEmit",
     "preview": "vite preview",
     "start": "vite",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
@@ -28,6 +28,7 @@
     "@vitejs/plugin-vue": "^5.2.3",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "typescript": "~5.8.3",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "vue-tsc": "^3.1.5"
   }
 }
