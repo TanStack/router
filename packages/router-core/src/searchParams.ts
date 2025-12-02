@@ -35,7 +35,10 @@ export function parseSearchWith(parser: (str: string) => any) {
       const value = query[key]
       if (typeof value === 'string') {
         try {
-          query[key] = parser(value)
+          const parsed = parser(value)
+          if (parsed && typeof parsed === 'object') {
+            query[key] = parsed
+          }
         } catch (_err) {
           // silent
         }
@@ -75,8 +78,10 @@ export function stringifySearchWith(
       try {
         // Check if it's a valid parseable string.
         // If it is, then stringify it again.
-        parser(val)
-        return stringify(val)
+        const parsed = parser(val)
+        if (parsed && typeof parsed === 'object') {
+          return stringify(val)
+        }
       } catch (_err) {
         // silent
       }

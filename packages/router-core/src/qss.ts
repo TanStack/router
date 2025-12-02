@@ -40,23 +40,6 @@ export function encode(
 }
 
 /**
- * Converts a string value to its appropriate type (string, number, boolean).
- * @param mix - The string value to convert.
- * @returns The converted value.
- * @example
- * // Example input: toValue("123")
- * // Expected output: 123
- */
-/** Convert a string into a primitive boolean/number when possible. */
-function toValue(str: unknown) {
-  if (!str) return ''
-
-  if (str === 'false') return false
-  if (str === 'true') return true
-  return +str * 0 === 0 && +str + '' === str ? +str : str
-}
-
-/**
  * Decodes a query string into an object.
  * @param str - The query string to decode.
  * @returns The decoded key-value pairs in an object format.
@@ -73,11 +56,11 @@ export function decode(str: any): any {
   for (const [key, value] of searchParams.entries()) {
     const previousValue = result[key]
     if (previousValue == null) {
-      result[key] = toValue(value)
+      result[key] = value
     } else if (Array.isArray(previousValue)) {
-      previousValue.push(toValue(value))
+      previousValue.push(value)
     } else {
-      result[key] = [previousValue, toValue(value)]
+      result[key] = [previousValue, value]
     }
   }
 
