@@ -45,12 +45,21 @@ import type { UseSearchRoute } from './useSearch'
 import type * as Vue from 'vue'
 import type { UseRouteContextRoute } from './useRouteContext'
 
+// Structural type for Vue SFC components (.vue files)
+// Uses structural matching to accept Vue components without breaking
+// TypeScript inference for inline function components
+type VueSFC = {
+  readonly __name?: string
+  setup?: (...args: Array<any>) => any
+  render?: Function
+}
+
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
-    component?: RouteComponent
-    errorComponent?: false | null | undefined | ErrorRouteComponent
-    notFoundComponent?: NotFoundRouteComponent
-    pendingComponent?: RouteComponent
+    component?: RouteComponent | VueSFC
+    errorComponent?: false | null | undefined | ErrorRouteComponent | VueSFC
+    notFoundComponent?: NotFoundRouteComponent | VueSFC
+    pendingComponent?: RouteComponent | VueSFC
   }
 
   export interface RouteExtensions<
@@ -533,25 +542,6 @@ export type RouteComponent<TProps = any> = AsyncRouteComponent<TProps>
 export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
 
 export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
-
-/**
- * Helper to use Vue SFC components (.vue files) as route components.
- * This provides proper typing when using DefineComponent with route options.
- *
- * @example
- * ```ts
- * import MyComponent from './MyComponent.vue'
- *
- * const route = createFileRoute('/path')({
- *   component: vueComponent(MyComponent),
- * })
- * ```
- */
-export function vueComponent<TProps = unknown>(
-  component: Vue.Component,
-): RouteComponent<TProps> {
-  return component as RouteComponent<TProps>
-}
 
 export class NotFoundRoute<
   TRegister,

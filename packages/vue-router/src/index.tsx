@@ -254,7 +254,6 @@ export {
   createRootRouteWithContext,
   createRouteMask,
   NotFoundRoute,
-  vueComponent,
 } from './route'
 export type {
   AnyRootRoute,
