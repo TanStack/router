@@ -1,12 +1,16 @@
-# Welcome to TanStack.com!
+# TanStack Start - Basic Auth Example
 
-This site is built with TanStack Router!
+A TanStack Start example demonstrating authentication patterns and protected routes.
 
 - [TanStack Router Docs](https://tanstack.com/router)
 
-It's deployed automagically with Netlify!
+## Start a new project
 
-- [Netlify](https://netlify.com/)
+To start a new project based on this example, run:
+
+```sh
+npx gitpick TanStack/router/tree/main/examples/react/start-basic-auth start-basic-auth
+```
 
 ## Development
 
@@ -18,6 +22,24 @@ pnpm dev
 ```
 
 This starts your app in development mode, rebuilding assets on file changes.
+
+## Build
+
+To build the app for production:
+
+```sh
+pnpm build
+```
+
+## Authentication Features
+
+This example demonstrates:
+
+- User authentication flow
+- Protected routes
+- Login/logout functionality
+- Session management
+- Redirect after authentication
 
 ## Editing and previewing the docs of TanStack projects locally
 
