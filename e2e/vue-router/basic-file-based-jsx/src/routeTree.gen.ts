@@ -8,6 +8,8 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { lazyRouteComponent } from '@tanstack/vue-router'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
@@ -69,7 +71,12 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).update({
+  component: lazyRouteComponent(
+    () => import('./routes/index.component.vue'),
+    'default',
+  ),
+})
 const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
