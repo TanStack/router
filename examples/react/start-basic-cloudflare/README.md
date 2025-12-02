@@ -13,14 +13,6 @@ To start a new project based on this example, run:
 npx gitpick TanStack/router/tree/main/examples/react/start-basic-cloudflare start-basic-cloudflare
 ```
 
-## Start a new project
-
-To start a new project based on this example, run:
-
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-basic-cloudflare start-basic-cloudflare
-```
-
 ## Development
 
 From your terminal:
