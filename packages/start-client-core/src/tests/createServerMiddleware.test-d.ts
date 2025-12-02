@@ -17,7 +17,7 @@ test('createServeMiddleware removes middleware after middleware,', () => {
   expectTypeOf(middlewareAfterMiddleware).toHaveProperty('server')
   expectTypeOf(middlewareAfterMiddleware).not.toHaveProperty('middleware')
 
-  const middlewareAfterInput = middleware.inputValidator(() => { })
+  const middlewareAfterInput = middleware.inputValidator(() => {})
 
   expectTypeOf(middlewareAfterInput).toHaveProperty('server')
   expectTypeOf(middlewareAfterInput).not.toHaveProperty('middleware')
@@ -663,12 +663,15 @@ test('createMiddleware with type request, no middleware or context', () => {
 
     const result = await options.next()
 
-    expectTypeOf(result).toEqualTypeOf<{
-      context: undefined
-      pathname: string
-      request: Request
-      response: Response
-    } | Response>()
+    expectTypeOf(result).toEqualTypeOf<
+      | {
+          context: undefined
+          pathname: string
+          request: Request
+          response: Response
+        }
+      | Response
+    >()
 
     return result
   })
@@ -685,12 +688,15 @@ test('createMiddleware with type request, no middleware with context', () => {
 
     const result = await options.next({ context: { a: 'a' } })
 
-    expectTypeOf(result).toEqualTypeOf<{
-      context: { a: string }
-      pathname: string
-      request: Request
-      response: Response
-    } | Response>()
+    expectTypeOf(result).toEqualTypeOf<
+      | {
+          context: { a: string }
+          pathname: string
+          request: Request
+          response: Response
+        }
+      | Response
+    >()
 
     return result
   })
@@ -708,12 +714,15 @@ test('createMiddleware with type request, middleware and context', () => {
 
       const result = await options.next({ context: { a: 'a' } })
 
-      expectTypeOf(result).toEqualTypeOf<{
-        context: { a: string }
-        pathname: string
-        request: Request
-        response: Response
-      } | Response>()
+      expectTypeOf(result).toEqualTypeOf<
+        | {
+            context: { a: string }
+            pathname: string
+            request: Request
+            response: Response
+          }
+        | Response
+      >()
 
       return result
     },
@@ -731,12 +740,15 @@ test('createMiddleware with type request, middleware and context', () => {
 
       const result = await options.next({ context: { b: 'b' } })
 
-      expectTypeOf(result).toEqualTypeOf<{
-        context: { a: string; b: string }
-        pathname: string
-        request: Request
-        response: Response
-      } | Response>()
+      expectTypeOf(result).toEqualTypeOf<
+        | {
+            context: { a: string; b: string }
+            pathname: string
+            request: Request
+            response: Response
+          }
+        | Response
+      >()
 
       return result
     })
