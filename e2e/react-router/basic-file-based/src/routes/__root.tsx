@@ -139,13 +139,21 @@ function RootComponent() {
           unicode path
         </Link>{' '}
         <Link
-          // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{
             className: 'font-bold',
           }}
         >
           This Route Does Not Exist
+        </Link>{' '}
+        <Link
+          to="/masks"
+          data-testid="link-to-masks"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Masks
         </Link>
       </div>
       <hr />

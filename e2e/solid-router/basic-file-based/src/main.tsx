@@ -9,6 +9,16 @@ const router = createRouter({
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
   scrollRestoration: true,
+  routeMasks: [
+    {
+      routeTree: null as any,
+      from: '/masks/admin/$userId',
+      to: '/masks/public/$username',
+      params: (prev: any) => ({
+        username: `user-${prev.userId}`,
+      }),
+    },
+  ],
 })
 
 // Register things for typesafety
