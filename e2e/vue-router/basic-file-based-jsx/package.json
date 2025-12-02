@@ -23,12 +23,17 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.36.0",
     "@playwright/test": "^1.50.1",
     "@tanstack/router-e2e-utils": "workspace:^",
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
     "@vitejs/plugin-vue": "^5.2.3",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
+    "eslint-plugin-vue": "^9.33.0",
     "typescript": "~5.8.3",
     "vite": "^7.1.7",
+    "vue-eslint-parser": "^9.4.3",
     "vue-tsc": "^3.1.5"
   }
 }
