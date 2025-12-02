@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import type { RouteComponent } from '@tanstack/vue-router'
 import { RemountDepsComponent } from '../components/RemountDepsComponent'
 
 export const Route = createFileRoute('/remountDeps')({
@@ -12,5 +11,5 @@ export const Route = createFileRoute('/remountDeps')({
   remountDeps(opts) {
     return opts.search
   },
-  component: RemountDepsComponent as unknown as RouteComponent,
+  component: RemountDepsComponent,
 })

@@ -9,11 +9,10 @@ import {
 } from '@tanstack/vue-router'
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 import NotFoundComponent from '../components/NotFoundComponent.vue'
-import type { NotFoundRouteComponent } from '@tanstack/vue-router'
 
 export const Route = createRootRoute({
   component: RootComponent,
-  notFoundComponent: NotFoundComponent as unknown as NotFoundRouteComponent,
+  notFoundComponent: NotFoundComponent,
 })
 
 function RootComponent() {

@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import type { RouteComponent } from '@tanstack/vue-router'
 import { NotRemountDepsComponent } from '../components/NotRemountDepsComponent'
 
 export const Route = createFileRoute('/notRemountDeps')({
@@ -12,5 +11,5 @@ export const Route = createFileRoute('/notRemountDeps')({
   remountDeps(opts) {
     return opts.params
   },
-  component: NotRemountDepsComponent as unknown as RouteComponent,
+  component: NotRemountDepsComponent,
 })
