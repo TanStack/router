@@ -332,7 +332,13 @@ function parseSegments<TRouteLike extends RouteLike>(
       // but if there is *also* a layout route at this path, save it as notFound
       // we can use it when fuzzy matching to display the NotFound component in the layout route
       if (!isIndex) node.notFound = route
-      if (!node.route || (!node.isIndex && isIndex)) node.route = route
+      // does the new route take precedence over an existing one?
+      // yes if previous is not an index route and new one is an index route
+      if (!node.route || (!node.isIndex && isIndex)) {
+        node.route = route
+        // when replacing, replace all attributes that are route-specific (`fullPath` only at the moment)
+        node.fullPath = route.fullPath ?? route.from
+      }
       node.isIndex ||= isIndex
     }
   }
