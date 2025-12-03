@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
-    "build": "vite build && tsc --noEmit",
+    "build": "vite build && vue-tsc --noEmit",
     "preview": "vite preview",
     "start": "vite"
   },
@@ -24,6 +24,7 @@
     "@vitejs/plugin-vue": "^5.2.3",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "typescript": "~5.8.3",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "vue-tsc": "^2.2.0"
   }
 }

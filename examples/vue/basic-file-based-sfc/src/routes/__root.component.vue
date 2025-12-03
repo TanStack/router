@@ -69,9 +69,6 @@ const _state = useRouterState()
       Lazy Inside Group
     </Link>
     <Link to="/대한민국" :activeProps="{ class: 'font-bold' }">unicode path</Link>
-    <Link to="/this-route-does-not-exist" :activeProps="{ class: 'font-bold' }">
-      This Route Does Not Exist
-    </Link>
   </div>
   <hr />
   <Outlet />
