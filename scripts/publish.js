@@ -25,6 +25,10 @@ await publish({
       packageDir: 'packages/react-router',
     },
     {
+      name: '@tanstack/vue-router',
+      packageDir: 'packages/vue-router',
+    },
+    {
       name: '@tanstack/solid-router-ssr-query',
       packageDir: 'packages/solid-router-ssr-query',
     },
