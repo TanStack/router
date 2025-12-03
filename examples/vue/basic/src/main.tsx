@@ -1,5 +1,4 @@
 import { createApp } from 'vue'
-import * as Vue from 'vue'
 import {
   ErrorComponent,
   Link,
@@ -11,6 +10,7 @@ import {
 } from '@tanstack/vue-router'
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
+import VueLogo from './components/VueLogo.vue'
 import type { ErrorComponentProps } from '@tanstack/vue-router'
 import './styles.css'
 
@@ -81,6 +81,7 @@ function IndexComponent() {
   return (
     <div class="p-2">
       <h3>Welcome Home!</h3>
+      <VueLogo textColor="orange" />
     </div>
   )
 }
@@ -230,9 +231,9 @@ declare module '@tanstack/vue-router' {
 const rootElement = document.getElementById('app')!
 
 if (!rootElement.innerHTML) {
-  createApp({ 
-    setup() { 
+  createApp({
+    setup() {
       return () => <RouterProvider router={router} />
-    }
+    },
   }).mount('#app')
 }

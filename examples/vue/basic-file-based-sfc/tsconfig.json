@@ -4,12 +4,14 @@
     "module": "ESNext",
     "lib": ["ESNext", "DOM"],
     "strict": true,
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
     "moduleResolution": "bundler",
     "skipLibCheck": true,
     "noEmit": true,
     "resolveJsonModule": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "tests"],
+  "include": ["src/**/*", "src/**/*.vue", "tests"],
   "exclude": ["node_modules", "dist"]
 }
