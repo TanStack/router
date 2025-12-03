@@ -4,7 +4,7 @@ import VueLogo from '../components/VueLogo.vue'
 
 <template>
   <div class="p-2">
-    <h3>Vue SFC!</h3>
+    <h3>Welcome Home!</h3>
     <VueLogo text-color="orange" />
   </div>
 </template>
