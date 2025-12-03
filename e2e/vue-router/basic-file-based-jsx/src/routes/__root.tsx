@@ -90,7 +90,7 @@ function RootComponent() {
           unicode path
         </Link>
         <Link
-          to={"/this-route-does-not-exist" as any}
+          to={'/this-route-does-not-exist' as any}
           activeProps={{ class: 'font-bold' }}
         >
           This Route Does Not Exist
