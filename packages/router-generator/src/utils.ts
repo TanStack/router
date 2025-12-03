@@ -332,9 +332,7 @@ export function removeGroups(s: string) {
 export function removeLayoutSegments(routePath: string = '/'): string {
   const segments = routePath.split('/')
   const newSegments = segments.filter((segment) => !segment.startsWith('_'))
-  const result = newSegments.join('/')
-  // Preserve root path - when input is '/', split gives ['', ''] which joins back to ''
-  return result || '/'
+  return newSegments.join('/')
 }
 
 /**
@@ -496,20 +494,7 @@ export const inferFullPath = (
       : removeUnderscores(removeLayoutSegments(routeNode.routePath))) ?? '',
   )
 
-  // Pathless layout routes at root should have empty fullPath, not '/'
-  // (regular 'layout' routes like index.route.ts should keep '/')
-  if (routeNode._fsRouteType === 'pathless_layout') {
-    if (fullPath === '/') {
-      return ''
-    }
-    return fullPath.replace(/\/$/, '')
-  }
-
-  // For index routes at root, fullPath will be '/' and we want to keep it
-  if (fullPath === '/' || routeNode.cleanedPath === '/') {
-    return fullPath
-  }
-  return fullPath.replace(/\/$/, '')
+  return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')
 }
 
 /**
