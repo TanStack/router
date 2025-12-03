@@ -27,10 +27,12 @@ export function useRouterState<
     warn: opts?.router === undefined,
   })
   const router = opts?.router || contextRouter
-  
+
   // Return a safe default if router is undefined
   if (!router || !router.__store) {
-    return Vue.ref(undefined) as Vue.Ref<UseRouterStateResult<TRouter, TSelected>>
+    return Vue.ref(undefined) as Vue.Ref<
+      UseRouterStateResult<TRouter, TSelected>
+    >
   }
 
   return useStore(router.__store, (state) => {

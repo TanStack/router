@@ -17,8 +17,12 @@ function OnlyRouteInsideComponent() {
   return (
     <div>
       <div data-testid="search-via-hook">{searchViaHook.value.hello}</div>
-      <div data-testid="search-via-route-hook">{searchViaRouteHook.value.hello}</div>
-      <div data-testid="search-via-route-api">{searchViaRouteApi.value.hello}</div>
+      <div data-testid="search-via-route-hook">
+        {searchViaRouteHook.value.hello}
+      </div>
+      <div data-testid="search-via-route-api">
+        {searchViaRouteApi.value.hello}
+      </div>
     </div>
   )
 }

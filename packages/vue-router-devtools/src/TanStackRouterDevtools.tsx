@@ -82,12 +82,9 @@ export const TanStackRouterDevtools = /* #__PURE__ */ defineComponent({
     )
 
     // Update devtools when router state changes
-    watch(
-      activeRouterState,
-      (routerState) => {
-        devtools.setRouterState(routerState)
-      },
-    )
+    watch(activeRouterState, (routerState) => {
+      devtools.setRouterState(routerState)
+    })
 
     // Update devtools when options change
     watch(

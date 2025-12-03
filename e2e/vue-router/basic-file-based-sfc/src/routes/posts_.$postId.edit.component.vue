@@ -11,7 +11,9 @@ const paramsViaRouteHook = api.useParams()
 <template>
   <div>
     <div data-testid="params-via-hook">{{ paramsViaHook.postId }}</div>
-    <div data-testid="params-via-route-hook">{{ paramsViaRouteHook.postId }}</div>
+    <div data-testid="params-via-route-hook">
+      {{ paramsViaRouteHook.postId }}
+    </div>
     <div data-testid="params-via-route-api">{{ paramsViaApi.postId }}</div>
   </div>
 </template>

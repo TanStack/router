@@ -804,7 +804,9 @@ describe('Solid Router - Optional Path Parameters', () => {
             return (
               <div>
                 <h2>Post Detail</h2>
-                <div data-testid="slug-param">{params.value.slug ?? undefined}</div>
+                <div data-testid="slug-param">
+                  {params.value.slug ?? undefined}
+                </div>
               </div>
             )
           },

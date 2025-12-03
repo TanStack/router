@@ -14,7 +14,9 @@ function PostEditComponent() {
   return (
     <div>
       <div data-testid="params-via-hook">{paramsViaHook.value.postId}</div>
-      <div data-testid="params-via-route-hook">{paramsViaRouteHook.value.postId}</div>
+      <div data-testid="params-via-route-hook">
+        {paramsViaRouteHook.value.postId}
+      </div>
       <div data-testid="params-via-route-api">{paramsViaApi.value.postId}</div>
     </div>
   )

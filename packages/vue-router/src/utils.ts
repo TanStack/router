@@ -3,7 +3,7 @@ import * as Vue from 'vue'
 export const useLayoutEffect =
   typeof window !== 'undefined' ? Vue.effect : Vue.effect
 
-export const usePrevious = (fn: ()=> boolean ) => {
+export const usePrevious = (fn: () => boolean) => {
   return Vue.computed(
     (
       prev: { current: boolean | null; previous: boolean | null } = {
@@ -62,7 +62,10 @@ export function useIntersectionObserver<T extends Element>(
   Vue.watchEffect((onCleanup) => {
     const r = ref.value
     // Support both static boolean and function for disabled check
-    const isDisabled = typeof options.disabled === 'function' ? options.disabled() : options.disabled
+    const isDisabled =
+      typeof options.disabled === 'function'
+        ? options.disabled()
+        : options.disabled
     if (!r || !isIntersectionObserverAvailable || isDisabled) {
       return
     }
@@ -83,22 +86,23 @@ export function useIntersectionObserver<T extends Element>(
   return observerRef
 }
 
-export function splitProps<T extends Record<string, any>>(props: T, keys: Array<keyof T>) {
+export function splitProps<T extends Record<string, any>>(
+  props: T,
+  keys: Array<keyof T>,
+) {
   // Get the specified props
   const selectedProps = Vue.computed(() => {
-    return Object.fromEntries(
-      keys.map(key => [key, props[key]])
-    )
+    return Object.fromEntries(keys.map((key) => [key, props[key]]))
   })
-  
+
   // Get remaining props as attrs
   const remainingAttrs = Vue.computed(() => {
     const attrs = Vue.useAttrs()
     return Object.fromEntries(
-      Object.entries(attrs).filter(([key]) => !keys.includes(key as keyof T))
+      Object.entries(attrs).filter(([key]) => !keys.includes(key as keyof T)),
     )
   })
-  
+
   return [selectedProps, remainingAttrs]
 }
 

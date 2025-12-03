@@ -11,7 +11,9 @@ const searchViaRouteApi = routeApi.useSearch()
 <template>
   <div>
     <div data-testid="search-via-hook">{{ searchViaHook.hello }}</div>
-    <div data-testid="search-via-route-hook">{{ searchViaRouteHook.hello }}</div>
+    <div data-testid="search-via-route-hook">
+      {{ searchViaRouteHook.hello }}
+    </div>
     <div data-testid="search-via-route-api">{{ searchViaRouteApi.hello }}</div>
   </div>
 </template>

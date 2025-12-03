@@ -366,7 +366,14 @@ export class Generator {
     ]).filter((d) => {
       // Exclude the root route itself, but keep component/loader pieces for the root
       if (d.routePath === `/${rootPathId}`) {
-        return ['component', 'errorComponent', 'notFoundComponent', 'pendingComponent', 'loader', 'lazy'].includes(d._fsRouteType)
+        return [
+          'component',
+          'errorComponent',
+          'notFoundComponent',
+          'pendingComponent',
+          'loader',
+          'lazy',
+        ].includes(d._fsRouteType)
       }
       return true
     })
@@ -684,12 +691,18 @@ export class Generator {
                       isVueFile
                         ? path.relative(
                             path.dirname(config.generatedRouteTree),
-                            path.resolve(config.routesDirectory, d[1]!.filePath),
+                            path.resolve(
+                              config.routesDirectory,
+                              d[1]!.filePath,
+                            ),
                           )
                         : removeExt(
                             path.relative(
                               path.dirname(config.generatedRouteTree),
-                              path.resolve(config.routesDirectory, d[1]!.filePath),
+                              path.resolve(
+                                config.routesDirectory,
+                                d[1]!.filePath,
+                              ),
                             ),
                             config.addExtensions,
                           ),
@@ -780,7 +793,10 @@ export class Generator {
                       : removeExt(
                           path.relative(
                             path.dirname(config.generatedRouteTree),
-                            path.resolve(config.routesDirectory, d[1]!.filePath),
+                            path.resolve(
+                              config.routesDirectory,
+                              d[1]!.filePath,
+                            ),
                           ),
                           config.addExtensions,
                         ),

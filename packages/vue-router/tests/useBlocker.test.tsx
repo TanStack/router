@@ -443,7 +443,7 @@ describe('useBlocker', () => {
             <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
           </>
         )
-      }
+      },
     })
 
     const indexRoute = createRoute({

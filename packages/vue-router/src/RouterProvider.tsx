@@ -13,14 +13,14 @@ export const RouterContextProvider = Vue.defineComponent({
   props: {
     router: {
       type: Object,
-      required: true
+      required: true,
     },
     // Rest of router options will be passed as attrs
   },
   setup(props, { attrs, slots }) {
     const router = props.router as AnyRouter
     const restAttrs = attrs as Record<string, any>
-    
+
     // Allow the router to update options on the router instance
     router.update({
       ...router.options,
@@ -33,21 +33,21 @@ export const RouterContextProvider = Vue.defineComponent({
 
     // Provide router to all child components
     provideRouter(router)
-    
+
     return () => {
       // Get child content
       const childContent = slots.default?.()
-      
+
       // If a Wrap component is specified in router options, use it
       if (router.options.Wrap) {
         const WrapComponent = router.options.Wrap
         return Vue.h(WrapComponent, null, () => childContent)
       }
-      
+
       // Otherwise just return the child content
       return childContent
     }
-  }
+  },
 })
 
 // The main router provider component that includes matches
@@ -56,37 +56,37 @@ export const RouterProvider = Vue.defineComponent({
   props: {
     router: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
     // Rest of router options will be passed as attrs
   },
   setup(props, { attrs }) {
     const restAttrs = attrs as Record<string, any>
-    
+
     return () => {
       return Vue.h(
         RouterContextProvider,
         {
           router: props.router,
-          ...restAttrs
+          ...restAttrs,
         },
         {
-          default: () => Vue.h(Matches)
-        }
+          default: () => Vue.h(Matches),
+        },
       )
     }
-  }
+  },
 }) as unknown as {
   <TRouter extends AnyRouter = RegisteredRouter>(
     props: {
-      router: TRouter;
-      routeTree?: TRouter['routeTree'];
-    } & Record<string, any>
-  ): Vue.VNode;
+      router: TRouter
+      routeTree?: TRouter['routeTree']
+    } & Record<string, any>,
+  ): Vue.VNode
   new (): {
     $props: {
-      router: AnyRouter;
-      routeTree?: AnyRouter['routeTree'];
+      router: AnyRouter
+      routeTree?: AnyRouter['routeTree']
     }
   }
 }

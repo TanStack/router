@@ -108,8 +108,8 @@ export function useLinkProps<
     return options.preload ?? router.options.defaultPreload
   })
 
-  const preloadDelay = Vue.computed(() =>
-    options.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
+  const preloadDelay = Vue.computed(
+    () => options.preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
   )
 
   const isActive = useRouterState({
@@ -196,15 +196,43 @@ export function useLinkProps<
   const getPropsSafeToSpread = () => {
     const result: Record<string, any> = {}
     for (const key in options) {
-      if (![
-        'activeProps', 'inactiveProps', 'activeOptions', 'to', 'preload',
-        'preloadDelay', 'hashScrollIntoView', 'replace', 'startTransition',
-        'resetScroll', 'viewTransition', 'children', 'target', 'disabled',
-        'style', 'class', 'onClick', 'onFocus', 'onMouseEnter', 'onMouseLeave',
-        'onMouseOver', 'onMouseOut', 'onTouchStart', 'ignoreBlocker',
-        'params', 'search', 'hash', 'state', 'mask', 'reloadDocument',
-        '_asChild', 'from', 'additionalProps'
-      ].includes(key)) {
+      if (
+        ![
+          'activeProps',
+          'inactiveProps',
+          'activeOptions',
+          'to',
+          'preload',
+          'preloadDelay',
+          'hashScrollIntoView',
+          'replace',
+          'startTransition',
+          'resetScroll',
+          'viewTransition',
+          'children',
+          'target',
+          'disabled',
+          'style',
+          'class',
+          'onClick',
+          'onFocus',
+          'onMouseEnter',
+          'onMouseLeave',
+          'onMouseOver',
+          'onMouseOut',
+          'onTouchStart',
+          'ignoreBlocker',
+          'params',
+          'search',
+          'hash',
+          'state',
+          'mask',
+          'reloadDocument',
+          '_asChild',
+          'from',
+          'additionalProps',
+        ].includes(key)
+      ) {
         result[key] = options[key]
       }
     }
@@ -231,7 +259,7 @@ export function useLinkProps<
     }
 
     // Remove undefined values
-    Object.keys(externalProps).forEach(key => {
+    Object.keys(externalProps).forEach((key) => {
       if (externalProps[key] === undefined) {
         delete externalProps[key]
       }
@@ -246,7 +274,8 @@ export function useLinkProps<
     const elementTarget = (
       e.currentTarget as HTMLAnchorElement | SVGAElement
     )?.getAttribute('target')
-    const effectiveTarget = options.target !== undefined ? options.target : elementTarget
+    const effectiveTarget =
+      options.target !== undefined ? options.target : elementTarget
 
     if (
       !options.disabled &&
@@ -300,7 +329,9 @@ export function useLinkProps<
   const handleEnter = (e: MouseEvent) => {
     if (options.disabled) return
     // Use currentTarget (the element with the handler) instead of target (which may be a child)
-    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget ||
+      e.target ||
+      {}) as LinkCurrentTargetElement
 
     if (preload.value) {
       if (eventTarget.preloadTimeout) {
@@ -317,7 +348,9 @@ export function useLinkProps<
   const handleLeave = (e: MouseEvent) => {
     if (options.disabled) return
     // Use currentTarget (the element with the handler) instead of target (which may be a child)
-    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget ||
+      e.target ||
+      {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       clearTimeout(eventTarget.preloadTimeout)
@@ -341,18 +374,22 @@ export function useLinkProps<
   // Get the active and inactive props
   const resolvedActiveProps = Vue.computed<StyledProps>(() => {
     const activeProps = options.activeProps || (() => ({ class: 'active' }))
-    const props = isActive.value ?
-      (typeof activeProps === 'function' ? activeProps() : activeProps) :
-      {}
+    const props = isActive.value
+      ? typeof activeProps === 'function'
+        ? activeProps()
+        : activeProps
+      : {}
 
     return props || { class: undefined, style: undefined }
   })
 
   const resolvedInactiveProps = Vue.computed<StyledProps>(() => {
     const inactiveProps = options.inactiveProps || (() => ({}))
-    const props = isActive.value ?
-      {} :
-      (typeof inactiveProps === 'function' ? inactiveProps() : inactiveProps)
+    const props = isActive.value
+      ? {}
+      : typeof inactiveProps === 'function'
+        ? inactiveProps()
+        : inactiveProps
 
     return props || { class: undefined, style: undefined }
   })
@@ -361,7 +398,7 @@ export function useLinkProps<
     const classes = [
       options.class,
       resolvedActiveProps.value?.class,
-      resolvedInactiveProps.value?.class
+      resolvedInactiveProps.value?.class,
     ].filter(Boolean)
     return classes.length ? classes.join(' ') : undefined
   })
@@ -401,7 +438,9 @@ export function useLinkProps<
 
     // Handle origin stripping like Solid does
     if (router.origin && hrefValue?.startsWith(router.origin)) {
-      hrefValue = router.history.createHref(hrefValue.replace(router.origin, ''))
+      hrefValue = router.history.createHref(
+        hrefValue.replace(router.origin, ''),
+      )
     }
 
     return hrefValue
@@ -414,13 +453,34 @@ export function useLinkProps<
     ...getPropsSafeToSpread(),
     href: undefined as string | undefined,
     ref,
-    onClick: composeEventHandlers<MouseEvent>([options.onClick, handleClick]) as any,
-    onFocus: composeEventHandlers<FocusEvent>([options.onFocus, handleFocus]) as any,
-    onMouseenter: composeEventHandlers<MouseEvent>([options.onMouseEnter, handleEnter]) as any,
-    onMouseover: composeEventHandlers<MouseEvent>([options.onMouseOver, handleEnter]) as any,
-    onMouseleave: composeEventHandlers<MouseEvent>([options.onMouseLeave, handleLeave]) as any,
-    onMouseout: composeEventHandlers<MouseEvent>([options.onMouseOut, handleLeave]) as any,
-    onTouchstart: composeEventHandlers<TouchEvent>([options.onTouchStart, handleTouchStart]) as any,
+    onClick: composeEventHandlers<MouseEvent>([
+      options.onClick,
+      handleClick,
+    ]) as any,
+    onFocus: composeEventHandlers<FocusEvent>([
+      options.onFocus,
+      handleFocus,
+    ]) as any,
+    onMouseenter: composeEventHandlers<MouseEvent>([
+      options.onMouseEnter,
+      handleEnter,
+    ]) as any,
+    onMouseover: composeEventHandlers<MouseEvent>([
+      options.onMouseOver,
+      handleEnter,
+    ]) as any,
+    onMouseleave: composeEventHandlers<MouseEvent>([
+      options.onMouseLeave,
+      handleLeave,
+    ]) as any,
+    onMouseout: composeEventHandlers<MouseEvent>([
+      options.onMouseOut,
+      handleLeave,
+    ]) as any,
+    onTouchstart: composeEventHandlers<TouchEvent>([
+      options.onTouchStart,
+      handleTouchStart,
+    ]) as any,
     disabled: !!options.disabled,
     target: options.target,
   })
@@ -545,7 +605,6 @@ export interface LinkPropsChildren {
     | ((state: { isActive: boolean; isTransitioning: boolean }) => Vue.VNode)
 }
 
-
 type LinkComponentVueProps<TComp> = TComp extends keyof HTMLElementTagNameMap
   ? Omit<HTMLAttributes, keyof CreateLinkProps>
   : TComp extends Vue.Component
@@ -631,36 +690,39 @@ const LinkImpl = Vue.defineComponent({
       const Component = props._asChild || 'a'
 
       const isActive = linkProps['data-status'] === 'active'
-      const isTransitioning = linkProps['data-transitioning'] === 'transitioning'
+      const isTransitioning =
+        linkProps['data-transitioning'] === 'transitioning'
 
       // Create the slot content or empty array if no default slot
-      const slotContent = slots.default ?
-        slots.default({
-          isActive,
-          isTransitioning
-        }) :
-        []
+      const slotContent = slots.default
+        ? slots.default({
+            isActive,
+            isTransitioning,
+          })
+        : []
 
       // Special handling for SVG links - wrap an <a> inside the SVG
       if (Component === 'svg') {
         // Create props without class for svg link
         const svgLinkProps = { ...linkProps }
         delete (svgLinkProps as any).class
-        return Vue.h('svg', {}, [
-          Vue.h('a', svgLinkProps, slotContent)
-        ])
+        return Vue.h('svg', {}, [Vue.h('a', svgLinkProps, slotContent)])
       }
 
       // For custom functional components (non-string), pass children as a prop
       // since they may expect children as a prop like in Solid
       if (typeof Component !== 'string') {
-        return Vue.h(Component, { ...linkProps, children: slotContent }, slotContent)
+        return Vue.h(
+          Component,
+          { ...linkProps, children: slotContent },
+          slotContent,
+        )
       }
 
       // Return the component with props and children
       return Vue.h(Component, linkProps, slotContent)
     }
-  }
+  },
 })
 
 /**
@@ -674,7 +736,7 @@ export const Link = LinkImpl as unknown as {
     TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
     TMaskTo extends string = '.',
   >(
-    props: LinkComponentProps<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+    props: LinkComponentProps<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   ): Vue.VNode
 }
 

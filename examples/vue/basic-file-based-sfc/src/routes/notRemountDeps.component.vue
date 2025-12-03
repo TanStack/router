@@ -25,6 +25,8 @@ onMounted(() => {
     </button>
 
     <div>Search: {{ search.searchParam }}</div>
-    <div data-testid="component-mounts">Page component mounts: {{ mounts }}</div>
+    <div data-testid="component-mounts">
+      Page component mounts: {{ mounts }}
+    </div>
   </div>
 </template>

@@ -725,7 +725,9 @@ describe('Link', () => {
         <>
           <h1>Posts</h1>
           <span data-testid="current-page">Page: {search.value.page}</span>
-          <span data-testid="current-filter">Filter: {search.value.filter}</span>
+          <span data-testid="current-filter">
+            Filter: {search.value.filter}
+          </span>
         </>
       )
     }
@@ -839,7 +841,9 @@ describe('Link', () => {
         <>
           <h1>Posts</h1>
           <span data-testid="current-page">Page: {search.value.page}</span>
-          <span data-testid="current-filter">Filter: {search.value.filter}</span>
+          <span data-testid="current-filter">
+            Filter: {search.value.filter}
+          </span>
         </>
       )
     }
@@ -2241,7 +2245,9 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span data-testid="post-component">Params: {params.value.postId}</span>
+          <span data-testid="post-component">
+            Params: {params.value.postId}
+          </span>
         </>
       )
     }
@@ -2250,7 +2256,9 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span data-testid="user-component">Params: {params.value.userId}</span>
+          <span data-testid="user-component">
+            Params: {params.value.userId}
+          </span>
         </>
       )
     }
@@ -3414,7 +3422,7 @@ describe('Link', () => {
         })
 
         return () => <>{status.value === 'success' ? 'Login!' : 'Waiting...'}</>
-      }
+      },
     })
 
     const loginRoute = createRoute({
@@ -3884,7 +3892,7 @@ describe('Link', () => {
             <Outlet />
           </>
         )
-      }
+      },
     })
 
     const rootRoute = createRootRoute({
@@ -3960,7 +3968,9 @@ describe('Link', () => {
     expect(fromInvoicesLink).toBeInTheDocument()
 
     // Query for 'From posts' link again after navigation - it should not exist
-    expect(screen.queryByRole('link', { name: 'From posts' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'From posts' }),
+    ).not.toBeInTheDocument()
 
     const toPostsLink = await screen.findByRole('link', {
       name: 'To posts',
@@ -3972,7 +3982,9 @@ describe('Link', () => {
     expect(onPostsText).toBeInTheDocument()
 
     // Query for 'From invoices' link again after navigation - it should not exist
-    expect(screen.queryByRole('link', { name: 'From invoices' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'From invoices' }),
+    ).not.toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -4293,7 +4305,7 @@ describe('Link', () => {
             <Link to="/">Index Link</Link>
           </>
         )
-      }
+      },
     })
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -4611,8 +4623,8 @@ describe('createLink', () => {
 
       return (
         <button {...rest}>
-          active: {active ? 'yes' : 'no'} - foo:{' '}
-          {foo ? 'yes' : 'no'} - {children}
+          active: {active ? 'yes' : 'no'} - foo: {foo ? 'yes' : 'no'} -{' '}
+          {children}
         </button>
       )
     }

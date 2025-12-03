@@ -6,5 +6,5 @@ export const SafeFragment = Vue.defineComponent({
     return () => {
       return Vue.h(Vue.Fragment, null, slots.default?.())
     }
-  }
+  },
 })

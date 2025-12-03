@@ -19,7 +19,9 @@ export const EditingBComponent = defineComponent({
           <input
             name="input"
             value={input.value}
-            onInput={(e) => (input.value = (e.target as HTMLInputElement).value)}
+            onInput={(e) =>
+              (input.value = (e.target as HTMLInputElement).value)
+            }
           />
         </label>
         <button onClick={() => navigate({ to: '/editing-a' })}>Go back</button>

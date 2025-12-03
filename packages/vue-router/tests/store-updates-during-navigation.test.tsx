@@ -111,7 +111,7 @@ async function run({ select }: ReturnType<typeof setup>) {
   fireEvent.click(link)
   const title = await waitFor(
     () => screen.getByRole('heading', { name: /Title$/ }), // matches /posts and /other and not found
-    { timeout: 3000 } // Vue's Suspense needs more time
+    { timeout: 3000 }, // Vue's Suspense needs more time
   )
   expect(title).toBeInTheDocument()
   const after = select.mock.calls.length

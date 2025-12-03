@@ -23,8 +23,8 @@ export const Match = Vue.defineComponent({
   props: {
     matchId: {
       type: String,
-      required: true
-    }
+      required: true,
+    },
   },
   setup(props) {
     const router = useRouter()
@@ -41,16 +41,20 @@ export const Match = Vue.defineComponent({
 
     const route = Vue.computed(() => router.routesById[routeId.value])
 
-    const PendingComponent = Vue.computed(() =>
-      route.value?.options?.pendingComponent ?? router?.options?.defaultPendingComponent
+    const PendingComponent = Vue.computed(
+      () =>
+        route.value?.options?.pendingComponent ??
+        router?.options?.defaultPendingComponent,
     )
 
-    const routeErrorComponent = Vue.computed(() =>
-      route.value?.options?.errorComponent ?? router?.options?.defaultErrorComponent
+    const routeErrorComponent = Vue.computed(
+      () =>
+        route.value?.options?.errorComponent ??
+        router?.options?.defaultErrorComponent,
     )
 
-    const routeOnCatch = Vue.computed(() =>
-      route.value?.options?.onCatch ?? router?.options?.defaultOnCatch
+    const routeOnCatch = Vue.computed(
+      () => route.value?.options?.onCatch ?? router?.options?.defaultOnCatch,
     )
 
     const routeNotFoundComponent = Vue.computed(() =>
@@ -58,7 +62,7 @@ export const Match = Vue.defineComponent({
         ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
           (route.value?.options?.notFoundComponent ??
           router?.options?.notFoundRoute?.options?.component)
-        : route.value?.options?.notFoundComponent
+        : route.value?.options?.notFoundComponent,
     )
 
     const resetKey = useRouterState({
@@ -74,11 +78,15 @@ export const Match = Vue.defineComponent({
 
     // Create a ref for the current matchId that we can provide to child components
     const matchIdRef = Vue.ref(props.matchId)
-    
+
     // When props.matchId changes, update the ref
-    Vue.watch(() => props.matchId, (newMatchId) => {
-      matchIdRef.value = newMatchId
-    }, { immediate: true })
+    Vue.watch(
+      () => props.matchId,
+      (newMatchId) => {
+        matchIdRef.value = newMatchId
+      },
+      { immediate: true },
+    )
 
     // Provide the matchId to child components
     Vue.provide(matchContext, matchIdRef)
@@ -86,7 +94,7 @@ export const Match = Vue.defineComponent({
     return (): VNode => {
       // Determine which components to render
       let content: VNode = Vue.h(MatchInner, { matchId: props.matchId })
-      
+
       // Wrap in NotFound boundary if needed
       if (routeNotFoundComponent.value) {
         content = Vue.h(CatchNotFound, {
@@ -102,7 +110,7 @@ export const Match = Vue.defineComponent({
 
             return Vue.h(routeNotFoundComponent.value, error)
           },
-          children: content
+          children: content,
         })
       }
 
@@ -117,37 +125,46 @@ export const Match = Vue.defineComponent({
             warning(false, `Error in route match: ${props.matchId}`)
             routeOnCatch.value?.(error)
           },
-          children: content
+          children: content,
         })
       }
 
       // Wrap in suspense if needed
       // Root routes should also wrap in Suspense if they have a pendingComponent
-      const needsSuspense = route.value &&
-        (route.value?.options?.wrapInSuspense ?? PendingComponent.value ?? false)
-      
+      const needsSuspense =
+        route.value &&
+        (route.value?.options?.wrapInSuspense ??
+          PendingComponent.value ??
+          false)
+
       if (needsSuspense) {
-        content = Vue.h(Vue.Suspense, {
-          fallback: PendingComponent.value ? Vue.h(PendingComponent.value) : null 
-        }, {
-          default: () => content
-        })
+        content = Vue.h(
+          Vue.Suspense,
+          {
+            fallback: PendingComponent.value
+              ? Vue.h(PendingComponent.value)
+              : null,
+          },
+          {
+            default: () => content,
+          },
+        )
       }
 
       // Add scroll restoration if needed
       const withScrollRestoration: Array<VNode> = [
         content,
-        parentRouteId.value === rootRouteId && router.options.scrollRestoration 
+        parentRouteId.value === rootRouteId && router.options.scrollRestoration
           ? Vue.h(Vue.Fragment, null, [
               Vue.h(OnRendered),
-              Vue.h(ScrollRestoration)
-            ]) 
-          : null
+              Vue.h(ScrollRestoration),
+            ])
+          : null,
       ].filter(Boolean) as Array<VNode>
 
       return Vue.h(Vue.Fragment, null, withScrollRestoration)
     }
-  }
+  },
 })
 
 // On Rendered can't happen above the root layout because it actually
@@ -167,7 +184,7 @@ const OnRendered = Vue.defineComponent({
         return s.resolvedLocation?.state.key
       },
     })
-    
+
     Vue.watchEffect(() => {
       if (location.value) {
         router.emit({
@@ -176,18 +193,18 @@ const OnRendered = Vue.defineComponent({
         })
       }
     })
-    
+
     return () => null
-  }
+  },
 })
 
 export const MatchInner = Vue.defineComponent({
   name: 'MatchInner',
   props: {
     matchId: {
-      type: String, 
-      required: true
-    }
+      type: String,
+      required: true,
+    },
   },
   setup(props) {
     const router = useRouter()
@@ -236,7 +253,8 @@ export const MatchInner = Vue.defineComponent({
 
     const out = Vue.computed((): VNode | null => {
       if (!route.value) return null
-      const Comp = route.value.options.component ?? router.options.defaultComponent
+      const Comp =
+        route.value.options.component ?? router.options.defaultComponent
       if (Comp) {
         return Vue.h(Comp)
       }
@@ -276,7 +294,7 @@ export const MatchInner = Vue.defineComponent({
             },
             info: {
               componentStack: '',
-            }
+            },
           })
         }
 
@@ -290,7 +308,11 @@ export const MatchInner = Vue.defineComponent({
           route.value.options.pendingMinMs ?? router.options.defaultPendingMinMs
 
         const routerMatch = router.getMatch(match.value.id)
-        if (pendingMinMs && routerMatch && !routerMatch._nonReactive.minPendingPromise) {
+        if (
+          pendingMinMs &&
+          routerMatch &&
+          !routerMatch._nonReactive.minPendingPromise
+        ) {
           // Create a promise that will resolve after the minPendingMs
           if (!router.isServer) {
             const minPendingPromise = createControlledPromise<void>()
@@ -307,7 +329,8 @@ export const MatchInner = Vue.defineComponent({
 
         // In Vue, we render the pending component directly instead of throwing a promise
         // because Vue's Suspense doesn't catch thrown promises like React does
-        const PendingComponent = route.value.options.pendingComponent ??
+        const PendingComponent =
+          route.value.options.pendingComponent ??
           router.options.defaultPendingComponent
 
         if (PendingComponent) {
@@ -321,7 +344,7 @@ export const MatchInner = Vue.defineComponent({
       // Success status - render the component
       return out.value
     }
-  }
+  },
 })
 
 export const Outlet = Vue.defineComponent({
@@ -330,9 +353,10 @@ export const Outlet = Vue.defineComponent({
     const router = useRouter()
     const matchId = Vue.inject(matchContext)
     const safeMatchId = Vue.computed(() => matchId?.value || '')
-    
+
     const routeId = useRouterState({
-      select: (s) => s.matches.find((d) => d.id === safeMatchId.value)?.routeId as string,
+      select: (s) =>
+        s.matches.find((d) => d.id === safeMatchId.value)?.routeId as string,
     })
 
     const route = Vue.computed(() => router.routesById[routeId.value]!)
@@ -364,23 +388,28 @@ export const Outlet = Vue.defineComponent({
       if (parentGlobalNotFound.value) {
         return renderRouteNotFound(router, route.value, undefined)
       }
-      
+
       if (!childMatchId.value) {
         return null
       }
-      
+
       const nextMatch = Vue.h(Match, { matchId: childMatchId.value })
-      
+
       if (safeMatchId.value === rootRouteId) {
-        return Vue.h(Vue.Suspense, {
-          fallback: router.options.defaultPendingComponent ? 
-            Vue.h(router.options.defaultPendingComponent) : null
-        }, {
-          default: () => nextMatch
-        })
+        return Vue.h(
+          Vue.Suspense,
+          {
+            fallback: router.options.defaultPendingComponent
+              ? Vue.h(router.options.defaultPendingComponent)
+              : null,
+          },
+          {
+            default: () => nextMatch,
+          },
+        )
       }
-      
+
       return nextMatch
     }
-  }
+  },
 })

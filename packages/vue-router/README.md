@@ -30,17 +30,17 @@
 
 ## File-Based Routing Conventions
 
-| Suffix/Pattern | Purpose |
-|---------------|---------|
-| `.route.ts` | Route configuration (loader, validateSearch, head, etc.) |
-| `.component.vue` | The component rendered for the route |
-| `.errorComponent.vue` | Error boundary component for the route |
-| `.notFoundComponent.vue` | Not found component for the route |
-| `.lazy.ts` | Lazy-loaded route configuration |
-| `_layout` prefix | Layout routes that wrap child routes |
-| `_` suffix (e.g., `posts_.$postId`) | Unnested routes (break out of parent layout) |
-| `(groupName)` directory | Route groups (organizational, don't affect URL) |
-| `$param` | Dynamic route parameters |
+| Suffix/Pattern                      | Purpose                                                  |
+| ----------------------------------- | -------------------------------------------------------- |
+| `.route.ts`                         | Route configuration (loader, validateSearch, head, etc.) |
+| `.component.vue`                    | The component rendered for the route                     |
+| `.errorComponent.vue`               | Error boundary component for the route                   |
+| `.notFoundComponent.vue`            | Not found component for the route                        |
+| `.lazy.ts`                          | Lazy-loaded route configuration                          |
+| `_layout` prefix                    | Layout routes that wrap child routes                     |
+| `_` suffix (e.g., `posts_.$postId`) | Unnested routes (break out of parent layout)             |
+| `(groupName)` directory             | Route groups (organizational, don't affect URL)          |
+| `$param`                            | Dynamic route parameters                                 |
 
 ### Examples from e2e/basic-file-routes/ project
 

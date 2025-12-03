@@ -9,7 +9,10 @@ const posts = useLoaderData({ from: '/posts' }) as unknown as Array<PostType>
   <div class="p-2 flex gap-2" data-testid="posts-links">
     <ul class="list-disc pl-4">
       <li
-        v-for="post in [...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }]"
+        v-for="post in [
+          ...posts,
+          { id: 'i-do-not-exist', title: 'Non-existent Post' },
+        ]"
         :key="post.id"
         class="whitespace-nowrap"
       >

@@ -2,10 +2,14 @@ import * as Vue from 'vue'
 
 // Create a typed injection key with support for undefined values
 // This is the primary match context used throughout the router
-export const matchContext = Symbol('TanStackRouterMatch') as Vue.InjectionKey<Vue.Ref<string | undefined>>
+export const matchContext = Symbol('TanStackRouterMatch') as Vue.InjectionKey<
+  Vue.Ref<string | undefined>
+>
 
 // Dummy match context for when we want to look up by explicit 'from' route
-export const dummyMatchContext = Symbol('TanStackRouterDummyMatch') as Vue.InjectionKey<Vue.Ref<string | undefined>>
+export const dummyMatchContext = Symbol(
+  'TanStackRouterDummyMatch',
+) as Vue.InjectionKey<Vue.Ref<string | undefined>>
 
 /**
  * Provides a match ID to child components

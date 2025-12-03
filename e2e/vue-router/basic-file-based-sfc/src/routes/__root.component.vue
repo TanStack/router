@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { Link, Outlet, HeadContent, useRouter, useCanGoBack, useRouterState } from '@tanstack/vue-router'
+import {
+  Link,
+  Outlet,
+  HeadContent,
+  useRouter,
+  useCanGoBack,
+  useRouterState,
+} from '@tanstack/vue-router'
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 
 const router = useRouter()
@@ -68,7 +75,9 @@ const _state = useRouterState()
     >
       Lazy Inside Group
     </Link>
-    <Link to="/대한민국" :activeProps="{ class: 'font-bold' }">unicode path</Link>
+    <Link to="/대한민국" :activeProps="{ class: 'font-bold' }"
+      >unicode path</Link
+    >
   </div>
   <hr />
   <Outlet />

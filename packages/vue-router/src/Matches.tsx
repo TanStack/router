@@ -21,7 +21,7 @@ import type {
   ResolveRoute,
   RouteByPath,
   RouterState,
-  ToSubOptionsProps
+  ToSubOptionsProps,
 } from '@tanstack/router-core'
 
 // Define a type for the error component function
@@ -40,11 +40,9 @@ declare module '@tanstack/router-core' {
 const MatchesContent = Vue.defineComponent({
   name: 'MatchesContent',
   setup() {
-    return () => Vue.h(Vue.Fragment, null, [
-      Vue.h(Transitioner),
-      Vue.h(MatchesInner)
-    ])
-  }
+    return () =>
+      Vue.h(Vue.Fragment, null, [Vue.h(Transitioner), Vue.h(MatchesInner)])
+  },
 })
 
 export const Matches = Vue.defineComponent({
@@ -53,30 +51,37 @@ export const Matches = Vue.defineComponent({
     const router = useRouter()
 
     return () => {
-      const pendingElement = router?.options?.defaultPendingComponent 
-        ? Vue.h(router.options.defaultPendingComponent) 
+      const pendingElement = router?.options?.defaultPendingComponent
+        ? Vue.h(router.options.defaultPendingComponent)
         : null
 
       // Do not render a root Suspense during SSR or hydrating from SSR
-      const inner = router?.isServer || (typeof document !== 'undefined' && router?.ssr)
-        ? Vue.h(MatchesContent)
-        : Vue.h(Vue.Suspense, { fallback: pendingElement }, {
-            default: () => Vue.h(MatchesContent)
-          })
+      const inner =
+        router?.isServer || (typeof document !== 'undefined' && router?.ssr)
+          ? Vue.h(MatchesContent)
+          : Vue.h(
+              Vue.Suspense,
+              { fallback: pendingElement },
+              {
+                default: () => Vue.h(MatchesContent),
+              },
+            )
 
-      return router?.options?.InnerWrap 
+      return router?.options?.InnerWrap
         ? Vue.h(router.options.InnerWrap, null, { default: () => inner })
         : inner
     }
-  }
+  },
 })
 
 // Create a simple error component function that matches ErrorRouteComponent
-const errorComponentFn: ErrorRouteComponentType = (props: ErrorComponentProps) => {
+const errorComponentFn: ErrorRouteComponentType = (
+  props: ErrorComponentProps,
+) => {
   return Vue.h('div', { class: 'error' }, [
     Vue.h('h1', null, 'Error'),
     Vue.h('p', null, props.error.message || String(props.error)),
-    Vue.h('button', { onClick: props.reset }, 'Try Again')
+    Vue.h('button', { onClick: props.reset }, 'Try Again'),
   ])
 }
 
@@ -122,10 +127,10 @@ const MatchesInner = Vue.defineComponent({
           )
           warning(false, error.message || error.toString())
         },
-        children: childElement
+        children: childElement,
       })
     }
-  }
+  },
 })
 
 export type UseMatchRouteOptions<
@@ -167,7 +172,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
     const matchRoute = Vue.computed(() => {
       // Access routerState to establish dependency
-       
+
       routerState.value
       return router.matchRoute(rest as any, {
         pending,
@@ -204,20 +209,20 @@ export interface MatchRouteComponentType {
   <
     TRouter extends AnyRouter = RegisteredRouter,
     TFrom extends string = string,
-    TTo extends string | undefined = undefined
+    TTo extends string | undefined = undefined,
   >(
-    props: MakeMatchRouteOptions<TRouter, TFrom, TTo>
-  ): Vue.VNode;
+    props: MakeMatchRouteOptions<TRouter, TFrom, TTo>,
+  ): Vue.VNode
   new (): {
     $props: {
-      from?: string;
-      to?: string;
-      fuzzy?: boolean;
-      caseSensitive?: boolean;
-      includeSearch?: boolean;
-      pending?: boolean;
-    };
-  };
+      from?: string
+      to?: string
+      fuzzy?: boolean
+      caseSensitive?: boolean
+      includeSearch?: boolean
+      pending?: boolean
+    }
+  }
 }
 
 export const MatchRoute = Vue.defineComponent({
@@ -226,28 +231,28 @@ export const MatchRoute = Vue.defineComponent({
     // Define props to match MakeMatchRouteOptions
     from: {
       type: String,
-      required: false
+      required: false,
     },
     to: {
       type: String,
-      required: false
+      required: false,
     },
     fuzzy: {
       type: Boolean,
-      required: false
+      required: false,
     },
     caseSensitive: {
       type: Boolean,
-      required: false
+      required: false,
     },
     includeSearch: {
       type: Boolean,
-      required: false
+      required: false,
     },
     pending: {
       type: Boolean,
-      required: false
-    }
+      required: false,
+    },
   },
   setup(props, { slots }) {
     const status = useRouterState({
@@ -256,7 +261,7 @@ export const MatchRoute = Vue.defineComponent({
 
     return () => {
       if (!status.value) return null
-      
+
       const matchRoute = useMatchRoute()
       const params = matchRoute(props as any).value as boolean
 
@@ -274,7 +279,7 @@ export const MatchRoute = Vue.defineComponent({
       // For normal slots, just render them
       return Vue.h(Vue.Fragment, null, slots.default)
     }
-  }
+  },
 }) as unknown as MatchRouteComponentType
 
 export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {

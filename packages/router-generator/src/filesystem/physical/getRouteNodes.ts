@@ -241,11 +241,19 @@ export async function getRouteNodes(
   await recurse('./')
 
   // Find the root route node - prefer the actual route file over component/loader files
-  const rootRouteNode = routeNodes.find(
-    (d) =>
-      d.routePath === `/${rootPathId}` &&
-      !['component', 'errorComponent', 'notFoundComponent', 'pendingComponent', 'loader', 'lazy'].includes(d._fsRouteType),
-  ) ?? routeNodes.find((d) => d.routePath === `/${rootPathId}`)
+  const rootRouteNode =
+    routeNodes.find(
+      (d) =>
+        d.routePath === `/${rootPathId}` &&
+        ![
+          'component',
+          'errorComponent',
+          'notFoundComponent',
+          'pendingComponent',
+          'loader',
+          'lazy',
+        ].includes(d._fsRouteType),
+    ) ?? routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
     rootRouteNode._fsRouteType = '__root'
     rootRouteNode.variableName = 'root'

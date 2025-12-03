@@ -2,7 +2,9 @@ import * as Vue from 'vue'
 import type { AnyRouter } from '@tanstack/router-core'
 
 // Create a router context symbol
-export const RouterSymbol = Symbol('TanStackRouter') as Vue.InjectionKey<AnyRouter>
+export const RouterSymbol = Symbol(
+  'TanStackRouter',
+) as Vue.InjectionKey<AnyRouter>
 
 declare global {
   interface Window {
@@ -44,7 +46,7 @@ export function injectRouter(): AnyRouter {
   const router = Vue.inject<AnyRouter | null>(getRouterContext(), null)
   if (!router) {
     throw new Error(
-      'No TanStack Router found in component tree. Did you forget to add a RouterProvider component?'
+      'No TanStack Router found in component tree. Did you forget to add a RouterProvider component?',
     )
   }
   return router

@@ -20,6 +20,8 @@ export const TanStackRouterDevtools =
 export const TanStackRouterDevtoolsInProd = DevToolsComponent
 
 export const TanStackRouterDevtoolsPanel =
-  process.env.NODE_ENV !== 'development' ? NullComponent : DevToolsPanelComponent
+  process.env.NODE_ENV !== 'development'
+    ? NullComponent
+    : DevToolsPanelComponent
 
 export const TanStackRouterDevtoolsPanelInProd = DevToolsPanelComponent

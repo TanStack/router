@@ -2,7 +2,7 @@ import * as Vue from 'vue'
 import { isNotFound } from '@tanstack/router-core'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
-import type { ErrorComponentProps, NotFoundError  } from '@tanstack/router-core'
+import type { ErrorComponentProps, NotFoundError } from '@tanstack/router-core'
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => Vue.VNode
@@ -17,7 +17,7 @@ export function CatchNotFound(props: {
   // Create a function that returns a VNode to match the SyncRouteComponent signature
   const errorComponentFn = (componentProps: ErrorComponentProps) => {
     const error = componentProps.error
-    
+
     if (isNotFound(error)) {
       // If a fallback is provided, use it
       if (props.fallback) {
@@ -43,7 +43,7 @@ export function CatchNotFound(props: {
       }
     },
     errorComponent: errorComponentFn,
-    children: props.children
+    children: props.children,
   })
 }
 
@@ -51,5 +51,5 @@ export const DefaultGlobalNotFound = Vue.defineComponent({
   name: 'DefaultGlobalNotFound',
   setup() {
     return () => Vue.h('p', null, 'Not Found')
-  }
+  },
 })

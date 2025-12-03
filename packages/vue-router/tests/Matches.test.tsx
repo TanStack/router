@@ -146,7 +146,9 @@ test('should show pendingComponent of root route', async () => {
   const router = createRouter({
     routeTree: root,
     defaultPendingMs: 0,
-    defaultPendingComponent: () => <div data-testId="default-pending">default pending...</div>,
+    defaultPendingComponent: () => (
+      <div data-testId="default-pending">default pending...</div>
+    ),
   })
 
   const rendered = render(<RouterProvider router={router} />)
@@ -338,7 +340,9 @@ describe('matching on different param types', () => {
             <h1 data-testid="heading">{name}</h1>
             <div>
               Params{' '}
-              <span data-testid="params">{JSON.stringify(routeParams.value)}</span>
+              <span data-testid="params">
+                {JSON.stringify(routeParams.value)}
+              </span>
               Matches{' '}
               <span data-testid="matches">
                 {JSON.stringify(matchRouteMatch.value)}

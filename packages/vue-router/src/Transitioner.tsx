@@ -1,5 +1,9 @@
 import * as Vue from 'vue'
-import { getLocationChangeInfo, handleHashScroll, trimPathRight } from '@tanstack/router-core'
+import {
+  getLocationChangeInfo,
+  handleHashScroll,
+  trimPathRight,
+} from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
@@ -28,12 +32,14 @@ export const Transitioner = Vue.defineComponent({
 
     const previousIsLoading = usePrevious(() => isLoading.value)
 
-    const isAnyPending = Vue.computed(() =>
-      isLoading.value || isTransitioning.value || hasPendingMatches.value
+    const isAnyPending = Vue.computed(
+      () => isLoading.value || isTransitioning.value || hasPendingMatches.value,
     )
     const previousIsAnyPending = usePrevious(() => isAnyPending.value)
 
-    const isPagePending = Vue.computed(() => isLoading.value || hasPendingMatches.value)
+    const isPagePending = Vue.computed(
+      () => isLoading.value || hasPendingMatches.value,
+    )
     const previousIsPagePending = usePrevious(() => isPagePending.value)
 
     // Implement startTransition similar to React/Solid
@@ -158,56 +164,50 @@ export const Transitioner = Vue.defineComponent({
         } catch {
           // Ignore errors if component is unmounted
         }
-      }
+      },
     )
 
-    Vue.watch(
-      isPagePending,
-      (newValue) => {
-        if (!isMounted.value) return
-        try {
-          // emit onBeforeRouteMount
-          if (previousIsPagePending.value.previous && !newValue) {
-            router.emit({
-              type: 'onBeforeRouteMount',
-              ...getLocationChangeInfo(router.state),
-            })
-          }
-        } catch {
-          // Ignore errors if component is unmounted
+    Vue.watch(isPagePending, (newValue) => {
+      if (!isMounted.value) return
+      try {
+        // emit onBeforeRouteMount
+        if (previousIsPagePending.value.previous && !newValue) {
+          router.emit({
+            type: 'onBeforeRouteMount',
+            ...getLocationChangeInfo(router.state),
+          })
         }
+      } catch {
+        // Ignore errors if component is unmounted
       }
-    )
+    })
 
-    Vue.watch(
-      isAnyPending,
-      (newValue) => {
-        if (!isMounted.value) return
-        try {
-          // The router was pending and now it's not
-          if (previousIsAnyPending.value.previous && !newValue) {
-            const changeInfo = getLocationChangeInfo(router.state)
-            router.emit({
-              type: 'onResolved',
-              ...changeInfo,
-            })
+    Vue.watch(isAnyPending, (newValue) => {
+      if (!isMounted.value) return
+      try {
+        // The router was pending and now it's not
+        if (previousIsAnyPending.value.previous && !newValue) {
+          const changeInfo = getLocationChangeInfo(router.state)
+          router.emit({
+            type: 'onResolved',
+            ...changeInfo,
+          })
 
-            router.__store.setState((s) => ({
-              ...s,
-              status: 'idle',
-              resolvedLocation: s.location,
-            }))
+          router.__store.setState((s) => ({
+            ...s,
+            status: 'idle',
+            resolvedLocation: s.location,
+          }))
 
-            if (changeInfo.hrefChanged) {
-              handleHashScroll(router)
-            }
+          if (changeInfo.hrefChanged) {
+            handleHashScroll(router)
           }
-        } catch {
-          // Ignore errors if component is unmounted
         }
+      } catch {
+        // Ignore errors if component is unmounted
       }
-    )
+    })
 
     return () => null
-  }
+  },
 })

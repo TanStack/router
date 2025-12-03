@@ -57,7 +57,9 @@ function createTestRouter(
       const search = rootRoute.useSearch()
       return (
         <>
-          <div data-testid="search-root">{search.value.root ?? '$undefined'}</div>
+          <div data-testid="search-root">
+            {search.value.root ?? '$undefined'}
+          </div>
           <Outlet />
         </>
       )
@@ -1617,7 +1619,9 @@ describe('does not strip search params if search validation fails', () => {
         const search = rootRoute.useSearch()
         return (
           <div>
-            <div data-testid="search-root">{search.value.root ?? '$undefined'}</div>
+            <div data-testid="search-root">
+              {search.value.root ?? '$undefined'}
+            </div>
             <Outlet />
           </div>
         )

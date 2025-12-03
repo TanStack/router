@@ -19,7 +19,7 @@ const config = defineConfig({
     typecheck: { enabled: true },
     setupFiles: ['./tests/setupTests.tsx'],
   },
-}) 
+})
 
 export default mergeConfig(
   config,

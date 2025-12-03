@@ -18,7 +18,9 @@ export const NotRemountDepsComponent = defineComponent({
           onClick={() =>
             navigate({
               to: '/notRemountDeps',
-              search: { searchParam: Math.random().toString(36).substring(2, 8) },
+              search: {
+                searchParam: Math.random().toString(36).substring(2, 8),
+              },
             })
           }
         >
@@ -26,7 +28,9 @@ export const NotRemountDepsComponent = defineComponent({
         </button>
 
         <div>Search: {search.value.searchParam}</div>
-        <div data-testid="component-mounts">Page component mounts: {mounts.value}</div>
+        <div data-testid="component-mounts">
+          Page component mounts: {mounts.value}
+        </div>
       </div>
     )
   },

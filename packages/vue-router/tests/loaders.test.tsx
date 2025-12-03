@@ -506,7 +506,8 @@ test('reproducer #4546', async () => {
             <p data-testid="index-route-context">{ctx.value.counter}</p>
           </div>
           <div>
-            loader data: <p data-testid="index-loader-data">{data.value.counter}</p>
+            loader data:{' '}
+            <p data-testid="index-loader-data">{data.value.counter}</p>
           </div>
         </div>
       )
@@ -534,10 +535,12 @@ test('reproducer #4546', async () => {
         >
           <div>$id route</div>
           <div>
-            route context: <p data-testid="id-route-context">{ctx.value.counter}</p>
+            route context:{' '}
+            <p data-testid="id-route-context">{ctx.value.counter}</p>
           </div>
           <div>
-            loader data: <p data-testid="id-loader-data">{data.value.counter}</p>
+            loader data:{' '}
+            <p data-testid="id-loader-data">{data.value.counter}</p>
           </div>
         </div>
       )

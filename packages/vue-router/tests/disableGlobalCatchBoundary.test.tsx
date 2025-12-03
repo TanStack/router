@@ -70,7 +70,7 @@ describe('disableGlobalCatchBoundary option', () => {
     render(
       <TestErrorBoundary>
         <RouterProvider router={router} />
-      </TestErrorBoundary>
+      </TestErrorBoundary>,
     )
 
     // Error should bubble up and be caught by the external error boundary

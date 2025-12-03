@@ -143,7 +143,9 @@ test('useParams must return parsed result if applicable.', async () => {
         <h1 data-testid="post-heading">Post Route</h1>
         <div>
           Category_Param:{' '}
-          <span data-testid="param_category_value">{params.value.category}</span>
+          <span data-testid="param_category_value">
+            {params.value.category}
+          </span>
         </div>
         <div>
           PostId_Param:{' '}
@@ -153,11 +155,14 @@ test('useParams must return parsed result if applicable.', async () => {
           PostId: <span data-testid="post_id_value">{data.value.post.id}</span>
         </div>
         <div>
-          Title: <span data-testid="post_title_value">{data.value.post.title}</span>
+          Title:{' '}
+          <span data-testid="post_title_value">{data.value.post.title}</span>
         </div>
         <div>
           Category:{' '}
-          <span data-testid="post_category_value">{data.value.post.category}</span>
+          <span data-testid="post_category_value">
+            {data.value.post.category}
+          </span>
         </div>
       </div>
     )

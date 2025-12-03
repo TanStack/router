@@ -19,12 +19,9 @@ function isModuleNotFoundError(error: any): boolean {
   )
 }
 
-export function ClientOnly(props: {
-  children?: any;
-  fallback?: Vue.VNode;
-}) {
+export function ClientOnly(props: { children?: any; fallback?: Vue.VNode }) {
   const hydrated = useHydrated()
-  
+
   return () => {
     if (hydrated.value) {
       return props.children
@@ -83,12 +80,12 @@ export function lazyRouteComponent<
         .catch((err) => {
           error = err
           loadPromise = undefined
-          
+
           // If it's a module not found error, we'll try to handle it in the component
           if (isModuleNotFoundError(error)) {
             return null
           }
-          
+
           throw err
         })
     }

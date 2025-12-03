@@ -3970,9 +3970,7 @@ test('when passing a component with props to createLink and navigating to the ro
   // These assertions check the prop exists rather than exact type matching
   expectTypeOf(DefaultRouterLink).parameter(0).toHaveProperty('additionalProps')
 
-  expectTypeOf(DefaultRouterLink)
-    .parameter(0)
-    .toHaveProperty('activeProps')
+  expectTypeOf(DefaultRouterLink).parameter(0).toHaveProperty('activeProps')
 
   createLink((props) => expectTypeOf(props).toEqualTypeOf<CreateLinkProps>())
 })

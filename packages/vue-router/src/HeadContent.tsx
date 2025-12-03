@@ -134,16 +134,16 @@ export const HeadContent = Vue.defineComponent({
   name: 'HeadContent',
   setup() {
     const tags = useTags()
-    
+
     return () => {
-      return tags().map((tag) => 
+      return tags().map((tag) =>
         Vue.h(Asset, {
           ...tag,
-          key: `tsr-meta-${JSON.stringify(tag)}`
-        })
+          key: `tsr-meta-${JSON.stringify(tag)}`,
+        }),
       )
     }
-  }
+  },
 })
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {

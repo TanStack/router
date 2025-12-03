@@ -249,12 +249,12 @@ export function useBlocker(
     if (disabled) {
       return
     }
-    
-    const unsubscribe = history.block({ 
-      blockerFn: blockerFnComposed, 
-      enableBeforeUnload 
+
+    const unsubscribe = history.block({
+      blockerFn: blockerFnComposed,
+      enableBeforeUnload,
     })
-    
+
     onCleanup(() => {
       if (unsubscribe) unsubscribe()
     })

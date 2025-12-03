@@ -49,7 +49,9 @@ function reset() {
         fill="#34495e"
       />
     </svg>
-    <p class="count-label" :style="{ color: props.textColor }">{{ countLabel }}</p>
+    <p class="count-label" :style="{ color: props.textColor }">
+      {{ countLabel }}
+    </p>
     <button v-if="count > 0" class="reset-btn" @click="reset">Reset</button>
   </div>
 </template>

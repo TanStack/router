@@ -25,7 +25,7 @@ describe('RouterProvider', () => {
       setup(_, { slots }) {
         Vue.provide(ctxKey, 'findMe')
         return () => slots.default?.()
-      }
+      },
     })
 
     const router = createRouter({
