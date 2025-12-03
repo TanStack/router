@@ -65,6 +65,10 @@ await publish({
       packageDir: 'packages/react-router-devtools',
     },
     {
+      name: '@tanstack/vue-router-devtools',
+      packageDir: 'packages/vue-router-devtools',
+    },
+    {
       name: '@tanstack/router-devtools-core',
       packageDir: 'packages/router-devtools-core',
     },
