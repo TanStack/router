@@ -78,6 +78,12 @@ const _state = useRouterState()
     <Link to="/대한민국" :activeProps="{ class: 'font-bold' }"
       >unicode path</Link
     >
+    <Link
+      :activeProps="{ class: 'font-bold' }"
+      :to="'/this-route-does-not-exist' as any"
+    >
+      This Route Does Not Exist
+    </Link>
   </div>
   <hr />
   <Outlet />

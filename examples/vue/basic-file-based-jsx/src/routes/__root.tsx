@@ -89,9 +89,8 @@ function RootComponent() {
         <Link to="/대한민국" activeProps={{ class: 'font-bold' }}>
           unicode path
         </Link>
-        {/* @ts-expect-error */}
         <Link
-          to="/this-route-does-not-exist"
+          to={"/this-route-does-not-exist" as any}
           activeProps={{ class: 'font-bold' }}
         >
           This Route Does Not Exist
