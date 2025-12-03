@@ -51,16 +51,16 @@ const groupALayoutALoginRoute = groupALayoutALoginRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof groupCLayoutCIndexRoute
   '/login': typeof groupALayoutALoginRoute
   '/signup': typeof groupALayoutASignupRoute
   '/dashboard': typeof groupBLayoutBDashboardRoute
+  '/': typeof groupCLayoutCIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof groupCLayoutCIndexRoute
   '/login': typeof groupALayoutALoginRoute
   '/signup': typeof groupALayoutASignupRoute
   '/dashboard': typeof groupBLayoutBDashboardRoute
+  '/': typeof groupCLayoutCIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -74,9 +74,9 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup' | '/dashboard'
+  fullPaths: '/login' | '/signup' | '/dashboard' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup' | '/dashboard'
+  to: '/login' | '/signup' | '/dashboard' | '/'
   id:
     | '__root__'
     | '/(group-a)/_layout-a'
@@ -99,21 +99,21 @@ declare module '@tanstack/react-router' {
     '/(group-c)/_layout-c': {
       id: '/(group-c)/_layout-c'
       path: ''
-      fullPath: '/'
+      fullPath: ''
       preLoaderRoute: typeof groupCLayoutCRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(group-b)/_layout-b': {
       id: '/(group-b)/_layout-b'
       path: ''
-      fullPath: '/'
+      fullPath: ''
       preLoaderRoute: typeof groupBLayoutBRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(group-a)/_layout-a': {
       id: '/(group-a)/_layout-a'
       path: ''
-      fullPath: '/'
+      fullPath: ''
       preLoaderRoute: typeof groupALayoutARouteImport
       parentRoute: typeof rootRouteImport
     }
