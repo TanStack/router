@@ -43,6 +43,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-basic start-basic
   ```
+
   </details>
 
 - [Basic + Auth](https://github.com/TanStack/router/tree/main/examples/react/start-basic-auth) (start-basic-auth)
@@ -52,6 +53,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-basic-auth start-basic-auth
   ```
+
   </details>
 
 - [Counter](https://github.com/TanStack/router/tree/main/examples/react/start-counter) (start-counter)
@@ -61,6 +63,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-counter start-counter
   ```
+
   </details>
 
 - [Basic + React Query](https://github.com/TanStack/router/tree/main/examples/react/start-basic-react-query) (start-basic-react-query)
@@ -70,6 +73,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-basic-react-query start-basic-react-query
   ```
+
   </details>
 
 - [Clerk Auth](https://github.com/TanStack/router/tree/main/examples/react/start-clerk-basic) (start-clerk-basic)
@@ -79,6 +83,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-clerk-basic start-clerk-basic
   ```
+
   </details>
 
 - [Convex + Trellaux](https://github.com/TanStack/router/tree/main/examples/react/start-convex-trellaux) (start-convex-trellaux)
@@ -88,6 +93,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-convex-trellaux start-convex-trellaux
   ```
+
   </details>
 
 - [Supabase](https://github.com/TanStack/router/tree/main/examples/react/start-supabase-basic) (start-supabase-basic)
@@ -97,6 +103,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-supabase-basic start-supabase-basic
   ```
+
   </details>
 
 - [Trellaux](https://github.com/TanStack/router/tree/main/examples/react/start-trellaux) (start-trellaux)
@@ -106,6 +113,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-trellaux start-trellaux
   ```
+
   </details>
 
 - [WorkOS](https://github.com/TanStack/router/tree/main/examples/react/start-workos) (start-workos)
@@ -115,6 +123,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-workos start-workos
   ```
+
   </details>
 
 - [Material UI](https://github.com/TanStack/router/tree/main/examples/react/start-material-ui) (start-material-ui)
@@ -124,6 +133,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/start-material-ui start-material-ui
   ```
+
   </details>
 
 ### Stackblitz
@@ -158,6 +168,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/quickstart-file-based quickstart-file-based
   ```
+
   </details>
 
 - [Basic (file-based)](https://github.com/TanStack/router/tree/main/examples/react/basic-file-based)
@@ -167,6 +178,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/basic-file-based basic-file-based
   ```
+
   </details>
 
 - [Kitchen Sink (file-based)](https://github.com/TanStack/router/tree/main/examples/react/kitchen-sink-file-based)
@@ -176,6 +188,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/kitchen-sink-file-based kitchen-sink-file-based
   ```
+
   </details>
 
 - [Kitchen Sink + React Query (file-based)](https://github.com/TanStack/router/tree/main/examples/react/kitchen-sink-react-query-file-based)
@@ -185,6 +198,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/kitchen-sink-react-query-file-based kitchen-sink-react-query-file-based
   ```
+
   </details>
 
 - [Location Masking](https://github.com/TanStack/router/tree/main/examples/react/location-masking)
@@ -194,6 +208,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/location-masking location-masking
   ```
+
   </details>
 
 - [Authenticated Routes](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes)
@@ -203,6 +218,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/authenticated-routes authenticated-routes
   ```
+
   </details>
 
 - [Scroll Restoration](https://github.com/TanStack/router/tree/main/examples/react/scroll-restoration)
@@ -212,6 +228,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/scroll-restoration scroll-restoration
   ```
+
   </details>
 
 - [Deferred Data](https://github.com/TanStack/router/tree/main/examples/react/deferred-data)
@@ -221,6 +238,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/deferred-data deferred-data
   ```
+
   </details>
 
 - [Navigation Blocking](https://github.com/TanStack/router/tree/main/examples/react/navigation-blocking)
@@ -230,6 +248,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/navigation-blocking navigation-blocking
   ```
+
   </details>
 
 - [View Transitions](https://github.com/TanStack/router/tree/main/examples/react/view-transitions)
@@ -239,6 +258,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/view-transitions view-transitions
   ```
+
   </details>
 
 - [With tRPC](https://github.com/TanStack/router/tree/main/examples/react/with-trpc)
@@ -248,6 +268,7 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/with-trpc with-trpc
   ```
+
   </details>
 
 - [With tRPC + React Query](https://github.com/TanStack/router/tree/main/examples/react/with-trpc-react-query)
@@ -257,4 +278,5 @@ While not Start-specific examples, these may help you understand more about how 
   ```bash
   npx gitpick TanStack/router/tree/main/examples/react/with-trpc-react-query with-trpc-react-query
   ```
+
   </details>
