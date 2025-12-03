@@ -13,8 +13,8 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/router-plugin": "^1.139.14",
-    "@tanstack/vue-router": "^1.139.14",
-    "@tanstack/vue-router-devtools": "^1.139.14",
+    "@tanstack/vue-router": "workspace:*",
+    "@tanstack/vue-router-devtools": "workspace:*",
     "@tanstack/zod-adapter": "^1.139.14",
     "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
