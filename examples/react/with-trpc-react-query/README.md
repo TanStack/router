@@ -12,7 +12,7 @@ To start a new project based on this example, run:
 
 ```sh
 npx gitpick TanStack/router/tree/main/examples/react/with-trpc-react-query with-trpc-react-query
-``` 
+```
 
 ## Getting Started
 
