@@ -413,10 +413,17 @@ export function createBrowserHistory(opts?: {
 
       action()
     } else {
-      scheduledPushPopAction.then(() => {
-        nextOnPushPop = { nextPopIsGo: isGo, skipBlockerNextPop: ignoreBlocker }
-        action()
-      })
+      scheduledPushPopAction = scheduledPushPopAction.then(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveScheduledPushPopAction = resolve
+            nextOnPushPop = {
+              nextPopIsGo: isGo,
+              skipBlockerNextPop: ignoreBlocker,
+            }
+            action()
+          }),
+      )
     }
   }
 
