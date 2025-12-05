@@ -66,11 +66,11 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-devtools-core": "workspace:*",
-    "vite": "^7.1.7"
+    "@tanstack/router-devtools-core": "workspace:*"
   },
   "devDependencies": {
     "solid-js": "^1.9.10",
+    "vite": "^7.1.7",
     "vite-plugin-solid": "^2.11.10"
   },
   "peerDependencies": {
