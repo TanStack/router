@@ -158,13 +158,11 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
     },
   } as ServerFnBuilder<Register, Method>
   const fun = (options?: { method?: Method }) => {
-    return {
-      ...res,
-      options: {
-        ...res.options,
-        ...options,
-      },
+    const newOptions = {
+      ...resolvedOptions,
+      ...options,
     }
+    return createServerFn(undefined, newOptions) as any
   }
   return Object.assign(fun, res) as any
 }
@@ -301,9 +299,11 @@ export type RscStream<T> = {
 export type Method = 'GET' | 'POST'
 
 export type ServerFnReturnType<TRegister, TResponse> =
-  Awaited<TResponse> extends Response
-    ? TResponse
-    : ValidateSerializableInput<TRegister, TResponse>
+  TResponse extends PromiseLike<infer U>
+    ? Promise<ServerFnReturnType<TRegister, U>>
+    : TResponse extends Response
+      ? TResponse
+      : ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
   TRegister,
@@ -312,16 +312,10 @@ export type ServerFn<
   TInputValidator,
   TResponse,
 > = (
-  ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator>,
+  ctx: ServerFnCtx<TRegister, TMiddlewares, TInputValidator>,
 ) => ServerFnReturnType<TRegister, TResponse>
 
-export interface ServerFnCtx<
-  TRegister,
-  TMethod,
-  TMiddlewares,
-  TInputValidator,
-> {
-  method: TMethod
+export interface ServerFnCtx<TRegister, TMiddlewares, TInputValidator> {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
   signal: AbortSignal

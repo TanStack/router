@@ -1,0 +1,30 @@
+{
+  "name": "tanstack-solid-start-tailwind-v4",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "start": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "@tanstack/solid-router": "^1.139.14",
+    "@tanstack/solid-router-devtools": "^1.139.14",
+    "@tanstack/solid-start": "^1.139.14",
+    "solid-js": "^1.9.10",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.15",
+    "@types/node": "^22.5.4",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^4.1.6",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-plugin-solid": "^2.11.10",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

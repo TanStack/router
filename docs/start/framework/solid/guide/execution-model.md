@@ -98,6 +98,30 @@ function Analytics() {
 }
 ```
 
+#### useHydrated Hook
+
+For more granular control over hydration-dependent behavior, use the `useHydrated` hook. It returns an accessor (signal) indicating whether the client has been hydrated:
+
+```tsx
+import { useHydrated } from '@tanstack/solid-router'
+
+function TimeZoneDisplay() {
+  const hydrated = useHydrated()
+  const timeZone = () =>
+    hydrated() ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
+
+  return <div>Your timezone: {timeZone()}</div>
+}
+```
+
+**Behavior:**
+
+- **During SSR**: Always returns `false`
+- **First client render**: Returns `false`
+- **After hydration**: Returns `true` (and stays `true` for all subsequent renders)
+
+This is useful when you need to conditionally render content based on client-side data (like browser timezone, locale, or localStorage) while providing a sensible fallback for server rendering.
+
 ### Environment-Specific Implementations
 
 ```tsx

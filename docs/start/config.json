@@ -302,6 +302,10 @@
               "to": "framework/react/examples/start-material-ui"
             },
             {
+              "label": "Basic + Auth.js",
+              "to": "framework/react/examples/start-basic-authjs"
+            },
+            {
               "label": "Basic + Static rendering",
               "to": "framework/react/examples/start-basic-static"
             },
@@ -315,10 +319,6 @@
           "label": "solid",
           "children": [
             {
-              "label": "Bare",
-              "to": "framework/solid/examples/start-bare"
-            },
-            {
               "label": "Basic",
               "to": "framework/solid/examples/start-basic"
             },
@@ -331,12 +331,20 @@
               "to": "framework/solid/examples/start-basic-auth"
             },
             {
-              "label": "Basic + Static rendering",
-              "to": "framework/solid/examples/start-basic-static"
+              "label": "Basic + Supabase Auth",
+              "to": "framework/solid/examples/start-supabase-basic"
             },
             {
-              "label": "Basic + Supabase",
-              "to": "framework/solid/examples/start-basic-supabase"
+              "label": "Basic + Convex + Better Auth",
+              "to": "framework/solid/examples/start-convex-better-auth"
+            },
+            {
+              "label": "Basic + Auth.js",
+              "to": "framework/solid/examples/start-basic-authjs"
+            },
+            {
+              "label": "Basic + Static rendering",
+              "to": "framework/solid/examples/start-basic-static"
             },
             {
               "label": "Cloudflare Vite Plugin",

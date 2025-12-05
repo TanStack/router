@@ -184,6 +184,58 @@ test('Server function can correctly send and receive FormData', async ({
   ).toContainText(expected)
 })
 
+test('server function correctly passes context when using FormData', async ({
+  page,
+}) => {
+  await page.goto('/formdata-context')
+
+  await page.waitForLoadState('networkidle')
+
+  const expectedContextValue =
+    (await page.getByTestId('expected-formdata-context-value').textContent()) ||
+    ''
+  expect(expectedContextValue).toBe('context-from-middleware')
+
+  // Test FormData function
+  await page.getByTestId('test-formdata-context-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  // Wait for the result to appear
+  await page.waitForSelector('[data-testid="formdata-context-result"]')
+
+  const resultText =
+    (await page.getByTestId('formdata-context-result').textContent()) || ''
+  expect(resultText).not.toBe('')
+
+  const result = JSON.parse(resultText)
+
+  // Verify context was passed correctly for FormData function
+  expect(result.success).toBe(true)
+  expect(result.hasContext).toBe(true)
+  expect(result.name).toBe('TestUser')
+  expect(result.testString).toBeDefined()
+  expect(result.testString).toContain('context-from-middleware')
+
+  // Test simple function (no parameters)
+  await page.getByTestId('test-simple-context-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  // Wait for the result to appear
+  await page.waitForSelector('[data-testid="formdata-context-result"]')
+
+  const simpleResultText =
+    (await page.getByTestId('formdata-context-result').textContent()) || ''
+  expect(simpleResultText).not.toBe('')
+
+  const simpleResult = JSON.parse(simpleResultText)
+
+  // Verify context was passed correctly for simple function
+  expect(simpleResult.success).toBe(true)
+  expect(simpleResult.hasContext).toBe(true)
+  expect(simpleResult.testString).toBeDefined()
+  expect(simpleResult.testString).toContain('context-from-middleware')
+})
+
 test('server function can correctly send and receive headers', async ({
   page,
 }) => {
@@ -476,4 +528,16 @@ test('redirect in server function on direct navigation', async ({ page }) => {
   // Should redirect to target page
   await expect(page.getByTestId('redirect-target')).toBeVisible()
   expect(page.url()).toContain('/redirect-test/target')
+})
+
+test('redirect in server function called in query during SSR', async ({
+  page,
+}) => {
+  // Test direct navigation to a route with a server function that redirects
+  // when called inside a query with ssr: true
+  await page.goto('/redirect-test-ssr')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test-ssr/target')
 })

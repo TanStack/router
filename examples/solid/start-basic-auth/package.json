@@ -6,15 +6,17 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "vite start",
+    "preview": "vite preview",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "prisma-generate": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0",
-    "@tanstack/solid-router": "^1.134.4",
-    "@tanstack/solid-router-devtools": "^1.134.4",
-    "@tanstack/solid-start": "^1.134.7",
-    "prisma": "^5.22.0",
+    "@libsql/client": "^0.15.15",
+    "@prisma/adapter-libsql": "^7.0.0",
+    "@prisma/client": "^7.0.0",
+    "@tanstack/solid-router": "^1.139.14",
+    "@tanstack/solid-router-devtools": "^1.139.14",
+    "@tanstack/solid-start": "^1.139.14",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0"
@@ -22,7 +24,9 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.15",
     "@types/node": "^22.5.4",
+    "dotenv": "^17.2.3",
     "postcss": "^8.5.1",
+    "prisma": "^7.0.0",
     "tailwindcss": "^4.1.15",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",

@@ -16,7 +16,7 @@ These frameworks and routers have their strengths, but they also come with trade
 ## Is TanStack Router a framework?
 
 TanStack Router itself is not a "framework" in the traditional sense, since it doesn't address a few other common full-stack concerns. However, TanStack Router has been designed to be upgradable to a full-stack framework when used in conjunction with other tools that address bundling, deployments, and server-side-specific functionality. This is why we are currently developing [TanStack Start](https://tanstack.com/start), a full-stack framework that is built on top of TanStack Router and Vite.
-For a deeper dive on the history of TanStack Router, feel free to read [TanStack Router's History](../decisions-on-dx.md#tanstack-routers-origin-story).
+For a deeper dive on the history of TanStack Router, feel free to read [TanStack Router's History](./decisions-on-dx.md#tanstack-routers-origin-story).
 
 ## Should I commit my `routeTree.gen.ts` file into git?
 
@@ -28,7 +28,7 @@ You should commit this file into git so that other developers can use it to buil
 
 No, the root route is always rendered as it is the entry point of your application.
 
-If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](../routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](../routing/routing-concepts.md#pathless-layout-routes) to conditionally render the content.
+If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](./routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](./routing/routing-concepts.md#pathless-layout-routes) to conditionally render the content.
 
 You can restrict access to these routes using a conditional check in the `beforeLoad` function of the route.
 

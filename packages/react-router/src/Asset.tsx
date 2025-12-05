@@ -144,7 +144,15 @@ function Script({
   }, [attrs, children])
 
   if (!router.isServer) {
-    return null
+    const { src, ...rest } = attrs || {}
+    // render an empty script on the client just to avoid hydration errors
+    return (
+      <script
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: '' }}
+        {...rest}
+      ></script>
+    )
   }
 
   if (attrs?.src && typeof attrs.src === 'string') {

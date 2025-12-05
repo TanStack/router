@@ -7,13 +7,14 @@ import {
   test,
 } from '@tanstack/router-e2e-utils'
 import { isSpaMode } from '../tests/utils/isSpaMode'
+import { isPreview } from '../tests/utils/isPreview'
 import packageJson from '../package.json' with { type: 'json' }
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
 const PORT = await getTestServerPort(
-  `${packageJson.name}${isSpaMode ? '_spa' : ''}`,
+  `${packageJson.name}${isSpaMode ? '_spa' : ''}${isPreview ? '_preview' : ''}`,
 )
 
 const EXTERNAL_HOST_PORT = await getDummyServerPort(packageJson.name)
@@ -226,5 +227,24 @@ test.describe('redirects', () => {
         }
       })
     })
+  })
+
+  test('multiple Set-Cookie headers are preserved on redirect', async ({
+    page,
+  }) => {
+    // This test verifies that multiple Set-Cookie headers are not lost during redirect
+    await page.goto('/multi-cookie-redirect')
+
+    // Wait for redirect to complete
+    await page.waitForURL(/\/multi-cookie-redirect\/target/)
+
+    // Should redirect to target page
+    await expect(page.getByTestId('multi-cookie-redirect-target')).toBeVisible()
+    expect(page.url()).toContain('/multi-cookie-redirect/target')
+
+    // Verify all three cookies were preserved during the redirect
+    await expect(page.getByTestId('cookie-session')).toHaveText('session-value')
+    await expect(page.getByTestId('cookie-csrf')).toHaveText('csrf-token-value')
+    await expect(page.getByTestId('cookie-theme')).toHaveText('dark')
   })
 })

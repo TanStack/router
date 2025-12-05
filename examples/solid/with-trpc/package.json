@@ -1,0 +1,32 @@
+{
+  "name": "tanstack-router-solid-example-with-trpc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm tsx ./src/server/server.ts --watch",
+    "build": "pnpm run build:server && pnpm run build:client",
+    "build:client": "vite build && tsc --noEmit",
+    "build:server": "vite build --mode server",
+    "start": "NODE_ENV=production node dist/server/server.js"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.15",
+    "@tanstack/solid-router": "^1.139.14",
+    "@tanstack/solid-router-devtools": "^1.139.14",
+    "@tanstack/router-plugin": "^1.139.14",
+    "@trpc/client": "^11.4.3",
+    "@trpc/server": "^11.4.3",
+    "express": "^4.21.2",
+    "postcss": "^8.5.1",
+    "solid-js": "^1.9.10",
+    "redaxios": "^0.5.1",
+    "tailwindcss": "^4.1.15",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.23",
+    "vite-plugin-solid": "^2.11.10",
+    "tsx": "^4.20.3",
+    "vite": "^7.1.7"
+  }
+}

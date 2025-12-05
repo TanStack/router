@@ -20,40 +20,54 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }): RequestHandler<TRouter> {
   return async (cb) => {
     const router = createRouter()
+    // Track whether the callback will handle cleanup
+    let cbWillCleanup = false
 
-    attachRouterServerSsrUtils({
-      router,
-      manifest: await getRouterManifest?.(),
-    })
+    try {
+      attachRouterServerSsrUtils({
+        router,
+        manifest: await getRouterManifest?.(),
+      })
 
-    const url = new URL(request.url, 'http://localhost')
-    const origin = getOrigin(request)
-    const href = url.href.replace(url.origin, '')
+      const url = new URL(request.url, 'http://localhost')
+      const origin = getOrigin(request)
+      const href = url.href.replace(url.origin, '')
 
-    // Create a history for the router
-    const history = createMemoryHistory({
-      initialEntries: [href],
-    })
+      // Create a history for the router
+      const history = createMemoryHistory({
+        initialEntries: [href],
+      })
 
-    // Update the router with the history and context
-    router.update({
-      history,
-      origin: router.options.origin ?? origin,
-    })
+      // Update the router with the history and context
+      router.update({
+        history,
+        origin: router.options.origin ?? origin,
+      })
 
-    await router.load()
+      await router.load()
 
-    await router.serverSsr?.dehydrate()
+      await router.serverSsr?.dehydrate()
 
-    const responseHeaders = getRequestHeaders({
-      router,
-    })
+      const responseHeaders = getRequestHeaders({
+        router,
+      })
 
-    return cb({
-      request,
-      router,
-      responseHeaders,
-    } as any)
+      // Mark that the callback will handle cleanup
+      cbWillCleanup = true
+      return cb({
+        request,
+        router,
+        responseHeaders,
+      } as any)
+    } finally {
+      if (!cbWillCleanup) {
+        // Clean up router SSR state if the callback won't handle it
+        // (e.g., if an error occurred before the callback was invoked).
+        // When the callback runs, it handles cleanup (either via transformStreamWithRouter
+        // for streaming, or directly in renderRouterToString for non-streaming).
+        router.serverSsr?.cleanup()
+      }
+    }
   }
 }
 

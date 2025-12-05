@@ -206,7 +206,7 @@ Access request headers, cookies, and response customization:
 
 ### Streaming
 
-Stream typed data from server functions to the client. See the [Streaming Data from Server Functions guide](../streaming-data-from-server-functions).
+Stream typed data from server functions to the client. See the [Streaming Data from Server Functions guide](./streaming-data-from-server-functions).
 
 ### Raw Responses
 
@@ -218,11 +218,11 @@ Use server functions without JavaScript by leveraging the `.url` property with H
 
 ### Middleware
 
-Compose server functions with middleware for authentication, logging, and shared logic. See the [Middleware guide](../middleware.md).
+Compose server functions with middleware for authentication, logging, and shared logic. See the [Middleware guide](./middleware.md).
 
 ### Static Server Functions
 
-Cache server function results at build time for static generation. See [Static Server Functions](../static-server-functions).
+Cache server function results at build time for static generation. See [Static Server Functions](./static-server-functions).
 
 ### Request Cancellation
 
@@ -241,7 +241,7 @@ You can customize function ID generation for the production build by providing a
 
 Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
-Please note that this customization is **experimental** und subject to change.
+Please note that this customization is **experimental** and subject to change.
 
 Example:
 

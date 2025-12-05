@@ -2,7 +2,7 @@
 title: File-Based Routing
 ---
 
-Most of the TanStack Router documentation is written for file-based routing and is intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works. While file-based routing is the preferred and recommended way to configure TanStack Router, you can also use [code-based routing](../code-based-routing.md) if you prefer.
+Most of the TanStack Router documentation is written for file-based routing and is intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works. While file-based routing is the preferred and recommended way to configure TanStack Router, you can also use [code-based routing](./code-based-routing.md) if you prefer.
 
 ## What is File-Based Routing?
 
@@ -103,7 +103,7 @@ See the example below:
 Both flat and directory routes can be mixed together to create a route tree that uses the best of both worlds where it makes sense.
 
 > [!TIP]
-> If you find that the default file-based routing structure doesn't fit your needs, you can always use [Virtual File Routes](../virtual-file-routes.md) to control the source of your routes whilst still getting the awesome performance benefits of file-based routing.
+> If you find that the default file-based routing structure doesn't fit your needs, you can always use [Virtual File Routes](./virtual-file-routes.md) to control the source of your routes whilst still getting the awesome performance benefits of file-based routing.
 
 ## Getting started with File-Based Routing
 
@@ -113,10 +113,10 @@ To enable file-based routing, you'll need to be using React with a supported bun
 
 [//]: # 'SupportedBundlersList'
 
-- [Installation with Vite](../../installation/with-vite)
-- [Installation with Rspack/Rsbuild](../../installation/with-rspack)
-- [Installation with Webpack](../../installation/with-webpack)
-- [Installation with Esbuild](../../installation/with-esbuild)
+- [Installation with Vite](../installation/with-vite)
+- [Installation with Rspack/Rsbuild](../installation/with-rspack)
+- [Installation with Webpack](../installation/with-webpack)
+- [Installation with Esbuild](../installation/with-esbuild)
 
 [//]: # 'SupportedBundlersList'
 
