@@ -35,7 +35,7 @@ pnpm build
 
 A full-featured Trello-like application demonstrating:
 
-- Drag and drop functionality
+- Drag-and-drop functionality
 - Complex state management
 - Real-time updates
 - Board, list, and card management
