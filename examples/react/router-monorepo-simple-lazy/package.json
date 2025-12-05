@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.139.14",
-    "@tanstack/react-router-devtools": "^1.139.14",
+    "@tanstack/react-router-devtools": "^1.139.15",
     "@tanstack/router-plugin": "^1.139.14",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
