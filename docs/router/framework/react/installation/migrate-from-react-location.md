@@ -2,27 +2,27 @@
 title: Migration from React Location
 ---
 
-Before you begin your journey in migrating from React Location, it's important that you have a good understanding of the [Routing Concepts](../routing/routing-concepts.md) and [Design Decisions](../decisions-on-dx.md) used by TanStack Router.
+Before you begin your journey in migrating from React Location, it's important that you have a good understanding of the [Routing Concepts](./routing/routing-concepts.md) and [Design Decisions](./decisions-on-dx.md) used by TanStack Router.
 
 ## Differences between React Location and TanStack Router
 
 React Location and TanStack Router share much of same design decisions concepts, but there are some key differences that you should be aware of.
 
 - React Location uses _generics_ to infer types for routes, while TanStack Router uses _module declaration merging_ to infer types.
-- Route configuration in React Location is done using a single array of route definitions, while in TanStack Router, route configuration is done using a tree of route definitions starting with the [root route](../routing/routing-concepts.md#the-root-route).
-- [File-based routing](../routing/file-based-routing.md) is the recommended way to define routes in TanStack Router, while React Location only allows you to define routes in a single file using a code-based approach.
-  - TanStack Router does support a [code-based approach](../routing/code-based-routing.md) to defining routes, but it is not recommended for most use cases. You can read more about why, over here: [why is file-based routing the preferred way to define routes?](../decisions-on-dx.md#why-is-file-based-routing-the-preferred-way-to-define-routes)
+- Route configuration in React Location is done using a single array of route definitions, while in TanStack Router, route configuration is done using a tree of route definitions starting with the [root route](./routing/routing-concepts.md#the-root-route).
+- [File-based routing](./routing/file-based-routing.md) is the recommended way to define routes in TanStack Router, while React Location only allows you to define routes in a single file using a code-based approach.
+  - TanStack Router does support a [code-based approach](./routing/code-based-routing.md) to defining routes, but it is not recommended for most use cases. You can read more about why, over here: [why is file-based routing the preferred way to define routes?](./decisions-on-dx.md#why-is-file-based-routing-the-preferred-way-to-define-routes)
 
 ## Migration guide
 
 In this guide we'll go over the process of migrating the [React Location Basic example](https://github.com/TanStack/router/tree/react-location/examples/basic) over to TanStack Router using file-based routing, with the end goal of having the same functionality as the original example (styling and other non-routing related code will be omitted).
 
 > [!TIP]
-> To use a code-based approach for defining your routes, you can read the [code-based Routing](../routing/code-based-routing.md) guide.
+> To use a code-based approach for defining your routes, you can read the [code-based Routing](./routing/code-based-routing.md) guide.
 
 ### Step 1: Swap over to TanStack Router's dependencies
 
-First, we need to install the dependencies for TanStack Router. For detailed installation instructions, see our [How to Install TanStack Router](../how-to/install.md) guide.
+First, we need to install the dependencies for TanStack Router. For detailed installation instructions, see our [How to Install TanStack Router](./how-to/install.md) guide.
 
 ```sh
 npm install @tanstack/react-router @tanstack/router-devtools
@@ -57,7 +57,7 @@ export default defineConfig({
 })
 ```
 
-However, if your application does not use Vite, you use one of our other [supported bundlers](../routing/file-based-routing.md#getting-started-with-file-based-routing), or you can use the `@tanstack/router-cli` package to watch for changes in your routes files and automatically update the routes configuration.
+However, if your application does not use Vite, you use one of our other [supported bundlers](./routing/file-based-routing.md#getting-started-with-file-based-routing), or you can use the `@tanstack/router-cli` package to watch for changes in your routes files and automatically update the routes configuration.
 
 ### Step 3: Add the file-based configuration file to your project
 
@@ -70,7 +70,7 @@ Create a `tsr.config.json` file in the root of your project with the following c
 }
 ```
 
-You can find the full list of options for the `tsr.config.json` file [here](../../../api/file-based-routing.md).
+You can find the full list of options for the `tsr.config.json` file [here](../../api/file-based-routing.md).
 
 ### Step 4: Create the routes directory
 
