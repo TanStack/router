@@ -3,7 +3,7 @@ title: How to Set Up Server-Side Rendering (SSR)
 ---
 
 > [!IMPORTANT]
-> **[TanStack Start](../guide/tanstack-start.md) is the recommended way to set up SSR** - it provides SSR, streaming, and deployment with zero configuration.
+> **[TanStack Start](/start/latest/docs/framework/react/overview) is the recommended way to set up SSR** - it provides SSR, streaming, and deployment with zero configuration.
 
 > Use the manual setup below only if you need to integrate with an existing server.
 
@@ -539,7 +539,7 @@ const ssrConfig = {
 
 ## Related Resources
 
-- [TanStack Start](../guide/tanstack-start.md) - **Recommended full-stack React framework with SSR**
+- [TanStack Start](/start/latest/docs/framework/react/overview) - **Recommended full-stack React framework with SSR**
 - [SSR Guide (Detailed)](../guide/ssr.md) - Comprehensive SSR concepts, utilities, and theory
 - [Data Loading](../guide/data-loading.md) - SSR-compatible data loading patterns
 

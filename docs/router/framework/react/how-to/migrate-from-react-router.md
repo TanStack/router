@@ -62,7 +62,7 @@ export default defineConfig({
 })
 ```
 
-For **other bundlers**, see our [bundler configuration guides](./routing/file-based-routing.md).
+For **other bundlers**, see our [bundler configuration guides](../routing/routing-concepts.md).
 
 ### Step 2: Create TanStack Router Configuration
 
