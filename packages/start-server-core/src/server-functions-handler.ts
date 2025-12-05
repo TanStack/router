@@ -236,7 +236,7 @@ export const handleServerAction = async ({
         const stream = new ReadableStream({
           start(controller) {
             callbacks.onParse = (value) =>
-              controller.enqueue(encoder.encode(JSON.stringify(value) + "\n"))
+              controller.enqueue(encoder.encode(JSON.stringify(value) + '\n'))
             callbacks.onDone = () => {
               try {
                 controller.close()
