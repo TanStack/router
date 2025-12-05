@@ -20,7 +20,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.13.7",
+    "@cloudflare/vite-plugin": "^1.15.1",
     "@playwright/test": "^1.50.1",
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/router-e2e-utils": "workspace:^",
@@ -33,6 +33,6 @@
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4",
-    "wrangler": "^4.40.2"
+    "wrangler": "^4.49.1"
   }
 }

@@ -355,7 +355,7 @@ export const Outlet = React.memo(function OutletImpl() {
 
   const nextMatch = <Match matchId={childMatchId} />
 
-  if (matchId === rootRouteId) {
+  if (routeId === rootRouteId) {
     return (
       <React.Suspense fallback={pendingElement}>{nextMatch}</React.Suspense>
     )

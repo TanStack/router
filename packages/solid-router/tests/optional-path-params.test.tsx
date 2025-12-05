@@ -579,7 +579,7 @@ describe('Solid Router - Optional Path Parameters', () => {
       const filesLink = await screen.findByTestId('files-link')
       const docLink = await screen.findByTestId('doc-link')
 
-      expect(filesLink).toHaveAttribute('href', '/files/prefix.txt')
+      expect(filesLink).toHaveAttribute('href', '/files')
       expect(docLink).toHaveAttribute('href', '/files/prefixdocument.txt')
     })
   })
@@ -647,17 +647,22 @@ describe('Solid Router - Optional Path Parameters', () => {
 
       // Test navigation scenarios
       const navigateAll = await screen.findByTestId('navigate-all')
+      await fireEvent.click(navigateAll)
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/posts')
+      })
+
       const navigateTech = await screen.findByTestId('navigate-tech')
+      await fireEvent.click(navigateTech)
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/posts/tech')
+      })
+
       const navigateSpecific = await screen.findByTestId('navigate-specific')
-
-      fireEvent.click(navigateAll)
-      expect(router.state.location.pathname).toBe('/posts')
-
-      fireEvent.click(navigateTech)
-      expect(router.state.location.pathname).toBe('/posts/tech')
-
-      fireEvent.click(navigateSpecific)
-      expect(router.state.location.pathname).toBe('/posts/tech/hello-world')
+      await fireEvent.click(navigateSpecific)
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/posts/tech/hello-world')
+      })
     })
 
     it('should handle relative navigation with optional parameters', async () => {

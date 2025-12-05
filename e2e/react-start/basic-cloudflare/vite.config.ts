@@ -10,7 +10,12 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     cloudflare({ viteEnvironment: { name: 'ssr' }, inspectorPort: false }),
-    tanstackStart(),
+    tanstackStart({
+      prerender: {
+        enabled: true,
+        filter: (page) => page.path === '/static',
+      },
+    }),
     viteReact(),
   ],
 })

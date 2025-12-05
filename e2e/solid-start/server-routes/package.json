@@ -7,11 +7,12 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "pnpx srvx --prod -s ../client  dist/server/server.js",
+    "preview": "vite preview",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.0",
+    "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-router-ssr-query": "workspace:^",

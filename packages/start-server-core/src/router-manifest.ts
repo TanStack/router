@@ -29,26 +29,29 @@ export async function getStartManifest() {
     tag: 'script',
     attrs: {
       type: 'module',
-      suppressHydrationWarning: true,
       async: true,
     },
     children: script,
   })
 
   const manifest = {
-    ...startManifest,
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).map(([k, v]) => {
-        const { preloads, assets } = v
         const result = {} as {
           preloads?: Array<string>
           assets?: Array<RouterManagedTag>
         }
-        if (preloads) {
-          result['preloads'] = preloads
+        let hasData = false
+        if (v.preloads && v.preloads.length > 0) {
+          result['preloads'] = v.preloads
+          hasData = true
         }
-        if (assets) {
-          result['assets'] = assets
+        if (v.assets && v.assets.length > 0) {
+          result['assets'] = v.assets
+          hasData = true
+        }
+        if (!hasData) {
+          return []
         }
         return [k, result]
       }),

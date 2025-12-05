@@ -178,8 +178,6 @@ function RouteComp({
     const interpolated = interpolatePath({
       path: route.fullPath,
       params: allParams,
-      leaveWildcards: false,
-      leaveParams: false,
       decodeCharMap: router().pathParamsDecodeCharMap,
     })
 
@@ -340,7 +338,6 @@ export const BaseTanStackRouterDevtoolsPanel =
               'state',
               'routesById',
               'routesByPath',
-              'flatRoutes',
               'options',
               'manifest',
             ] as const

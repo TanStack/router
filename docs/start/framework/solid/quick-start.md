@@ -8,13 +8,13 @@ title: Quick Start
 The fastest way to get a Start project up and running is with the cli. Just run
 
 ```
-pnpm create @tanstack/start@latest
+pnpm create @tanstack/start@latest --framework solid
 ```
 
 or
 
 ```
-npm create @tanstack/start@latest
+npm create @tanstack/start@latest -- --framework solid
 ```
 
 depending on your package manage of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.
@@ -30,7 +30,7 @@ npm run dev
 
 If you'd like to use a different example, you can replace `start-basic` above with the slug of the example you'd like to use from the list below.
 
-Once you've cloned the example you want, head back to the [Routing](../guide/routing) guide to learn how to use TanStack Start!
+Once you've cloned the example you want, head back to the [Routing](./guide/routing) guide to learn how to use TanStack Start!
 
 ## Examples
 
@@ -60,4 +60,4 @@ npm install
 npm run dev
 ```
 
-Once you've clone or deployed an example, head back to the [Routing](../guide/routing) guide to learn how to use TanStack Start!
+Once you've clone or deployed an example, head back to the [Routing](./guide/routing) guide to learn how to use TanStack Start!

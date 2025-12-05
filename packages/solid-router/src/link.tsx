@@ -281,7 +281,9 @@ export function useLinkProps<
   // The click handler
   const handleClick = (e: MouseEvent) => {
     // Check actual element's target attribute as fallback
-    const elementTarget = (e.currentTarget as HTMLAnchorElement).target
+    const elementTarget = (
+      e.currentTarget as HTMLAnchorElement | SVGAElement
+    ).getAttribute('target')
     const effectiveTarget =
       local.target !== undefined ? local.target : elementTarget
 
@@ -586,6 +588,15 @@ export const Link: LinkComponent<'a'> = (props) => {
 
     return ch satisfies Solid.JSX.Element
   })
+
+  if (local._asChild === 'svg') {
+    const [_, svgLinkProps] = Solid.splitProps(linkProps, ['class'])
+    return (
+      <svg>
+        <a {...svgLinkProps}>{children()}</a>
+      </svg>
+    )
+  }
 
   return (
     <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>

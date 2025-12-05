@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import warning from 'tiny-warning'
 import { createRoute } from './route'
 
@@ -87,14 +88,6 @@ export function createFileRoute<
 /** 
   @deprecated It's no longer recommended to use the `FileRoute` class directly.
   Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
-*/
-/** 
-  @deprecated It's no longer recommended to use the `FileRoute` class directly.
-  Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
-*/
-/**
-  @deprecated It's no longer recommended to use the `FileRoute` class directly.
-  Instead, use `createFileRoute('/path')(options)` to create a file route.
 */
 export class FileRoute<
   TFilePath extends keyof FileRoutesByPath,

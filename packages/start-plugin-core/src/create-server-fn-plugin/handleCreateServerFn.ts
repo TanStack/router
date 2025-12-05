@@ -146,7 +146,7 @@ export function handleCreateServerFn(
             ),
           ),
         ],
-        [t.directive(t.directiveLiteral('use server'))],
+        [t.directive(t.directiveLiteral(opts.directive))],
       ),
     ),
   )

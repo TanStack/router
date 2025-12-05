@@ -5,14 +5,14 @@
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build && tsc --noEmit",
-    "serve": "vite preview",
+    "preview": "vite preview",
     "start": "vite"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/react-router": "^1.134.4",
-    "@tanstack/react-router-devtools": "^1.134.4",
-    "@tanstack/router-plugin": "^1.134.6",
+    "@tanstack/react-router": "^1.139.14",
+    "@tanstack/react-router-devtools": "^1.139.14",
+    "@tanstack/router-plugin": "^1.139.14",
     "firebase": "^11.4.0",
     "postcss": "^8.5.1",
     "react": "^19.0.0",
