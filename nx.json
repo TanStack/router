@@ -22,6 +22,10 @@
     ]
   },
   "targetDefaults": {
+    "test:docs": {
+      "cache": true,
+      "inputs": ["{workspaceRoot}/docs/**/*"]
+    },
     "test:eslint": {
       "cache": true,
       "dependsOn": ["^build"],

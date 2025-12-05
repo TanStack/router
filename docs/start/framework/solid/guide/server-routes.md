@@ -110,7 +110,7 @@ Server route requests are handled by Start automatically by default or by Start'
 
 The start handler is responsible for matching an incoming request to a server route and executing the appropriate middleware and handler.
 
-If you need to customize the server handler, you can do so by creating a custom handler and then passing the event to the start handler. See [The Server Entry Point](../server-entry-point).
+If you need to customize the server handler, you can do so by creating a custom handler and then passing the event to the start handler. See [The Server Entry Point](./server-entry-point).
 
 ## Defining a Server Route
 

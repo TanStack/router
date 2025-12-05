@@ -753,8 +753,8 @@ const route = createRoute({
 
 After debugging router issues, you might want to:
 
-- [How to Set Up Testing](../setup-testing.md) - Add tests to prevent regressions
-- [How to Deploy to Production](../deploy-to-production.md) - Ensure issues don't occur in production
+- [How to Set Up Testing](./setup-testing.md) - Add tests to prevent regressions
+- [How to Deploy to Production](./deploy-to-production.md) - Ensure issues don't occur in production
 
 <!-- TODO: Uncomment as guides are created
 - [How to Optimize Performance](./optimize-performance.md)
@@ -765,4 +765,4 @@ After debugging router issues, you might want to:
 
 - [TanStack Router DevTools](https://github.com/TanStack/router/tree/main/packages/router-devtools) - Official debugging tools
 - [React DevTools](https://react.dev/learn/react-developer-tools) - React-specific debugging
-- [Router Core Documentation](../guide/router-overview.md) - Understanding router internals
+- [Router Core Documentation](../overview.md) - Understanding router internals
