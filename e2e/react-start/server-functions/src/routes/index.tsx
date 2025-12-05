@@ -63,11 +63,16 @@ function Home() {
         </li>
         <li>
           <Link to="/dead-code-preserve">
-            dead code elimation only affects code after transformation
+            dead code elimination only affects code after transformation
           </Link>
         </li>
         <li>
           <Link to="/abort-signal">aborting a server function call</Link>
+        </li>
+        <li>
+          <Link to="/async-validation">
+            server function with async validation
+          </Link>
         </li>
         <li>
           <Link to="/raw-response">server function returns raw response</Link>
