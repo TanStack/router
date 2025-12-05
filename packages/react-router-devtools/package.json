@@ -62,13 +62,13 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-devtools-core": "workspace:*",
-    "vite": "^7.1.7"
+    "@tanstack/router-devtools-core": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "react": ">=19",
-    "react-dom": ">=19"
+    "react-dom": ">=19",
+    "vite": "^7.1.7"
   },
   "peerDependencies": {
     "@tanstack/react-router": "workspace:^",

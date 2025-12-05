@@ -64,13 +64,13 @@
   "dependencies": {
     "@tanstack/react-router-devtools": "workspace:*",
     "clsx": "^2.1.1",
-    "goober": "^2.1.16",
-    "vite": "^7.1.7"
+    "goober": "^2.1.16"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "vite": "^7.1.7"
   },
   "peerDependencies": {
     "@tanstack/react-router": "workspace:^",
