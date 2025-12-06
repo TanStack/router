@@ -146,6 +146,15 @@ function RootComponent() {
           }}
         >
           This Route Does Not Exist
+        </Link>{' '}
+        <Link
+          to="/masks"
+          data-testid="link-to-masks"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Masks
         </Link>
       </div>
       <hr />
