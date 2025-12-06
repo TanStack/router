@@ -41,4 +41,3 @@ This example demonstrates:
 
 - React Server Components (RSC) with TanStack Start
 - Server-side rendering
-

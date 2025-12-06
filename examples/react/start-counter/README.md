@@ -41,4 +41,3 @@ This example demonstrates:
 
 - Basic state management
 - Interactive UI components
-
