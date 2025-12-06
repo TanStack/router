@@ -106,6 +106,9 @@
 'package: vue-router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/vue-router-devtools/**/*'
+'package: vue-router-ssr-query':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router-ssr-query/**/*'
 'package: zod-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/zod-adapter/**/*'

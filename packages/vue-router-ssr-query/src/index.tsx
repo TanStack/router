@@ -22,14 +22,11 @@ export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
   }
 
   const OGWrap =
-    opts.router.options.Wrap ||
-    ((props: { children: any }) => props.children)
+    opts.router.options.Wrap || ((props: { children: any }) => props.children)
 
   opts.router.options.Wrap = (props) => {
-    return Vue.h(
-      QueryClientProvider,
-      { client: opts.queryClient },
-      () => Vue.h(OGWrap, null, () => props.children),
+    return Vue.h(QueryClientProvider, { client: opts.queryClient }, () =>
+      Vue.h(OGWrap, null, () => props.children),
     )
   }
 }
