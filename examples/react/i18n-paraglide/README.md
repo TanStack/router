@@ -181,9 +181,9 @@ export const translatedPathnames = createTranslatedPathnames({
 
 And import into the Paraglide Vite plugin.
 
-## Server side rendering
+## Server-side rendering
 
-For server side rendering, check out the [TanStack Start guide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide).
+For server-side rendering, check out the [TanStack Start guide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide).
 
 ## Prerender routes
 
