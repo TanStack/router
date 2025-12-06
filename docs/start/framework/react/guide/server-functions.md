@@ -256,12 +256,14 @@ export default defineConfig({
     tanstackStart({
       serverFns: {
         generateFunctionId: ({ filename, functionName }) => {
-          // Return a custom ID string. If you return undefined, the default is used.
+          // Return a custom ID string
           return crypto
             .createHash('sha1')
             .update(`${filename}--${functionName}`)
             .digest('hex')
-          return undefined
+
+          // If you return undefined, the default is used
+          // return undefined
         },
       },
     }),
