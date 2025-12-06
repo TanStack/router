@@ -15,7 +15,7 @@ import {
 } from './envOnly'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
-export type CompileStartFrameworkOptions = 'react' | 'solid'
+export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
 
 type Identifiers = { [K in (typeof transformFuncs)[number]]: IdentifierConfig }
 

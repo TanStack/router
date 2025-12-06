@@ -42,6 +42,9 @@ overrides:
   '@tanstack/solid-start': workspace:*
   '@tanstack/solid-start-client': workspace:*
   '@tanstack/solid-start-server': workspace:*
+  '@tanstack/vue-start': workspace:*
+  '@tanstack/vue-start-client': workspace:*
+  '@tanstack/vue-start-server': workspace:*
   '@tanstack/start-plugin-core': workspace:*
   '@tanstack/start-client-core': workspace:*
   '@tanstack/start-server-core': workspace:*
@@ -10676,6 +10679,9 @@ importers:
       '@tanstack/vue-store':
         specifier: ^0.8.0
         version: 0.8.0(vue@3.5.25(typescript@5.9.2))
+      isbot:
+        specifier: ^5.1.22
+        version: 5.1.28
       jsesc:
         specifier: ^3.0.2
         version: 3.1.0
@@ -10751,6 +10757,102 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
+      vue:
+        specifier: ^3.5.25
+        version: 3.5.25(typescript@5.9.2)
+
+  packages/vue-start:
+    dependencies:
+      '@tanstack/start-client-core':
+        specifier: workspace:*
+        version: link:../start-client-core
+      '@tanstack/start-plugin-core':
+        specifier: workspace:*
+        version: link:../start-plugin-core
+      '@tanstack/start-server-core':
+        specifier: workspace:*
+        version: link:../start-server-core
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../vue-router
+      '@tanstack/vue-start-client':
+        specifier: workspace:*
+        version: link:../vue-start-client
+      '@tanstack/vue-start-server':
+        specifier: workspace:*
+        version: link:../vue-start-server
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
+    devDependencies:
+      '@tanstack/router-utils':
+        specifier: workspace:*
+        version: link:../router-utils
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^4.1.2
+        version: 4.2.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vue:
+        specifier: ^3.5.25
+        version: 3.5.25(typescript@5.9.2)
+
+  packages/vue-start-client:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/start-client-core':
+        specifier: workspace:*
+        version: link:../start-client-core
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../vue-router
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+      tiny-warning:
+        specifier: ^1.0.3
+        version: 1.0.3
+    devDependencies:
+      '@testing-library/jest-dom':
+        specifier: ^6.6.3
+        version: 6.6.3
+      '@testing-library/vue':
+        specifier: ^8.1.0
+        version: 8.1.0(@vue/compiler-sfc@3.5.25)(vue@3.5.25(typescript@5.9.2))
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^4.1.2
+        version: 4.2.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
+      vue:
+        specifier: ^3.5.25
+        version: 3.5.25(typescript@5.9.2)
+
+  packages/vue-start-server:
+    dependencies:
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../history
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/start-client-core':
+        specifier: workspace:*
+        version: link:../start-client-core
+      '@tanstack/start-server-core':
+        specifier: workspace:*
+        version: link:../start-server-core
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../vue-router
+    devDependencies:
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^4.1.2
+        version: 4.2.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
       vue:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
