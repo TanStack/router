@@ -32,6 +32,7 @@ overrides:
   '@tanstack/router-ssr-query-core': workspace:*
   '@tanstack/react-router-ssr-query': workspace:*
   '@tanstack/solid-router-ssr-query': workspace:*
+  '@tanstack/vue-router-ssr-query': workspace:*
   '@tanstack/zod-adapter': workspace:*
   '@tanstack/valibot-adapter': workspace:*
   '@tanstack/arktype-adapter': workspace:*
@@ -10564,6 +10565,28 @@ importers:
         specifier: ^3.5.13
         version: 3.5.25(typescript@5.9.2)
 
+  packages/vue-router-ssr-query:
+    dependencies:
+      '@tanstack/query-core':
+        specifier: ^5.90.7
+        version: 5.90.7
+      '@tanstack/router-ssr-query-core':
+        specifier: workspace:*
+        version: link:../router-ssr-query-core
+    devDependencies:
+      '@tanstack/vue-query':
+        specifier: '>=5.90.0'
+        version: 5.92.0(vue@3.5.25(typescript@5.9.2))
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../vue-router
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^4.1.2
+        version: 4.2.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
+      vue:
+        specifier: ^3.5.25
+        version: 3.5.25(typescript@5.9.2)
+
   packages/zod-adapter:
     devDependencies:
       '@tanstack/react-router':
@@ -15259,6 +15282,10 @@ packages:
     resolution: {integrity: sha512-2g+PuGR3GuvvCiR3xZs+IMqAvnYU9bvH+jRml0BFBSxHBj22xFCTNvJWhvgj7uICFF9IchDkFUto91xDPMu5cg==}
     engines: {node: '>=18'}
 
+  '@tanstack/match-sorter-utils@8.19.4':
+    resolution: {integrity: sha512-Wo1iKt2b9OT7d+YGhvEPD3DXvPv2etTusIMhMUoG7fbhmxcXCtIjJDEygy91Y2JFlwGyjqiBPRozme7UD8hoqg==}
+    engines: {node: '>=12'}
+
   '@tanstack/publish-config@0.2.1':
     resolution: {integrity: sha512-URVXmXwlZXL75AFyvyOORef1tv2f16dEaFntwLYnBHoKLQMxyWYRzQrnXooxO1xf+GidJuDSZSC6Rc9UX1aK7g==}
     engines: {node: '>=18'}
@@ -15362,6 +15389,15 @@ packages:
   '@tanstack/vite-config@0.4.0':
     resolution: {integrity: sha512-sTlzLXTvFwtPFAFrRNmU93ppl+atpX9ehWQDu+ZqfEX9vXxX/d1hUQp3wcbpgudA2SsIV7z0a8Hv6MBU63sGwQ==}
     engines: {node: '>=18'}
+
+  '@tanstack/vue-query@5.92.0':
+    resolution: {integrity: sha512-4DcB+vkYjYtrysrZLnoPTz2/N/1pPtJm9j1dat+/bp7lvMGAiedJIsIlnrusIlRVV2OeU5SKZy7PhwcX1U4stw==}
+    peerDependencies:
+      '@vue/composition-api': ^1.1.2
+      vue: ^2.6.0 || ^3.3.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
 
   '@tanstack/vue-store@0.8.0':
     resolution: {integrity: sha512-YLsinYboBLIjNkxDpAn1ydaMS35dKq3M3a788JRCJi4/stWcN7Swp0pxxJ+p0IwKSY4tBXx7vMz22OYWQ1QsUQ==}
@@ -16049,6 +16085,9 @@ packages:
 
   '@vue/compiler-vue2@2.7.16':
     resolution: {integrity: sha512-qYC3Psj9S/mfu9uVi5WvNZIzq+xnXMhOwbTFKKDD7b1lhpnn71jXSFdTQ+WsIEk0ONCd7VV2IMm7ONl6tbQ86A==}
+
+  '@vue/devtools-api@6.6.4':
+    resolution: {integrity: sha512-sGhTPMuXqZ1rVOk32RylztWkfXTRhuS7vgAKv0zjqk8gbsHkJ7xfFf+jbySxt7tWObEJwyKaHMikV/WGDiQm8g==}
 
   '@vue/language-core@2.0.29':
     resolution: {integrity: sha512-o2qz9JPjhdoVj8D2+9bDXbaI4q2uZTHQA/dbyZT4Bj1FR9viZxDJnLcKVHfxdn6wsOzRgpqIzJEEmSSvgMvDTQ==}
@@ -20633,6 +20672,9 @@ packages:
 
   remeda@2.32.0:
     resolution: {integrity: sha512-BZx9DsT4FAgXDTOdgJIc5eY6ECIXMwtlSPQoPglF20ycSWigttDDe88AozEsPPT4OWk5NujroGSBC1phw5uU+w==}
+
+  remove-accents@0.5.0:
+    resolution: {integrity: sha512-8g3/Otx1eJaVD12e31UbJj1YzdtVvzH85HV7t+9MJYk/u3XmkOUJ5Ys9wQrf9PCPK8+xn4ymzqYCiZl6QWKn+A==}
 
   remove-trailing-separator@1.1.0:
     resolution: {integrity: sha512-/hS+Y0u3aOfIETiaiirUFwDBDzmXPvO+jAfKTitUngIPzdKc6Z0LoFjM/CK5PL4C+eKwHohlHAb6H0VFfmmUsw==}
@@ -27552,6 +27594,10 @@ snapshots:
       - supports-color
       - typescript
 
+  '@tanstack/match-sorter-utils@8.19.4':
+    dependencies:
+      remove-accents: 0.5.0
+
   '@tanstack/publish-config@0.2.1':
     dependencies:
       '@commitlint/parse': 19.8.1
@@ -27674,6 +27720,14 @@ snapshots:
       - supports-color
       - typescript
       - vite
+
+  '@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.9.2))':
+    dependencies:
+      '@tanstack/match-sorter-utils': 8.19.4
+      '@tanstack/query-core': 5.90.7
+      '@vue/devtools-api': 6.6.4
+      vue: 3.5.25(typescript@5.9.2)
+      vue-demi: 0.14.10(vue@3.5.25(typescript@5.9.2))
 
   '@tanstack/vue-store@0.8.0(vue@3.5.25(typescript@5.9.2))':
     dependencies:
@@ -28685,6 +28739,8 @@ snapshots:
     dependencies:
       de-indent: 1.0.2
       he: 1.2.0
+
+  '@vue/devtools-api@6.6.4': {}
 
   '@vue/language-core@2.0.29(typescript@5.8.2)':
     dependencies:
@@ -33849,6 +33905,8 @@ snapshots:
   remeda@2.32.0:
     dependencies:
       type-fest: 4.41.0
+
+  remove-accents@0.5.0: {}
 
   remove-trailing-separator@1.1.0: {}
 
