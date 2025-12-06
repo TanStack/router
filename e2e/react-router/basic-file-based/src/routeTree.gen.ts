@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
@@ -114,6 +115,12 @@ import { Route as NonNestedDeepBazBarFooRouteRouteImport } from './routes/non-ne
 import { Route as NonNestedDeepBazBarFooIndexRouteImport } from './routes/non-nested/deep/$baz_.bar.$foo.index'
 import { Route as NonNestedDeepBazBarFooQuxRouteImport } from './routes/non-nested/deep/$baz_.bar.$foo_.qux'
 
+const Char45824Char54620Char48124Char44397Route =
+  Char45824Char54620Char48124Char44397RouteImport.update({
+    id: '/대한민국',
+    path: '/대한민국',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const RemountDepsRoute = RemountDepsRouteImport.update({
   id: '/remountDeps',
   path: '/remountDeps',
@@ -316,13 +323,13 @@ const Char45824Char54620Char48124Char44397Char55357Char56960IdRoute =
   Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport.update({
     id: '/🚀/$id',
     path: '/🚀/$id',
-    getParentRoute: () => Char45824Char54620Char48124Char44397RouteRoute,
+    getParentRoute: () => Char45824Char54620Char48124Char44397Route,
   } as any)
 const Char45824Char54620Char48124Char44397WildcardSplatRoute =
   Char45824Char54620Char48124Char44397WildcardSplatRouteImport.update({
     id: '/wildcard/$',
     path: '/wildcard/$',
-    getParentRoute: () => Char45824Char54620Char48124Char44397RouteRoute,
+    getParentRoute: () => Char45824Char54620Char48124Char44397Route,
   } as any)
 const RelativeUseNavigateRelativeUseNavigateBRoute =
   RelativeUseNavigateRelativeUseNavigateBRouteImport.update({
@@ -678,7 +685,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
-  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
+  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
@@ -780,7 +787,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
-  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
+  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
@@ -875,7 +882,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
-  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
+  '/대한민국': typeof Char45824Char54620Char48124Char44397RouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
@@ -1286,7 +1293,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NonNestedRouteRoute: typeof NonNestedRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
-  Char45824Char54620Char48124Char44397RouteRoute: typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
+  Char45824Char54620Char48124Char44397RouteRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
   ComponentTypesTestRoute: typeof ComponentTypesTestRoute
@@ -1297,6 +1304,7 @@ export interface RootRouteChildren {
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
+  Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397RouteWithChildren
   ParamsPsNonNestedRouteRoute: typeof ParamsPsNonNestedRouteRouteWithChildren
   RelativeLinkRouteRoute: typeof RelativeLinkRouteRouteWithChildren
   RelativeUseNavigateRouteRoute: typeof RelativeUseNavigateRouteRouteWithChildren
@@ -1329,6 +1337,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/remountDeps': {
       id: '/remountDeps'
       path: '/remountDeps'
@@ -1607,14 +1622,14 @@ declare module '@tanstack/react-router' {
       path: '/🚀/$id'
       fullPath: '/대한민국/🚀/$id'
       preLoaderRoute: typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport
-      parentRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
+      parentRoute: typeof Char45824Char54620Char48124Char44397Route
     }
     '/대한민국/wildcard/$': {
       id: '/대한민국/wildcard/$'
       path: '/wildcard/$'
       fullPath: '/대한민국/wildcard/$'
       preLoaderRoute: typeof Char45824Char54620Char48124Char44397WildcardSplatRouteImport
-      parentRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
+      parentRoute: typeof Char45824Char54620Char48124Char44397Route
     }
     '/relative/useNavigate/relative-useNavigate-b': {
       id: '/relative/useNavigate/relative-useNavigate-b'
@@ -2277,24 +2292,6 @@ const SearchParamsRouteRouteChildren: SearchParamsRouteRouteChildren = {
 const SearchParamsRouteRouteWithChildren =
   SearchParamsRouteRoute._addFileChildren(SearchParamsRouteRouteChildren)
 
-interface Char45824Char54620Char48124Char44397RouteRouteChildren {
-  Char45824Char54620Char48124Char44397WildcardSplatRoute: typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
-  Char45824Char54620Char48124Char44397Char55357Char56960IdRoute: typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
-}
-
-const Char45824Char54620Char48124Char44397RouteRouteChildren: Char45824Char54620Char48124Char44397RouteRouteChildren =
-  {
-    Char45824Char54620Char48124Char44397WildcardSplatRoute:
-      Char45824Char54620Char48124Char44397WildcardSplatRoute,
-    Char45824Char54620Char48124Char44397Char55357Char56960IdRoute:
-      Char45824Char54620Char48124Char44397Char55357Char56960IdRoute,
-  }
-
-const Char45824Char54620Char48124Char44397RouteRouteWithChildren =
-  Char45824Char54620Char48124Char44397RouteRoute._addFileChildren(
-    Char45824Char54620Char48124Char44397RouteRouteChildren,
-  )
-
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
   LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
@@ -2343,6 +2340,24 @@ const PostsRouteChildren: PostsRouteChildren = {
 }
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+
+interface Char45824Char54620Char48124Char44397RouteChildren {
+  Char45824Char54620Char48124Char44397WildcardSplatRoute: typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
+  Char45824Char54620Char48124Char44397Char55357Char56960IdRoute: typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
+}
+
+const Char45824Char54620Char48124Char44397RouteChildren: Char45824Char54620Char48124Char44397RouteChildren =
+  {
+    Char45824Char54620Char48124Char44397WildcardSplatRoute:
+      Char45824Char54620Char48124Char44397WildcardSplatRoute,
+    Char45824Char54620Char48124Char44397Char55357Char56960IdRoute:
+      Char45824Char54620Char48124Char44397Char55357Char56960IdRoute,
+  }
+
+const Char45824Char54620Char48124Char44397RouteWithChildren =
+  Char45824Char54620Char48124Char44397Route._addFileChildren(
+    Char45824Char54620Char48124Char44397RouteChildren,
+  )
 
 interface ParamsPsNonNestedFooRouteRouteChildren {
   ParamsPsNonNestedFooBarRoute: typeof ParamsPsNonNestedFooBarRoute
@@ -2486,7 +2501,7 @@ const rootRouteChildren: RootRouteChildren = {
   NonNestedRouteRoute: NonNestedRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   Char45824Char54620Char48124Char44397RouteRoute:
-    Char45824Char54620Char48124Char44397RouteRouteWithChildren,
+    Char45824Char54620Char48124Char44397RouteRoute,
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
   ComponentTypesTestRoute: ComponentTypesTestRoute,
@@ -2497,6 +2512,8 @@ const rootRouteChildren: RootRouteChildren = {
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
   RemountDepsRoute: RemountDepsRoute,
+  Char45824Char54620Char48124Char44397Route:
+    Char45824Char54620Char48124Char44397RouteWithChildren,
   ParamsPsNonNestedRouteRoute: ParamsPsNonNestedRouteRouteWithChildren,
   RelativeLinkRouteRoute: RelativeLinkRouteRouteWithChildren,
   RelativeUseNavigateRouteRoute: RelativeUseNavigateRouteRouteWithChildren,
