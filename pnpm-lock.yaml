@@ -10575,7 +10575,7 @@ importers:
         version: link:../router-ssr-query-core
     devDependencies:
       '@tanstack/vue-query':
-        specifier: '>=5.90.0'
+        specifier: ^5.92.0
         version: 5.92.0(vue@3.5.25(typescript@5.9.2))
       '@tanstack/vue-router':
         specifier: workspace:*
