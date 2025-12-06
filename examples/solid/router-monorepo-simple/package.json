@@ -1,6 +1,6 @@
 {
-  "name": "router-solid-mono-simple",
-  "version": "1.0.0",
+  "name": "@tanstack/router-solid-mono-simple",
+  "private": true,
   "scripts": {
     "post-feature": "pnpm --filter @router-solid-mono-simple/post-feature",
     "router": "pnpm --filter @router-solid-mono-simple/router",

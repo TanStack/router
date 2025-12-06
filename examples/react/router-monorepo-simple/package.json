@@ -1,6 +1,6 @@
 {
   "name": "router-mono-simple",
-  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "post-feature": "pnpm --filter @router-mono-simple/post-feature",
     "router": "pnpm --filter @router-mono-simple/router",

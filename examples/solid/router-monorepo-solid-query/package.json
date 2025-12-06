@@ -1,6 +1,6 @@
 {
   "name": "router-solid-monorepo-solid-query",
-  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "post-query": "pnpm --filter @router-solid-mono-solid-query/post-query",

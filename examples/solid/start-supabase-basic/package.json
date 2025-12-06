@@ -1,8 +1,6 @@
 {
   "name": "tanstack-solid-start-example-supabase-basic",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite dev",

@@ -1,7 +1,6 @@
 {
   "name": "tanstack-start-example-supabase-basic",
-  "version": "1.0.0",
-  "description": "",
+  "private": true,
   "main": "index.js",
   "type": "module",
   "scripts": {

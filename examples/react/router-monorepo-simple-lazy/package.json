@@ -1,6 +1,6 @@
 {
   "name": "router-mono-simple-lazy",
-  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "post-feature": "pnpm --filter @router-mono-simple-lazy/post-feature",
     "router": "pnpm --filter @router-mono-simple-lazy/router",
