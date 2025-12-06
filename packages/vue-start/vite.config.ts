@@ -5,7 +5,14 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import packageJson from './package.json'
 
 const config = defineConfig({
-  plugins: [vueJsx()],
+  plugins: [
+    vueJsx(),
+    copyFilesPlugin({
+      pattern: ['*.ts', '*.tsx', '!*.d.ts'],
+      fromDir: 'src/default-entry',
+      toDir: 'dist/plugin/default-entry',
+    }),
+  ],
   test: {
     name: packageJson.name,
     watch: false,

@@ -35,9 +35,15 @@ export const renderRouterToStream = async ({
       }
     }
 
-    const fullHtml = new TextDecoder().decode(
-      new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0)),
-    )
+    // Combine all chunks into a single Uint8Array
+    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
+    const combined = new Uint8Array(totalLength)
+    let offset = 0
+    for (const chunk of chunks) {
+      combined.set(chunk, offset)
+      offset += chunk.length
+    }
+    const fullHtml = new TextDecoder().decode(combined)
 
     return new Response(`<!DOCTYPE html>${fullHtml}`, {
       status: router.state.statusCode,
