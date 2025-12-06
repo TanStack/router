@@ -1,20 +1,43 @@
+import { promises as fsp } from 'node:fs'
+import path from 'pathe'
 import { HEADERS } from '@tanstack/start-server-core'
 import { buildSitemap } from './build-sitemap'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { prerender } from './prerender'
+import { createLogger } from './utils'
 import type { TanStackStartOutputConfig } from './schema'
 import type { ViteBuilder } from 'vite'
 
-export async function postServerBuild({
-  builder,
-  startConfig,
+/**
+ * Write a minimal nitro.json file for vite.preview() to work with Nitro's
+ * configurePreviewServer hook. This is needed because the 'compiled' hook
+ * runs before Nitro writes its build info.
+ */
+export async function writeNitroBuildInfo({
+  outputDir,
+  preset,
 }: {
-  builder: ViteBuilder
-  startConfig: TanStackStartOutputConfig
+  outputDir: string
+  preset: string
 }) {
-  // If the user has not set a prerender option, we need to set it to true
-  // if the pages array is not empty and has sub options requiring for prerendering
-  // If the user has explicitly set prerender.enabled, this should be respected
+  const logger = createLogger('prerender')
+  logger.info('Writing nitro.json for vite.preview()...')
+
+  const buildInfo = {
+    date: new Date().toJSON(),
+    preset,
+    framework: { name: 'tanstack-start' },
+    versions: {},
+    commands: {
+      preview: `node ${path.join(outputDir, 'server/index.mjs')}`,
+    },
+  }
+
+  const buildInfoPath = path.join(outputDir, 'nitro.json')
+  await fsp.writeFile(buildInfoPath, JSON.stringify(buildInfo, null, 2))
+}
+
+function setupPrerenderConfig(startConfig: TanStackStartOutputConfig) {
   if (startConfig.prerender?.enabled !== false) {
     startConfig.prerender = {
       ...startConfig.prerender,
@@ -26,7 +49,6 @@ export async function postServerBuild({
     }
   }
 
-  // Setup the options for prerendering the SPA shell (i.e `src/routes/__root.tsx`)
   if (startConfig.spa?.enabled) {
     startConfig.prerender = {
       ...startConfig.prerender,
@@ -49,22 +71,59 @@ export async function postServerBuild({
       },
     })
   }
+}
 
-  // Run the prerendering process
-  if (startConfig.prerender.enabled) {
+export async function postServerBuild({
+  builder,
+  startConfig,
+  skipPrerender = false,
+}: {
+  builder: ViteBuilder
+  startConfig: TanStackStartOutputConfig
+  skipPrerender?: boolean
+}) {
+  setupPrerenderConfig(startConfig)
+
+  if (startConfig.prerender?.enabled && !skipPrerender) {
     await prerender({
       startConfig,
       builder,
     })
   }
 
-  // Run the sitemap build process
   if (startConfig.pages.length) {
     buildSitemap({
       startConfig,
       publicDir:
         builder.environments[VITE_ENVIRONMENT_NAMES.client]?.config.build
           .outDir ?? builder.config.build.outDir,
+    })
+  }
+}
+
+export async function postServerBuildForNitro({
+  startConfig,
+  outputDir,
+  configFile,
+}: {
+  startConfig: TanStackStartOutputConfig
+  outputDir: string
+  configFile?: string
+}) {
+  setupPrerenderConfig(startConfig)
+
+  if (startConfig.prerender?.enabled) {
+    await prerender({
+      startConfig,
+      outputDir,
+      configFile,
+    })
+  }
+
+  if (startConfig.pages.length) {
+    buildSitemap({
+      startConfig,
+      publicDir: outputDir,
     })
   }
 }
