@@ -16,7 +16,7 @@ npx gitpick TanStack/router/tree/main/examples/react/start-convex-trellaux start
 
 ## Convex
 
-Convex is an open source Reactive backend made by [convex.dev](https://convex.dev/?utm_source=tanstack), a sponsor of TanStack Start.
+Convex is an open-source, reactive backend made by [convex.dev](https://convex.dev/?utm_source=tanstack), a sponsor of TanStack Start.
 
 This example uses Convex with TanStack Query and TanStack Start to provide:
 
@@ -26,7 +26,7 @@ This example uses Convex with TanStack Query and TanStack Start to provide:
 - Selective optimistic update rollback: when a mutation succeeds only its update will be rolled back, with other optimistic updates reapplied
 - Consistent snapshot reads of database state: /messages will never return a foreign key for a /user that doesn't exist until the next fetch
 
-## Development
+## Getting Started
 
 To run this example:
 
@@ -49,5 +49,4 @@ This example demonstrates:
 
 - Convex database integration
 - Real-time updates
-- Server Functions
 - Complex UI state management

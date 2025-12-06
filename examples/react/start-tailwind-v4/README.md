@@ -19,7 +19,7 @@ It's deployed automagically with Netlify!
 
 - [Netlify](https://netlify.com/)
 
-## Development
+## Getting Started
 
 From your terminal:
 

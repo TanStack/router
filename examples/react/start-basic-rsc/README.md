@@ -18,7 +18,7 @@ It's deployed automagically with Netlify!
 
 - [Netlify](https://netlify.com/)
 
-## Development
+## Getting Started
 
 From your terminal:
 
@@ -41,8 +41,6 @@ This example demonstrates:
 
 - React Server Components (RSC) with TanStack Start
 - Server-side rendering
-- Streaming
-- Server Functions
 
 ## Editing and previewing the docs of TanStack projects locally
 

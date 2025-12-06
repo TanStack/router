@@ -65,7 +65,7 @@ const router = createRouter({
 
 In `__root.tsx` add a `beforeLoad` hook to check if the user should be redirected and set the html `lang` attribute.
 
-In `server.ts` intercept the request with the paraglideMiddleware.
+Intercept the request in `server.ts` with the paraglideMiddleware:
 
 ```ts
 import { paraglideMiddleware } from './paraglide/server.js'
@@ -179,7 +179,7 @@ export const translatedPathnames = createTranslatedPathnames({
 })
 ```
 
-And import into the Paraglide Vite plguin.
+And import into the Paraglide Vite plugin.
 
 ## Server side rendering
 

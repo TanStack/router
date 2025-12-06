@@ -161,7 +161,7 @@ The server displays a clear overview of all loaded assets at startup:
 🚀 Server running at http://localhost:3000
 ```
 
-## Development
+## Getting Started
 
 From your terminal:
 

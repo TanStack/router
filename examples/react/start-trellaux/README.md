@@ -4,7 +4,7 @@ A TanStack Start example demonstrating a Trello-like kanban board application.
 
 - [TanStack Router Docs](https://tanstack.com/router)
 
-## Start a new project
+## Start a new project based on this example
 
 To start a new project based on this example, run:
 
@@ -12,7 +12,7 @@ To start a new project based on this example, run:
 npx gitpick TanStack/router/tree/main/examples/react/start-trellaux start-trellaux
 ```
 
-## Development
+## Getting Started
 
 From your terminal:
 
@@ -39,4 +39,3 @@ A full-featured Trello-like application demonstrating:
 - Complex state management
 - Real-time updates
 - Board, list, and card management
-- Server functions for data persistence

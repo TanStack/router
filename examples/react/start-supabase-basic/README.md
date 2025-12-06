@@ -5,7 +5,7 @@ A TanStack Start example demonstrating integration with Supabase for authenticat
 - [TanStack Router Docs](https://tanstack.com/router)
 - [Supabase Documentation](https://supabase.com/docs)
 
-## Start a new project
+## Start a new project based on this example
 
 To start a new project based on this example, run:
 
@@ -28,7 +28,7 @@ You'll need to:
 2. Get your project URL and anon key from the project settings
 3. Update the `.env` file with your credentials
 
-## Development
+## Getting Started
 
 From your terminal:
 

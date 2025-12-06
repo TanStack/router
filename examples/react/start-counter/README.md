@@ -18,7 +18,7 @@ It's deployed automagically with Netlify!
 
 - [Netlify](https://netlify.com/)
 
-## Development
+## Getting Started
 
 From your terminal:
 
@@ -40,7 +40,6 @@ pnpm build
 This example demonstrates:
 
 - Basic state management
-- Server Functions
 - Interactive UI components
 
 ## Editing and previewing the docs of TanStack projects locally

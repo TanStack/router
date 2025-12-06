@@ -5,7 +5,7 @@ A TanStack Start example demonstrating integration with Material UI (MUI).
 - [TanStack Router Docs](https://tanstack.com/router)
 - [Material UI Documentation](https://mui.com/)
 
-## Start a new project
+## Start a new project based on this example
 
 To start a new project based on this example, run:
 
@@ -13,7 +13,7 @@ To start a new project based on this example, run:
 npx gitpick TanStack/router/tree/main/examples/react/start-material-ui start-material-ui
 ```
 
-## Development
+## Getting Started
 
 From your terminal:
 

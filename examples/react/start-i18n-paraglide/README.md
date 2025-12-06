@@ -188,7 +188,7 @@ export const translatedPathnames = createTranslatedPathnames({
 })
 ```
 
-And import into the Paraglide Vite plguin.
+And import into the Paraglide Vite plugin.
 
 ## Prerender routes
 

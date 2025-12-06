@@ -4,7 +4,7 @@ A TanStack Start example demonstrating authentication patterns and protected rou
 
 - [TanStack Router Docs](https://tanstack.com/router)
 
-## Start a new project
+## Start a new project based on this example
 
 To start a new project based on this example, run:
 
@@ -12,7 +12,7 @@ To start a new project based on this example, run:
 npx gitpick TanStack/router/tree/main/examples/react/start-basic-auth start-basic-auth
 ```
 
-## Development
+## Getting Started
 
 From your terminal:
 
@@ -38,7 +38,6 @@ This example demonstrates:
 - User authentication flow
 - Protected routes
 - Login/logout functionality
-- Session management
 - Redirect after authentication
 
 ## Editing and previewing the docs of TanStack projects locally

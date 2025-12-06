@@ -4,7 +4,7 @@ A minimal TanStack Start example demonstrating the bare essentials.
 
 - [TanStack Router Docs](https://tanstack.com/router)
 
-## Start a new project
+## Start a new project based on this example
 
 To start a new project based on this example, run:
 
@@ -12,7 +12,7 @@ To start a new project based on this example, run:
 npx gitpick TanStack/router/tree/main/examples/react/start-bare start-bare
 ```
 
-## Development
+## Getting Started
 
 From your terminal:
 

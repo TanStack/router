@@ -13,7 +13,7 @@ To start a new project based on this example, run:
 npx gitpick TanStack/router/tree/main/examples/react/start-basic-react-query start-basic-react-query
 ```
 
-## Development
+## Getting Started
 
 From your terminal:
 

@@ -18,7 +18,7 @@ It's deployed automagically with Vercel!
 
 - [Vercel](https://vercel.com/)
 
-## Development
+## Getting Started
 
 From your terminal:
 

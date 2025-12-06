@@ -5,7 +5,7 @@ A TanStack Start example demonstrating authentication with Auth.js (NextAuth.js)
 - [TanStack Router Docs](https://tanstack.com/router)
 - [Auth.js Documentation](https://authjs.dev/)
 
-## Start a new project
+## Start a new project based on this example
 
 To start a new project based on this example, run:
 
@@ -23,7 +23,7 @@ cp .env.example .env
 
 Edit `.env` and add your authentication provider credentials.
 
-## Development
+## Getting Started
 
 From your terminal:
 
