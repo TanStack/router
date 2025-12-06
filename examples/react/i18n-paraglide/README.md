@@ -187,7 +187,7 @@ For server side rendering, check out the [TanStack Start guide](https://github.c
 
 ## Prerender routes
 
-You can use use the `localizeHref` function to map the routes to localized versions and import into the pages option in the TanStack Start plugin. For this to work you will need to compile paraglide before the build with the CLI.
+You can use the `localizeHref` function to map the routes to localized versions and import into the pages option in the TanStack Start plugin. For this to work you will need to compile paraglide before the build with the CLI.
 
 ```ts
 import { localizeHref } from './paraglide/runtime'
