@@ -1,4 +1,4 @@
-name: ci
+name: Release
 
 on:
   workflow_dispatch:
@@ -20,15 +20,16 @@ env:
 permissions:
   contents: write
   id-token: write
+  pull-requests: write
 
 jobs:
   test:
-    name: Build & Test
+    name: Release
     if: github.repository_owner == 'TanStack'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6.0.1
         with:
           fetch-depth: 0
       - name: Start Nx Agents
@@ -44,9 +45,7 @@ jobs:
         run: |
           git config --global user.name 'Tanner Linsley'
           git config --global user.email 'tannerlinsley@users.noreply.github.com'
-          npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
           pnpm run cipublish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           TAG: ${{ inputs.tag }}
