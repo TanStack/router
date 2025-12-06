@@ -232,10 +232,11 @@ export const handleServerAction = async ({
         }
 
         // not done yet, we need to stream
+        const encoder = new TextEncoder()
         const stream = new ReadableStream({
           start(controller) {
             callbacks.onParse = (value) =>
-              controller.enqueue(JSON.stringify(value) + '\n')
+              controller.enqueue(encoder.encode(JSON.stringify(value) + '\n'))
             callbacks.onDone = () => {
               try {
                 controller.close()
