@@ -86,7 +86,7 @@ export default {
 }
 ```
 
-In `__root.tsx` add change the html lang attribute to the current locale.
+In `__root.tsx` change the html lang attribute to the current locale.
 
 ```tsx
 import { getLocale } from '../paraglide/runtime.js'
