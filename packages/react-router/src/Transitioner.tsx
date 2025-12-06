@@ -52,11 +52,16 @@ export function Transitioner() {
       _includeValidateSearch: true,
     })
 
-    if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
-    ) {
-      router.commitLocation({ ...nextLocation, replace: true })
+    const latestPublicHref = trimPathRight(router.latestLocation.publicHref)
+    const nextPublicHref = trimPathRight(nextLocation.publicHref)
+
+    if (latestPublicHref !== nextPublicHref) {
+      router.navigate({
+        to: nextLocation.pathname,
+        search: nextLocation.search,
+        hash: nextLocation.hash,
+        replace: true,
+      })
     }
 
     return () => {
