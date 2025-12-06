@@ -1,6 +1,6 @@
-# TanStack Start - Basic Auth Example
+# TanStack Start - Bare Example
 
-A TanStack Start example demonstrating authentication patterns and protected routes.
+A minimal TanStack Start example demonstrating the bare essentials.
 
 - [TanStack Router Docs](https://tanstack.com/router)
 
@@ -9,7 +9,7 @@ A TanStack Start example demonstrating authentication patterns and protected rou
 To start a new project based on this example, run:
 
 ```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-basic-auth start-basic-auth
+npx gitpick TanStack/router/tree/main/examples/react/start-bare start-bare
 ```
 
 ## Getting Started
@@ -30,12 +30,3 @@ To build the app for production:
 ```sh
 pnpm build
 ```
-
-## Authentication Features
-
-This example demonstrates:
-
-- User authentication flow
-- Protected routes
-- Login/logout functionality
-- Redirect after authentication
