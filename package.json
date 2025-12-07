@@ -3,14 +3,13 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/TanStack/router.git"
+    "url": "git+https://github.com/TanStack/router.git"
   },
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "pnpm@10.24.0",
   "type": "module",
   "scripts": {
     "cleanNodeModules": "pnpm -r exec rm -rf node_modules",
     "clean": "pnpm --filter \"./packages/**\" run clean",
-    "preinstall": "node -e \"if(process.env.CI == 'true') {console.info('Skipping preinstall...')} else {process.exit(1)}\" || npx -y only-allow pnpm",
     "test": "pnpm run test:ci",
     "test:pr": "nx affected --targets=test:eslint,test:unit,test:e2e,test:types,test:build,build",
     "test:ci": "nx run-many --targets=test:eslint,test:unit,test:e2e,test:types,test:build,build",
@@ -100,6 +99,7 @@
       "@tanstack/router-ssr-query-core": "workspace:*",
       "@tanstack/react-router-ssr-query": "workspace:*",
       "@tanstack/solid-router-ssr-query": "workspace:*",
+      "@tanstack/vue-router-ssr-query": "workspace:*",
       "@tanstack/zod-adapter": "workspace:*",
       "@tanstack/valibot-adapter": "workspace:*",
       "@tanstack/arktype-adapter": "workspace:*",
@@ -113,6 +113,8 @@
       "@tanstack/start-client-core": "workspace:*",
       "@tanstack/start-server-core": "workspace:*",
       "@tanstack/start-storage-context": "workspace:*",
+      "@tanstack/vue-router": "workspace:*",
+      "@tanstack/vue-router-devtools": "workspace:*",
       "@tanstack/eslint-plugin-router": "workspace:*",
       "@tanstack/server-functions-plugin": "workspace:*",
       "@tanstack/directive-functions-plugin": "workspace:*",

@@ -20,7 +20,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.15"
+    "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
