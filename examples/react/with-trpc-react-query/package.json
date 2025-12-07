@@ -24,7 +24,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.15",
+    "tailwindcss": "^4.1.17",
     "zod": "^3.24.2"
   },
   "devDependencies": {

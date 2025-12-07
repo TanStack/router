@@ -15,7 +15,7 @@
     "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.15"
+    "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

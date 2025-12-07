@@ -9,7 +9,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.0",
+    "@tanstack/solid-query": "^5.90.9",
     "@router-solid-mono-solid-query/post-feature": "workspace:*",
     "@router-solid-mono-solid-query/router": "workspace:*",
     "solid-js": "^1.9.10"

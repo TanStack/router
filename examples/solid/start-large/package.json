@@ -12,7 +12,7 @@
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.0",
+    "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-router": "^1.139.14",
     "@tanstack/solid-router-devtools": "^1.139.15",
     "@tanstack/solid-start": "^1.139.14",
@@ -26,7 +26,7 @@
     "@types/node": "^22.5.4",
     "vite-plugin-solid": "^2.11.10",
     "postcss": "^8.5.1",
-    "tailwindcss": "^4.1.15",
+    "tailwindcss": "^4.1.17",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4"

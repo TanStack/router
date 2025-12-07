@@ -19,7 +19,7 @@
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "simple-icons": "^14.9.0",
-    "tailwindcss": "^4.1.15",
+    "tailwindcss": "^4.1.17",
     "zod": "^3.24.2"
   },
   "devDependencies": {

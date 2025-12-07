@@ -11,15 +11,15 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/router-plugin": "^1.139.14",
-    "@tanstack/solid-query": "^5.72.0",
-    "@tanstack/solid-query-devtools": "^5.72.0",
+    "@tanstack/solid-query": "^5.90.9",
+    "@tanstack/solid-query-devtools": "^5.90.0",
     "@tanstack/solid-router": "^1.139.14",
     "@tanstack/solid-router-devtools": "^1.139.15",
     "immer": "^10.1.1",
     "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.15",
+    "tailwindcss": "^4.1.17",
     "zod": "^3.24.2"
   },
   "devDependencies": {
