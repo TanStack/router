@@ -26,3 +26,23 @@ test('Directly visiting the deferred route', async ({ page }) => {
     'Hello deferred!',
   )
 })
+
+test('Counter increments on click', async ({ page }) => {
+  await page.goto('/deferred')
+
+  // Wait for content to load
+  await expect(page.getByTestId('regular-person')).toContainText('John Doe')
+
+  // Check initial count
+  await expect(page.getByTestId('count')).toContainText('Count: 0')
+
+  // Click increment button
+  await page.getByTestId('increment').click()
+
+  // Check updated count
+  await expect(page.getByTestId('count')).toContainText('Count: 1')
+
+  // Click again
+  await page.getByTestId('increment').click()
+  await expect(page.getByTestId('count')).toContainText('Count: 2')
+})

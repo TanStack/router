@@ -7,5 +7,5 @@ console.log("[client-entry]: using custom client entry in 'src/client.tsx'")
 
 hydrateStart().then((router) => {
   const app = createSSRApp(StartClient, { router })
-  app.mount('body')
+  app.mount('html')
 })

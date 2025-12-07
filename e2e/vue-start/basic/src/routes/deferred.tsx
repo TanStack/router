@@ -1,6 +1,6 @@
 import { Await, createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
-import { Suspense, defineComponent, ref } from 'vue'
+import { Suspense, ref, defineComponent } from 'vue'
 
 const personServerFn = createServerFn({ method: 'GET' })
   .inputValidator((data: { name: string }) => data)
@@ -53,9 +53,9 @@ const Deferred = defineComponent({
             fallback: () => <div>Loading stuff...</div>,
           }}
         </Suspense>
-        <div>Count: {count.value}</div>
+        <div data-testid="count">Count: {count.value}</div>
         <div>
-          <button onClick={() => (count.value = count.value + 1)}>
+          <button data-testid="increment" onClick={() => count.value++}>
             Increment
           </button>
         </div>
