@@ -226,8 +226,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -321,8 +321,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -373,8 +373,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -428,8 +428,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -483,8 +483,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -535,8 +535,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -587,8 +587,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -642,8 +642,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -694,8 +694,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -740,8 +740,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -811,8 +811,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -866,8 +866,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -902,8 +902,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -960,8 +960,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -1009,7 +1009,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -1104,8 +1104,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -1186,8 +1186,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.8.2)
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -1241,8 +1241,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -1323,8 +1323,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -1334,12 +1334,61 @@ importers:
 
   e2e/react-start/basic-rsc:
     dependencies:
+      '@babel/plugin-syntax-typescript':
+        specifier: ^7.25.9
+        version: 7.27.1(@babel/core@7.28.5)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.0(react@19.2.0)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+    devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
+      '@types/react':
+        specifier: ^19.2.2
+        version: 19.2.2
+      '@types/react-dom':
+        specifier: ^19.2.2
+        version: 19.2.2(@types/react@19.2.2)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.6)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/react-start/basic-tsr-config:
     dependencies:
@@ -1377,6 +1426,70 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
+
+  e2e/react-start/clerk-basic:
+    dependencies:
+      '@clerk/tanstack-react-start':
+        specifier: ^0.19.0
+        version: 0.19.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.0(react@19.2.0)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.56.1
+        version: 1.56.1
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 22.10.2
+        version: 22.10.2
+      '@types/react':
+        specifier: ^19.2.2
+        version: 19.2.2
+      '@types/react-dom':
+        specifier: ^19.2.2
+        version: 19.2.2(@types/react@19.2.2)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.6)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.18(tsx@4.20.3)(yaml@2.8.1)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/react-start/custom-basepath:
     dependencies:
@@ -1436,8 +1549,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       tsx:
         specifier: ^4.20.3
         version: 4.20.3
@@ -1512,8 +1625,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
@@ -1585,8 +1698,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -1646,8 +1759,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
@@ -1704,8 +1817,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -1783,8 +1896,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -1865,8 +1978,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
@@ -1911,8 +2024,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
@@ -1987,8 +2100,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -2051,8 +2164,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -2112,8 +2225,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -2192,8 +2305,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -2235,8 +2348,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -2278,8 +2391,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -2303,8 +2416,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
+        specifier: ^5.90.0
+        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -2321,8 +2434,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -2349,8 +2462,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
+        specifier: ^5.90.0
+        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -2367,8 +2480,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -2413,8 +2526,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -2459,8 +2572,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -2502,8 +2615,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -2539,8 +2652,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -2583,8 +2696,8 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
-        specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.28.5)(@rsbuild/core@1.2.4)(solid-js@1.9.10)
+        specifier: ^1.0.6
+        version: 1.0.6(@babel/core@7.28.5)(@rsbuild/core@1.2.4)(solid-js@1.9.10)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -2598,8 +2711,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -2629,8 +2742,8 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
-        specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.28.5)(@rsbuild/core@1.2.4)(solid-js@1.9.10)
+        specifier: ^1.0.6
+        version: 1.0.6(@babel/core@7.28.5)(@rsbuild/core@1.2.4)(solid-js@1.9.10)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -2647,8 +2760,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -2680,8 +2793,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -2729,8 +2842,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
@@ -2769,7 +2882,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -2852,8 +2965,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -2919,8 +3032,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -2965,7 +3078,7 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       typescript:
         specifier: ^5.7.2
@@ -3038,8 +3151,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -3133,8 +3246,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       tsx:
         specifier: ^4.20.3
         version: 4.20.3
@@ -3200,8 +3313,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -3264,8 +3377,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -3304,8 +3417,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
@@ -3359,8 +3472,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.15
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -3429,8 +3542,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -3502,8 +3615,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
@@ -3542,8 +3655,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
@@ -3609,8 +3722,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.15
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -3667,8 +3780,8 @@ importers:
         specifier: ^0.8.6
         version: 0.8.7
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -3697,7 +3810,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       vue:
         specifier: ^3.5.16
@@ -3719,8 +3832,8 @@ importers:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vue-tsc:
-        specifier: ^2.2.0
-        version: 2.2.12(typescript@5.8.3)
+        specifier: ^3.1.5
+        version: 3.1.5(typescript@5.8.3)
 
   e2e/vue-router/basic-file-based-jsx:
     dependencies:
@@ -3746,7 +3859,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       vue:
         specifier: ^3.5.16
@@ -3816,7 +3929,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       vue:
         specifier: ^3.5.16
@@ -3844,8 +3957,8 @@ importers:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vue-tsc:
-        specifier: ^2.2.0
-        version: 2.2.12(typescript@5.8.3)
+        specifier: ^3.1.5
+        version: 3.1.5(typescript@5.8.3)
 
   examples/react/authenticated-routes:
     dependencies:
@@ -3874,8 +3987,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -3929,8 +4042,8 @@ importers:
         specifier: ^14.9.0
         version: 14.9.0
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -3975,8 +4088,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -4021,8 +4134,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4070,8 +4183,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -4116,8 +4229,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4162,8 +4275,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -4211,8 +4324,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -4263,8 +4376,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4343,7 +4456,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       compression:
-        specifier: ^1.7.5
+        specifier: ^1.8.0
         version: 1.8.0
       express:
         specifier: ^4.21.2
@@ -4365,7 +4478,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
       '@types/express':
-        specifier: ^4.17.21
+        specifier: ^4.17.23
         version: 4.17.23
       '@types/react':
         specifier: ^19.2.2
@@ -4413,8 +4526,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4465,8 +4578,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4511,8 +4624,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4536,8 +4649,8 @@ importers:
   examples/react/i18n-paraglide:
     dependencies:
       '@tailwindcss/vite':
-        specifier: ^4.1.13
-        version: 4.1.13(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: ^4.1.17
+        version: 4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4603,8 +4716,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4655,8 +4768,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4710,8 +4823,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4768,8 +4881,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4820,8 +4933,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -4872,8 +4985,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -4918,8 +5031,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -4958,8 +5071,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -5038,8 +5151,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -5081,14 +5194,14 @@ importers:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@rsbuild/core':
-        specifier: 1.2.4
+        specifier: ^1.2.4
         version: 1.2.4
       '@rsbuild/plugin-react':
-        specifier: 1.1.0
+        specifier: ^1.1.0
         version: 1.1.0(@rsbuild/core@1.2.4)
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -5708,8 +5821,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -5766,8 +5879,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       valibot:
         specifier: 1.0.0-beta.15
         version: 1.0.0-beta.15(typescript@5.8.2)
@@ -5883,8 +5996,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -5953,8 +6066,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.8.2)
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -6011,7 +6124,7 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       typescript:
         specifier: ^5.7.2
@@ -6043,7 +6156,7 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.13.7
-        version: 1.13.7(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(workerd@1.20250924.0)(wrangler@4.40.2)
+        version: 1.13.7(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(workerd@1.20251118.0)(wrangler@4.49.1)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -6063,8 +6176,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -6075,8 +6188,8 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       wrangler:
-        specifier: ^4.40.2
-        version: 4.40.2
+        specifier: ^4.49.1
+        version: 4.49.1
 
   examples/react/start-basic-react-query:
     dependencies:
@@ -6130,8 +6243,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -6141,6 +6254,61 @@ importers:
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
+  examples/react/start-basic-rsc:
+    dependencies:
+      '@babel/plugin-syntax-typescript':
+        specifier: ^7.25.9
+        version: 7.27.1(@babel/core@7.28.5)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.0(react@19.2.0)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.2
+        version: 19.2.2
+      '@types/react-dom':
+        specifier: ^19.2.2
+        version: 19.2.2(@types/react@19.2.2)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.6)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.18(tsx@4.20.3)(yaml@2.8.1)
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/react/start-basic-static:
     dependencies:
@@ -6169,7 +6337,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
-        specifier: ^2.5.5
+        specifier: ^2.6.0
         version: 2.6.0
     devDependencies:
       '@types/node':
@@ -6203,8 +6371,8 @@ importers:
   examples/react/start-bun:
     dependencies:
       '@tailwindcss/vite':
-        specifier: ^4.1.13
-        version: 4.1.13(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: ^4.1.17
+        version: 4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-devtools':
         specifier: ^0.7.0
         version: 0.7.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(csstype@3.1.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)
@@ -6328,8 +6496,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -6416,8 +6584,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -6487,11 +6655,11 @@ importers:
         version: 19.2.0(react@19.2.0)
     devDependencies:
       '@inlang/paraglide-js':
-        specifier: 2.4.0
+        specifier: ^2.4.0
         version: 2.4.0(babel-plugin-macros@3.1.0)
       '@tailwindcss/vite':
-        specifier: ^4.1.13
-        version: 4.1.13(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: ^4.1.17
+        version: 4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
@@ -6566,8 +6734,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -6722,8 +6890,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -6759,8 +6927,8 @@ importers:
         version: 3.25.57
     devDependencies:
       '@tailwindcss/vite':
-        specifier: ^4.1.6
-        version: 4.1.6(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        specifier: ^4.1.17
+        version: 4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
@@ -6774,8 +6942,8 @@ importers:
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       tailwindcss:
-        specifier: ^4.1.6
-        version: 4.1.6
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -6853,8 +7021,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.6.2
         version: 5.8.2
@@ -6941,8 +7109,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -6990,8 +7158,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -7048,8 +7216,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -7118,8 +7286,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -7167,7 +7335,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -7213,7 +7381,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -7250,8 +7418,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -7275,7 +7443,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-query':
-        specifier: ^5.90.0
+        specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
@@ -7293,7 +7461,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -7330,8 +7498,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -7364,8 +7532,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -7404,8 +7572,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@types/react':
         specifier: ^19.2.2
@@ -7432,8 +7600,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
+        specifier: ^5.90.0
+        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
         version: link:../../../packages/solid-router
@@ -7450,8 +7618,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
     devDependencies:
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -7475,8 +7643,8 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
+        specifier: ^5.90.0
+        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
         version: link:../../../packages/solid-router
@@ -7493,8 +7661,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -7564,7 +7732,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       compression:
-        specifier: ^1.7.5
+        specifier: ^1.8.0
         version: 1.8.0
       express:
         specifier: ^4.21.2
@@ -7585,8 +7753,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -7595,7 +7763,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@types/express':
-        specifier: ^4.17.21
+        specifier: ^4.17.23
         version: 4.17.23
       typescript:
         specifier: ^5.7.2
@@ -7634,7 +7802,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -7677,7 +7845,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -7714,7 +7882,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -7733,7 +7901,7 @@ importers:
   examples/solid/i18n-paraglide:
     dependencies:
       '@tailwindcss/vite':
-        specifier: ^4.1.13
+        specifier: ^4.1.17
         version: 4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -7788,7 +7956,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -7828,8 +7996,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -7853,11 +8021,11 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-query':
-        specifier: ^5.72.0
+        specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.72.0
-        version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
+        specifier: ^5.90.0
+        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
         version: link:../../../packages/solid-router
@@ -7877,8 +8045,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -7902,11 +8070,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^5.72.0
+        specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.72.0
-        version: 5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
+        specifier: ^5.90.0
+        version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
         version: link:../../../packages/solid-router
@@ -7926,8 +8094,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -7951,7 +8119,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^5.90.0
+        specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
@@ -7969,7 +8137,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -7991,7 +8159,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-query':
-        specifier: ^5.90.0
+        specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
@@ -8009,7 +8177,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
     devDependencies:
       typescript:
@@ -8028,7 +8196,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-query':
-        specifier: ^5.90.0
+        specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
@@ -8046,7 +8214,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
     devDependencies:
       typescript:
@@ -8077,7 +8245,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
     devDependencies:
       typescript:
@@ -8142,8 +8310,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -8179,17 +8347,17 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
     devDependencies:
       '@rsbuild/core':
-        specifier: 1.2.4
+        specifier: ^1.2.4
         version: 1.2.4
       '@rsbuild/plugin-babel':
         specifier: ^1.0.6
         version: 1.0.6(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
-        specifier: 1.0.6
+        specifier: ^1.0.6
         version: 1.0.6(@babel/core@7.28.5)(@rsbuild/core@1.2.4)(solid-js@1.9.10)
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -8333,7 +8501,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^5.90.0
+        specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-query-devtools':
         specifier: ^5.90.0
@@ -8388,7 +8556,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
     devDependencies:
       typescript:
@@ -8413,7 +8581,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^5.90.0
+        specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
@@ -8437,7 +8605,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       valibot:
         specifier: 1.0.0-beta.15
@@ -8493,8 +8661,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -8554,8 +8722,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -8603,7 +8771,7 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       typescript:
         specifier: ^5.7.2
@@ -8635,7 +8803,7 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.13.7
-        version: 1.13.7(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(workerd@1.20251118.0)(wrangler@4.40.2)
+        version: 1.13.7(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(workerd@1.20251118.0)(wrangler@4.49.1)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -8646,8 +8814,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -8661,8 +8829,8 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       wrangler:
-        specifier: ^4.40.2
-        version: 4.40.2
+        specifier: ^4.49.1
+        version: 4.49.1
 
   examples/solid/start-basic-netlify:
     dependencies:
@@ -8681,7 +8849,7 @@ importers:
     devDependencies:
       '@netlify/vite-plugin-tanstack-start':
         specifier: ^1.1.4
-        version: 1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -8692,8 +8860,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -8735,8 +8903,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -8790,8 +8958,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
-        version: 4.1.15
+        specifier: ^4.1.17
+        version: 4.1.17
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
@@ -8826,7 +8994,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwind-merge:
-        specifier: ^2.5.5
+        specifier: ^2.6.0
         version: 2.6.0
     devDependencies:
       '@types/node':
@@ -8857,7 +9025,7 @@ importers:
   examples/solid/start-bun:
     dependencies:
       '@tailwindcss/vite':
-        specifier: ^4.1.13
+        specifier: ^4.1.17
         version: 4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -9050,10 +9218,10 @@ importers:
         version: 1.9.10
     devDependencies:
       '@inlang/paraglide-js':
-        specifier: 2.4.0
+        specifier: ^2.4.0
         version: 2.4.0(babel-plugin-macros@3.1.0)
       '@tailwindcss/vite':
-        specifier: ^4.1.13
+        specifier: ^4.1.17
         version: 4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@types/node':
         specifier: 22.10.2
@@ -9077,7 +9245,7 @@ importers:
   examples/solid/start-large:
     dependencies:
       '@tanstack/solid-query':
-        specifier: ^5.90.0
+        specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
         specifier: ^1.139.14
@@ -9111,7 +9279,7 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       typescript:
         specifier: ^5.7.2
@@ -9191,7 +9359,7 @@ importers:
         specifier: 22.10.2
         version: 22.10.2
       tailwindcss:
-        specifier: ^4.1.6
+        specifier: ^4.1.17
         version: 4.1.17
       typescript:
         specifier: ^5.7.2
@@ -9237,7 +9405,7 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.1.6
+        specifier: ^4.1.17
         version: 4.1.17
       typescript:
         specifier: ^5.7.2
@@ -9276,7 +9444,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -9316,7 +9484,7 @@ importers:
         specifier: ^1.0.4
         version: 1.0.4(solid-js@1.9.10)
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -9365,7 +9533,7 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       zod:
         specifier: ^3.24.2
@@ -9421,8 +9589,8 @@ importers:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vue-tsc:
-        specifier: ^2.2.0
-        version: 2.2.12(typescript@5.9.2)
+        specifier: ^3.1.5
+        version: 3.1.5(typescript@5.9.2)
 
   examples/vue/basic-file-based-jsx:
     dependencies:
@@ -9448,7 +9616,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       vue:
         specifier: ^3.5.16
@@ -9512,7 +9680,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
-        specifier: ^4.1.15
+        specifier: ^4.1.17
         version: 4.1.17
       vue:
         specifier: ^3.5.16
@@ -9534,8 +9702,8 @@ importers:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vue-tsc:
-        specifier: ^2.2.0
-        version: 2.2.12(typescript@5.8.3)
+        specifier: ^3.1.5
+        version: 3.1.5(typescript@5.8.3)
 
   packages/arktype-adapter:
     devDependencies:
@@ -10995,6 +11163,15 @@ packages:
         optional: true
       react-dom:
         optional: true
+
+  '@clerk/tanstack-react-start@0.19.0':
+    resolution: {integrity: sha512-4jotpgIZXtndctloODcTbIPU3a1521SQK9CNlT2v2DIUz8iic9d+I+hE1JjlY3RG6iy/M1MSimnMQn+a3ki3Rw==}
+    engines: {node: '>=18.17.0'}
+    peerDependencies:
+      '@tanstack/react-router': workspace:*
+      '@tanstack/react-start': workspace:*
+      react: ^19.2.0
+      react-dom: ^19.2.0
 
   '@clerk/tanstack-react-start@0.26.3':
     resolution: {integrity: sha512-ZMiNTDyqHmczw08rb3o0KwVEFn1EJmaEtAY2VH8qvnyDY61fwtAXpM9jBseBhw/iYllYlv8QN/q/AIhVszXdNw==}
@@ -14339,11 +14516,6 @@ packages:
     peerDependencies:
       '@rsbuild/core': 1.x
 
-  '@rsbuild/plugin-solid@1.0.4':
-    resolution: {integrity: sha512-rmQmtCeQ28ngfdLPup5BbxbqbVb1OxLjm2j4RELrIBjHn106Xy0S+ftdZOZ15npd4jS3uuarjTUvZ9210cCneA==}
-    peerDependencies:
-      '@rsbuild/core': 1.x
-
   '@rsbuild/plugin-solid@1.0.6':
     resolution: {integrity: sha512-4dCNiSBSYuJjzC7Bov/hCUzxAZcMiGMBZnKKgQXKuJRJwy23OqrxiiDa6AlmZozD5I/wEBwoUDasPbRqjkKFcA==}
     peerDependencies:
@@ -14876,23 +15048,11 @@ packages:
   '@swc/types@0.1.17':
     resolution: {integrity: sha512-V5gRru+aD8YVyCOMAjMpWR1Ui577DD5KSJsHP8RAxopAH22jFz6GZd/qxqjO6MJHQhcsjvjOFXyDhyLQUnMveQ==}
 
-  '@tailwindcss/node@4.1.13':
-    resolution: {integrity: sha512-eq3ouolC1oEFOAvOMOBAmfCIqZBJuvWvvYWh5h5iOYfe1HFC6+GZ6EIL0JdM3/niGRJmnrOc+8gl9/HGUaaptw==}
-
   '@tailwindcss/node@4.1.15':
     resolution: {integrity: sha512-HF4+7QxATZWY3Jr8OlZrBSXmwT3Watj0OogeDvdUY/ByXJHQ+LBtqA2brDb3sBxYslIFx6UP94BJ4X6a4L9Bmw==}
 
   '@tailwindcss/node@4.1.17':
     resolution: {integrity: sha512-csIkHIgLb3JisEFQ0vxr2Y57GUNYh447C8xzwj89U/8fdW8LhProdxvnVH6U8M2Y73QKiTIH+LWbK3V2BBZsAg==}
-
-  '@tailwindcss/node@4.1.6':
-    resolution: {integrity: sha512-ed6zQbgmKsjsVvodAS1q1Ld2BolEuxJOSyyNc+vhkjdmfNUDCmQnlXBfQkHrlzNmslxHsQU/bFmzcEbv4xXsLg==}
-
-  '@tailwindcss/oxide-android-arm64@4.1.13':
-    resolution: {integrity: sha512-BrpTrVYyejbgGo57yc8ieE+D6VT9GOgnNdmh5Sac6+t0m+v+sKQevpFVpwX3pBrM2qKrQwJ0c5eDbtjouY/+ew==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [android]
 
   '@tailwindcss/oxide-android-arm64@4.1.15':
     resolution: {integrity: sha512-TkUkUgAw8At4cBjCeVCRMc/guVLKOU1D+sBPrHt5uVcGhlbVKxrCaCW9OKUIBv1oWkjh4GbunD/u/Mf0ql6kEA==}
@@ -14906,18 +15066,6 @@ packages:
     cpu: [arm64]
     os: [android]
 
-  '@tailwindcss/oxide-android-arm64@4.1.6':
-    resolution: {integrity: sha512-VHwwPiwXtdIvOvqT/0/FLH/pizTVu78FOnI9jQo64kSAikFSZT7K4pjyzoDpSMaveJTGyAKvDjuhxJxKfmvjiQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [android]
-
-  '@tailwindcss/oxide-darwin-arm64@4.1.13':
-    resolution: {integrity: sha512-YP+Jksc4U0KHcu76UhRDHq9bx4qtBftp9ShK/7UGfq0wpaP96YVnnjFnj3ZFrUAjc5iECzODl/Ts0AN7ZPOANQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [darwin]
-
   '@tailwindcss/oxide-darwin-arm64@4.1.15':
     resolution: {integrity: sha512-xt5XEJpn2piMSfvd1UFN6jrWXyaKCwikP4Pidcf+yfHTSzSpYhG3dcMktjNkQO3JiLCp+0bG0HoWGvz97K162w==}
     engines: {node: '>= 10'}
@@ -14928,18 +15076,6 @@ packages:
     resolution: {integrity: sha512-EquyumkQweUBNk1zGEU/wfZo2qkp/nQKRZM8bUYO0J+Lums5+wl2CcG1f9BgAjn/u9pJzdYddHWBiFXJTcxmOg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
-    os: [darwin]
-
-  '@tailwindcss/oxide-darwin-arm64@4.1.6':
-    resolution: {integrity: sha512-weINOCcqv1HVBIGptNrk7c6lWgSFFiQMcCpKM4tnVi5x8OY2v1FrV76jwLukfT6pL1hyajc06tyVmZFYXoxvhQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@tailwindcss/oxide-darwin-x64@4.1.13':
-    resolution: {integrity: sha512-aAJ3bbwrn/PQHDxCto9sxwQfT30PzyYJFG0u/BWZGeVXi5Hx6uuUOQEI2Fa43qvmUjTRQNZnGqe9t0Zntexeuw==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
     os: [darwin]
 
   '@tailwindcss/oxide-darwin-x64@4.1.15':
@@ -14954,18 +15090,6 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@tailwindcss/oxide-darwin-x64@4.1.6':
-    resolution: {integrity: sha512-3FzekhHG0ww1zQjQ1lPoq0wPrAIVXAbUkWdWM8u5BnYFZgb9ja5ejBqyTgjpo5mfy0hFOoMnMuVDI+7CXhXZaQ==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [darwin]
-
-  '@tailwindcss/oxide-freebsd-x64@4.1.13':
-    resolution: {integrity: sha512-Wt8KvASHwSXhKE/dJLCCWcTSVmBj3xhVhp/aF3RpAhGeZ3sVo7+NTfgiN8Vey/Fi8prRClDs6/f0KXPDTZE6nQ==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [freebsd]
-
   '@tailwindcss/oxide-freebsd-x64@4.1.15':
     resolution: {integrity: sha512-quISQDWqiB6Cqhjc3iWptXVZHNVENsWoI77L1qgGEHNIdLDLFnw3/AfY7DidAiiCIkGX/MjIdB3bbBZR/G2aJg==}
     engines: {node: '>= 10'}
@@ -14977,18 +15101,6 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [freebsd]
-
-  '@tailwindcss/oxide-freebsd-x64@4.1.6':
-    resolution: {integrity: sha512-4m5F5lpkBZhVQJq53oe5XgJ+aFYWdrgkMwViHjRsES3KEu2m1udR21B1I77RUqie0ZYNscFzY1v9aDssMBZ/1w==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [freebsd]
-
-  '@tailwindcss/oxide-linux-arm-gnueabihf@4.1.13':
-    resolution: {integrity: sha512-mbVbcAsW3Gkm2MGwA93eLtWrwajz91aXZCNSkGTx/R5eb6KpKD5q8Ueckkh9YNboU8RH7jiv+ol/I7ZyQ9H7Bw==}
-    engines: {node: '>= 10'}
-    cpu: [arm]
-    os: [linux]
 
   '@tailwindcss/oxide-linux-arm-gnueabihf@4.1.15':
     resolution: {integrity: sha512-ObG76+vPlab65xzVUQbExmDU9FIeYLQ5k2LrQdR2Ud6hboR+ZobXpDoKEYXf/uOezOfIYmy2Ta3w0ejkTg9yxg==}
@@ -15002,18 +15114,6 @@ packages:
     cpu: [arm]
     os: [linux]
 
-  '@tailwindcss/oxide-linux-arm-gnueabihf@4.1.6':
-    resolution: {integrity: sha512-qU0rHnA9P/ZoaDKouU1oGPxPWzDKtIfX7eOGi5jOWJKdxieUJdVV+CxWZOpDWlYTd4N3sFQvcnVLJWJ1cLP5TA==}
-    engines: {node: '>= 10'}
-    cpu: [arm]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-arm64-gnu@4.1.13':
-    resolution: {integrity: sha512-wdtfkmpXiwej/yoAkrCP2DNzRXCALq9NVLgLELgLim1QpSfhQM5+ZxQQF8fkOiEpuNoKLp4nKZ6RC4kmeFH0HQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
   '@tailwindcss/oxide-linux-arm64-gnu@4.1.15':
     resolution: {integrity: sha512-4WbBacRmk43pkb8/xts3wnOZMDKsPFyEH/oisCm2q3aLZND25ufvJKcDUpAu0cS+CBOL05dYa8D4U5OWECuH/Q==}
     engines: {node: '>= 10'}
@@ -15022,18 +15122,6 @@ packages:
 
   '@tailwindcss/oxide-linux-arm64-gnu@4.1.17':
     resolution: {integrity: sha512-HVDOm/mxK6+TbARwdW17WrgDYEGzmoYayrCgmLEw7FxTPLcp/glBisuyWkFz/jb7ZfiAXAXUACfyItn+nTgsdQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-arm64-gnu@4.1.6':
-    resolution: {integrity: sha512-jXy3TSTrbfgyd3UxPQeXC3wm8DAgmigzar99Km9Sf6L2OFfn/k+u3VqmpgHQw5QNfCpPe43em6Q7V76Wx7ogIQ==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-arm64-musl@4.1.13':
-    resolution: {integrity: sha512-hZQrmtLdhyqzXHB7mkXfq0IYbxegaqTmfa1p9MBj72WPoDD3oNOh1Lnxf6xZLY9C3OV6qiCYkO1i/LrzEdW2mg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
@@ -15050,18 +15138,6 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@tailwindcss/oxide-linux-arm64-musl@4.1.6':
-    resolution: {integrity: sha512-8kjivE5xW0qAQ9HX9reVFmZj3t+VmljDLVRJpVBEoTR+3bKMnvC7iLcoSGNIUJGOZy1mLVq7x/gerVg0T+IsYw==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-x64-gnu@4.1.13':
-    resolution: {integrity: sha512-uaZTYWxSXyMWDJZNY1Ul7XkJTCBRFZ5Fo6wtjrgBKzZLoJNrG+WderJwAjPzuNZOnmdrVg260DKwXCFtJ/hWRQ==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
   '@tailwindcss/oxide-linux-x64-gnu@4.1.15':
     resolution: {integrity: sha512-+rzMVlvVgrXtFiS+ES78yWgKqpThgV19ISKD58Ck+YO5pO5KjyxLt7AWKsWMbY0R9yBDC82w6QVGz837AKQcHg==}
     engines: {node: '>= 10'}
@@ -15070,18 +15146,6 @@ packages:
 
   '@tailwindcss/oxide-linux-x64-gnu@4.1.17':
     resolution: {integrity: sha512-M3XZuORCGB7VPOEDH+nzpJ21XPvK5PyjlkSFkFziNHGLc5d6g3di2McAAblmaSUNl8IOmzYwLx9NsE7bplNkwQ==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-x64-gnu@4.1.6':
-    resolution: {integrity: sha512-A4spQhwnWVpjWDLXnOW9PSinO2PTKJQNRmL/aIl2U/O+RARls8doDfs6R41+DAXK0ccacvRyDpR46aVQJJCoCg==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@tailwindcss/oxide-linux-x64-musl@4.1.13':
-    resolution: {integrity: sha512-oXiPj5mi4Hdn50v5RdnuuIms0PVPI/EG4fxAfFiIKQh5TgQgX7oSuDWntHW7WNIi/yVLAiS+CRGW4RkoGSSgVQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
@@ -15097,24 +15161,6 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
-
-  '@tailwindcss/oxide-linux-x64-musl@4.1.6':
-    resolution: {integrity: sha512-YRee+6ZqdzgiQAHVSLfl3RYmqeeaWVCk796MhXhLQu2kJu2COHBkqlqsqKYx3p8Hmk5pGCQd2jTAoMWWFeyG2A==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [linux]
-
-  '@tailwindcss/oxide-wasm32-wasi@4.1.13':
-    resolution: {integrity: sha512-+LC2nNtPovtrDwBc/nqnIKYh/W2+R69FA0hgoeOn64BdCX522u19ryLh3Vf3F8W49XBcMIxSe665kwy21FkhvA==}
-    engines: {node: '>=14.0.0'}
-    cpu: [wasm32]
-    bundledDependencies:
-      - '@napi-rs/wasm-runtime'
-      - '@emnapi/core'
-      - '@emnapi/runtime'
-      - '@tybys/wasm-util'
-      - '@emnapi/wasi-threads'
-      - tslib
 
   '@tailwindcss/oxide-wasm32-wasi@4.1.15':
     resolution: {integrity: sha512-sJ4yd6iXXdlgIMfIBXuVGp/NvmviEoMVWMOAGxtxhzLPp9LOj5k0pMEMZdjeMCl4C6Up+RM8T3Zgk+BMQ0bGcQ==}
@@ -15140,24 +15186,6 @@ packages:
       - '@emnapi/wasi-threads'
       - tslib
 
-  '@tailwindcss/oxide-wasm32-wasi@4.1.6':
-    resolution: {integrity: sha512-qAp4ooTYrBQ5pk5jgg54/U1rCJ/9FLYOkkQ/nTE+bVMseMfB6O7J8zb19YTpWuu4UdfRf5zzOrNKfl6T64MNrQ==}
-    engines: {node: '>=14.0.0'}
-    cpu: [wasm32]
-    bundledDependencies:
-      - '@napi-rs/wasm-runtime'
-      - '@emnapi/core'
-      - '@emnapi/runtime'
-      - '@tybys/wasm-util'
-      - '@emnapi/wasi-threads'
-      - tslib
-
-  '@tailwindcss/oxide-win32-arm64-msvc@4.1.13':
-    resolution: {integrity: sha512-dziTNeQXtoQ2KBXmrjCxsuPk3F3CQ/yb7ZNZNA+UkNTeiTGgfeh+gH5Pi7mRncVgcPD2xgHvkFCh/MhZWSgyQg==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [win32]
-
   '@tailwindcss/oxide-win32-arm64-msvc@4.1.15':
     resolution: {integrity: sha512-sJGE5faXnNQ1iXeqmRin7Ds/ru2fgCiaQZQQz3ZGIDtvbkeV85rAZ0QJFMDg0FrqsffZG96H1U9AQlNBRLsHVg==}
     engines: {node: '>= 10'}
@@ -15168,18 +15196,6 @@ packages:
     resolution: {integrity: sha512-JU5AHr7gKbZlOGvMdb4722/0aYbU+tN6lv1kONx0JK2cGsh7g148zVWLM0IKR3NeKLv+L90chBVYcJ8uJWbC9A==}
     engines: {node: '>= 10'}
     cpu: [arm64]
-    os: [win32]
-
-  '@tailwindcss/oxide-win32-arm64-msvc@4.1.6':
-    resolution: {integrity: sha512-nqpDWk0Xr8ELO/nfRUDjk1pc9wDJ3ObeDdNMHLaymc4PJBWj11gdPCWZFKSK2AVKjJQC7J2EfmSmf47GN7OuLg==}
-    engines: {node: '>= 10'}
-    cpu: [arm64]
-    os: [win32]
-
-  '@tailwindcss/oxide-win32-x64-msvc@4.1.13':
-    resolution: {integrity: sha512-3+LKesjXydTkHk5zXX01b5KMzLV1xl2mcktBJkje7rhFUpUlYJy7IMOLqjIRQncLTa1WZZiFY/foAeB5nmaiTw==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
     os: [win32]
 
   '@tailwindcss/oxide-win32-x64-msvc@4.1.15':
@@ -15194,16 +15210,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@tailwindcss/oxide-win32-x64-msvc@4.1.6':
-    resolution: {integrity: sha512-5k9xF33xkfKpo9wCvYcegQ21VwIBU1/qEbYlVukfEIyQbEA47uK8AAwS7NVjNE3vHzcmxMYwd0l6L4pPjjm1rQ==}
-    engines: {node: '>= 10'}
-    cpu: [x64]
-    os: [win32]
-
-  '@tailwindcss/oxide@4.1.13':
-    resolution: {integrity: sha512-CPgsM1IpGRa880sMbYmG1s4xhAy3xEt1QULgTJGQmZUeNgXFR7s1YxYygmJyBGtou4SyEosGAGEeYqY7R53bIA==}
-    engines: {node: '>= 10'}
-
   '@tailwindcss/oxide@4.1.15':
     resolution: {integrity: sha512-krhX+UOOgnsUuks2SR7hFafXmLQrKxB4YyRTERuCE59JlYL+FawgaAlSkOYmDRJdf1Q+IFNDMl9iRnBW7QBDfQ==}
     engines: {node: '>= 10'}
@@ -15212,25 +15218,11 @@ packages:
     resolution: {integrity: sha512-F0F7d01fmkQhsTjXezGBLdrl1KresJTcI3DB8EkScCldyKp3Msz4hub4uyYaVnk88BAS1g5DQjjF6F5qczheLA==}
     engines: {node: '>= 10'}
 
-  '@tailwindcss/oxide@4.1.6':
-    resolution: {integrity: sha512-0bpEBQiGx+227fW4G0fLQ8vuvyy5rsB1YIYNapTq3aRsJ9taF3f5cCaovDjN5pUGKKzcpMrZst/mhNaKAPOHOA==}
-    engines: {node: '>= 10'}
-
   '@tailwindcss/postcss@4.1.15':
     resolution: {integrity: sha512-IZh8IT76KujRz6d15wZw4eoeViT4TqmzVWNNfpuNCTKiaZUwgr5vtPqO4HjuYDyx3MgGR5qgPt1HMzTeLJyA3g==}
 
-  '@tailwindcss/vite@4.1.13':
-    resolution: {integrity: sha512-0PmqLQ010N58SbMTJ7BVJ4I2xopiQn/5i6nlb4JmxzQf8zcS5+m2Cv6tqh+sfDwtIdjoEnOvwsGQ1hkUi8QEHQ==}
-    peerDependencies:
-      vite: ^7.1.7
-
   '@tailwindcss/vite@4.1.17':
     resolution: {integrity: sha512-4+9w8ZHOiGnpcGI6z1TVVfWaX/koK7fKeSYF3qlYg2xpBtbteP2ddBxiarL+HVgfSJGeK5RIxRQmKm4rTJJAwA==}
-    peerDependencies:
-      vite: ^7.1.7
-
-  '@tailwindcss/vite@4.1.6':
-    resolution: {integrity: sha512-zjtqjDeY1w3g2beYQtrMAf51n5G7o+UwmyOjtsDMP7t6XyoRMOidcoKP32ps7AkNOHIXEOK0bhIC05dj8oJp4w==}
     peerDependencies:
       vite: ^7.1.7
 
@@ -15296,9 +15288,6 @@ packages:
   '@tanstack/query-devtools@5.67.2':
     resolution: {integrity: sha512-O4QXFFd7xqp6EX7sdvc9tsVO8nm4lpWBqwpgjpVLW5g7IeOY6VnS/xvs/YzbRhBVkKTMaJMOUGU7NhSX+YGoNg==}
 
-  '@tanstack/query-devtools@5.72.2':
-    resolution: {integrity: sha512-mMKnGb+iOhVBcj6jaerCFRpg8pACStdG8hmUBHPtToeZzs4ctjBUL1FajqpVn2WaMxnq8Wya+P3Q5tPFNM9jQw==}
-
   '@tanstack/query-devtools@5.90.1':
     resolution: {integrity: sha512-GtINOPjPUH0OegJExZ70UahT9ykmAhmtNVcmtdnOZbxLwT7R5OmRztR5Ahe3/Cu7LArEmR6/588tAycuaWb1xQ==}
 
@@ -15344,12 +15333,6 @@ packages:
     resolution: {integrity: sha512-hyaB29d1fU2n9v2XeFEB6t2k5gKionK8mxxb9MNtF7qJheZ6z9259jU8OsBdA/f6v2oYck1K1Ia9+ooJsdy4jg==}
     engines: {node: '>=18'}
     peerDependencies:
-      solid-js: 1.9.10
-
-  '@tanstack/solid-query-devtools@5.72.2':
-    resolution: {integrity: sha512-duYFN6EMsV0iwz1vV60GvxsQy3PXycgHhrucaik2yvJlRKrEYuHTYGqpRTy+P3JrFZkEzVLjevMnbzR4IIt5vw==}
-    peerDependencies:
-      '@tanstack/solid-query': ^5.72.2
       solid-js: 1.9.10
 
   '@tanstack/solid-query-devtools@5.90.4':
@@ -16013,26 +15996,17 @@ packages:
   '@volar/language-core@2.4.11':
     resolution: {integrity: sha512-lN2C1+ByfW9/JRPpqScuZt/4OrUUse57GLI6TbLgTIqBVemdl1wNcZ1qYGEo2+Gw8coYLgCy7SuKqn6IrQcQgg==}
 
-  '@volar/language-core@2.4.15':
-    resolution: {integrity: sha512-3VHw+QZU0ZG9IuQmzT68IyN4hZNd9GchGPhbD9+pa8CVv7rnoOZwo7T8weIbrRmihqy3ATpdfXFnqRrfPVK6CA==}
-
   '@volar/language-core@2.4.23':
     resolution: {integrity: sha512-hEEd5ET/oSmBC6pi1j6NaNYRWoAiDhINbT8rmwtINugR39loROSlufGdYMF9TaKGfz+ViGs1Idi3mAhnuPcoGQ==}
 
   '@volar/source-map@2.4.11':
     resolution: {integrity: sha512-ZQpmafIGvaZMn/8iuvCFGrW3smeqkq/IIh9F1SdSx9aUl0J4Iurzd6/FhmjNO5g2ejF3rT45dKskgXWiofqlZQ==}
 
-  '@volar/source-map@2.4.15':
-    resolution: {integrity: sha512-CPbMWlUN6hVZJYGcU/GSoHu4EnCHiLaXI9n8c9la6RaI9W5JHX+NqG+GSQcB0JdC2FIBLdZJwGsfKyBB71VlTg==}
-
   '@volar/source-map@2.4.23':
     resolution: {integrity: sha512-Z1Uc8IB57Lm6k7q6KIDu/p+JWtf3xsXJqAX/5r18hYOTpJyBn0KXUR8oTJ4WFYOcDzWC9n3IflGgHowx6U6z9Q==}
 
   '@volar/typescript@2.4.11':
     resolution: {integrity: sha512-2DT+Tdh88Spp5PyPbqhyoYavYCPDsqbHLFwcUI9K1NlY1YgUJvujGdrqUp0zWxnW7KWNTr3xSpMuv2WnaTKDAw==}
-
-  '@volar/typescript@2.4.15':
-    resolution: {integrity: sha512-2aZ8i0cqPGjXb4BhkMsPYDkkuc2ZQ6yOpqwAuNwUoncELqoy5fRgOQtLR9gB0g902iS0NAkvpIzs27geVyVdPg==}
 
   '@volar/typescript@2.4.23':
     resolution: {integrity: sha512-lAB5zJghWxVPqfcStmAP1ZqQacMpe90UrP5RJ3arDyrhy4aCUQqmxPPLB2PWDKugvylmO41ljK7vZ+t6INMTag==}
@@ -16091,14 +16065,6 @@ packages:
 
   '@vue/language-core@2.0.29':
     resolution: {integrity: sha512-o2qz9JPjhdoVj8D2+9bDXbaI4q2uZTHQA/dbyZT4Bj1FR9viZxDJnLcKVHfxdn6wsOzRgpqIzJEEmSSvgMvDTQ==}
-    peerDependencies:
-      typescript: '*'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-
-  '@vue/language-core@2.2.12':
-    resolution: {integrity: sha512-IsGljWbKGU1MZpBPN+BvPAdr55YPkj2nB/TBNGNC32Vy2qLG25DYu/NBN2vNtZqdRbTRjaoYrahLrToim2NanA==}
     peerDependencies:
       typescript: '*'
     peerDependenciesMeta:
@@ -16361,9 +16327,6 @@ packages:
 
   ajv@8.17.1:
     resolution: {integrity: sha512-B/gBuNg5SiMTrPkC+A2+cW0RszwxYmn6VYxB/inlBStS5nx6xHIt/ehKRhIMhqusl7a8LjQoZnjCs5vhwxOQ1g==}
-
-  alien-signals@1.0.13:
-    resolution: {integrity: sha512-OGj9yyTnJEttvzhTUWuscOvtqxq5vrhF7vL9oS0xJ2mK0ItPYP1/y+vCFebfxoEyAz0++1AIwJ5CMr+Fk3nDmg==}
 
   alien-signals@3.1.1:
     resolution: {integrity: sha512-ogkIWbVrLwKtHY6oOAXaYkAxP+cTH7V5FZ5+Tm4NZFd8VDZ6uNMDrfzqctTZ42eTMCSR3ne3otpcxmqSnFfPYA==}
@@ -17411,10 +17374,6 @@ packages:
 
   detect-libc@2.0.2:
     resolution: {integrity: sha512-UX6sGumvvqSaXgdKGUsgZWqcUyIXZ/vZTrlRT/iobiKhGL0zL4d3osHj3uqllWJK+i+sixDS/3COVEOFbupFyw==}
-    engines: {node: '>=8'}
-
-  detect-libc@2.0.4:
-    resolution: {integrity: sha512-3UDv+G9CsCKO1WKMGw9fwq/SWJYbI0c5Y7LU1AXYoDdbhE2AHQ6N6Nb34sG8Fj7T5APy8qXDCKuuIHd1BR0tVA==}
     engines: {node: '>=8'}
 
   detect-libc@2.1.2:
@@ -19148,34 +19107,10 @@ packages:
     cpu: [arm64]
     os: [android]
 
-  lightningcss-darwin-arm64@1.29.2:
-    resolution: {integrity: sha512-cK/eMabSViKn/PG8U/a7aCorpeKLMlK0bQeNHmdb7qUnBkNPnL+oV5DjJUo0kqWsJUapZsM4jCfYItbqBDvlcA==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [darwin]
-
-  lightningcss-darwin-arm64@1.30.1:
-    resolution: {integrity: sha512-c8JK7hyE65X1MHMN+Viq9n11RRC7hgin3HhYKhrMyaXflk5GVplZ60IxyoVtzILeKr+xAJwg6zK6sjTBJ0FKYQ==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [darwin]
-
   lightningcss-darwin-arm64@1.30.2:
     resolution: {integrity: sha512-ylTcDJBN3Hp21TdhRT5zBOIi73P6/W0qwvlFEk22fkdXchtNTOU4Qc37SkzV+EKYxLouZ6M4LG9NfZ1qkhhBWA==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
-    os: [darwin]
-
-  lightningcss-darwin-x64@1.29.2:
-    resolution: {integrity: sha512-j5qYxamyQw4kDXX5hnnCKMf3mLlHvG44f24Qyi2965/Ycz829MYqjrVg2H8BidybHBp9kom4D7DR5VqCKDXS0w==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [darwin]
-
-  lightningcss-darwin-x64@1.30.1:
-    resolution: {integrity: sha512-k1EvjakfumAQoTfcXUcHQZhSpLlkAuEkdMBsI/ivWw9hL+7FtilQc0Cy3hrx0AAQrVtQAbMI7YjCgYgvn37PzA==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
     os: [darwin]
 
   lightningcss-darwin-x64@1.30.2:
@@ -19184,35 +19119,11 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  lightningcss-freebsd-x64@1.29.2:
-    resolution: {integrity: sha512-wDk7M2tM78Ii8ek9YjnY8MjV5f5JN2qNVO+/0BAGZRvXKtQrBC4/cn4ssQIpKIPP44YXw6gFdpUF+Ps+RGsCwg==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [freebsd]
-
-  lightningcss-freebsd-x64@1.30.1:
-    resolution: {integrity: sha512-kmW6UGCGg2PcyUE59K5r0kWfKPAVy4SltVeut+umLCFoJ53RdCUWxcRDzO1eTaxf/7Q2H7LTquFHPL5R+Gjyig==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [freebsd]
-
   lightningcss-freebsd-x64@1.30.2:
     resolution: {integrity: sha512-c2bH6xTrf4BDpK8MoGG4Bd6zAMZDAXS569UxCAGcA7IKbHNMlhGQ89eRmvpIUGfKWNVdbhSbkQaWhEoMGmGslA==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [freebsd]
-
-  lightningcss-linux-arm-gnueabihf@1.29.2:
-    resolution: {integrity: sha512-IRUrOrAF2Z+KExdExe3Rz7NSTuuJ2HvCGlMKoquK5pjvo2JY4Rybr+NrKnq0U0hZnx5AnGsuFHjGnNT14w26sg==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm]
-    os: [linux]
-
-  lightningcss-linux-arm-gnueabihf@1.30.1:
-    resolution: {integrity: sha512-MjxUShl1v8pit+6D/zSPq9S9dQ2NPFSQwGvxBCYaBYLPlCWuPh9/t1MRS8iUaR8i+a6w7aps+B4N0S1TYP/R+Q==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm]
-    os: [linux]
 
   lightningcss-linux-arm-gnueabihf@1.30.2:
     resolution: {integrity: sha512-eVdpxh4wYcm0PofJIZVuYuLiqBIakQ9uFZmipf6LF/HRj5Bgm0eb3qL/mr1smyXIS1twwOxNWndd8z0E374hiA==}
@@ -19220,32 +19131,8 @@ packages:
     cpu: [arm]
     os: [linux]
 
-  lightningcss-linux-arm64-gnu@1.29.2:
-    resolution: {integrity: sha512-KKCpOlmhdjvUTX/mBuaKemp0oeDIBBLFiU5Fnqxh1/DZ4JPZi4evEH7TKoSBFOSOV3J7iEmmBaw/8dpiUvRKlQ==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [linux]
-
-  lightningcss-linux-arm64-gnu@1.30.1:
-    resolution: {integrity: sha512-gB72maP8rmrKsnKYy8XUuXi/4OctJiuQjcuqWNlJQ6jZiWqtPvqFziskH3hnajfvKB27ynbVCucKSm2rkQp4Bw==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [linux]
-
   lightningcss-linux-arm64-gnu@1.30.2:
     resolution: {integrity: sha512-UK65WJAbwIJbiBFXpxrbTNArtfuznvxAJw4Q2ZGlU8kPeDIWEX1dg3rn2veBVUylA2Ezg89ktszWbaQnxD/e3A==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [linux]
-
-  lightningcss-linux-arm64-musl@1.29.2:
-    resolution: {integrity: sha512-Q64eM1bPlOOUgxFmoPUefqzY1yV3ctFPE6d/Vt7WzLW4rKTv7MyYNky+FWxRpLkNASTnKQUaiMJ87zNODIrrKQ==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [linux]
-
-  lightningcss-linux-arm64-musl@1.30.1:
-    resolution: {integrity: sha512-jmUQVx4331m6LIX+0wUhBbmMX7TCfjF5FoOH6SD1CttzuYlGNVpA7QnrmLxrsub43ClTINfGSYyHe2HWeLl5CQ==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
@@ -19256,32 +19143,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  lightningcss-linux-x64-gnu@1.29.2:
-    resolution: {integrity: sha512-0v6idDCPG6epLXtBH/RPkHvYx74CVziHo6TMYga8O2EiQApnUPZsbR9nFNrg2cgBzk1AYqEd95TlrsL7nYABQg==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [linux]
-
-  lightningcss-linux-x64-gnu@1.30.1:
-    resolution: {integrity: sha512-piWx3z4wN8J8z3+O5kO74+yr6ze/dKmPnI7vLqfSqI8bccaTGY5xiSGVIJBDd5K5BHlvVLpUB3S2YCfelyJ1bw==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [linux]
-
   lightningcss-linux-x64-gnu@1.30.2:
     resolution: {integrity: sha512-Cfd46gdmj1vQ+lR6VRTTadNHu6ALuw2pKR9lYq4FnhvgBc4zWY1EtZcAc6EffShbb1MFrIPfLDXD6Xprbnni4w==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [linux]
-
-  lightningcss-linux-x64-musl@1.29.2:
-    resolution: {integrity: sha512-rMpz2yawkgGT8RULc5S4WiZopVMOFWjiItBT7aSfDX4NQav6M44rhn5hjtkKzB+wMTRlLLqxkeYEtQ3dd9696w==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [linux]
-
-  lightningcss-linux-x64-musl@1.30.1:
-    resolution: {integrity: sha512-rRomAK7eIkL+tHY0YPxbc5Dra2gXlI63HL+v1Pdi1a3sC+tJTcFrHX+E86sulgAXeI7rSzDYhPSeHHjqFhqfeQ==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [linux]
@@ -19292,34 +19155,10 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  lightningcss-win32-arm64-msvc@1.29.2:
-    resolution: {integrity: sha512-nL7zRW6evGQqYVu/bKGK+zShyz8OVzsCotFgc7judbt6wnB2KbiKKJwBE4SGoDBQ1O94RjW4asrCjQL4i8Fhbw==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [win32]
-
-  lightningcss-win32-arm64-msvc@1.30.1:
-    resolution: {integrity: sha512-mSL4rqPi4iXq5YVqzSsJgMVFENoa4nGTT/GjO2c0Yl9OuQfPsIfncvLrEW6RbbB24WtZ3xP/2CCmI3tNkNV4oA==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [win32]
-
   lightningcss-win32-arm64-msvc@1.30.2:
     resolution: {integrity: sha512-FZn+vaj7zLv//D/192WFFVA0RgHawIcHqLX9xuWiQt7P0PtdFEVaxgF9rjM/IRYHQXNnk61/H/gb2Ei+kUQ4xQ==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
-    os: [win32]
-
-  lightningcss-win32-x64-msvc@1.29.2:
-    resolution: {integrity: sha512-EdIUW3B2vLuHmv7urfzMI/h2fmlnOQBk1xlsDxkN1tCWKjNFjfLhGxYk8C8mzpSfr+A6jFFIi8fU6LbQGsRWjA==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [win32]
-
-  lightningcss-win32-x64-msvc@1.30.1:
-    resolution: {integrity: sha512-PVqXh48wh4T53F/1CCu8PIPCxLzWyCnn/9T5W1Jpmdy5h9Cwd+0YQS6/LwhHXSafuc61/xg9Lv5OrCby6a++jg==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
     os: [win32]
 
   lightningcss-win32-x64-msvc@1.30.2:
@@ -19327,14 +19166,6 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [win32]
-
-  lightningcss@1.29.2:
-    resolution: {integrity: sha512-6b6gd/RUXKaw5keVdSEtqFVdzWnU5jMxTUjA2bVcMNPLwSQ08Sv/UodBVtETLCn7k4S1Ibxwh7k68IwLZPgKaA==}
-    engines: {node: '>= 12.0.0'}
-
-  lightningcss@1.30.1:
-    resolution: {integrity: sha512-xi6IyHML+c9+Q3W0S4fCQJOym42pyurFiJUHEcEyHS0CeKzia4yZDEsLlqOFykxOdHpNy0NmvVO31vcSqAxJCg==}
-    engines: {node: '>= 12.0.0'}
 
   lightningcss@1.30.2:
     resolution: {integrity: sha512-utfs7Pr5uJyyvDETitgsaqSyjCb2qNRAtuqUeWIAKztsOYdcACf2KtARYXg2pSvhkt+9NfoaNY7fxjl6nuMjIQ==}
@@ -21290,9 +21121,6 @@ packages:
   tailwindcss@4.1.17:
     resolution: {integrity: sha512-j9Ee2YjuQqYT9bbRTfTZht9W/ytp5H+jJpZKiYdP/bpnXARAuELt9ofP0lPnmHjbga7SNQIxdTAXCmtKVYjN+Q==}
 
-  tailwindcss@4.1.6:
-    resolution: {integrity: sha512-j0cGLTreM6u4OWzBeLBpycK0WIh8w7kSwcUsQZoGLHZ7xDTdM69lN64AgoIEEwFi0tnhs4wSykUa5YWxAzgFYg==}
-
   tapable@2.2.1:
     resolution: {integrity: sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==}
     engines: {node: '>=6'}
@@ -22114,12 +21942,6 @@ packages:
     peerDependencies:
       typescript: '>=5.0.0'
 
-  vue-tsc@2.2.12:
-    resolution: {integrity: sha512-P7OP77b2h/Pmk+lZdJ0YWs+5tJ6J2+uOQPo7tlBnY44QqQSPYvS0qVT4wqDJgwrZaLe47etJLLQRFia71GYITw==}
-    hasBin: true
-    peerDependencies:
-      typescript: '>=5.0.0'
-
   vue-tsc@3.1.5:
     resolution: {integrity: sha512-L/G9IUjOWhBU0yun89rv8fKqmKC+T0HfhrFjlIml71WpfBv9eb4E9Bev8FMbyueBIU9vxQqbd+oOsVcDa5amGw==}
     hasBin: true
@@ -22308,16 +22130,6 @@ packages:
     resolution: {integrity: sha512-Om5ns0Lyx/LKtYI04IV0bjIrkBgoFNg0p6urzr2asekJlfP18RqFzyqMFZKf0i9Gnjtz/JfAS/Ol6tjCe5JJsQ==}
     engines: {node: '>=16'}
     hasBin: true
-
-  wrangler@4.40.2:
-    resolution: {integrity: sha512-wcev8GF6GU4ME5AsYY/gUehHrGdRiUCkifuyCeuVvpOtha3TMK4/s39x+jLuJBRtibpgejDekO68rqxfamf16A==}
-    engines: {node: '>=18.0.0'}
-    hasBin: true
-    peerDependencies:
-      '@cloudflare/workers-types': ^4.20250924.0
-    peerDependenciesMeta:
-      '@cloudflare/workers-types':
-        optional: true
 
   wrangler@4.49.1:
     resolution: {integrity: sha512-V0sMP4Gl1pYXwFastYtrcyHwxgmo0xwrnUoOj5hXhzOKunYc/YcCIRZ1ZmPO13OShkx8M0+zCymiNrXkrldj7g==}
@@ -23115,6 +22927,18 @@ snapshots:
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
 
+  '@clerk/tanstack-react-start@0.19.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@clerk/backend': 2.18.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@clerk/clerk-react': 5.53.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@clerk/shared': 3.28.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@clerk/types': 4.95.0
+      '@tanstack/react-router': link:packages/react-router
+      '@tanstack/react-start': link:packages/react-start
+      react: 19.2.0
+      react-dom: 19.2.0(react@19.2.0)
+      tslib: 2.8.1
+
   '@clerk/tanstack-react-start@0.26.3(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
       '@clerk/backend': 2.18.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -23141,36 +22965,13 @@ snapshots:
     optionalDependencies:
       workerd: 1.20251118.0
 
-  '@cloudflare/unenv-preset@2.7.4(unenv@2.0.0-rc.21)(workerd@1.20250924.0)':
-    dependencies:
-      unenv: 2.0.0-rc.21
-    optionalDependencies:
-      workerd: 1.20250924.0
-
   '@cloudflare/unenv-preset@2.7.4(unenv@2.0.0-rc.21)(workerd@1.20251118.0)':
     dependencies:
       unenv: 2.0.0-rc.21
     optionalDependencies:
       workerd: 1.20251118.0
 
-  '@cloudflare/vite-plugin@1.13.7(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(workerd@1.20250924.0)(wrangler@4.40.2)':
-    dependencies:
-      '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20250924.0)
-      '@remix-run/node-fetch-server': 0.8.1
-      get-port: 7.1.0
-      miniflare: 4.20250924.0
-      picocolors: 1.1.1
-      tinyglobby: 0.2.15
-      unenv: 2.0.0-rc.21
-      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-      wrangler: 4.40.2
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - workerd
-
-  '@cloudflare/vite-plugin@1.13.7(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(workerd@1.20251118.0)(wrangler@4.40.2)':
+  '@cloudflare/vite-plugin@1.13.7(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(workerd@1.20251118.0)(wrangler@4.49.1)':
     dependencies:
       '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20251118.0)
       '@remix-run/node-fetch-server': 0.8.1
@@ -23180,7 +22981,7 @@ snapshots:
       tinyglobby: 0.2.15
       unenv: 2.0.0-rc.21
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-      wrangler: 4.40.2
+      wrangler: 4.49.1
       ws: 8.18.0
     transitivePeerDependencies:
       - bufferutil
@@ -24984,13 +24785,13 @@ snapshots:
       uuid: 11.1.0
       write-file-atomic: 5.0.1
 
-  '@netlify/dev@4.6.3(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)':
+  '@netlify/dev@4.6.3(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.8.0)(rollup@4.52.5)':
     dependencies:
       '@netlify/blobs': 10.1.0
       '@netlify/config': 23.2.0
       '@netlify/dev-utils': 4.3.0
       '@netlify/edge-functions-dev': 1.0.0
-      '@netlify/functions-dev': 1.0.0(encoding@0.1.13)(rollup@4.52.5)
+      '@netlify/functions-dev': 1.0.0(rollup@4.52.5)
       '@netlify/headers': 2.1.0
       '@netlify/images': 1.3.0(@netlify/blobs@10.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.8.0)
       '@netlify/redirects': 3.1.0
@@ -25058,12 +24859,12 @@ snapshots:
     dependencies:
       '@netlify/types': 2.1.0
 
-  '@netlify/functions-dev@1.0.0(encoding@0.1.13)(rollup@4.52.5)':
+  '@netlify/functions-dev@1.0.0(rollup@4.52.5)':
     dependencies:
       '@netlify/blobs': 10.1.0
       '@netlify/dev-utils': 4.3.0
       '@netlify/functions': 5.0.0
-      '@netlify/zip-it-and-ship-it': 14.1.11(encoding@0.1.13)(rollup@4.52.5)
+      '@netlify/zip-it-and-ship-it': 14.1.11(rollup@4.52.5)
       cron-parser: 4.9.0
       decache: 4.6.2
       extract-zip: 2.0.1
@@ -25153,9 +24954,9 @@ snapshots:
 
   '@netlify/types@2.1.0': {}
 
-  '@netlify/vite-plugin-tanstack-start@1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
+  '@netlify/vite-plugin-tanstack-start@1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
-      '@netlify/vite-plugin': 2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@netlify/vite-plugin': 2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     optionalDependencies:
       '@tanstack/solid-start': link:packages/solid-start
@@ -25183,9 +24984,9 @@ snapshots:
       - supports-color
       - uploadthing
 
-  '@netlify/vite-plugin@2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
+  '@netlify/vite-plugin@2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.8.0)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
-      '@netlify/dev': 4.6.3(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.8.0)(rollup@4.52.5)
+      '@netlify/dev': 4.6.3(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.8.0)(rollup@4.52.5)
       '@netlify/dev-utils': 4.3.0
       dedent: 1.7.0(babel-plugin-macros@3.1.0)
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -25213,13 +25014,13 @@ snapshots:
       - supports-color
       - uploadthing
 
-  '@netlify/zip-it-and-ship-it@14.1.11(encoding@0.1.13)(rollup@4.52.5)':
+  '@netlify/zip-it-and-ship-it@14.1.11(rollup@4.52.5)':
     dependencies:
       '@babel/parser': 7.28.5
       '@babel/types': 7.28.4
       '@netlify/binary-info': 1.0.0
       '@netlify/serverless-functions-api': 2.7.1
-      '@vercel/nft': 0.29.4(encoding@0.1.13)(rollup@4.52.5)
+      '@vercel/nft': 0.29.4(rollup@4.52.5)
       archiver: 7.0.1
       common-path-prefix: 3.0.0
       copy-file: 11.1.0
@@ -26635,17 +26436,6 @@ snapshots:
       '@rspack/plugin-react-refresh': 1.0.1(react-refresh@0.16.0)
       react-refresh: 0.16.0
 
-  '@rsbuild/plugin-solid@1.0.4(@babel/core@7.28.5)(@rsbuild/core@1.2.4)(solid-js@1.9.10)':
-    dependencies:
-      '@rsbuild/core': 1.2.4
-      '@rsbuild/plugin-babel': 1.0.3(@rsbuild/core@1.2.4)
-      babel-preset-solid: 1.9.10(@babel/core@7.28.5)(solid-js@1.9.10)
-      solid-refresh: 0.6.3(solid-js@1.9.10)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - solid-js
-      - supports-color
-
   '@rsbuild/plugin-solid@1.0.6(@babel/core@7.28.5)(@rsbuild/core@1.2.4)(solid-js@1.9.10)':
     dependencies:
       '@rsbuild/core': 1.2.4
@@ -27218,16 +27008,6 @@ snapshots:
     dependencies:
       '@swc/counter': 0.1.3
 
-  '@tailwindcss/node@4.1.13':
-    dependencies:
-      '@jridgewell/remapping': 2.3.5
-      enhanced-resolve: 5.18.3
-      jiti: 2.6.1
-      lightningcss: 1.30.1
-      magic-string: 0.30.19
-      source-map-js: 1.2.1
-      tailwindcss: 4.1.13
-
   '@tailwindcss/node@4.1.15':
     dependencies:
       '@jridgewell/remapping': 2.3.5
@@ -27248,29 +27028,10 @@ snapshots:
       source-map-js: 1.2.1
       tailwindcss: 4.1.17
 
-  '@tailwindcss/node@4.1.6':
-    dependencies:
-      '@ampproject/remapping': 2.3.0
-      enhanced-resolve: 5.18.1
-      jiti: 2.6.1
-      lightningcss: 1.29.2
-      magic-string: 0.30.17
-      source-map-js: 1.2.1
-      tailwindcss: 4.1.6
-
-  '@tailwindcss/oxide-android-arm64@4.1.13':
-    optional: true
-
   '@tailwindcss/oxide-android-arm64@4.1.15':
     optional: true
 
   '@tailwindcss/oxide-android-arm64@4.1.17':
-    optional: true
-
-  '@tailwindcss/oxide-android-arm64@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-darwin-arm64@4.1.13':
     optional: true
 
   '@tailwindcss/oxide-darwin-arm64@4.1.15':
@@ -27279,22 +27040,10 @@ snapshots:
   '@tailwindcss/oxide-darwin-arm64@4.1.17':
     optional: true
 
-  '@tailwindcss/oxide-darwin-arm64@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-darwin-x64@4.1.13':
-    optional: true
-
   '@tailwindcss/oxide-darwin-x64@4.1.15':
     optional: true
 
   '@tailwindcss/oxide-darwin-x64@4.1.17':
-    optional: true
-
-  '@tailwindcss/oxide-darwin-x64@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-freebsd-x64@4.1.13':
     optional: true
 
   '@tailwindcss/oxide-freebsd-x64@4.1.15':
@@ -27303,22 +27052,10 @@ snapshots:
   '@tailwindcss/oxide-freebsd-x64@4.1.17':
     optional: true
 
-  '@tailwindcss/oxide-freebsd-x64@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm-gnueabihf@4.1.13':
-    optional: true
-
   '@tailwindcss/oxide-linux-arm-gnueabihf@4.1.15':
     optional: true
 
   '@tailwindcss/oxide-linux-arm-gnueabihf@4.1.17':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm-gnueabihf@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm64-gnu@4.1.13':
     optional: true
 
   '@tailwindcss/oxide-linux-arm64-gnu@4.1.15':
@@ -27327,22 +27064,10 @@ snapshots:
   '@tailwindcss/oxide-linux-arm64-gnu@4.1.17':
     optional: true
 
-  '@tailwindcss/oxide-linux-arm64-gnu@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm64-musl@4.1.13':
-    optional: true
-
   '@tailwindcss/oxide-linux-arm64-musl@4.1.15':
     optional: true
 
   '@tailwindcss/oxide-linux-arm64-musl@4.1.17':
-    optional: true
-
-  '@tailwindcss/oxide-linux-arm64-musl@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-linux-x64-gnu@4.1.13':
     optional: true
 
   '@tailwindcss/oxide-linux-x64-gnu@4.1.15':
@@ -27351,22 +27076,10 @@ snapshots:
   '@tailwindcss/oxide-linux-x64-gnu@4.1.17':
     optional: true
 
-  '@tailwindcss/oxide-linux-x64-gnu@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-linux-x64-musl@4.1.13':
-    optional: true
-
   '@tailwindcss/oxide-linux-x64-musl@4.1.15':
     optional: true
 
   '@tailwindcss/oxide-linux-x64-musl@4.1.17':
-    optional: true
-
-  '@tailwindcss/oxide-linux-x64-musl@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-wasm32-wasi@4.1.13':
     optional: true
 
   '@tailwindcss/oxide-wasm32-wasi@4.1.15':
@@ -27375,22 +27088,10 @@ snapshots:
   '@tailwindcss/oxide-wasm32-wasi@4.1.17':
     optional: true
 
-  '@tailwindcss/oxide-wasm32-wasi@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-win32-arm64-msvc@4.1.13':
-    optional: true
-
   '@tailwindcss/oxide-win32-arm64-msvc@4.1.15':
     optional: true
 
   '@tailwindcss/oxide-win32-arm64-msvc@4.1.17':
-    optional: true
-
-  '@tailwindcss/oxide-win32-arm64-msvc@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide-win32-x64-msvc@4.1.13':
     optional: true
 
   '@tailwindcss/oxide-win32-x64-msvc@4.1.15':
@@ -27398,27 +27099,6 @@ snapshots:
 
   '@tailwindcss/oxide-win32-x64-msvc@4.1.17':
     optional: true
-
-  '@tailwindcss/oxide-win32-x64-msvc@4.1.6':
-    optional: true
-
-  '@tailwindcss/oxide@4.1.13':
-    dependencies:
-      detect-libc: 2.0.4
-      tar: 7.4.3
-    optionalDependencies:
-      '@tailwindcss/oxide-android-arm64': 4.1.13
-      '@tailwindcss/oxide-darwin-arm64': 4.1.13
-      '@tailwindcss/oxide-darwin-x64': 4.1.13
-      '@tailwindcss/oxide-freebsd-x64': 4.1.13
-      '@tailwindcss/oxide-linux-arm-gnueabihf': 4.1.13
-      '@tailwindcss/oxide-linux-arm64-gnu': 4.1.13
-      '@tailwindcss/oxide-linux-arm64-musl': 4.1.13
-      '@tailwindcss/oxide-linux-x64-gnu': 4.1.13
-      '@tailwindcss/oxide-linux-x64-musl': 4.1.13
-      '@tailwindcss/oxide-wasm32-wasi': 4.1.13
-      '@tailwindcss/oxide-win32-arm64-msvc': 4.1.13
-      '@tailwindcss/oxide-win32-x64-msvc': 4.1.13
 
   '@tailwindcss/oxide@4.1.15':
     optionalDependencies:
@@ -27450,24 +27130,6 @@ snapshots:
       '@tailwindcss/oxide-win32-arm64-msvc': 4.1.17
       '@tailwindcss/oxide-win32-x64-msvc': 4.1.17
 
-  '@tailwindcss/oxide@4.1.6':
-    dependencies:
-      detect-libc: 2.0.4
-      tar: 7.4.3
-    optionalDependencies:
-      '@tailwindcss/oxide-android-arm64': 4.1.6
-      '@tailwindcss/oxide-darwin-arm64': 4.1.6
-      '@tailwindcss/oxide-darwin-x64': 4.1.6
-      '@tailwindcss/oxide-freebsd-x64': 4.1.6
-      '@tailwindcss/oxide-linux-arm-gnueabihf': 4.1.6
-      '@tailwindcss/oxide-linux-arm64-gnu': 4.1.6
-      '@tailwindcss/oxide-linux-arm64-musl': 4.1.6
-      '@tailwindcss/oxide-linux-x64-gnu': 4.1.6
-      '@tailwindcss/oxide-linux-x64-musl': 4.1.6
-      '@tailwindcss/oxide-wasm32-wasi': 4.1.6
-      '@tailwindcss/oxide-win32-arm64-msvc': 4.1.6
-      '@tailwindcss/oxide-win32-x64-msvc': 4.1.6
-
   '@tailwindcss/postcss@4.1.15':
     dependencies:
       '@alloc/quick-lru': 5.2.0
@@ -27476,25 +27138,11 @@ snapshots:
       postcss: 8.5.6
       tailwindcss: 4.1.15
 
-  '@tailwindcss/vite@4.1.13(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
-    dependencies:
-      '@tailwindcss/node': 4.1.13
-      '@tailwindcss/oxide': 4.1.13
-      tailwindcss: 4.1.13
-      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-
   '@tailwindcss/vite@4.1.17(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
       '@tailwindcss/node': 4.1.17
       '@tailwindcss/oxide': 4.1.17
       tailwindcss: 4.1.17
-      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-
-  '@tailwindcss/vite@4.1.6(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
-    dependencies:
-      '@tailwindcss/node': 4.1.6
-      '@tailwindcss/oxide': 4.1.6
-      tailwindcss: 4.1.6
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
 
   '@tanstack/config@0.22.0(@types/node@22.10.2)(eslint@9.22.0(jiti@2.6.1))(rollup@4.52.5)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
@@ -27611,8 +27259,6 @@ snapshots:
 
   '@tanstack/query-devtools@5.67.2': {}
 
-  '@tanstack/query-devtools@5.72.2': {}
-
   '@tanstack/query-devtools@5.90.1': {}
 
   '@tanstack/react-devtools@0.7.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(csstype@3.1.3)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)':
@@ -27666,12 +27312,6 @@ snapshots:
       - bufferutil
       - csstype
       - utf-8-validate
-
-  '@tanstack/solid-query-devtools@5.72.2(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)':
-    dependencies:
-      '@tanstack/query-devtools': 5.72.2
-      '@tanstack/solid-query': 5.90.9(solid-js@1.9.10)
-      solid-js: 1.9.10
 
   '@tanstack/solid-query-devtools@5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)':
     dependencies:
@@ -27899,7 +27539,7 @@ snapshots:
   '@types/cookies@0.9.0':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/express': 4.17.23
+      '@types/express': 5.0.3
       '@types/keygrip': 1.0.6
       '@types/node': 22.10.2
 
@@ -28030,7 +27670,7 @@ snapshots:
 
   '@types/serve-index@1.9.4':
     dependencies:
-      '@types/express': 4.17.23
+      '@types/express': 5.0.3
 
   '@types/serve-static@1.15.7':
     dependencies:
@@ -28359,7 +27999,7 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
-  '@vercel/nft@0.29.4(encoding@0.1.13)(rollup@4.52.5)':
+  '@vercel/nft@0.29.4(rollup@4.52.5)':
     dependencies:
       '@mapbox/node-pre-gyp': 2.0.0(encoding@0.1.13)
       '@rollup/pluginutils': 5.1.4(rollup@4.52.5)
@@ -28601,29 +28241,17 @@ snapshots:
     dependencies:
       '@volar/source-map': 2.4.11
 
-  '@volar/language-core@2.4.15':
-    dependencies:
-      '@volar/source-map': 2.4.15
-
   '@volar/language-core@2.4.23':
     dependencies:
       '@volar/source-map': 2.4.23
 
   '@volar/source-map@2.4.11': {}
 
-  '@volar/source-map@2.4.15': {}
-
   '@volar/source-map@2.4.23': {}
 
   '@volar/typescript@2.4.11':
     dependencies:
       '@volar/language-core': 2.4.11
-      path-browserify: 1.0.1
-      vscode-uri: 3.0.8
-
-  '@volar/typescript@2.4.15':
-    dependencies:
-      '@volar/language-core': 2.4.15
       path-browserify: 1.0.1
       vscode-uri: 3.0.8
 
@@ -28768,32 +28396,6 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.2
 
-  '@vue/language-core@2.2.12(typescript@5.8.3)':
-    dependencies:
-      '@volar/language-core': 2.4.15
-      '@vue/compiler-dom': 3.5.22
-      '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.22
-      alien-signals: 1.0.13
-      minimatch: 9.0.5
-      muggle-string: 0.4.1
-      path-browserify: 1.0.1
-    optionalDependencies:
-      typescript: 5.8.3
-
-  '@vue/language-core@2.2.12(typescript@5.9.2)':
-    dependencies:
-      '@volar/language-core': 2.4.15
-      '@vue/compiler-dom': 3.5.22
-      '@vue/compiler-vue2': 2.7.16
-      '@vue/shared': 3.5.22
-      alien-signals: 1.0.13
-      minimatch: 9.0.5
-      muggle-string: 0.4.1
-      path-browserify: 1.0.1
-    optionalDependencies:
-      typescript: 5.9.2
-
   '@vue/language-core@3.1.5(typescript@5.8.3)':
     dependencies:
       '@volar/language-core': 2.4.23
@@ -28805,6 +28407,18 @@ snapshots:
       picomatch: 4.0.3
     optionalDependencies:
       typescript: 5.8.3
+
+  '@vue/language-core@3.1.5(typescript@5.9.2)':
+    dependencies:
+      '@volar/language-core': 2.4.23
+      '@vue/compiler-dom': 3.5.22
+      '@vue/shared': 3.5.22
+      alien-signals: 3.1.1
+      muggle-string: 0.4.1
+      path-browserify: 1.0.1
+      picomatch: 4.0.3
+    optionalDependencies:
+      typescript: 5.9.2
 
   '@vue/reactivity@3.5.25':
     dependencies:
@@ -29100,8 +28714,6 @@ snapshots:
       fast-uri: 3.0.6
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
-
-  alien-signals@1.0.13: {}
 
   alien-signals@3.1.1: {}
 
@@ -30134,8 +29746,6 @@ snapshots:
   detect-libc@1.0.3: {}
 
   detect-libc@2.0.2: {}
-
-  detect-libc@2.0.4: {}
 
   detect-libc@2.1.2: {}
 
@@ -32202,125 +31812,35 @@ snapshots:
   lightningcss-android-arm64@1.30.2:
     optional: true
 
-  lightningcss-darwin-arm64@1.29.2:
-    optional: true
-
-  lightningcss-darwin-arm64@1.30.1:
-    optional: true
-
   lightningcss-darwin-arm64@1.30.2:
-    optional: true
-
-  lightningcss-darwin-x64@1.29.2:
-    optional: true
-
-  lightningcss-darwin-x64@1.30.1:
     optional: true
 
   lightningcss-darwin-x64@1.30.2:
     optional: true
 
-  lightningcss-freebsd-x64@1.29.2:
-    optional: true
-
-  lightningcss-freebsd-x64@1.30.1:
-    optional: true
-
   lightningcss-freebsd-x64@1.30.2:
-    optional: true
-
-  lightningcss-linux-arm-gnueabihf@1.29.2:
-    optional: true
-
-  lightningcss-linux-arm-gnueabihf@1.30.1:
     optional: true
 
   lightningcss-linux-arm-gnueabihf@1.30.2:
     optional: true
 
-  lightningcss-linux-arm64-gnu@1.29.2:
-    optional: true
-
-  lightningcss-linux-arm64-gnu@1.30.1:
-    optional: true
-
   lightningcss-linux-arm64-gnu@1.30.2:
-    optional: true
-
-  lightningcss-linux-arm64-musl@1.29.2:
-    optional: true
-
-  lightningcss-linux-arm64-musl@1.30.1:
     optional: true
 
   lightningcss-linux-arm64-musl@1.30.2:
     optional: true
 
-  lightningcss-linux-x64-gnu@1.29.2:
-    optional: true
-
-  lightningcss-linux-x64-gnu@1.30.1:
-    optional: true
-
   lightningcss-linux-x64-gnu@1.30.2:
-    optional: true
-
-  lightningcss-linux-x64-musl@1.29.2:
-    optional: true
-
-  lightningcss-linux-x64-musl@1.30.1:
     optional: true
 
   lightningcss-linux-x64-musl@1.30.2:
     optional: true
 
-  lightningcss-win32-arm64-msvc@1.29.2:
-    optional: true
-
-  lightningcss-win32-arm64-msvc@1.30.1:
-    optional: true
-
   lightningcss-win32-arm64-msvc@1.30.2:
-    optional: true
-
-  lightningcss-win32-x64-msvc@1.29.2:
-    optional: true
-
-  lightningcss-win32-x64-msvc@1.30.1:
     optional: true
 
   lightningcss-win32-x64-msvc@1.30.2:
     optional: true
-
-  lightningcss@1.29.2:
-    dependencies:
-      detect-libc: 2.1.2
-    optionalDependencies:
-      lightningcss-darwin-arm64: 1.29.2
-      lightningcss-darwin-x64: 1.29.2
-      lightningcss-freebsd-x64: 1.29.2
-      lightningcss-linux-arm-gnueabihf: 1.29.2
-      lightningcss-linux-arm64-gnu: 1.29.2
-      lightningcss-linux-arm64-musl: 1.29.2
-      lightningcss-linux-x64-gnu: 1.29.2
-      lightningcss-linux-x64-musl: 1.29.2
-      lightningcss-win32-arm64-msvc: 1.29.2
-      lightningcss-win32-x64-msvc: 1.29.2
-
-  lightningcss@1.30.1:
-    dependencies:
-      detect-libc: 2.1.2
-    optionalDependencies:
-      lightningcss-darwin-arm64: 1.30.1
-      lightningcss-darwin-x64: 1.30.1
-      lightningcss-freebsd-x64: 1.30.1
-      lightningcss-linux-arm-gnueabihf: 1.30.1
-      lightningcss-linux-arm64-gnu: 1.30.1
-      lightningcss-linux-arm64-musl: 1.30.1
-      lightningcss-linux-x64-gnu: 1.30.1
-      lightningcss-linux-x64-musl: 1.30.1
-      lightningcss-win32-arm64-msvc: 1.30.1
-      lightningcss-win32-x64-msvc: 1.30.1
 
   lightningcss@1.30.2:
     dependencies:
@@ -34669,8 +34189,6 @@ snapshots:
 
   tailwindcss@4.1.17: {}
 
-  tailwindcss@4.1.6: {}
-
   tapable@2.2.1: {}
 
   tar-stream@2.2.0:
@@ -35543,23 +35061,17 @@ snapshots:
       semver: 7.7.3
       typescript: 5.9.2
 
-  vue-tsc@2.2.12(typescript@5.8.3):
-    dependencies:
-      '@volar/typescript': 2.4.15
-      '@vue/language-core': 2.2.12(typescript@5.8.3)
-      typescript: 5.8.3
-
-  vue-tsc@2.2.12(typescript@5.9.2):
-    dependencies:
-      '@volar/typescript': 2.4.15
-      '@vue/language-core': 2.2.12(typescript@5.9.2)
-      typescript: 5.9.2
-
   vue-tsc@3.1.5(typescript@5.8.3):
     dependencies:
       '@volar/typescript': 2.4.23
       '@vue/language-core': 3.1.5(typescript@5.8.3)
       typescript: 5.8.3
+
+  vue-tsc@3.1.5(typescript@5.9.2):
+    dependencies:
+      '@volar/typescript': 2.4.23
+      '@vue/language-core': 3.1.5(typescript@5.9.2)
+      typescript: 5.9.2
 
   vue@3.5.25(typescript@5.8.3):
     dependencies:
@@ -35862,22 +35374,6 @@ snapshots:
       '@cloudflare/workerd-linux-64': 1.20251118.0
       '@cloudflare/workerd-linux-arm64': 1.20251118.0
       '@cloudflare/workerd-windows-64': 1.20251118.0
-
-  wrangler@4.40.2:
-    dependencies:
-      '@cloudflare/kv-asset-handler': 0.4.0
-      '@cloudflare/unenv-preset': 2.7.4(unenv@2.0.0-rc.21)(workerd@1.20250924.0)
-      blake3-wasm: 2.1.5
-      esbuild: 0.25.4
-      miniflare: 4.20250924.0
-      path-to-regexp: 6.3.0
-      unenv: 2.0.0-rc.21
-      workerd: 1.20250924.0
-    optionalDependencies:
-      fsevents: 2.3.3
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
 
   wrangler@4.49.1:
     dependencies:

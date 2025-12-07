@@ -15,7 +15,7 @@
     "@tanstack/solid-virtual": "^3.13.0",
     "postcss": "^8.5.1",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.15"
+    "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
     "vite-plugin-solid": "^2.11.10",

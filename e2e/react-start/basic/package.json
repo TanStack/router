@@ -44,7 +44,7 @@
     "combinate": "^1.1.11",
     "postcss": "^8.5.1",
     "srvx": "^0.8.6",
-    "tailwindcss": "^4.1.15",
+    "tailwindcss": "^4.1.17",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4",
