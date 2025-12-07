@@ -1,30 +1,19 @@
-import jsesc from 'jsesc'
+import { useRouter } from './useRouter'
 
-export function ScriptOnce({
-  children,
-  log,
-}: {
-  children: string
-  log?: boolean
-  sync?: boolean
-}) {
-  if (typeof document !== 'undefined') {
+/**
+ * Server-only helper to emit a script tag exactly once during SSR.
+ */
+export function ScriptOnce({ children }: { children: string }) {
+  const router = useRouter()
+  if (!router.isServer) {
     return null
   }
 
   return (
     <script
-      class="tsr-once"
-      innerHTML={[
-        children,
-        (log ?? true) && process.env.NODE_ENV === 'development'
-          ? `console.info(\`Injected From Server:
-${jsesc(children.toString(), { quotes: 'backtick' })}\`)`
-          : '',
-        'if (typeof __TSR_SSR__ !== "undefined") __TSR_SSR__.cleanScripts()',
-      ]
-        .filter(Boolean)
-        .join('\n')}
+      nonce={router.options.ssr?.nonce}
+      class="$tsr"
+      innerHTML={children + ';typeof $_TSR !== "undefined" && $_TSR.c()'}
     />
   )
 }
