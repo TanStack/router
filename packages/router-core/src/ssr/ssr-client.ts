@@ -13,6 +13,8 @@ declare global {
   interface Window {
     [GLOBAL_TSR]?: TsrSsrGlobal
     [GLOBAL_SEROVAL]?: any
+    // Vue sets this to true before TSR scripts run to defer cleanup until after hydration
+    $_TSR_DEFER?: boolean
   }
 }
 
@@ -31,6 +33,8 @@ export interface TsrSsrGlobal {
   hydrated?: boolean
   // stream has ended
   streamEnd?: boolean
+  // called by Vue after hydration to perform deferred cleanup
+  cleanup?: () => void
 }
 
 function hydrateMatch(

@@ -98,7 +98,8 @@ export function lazyRouteComponent<
     name: 'LazyRouteComponent',
     setup(props: any) {
       // Create refs to track component state
-      const component = Vue.ref<any>(comp)
+      // Use shallowRef for component to avoid making it reactive (Vue warning)
+      const component = Vue.shallowRef<any>(comp ? Vue.markRaw(comp) : comp)
       const errorState = Vue.ref<any>(error)
       const loading = Vue.ref(!component.value && !errorState.value)
 
@@ -109,7 +110,8 @@ export function lazyRouteComponent<
 
           load()
             .then((result) => {
-              component.value = result
+              // Use markRaw to prevent Vue from making the component reactive
+              component.value = result ? Vue.markRaw(result) : result
               loading.value = false
             })
             .catch((err) => {

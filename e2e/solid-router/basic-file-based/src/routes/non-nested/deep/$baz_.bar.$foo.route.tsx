@@ -1,6 +1,6 @@
 import { Outlet, createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createFileRoute('/non-nested/deep/$baz_/bar/$foo')({
+export const Route = createFileRoute('/non-nested/deep/$baz/bar/$foo')({
   component: RouteComponent,
 })
 
