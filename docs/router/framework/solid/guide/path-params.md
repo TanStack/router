@@ -7,9 +7,9 @@ replace:
     '{ fileName } = Route.useParams()': 'params = Route.useParams',
     '{ userId } = Route.useParams()': 'params = Route.useParams',
     '{ _splat } = Route.useParams()': 'params = Route.useParams',
-    '{postId}': '{params.postId()}',
-    '{userId}': '{params.userId()}',
-    '{fileName}': '{params.userId()}',
-    '{_splat}': '{params._splat()}',
+    '{postId}': '{params().postId}',
+    '{userId}': '{params().userId}',
+    '{fileName}': '{params().userId}',
+    '{_splat}': '{params()._splat}',
   }
 ---
