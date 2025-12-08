@@ -1,12 +1,12 @@
 {
   "name": "@tanstack/react-start",
-  "version": "1.133.2",
+  "version": "1.140.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TanStack/router.git",
+    "url": "git+https://github.com/TanStack/router.git",
     "directory": "packages/react-start"
   },
   "homepage": "https://tanstack.com/start",
@@ -60,6 +60,12 @@
       "import": {
         "types": "./dist/esm/server-rpc.d.ts",
         "default": "./dist/esm/server-rpc.js"
+      }
+    },
+    "./ssr-rpc": {
+      "import": {
+        "types": "./dist/esm/ssr-rpc.d.ts",
+        "default": "./dist/esm/ssr-rpc.js"
       }
     },
     "./plugin/vite": {

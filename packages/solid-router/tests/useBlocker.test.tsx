@@ -7,6 +7,7 @@ import { createSignal } from 'solid-js'
 import {
   Block,
   RouterProvider,
+  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -491,5 +492,155 @@ describe('useBlocker', () => {
     ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts')
+  })
+
+  test('should allow navigation from 404 page when blocker is active', async () => {
+    const rootRoute = createRootRoute({
+      notFoundComponent: function NotFoundComponent() {
+        const navigate = useNavigate()
+
+        useBlocker({ shouldBlockFn: () => true })
+
+        return (
+          <>
+            <h1>Not Found</h1>
+            <button onClick={() => navigate({ to: '/' })}>Go Home</button>
+            <button onClick={() => navigate({ to: '/posts' })}>
+              Go to Posts
+            </button>
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+          </>
+        )
+      },
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => {
+        return (
+          <>
+            <h1>Posts</h1>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    await router.navigate({ to: '/non-existent' as any })
+
+    expect(
+      await screen.findByRole('heading', { name: 'Not Found' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/non-existent')
+
+    const homeButton = await screen.findByRole('button', { name: 'Go Home' })
+    fireEvent.click(homeButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/')
+  })
+
+  test('should handle blocker navigation from 404 to another 404', async () => {
+    const rootRoute = createRootRoute({
+      notFoundComponent: function NotFoundComponent() {
+        const navigate = useNavigate()
+
+        useBlocker({ shouldBlockFn: () => true })
+
+        return (
+          <>
+            <h1>Not Found</h1>
+            <button onClick={() => navigate({ to: '/another-404' as any })}>
+              Go to Another 404
+            </button>
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    await router.navigate({ to: '/non-existent' })
+
+    expect(
+      await screen.findByRole('heading', { name: 'Not Found' }),
+    ).toBeInTheDocument()
+
+    const anotherButton = await screen.findByRole('button', {
+      name: 'Go to Another 404',
+    })
+    fireEvent.click(anotherButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Not Found' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/non-existent')
+  })
+
+  test('navigate function should handle external URLs with ignoreBlocker', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home</div>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+    })
+
+    await expect(
+      router.navigate({
+        to: 'https://example.com',
+        ignoreBlocker: true,
+      }),
+    ).resolves.toBeUndefined()
+
+    await expect(
+      router.navigate({
+        to: 'https://example.com',
+      }),
+    ).resolves.toBeUndefined()
   })
 })

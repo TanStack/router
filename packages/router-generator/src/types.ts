@@ -4,6 +4,7 @@ export type RouteNode = {
   variableName: string
   _fsRouteType: FsRouteType
   routePath?: string
+  originalRoutePath?: string
   cleanedPath?: string
   path?: string
   isNonPath?: boolean
@@ -13,6 +14,7 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
   createFileRouteProps?: Set<string>
+  _isExperimentalNonNestedRoute?: boolean
 }
 
 export interface GetRouteNodesResult {
@@ -31,10 +33,12 @@ export type FsRouteType =
   | 'component' // @deprecated
   | 'pendingComponent' // @deprecated
   | 'errorComponent' // @deprecated
+  | 'notFoundComponent' // @deprecated
 
 export type RouteSubNode = {
   component?: RouteNode
   errorComponent?: RouteNode
+  notFoundComponent?: RouteNode
   pendingComponent?: RouteNode
   loader?: RouteNode
   lazy?: RouteNode

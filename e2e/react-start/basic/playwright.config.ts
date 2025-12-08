@@ -4,10 +4,12 @@ import {
   getTestServerPort,
 } from '@tanstack/router-e2e-utils'
 import { isSpaMode } from './tests/utils/isSpaMode'
+import { isPrerender } from './tests/utils/isPrerender'
+import { isPreview } from './tests/utils/isPreview'
 import packageJson from './package.json' with { type: 'json' }
 
 const PORT = await getTestServerPort(
-  `${packageJson.name}${isSpaMode ? '_spa' : ''}`,
+  `${packageJson.name}${isSpaMode ? '_spa' : ''}${isPreview ? '_preview' : ''}`,
 )
 const START_PORT = await getTestServerPort(
   `${packageJson.name}${isSpaMode ? '_spa_start' : ''}`,
@@ -16,8 +18,18 @@ const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 const spaModeCommand = `pnpm build:spa && pnpm start:spa`
 const ssrModeCommand = `pnpm build && pnpm start`
+const prerenderModeCommand = `pnpm run test:e2e:startDummyServer && pnpm build:prerender && pnpm run test:e2e:stopDummyServer && pnpm start`
+const previewModeCommand = `pnpm build && pnpm preview --port ${PORT}`
 
+const getCommand = () => {
+  if (isSpaMode) return spaModeCommand
+  if (isPrerender) return prerenderModeCommand
+  if (isPreview) return previewModeCommand
+  return ssrModeCommand
+}
 console.log('running in spa mode: ', isSpaMode.toString())
+console.log('running in prerender mode: ', isPrerender.toString())
+console.log('running in preview mode: ', isPreview.toString())
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -35,7 +47,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: isSpaMode ? spaModeCommand : ssrModeCommand,
+    command: getCommand(),
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

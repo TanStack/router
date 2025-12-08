@@ -11,7 +11,7 @@ React Location and TanStack Router share much of same design decisions concepts,
 - React Location uses _generics_ to infer types for routes, while TanStack Router uses _module declaration merging_ to infer types.
 - Route configuration in React Location is done using a single array of route definitions, while in TanStack Router, route configuration is done using a tree of route definitions starting with the [root route](../routing/routing-concepts.md#the-root-route).
 - [File-based routing](../routing/file-based-routing.md) is the recommended way to define routes in TanStack Router, while React Location only allows you to define routes in a single file using a code-based approach.
-  - TanStack Router does support a [code-based approach](../routing/code-based-routing.md) to defining routes, but it is not recommended for most use cases. You can read more about why, over here: [why is file-based routing the preferred way to define routes?](../decisions-on-dx.md#3-why-is-file-based-routing-the-preferred-way-to-define-routes)
+  - TanStack Router does support a [code-based approach](../routing/code-based-routing.md) to defining routes, but it is not recommended for most use cases. You can read more about why, over here: [why is file-based routing the preferred way to define routes?](../decisions-on-dx.md#why-is-file-based-routing-the-preferred-way-to-define-routes)
 
 ## Migration guide
 
@@ -70,7 +70,7 @@ Create a `tsr.config.json` file in the root of your project with the following c
 }
 ```
 
-You can find the full list of options for the `tsr.config.json` file [here](../../../api/file-based-routing.md).
+You can find the full list of options for the `tsr.config.json` file [here](../routing/file-based-routing.md).
 
 ### Step 4: Create the routes directory
 

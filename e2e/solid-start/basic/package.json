@@ -8,11 +8,17 @@
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
     "build:spa": "MODE=spa vite build && tsc --noEmit",
-    "start": "pnpx srvx --prod -s ../client  dist/server/server.js",
+    "build:prerender": "MODE=prerender vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "start:spa": "node server.js",
+    "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' &",
+    "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
     "test:e2e:spaMode": "rm -rf port*.txt; MODE=spa playwright test --project=chromium",
     "test:e2e:ssrMode": "rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e": "pnpm run test:e2e:spaMode && pnpm run test:e2e:ssrMode"
+    "test:e2e:prerender": "rm -rf port*.txt; MODE=prerender playwright test --project=chromium",
+    "test:e2e:preview": "rm -rf port*.txt; MODE=preview playwright test --project=chromium",
+    "test:e2e": "pnpm run test:e2e:spaMode && pnpm run test:e2e:ssrMode && pnpm run test:e2e:prerender && pnpm run test:e2e:preview"
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
@@ -20,23 +26,25 @@
     "@tanstack/solid-start": "workspace:^",
     "express": "^5.1.0",
     "http-proxy-middleware": "^3.0.5",
+    "js-cookie": "^3.0.5",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.5",
+    "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0",
     "vite": "^7.1.7",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
+    "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/router-e2e-utils": "workspace:^",
+    "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.10.2",
-    "autoprefixer": "^10.4.20",
     "combinate": "^1.1.11",
     "postcss": "^8.5.1",
     "srvx": "^0.8.6",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.1.17",
     "typescript": "^5.7.2",
-    "vite-plugin-solid": "^2.11.8",
+    "vite-plugin-solid": "^2.11.10",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

@@ -23,8 +23,9 @@ vibe-rules install cursor
 
 `vibe-rules` supports a variety of editors, including `windsurf`, `claude-code`, and more. For more information on supported editors and how to set them up, refer to the [`vibe-rules` documentation](https://github.com/FutureExcited/vibe-rules).
 
-> [!IMPORTANT] If you're using [Yarn Workspaces](https://yarnpkg.com/features/workspaces), you will need to add the following configuration to your `.yarnrc.yaml` file of your application that uses TanStack Router:
->
+> [!IMPORTANT]
+> If you're using [Yarn Workspaces](https://yarnpkg.com/features/workspaces), you will need to add the following configuration to your `.yarnrc.yaml` file of your application that uses TanStack Router:
+
 > ```yaml
 > pnpFallbackMode: all
 > pnpMode: loose

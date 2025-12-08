@@ -111,6 +111,8 @@ const handleRedirectAndNotFound = (
 
     const status = isRedirect(err) ? 'redirected' : 'notFound'
 
+    match._nonReactive.error = err
+
     inner.updateMatch(match.id, (prev) => ({
       ...prev,
       status,
@@ -211,7 +213,7 @@ const isBeforeLoadSsr = (
 
   // in SPA mode, only SSR the root route
   if (inner.router.isShell()) {
-    existingMatch.ssr = matchId === rootRouteId
+    existingMatch.ssr = route.id === rootRouteId
     return
   }
 
@@ -560,8 +562,22 @@ const getLoaderContext = (
   route: AnyRoute,
 ): LoaderFnContext => {
   const parentMatchPromise = inner.matchPromises[index - 1] as any
-  const { params, loaderDeps, abortController, context, cause } =
+  const { params, loaderDeps, abortController, cause } =
     inner.router.getMatch(matchId)!
+
+  let context = inner.router.options.context ?? {}
+
+  for (let i = 0; i <= index; i++) {
+    const innerMatch = inner.matches[i]
+    if (!innerMatch) continue
+    const m = inner.router.getMatch(innerMatch.id)
+    if (!m) continue
+    context = {
+      ...context,
+      ...(m.__routeContext ?? {}),
+      ...(m.__beforeLoadContext ?? {}),
+    }
+  }
 
   const preload = resolvePreload(inner, matchId)
 
@@ -673,6 +689,10 @@ const runLoader = async (
       const pendingPromise = match._nonReactive.minPendingPromise
       if (pendingPromise) await pendingPromise
 
+      if (isNotFound(e)) {
+        await (route.options.notFoundComponent as any)?.preload?.()
+      }
+
       handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), e)
 
       try {
@@ -746,8 +766,9 @@ const loadRouteMatch = async (
       }
       await prevMatch._nonReactive.loaderPromise
       const match = inner.router.getMatch(matchId)!
-      if (match.error) {
-        handleRedirectAndNotFound(inner, match, match.error)
+      const error = match._nonReactive.error || match.error
+      if (error) {
+        handleRedirectAndNotFound(inner, match, error)
       }
     } else {
       // This is where all of the stale-while-revalidate magic happens

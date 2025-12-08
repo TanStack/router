@@ -7,6 +7,14 @@ import type {
   RouterOptions,
 } from '@tanstack/router-core'
 
+/**
+ * Low-level provider that places the router into React context and optionally
+ * updates router options from props. Most apps should use `RouterProvider`.
+ */
+/**
+ * Low-level provider that places the router into React context and optionally
+ * updates router options from props. Most apps should use `RouterProvider`.
+ */
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,
@@ -44,6 +52,20 @@ export function RouterContextProvider<
   return provider
 }
 
+/**
+ * Top-level component that renders the active route matches and provides the
+ * router to the React tree via context.
+ *
+ * Accepts the same options as `createRouter` via props to update the router
+ * instance after creation.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouterFunction
+ */
+/**
+ * Top-level component that renders the active route matches and provides the
+ * router to the React tree via context. Accepts the same options as
+ * `createRouter` via props to update the router instance.
+ */
 export function RouterProvider<
   TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,

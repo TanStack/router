@@ -1,6 +1,17 @@
-# TanStack Start example
+# TanStack Start example with Paraglide
 
-This example shows how to use Paraglide with TanStack Start. The source code can be found [here](https://github.com/opral/monorepo/tree/main/inlang/packages/paraglide/paraglide-js/examples/tanstack-start).
+This example shows how to use Paraglide with TanStack Start. The source code can be found [in the Paraglide monorepo](https://github.com/opral/monorepo/tree/main/inlang/packages/paraglide/paraglide-js/examples/tanstack-start).
+
+- [TanStack Router Docs](https://tanstack.com/router)
+- [Paraglide Documentation](https://inlang.com/m/gerre34r/library-inlang-paraglideJs)
+
+## Start a new project based on this example
+
+To start a new project based on this example, run:
+
+```sh
+npx gitpick TanStack/router/tree/main/examples/react/start-i18n-paraglide start-i18n-paraglide
+```
 
 ## Getting started
 
@@ -19,12 +30,12 @@ import react from '@vitejs/plugin-react'
 +import { paraglideVitePlugin } from "@inlang/paraglide-js";
 
 export default defineConfig({
-	plugins: [
+       plugins: [
     tanstackStart(),
     react(),
-+		paraglideVitePlugin({
-+			project: "./project.inlang",
-+			outdir: "./app/paraglide",
++              paraglideVitePlugin({
++                      project: "./project.inlang",
++                      outdir: "./app/paraglide",
 +     outputStructure: "message-modules",
 +     cookieName: "PARAGLIDE_LOCALE",
 +     strategy: ["url", "cookie", "preferredLanguage", "baseLocale"],
@@ -36,8 +47,8 @@ export default defineConfig({
 +         ],
 +       },
 +     ],
-+		}),
-	],
++              }),
+       ],
 });
 ```
 
@@ -68,7 +79,6 @@ In `server.ts` intercept the request with the paraglideMiddleware.
 ```ts
 import { paraglideMiddleware } from './paraglide/server.js'
 import handler from '@tanstack/react-start/server-entry'
-
 export default {
   fetch(req: Request): Promise<Response> {
     return paraglideMiddleware(req, ({ request }) => handler.fetch(request))
@@ -76,7 +86,7 @@ export default {
 }
 ```
 
-In `__root.tsx` add change the html lang attribute to the current locale.
+In `__root.tsx` change the html lang attribute to the current locale.
 
 ```tsx
 import { getLocale } from '../paraglide/runtime.js'
@@ -178,15 +188,14 @@ export const translatedPathnames = createTranslatedPathnames({
 })
 ```
 
-And import into the Paraglide Vite plguin.
+And import into the Paraglide Vite plugin.
 
-# Prerender routes
+## Prerender routes
 
-You can use use the `localizeHref` function to map the routes to localized versions and import into the pages option in the TanStack Start plugin. For this to work you will need to compile paraglide before the build with the CLI.
+You can use the `localizeHref` function to map the routes to localized versions and import into the pages option in the TanStack Start plugin. For this to work you will need to compile paraglide before the build with the CLI.
 
 ```ts
 import { localizeHref } from './paraglide/runtime'
-
 export const prerenderRoutes = ['/', '/about'].map((path) => ({
   path: localizeHref(path),
   prerender: {
@@ -194,3 +203,12 @@ export const prerenderRoutes = ['/', '/about'].map((path) => ({
   },
 }))
 ```
+
+## About This Example
+
+This example demonstrates:
+
+- Multi-language support with Paraglide in TanStack Start
+- Server-side translation
+- Type-safe translations
+- Locale-based routing

@@ -3,7 +3,7 @@ id: reading-and-writing-file
 title: Building a Full Stack DevJokes App with TanStack Start
 ---
 
-This tutorial will guide you through building a complete full-stack application using TanStack Start. You'll create a DevJokesapp where users can view and add developer-themed jokes, demonstrating key concepts of TanStack Start including server functions, file-based data storage, and React components.
+This tutorial will guide you through building a complete full-stack application using TanStack Start. You'll create a DevJokes app where users can view and add developer-themed jokes, demonstrating key concepts of TanStack Start including server functions, file-based data storage, and React components.
 
 Here's a demo of the app in action:
 
@@ -35,7 +35,7 @@ The complete code for this tutorial is available on [GitHub](https://github.com/
 First, let's create a new TanStack Start project:
 
 ```bash
-pnpx create-start-app devjokes
+pnpm create @tanstack/start@latest devjokes
 cd devjokes
 ```
 
@@ -50,12 +50,11 @@ pnpm i
 pnpm dev
 ```
 
-For this project, we'll need a few additional packages:
+For this project, we'll need the `uuid` package:
 
 ```bash
 # Install uuid for generating unique IDs
 pnpm add uuid
-pnpm add -D @types/uuid
 ```
 
 ## Understanding the project structure
@@ -66,35 +65,29 @@ At this point, the project structure should look like this -
 /devjokes
 ├── src/
 │   ├── routes/
+│   │   ├── demo/                         # Demo routes
 │   │   ├── __root.tsx                    # Root layout
-│   │   ├── index.tsx                     # Home page
-│   │   ├── demo.start.server-funcs.tsx   # Demo server functions
-│   │   └── demo.start.api-request.tsx    # Demo API request
-│   ├── api/                              # API endpoints
+│   │   └── index.tsx                     # Home page
 │   ├── components/                       # React components
-│   ├── api.ts                            # API handler.
-│   ├── client.tsx                        # Client entry point
+│   ├── data/                             # Data files
 │   ├── router.tsx                        # Router configuration
 │   ├── routeTree.gen.ts                  # Generated route tree
-│   ├── ssr.tsx                           # Server-side rendering
 │   └── styles.css                        # Global styles
 ├── public/                               # Static assets
-├── vite.config.ts                         # TanStack Start configuration
+├── vite.config.ts                        # TanStack Start configuration
 ├── package.json                          # Project dependencies
 └── tsconfig.json                         # TypeScript configuration
 ```
 
 This structure might seem overwhelming at first, but here are the key files you need to focus on:
 
-1. `router.tsx` - Sets up routing for your application
+1. `src/router.tsx` - Sets up routing for your application
 2. `src/routes/__root.tsx` - The root layout component where you can add global styles and components
 3. `src/routes/index.tsx` - Your home page
-4. `client.tsx` - Client-side entry point
-5. `ssr.tsx` - Handles server-side rendering
 
 Once your project is set up, you can access your app at `localhost:3000`. You should see the default TanStack Start welcome page.
 
-At this point, your app will look like this -
+At this point, your app will look like this:
 
 ![TanStack Start Welcome Page After Setup](https://raw.githubusercontent.com/TanStack/router/main/docs/router/assets/reading-writing-file-setup.png)
 
@@ -104,10 +97,9 @@ Let's start by creating a file-based storage system for our jokes.
 
 ### Step 1.1: Create a JSON File with Jokes
 
-Let's set up a list of jokes that we can use to render on the page. Create a `data` directory in your project root and a `jokes.json` file within it:
+Let's set up a list of jokes that we can use to render on the page. Create a `jokes.json` file within `src/data`:
 
 ```bash
-mkdir -p src/data
 touch src/data/jokes.json
 ```
 
@@ -214,10 +206,10 @@ export function JokesList({ jokes }: JokesListProps) {
 }
 ```
 
-Now let's call our server function inside `App.jsx` using TanStack Router which already comes with TanStack Start!
+Now let's call our server function inside `index.tsx` using TanStack Router which already comes with TanStack Start!
 
 ```jsx
-// App.jsx
+// src/routes/index.tsx
 import { createFileRoute } from '@tanstack/react-router'
 import { getJokes } from './serverActions/jokesActions'
 import { JokesList } from './JokesList'
@@ -234,8 +226,8 @@ const App = () => {
   const jokes = Route.useLoaderData() || []
 
   return (
-    <div className="p-4 flex flex-col">
-      <h1 className="text-2xl">DevJokes</h1>
+    <div className="max-w-2xl mx-auto py-12 px-4 space-y-6">
+      <h1 className="text-4xl font-bold text-center mb-10">DevJokes</h1>
       <JokesList jokes={jokes} />
     </div>
   )
@@ -246,7 +238,7 @@ When the page loads, `jokes` will have data from the `jokes.json` file already!
 
 With a little Tailwind styling, the app should look like this:
 
-![DevJoke App with 5 DevJokes](https://raw.githubusercontent.com/TanStack/router/main/docs/router/assets/reading-writing-file-devjokes-1.jpg)
+![DevJoke App with 5 DevJokes](https://raw.githubusercontent.com/TanStack/router/main/docs/router/assets/reading-writing-file-devjokes-1.png)
 
 ## Step 2: Writing Data to a File
 
@@ -263,6 +255,14 @@ import * as fs from 'node:fs'
 import { v4 as uuidv4 } from 'uuid' // Add this import
 import type { Joke, JokesData } from '../types'
 
+const JOKES_FILE = 'src/data/jokes.json'
+
+export const getJokes = createServerFn({ method: 'GET' }).handler(async () => {
+  const jokes = await fs.promises.readFile(JOKES_FILE, 'utf-8')
+  return JSON.parse(jokes) as JokesData
+})
+
+// Add this new server function
 export const addJoke = createServerFn({ method: 'POST' })
   .inputValidator((data: { question: string; answer: string }) => {
     // Validate input data
@@ -331,7 +331,7 @@ export function JokeForm() {
   const [error, setError] = useState<string | null>(null)
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-row gap-2 mb-6">
+    <form onSubmit={handleSubmit} className="mb-8">
       {error && (
         <div className="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>
       )}
@@ -377,8 +377,8 @@ Now, let's wire the form up to our `addJoke` server function in the `handleSubmi
 ```tsx
 //JokeForm.tsx
 import { useState } from 'react'
-import { addJoke } from '../serverActions/jokesActions'
 import { useRouter } from '@tanstack/react-router'
+import { addJoke } from '../serverActions/jokesActions'
 
 export function JokeForm() {
   const router = useRouter()
@@ -410,41 +410,44 @@ export function JokeForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-row gap-2 mb-6">
+    <form onSubmit={handleSubmit} className="mb-8">
       {error && (
         <div className="bg-red-100 text-red-700 p-2 rounded mb-4">{error}</div>
       )}
-      <input
-        type="text"
-        name="question"
-        placeholder="Question"
-        className="p-1 border rounded w-full"
-        required
-        onChange={(e) => setQuestion(e.target.value)}
-        value={question}
-      />
-      <input
-        type="text"
-        name="answer"
-        placeholder="Answer"
-        className="p-1 border rounded w-full"
-        required
-        onChange={(e) => setAnswer(e.target.value)}
-        value={answer}
-      />
-      <button
-        className="bg-blue-500 text-white p-1 rounded hover:bg-blue-600"
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? 'Adding...' : 'Add Joke'}
-      </button>
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+        <input
+          id="question"
+          type="text"
+          placeholder="Enter joke question"
+          className="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          required
+        />
+        <input
+          id="answer"
+          type="text"
+          placeholder="Enter joke answer"
+          className="w-full p-2 border rounded focus:ring focus:ring-blue-300 flex-1 py-4"
+          value={answer}
+          onChange={(e) => setAnswer(e.target.value)}
+          required
+        />
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-medium rounded disabled:opacity-50 px-4"
+        >
+          {isSubmitting ? 'Adding...' : 'Add Joke'}
+        </button>
+      </div>
     </form>
   )
 }
 ```
 
 With this, our UI should look like this:
-![DevJoke App with Form to Add Jokes](https://raw.githubusercontent.com/TanStack/router/main/docs/router/assets/reading-writing-file-devjokes-2.jpg)
+![DevJoke App with Form to Add Jokes](https://raw.githubusercontent.com/TanStack/router/main/docs/router/assets/reading-writing-file-devjokes-2.png)
 
 ## Understanding How It All Works Together
 

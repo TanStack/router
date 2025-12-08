@@ -38,6 +38,6 @@ export const ShallowErrorPlugin = /* @__PURE__ */ createPlugin<
     return 'new Error(' + ctx.serialize(node.message) + ')'
   },
   deserialize(node, ctx) {
-    return new Error(ctx.deserialize(node.message) as string)
+    return new Error(ctx.deserialize(node.message))
   },
 })

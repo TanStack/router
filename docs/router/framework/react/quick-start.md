@@ -18,7 +18,8 @@ Before installing TanStack router, please ensure your project meets the followin
 
 [//]: # 'Requirements'
 
-> [!NOTE] Using TypeScript (`v5.3.x or higher`) is recommended for the best development experience, though not strictly required. We aim to support the last 5 minor versions of TypeScript, but using the latest version will help avoid potential issues.
+> [!NOTE]
+> Using TypeScript (`v5.3.x or higher`) is recommended for the best development experience, though not strictly required. We aim to support the last 5 minor versions of TypeScript, but using the latest version will help avoid potential issues.
 
 TanStack Router is currently only compatible with React (with ReactDOM) and Solid. If you're interested in contributing to support other frameworks, such as React Native, Angular, or Vue, please reach out to us on [Discord](https://tlinz.com/discord).
 
@@ -29,20 +30,20 @@ To install TanStack Router in your project, run the following command using your
 [//]: # 'installCommand'
 
 ```sh
-npm install @tanstack/router
+npm install @tanstack/react-router
 # or
-pnpm add @tanstack/router
+pnpm add @tanstack/react-router
 #or
-yarn add @tanstack/router
+yarn add @tanstack/react-router
 # or
-bun add @tanstack/router
+bun add @tanstack/react-router
 # or
-deno add npm:@tanstack/router
+deno add npm:@tanstack/react-router
 ```
 
 [//]: # 'installCommand'
 
-Once installed, you can verify the installation by checking your `package.json` file for the `@tanstack/router` dependency.
+Once installed, you can verify the installation by checking your `package.json` file for the dependency.
 
 [//]: # 'packageJson'
 
@@ -60,7 +61,8 @@ Once installed, you can verify the installation by checking your `package.json` 
 
 To quickly scaffold a new project with TanStack Router, you can use the `create-tsrouter-app` command-line tool. This tool sets up a new React application with TanStack Router pre-configured, allowing you to get started quickly.
 
-> [!TIP] For full details on available options and templates, visit the [`create-tsrouter-app` documentation](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app).
+> [!TIP]
+> For full details on available options and templates, visit the [`create-tsrouter-app` documentation](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app).
 
 To create a new project, run the following command in your terminal:
 

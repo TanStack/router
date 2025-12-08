@@ -17,7 +17,7 @@ import type {
 import type { FsRouteType, GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 
-const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
+const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx|vue)/
 
 const virtualConfigFileRegExp = /__virtual\.[mc]?[jt]s$/
 export function isVirtualConfigFile(fileName: string): boolean {
@@ -34,6 +34,7 @@ export async function getRouteNodes(
     | 'disableLogging'
     | 'routeToken'
     | 'indexToken'
+    | 'experimental'
   >,
   root: string,
 ): Promise<GetRouteNodesResult> {
@@ -128,13 +129,24 @@ export async function getRouteNodes(
 
         if (dirent.isDirectory()) {
           await recurse(relativePath)
-        } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
+        } else if (fullPath.match(/\.(tsx|ts|jsx|js|vue)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
-          let routePath = determineInitialRoutePath(filePathNoExt)
+          const {
+            routePath: initialRoutePath,
+            originalRoutePath: initialOriginalRoutePath,
+            isExperimentalNonNestedRoute,
+          } = determineInitialRoutePath(filePathNoExt, config)
+
+          let routePath = initialRoutePath
+          let originalRoutePath = initialOriginalRoutePath
 
           if (routeFilePrefix) {
             routePath = routePath.replaceAll(routeFilePrefix, '')
+            originalRoutePath = originalRoutePath.replaceAll(
+              routeFilePrefix,
+              '',
+            )
           }
 
           if (disallowedRouteGroupConfiguration.test(dirent.name)) {
@@ -149,6 +161,7 @@ export async function getRouteNodes(
 
           if (routeType === 'lazy') {
             routePath = routePath.replace(/\/lazy$/, '')
+            originalRoutePath = originalRoutePath.replace(/\/lazy$/, '')
           }
 
           // this check needs to happen after the lazy route has been cleaned up
@@ -157,24 +170,37 @@ export async function getRouteNodes(
             routeType = 'pathless_layout'
           }
 
-          ;(
-            [
-              ['component', 'component'],
-              ['errorComponent', 'errorComponent'],
-              ['pendingComponent', 'pendingComponent'],
-              ['loader', 'loader'],
-            ] satisfies Array<[FsRouteType, string]>
-          ).forEach(([matcher, type]) => {
-            if (routeType === matcher) {
-              logger.warn(
-                `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
-              )
-            }
-          })
+          // Only show deprecation warning for .tsx/.ts files, not .vue files
+          // Vue files using .component.vue is the Vue-native way
+          const isVueFile = filePath.endsWith('.vue')
+          if (!isVueFile) {
+            ;(
+              [
+                ['component', 'component'],
+                ['errorComponent', 'errorComponent'],
+                ['notFoundComponent', 'notFoundComponent'],
+                ['pendingComponent', 'pendingComponent'],
+                ['loader', 'loader'],
+              ] satisfies Array<[FsRouteType, string]>
+            ).forEach(([matcher, type]) => {
+              if (routeType === matcher) {
+                logger.warn(
+                  `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
+                )
+              }
+            })
+          }
 
           routePath = routePath.replace(
             new RegExp(
-              `/(component|errorComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
+              `/(component|errorComponent|notFoundComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
+            ),
+            '',
+          )
+
+          originalRoutePath = originalRoutePath.replace(
+            new RegExp(
+              `/(component|errorComponent|notFoundComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
             ),
             '',
           )
@@ -183,8 +209,18 @@ export async function getRouteNodes(
             routePath = '/'
           }
 
+          if (originalRoutePath === config.indexToken) {
+            originalRoutePath = '/'
+          }
+
           routePath =
             routePath.replace(new RegExp(`/${config.indexToken}$`), '/') || '/'
+
+          originalRoutePath =
+            originalRoutePath.replace(
+              new RegExp(`/${config.indexToken}$`),
+              '/',
+            ) || '/'
 
           routeNodes.push({
             filePath,
@@ -192,6 +228,8 @@ export async function getRouteNodes(
             routePath,
             variableName,
             _fsRouteType: routeType,
+            _isExperimentalNonNestedRoute: isExperimentalNonNestedRoute,
+            originalRoutePath,
           })
         }
       }),
@@ -202,7 +240,20 @@ export async function getRouteNodes(
 
   await recurse('./')
 
-  const rootRouteNode = routeNodes.find((d) => d.routePath === `/${rootPathId}`)
+  // Find the root route node - prefer the actual route file over component/loader files
+  const rootRouteNode =
+    routeNodes.find(
+      (d) =>
+        d.routePath === `/${rootPathId}` &&
+        ![
+          'component',
+          'errorComponent',
+          'notFoundComponent',
+          'pendingComponent',
+          'loader',
+          'lazy',
+        ].includes(d._fsRouteType),
+    ) ?? routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
     rootRouteNode._fsRouteType = '__root'
     rootRouteNode.variableName = 'root'
@@ -238,6 +289,7 @@ export function getRouteMeta(
     | 'component'
     | 'pendingComponent'
     | 'errorComponent'
+    | 'notFoundComponent'
   >
   variableName: string
 } {
@@ -261,6 +313,9 @@ export function getRouteMeta(
   } else if (routePath.endsWith('/errorComponent')) {
     // error component routes, i.e. `/foo.errorComponent.tsx`
     fsRouteType = 'errorComponent'
+  } else if (routePath.endsWith('/notFoundComponent')) {
+    // not found component routes, i.e. `/foo.notFoundComponent.tsx`
+    fsRouteType = 'notFoundComponent'
   }
 
   const variableName = routePathToVariable(routePath)

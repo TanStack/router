@@ -1,33 +1,43 @@
-import { existsSync, promises as fsp, rmSync } from 'node:fs'
-import { pathToFileURL } from 'node:url'
+import { promises as fsp } from 'node:fs'
 import os from 'node:os'
 import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { createLogger } from './utils'
 import { Queue } from './queue'
-import type { Rollup, ViteBuilder } from 'vite'
+import type { PreviewServer, ResolvedConfig, ViteBuilder } from 'vite'
 import type { Page, TanStackStartOutputConfig } from './schema'
 
 export async function prerender({
   startConfig,
   builder,
-  serverBundle,
 }: {
   startConfig: TanStackStartOutputConfig
   builder: ViteBuilder
-  serverBundle: Rollup.OutputBundle
 }) {
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
 
-  // If prerender is enabled but no pages are provided, default to prerendering the root page
-  if (startConfig.prerender?.enabled && !startConfig.pages.length) {
-    startConfig.pages = [
-      {
-        path: '/',
-      },
-    ]
+  // If prerender is enabled
+  if (startConfig.prerender?.enabled) {
+    // default to root page if no pages are defined
+    let pages = startConfig.pages.length ? startConfig.pages : [{ path: '/' }]
+
+    if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
+      // merge discovered static pages with user-defined pages
+      const pagesMap = new Map(pages.map((item) => [item.path, item]))
+      const discoveredPages = globalThis.TSS_PRERENDABLE_PATHS || []
+
+      for (const page of discoveredPages) {
+        if (!pagesMap.has(page.path)) {
+          pagesMap.set(page.path, page)
+        }
+      }
+
+      pages = Array.from(pagesMap.values())
+    }
+
+    startConfig.pages = pages
   }
 
   const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
@@ -47,31 +57,35 @@ export async function prerender({
 
   const outputDir = clientEnv.config.build.outDir
 
-  const entryFile = findEntryFileInBundle(serverBundle)
-  let fullEntryFilePath = path.join(serverEnv.config.build.outDir, entryFile)
   process.env.TSS_PRERENDERING = 'true'
 
-  if (!existsSync(fullEntryFilePath)) {
-    // if the file does not exist, we need to write the bundle to a temporary directory
-    // this can happen e.g. with nitro that postprocesses the bundle and thus does not write SSR build to disk
-    const bundleOutputDir = path.resolve(
-      serverEnv.config.root,
-      '.tanstack',
-      'start',
-      'prerender',
-    )
-    rmSync(bundleOutputDir, { recursive: true, force: true })
-    await writeBundleToDisk({ bundle: serverBundle, outDir: bundleOutputDir })
-    fullEntryFilePath = path.join(bundleOutputDir, entryFile)
+  // Start Vite preview server instead of importing module
+  const previewServer = await startPreviewServer(serverEnv.config)
+  const baseUrl = getResolvedUrl(previewServer)
+
+  const isRedirectResponse = (res: Response) => {
+    return res.status >= 300 && res.status < 400 && res.headers.get('location')
   }
+  async function localFetch(
+    path: string,
+    options?: RequestInit,
+    maxRedirects: number = 5,
+  ): Promise<Response> {
+    const url = new URL(path, baseUrl)
+    const request = new Request(url, options)
+    const response = await fetch(request)
 
-  const { default: serverEntrypoint } = await import(
-    pathToFileURL(fullEntryFilePath).toString()
-  )
+    if (isRedirectResponse(response) && maxRedirects > 0) {
+      const location = response.headers.get('location')!
+      if (location.startsWith('http://localhost') || location.startsWith('/')) {
+        const newUrl = location.replace('http://localhost', '')
+        return localFetch(newUrl, options, maxRedirects - 1)
+      } else {
+        logger.warn(`Skipping redirect to external location: ${location}`)
+      }
+    }
 
-  function localFetch(path: string, options?: RequestInit): Promise<Response> {
-    const url = new URL(`http://localhost${path}`)
-    return serverEntrypoint.fetch(new Request(url, options))
+    return response
   }
 
   try {
@@ -84,6 +98,8 @@ export async function prerender({
     })
   } catch (error) {
     logger.error(error)
+  } finally {
+    await previewServer.close()
   }
 
   function extractLinks(html: string): Array<string> {
@@ -103,6 +119,7 @@ export async function prerender({
 
   async function prerenderPages({ outputDir }: { outputDir: string }) {
     const seen = new Set<string>()
+    const prerendered = new Set<string>()
     const retriesByPath = new Map<string, number>()
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
@@ -113,7 +130,7 @@ export async function prerender({
 
     await queue.start()
 
-    return Array.from(seen)
+    return Array.from(prerendered)
 
     function addCrawlPageTask(page: Page) {
       // Was the page already seen?
@@ -145,15 +162,21 @@ export async function prerender({
         const retries = retriesByPath.get(page.path) || 0
         try {
           // Fetch the route
-          const encodedRoute = encodeURI(page.path)
 
-          const res = await localFetch(withBase(encodedRoute, routerBasePath), {
-            headers: {
-              ...prerenderOptions.headers,
+          const res = await localFetch(
+            withBase(page.path, routerBasePath),
+            {
+              headers: {
+                ...(prerenderOptions.headers ?? {}),
+              },
             },
-          })
+            prerenderOptions.maxRedirects,
+          )
 
           if (!res.ok) {
+            if (isRedirectResponse(res)) {
+              logger.warn(`Max redirects reached for ${page.path}`)
+            }
             throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
               cause: res,
             })
@@ -167,16 +190,28 @@ export async function prerender({
           const contentType = res.headers.get('content-type') || ''
           const isImplicitHTML =
             !cleanPagePath.endsWith('.html') && contentType.includes('html')
-          // &&
-          // !JsonSigRx.test(dataBuff.subarray(0, 32).toString('utf8'))
+
           const routeWithIndex = cleanPagePath.endsWith('/')
             ? cleanPagePath + 'index'
             : cleanPagePath
 
-          const htmlPath =
-            cleanPagePath.endsWith('/') || prerenderOptions.autoSubfolderIndex
-              ? joinURL(cleanPagePath, 'index.html')
-              : cleanPagePath + '.html'
+          const isSpaShell =
+            startConfig.spa?.prerender.outputPath === cleanPagePath
+
+          let htmlPath: string
+          if (isSpaShell) {
+            // For SPA shell, ignore autoSubfolderIndex option
+            htmlPath = cleanPagePath + '.html'
+          } else {
+            if (
+              cleanPagePath.endsWith('/') ||
+              (prerenderOptions.autoSubfolderIndex ?? true)
+            ) {
+              htmlPath = joinURL(cleanPagePath, 'index.html')
+            } else {
+              htmlPath = cleanPagePath + '.html'
+            }
+          }
 
           const filename = withoutBase(
             isImplicitHTML ? htmlPath : routeWithIndex,
@@ -192,6 +227,8 @@ export async function prerender({
           })
 
           await fsp.writeFile(filepath, html)
+
+          prerendered.add(page.path)
 
           const newPage = await prerenderOptions.onSuccess?.({ page, html })
 
@@ -225,38 +262,35 @@ export async function prerender({
   }
 }
 
-function findEntryFileInBundle(bundle: Rollup.OutputBundle): string {
-  let entryFile: string | undefined
+async function startPreviewServer(
+  viteConfig: ResolvedConfig,
+): Promise<PreviewServer> {
+  const vite = await import('vite')
 
-  for (const [_name, file] of Object.entries(bundle)) {
-    if (file.type === 'chunk') {
-      if (file.isEntry) {
-        if (entryFile !== undefined) {
-          throw new Error(
-            `Multiple entry points found. Only one entry point is allowed.`,
-          )
-        }
-        entryFile = file.fileName
-      }
-    }
+  try {
+    return await vite.preview({
+      configFile: viteConfig.configFile,
+      preview: {
+        port: 0,
+        open: false,
+      },
+    })
+  } catch (error) {
+    throw new Error(
+      'Failed to start the Vite preview server for prerendering',
+      {
+        cause: error,
+      },
+    )
   }
-  if (entryFile === undefined) {
-    throw new Error(`No entry point found in the bundle.`)
-  }
-  return entryFile
 }
 
-export async function writeBundleToDisk({
-  bundle,
-  outDir,
-}: {
-  bundle: Rollup.OutputBundle
-  outDir: string
-}) {
-  for (const [fileName, asset] of Object.entries(bundle)) {
-    const fullPath = path.join(outDir, fileName)
-    const content = asset.type === 'asset' ? asset.source : asset.code
-    await fsp.mkdir(path.dirname(fullPath), { recursive: true })
-    await fsp.writeFile(fullPath, content)
+function getResolvedUrl(previewServer: PreviewServer): URL {
+  const baseUrl = previewServer.resolvedUrls?.local[0]
+
+  if (!baseUrl) {
+    throw new Error('No resolved URL is available from the Vite preview server')
   }
+
+  return new URL(baseUrl)
 }

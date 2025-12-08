@@ -4,7 +4,7 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](../guide/routing) guide.
+> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](./guide/routing) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 
@@ -22,7 +22,8 @@ cd myApp
 npm init -y
 ```
 
-> [!NOTE] > We use `npm` in all of these examples, but you can use your package manager of choice instead.
+> [!NOTE]
+> We use `npm` in all of these examples, but you can use your package manager of choice instead.
 
 ## TypeScript Configuration
 
@@ -42,7 +43,8 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 }
 ```
 
-> [!NOTE] > Enabling `verbatimModuleSyntax` can result in server bundles leaking into client bundles. It is recommended to keep this option disabled.
+> [!NOTE]
+> Enabling `verbatimModuleSyntax` can result in server bundles leaking into client bundles. It is recommended to keep this option disabled.
 
 ## Install Dependencies
 
@@ -154,13 +156,14 @@ Finally, we need to create the root of our application. This is the entry point 
 ```tsx
 // src/routes/__root.tsx
 /// <reference types="vite/client" />
-import type * as Solid from 'solid-js'
+import * as Solid from 'solid-js'
 import {
   Outlet,
   createRootRoute,
   HeadContent,
   Scripts,
 } from '@tanstack/solid-router'
+import { HydrationScript } from 'solid-js/web'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -190,11 +193,16 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: Solid.JSX.Element }>) {
   return (
-    <>
-      <HeadContent />
-      {children}
-      <Scripts />
-    </>
+    <html>
+      <head>
+        <HydrationScript />
+      </head>
+      <body>
+        <HeadContent />
+        <Solid.Suspense>{children}</Solid.Suspense>
+        <Scripts />
+      </body>
+    </html>
   )
 }
 ```
@@ -257,4 +265,4 @@ That's it! 🤯 You've now set up a TanStack Start project and written your firs
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
 
-You want to deploy your application? Check out the [hosting guide](../guide/hosting.md).
+You want to deploy your application? Check out the [hosting guide](./guide/hosting.md).

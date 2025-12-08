@@ -1,0 +1,32 @@
+{
+  "name": "tanstack-solid-start-example-basic-cloudflare",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "postinstall": "npm run cf-typegen"
+  },
+  "dependencies": {
+    "@tanstack/solid-router": "^1.140.0",
+    "@tanstack/solid-router-devtools": "^1.140.0",
+    "@tanstack/solid-start": "^1.140.0",
+    "solid-js": "^1.9.10"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.13.7",
+    "@tailwindcss/postcss": "^4.1.15",
+    "@types/node": "^22.5.4",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-plugin-solid": "^2.11.10",
+    "vite-tsconfig-paths": "^5.1.4",
+    "wrangler": "^4.49.1"
+  }
+}

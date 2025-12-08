@@ -105,7 +105,7 @@ export const configSchema = generatorConfigSchema.extend({
 export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
   const config = getGeneratorConfig(inlineConfig, root)
 
-  return configSchema.parse({ ...config, ...inlineConfig })
+  return configSchema.parse({ ...inlineConfig, ...config })
 }
 
 export type Config = z.infer<typeof configSchema>

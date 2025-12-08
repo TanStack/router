@@ -39,7 +39,7 @@ const functions = {
 
     expected: {
       name: 'fooFnInsideFactoryFile',
-      context: { foo: 'foo' },
+      context: { foo: 'foo', method: 'GET' },
     },
   },
   fooFn: {
@@ -48,7 +48,7 @@ const functions = {
 
     expected: {
       name: 'fooFn',
-      context: { foo: 'foo' },
+      context: { foo: 'foo', method: 'GET' },
     },
   },
   fooFnPOST: {
@@ -57,7 +57,7 @@ const functions = {
 
     expected: {
       name: 'fooFnPOST',
-      context: { foo: 'foo' },
+      context: { foo: 'foo', method: 'POST' },
     },
   },
   barFn: {
@@ -66,7 +66,7 @@ const functions = {
 
     expected: {
       name: 'barFn',
-      context: { foo: 'foo', bar: 'bar' },
+      context: { foo: 'foo', method: 'GET', bar: 'bar' },
     },
   },
   barFnPOST: {
@@ -75,7 +75,7 @@ const functions = {
 
     expected: {
       name: 'barFnPOST',
-      context: { foo: 'foo', bar: 'bar' },
+      context: { foo: 'foo', method: 'POST', bar: 'bar' },
     },
   },
   localFn: {
@@ -84,7 +84,13 @@ const functions = {
 
     expected: {
       name: 'localFn',
-      context: { foo: 'foo', bar: 'bar', local: 'local', another: 'another' },
+      context: {
+        foo: 'foo',
+        method: 'GET',
+        bar: 'bar',
+        local: 'local',
+        another: 'another',
+      },
     },
   },
   localFnPOST: {
@@ -93,7 +99,13 @@ const functions = {
 
     expected: {
       name: 'localFnPOST',
-      context: { foo: 'foo', bar: 'bar', local: 'local', another: 'another' },
+      context: {
+        foo: 'foo',
+        method: 'POST',
+        bar: 'bar',
+        local: 'local',
+        another: 'another',
+      },
     },
   },
   composedFn: {
@@ -101,7 +113,13 @@ const functions = {
     type: 'serverFn',
     expected: {
       name: 'composedFn',
-      context: { foo: 'foo', bar: 'bar', another: 'another', local: 'local' },
+      context: {
+        foo: 'foo',
+        method: 'GET',
+        bar: 'bar',
+        another: 'another',
+        local: 'local',
+      },
     },
   },
   fakeFn: {
@@ -160,7 +178,7 @@ function Test({ fn, type, expected }: TestCase) {
       <button
         data-testid={`btn-fn-${expected.name}`}
         type="button"
-        className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         onClick={() => {
           fn().then(setResult)
         }}

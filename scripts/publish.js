@@ -25,8 +25,20 @@ await publish({
       packageDir: 'packages/react-router',
     },
     {
+      name: '@tanstack/vue-router',
+      packageDir: 'packages/vue-router',
+    },
+    {
+      name: '@tanstack/solid-router-ssr-query',
+      packageDir: 'packages/solid-router-ssr-query',
+    },
+    {
       name: '@tanstack/react-router-ssr-query',
       packageDir: 'packages/react-router-ssr-query',
+    },
+    {
+      name: '@tanstack/vue-router-ssr-query',
+      packageDir: 'packages/vue-router-ssr-query',
     },
     {
       name: '@tanstack/router-ssr-query-core',
@@ -55,6 +67,10 @@ await publish({
     {
       name: '@tanstack/react-router-devtools',
       packageDir: 'packages/react-router-devtools',
+    },
+    {
+      name: '@tanstack/vue-router-devtools',
+      packageDir: 'packages/vue-router-devtools',
     },
     {
       name: '@tanstack/router-devtools-core',

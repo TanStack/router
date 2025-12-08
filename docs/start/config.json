@@ -98,8 +98,16 @@
               "to": "framework/react/guide/middleware"
             },
             {
+              "label": "Error Boundaries",
+              "to": "framework/react/guide/error-boundaries"
+            },
+            {
               "label": "Server Routes",
               "to": "framework/react/guide/server-routes"
+            },
+            {
+              "label": "Hydration Errors",
+              "to": "framework/react/guide/hydration-errors"
             },
             {
               "label": "Selective SSR",
@@ -187,8 +195,16 @@
               "to": "framework/solid/guide/middleware"
             },
             {
+              "label": "Error Boundaries",
+              "to": "framework/solid/guide/error-boundaries"
+            },
+            {
               "label": "Server Routes",
               "to": "framework/solid/guide/server-routes"
+            },
+            {
+              "label": "Hydration Errors",
+              "to": "framework/solid/guide/hydration-errors"
             },
             {
               "label": "Selective SSR",
@@ -284,6 +300,18 @@
             {
               "label": "Material UI",
               "to": "framework/react/examples/start-material-ui"
+            },
+            {
+              "label": "Basic + Auth.js",
+              "to": "framework/react/examples/start-basic-authjs"
+            },
+            {
+              "label": "Basic + Static rendering",
+              "to": "framework/react/examples/start-basic-static"
+            },
+            {
+              "label": "Cloudflare Vite Plugin",
+              "to": "framework/react/examples/start-basic-cloudflare"
             }
           ]
         },
@@ -291,12 +319,44 @@
           "label": "solid",
           "children": [
             {
-              "label": "Bare",
-              "to": "framework/solid/examples/start-bare"
-            },
-            {
               "label": "Basic",
               "to": "framework/solid/examples/start-basic"
+            },
+            {
+              "label": "Basic + Solid Query",
+              "to": "framework/solid/examples/start-basic-solid-query"
+            },
+            {
+              "label": "Basic + DIY Auth",
+              "to": "framework/solid/examples/start-basic-auth"
+            },
+            {
+              "label": "Basic + Supabase Auth",
+              "to": "framework/solid/examples/start-supabase-basic"
+            },
+            {
+              "label": "Basic + Convex + Better Auth",
+              "to": "framework/solid/examples/start-convex-better-auth"
+            },
+            {
+              "label": "Basic + Auth.js",
+              "to": "framework/solid/examples/start-basic-authjs"
+            },
+            {
+              "label": "Basic + Static rendering",
+              "to": "framework/solid/examples/start-basic-static"
+            },
+            {
+              "label": "Cloudflare Vite Plugin",
+              "to": "framework/solid/examples/start-basic-cloudflare"
+            },
+            {
+              "label": "Netlify Vite Plugin",
+              "to": "framework/solid/examples/start-basic-netlify"
+            },
+            {
+              "label": "Nitro Vite Plugin",
+              "to": "framework/solid/examples/start-basic-nitro"
             }
           ]
         }

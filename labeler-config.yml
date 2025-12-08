@@ -67,6 +67,9 @@
 'package: solid-router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-router-devtools/**/*'
+'package: solid-router-ssr-query':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/solid-router-ssr-query/**/*'
 'package: solid-start':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-start/**/*'
@@ -97,6 +100,15 @@
 'package: virtual-file-routes':
   - changed-files:
       - any-glob-to-any-file: 'packages/virtual-file-routes/**/*'
+'package: vue-router':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router/**/*'
+'package: vue-router-devtools':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router-devtools/**/*'
+'package: vue-router-ssr-query':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router-ssr-query/**/*'
 'package: zod-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/zod-adapter/**/*'

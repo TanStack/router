@@ -9,7 +9,7 @@ export function InvoiceFields(props: { invoice: Invoice; disabled?: boolean }) {
           name="title"
           value={props.invoice?.title || ''}
           placeholder="Invoice Title"
-          class="border border-opacity-50 rounded p-2 w-full"
+          class="border border-opacity-50 rounded-sm p-2 w-full"
           disabled={props.disabled}
         />
       </h2>
@@ -19,7 +19,7 @@ export function InvoiceFields(props: { invoice: Invoice; disabled?: boolean }) {
           value={props.invoice?.body || ''}
           rows={6}
           placeholder="Invoice Body..."
-          class="border border-opacity-50 p-2 rounded w-full"
+          class="border border-opacity-50 p-2 rounded-sm w-full"
           disabled={props.disabled}
         />
       </div>

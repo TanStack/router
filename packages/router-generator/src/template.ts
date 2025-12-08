@@ -171,6 +171,71 @@ export function getTargetTemplate(config: Config): TargetTemplate {
           },
         },
       }
+    case 'vue':
+      return {
+        fullPkg: '@tanstack/vue-router',
+        subPkg: 'vue-router',
+        rootRoute: {
+          template: () =>
+            [
+              'import { h } from "vue"\n',
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
+              'function RootComponent() { return h("div", {}, ["Hello \\"%%tsrPath%%\\"!", h(Outlet)]) };\n',
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              "import { Outlet, createRootRoute } from '@tanstack/vue-router';",
+            tsrExportStart: () => 'export const Route = createRootRoute(',
+            tsrExportEnd: () => ');',
+          },
+        },
+        route: {
+          template: () =>
+            [
+              'import { h } from "vue"\n',
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+              'function RouteComponent() { return h("div", {}, "Hello \\"%%tsrPath%%\\"!") };\n',
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createFileRoute } from '@tanstack/vue-router';",
+            tsrExportStart: (routePath) =>
+              config.verboseFileRoutes === false
+                ? 'export const Route = createFileRoute('
+                : `export const Route = createFileRoute('${routePath}')(`,
+            tsrExportEnd: () => ');',
+          },
+        },
+        lazyRoute: {
+          template: () =>
+            [
+              'import { h } from "vue"\n',
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+              'function RouteComponent() { return h("div", {}, "Hello \\"%%tsrPath%%\\"!") };\n',
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createLazyFileRoute } from '@tanstack/vue-router';",
+
+            tsrExportStart: (routePath) =>
+              config.verboseFileRoutes === false
+                ? 'export const Route = createLazyFileRoute('
+                : `export const Route = createLazyFileRoute('${routePath}')(`,
+
+            tsrExportEnd: () => ');',
+          },
+        },
+      }
     default:
       throw new Error(`router-generator: Unknown target type: ${target}`)
   }

@@ -6,15 +6,10 @@ import type {
   Constrain,
   Register,
   TsrSerializable,
+  ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
-import type { ConstrainValidator } from '../createServerFn'
-
-test('createServerFn method with autocomplete', () => {
-  createServerFn().handler((options) => {
-    expectTypeOf(options.method).toEqualTypeOf<'GET' | 'POST'>()
-  })
-})
+import type { ConstrainValidator, ServerFnReturnType } from '../createServerFn'
 
 test('createServerFn without middleware', () => {
   expectTypeOf(createServerFn()).toHaveProperty('handler')
@@ -23,7 +18,6 @@ test('createServerFn without middleware', () => {
 
   createServerFn({ method: 'GET' }).handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
-      method: 'GET'
       context: undefined
       data: undefined
       signal: AbortSignal
@@ -44,7 +38,6 @@ test('createServerFn with validator', () => {
 
   const fn = fnAfterValidator.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
-      method: 'GET'
       context: undefined
       data: {
         a: string
@@ -104,7 +97,6 @@ test('createServerFn with middleware and context', () => {
 
   fnWithMiddleware.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
-      method: 'GET'
       context: {
         readonly a: 'a'
         readonly b: 'b'
@@ -148,7 +140,6 @@ describe('createServerFn with middleware and validator', () => {
       )
       .handler((options) => {
         expectTypeOf(options).toEqualTypeOf<{
-          method: 'GET'
           context: undefined
           data: {
             readonly outputA: 'outputA'
@@ -249,7 +240,6 @@ test('createServerFn where validator is a primitive', () => {
     .inputValidator(() => 'c' as const)
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
-        method: 'GET'
         context: undefined
         data: 'c'
         signal: AbortSignal
@@ -262,7 +252,6 @@ test('createServerFn where validator is optional if object is optional', () => {
     .inputValidator((input: 'c' | undefined) => input)
     .handler((options) => {
       expectTypeOf(options).toEqualTypeOf<{
-        method: 'GET'
         context: undefined
         data: 'c' | undefined
         signal: AbortSignal
@@ -284,7 +273,6 @@ test('createServerFn where validator is optional if object is optional', () => {
 test('createServerFn where data is optional if there is no validator', () => {
   const fn = createServerFn({ method: 'GET' }).handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
-      method: 'GET'
       context: undefined
       data: undefined
       signal: AbortSignal
@@ -308,7 +296,10 @@ test('createServerFn returns Date', () => {
     dates: [new Date(), new Date()] as const,
   }))
 
-  expectTypeOf(fn()).toEqualTypeOf<Promise<{ dates: readonly [Date, Date] }>>()
+  expectTypeOf<ReturnType<typeof fn>>().toMatchTypeOf<Promise<unknown>>()
+  expectTypeOf<Awaited<ReturnType<typeof fn>>>().toMatchTypeOf<
+    ValidateSerializableInput<Register, { dates: readonly [Date, Date] }>
+  >()
 })
 
 test('createServerFn returns undefined', () => {
@@ -379,6 +370,23 @@ describe('response', () => {
 
     expectTypeOf(fn()).toEqualTypeOf<Promise<Response>>()
   })
+
+  test(`client receives union when handler may return Response or string`, () => {
+    const fn = createServerFn().handler(() => {
+      const result: Response | 'Hello World' =
+        Math.random() > 0.5 ? new Response('Hello World') : 'Hello World'
+
+      return result
+    })
+
+    expectTypeOf(fn()).toEqualTypeOf<Promise<Response | 'Hello World'>>()
+  })
+})
+
+test('ServerFnReturnType distributes Response union', () => {
+  expectTypeOf<
+    ServerFnReturnType<Register, Response | 'Hello World'>
+  >().toEqualTypeOf<Response | 'Hello World'>()
 })
 
 test('createServerFn can be used as a mutation function', () => {
@@ -454,7 +462,6 @@ test('incrementally building createServerFn with multiple middleware calls', () 
 
   builderWithMw1.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
-      method: 'GET'
       context: {
         readonly a: 'a'
       }
@@ -474,7 +481,6 @@ test('incrementally building createServerFn with multiple middleware calls', () 
 
   builderWithMw2.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
-      method: 'POST'
       context: {
         readonly a: 'a'
         readonly b: 'b'
@@ -495,7 +501,6 @@ test('incrementally building createServerFn with multiple middleware calls', () 
 
   builderWithMw3.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
-      method: 'GET'
       context: {
         readonly a: 'a'
         readonly b: 'b'
@@ -529,7 +534,6 @@ test('compose middlewares and server function factories', () => {
 
   composedBuilder.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
-      method: 'GET'
       context: {
         readonly a: 'a'
         readonly b: 'b'

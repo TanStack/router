@@ -15,7 +15,12 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
-  const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+  if (router.isServer) {
+    return null
+  }
+
+  const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
+
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
@@ -24,16 +29,16 @@ export function Transitioner() {
   const previousIsLoading = usePrevious(isLoading)
 
   const isAnyPending = () =>
-    isLoading() || isTransitioning() || hasPendingMatches()
+    isLoading() || isSolidTransitioning() || hasPendingMatches()
   const previousIsAnyPending = usePrevious(isAnyPending)
 
   const isPagePending = () => isLoading() || hasPendingMatches()
   const previousIsPagePending = usePrevious(isPagePending)
 
-  router.startTransition = async (fn: () => void | Promise<void>) => {
-    setIsTransitioning(true)
-    await fn()
-    setIsTransitioning(false)
+  router.startTransition = (fn: () => void | Promise<void>) => {
+    Solid.startTransition(() => {
+      startSolidTransition(fn)
+    })
   }
 
   // Subscribe to location changes
@@ -108,7 +113,7 @@ export function Transitioner() {
     ),
   )
 
-  Solid.createRenderEffect(
+  Solid.createComputed(
     Solid.on(
       [isPagePending, previousIsPagePending],
       ([isPagePending, previousIsPagePending]) => {
@@ -127,11 +132,11 @@ export function Transitioner() {
     Solid.on(
       [isAnyPending, previousIsAnyPending],
       ([isAnyPending, previousIsAnyPending]) => {
-        // The router was pending and now it's not
         if (previousIsAnyPending.previous && !isAnyPending) {
+          const changeInfo = getLocationChangeInfo(router.state)
           router.emit({
             type: 'onResolved',
-            ...getLocationChangeInfo(router.state),
+            ...changeInfo,
           })
 
           router.__store.setState((s) => ({
@@ -140,7 +145,9 @@ export function Transitioner() {
             resolvedLocation: s.location,
           }))
 
-          handleHashScroll(router)
+          if (changeInfo.hrefChanged) {
+            handleHashScroll(router)
+          }
         }
       },
     ),

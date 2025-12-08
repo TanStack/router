@@ -14,7 +14,7 @@ import type {
   RouteMatch,
 } from './Matches'
 import type { RootRouteId } from './root'
-import type { ParseRoute, RouteById, RoutePaths } from './routeInfo'
+import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, Register, RegisteredRouter, SSROption } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
@@ -161,7 +161,7 @@ export type ResolveRequiredParams<TPath extends string, T> = {
 }
 
 export type ResolveOptionalParams<TPath extends string, T> = {
-  [K in ParsePathParams<TPath>['optional']]?: T
+  [K in ParsePathParams<TPath>['optional']]?: T | undefined
 }
 
 export type ResolveParams<
@@ -441,7 +441,7 @@ export type ResolveAllSSR<
 > = unknown extends TParentRoute
   ? ResolveSSR<TSSR>
   : unknown extends TSSR
-    ? TParentRoute['types']['ssr']
+    ? TParentRoute['types']['allSsr']
     : ResolveSSR<TSSR>
 
 export type ResolveFullPath<
@@ -1488,9 +1488,11 @@ export type ErrorComponentProps<TError = Error> = {
   info?: { componentStack: string }
   reset: () => void
 }
+
 export type NotFoundRouteProps = {
-  // TODO: Make sure this is `| null | undefined` (this is for global not-founds)
-  data: unknown
+  data?: unknown
+  isNotFound: boolean
+  routeId: RouteIds<RegisteredRouter['routeTree']>
 }
 
 export class BaseRoute<
@@ -1707,15 +1709,6 @@ export class BaseRoute<
     this._id = id as TId
     this._fullPath = fullPath as TFullPath
     this._to = fullPath as TrimPathRight<TFullPath>
-  }
-
-  clone = (other: typeof this) => {
-    this._path = other._path
-    this._id = other._id
-    this._fullPath = other._fullPath
-    this._to = other._to
-    this.options.getParentRoute = other.options.getParentRoute
-    this.children = other.children
   }
 
   addChildren: RouteAddChildrenFn<
