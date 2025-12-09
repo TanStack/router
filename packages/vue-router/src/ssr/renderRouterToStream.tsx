@@ -6,120 +6,107 @@ import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/ser
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
 
-// Strips trailing Vue fragment comment markers after </html>
-// These are <!--[--> <!--]--> and <!---->
-function stripTrailingVueMarkers(html: string): string {
-  // Find the last </html> tag
-  const htmlCloseIndex = html.lastIndexOf('</html>')
-  if (htmlCloseIndex === -1) {
-    return html
-  }
-
-  // Get content after </html>
-  const afterHtml = html.slice(htmlCloseIndex + 7)
-
-  // Check if there's only Vue fragment markers after </html>
-  // Strip all <!--[--> <!--]--> and <!----> markers
-  const stripped = afterHtml.replace(/<!--(?:\[|]|--)-->/g, '').trim()
-
-  // If nothing meaningful remains after stripping, remove the trailing content
-  if (stripped === '') {
-    return html.slice(0, htmlCloseIndex + 7)
-  }
-
-  return html
+// Strips Vue fragment comment markers from HTML string
+function stripVueMarkers(html: string): string {
+  return html.replace(/<!--(?:\[|]|--)-->/g, '')
 }
 
 // Wraps a stream with <!DOCTYPE html> prefix and cleans up Vue fragment markers
-// The <html> element should be rendered by the Vue component tree
-// using the Html component to enable data-allow-mismatch for streaming hydration
+// Vue outputs fragment markers before <html> and after </html> that need stripping
+// Key: Stream content through IMMEDIATELY after finding <html> - don't buffer!
 function wrapStreamWithDoctype(
   inputStream: any,
 ): NodeReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
   const decoder = new TextDecoder()
-  let sentPrefix = false
   let reader: any
-  let buffer = ''
-  let foundHtml = false
-  let trailingBuffer = ''
+  let sentDoctype = false
+  let prefixBuffer = '' // Buffer only until we find <html>
+  let foundHtmlOpen = false
   let foundHtmlClose = false
+  let suffixBuffer = '' // Buffer only after </html> to strip trailing markers
 
   return new NodeReadableStream<Uint8Array>({
     start() {
       reader = inputStream.getReader()
     },
     async pull(controller) {
-      // Send the DOCTYPE prefix first
-      if (!sentPrefix) {
-        sentPrefix = true
-        controller.enqueue(encoder.encode('<!DOCTYPE html>'))
-      }
-
       const { done, value } = await reader.read()
+
       if (done) {
-        // Flush any remaining buffer (for prefix stripping)
-        if (buffer) {
-          controller.enqueue(encoder.encode(buffer))
+        // Stream ended - flush remaining buffers
+        if (prefixBuffer) {
+          if (!sentDoctype) {
+            controller.enqueue(encoder.encode('<!DOCTYPE html>'))
+          }
+          controller.enqueue(encoder.encode(stripVueMarkers(prefixBuffer)))
         }
-        // Process and flush trailing buffer (for suffix stripping)
-        if (trailingBuffer) {
-          const cleaned = stripTrailingVueMarkers(trailingBuffer)
-          controller.enqueue(encoder.encode(cleaned))
-        }
+        // Don't output anything after </html> - trailing markers are stripped
         controller.close()
-      } else {
-        const chunk = decoder.decode(value, { stream: true })
-
-        // If we haven't found <html yet, buffer content and strip Vue fragment markers
-        if (!foundHtml) {
-          buffer += chunk
-          const htmlIndex = buffer.indexOf('<html')
-          if (htmlIndex !== -1) {
-            foundHtml = true
-            // Strip Vue fragment comment markers before <html>
-            // These are <!--[--> <!--]--> and <!---->
-            const afterHtml = buffer.slice(htmlIndex)
-            // Only send content from <html> onward, skip the fragment markers
-            // Start buffering for trailing markers
-            trailingBuffer = afterHtml
-            buffer = ''
-          }
-          // If buffer is getting too large without finding <html>, something is wrong
-          // Just pass it through
-          else if (buffer.length > 1000) {
-            foundHtml = true // Give up looking
-            trailingBuffer = buffer
-            buffer = ''
-          }
-        } else {
-          trailingBuffer += chunk
-        }
-
-        // Check if we have </html> in the trailing buffer
-        // If so, we can flush everything up to a safe point
-        if (trailingBuffer.length > 0) {
-          const htmlCloseIndex = trailingBuffer.lastIndexOf('</html>')
-          if (htmlCloseIndex !== -1) {
-            foundHtmlClose = true
-            // Keep buffering - we need to wait for stream end to strip trailing markers
-            // But if buffer is getting large, flush the safe part
-            if (trailingBuffer.length > 10000) {
-              // Flush up to </html>, keep the rest buffered
-              const safeToFlush = trailingBuffer.slice(0, htmlCloseIndex + 7)
-              trailingBuffer = trailingBuffer.slice(htmlCloseIndex + 7)
-              controller.enqueue(encoder.encode(safeToFlush))
-            }
-          } else if (!foundHtmlClose && trailingBuffer.length > 5000) {
-            // Haven't found </html> yet, but buffer is large - flush most of it
-            // Keep last 100 chars in case </html> spans chunks
-            const safeLength = trailingBuffer.length - 100
-            const safeToFlush = trailingBuffer.slice(0, safeLength)
-            trailingBuffer = trailingBuffer.slice(safeLength)
-            controller.enqueue(encoder.encode(safeToFlush))
-          }
-        }
+        return
       }
+
+      const chunk = decoder.decode(value, { stream: true })
+
+      // Phase 1: Buffer until we find <html> to strip leading markers
+      if (!foundHtmlOpen) {
+        prefixBuffer += chunk
+        const htmlIndex = prefixBuffer.indexOf('<html')
+
+        if (htmlIndex !== -1) {
+          foundHtmlOpen = true
+          // Send DOCTYPE immediately
+          if (!sentDoctype) {
+            sentDoctype = true
+            controller.enqueue(encoder.encode('<!DOCTYPE html>'))
+          }
+          // Get content from <html> onward (skip leading markers)
+          const content = prefixBuffer.slice(htmlIndex)
+          prefixBuffer = ''
+
+          // Check if </html> is in this same chunk
+          const closeIndex = content.indexOf('</html>')
+          if (closeIndex !== -1) {
+            foundHtmlClose = true
+            // Send up to and including </html>
+            controller.enqueue(encoder.encode(content.slice(0, closeIndex + 7)))
+            // Buffer the rest to strip trailing markers
+            suffixBuffer = content.slice(closeIndex + 7)
+          } else {
+            // Stream content through immediately
+            controller.enqueue(encoder.encode(content))
+          }
+        } else if (prefixBuffer.length > 500) {
+          // Safety: no <html> found after 500 chars, pass through
+          foundHtmlOpen = true
+          if (!sentDoctype) {
+            sentDoctype = true
+            controller.enqueue(encoder.encode('<!DOCTYPE html>'))
+          }
+          controller.enqueue(encoder.encode(stripVueMarkers(prefixBuffer)))
+          prefixBuffer = ''
+        }
+        return
+      }
+
+      // Phase 2: Stream content through, looking for </html>
+      if (!foundHtmlClose) {
+        const closeIndex = chunk.indexOf('</html>')
+        if (closeIndex !== -1) {
+          foundHtmlClose = true
+          // Send up to and including </html>
+          controller.enqueue(encoder.encode(chunk.slice(0, closeIndex + 7)))
+          // Buffer the rest (trailing markers to be stripped)
+          suffixBuffer = chunk.slice(closeIndex + 7)
+        } else {
+          // Stream through immediately - this is the key fix!
+          controller.enqueue(encoder.encode(chunk))
+        }
+        return
+      }
+
+      // Phase 3: After </html>, just buffer (will be discarded as trailing markers)
+      suffixBuffer += chunk
     },
     cancel() {
       reader.releaseLock()
@@ -166,14 +153,16 @@ export const renderRouterToStream = async ({
     }
     let fullHtml = new TextDecoder().decode(combined)
 
-    // Strip Vue fragment comment markers before <html>
-    const htmlIndex = fullHtml.indexOf('<html')
-    if (htmlIndex > 0) {
-      fullHtml = fullHtml.slice(htmlIndex)
-    }
+    // Strip Vue fragment comment markers before <html> and after </html>
+    const htmlOpenIndex = fullHtml.indexOf('<html')
+    const htmlCloseIndex = fullHtml.indexOf('</html>')
 
-    // Strip Vue fragment comment markers after </html>
-    fullHtml = stripTrailingVueMarkers(fullHtml)
+    if (htmlOpenIndex !== -1 && htmlCloseIndex !== -1) {
+      // Extract just the content from <html> to </html> (inclusive)
+      fullHtml = fullHtml.slice(htmlOpenIndex, htmlCloseIndex + 7)
+    } else if (htmlOpenIndex !== -1) {
+      fullHtml = fullHtml.slice(htmlOpenIndex)
+    }
 
     return new Response(`<!DOCTYPE html>${fullHtml}`, {
       status: router.state.statusCode,
@@ -181,15 +170,40 @@ export const renderRouterToStream = async ({
     })
   }
 
-  // Wrap the Vue stream with DOCTYPE (html element comes from Vue component tree)
-  const wrappedStream = wrapStreamWithDoctype(stream)
+  // Temporarily: collect all chunks and return as a single response
+  // to test if basic flow works
+  const reader = stream.getReader()
+  const chunks: Array<Uint8Array> = []
+  let done = false
+  while (!done) {
+    const result = await reader.read()
+    if (result.done) {
+      done = true
+    } else {
+      chunks.push(result.value)
+    }
+  }
 
-  const responseStream = transformReadableStreamWithRouter(
-    router,
-    wrappedStream as unknown as NodeReadableStream,
-  )
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
+  const combined = new Uint8Array(totalLength)
+  let offset = 0
+  for (const chunk of chunks) {
+    combined.set(chunk, offset)
+    offset += chunk.length
+  }
+  let fullHtml = new TextDecoder().decode(combined)
 
-  return new Response(responseStream as any, {
+  // Strip Vue fragment markers before <html> and after </html>
+  const htmlOpenIndex = fullHtml.indexOf('<html')
+  const htmlCloseIndex = fullHtml.indexOf('</html>')
+
+  if (htmlOpenIndex !== -1 && htmlCloseIndex !== -1) {
+    fullHtml = fullHtml.slice(htmlOpenIndex, htmlCloseIndex + 7)
+  } else if (htmlOpenIndex !== -1) {
+    fullHtml = fullHtml.slice(htmlOpenIndex)
+  }
+
+  return new Response(`<!DOCTYPE html>${fullHtml}`, {
     status: router.state.statusCode,
     headers: responseHeaders,
   })
