@@ -371,7 +371,6 @@ const executeBeforeLoad = (
   const parentMatchContext =
     parentMatch?.context ?? inner.router.options.context ?? undefined
 
-  const context = { ...parentMatchContext, ...match.__routeContext }
 
   let isPending = false
   const pending = () => {
@@ -382,7 +381,9 @@ const executeBeforeLoad = (
       isFetching: 'beforeLoad',
       fetchCount: prev.fetchCount + 1,
       abortController,
-      context,
+      // Note: We intentionally don't update context here.
+      // Context should only be updated after beforeLoad resolves to avoid
+      // components seeing incomplete context during async beforeLoad execution.
     }))
   }
 
@@ -395,7 +396,8 @@ const executeBeforeLoad = (
     }))
   }
 
-  // if there is no `beforeLoad` option, skip everything, batch update the store, return early
+  // if there is no `beforeLoad` option, just mark as pending and resolve
+  // Context will be updated later in loadRouteMatch after loader completes
   if (!route.options.beforeLoad) {
     batch(() => {
       pending()
@@ -422,7 +424,8 @@ const executeBeforeLoad = (
     abortController,
     params,
     preload,
-    context,
+    // Include parent's __beforeLoadContext so child routes can access it during their beforeLoad
+    context: { ...parentMatchContext, ...parentMatch?.__beforeLoadContext, ...match.__routeContext },
     location: inner.location,
     navigate: (opts: any) =>
       inner.router.navigate({
@@ -450,13 +453,11 @@ const executeBeforeLoad = (
 
     batch(() => {
       pending()
+      // Only store __beforeLoadContext here, don't update context yet
+      // Context will be updated in loadRouteMatch after loader completes
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
         __beforeLoadContext: beforeLoadContext,
-        context: {
-          ...prev.context,
-          ...beforeLoadContext,
-        },
       }))
       resolve()
     })
@@ -742,6 +743,25 @@ const loadRouteMatch = async (
   let loaderIsRunningAsync = false
   const route = inner.router.looseRoutesById[routeId]!
 
+  // Helper to compute and commit context after loader completes
+  const commitContext = () => {
+    const parentMatchId = inner.matches[index - 1]?.id
+    const parentMatch = parentMatchId
+      ? inner.router.getMatch(parentMatchId)!
+      : undefined
+    const parentContext =
+      parentMatch?.context ?? inner.router.options.context ?? undefined
+
+    inner.updateMatch(matchId, (prev) => ({
+      ...prev,
+      context: {
+        ...parentContext,
+        ...prev.__routeContext,
+        ...prev.__beforeLoadContext,
+      },
+    }))
+  }
+
   if (shouldSkipLoader(inner, matchId)) {
     if (inner.router.isServer) {
       const headResult = executeHead(inner, matchId, route)
@@ -816,6 +836,7 @@ const loadRouteMatch = async (
         ;(async () => {
           try {
             await runLoader(inner, matchId, index, route)
+            commitContext()
             const match = inner.router.getMatch(matchId)!
             match._nonReactive.loaderPromise?.resolve()
             match._nonReactive.loadPromise?.resolve()
@@ -853,6 +874,13 @@ const loadRouteMatch = async (
   match._nonReactive.pendingTimeout = undefined
   if (!loaderIsRunningAsync) match._nonReactive.loaderPromise = undefined
   match._nonReactive.dehydrated = undefined
+
+  // Commit context now that loader has completed (or was skipped)
+  // For async loaders, this was already done in the async callback
+  if (!loaderIsRunningAsync) {
+    commitContext()
+  }
+
   const nextIsFetching = loaderIsRunningAsync ? match.isFetching : false
   if (nextIsFetching !== match.isFetching || match.invalid !== false) {
     inner.updateMatch(matchId, (prev) => ({
