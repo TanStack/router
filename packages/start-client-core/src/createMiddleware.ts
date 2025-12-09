@@ -760,11 +760,16 @@ export type RequestServerNextFn<TRegister, TMiddlewares> = <
   TServerContext = undefined,
 >(
   options?: RequestServerNextFnOptions<TServerContext>,
-) => RequestMiddlewareServerFnResult<TRegister, TMiddlewares, TServerContext>
+) => RequestServerNextFnResult<TRegister, TMiddlewares, TServerContext>
 
 export interface RequestServerNextFnOptions<TServerContext> {
   context?: TServerContext
 }
+
+export type RequestServerNextFnResult<TRegister, TMiddlewares, TServerContext> =
+
+    | Promise<RequestServerResult<TRegister, TMiddlewares, TServerContext>>
+    | RequestServerResult<TRegister, TMiddlewares, TServerContext>
 
 export type RequestMiddlewareServerFnResult<
   TRegister,
