@@ -371,7 +371,6 @@ const executeBeforeLoad = (
   const parentMatchContext =
     parentMatch?.context ?? inner.router.options.context ?? undefined
 
-
   let isPending = false
   const pending = () => {
     if (isPending) return
@@ -425,7 +424,11 @@ const executeBeforeLoad = (
     params,
     preload,
     // Include parent's __beforeLoadContext so child routes can access it during their beforeLoad
-    context: { ...parentMatchContext, ...parentMatch?.__beforeLoadContext, ...match.__routeContext },
+    context: {
+      ...parentMatchContext,
+      ...parentMatch?.__beforeLoadContext,
+      ...match.__routeContext,
+    },
     location: inner.location,
     navigate: (opts: any) =>
       inner.router.navigate({
@@ -743,22 +746,20 @@ const loadRouteMatch = async (
   let loaderIsRunningAsync = false
   const route = inner.router.looseRoutesById[routeId]!
 
-  // Helper to compute and commit context after loader completes
   const commitContext = () => {
-    const parentMatchId = inner.matches[index - 1]?.id
-    const parentMatch = parentMatchId
-      ? inner.router.getMatch(parentMatchId)!
-      : undefined
-    const parentContext =
-      parentMatch?.context ?? inner.router.options.context ?? undefined
+    const context = { ...inner.router.options.context }
+
+    for (let i = 0; i <= index; i++) {
+      const innerMatch = inner.matches[i]
+      if (!innerMatch) continue
+      const m = inner.router.getMatch(innerMatch.id)
+      if (!m) continue
+      Object.assign(context, m.__routeContext, m.__beforeLoadContext)
+    }
 
     inner.updateMatch(matchId, (prev) => ({
       ...prev,
-      context: {
-        ...parentContext,
-        ...prev.__routeContext,
-        ...prev.__beforeLoadContext,
-      },
+      context,
     }))
   }
 
