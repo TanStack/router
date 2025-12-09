@@ -371,7 +371,6 @@ const executeBeforeLoad = (
   const parentMatchContext =
     parentMatch?.context ?? inner.router.options.context ?? undefined
 
-
   let isPending = false
   const pending = () => {
     if (isPending) return
@@ -425,7 +424,11 @@ const executeBeforeLoad = (
     params,
     preload,
     // Include parent's __beforeLoadContext so child routes can access it during their beforeLoad
-    context: { ...parentMatchContext, ...parentMatch?.__beforeLoadContext, ...match.__routeContext },
+    context: {
+      ...parentMatchContext,
+      ...parentMatch?.__beforeLoadContext,
+      ...match.__routeContext,
+    },
     location: inner.location,
     navigate: (opts: any) =>
       inner.router.navigate({
