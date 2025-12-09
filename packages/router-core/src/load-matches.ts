@@ -609,6 +609,7 @@ const runLoader = async (
   matchId: string,
   index: number,
   route: AnyRoute,
+  contextUpdater: (prev: AnyRouteMatch) => any,
 ): Promise<void> => {
   try {
     // If the Matches component rendered
@@ -685,6 +686,7 @@ const runLoader = async (
         status: 'success',
         isFetching: false,
         updatedAt: Date.now(),
+        context: contextUpdater(prev),
         ...head,
       }))
     } catch (e) {
@@ -747,22 +749,20 @@ const loadRouteMatch = async (
   const route = inner.router.looseRoutesById[routeId]!
 
   // Helper to compute and commit context after loader completes
-  const commitContext = () => {
+  let updatedContext = false
+  const contextUpdater = (prev: AnyRouteMatch) => {
     const parentMatchId = inner.matches[index - 1]?.id
     const parentMatch = parentMatchId
       ? inner.router.getMatch(parentMatchId)!
       : undefined
     const parentContext =
       parentMatch?.context ?? inner.router.options.context ?? undefined
-
-    inner.updateMatch(matchId, (prev) => ({
-      ...prev,
-      context: {
+    updatedContext = true
+     return {
         ...parentContext,
         ...prev.__routeContext,
         ...prev.__beforeLoadContext,
-      },
-    }))
+      }
   }
 
   if (shouldSkipLoader(inner, matchId)) {
@@ -838,8 +838,7 @@ const loadRouteMatch = async (
         loaderIsRunningAsync = true
         ;(async () => {
           try {
-            await runLoader(inner, matchId, index, route)
-            commitContext()
+            await runLoader(inner, matchId, index, route, contextUpdater)
             const match = inner.router.getMatch(matchId)!
             match._nonReactive.loaderPromise?.resolve()
             match._nonReactive.loadPromise?.resolve()
@@ -851,7 +850,7 @@ const loadRouteMatch = async (
           }
         })()
       } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
-        await runLoader(inner, matchId, index, route)
+        await runLoader(inner, matchId, index, route, contextUpdater)
       } else {
         // if the loader did not run, still update head.
         // reason: parent's beforeLoad may have changed the route context
@@ -862,6 +861,7 @@ const loadRouteMatch = async (
           inner.updateMatch(matchId, (prev) => ({
             ...prev,
             ...head,
+            context: contextUpdater(prev),
           }))
         }
       }
@@ -877,24 +877,27 @@ const loadRouteMatch = async (
   match._nonReactive.pendingTimeout = undefined
   if (!loaderIsRunningAsync) match._nonReactive.loaderPromise = undefined
   match._nonReactive.dehydrated = undefined
-
-  // Commit context now that loader has completed (or was skipped)
-  // For async loaders, this was already done in the async callback
-  if (!loaderIsRunningAsync) {
-    commitContext()
-  }
-
   const nextIsFetching = loaderIsRunningAsync ? match.isFetching : false
   if (nextIsFetching !== match.isFetching || match.invalid !== false) {
     inner.updateMatch(matchId, (prev) => ({
       ...prev,
       isFetching: nextIsFetching,
       invalid: false,
+      context: updatedContext ? prev.context : contextUpdater(prev),
     }))
     return inner.router.getMatch(matchId)!
-  } else {
-    return match
   }
+
+  if (!updatedContext) {
+    // Commit context now that loader has completed (or was skipped)
+    // For async loaders, this was already done in the async callback
+    inner.updateMatch(matchId, (prev) => ({
+      ...prev,
+      context: contextUpdater(prev),
+    }))
+  }
+
+  return match
 }
 
 export async function loadMatches(arg: {
