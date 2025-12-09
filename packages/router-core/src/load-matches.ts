@@ -758,11 +758,11 @@ const loadRouteMatch = async (
     const parentContext =
       parentMatch?.context ?? inner.router.options.context ?? undefined
     updatedContext = true
-     return {
-        ...parentContext,
-        ...prev.__routeContext,
-        ...prev.__beforeLoadContext,
-      }
+    return {
+      ...parentContext,
+      ...prev.__routeContext,
+      ...prev.__beforeLoadContext,
+    }
   }
 
   if (shouldSkipLoader(inner, matchId)) {
