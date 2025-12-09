@@ -34,6 +34,7 @@ describe('Search Params serialization and deserialization', () => {
     ['?foo%3F=1', { 'foo?': '1' }],
     ['?foo=bar%3D', { foo: 'bar=' }],
     ['?foo=2%26bar%3D3', { foo: '2&bar=3' }],
+    ['?foo=1000000000000001110', { foo: '1000000000000001110' }],
   ])('isomorphism %j', (input, expectedObj) => {
     const parsed = defaultParseSearch(input)
     expect(parsed).toEqual(expectedObj)
