@@ -1,6 +1,6 @@
 {
   "name": "router-solid-monorepo-solid-query",
-  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "post-query": "pnpm --filter @router-solid-mono-solid-query/post-query",
@@ -10,11 +10,11 @@
     "dev": "pnpm post-query build && pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.0",
+    "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-query-devtools": "^5.90.0",
-    "@tanstack/solid-router": "^1.139.14",
-    "@tanstack/solid-router-devtools": "^1.139.14",
-    "@tanstack/router-plugin": "^1.139.14",
+    "@tanstack/solid-router": "^1.140.0",
+    "@tanstack/solid-router-devtools": "^1.140.0",
+    "@tanstack/router-plugin": "^1.140.0",
     "solid-js": "^1.9.10",
     "redaxios": "^0.5.1"
   },

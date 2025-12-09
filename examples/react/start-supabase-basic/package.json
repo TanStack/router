@@ -1,7 +1,6 @@
 {
   "name": "tanstack-start-example-supabase-basic",
-  "version": "1.0.0",
-  "description": "",
+  "private": true,
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -16,9 +15,9 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
-    "@tanstack/react-router": "^1.139.14",
-    "@tanstack/react-router-devtools": "^1.139.14",
-    "@tanstack/react-start": "^1.139.14",
+    "@tanstack/react-router": "^1.140.0",
+    "@tanstack/react-router-devtools": "^1.140.0",
+    "@tanstack/react-start": "^1.140.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1"
@@ -29,7 +28,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "postcss": "^8.5.1",
-    "tailwindcss": "^4.1.15",
+    "tailwindcss": "^4.1.17",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4"

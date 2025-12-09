@@ -13,14 +13,14 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/react-query": "^5.90.0",
-    "@tanstack/react-router": "^1.139.14",
-    "@tanstack/react-router-devtools": "^1.139.14",
-    "@tanstack/router-plugin": "^1.139.14",
+    "@tanstack/react-router": "^1.140.0",
+    "@tanstack/react-router-devtools": "^1.140.0",
+    "@tanstack/router-plugin": "^1.140.0",
     "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.15",
+    "tailwindcss": "^4.1.17",
     "zod": "^3.24.2"
   },
   "devDependencies": {

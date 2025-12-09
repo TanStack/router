@@ -1,6 +1,6 @@
 {
   "name": "router-solid-mono-simple-lazy",
-  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "post-feature": "pnpm --filter @router-solid-mono-simple-lazy/post-feature",
     "router": "pnpm --filter @router-solid-mono-simple-lazy/router",
@@ -8,9 +8,9 @@
     "dev": "pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.139.14",
-    "@tanstack/solid-router-devtools": "^1.139.14",
-    "@tanstack/router-plugin": "^1.139.14",
+    "@tanstack/solid-router": "^1.140.0",
+    "@tanstack/solid-router-devtools": "^1.140.0",
+    "@tanstack/router-plugin": "^1.140.0",
     "solid-js": "^1.9.10",
     "redaxios": "^0.5.1"
   },

@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@tanstack/react-devtools": "^0.7.0",
-    "@tanstack/react-router": "^1.139.14",
-    "@tanstack/react-router-devtools": "^1.139.14",
-    "@tanstack/react-start": "^1.139.14",
+    "@tanstack/react-router": "^1.140.0",
+    "@tanstack/react-router-devtools": "^1.140.0",
+    "@tanstack/react-start": "^1.140.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
@@ -24,8 +24,8 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4",
-    "@tailwindcss/vite": "^4.1.13",
+    "@tailwindcss/vite": "^4.1.17",
     "tailwindcss": "^4.1.13",
-    "@inlang/paraglide-js": "2.4.0"
+    "@inlang/paraglide-js": "^2.4.0"
   }
 }
