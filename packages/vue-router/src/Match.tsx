@@ -162,6 +162,10 @@ export const Match = Vue.defineComponent({
           : null,
       ].filter(Boolean) as Array<VNode>
 
+      // Return single child directly to avoid Fragment wrapper that causes hydration mismatch
+      if (withScrollRestoration.length === 1) {
+        return withScrollRestoration[0]!
+      }
       return Vue.h(Vue.Fragment, null, withScrollRestoration)
     }
   },

@@ -7,5 +7,7 @@ console.log("[client-entry]: using custom client entry in 'src/client.tsx'")
 
 hydrateStart().then((router) => {
   const app = createSSRApp(StartClient, { router })
-  app.mount('html')
+  // Mount to #__app wrapper div for proper Vue hydration
+  // The Body component creates this wrapper on the server
+  app.mount('#__app')
 })

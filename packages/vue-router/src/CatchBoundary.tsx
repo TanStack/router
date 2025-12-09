@@ -59,14 +59,23 @@ const VueErrorBoundary = Vue.defineComponent({
     return () => {
       // If there's an error, render the fallback
       if (error.value && slots.fallback) {
-        return slots.fallback({
+        const fallbackContent = slots.fallback({
           error: error.value,
           reset,
         })
+        // Return single child directly to avoid Fragment wrapper
+        return Array.isArray(fallbackContent) && fallbackContent.length === 1
+          ? fallbackContent[0]
+          : fallbackContent
       }
 
       // Otherwise render the default slot
-      return slots.default && slots.default()
+      // Unwrap single-element arrays to avoid creating an implicit Fragment
+      // that doesn't exist in the server HTML
+      const defaultContent = slots.default && slots.default()
+      return Array.isArray(defaultContent) && defaultContent.length === 1
+        ? defaultContent[0]
+        : defaultContent
     }
   },
 })

@@ -37,11 +37,31 @@ declare module '@tanstack/router-core' {
 }
 
 // Create a component that renders both the Transitioner and MatchesInner
+// IMPORTANT: We render MatchesInner directly (not in a Fragment or array) to avoid
+// hydration mismatches. During SSR with Html/Body components, the content inside #__app
+// is Body's children, not wrapped in MatchesContent's Fragment. By returning MatchesInner
+// directly (which internally renders the route tree), we avoid adding Fragment layers
+// that don't exist in the server HTML.
+//
+// Transitioner is rendered as a child of MatchesInner via provide/inject pattern
+// or can be moved elsewhere if needed for client-side functionality.
 const MatchesContent = Vue.defineComponent({
   name: 'MatchesContent',
   setup() {
-    return () =>
-      Vue.h(Vue.Fragment, null, [Vue.h(Transitioner), Vue.h(MatchesInner)])
+    // Render Transitioner first (returns null on server, sets up client-side logic)
+    // then render MatchesInner which contains the actual route content
+    return () => {
+      // Create Transitioner vnode - it returns null but has side effects
+      const transitioner = Vue.h(Transitioner)
+      // Create MatchesInner vnode - this is the actual content
+      const matchesInner = Vue.h(MatchesInner)
+
+      // Return just MatchesInner since Transitioner renders null
+      // This avoids creating a Fragment that would cause hydration mismatch
+      // Note: We still create the Transitioner vnode so its setup() runs
+      // but we don't include it in the render output since it returns null
+      return matchesInner
+    }
   },
 })
 

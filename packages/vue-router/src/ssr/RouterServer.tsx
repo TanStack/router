@@ -31,19 +31,21 @@ export const RouterServer = Vue.defineComponent({
       Vue.h('html', null, [
         Vue.h('head', null, [Vue.h(ServerHeadContent)]),
         Vue.h('body', null, [
-          Vue.h(
-            RouterProvider,
-            {
-              router: props.router,
-            },
-            {
-              innerWrap: (innerProps: { children: any }) => [
-                Vue.h(ServerHeadContent),
-                innerProps.children,
-                Vue.h(Scripts),
-              ],
-            },
-          ),
+          Vue.h('div', { id: '__app' }, [
+            Vue.h(
+              RouterProvider,
+              {
+                router: props.router,
+              },
+              {
+                innerWrap: (innerProps: { children: any }) => [
+                  Vue.h(ServerHeadContent),
+                  innerProps.children,
+                  Vue.h(Scripts),
+                ],
+              },
+            ),
+          ]),
         ]),
       ])
   },

@@ -1,12 +1,10 @@
 import * as Vue from 'vue'
 
 /**
- * A body component that handles hydration mismatches from SSR streaming.
+ * A body component that handles SSR hydration.
  *
- * When using SSR streaming with deferred data, the server may inject scripts
- * into the body after the initial render. This causes Vue hydration to see
- * more children than its virtual DOM expects. The Body component uses Vue's
- * `data-allow-mismatch="children"` attribute to suppress these expected mismatches.
+ * On the server, this renders `<body><div id="__app">...children...</div></body>`
+ * On the client, Vue mounts to #__app, so this component just returns the children.
  *
  * Use this component in your root layout instead of a raw `<body>` tag:
  *
@@ -29,6 +27,24 @@ import * as Vue from 'vue'
 export const Body = Vue.defineComponent({
   name: 'Body',
   setup(_, { slots }) {
-    return () => Vue.h('body', { 'data-allow-mismatch': '' }, slots.default?.())
+    const isServer = typeof window === 'undefined'
+
+    return () => {
+      const children = slots.default?.()
+
+      if (isServer) {
+        // On server, render full body structure with #__app wrapper
+        // Wrap children in a container div to ensure consistent hydration
+        return Vue.h(
+          'body',
+          {},
+          Vue.h('div', { id: '__app' }, Vue.h('div', {}, children)),
+        )
+      }
+
+      // On client, we're mounted inside #__app
+      // Wrap in a div to match the server structure and avoid Fragment mismatch
+      return Vue.h('div', {}, children)
+    }
   },
 })
