@@ -100,13 +100,30 @@ export const Scripts = Vue.defineComponent({
           },
           children: '',
         } as RouterManagedTag)
+
+        // Third: placeholder for asset scripts (module script)
+        // We need to match the number of scripts rendered on server
+        for (const asset of assetScripts.value) {
+          allScripts.push({
+            tag: 'script',
+            attrs: {
+              ...asset.attrs,
+              'data-allow-mismatch': true,
+            },
+            children: '',
+          } as RouterManagedTag)
+        }
       }
 
       for (const script of scripts.value.scripts) {
         allScripts.push(script as RouterManagedTag)
       }
-      for (const asset of assetScripts.value) {
-        allScripts.push(asset)
+
+      // Only add asset scripts after mount (not during hydration)
+      if (mounted.value || router.serverSsr) {
+        for (const asset of assetScripts.value) {
+          allScripts.push(asset)
+        }
       }
 
       return (

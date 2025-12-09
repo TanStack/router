@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 import {
+  Body,
   HeadContent,
+  Html,
   Link,
   Outlet,
   Scripts,
@@ -66,11 +68,11 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <>
+    <Html>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <Body>
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -151,7 +153,7 @@ function RootComponent() {
         <div class="inline-div">This is an inline styled div</div>
         <TanStackRouterDevtoolsInProd />
         <Scripts />
-      </body>
-    </>
+      </Body>
+    </Html>
   )
 }

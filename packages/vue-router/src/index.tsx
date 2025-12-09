@@ -339,6 +339,8 @@ export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
 export { Scripts } from './Scripts'
+export { Body } from './Body'
+export { Html } from './Html'
 export { composeRewrites } from '@tanstack/router-core'
 export type {
   LocationRewrite,
