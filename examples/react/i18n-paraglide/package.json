@@ -10,9 +10,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.13",
-    "@tanstack/react-router": "^1.139.12",
-    "@tanstack/router-plugin": "^1.139.12",
+    "@tailwindcss/vite": "^4.1.17",
+    "@tanstack/react-router": "^1.140.0",
+    "@tanstack/router-plugin": "^1.140.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.1.13"

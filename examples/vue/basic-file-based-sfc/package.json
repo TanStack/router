@@ -1,0 +1,30 @@
+{
+  "name": "tanstack-router-vue-example-basic-file-based-sfc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "vite build && vue-tsc --noEmit",
+    "preview": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.15",
+    "@tanstack/router-plugin": "^1.140.0",
+    "@tanstack/vue-router": "^1.140.0",
+    "@tanstack/vue-router-devtools": "^1.140.0",
+    "@tanstack/zod-adapter": "^1.140.0",
+    "postcss": "^8.5.1",
+    "redaxios": "^0.5.1",
+    "tailwindcss": "^4.1.17",
+    "vue": "^3.5.16",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.3",
+    "@vitejs/plugin-vue-jsx": "^4.1.2",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.7",
+    "vue-tsc": "^3.1.5"
+  }
+}

@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@tanstack/solid-devtools": "^0.7.0",
-    "@tanstack/solid-router": "^1.139.12",
-    "@tanstack/solid-router-devtools": "^1.139.12",
-    "@tanstack/solid-start": "^1.139.12",
+    "@tanstack/solid-router": "^1.140.0",
+    "@tanstack/solid-router-devtools": "^1.140.0",
+    "@tanstack/solid-start": "^1.140.0",
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
@@ -21,8 +21,8 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4",
-    "@tailwindcss/vite": "^4.1.13",
+    "@tailwindcss/vite": "^4.1.17",
     "tailwindcss": "^4.1.13",
-    "@inlang/paraglide-js": "2.4.0"
+    "@inlang/paraglide-js": "^2.4.0"
   }
 }
