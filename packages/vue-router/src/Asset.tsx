@@ -7,11 +7,6 @@ interface ScriptAttrs {
   src?: string
 }
 
-/**
- * Title component that handles updating document.title on the client.
- * On SSR: renders a title tag with content
- * On client: imperatively updates document.title after hydration
- */
 const Title = Vue.defineComponent({
   name: 'Title',
   props: {
@@ -23,7 +18,6 @@ const Title = Vue.defineComponent({
   setup(props) {
     const router = useRouter()
 
-    // On client, imperatively update document.title after mount
     if (!router.isServer) {
       Vue.onMounted(() => {
         if (props.children) {
@@ -31,7 +25,6 @@ const Title = Vue.defineComponent({
         }
       })
 
-      // Watch for changes after initial mount
       Vue.watch(
         () => props.children,
         (newTitle) => {
@@ -42,18 +35,10 @@ const Title = Vue.defineComponent({
       )
     }
 
-    return () => {
-      // Render the title tag
-      return Vue.h('title', {}, props.children)
-    }
+    return () => Vue.h('title', {}, props.children)
   },
 })
 
-/**
- * Script component that handles dynamic script injection on the client.
- * On SSR: renders a script tag with content
- * On client: imperatively creates and appends script to document.head
- */
 const Script = Vue.defineComponent({
   name: 'Script',
   props: {
@@ -69,7 +54,6 @@ const Script = Vue.defineComponent({
   setup(props) {
     const router = useRouter()
 
-    // On client, imperatively create and append scripts
     if (!router.isServer) {
       Vue.onMounted(() => {
         const attrs = props.attrs
@@ -146,7 +130,6 @@ const Script = Vue.defineComponent({
     }
 
     return () => {
-      // On client, render an empty placeholder to avoid hydration errors
       if (!router.isServer) {
         const { src: _src, ...rest } = props.attrs || {}
         return Vue.h('script', {
@@ -156,7 +139,6 @@ const Script = Vue.defineComponent({
         })
       }
 
-      // On server, render the actual script
       if (props.attrs?.src && typeof props.attrs.src === 'string') {
         return Vue.h('script', props.attrs)
       }

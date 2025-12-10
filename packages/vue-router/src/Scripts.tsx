@@ -59,7 +59,6 @@ export const Scripts = Vue.defineComponent({
       }),
     })
 
-    // Track mounted state for hydration handling
     const mounted = Vue.ref(false)
     Vue.onMounted(() => {
       mounted.value = true
@@ -69,7 +68,6 @@ export const Scripts = Vue.defineComponent({
       const allScripts: Array<RouterManagedTag> = []
 
       if (router.serverSsr) {
-        // Server-side: inject the defer script BEFORE the TSR bootstrap script
         allScripts.push({
           tag: 'script',
           attrs: { nonce },
@@ -81,15 +79,12 @@ export const Scripts = Vue.defineComponent({
           allScripts.push(serverBufferedScript)
         }
       } else if (router.ssr && !mounted.value) {
-        // Client-side during hydration: render matching placeholder scripts
-        // First: the defer script placeholder
         allScripts.push({
           tag: 'script',
           attrs: { nonce, 'data-allow-mismatch': true },
           children: '',
         } as RouterManagedTag)
 
-        // Second: the TSR stream barrier placeholder
         allScripts.push({
           tag: 'script',
           attrs: {
@@ -101,8 +96,6 @@ export const Scripts = Vue.defineComponent({
           children: '',
         } as RouterManagedTag)
 
-        // Third: placeholder for asset scripts (module script)
-        // We need to match the number of scripts rendered on server
         for (const asset of assetScripts.value) {
           allScripts.push({
             tag: 'script',
@@ -119,7 +112,6 @@ export const Scripts = Vue.defineComponent({
         allScripts.push(script as RouterManagedTag)
       }
 
-      // Only add asset scripts after mount (not during hydration)
       if (mounted.value || router.serverSsr) {
         for (const asset of assetScripts.value) {
           allScripts.push(asset)

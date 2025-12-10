@@ -23,10 +23,6 @@ export function useAwaited<T>({
   return [promise[TSR_DEFERRED_PROMISE].data, promise]
 }
 
-/**
- * Component that suspends on a deferred promise and renders its child with
- * the resolved value. Uses Vue's async setup for Suspense integration.
- */
 export const Await = Vue.defineComponent({
   name: 'Await',
   props: {
@@ -40,7 +36,6 @@ export const Await = Vue.defineComponent({
     },
   },
   async setup(props) {
-    // Wrap with defer to integrate with router's deferred promise tracking
     const deferred = defer(props.promise)
     const data = await deferred
     return () => (props.children as (result: unknown) => Vue.VNode)(data)

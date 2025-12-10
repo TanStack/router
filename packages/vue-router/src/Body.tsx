@@ -1,29 +1,5 @@
 import * as Vue from 'vue'
 
-/**
- * A body component that handles SSR hydration.
- *
- * On the server, this renders `<body><div id="__app">...children...</div></body>`
- * On the client, Vue mounts to #__app, so this component just returns the children.
- *
- * Use this component in your root layout instead of a raw `<body>` tag:
- *
- * ```tsx
- * import { Body, Scripts } from '@tanstack/vue-router'
- *
- * function RootComponent() {
- *   return (
- *     <>
- *       <head>...</head>
- *       <Body>
- *         <Outlet />
- *         <Scripts />
- *       </Body>
- *     </>
- *   )
- * }
- * ```
- */
 export const Body = Vue.defineComponent({
   name: 'Body',
   setup(_, { slots }) {
@@ -33,9 +9,6 @@ export const Body = Vue.defineComponent({
       const children = slots.default?.()
 
       if (isServer) {
-        // On server, render full body structure with #__app wrapper
-        // Wrap children in a container div to ensure consistent hydration
-        // data-allow-mismatch is added to allow script content differences during hydration
         return Vue.h(
           'body',
           {},
@@ -47,9 +20,6 @@ export const Body = Vue.defineComponent({
         )
       }
 
-      // On client, we're mounted inside #__app
-      // Wrap in a div to match the server structure and avoid Fragment mismatch
-      // data-allow-mismatch allows script content differences during hydration
       return Vue.h('div', { 'data-allow-mismatch': '' }, children)
     }
   },
