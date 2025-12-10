@@ -34,34 +34,23 @@ export const Match = Vue.defineComponent({
       select: (s) => s.matches,
     })
 
-    // Compute route state from current props.matchId and rawMatches
-    // This properly tracks both dependencies reactively
-    const currentRouteState = Vue.computed(() => {
-      const match = rawMatches.value.find((d) => d.id === props.matchId)
-      if (!match) return null
+    // Track last valid route state using a closure (non-reactive to avoid extra render cycles)
+    let lastValidRouteState: { routeId: string; route: AnyRoute } | null = null
 
-      const routeId = match.routeId as string
-      const route = router.routesById[routeId]
-      if (!route) return null
-
-      return { routeId, route }
-    })
-
-    // Track last valid route state to use during transitions
-    const lastValidRouteState = Vue.ref<{
-      routeId: string
-      route: AnyRoute
-    } | null>(null)
-
-    Vue.watchEffect(() => {
-      if (currentRouteState.value) {
-        lastValidRouteState.value = currentRouteState.value
-      }
-    })
-
-    // Effective route state - prefer current, fall back to last valid
+    // Compute effective route state from current props.matchId and rawMatches
+    // Falls back to last valid state during transitions when props are stale
     const effectiveRouteState = Vue.computed(() => {
-      return currentRouteState.value || lastValidRouteState.value
+      const match = rawMatches.value.find((d) => d.id === props.matchId)
+      if (match) {
+        const routeId = match.routeId as string
+        const route = router.routesById[routeId]
+        if (route) {
+          lastValidRouteState = { routeId, route }
+          return lastValidRouteState
+        }
+      }
+      // Fall back to last valid state during transition
+      return lastValidRouteState
     })
 
     // Initial invariant check (runs once during setup)
@@ -250,62 +239,53 @@ export const MatchInner = Vue.defineComponent({
       select: (s) => s.matches,
     })
 
-    // Compute the full render state from the current props.matchId and rawMatches
-    // This uses Vue.computed to properly track both dependencies reactively
-    const currentRenderState = Vue.computed(() => {
-      const match = rawMatches.value.find((d) => d.id === props.matchId)
-      if (!match) return null
-
-      const routeId = match.routeId as string
-      const route = router.routesById[routeId]
-      if (!route) return null
-
-      // Compute remount key
-      const remountFn =
-        (route as AnyRoute).options.remountDeps ??
-        router.options.defaultRemountDeps
-
-      let remountKey: string | undefined = undefined
-      if (remountFn) {
-        const remountDeps = remountFn({
-          routeId,
-          loaderDeps: match.loaderDeps,
-          params: match._strictParams,
-          search: match._strictSearch,
-        })
-        remountKey = remountDeps ? JSON.stringify(remountDeps) : undefined
-      }
-
-      return {
-        routeId,
-        route,
-        match: {
-          id: match.id,
-          status: match.status,
-          error: match.error,
-        },
-        remountKey,
-      }
-    })
-
-    // Track the last valid render state to use during transitions
-    // When store updates but props haven't propagated yet, we keep the last valid state
-    const lastValidState = Vue.ref<{
+    // Track last valid render state using a closure (non-reactive to avoid extra render cycles)
+    let lastValidState: {
       routeId: string
       route: AnyRoute
-      match: { id: string; status: string; error: unknown }
+      match: { id: string; status: string; error: Error }
       remountKey: string | undefined
-    } | null>(null)
+    } | null = null
 
-    Vue.watchEffect(() => {
-      if (currentRenderState.value) {
-        lastValidState.value = currentRenderState.value
-      }
-    })
-
-    // The effective state to use for rendering - prefer current, fall back to last valid
+    // Compute effective render state from current props.matchId and rawMatches
+    // Falls back to last valid state during transitions when props are stale
     const effectiveState = Vue.computed(() => {
-      return currentRenderState.value || lastValidState.value
+      const match = rawMatches.value.find((d) => d.id === props.matchId)
+      if (match) {
+        const routeId = match.routeId as string
+        const route = router.routesById[routeId]
+        if (route) {
+          // Compute remount key
+          const remountFn =
+            (route as AnyRoute).options.remountDeps ??
+            router.options.defaultRemountDeps
+
+          let remountKey: string | undefined = undefined
+          if (remountFn) {
+            const remountDeps = remountFn({
+              routeId,
+              loaderDeps: match.loaderDeps,
+              params: match._strictParams,
+              search: match._strictSearch,
+            })
+            remountKey = remountDeps ? JSON.stringify(remountDeps) : undefined
+          }
+
+          lastValidState = {
+            routeId,
+            route,
+            match: {
+              id: match.id,
+              status: match.status,
+              error: match.error as Error,
+            },
+            remountKey,
+          }
+          return lastValidState
+        }
+      }
+      // Fall back to last valid state during transition
+      return lastValidState
     })
 
     return (): VNode | null => {

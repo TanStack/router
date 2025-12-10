@@ -84,7 +84,7 @@ const VueErrorBoundary = Vue.defineComponent({
 export function CatchBoundary(props: {
   getResetKey: () => number | string
   children: Vue.VNode
-  errorComponent?: ErrorRouteComponent
+  errorComponent?: ErrorRouteComponent | Vue.Component
   onCatch?: (error: Error) => void
 }) {
   // Create a component to use in the template
