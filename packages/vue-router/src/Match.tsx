@@ -213,7 +213,7 @@ export const MatchInner = Vue.defineComponent({
   setup(props) {
     const router = useRouter()
 
-    // { match, key, routeId } =
+    // { match, routeId } =
     const matchState = useRouterState({
       select: (s) => {
         const match = s.matches.find((d) => d.id === props.matchId)
@@ -225,19 +225,7 @@ export const MatchInner = Vue.defineComponent({
 
         const routeId = match.routeId as string
 
-        const remountFn =
-          (router.routesById[routeId] as AnyRoute).options.remountDeps ??
-          router.options.defaultRemountDeps
-        const remountDeps = remountFn?.({
-          routeId,
-          loaderDeps: match.loaderDeps,
-          params: match._strictParams,
-          search: match._strictSearch,
-        })
-        const key = remountDeps ? JSON.stringify(remountDeps) : undefined
-
         return {
-          key,
           routeId,
           match: {
             id: match.id,
@@ -248,22 +236,36 @@ export const MatchInner = Vue.defineComponent({
       },
     })
 
+    // Separate computed for the key to avoid recalculating everything when only key changes
+    const remountKey = useRouterState({
+      select: (s) => {
+        const match = s.matches.find((d) => d.id === props.matchId)
+        if (!match) return undefined
+
+        const routeId = match.routeId as string
+        const remountFn =
+          (router.routesById[routeId] as AnyRoute).options.remountDeps ??
+          router.options.defaultRemountDeps
+
+        if (!remountFn) return undefined
+
+        const remountDeps = remountFn({
+          routeId,
+          loaderDeps: match.loaderDeps,
+          params: match._strictParams,
+          search: match._strictSearch,
+        })
+
+        return remountDeps ? JSON.stringify(remountDeps) : undefined
+      },
+    })
+
     const route = Vue.computed(() => {
       if (!matchState.value) return null
       return router.routesById[matchState.value.routeId]!
     })
 
     const match = Vue.computed(() => matchState.value?.match)
-
-    const out = Vue.computed((): VNode | null => {
-      if (!route.value) return null
-      const Comp =
-        route.value.options.component ?? router.options.defaultComponent
-      if (Comp) {
-        return Vue.h(Comp)
-      }
-      return Vue.h(Outlet)
-    })
 
     return (): VNode | null => {
       // If match doesn't exist, return null (component is being unmounted or not ready)
@@ -345,8 +347,17 @@ export const MatchInner = Vue.defineComponent({
         return null
       }
 
-      // Success status - render the component
-      return out.value
+      // Success status - render the component with remount key
+      const Comp =
+        route.value.options.component ?? router.options.defaultComponent
+      const key = remountKey.value
+
+      if (Comp) {
+        // Pass key as a prop - Vue.h properly handles 'key' as a special prop
+        return Vue.h(Comp, key !== undefined ? { key } : undefined)
+      }
+
+      return Vue.h(Outlet, key !== undefined ? { key } : undefined)
     }
   },
 })
