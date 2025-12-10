@@ -12,10 +12,10 @@
   "dependencies": {
     "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-query-devtools": "^5.90.0",
-    "@tanstack/solid-router": "^1.140.1",
-    "@tanstack/solid-router-devtools": "^1.140.1",
-    "@tanstack/solid-router-ssr-query": "^1.140.1",
-    "@tanstack/solid-start": "^1.140.4",
+    "@tanstack/solid-router": "^1.140.5",
+    "@tanstack/solid-router-devtools": "^1.140.5",
+    "@tanstack/solid-router-ssr-query": "^1.140.5",
+    "@tanstack/solid-start": "^1.140.5",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0"
