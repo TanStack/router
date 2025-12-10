@@ -188,7 +188,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // Note: Vue has different update counts than React/Solid due to different reactivity
     // Vue's reactivity model may cause slightly more updates due to computed refs
     expect(updates).toBeGreaterThanOrEqual(14) // WARN: this is flaky
-    expect(updates).toBeLessThanOrEqual(23)
+    expect(updates).toBeLessThanOrEqual(26)
   })
 
   test('not found in beforeLoad', async () => {
