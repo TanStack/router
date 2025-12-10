@@ -446,107 +446,116 @@ export function useLinkProps<
     return hrefValue
   })
 
-  // Create a reactive proxy that reads computed values on access
-  // This allows the returned object to stay reactive when used in templates
-  // Use shallowReactive to preserve the ref object without unwrapping it
-  const reactiveProps: HTMLAttributes = Vue.shallowReactive({
-    ...getPropsSafeToSpread(),
-    href: undefined as string | undefined,
-    ref,
-    onClick: composeEventHandlers<MouseEvent>([
-      options.onClick,
-      handleClick,
-    ]) as any,
-    onFocus: composeEventHandlers<FocusEvent>([
-      options.onFocus,
-      handleFocus,
-    ]) as any,
-    onMouseenter: composeEventHandlers<MouseEvent>([
-      options.onMouseEnter,
-      handleEnter,
-    ]) as any,
-    onMouseover: composeEventHandlers<MouseEvent>([
-      options.onMouseOver,
-      handleEnter,
-    ]) as any,
-    onMouseleave: composeEventHandlers<MouseEvent>([
-      options.onMouseLeave,
-      handleLeave,
-    ]) as any,
-    onMouseout: composeEventHandlers<MouseEvent>([
-      options.onMouseOut,
-      handleLeave,
-    ]) as any,
-    onTouchstart: composeEventHandlers<TouchEvent>([
-      options.onTouchStart,
-      handleTouchStart,
-    ]) as any,
-    disabled: !!options.disabled,
-    target: options.target,
-  })
+  // Compute all props synchronously to avoid hydration mismatches
+  // Using Vue.computed ensures props are calculated at render time, not after
+  const computedProps = Vue.computed<HTMLAttributes>(() => {
+    const result: HTMLAttributes = {
+      ...getPropsSafeToSpread(),
+      href: href.value,
+      ref,
+      onClick: composeEventHandlers<MouseEvent>([
+        options.onClick,
+        handleClick,
+      ]) as any,
+      onFocus: composeEventHandlers<FocusEvent>([
+        options.onFocus,
+        handleFocus,
+      ]) as any,
+      onMouseenter: composeEventHandlers<MouseEvent>([
+        options.onMouseEnter,
+        handleEnter,
+      ]) as any,
+      onMouseover: composeEventHandlers<MouseEvent>([
+        options.onMouseOver,
+        handleEnter,
+      ]) as any,
+      onMouseleave: composeEventHandlers<MouseEvent>([
+        options.onMouseLeave,
+        handleLeave,
+      ]) as any,
+      onMouseout: composeEventHandlers<MouseEvent>([
+        options.onMouseOut,
+        handleLeave,
+      ]) as any,
+      onTouchstart: composeEventHandlers<TouchEvent>([
+        options.onTouchStart,
+        handleTouchStart,
+      ]) as any,
+      disabled: !!options.disabled,
+      target: options.target,
+    }
 
-  // Watch computed values and update reactive props
-  Vue.watchEffect(() => {
-    // Update from resolved active/inactive props
-    const activeP = resolvedActiveProps.value
-    const inactiveP = resolvedInactiveProps.value
-
-    // Update href
-    reactiveProps.href = href.value
-
-    // Update style
+    // Add style if present
     if (resolvedStyle.value) {
-      reactiveProps.style = resolvedStyle.value
-    } else {
-      delete reactiveProps.style
+      result.style = resolvedStyle.value
     }
 
-    // Update class
+    // Add class if present
     if (resolvedClassName.value) {
-      reactiveProps.class = resolvedClassName.value
-    } else {
-      delete reactiveProps.class
+      result.class = resolvedClassName.value
     }
 
-    // Update disabled props
+    // Add disabled props
     if (options.disabled) {
-      reactiveProps.role = 'link'
-      reactiveProps['aria-disabled'] = true
-    } else {
-      delete reactiveProps.role
-      delete reactiveProps['aria-disabled']
+      result.role = 'link'
+      result['aria-disabled'] = true
     }
 
-    // Update active status
+    // Add active status
     if (isActive.value) {
-      reactiveProps['data-status'] = 'active'
-      reactiveProps['aria-current'] = 'page'
-    } else {
-      delete reactiveProps['data-status']
-      delete reactiveProps['aria-current']
+      result['data-status'] = 'active'
+      result['aria-current'] = 'page'
     }
 
-    // Update transitioning status
+    // Add transitioning status
     if (isTransitioning.value) {
-      reactiveProps['data-transitioning'] = 'transitioning'
-    } else {
-      delete reactiveProps['data-transitioning']
+      result['data-transitioning'] = 'transitioning'
     }
 
     // Merge active/inactive props (excluding class and style which are handled above)
+    const activeP = resolvedActiveProps.value
+    const inactiveP = resolvedInactiveProps.value
+
     for (const key of Object.keys(activeP)) {
       if (key !== 'class' && key !== 'style') {
-        reactiveProps[key] = activeP[key]
+        result[key] = activeP[key]
       }
     }
     for (const key of Object.keys(inactiveP)) {
       if (key !== 'class' && key !== 'style') {
-        reactiveProps[key] = inactiveP[key]
+        result[key] = inactiveP[key]
       }
     }
+
+    return result
   })
 
-  return reactiveProps
+  // Return a proxy that accesses the computed value
+  // This allows the returned object to be used directly in templates
+  // while still being reactive through the computed
+  return new Proxy({} as HTMLAttributes, {
+    get(_, prop) {
+      return computedProps.value[prop as keyof HTMLAttributes]
+    },
+    has(_, prop) {
+      return prop in computedProps.value
+    },
+    ownKeys() {
+      return Reflect.ownKeys(computedProps.value)
+    },
+    getOwnPropertyDescriptor(_, prop) {
+      const value = computedProps.value[prop as keyof HTMLAttributes]
+      if (value !== undefined) {
+        return {
+          value,
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        }
+      }
+      return undefined
+    },
+  })
 }
 
 // Type definitions
