@@ -446,6 +446,38 @@ export function useLinkProps<
     return hrefValue
   })
 
+  // Create static event handlers that don't change between renders
+  const staticEventHandlers = {
+    onClick: composeEventHandlers<MouseEvent>([
+      options.onClick,
+      handleClick,
+    ]) as any,
+    onFocus: composeEventHandlers<FocusEvent>([
+      options.onFocus,
+      handleFocus,
+    ]) as any,
+    onMouseenter: composeEventHandlers<MouseEvent>([
+      options.onMouseEnter,
+      handleEnter,
+    ]) as any,
+    onMouseover: composeEventHandlers<MouseEvent>([
+      options.onMouseOver,
+      handleEnter,
+    ]) as any,
+    onMouseleave: composeEventHandlers<MouseEvent>([
+      options.onMouseLeave,
+      handleLeave,
+    ]) as any,
+    onMouseout: composeEventHandlers<MouseEvent>([
+      options.onMouseOut,
+      handleLeave,
+    ]) as any,
+    onTouchstart: composeEventHandlers<TouchEvent>([
+      options.onTouchStart,
+      handleTouchStart,
+    ]) as any,
+  }
+
   // Compute all props synchronously to avoid hydration mismatches
   // Using Vue.computed ensures props are calculated at render time, not after
   const computedProps = Vue.computed<HTMLAttributes>(() => {
@@ -453,34 +485,7 @@ export function useLinkProps<
       ...getPropsSafeToSpread(),
       href: href.value,
       ref,
-      onClick: composeEventHandlers<MouseEvent>([
-        options.onClick,
-        handleClick,
-      ]) as any,
-      onFocus: composeEventHandlers<FocusEvent>([
-        options.onFocus,
-        handleFocus,
-      ]) as any,
-      onMouseenter: composeEventHandlers<MouseEvent>([
-        options.onMouseEnter,
-        handleEnter,
-      ]) as any,
-      onMouseover: composeEventHandlers<MouseEvent>([
-        options.onMouseOver,
-        handleEnter,
-      ]) as any,
-      onMouseleave: composeEventHandlers<MouseEvent>([
-        options.onMouseLeave,
-        handleLeave,
-      ]) as any,
-      onMouseout: composeEventHandlers<MouseEvent>([
-        options.onMouseOut,
-        handleLeave,
-      ]) as any,
-      onTouchstart: composeEventHandlers<TouchEvent>([
-        options.onTouchStart,
-        handleTouchStart,
-      ]) as any,
+      ...staticEventHandlers,
       disabled: !!options.disabled,
       target: options.target,
     }
@@ -530,32 +535,8 @@ export function useLinkProps<
     return result
   })
 
-  // Return a proxy that accesses the computed value
-  // This allows the returned object to be used directly in templates
-  // while still being reactive through the computed
-  return new Proxy({} as HTMLAttributes, {
-    get(_, prop) {
-      return computedProps.value[prop as keyof HTMLAttributes]
-    },
-    has(_, prop) {
-      return prop in computedProps.value
-    },
-    ownKeys() {
-      return Reflect.ownKeys(computedProps.value)
-    },
-    getOwnPropertyDescriptor(_, prop) {
-      const value = computedProps.value[prop as keyof HTMLAttributes]
-      if (value !== undefined) {
-        return {
-          value,
-          writable: true,
-          enumerable: true,
-          configurable: true,
-        }
-      }
-      return undefined
-    },
-  })
+  // Return the computed ref itself - callers should access .value
+  return computedProps as unknown as HTMLAttributes
 }
 
 // Type definitions
@@ -691,12 +672,15 @@ const LinkImpl = Vue.defineComponent({
   ],
   setup(props, { attrs, slots }) {
     // Call useLinkProps ONCE during setup with combined props and attrs
-    // The returned object includes computed values that update reactively
+    // The returned object is a computed ref that updates reactively
     const allProps = { ...props, ...attrs }
-    const linkProps = useLinkProps(allProps as any)
+    const linkPropsComputed = useLinkProps(allProps as any) as unknown as Vue.ComputedRef<HTMLAttributes>
 
     return () => {
       const Component = props._asChild || 'a'
+
+      // Access the computed value to get fresh props each render
+      const linkProps = linkPropsComputed.value
 
       const isActive = linkProps['data-status'] === 'active'
       const isTransitioning =
