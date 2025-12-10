@@ -22,7 +22,7 @@ const prerenderConfiguration = {
       '/not-found/via-beforeLoad',
       '/not-found/via-head',
       '/not-found/via-loader',
-      '/search-params/default',
+      '/search-params', // search-param routes have dynamic content based on query params
       '/transition',
       '/users',
     ].some((p) => page.path.includes(p)),
