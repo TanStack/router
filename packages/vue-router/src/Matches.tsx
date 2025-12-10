@@ -3,7 +3,7 @@ import warning from 'tiny-warning'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { Transitioner } from './Transitioner'
+import { useTransitionerSetup } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import type {
@@ -36,32 +36,24 @@ declare module '@tanstack/router-core' {
   }
 }
 
-// Create a component that renders both the Transitioner and MatchesInner
-// IMPORTANT: We render MatchesInner directly (not in a Fragment or array) to avoid
-// hydration mismatches. During SSR with Html/Body components, the content inside #__app
-// is Body's children, not wrapped in MatchesContent's Fragment. By returning MatchesInner
-// directly (which internally renders the route tree), we avoid adding Fragment layers
-// that don't exist in the server HTML.
-//
-// Transitioner is rendered as a child of MatchesInner via provide/inject pattern
-// or can be moved elsewhere if needed for client-side functionality.
+// Create a component that renders MatchesInner with Transitioner's setup logic inlined.
+// This is critical for proper hydration - we call useTransitionerSetup() as a composable
+// rather than rendering it as a component, which avoids Fragment/element mismatches.
 const MatchesContent = Vue.defineComponent({
   name: 'MatchesContent',
   setup() {
-    // Render Transitioner first (returns null on server, sets up client-side logic)
-    // then render MatchesInner which contains the actual route content
-    return () => {
-      // Create Transitioner vnode - it returns null but has side effects
-      const transitioner = Vue.h(Transitioner)
-      // Create MatchesInner vnode - this is the actual content
-      const matchesInner = Vue.h(MatchesInner)
+    // IMPORTANT: We need to ensure Transitioner's setup() runs.
+    // Transitioner sets up critical functionality:
+    // - router.startTransition
+    // - History subscription via router.history.subscribe(router.load)
+    // - Watchers for router events
+    //
+    // We inline Transitioner's setup logic here. Since Transitioner returns null,
+    // we can call its setup function directly without affecting the render tree.
+    // This is done by importing and calling useTransitionerSetup.
+    useTransitionerSetup()
 
-      // Return just MatchesInner since Transitioner renders null
-      // This avoids creating a Fragment that would cause hydration mismatch
-      // Note: We still create the Transitioner vnode so its setup() runs
-      // but we don't include it in the render output since it returns null
-      return matchesInner
-    }
+    return () => Vue.h(MatchesInner)
   },
 })
 

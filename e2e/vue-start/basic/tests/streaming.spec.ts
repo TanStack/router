@@ -33,6 +33,10 @@ test('Counter increments on click', async ({ page }) => {
   // Wait for content to load
   await expect(page.getByTestId('regular-person')).toContainText('John Doe')
 
+  // Wait for Vue hydration to complete by checking that the app is interactive
+  // The Scripts component adds scripts after hydration, so wait for network idle
+  await page.waitForLoadState('networkidle')
+
   // Check initial count
   await expect(page.getByTestId('count')).toContainText('Count: 0')
 

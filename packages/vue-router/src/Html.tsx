@@ -7,6 +7,7 @@ import { Body } from './Body'
  * On the server, this renders a full `<html>` element with its children.
  * On the client, Vue mounts to #__app inside body, so this component
  * finds the Body child and renders it (Body handles the client-side rendering).
+ * Head children are teleported to document.head after hydration completes.
  *
  * Use this component in your root layout as the root element:
  *
@@ -31,6 +32,16 @@ export const Html = Vue.defineComponent({
   setup(_, { slots }) {
     const isServer = typeof window === 'undefined'
 
+    // Track if hydration is complete - start teleporting head content only after
+    const hydrated = Vue.ref(false)
+
+    if (!isServer) {
+      Vue.onMounted(() => {
+        // Mark hydrated after mount to start teleporting head content
+        hydrated.value = true
+      })
+    }
+
     return () => {
       if (isServer) {
         // On server, render the full <html> element
@@ -41,24 +52,60 @@ export const Html = Vue.defineComponent({
       // Find the Body component and render it - Body handles client-side rendering.
       const children = slots.default?.() || []
 
-      // Find the Body component's VNode
+      // Find the Body component's VNode and collect head children
       const flatChildren = Array.isArray(children) ? children : [children]
+      let bodyVnode: Vue.VNode | null = null
+      const headChildren: Array<Vue.VNode> = []
+
       for (const child of flatChildren) {
         if (typeof child === 'object' && child !== null) {
           const vnode = child as Vue.VNode
-          // Skip <head> elements
-          if (vnode.type === 'head') continue
-          // Check if this is the Body component - render it directly
-          // Body component handles wrapping children in a div for hydration
-          if (vnode.type === Body) {
-            return vnode
+          // Collect <head> children for teleporting (only after hydration)
+          if (vnode.type === 'head') {
+            // Extract children from the head element
+            if (vnode.children) {
+              if (Array.isArray(vnode.children)) {
+                for (const c of vnode.children) {
+                  if (typeof c === 'object' && c !== null && 'type' in c) {
+                    headChildren.push(c as Vue.VNode)
+                  }
+                }
+              }
+            }
+            continue
           }
-          // For non-Body elements, return them directly
-          return vnode
+          // Check if this is the Body component
+          if (vnode.type === Body) {
+            bodyVnode = vnode
+            continue
+          }
+          // For non-Body elements, treat as body content
+          if (!bodyVnode) {
+            bodyVnode = vnode
+          }
         }
       }
 
-      return null
+      // Create result array with Body and teleported head content
+      const result: Array<Vue.VNode> = []
+
+      if (bodyVnode) {
+        result.push(bodyVnode)
+      }
+
+      // Only teleport head children to document.head AFTER hydration is complete
+      // During hydration, head content is already in the DOM from SSR
+      if (hydrated.value && headChildren.length > 0) {
+        result.push(
+          Vue.h(
+            Vue.Teleport,
+            { to: 'head' },
+            headChildren,
+          ),
+        )
+      }
+
+      return result.length === 1 ? result[0] : Vue.h(Vue.Fragment, result)
     }
   },
 })
