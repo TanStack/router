@@ -8,6 +8,48 @@ interface ScriptAttrs {
 }
 
 /**
+ * Title component that handles updating document.title on the client.
+ * On SSR: renders a title tag with content
+ * On client: imperatively updates document.title after hydration
+ */
+const Title = Vue.defineComponent({
+  name: 'Title',
+  props: {
+    children: {
+      type: String,
+      default: '',
+    },
+  },
+  setup(props) {
+    const router = useRouter()
+
+    // On client, imperatively update document.title after mount
+    if (!router.isServer) {
+      Vue.onMounted(() => {
+        if (props.children) {
+          document.title = props.children
+        }
+      })
+
+      // Watch for changes after initial mount
+      Vue.watch(
+        () => props.children,
+        (newTitle) => {
+          if (newTitle) {
+            document.title = newTitle
+          }
+        },
+      )
+    }
+
+    return () => {
+      // Render the title tag
+      return Vue.h('title', {}, props.children)
+    }
+  },
+})
+
+/**
  * Script component that handles dynamic script injection on the client.
  * On SSR: renders a script tag with content
  * On client: imperatively creates and appends script to document.head
@@ -106,7 +148,7 @@ const Script = Vue.defineComponent({
     return () => {
       // On client, render an empty placeholder to avoid hydration errors
       if (!router.isServer) {
-        const { src, ...rest } = props.attrs || {}
+        const { src: _src, ...rest } = props.attrs || {}
         return Vue.h('script', {
           ...rest,
           'data-allow-mismatch': true,
@@ -134,7 +176,7 @@ const Script = Vue.defineComponent({
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
   switch (tag) {
     case 'title':
-      return <title {...attrs}>{children}</title>
+      return Vue.h(Title, { children: children })
     case 'meta':
       return <meta {...attrs} />
     case 'link':

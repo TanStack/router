@@ -35,16 +35,22 @@ export const Body = Vue.defineComponent({
       if (isServer) {
         // On server, render full body structure with #__app wrapper
         // Wrap children in a container div to ensure consistent hydration
+        // data-allow-mismatch is added to allow script content differences during hydration
         return Vue.h(
           'body',
           {},
-          Vue.h('div', { id: '__app' }, Vue.h('div', {}, children)),
+          Vue.h(
+            'div',
+            { id: '__app' },
+            Vue.h('div', { 'data-allow-mismatch': '' }, children),
+          ),
         )
       }
 
       // On client, we're mounted inside #__app
       // Wrap in a div to match the server structure and avoid Fragment mismatch
-      return Vue.h('div', {}, children)
+      // data-allow-mismatch allows script content differences during hydration
+      return Vue.h('div', { 'data-allow-mismatch': '' }, children)
     }
   },
 })
