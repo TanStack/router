@@ -50,20 +50,12 @@
       "import": {
         "types": "./dist/esm/ssr/server.d.ts",
         "default": "./dist/esm/ssr/server.js"
-      },
-      "require": {
-        "types": "./dist/cjs/ssr/server.d.cts",
-        "default": "./dist/cjs/ssr/server.cjs"
       }
     },
     "./ssr/client": {
       "import": {
         "types": "./dist/esm/ssr/client.d.ts",
         "default": "./dist/esm/ssr/client.js"
-      },
-      "require": {
-        "types": "./dist/cjs/ssr/client.d.cts",
-        "default": "./dist/cjs/ssr/client.cjs"
       }
     },
     "./package.json": "./package.json"
