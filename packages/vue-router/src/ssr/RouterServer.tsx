@@ -3,7 +3,7 @@ import { Asset } from '../Asset'
 import { useTags } from '../HeadContent'
 import { RouterProvider } from '../RouterProvider'
 import { Scripts } from '../Scripts'
-import type { AnyRouter, RouterManagedTag  } from '@tanstack/router-core'
+import type { AnyRouter, RouterManagedTag } from '@tanstack/router-core'
 
 const ServerHeadContent = Vue.defineComponent({
   name: 'ServerHeadContent',

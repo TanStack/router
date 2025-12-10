@@ -674,7 +674,9 @@ const LinkImpl = Vue.defineComponent({
     // Call useLinkProps ONCE during setup with combined props and attrs
     // The returned object is a computed ref that updates reactively
     const allProps = { ...props, ...attrs }
-    const linkPropsComputed = useLinkProps(allProps as any) as unknown as Vue.ComputedRef<HTMLAttributes>
+    const linkPropsComputed = useLinkProps(
+      allProps as any,
+    ) as unknown as Vue.ComputedRef<HTMLAttributes>
 
     return () => {
       const Component = props._asChild || 'a'

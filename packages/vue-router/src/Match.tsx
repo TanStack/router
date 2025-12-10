@@ -138,8 +138,7 @@ export const Match = Vue.defineComponent({
             // route ID which doesn't match the current route, rethrow the error
             if (
               !routeNotFoundComponent.value ||
-              (error.routeId &&
-                error.routeId !== matchData.value?.routeId) ||
+              (error.routeId && error.routeId !== matchData.value?.routeId) ||
               (!error.routeId && route.value && !route.value.isRoot)
             )
               throw error

@@ -56,13 +56,7 @@ export const Html = Vue.defineComponent({
       }
 
       if (hydrated.value && headChildren.length > 0) {
-        result.push(
-          Vue.h(
-            Vue.Teleport,
-            { to: 'head' },
-            headChildren,
-          ),
-        )
+        result.push(Vue.h(Vue.Teleport, { to: 'head' }, headChildren))
       }
 
       return result.length === 1 ? result[0] : Vue.h(Vue.Fragment, result)

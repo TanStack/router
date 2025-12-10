@@ -109,6 +109,15 @@
 'package: vue-router-ssr-query':
   - changed-files:
       - any-glob-to-any-file: 'packages/vue-router-ssr-query/**/*'
+'package: vue-start':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-start/**/*'
+'package: vue-start-client':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-start-client/**/*'
+'package: vue-start-server':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-start-server/**/*'
 'package: zod-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/zod-adapter/**/*'

@@ -34,10 +34,7 @@ export default mergeConfig(
       './src/server.tsx',
       './src/plugin/vite.ts',
     ],
-    externalDeps: [
-      '@tanstack/vue-start-client',
-      '@tanstack/vue-start-server',
-    ],
+    externalDeps: ['@tanstack/vue-start-client', '@tanstack/vue-start-server'],
     cjs: false,
   }),
 )

@@ -23,7 +23,8 @@ const Deferred = defineComponent({
     return () => (
       <div class="p-2">
         <div data-testid="regular-person">
-          {loaderData.value.person.name} - {loaderData.value.person.randomNumber}
+          {loaderData.value.person.name} -{' '}
+          {loaderData.value.person.randomNumber}
         </div>
         <Suspense>
           {{
