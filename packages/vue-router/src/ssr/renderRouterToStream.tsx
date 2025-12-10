@@ -2,8 +2,10 @@ import { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import * as Vue from 'vue'
 import { renderToWebStream } from 'vue/server-renderer'
 import { isbot } from 'isbot'
+import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
+import type { ReadableStream } from 'node:stream/web'
 
 // Strips Vue fragment comment markers from HTML string
 function stripVueMarkers(html: string): string {
@@ -169,40 +171,15 @@ export const renderRouterToStream = async ({
     })
   }
 
-  // Temporarily: collect all chunks and return as a single response
-  // to test if basic flow works
-  const reader = stream.getReader()
-  const chunks: Array<Uint8Array> = []
-  let done = false
-  while (!done) {
-    const result = await reader.read()
-    if (result.done) {
-      done = true
-    } else {
-      chunks.push(result.value)
-    }
-  }
+  // Use wrapStreamWithDoctype to strip Vue markers and add DOCTYPE,
+  // then use transformReadableStreamWithRouter to inject deferred data
+  const wrappedStream = wrapStreamWithDoctype(stream)
+  const responseStream = transformReadableStreamWithRouter(
+    router,
+    wrappedStream as unknown as ReadableStream,
+  )
 
-  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0)
-  const combined = new Uint8Array(totalLength)
-  let offset = 0
-  for (const chunk of chunks) {
-    combined.set(chunk, offset)
-    offset += chunk.length
-  }
-  let fullHtml = new TextDecoder().decode(combined)
-
-  // Strip Vue fragment markers before <html> and after </html>
-  const htmlOpenIndex = fullHtml.indexOf('<html')
-  const htmlCloseIndex = fullHtml.indexOf('</html>')
-
-  if (htmlOpenIndex !== -1 && htmlCloseIndex !== -1) {
-    fullHtml = fullHtml.slice(htmlOpenIndex, htmlCloseIndex + 7)
-  } else if (htmlOpenIndex !== -1) {
-    fullHtml = fullHtml.slice(htmlOpenIndex)
-  }
-
-  return new Response(`<!DOCTYPE html>${fullHtml}`, {
+  return new Response(responseStream as any, {
     status: router.state.statusCode,
     headers: responseHeaders,
   })
