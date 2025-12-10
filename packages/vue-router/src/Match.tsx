@@ -28,18 +28,49 @@ export const Match = Vue.defineComponent({
   },
   setup(props) {
     const router = useRouter()
-    const routeId = useRouterState({
-      select: (s) => {
-        return s.matches.find((d) => d.id === props.matchId)?.routeId as string
-      },
+
+    // Get raw matches from store - this updates when store changes
+    const rawMatches = useRouterState({
+      select: (s) => s.matches,
     })
 
+    // Compute route state from current props.matchId and rawMatches
+    // This properly tracks both dependencies reactively
+    const currentRouteState = Vue.computed(() => {
+      const match = rawMatches.value.find((d) => d.id === props.matchId)
+      if (!match) return null
+
+      const routeId = match.routeId as string
+      const route = router.routesById[routeId]
+      if (!route) return null
+
+      return { routeId, route }
+    })
+
+    // Track last valid route state to use during transitions
+    const lastValidRouteState = Vue.ref<{
+      routeId: string
+      route: AnyRoute
+    } | null>(null)
+
+    Vue.watchEffect(() => {
+      if (currentRouteState.value) {
+        lastValidRouteState.value = currentRouteState.value
+      }
+    })
+
+    // Effective route state - prefer current, fall back to last valid
+    const effectiveRouteState = Vue.computed(() => {
+      return currentRouteState.value || lastValidRouteState.value
+    })
+
+    // Initial invariant check (runs once during setup)
     invariant(
-      routeId.value,
+      effectiveRouteState.value,
       `Could not find routeId for matchId "${props.matchId}". Please file an issue!`,
     )
 
-    const route = Vue.computed(() => router.routesById[routeId.value])
+    const route = Vue.computed(() => effectiveRouteState.value?.route)
 
     const PendingComponent = Vue.computed(
       () =>
@@ -69,11 +100,11 @@ export const Match = Vue.defineComponent({
       select: (s) => s.loadedAt,
     })
 
-    const parentRouteId = useRouterState({
-      select: (s) => {
-        const index = s.matches.findIndex((d) => d.id === props.matchId)
-        return s.matches[index - 1]?.routeId as string
-      },
+    // Compute parentRouteId using raw matches to avoid stale props issues
+    const parentRouteId = Vue.computed(() => {
+      const index = rawMatches.value.findIndex((d) => d.id === props.matchId)
+      if (index < 0) return undefined
+      return rawMatches.value[index - 1]?.routeId as string
     })
 
     // Create a ref for the current matchId that we can provide to child components
@@ -103,7 +134,8 @@ export const Match = Vue.defineComponent({
             // route ID which doesn't match the current route, rethrow the error
             if (
               !routeNotFoundComponent.value ||
-              (error.routeId && error.routeId !== routeId.value) ||
+              (error.routeId &&
+                error.routeId !== effectiveRouteState.value?.routeId) ||
               (!error.routeId && route.value && !route.value.isRoot)
             )
               throw error
@@ -213,88 +245,98 @@ export const MatchInner = Vue.defineComponent({
   setup(props) {
     const router = useRouter()
 
-    // { match, routeId } =
-    const matchState = useRouterState({
-      select: (s) => {
-        const match = s.matches.find((d) => d.id === props.matchId)
-
-        // During navigation transitions, matches can be temporarily removed
-        if (!match) {
-          return null
-        }
-
-        const routeId = match.routeId as string
-
-        return {
-          routeId,
-          match: {
-            id: match.id,
-            status: match.status,
-            error: match.error,
-          },
-        }
-      },
+    // Get raw matches array from store - this updates when store changes
+    const rawMatches = useRouterState({
+      select: (s) => s.matches,
     })
 
-    // Separate computed for the key to avoid recalculating everything when only key changes
-    const remountKey = useRouterState({
-      select: (s) => {
-        const match = s.matches.find((d) => d.id === props.matchId)
-        if (!match) return undefined
+    // Compute the full render state from the current props.matchId and rawMatches
+    // This uses Vue.computed to properly track both dependencies reactively
+    const currentRenderState = Vue.computed(() => {
+      const match = rawMatches.value.find((d) => d.id === props.matchId)
+      if (!match) return null
 
-        const routeId = match.routeId as string
-        const remountFn =
-          (router.routesById[routeId] as AnyRoute).options.remountDeps ??
-          router.options.defaultRemountDeps
+      const routeId = match.routeId as string
+      const route = router.routesById[routeId]
+      if (!route) return null
 
-        if (!remountFn) return undefined
+      // Compute remount key
+      const remountFn =
+        (route as AnyRoute).options.remountDeps ??
+        router.options.defaultRemountDeps
 
+      let remountKey: string | undefined = undefined
+      if (remountFn) {
         const remountDeps = remountFn({
           routeId,
           loaderDeps: match.loaderDeps,
           params: match._strictParams,
           search: match._strictSearch,
         })
+        remountKey = remountDeps ? JSON.stringify(remountDeps) : undefined
+      }
 
-        return remountDeps ? JSON.stringify(remountDeps) : undefined
-      },
+      return {
+        routeId,
+        route,
+        match: {
+          id: match.id,
+          status: match.status,
+          error: match.error,
+        },
+        remountKey,
+      }
     })
 
-    const route = Vue.computed(() => {
-      if (!matchState.value) return null
-      return router.routesById[matchState.value.routeId]!
+    // Track the last valid render state to use during transitions
+    // When store updates but props haven't propagated yet, we keep the last valid state
+    const lastValidState = Vue.ref<{
+      routeId: string
+      route: AnyRoute
+      match: { id: string; status: string; error: unknown }
+      remountKey: string | undefined
+    } | null>(null)
+
+    Vue.watchEffect(() => {
+      if (currentRenderState.value) {
+        lastValidState.value = currentRenderState.value
+      }
     })
 
-    const match = Vue.computed(() => matchState.value?.match)
+    // The effective state to use for rendering - prefer current, fall back to last valid
+    const effectiveState = Vue.computed(() => {
+      return currentRenderState.value || lastValidState.value
+    })
 
     return (): VNode | null => {
-      // If match doesn't exist, return null (component is being unmounted or not ready)
-      if (!matchState.value || !match.value || !route.value) {
+      // If no effective state (initial mount or truly unmounting), return null
+      if (!effectiveState.value) {
         return null
       }
 
+      const { route, match, remountKey } = effectiveState.value
+
       // Handle different match statuses
-      if (match.value.status === 'notFound') {
-        invariant(isNotFound(match.value.error), 'Expected a notFound error')
-        return renderRouteNotFound(router, route.value, match.value.error)
+      if (match.status === 'notFound') {
+        invariant(isNotFound(match.error), 'Expected a notFound error')
+        return renderRouteNotFound(router, route, match.error)
       }
 
-      if (match.value.status === 'redirected') {
-        invariant(isRedirect(match.value.error), 'Expected a redirect error')
-        throw router.getMatch(match.value.id)?._nonReactive.loadPromise
+      if (match.status === 'redirected') {
+        invariant(isRedirect(match.error), 'Expected a redirect error')
+        throw router.getMatch(match.id)?._nonReactive.loadPromise
       }
 
-      if (match.value.status === 'error') {
+      if (match.status === 'error') {
         // Check if this route or any parent has an error component
         const RouteErrorComponent =
-          route.value.options.errorComponent ??
-          router.options.defaultErrorComponent
+          route.options.errorComponent ?? router.options.defaultErrorComponent
 
         // If this route has an error component, render it directly
         // This is more reliable than relying on Vue's error boundary
         if (RouteErrorComponent) {
           return Vue.h(RouteErrorComponent, {
-            error: match.value.error,
+            error: match.error,
             reset: () => {
               router.invalidate()
             },
@@ -306,14 +348,14 @@ export const MatchInner = Vue.defineComponent({
 
         // If there's no error component for this route, throw the error
         // so it can bubble up to the nearest parent with an error component
-        throw match.value.error
+        throw match.error
       }
 
-      if (match.value.status === 'pending') {
+      if (match.status === 'pending') {
         const pendingMinMs =
-          route.value.options.pendingMinMs ?? router.options.defaultPendingMinMs
+          route.options.pendingMinMs ?? router.options.defaultPendingMinMs
 
-        const routerMatch = router.getMatch(match.value.id)
+        const routerMatch = router.getMatch(match.id)
         if (
           pendingMinMs &&
           routerMatch &&
@@ -336,7 +378,7 @@ export const MatchInner = Vue.defineComponent({
         // In Vue, we render the pending component directly instead of throwing a promise
         // because Vue's Suspense doesn't catch thrown promises like React does
         const PendingComponent =
-          route.value.options.pendingComponent ??
+          route.options.pendingComponent ??
           router.options.defaultPendingComponent
 
         if (PendingComponent) {
@@ -348,16 +390,14 @@ export const MatchInner = Vue.defineComponent({
       }
 
       // Success status - render the component with remount key
-      const Comp =
-        route.value.options.component ?? router.options.defaultComponent
-      const key = remountKey.value
+      const Comp = route.options.component ?? router.options.defaultComponent
 
       if (Comp) {
         // Pass key as a prop - Vue.h properly handles 'key' as a special prop
-        return Vue.h(Comp, key !== undefined ? { key } : undefined)
+        return Vue.h(Comp, remountKey !== undefined ? { key: remountKey } : undefined)
       }
 
-      return Vue.h(Outlet, key !== undefined ? { key } : undefined)
+      return Vue.h(Outlet, remountKey !== undefined ? { key: remountKey } : undefined)
     }
   },
 })
