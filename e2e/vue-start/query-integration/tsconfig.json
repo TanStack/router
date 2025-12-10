@@ -4,7 +4,7 @@
     "strict": true,
     "esModuleInterop": true,
     "jsx": "preserve",
-		"jsxImportSource": "vue",
+    "jsxImportSource": "vue",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
