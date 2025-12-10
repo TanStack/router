@@ -41,7 +41,7 @@ export const Await = Vue.defineComponent({
   },
   async setup(props) {
     // Wrap with defer to integrate with router's deferred promise tracking
-    const deferred = defer(props.promise as Promise<unknown>)
+    const deferred = defer(props.promise)
     const data = await deferred
     return () => (props.children as (result: unknown) => Vue.VNode)(data)
   },

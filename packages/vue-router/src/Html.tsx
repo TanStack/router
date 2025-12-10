@@ -59,7 +59,7 @@ export const Html = Vue.defineComponent({
 
       for (const child of flatChildren) {
         if (typeof child === 'object' && child !== null) {
-          const vnode = child as Vue.VNode
+          const vnode = child
           // Collect <head> children for teleporting (only after hydration)
           if (vnode.type === 'head') {
             // Extract children from the head element

@@ -142,7 +142,7 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
     case 'style':
       return <style {...attrs} innerHTML={children} />
     case 'script':
-      return Vue.h(Script, { attrs, children: children as string | undefined })
+      return Vue.h(Script, { attrs, children: children })
     default:
       return null
   }
