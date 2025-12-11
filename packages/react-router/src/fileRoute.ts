@@ -1,4 +1,3 @@
- 
 import warning from 'tiny-warning'
 import { createRoute } from './route'
 
