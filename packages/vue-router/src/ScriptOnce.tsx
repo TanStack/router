@@ -1,30 +1,45 @@
-import jsesc from 'jsesc'
+import * as Vue from 'vue'
+import { useRouter } from './useRouter'
 
-export function ScriptOnce({
-  children,
-  log,
-}: {
-  children: string
-  log?: boolean
-  sync?: boolean
-}) {
-  if (typeof document !== 'undefined') {
-    return null
-  }
+export const ScriptOnce = Vue.defineComponent({
+  name: 'ScriptOnce',
+  props: {
+    children: {
+      type: String,
+      required: true,
+    },
+  },
+  setup(props) {
+    const router = useRouter()
 
-  return (
-    <script
-      class="tsr-once"
-      innerHTML={[
-        children,
-        (log ?? true) && process.env.NODE_ENV === 'development'
-          ? `console.info(\`Injected From Server:
-${jsesc(children.toString(), { quotes: 'backtick' })}\`)`
-          : '',
-        'if (typeof __TSR_SSR__ !== "undefined") __TSR_SSR__.cleanScripts()',
-      ]
-        .filter(Boolean)
-        .join('\n')}
-    />
-  )
-}
+    if (router.isServer) {
+      return () => (
+        <script
+          nonce={router.options.ssr?.nonce}
+          class="$tsr"
+          innerHTML={props.children}
+        />
+      )
+    }
+
+    const mounted = Vue.ref(false)
+    Vue.onMounted(() => {
+      mounted.value = true
+    })
+
+    return () => {
+      if (mounted.value) {
+        return null
+      }
+
+      return (
+        <script
+          nonce={router.options.ssr?.nonce}
+          class="$tsr"
+          data-allow-mismatch
+          innerHTML=""
+        />
+      )
+    }
+  },
+})

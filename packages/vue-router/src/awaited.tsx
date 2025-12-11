@@ -23,32 +23,21 @@ export function useAwaited<T>({
   return [promise[TSR_DEFERRED_PROMISE].data, promise]
 }
 
-export function Await<T>(
-  props: AwaitOptions<T> & {
-    fallback?: Vue.VNode
-    children: (result: T) => Vue.VNode
+export const Await = Vue.defineComponent({
+  name: 'Await',
+  props: {
+    promise: {
+      type: Promise,
+      required: true,
+    },
+    children: {
+      type: Function,
+      required: true,
+    },
   },
-) {
-  const data = Vue.ref<T | null>(null)
-  const error = Vue.ref<Error | null>(null)
-  const pending = Vue.ref(true)
-
-  Vue.watchEffect(async () => {
-    pending.value = true
-    try {
-      data.value = await props.promise
-    } catch (err) {
-      error.value = err as Error
-    } finally {
-      pending.value = false
-    }
-  })
-
-  const inner = Vue.computed(() => {
-    if (error.value) throw error.value
-    if (pending.value) return props.fallback
-    return props.children(data.value as T)
-  })
-
-  return () => inner.value
-}
+  async setup(props) {
+    const deferred = defer(props.promise)
+    const data = await deferred
+    return () => (props.children as (result: unknown) => Vue.VNode)(data)
+  },
+})

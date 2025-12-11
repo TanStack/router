@@ -87,9 +87,8 @@ describe('ssr scripts', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.isServer = true
 
     await router.load()
 

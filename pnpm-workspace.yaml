@@ -12,3 +12,4 @@ packages:
   - 'e2e/vue-router/*'
   - 'e2e/react-start/*'
   - 'e2e/solid-start/*'
+  - 'e2e/vue-start/*'

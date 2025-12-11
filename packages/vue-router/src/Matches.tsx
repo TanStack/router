@@ -3,7 +3,7 @@ import warning from 'tiny-warning'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { Transitioner } from './Transitioner'
+import { useTransitionerSetup } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import type {
@@ -36,12 +36,24 @@ declare module '@tanstack/router-core' {
   }
 }
 
-// Create a component that renders both the Transitioner and MatchesInner
+// Create a component that renders MatchesInner with Transitioner's setup logic inlined.
+// This is critical for proper hydration - we call useTransitionerSetup() as a composable
+// rather than rendering it as a component, which avoids Fragment/element mismatches.
 const MatchesContent = Vue.defineComponent({
   name: 'MatchesContent',
   setup() {
-    return () =>
-      Vue.h(Vue.Fragment, null, [Vue.h(Transitioner), Vue.h(MatchesInner)])
+    // IMPORTANT: We need to ensure Transitioner's setup() runs.
+    // Transitioner sets up critical functionality:
+    // - router.startTransition
+    // - History subscription via router.history.subscribe(router.load)
+    // - Watchers for router events
+    //
+    // We inline Transitioner's setup logic here. Since Transitioner returns null,
+    // we can call its setup function directly without affecting the render tree.
+    // This is done by importing and calling useTransitionerSetup.
+    useTransitionerSetup()
+
+    return () => Vue.h(MatchesInner)
   },
 })
 

@@ -1,13 +1,11 @@
 import * as Vue from 'vue'
 import type { ErrorRouteComponent } from './route'
 
-// Define the error component props interface
 interface ErrorComponentProps {
   error: Error
   reset: () => void
 }
 
-// Create a Vue error boundary component
 const VueErrorBoundary = Vue.defineComponent({
   name: 'VueErrorBoundary',
   props: {
@@ -23,7 +21,6 @@ const VueErrorBoundary = Vue.defineComponent({
       error.value = null
     }
 
-    // Watch for changes in the reset key
     Vue.watch(
       () => props.resetKey,
       (newKey, oldKey) => {
@@ -33,52 +30,49 @@ const VueErrorBoundary = Vue.defineComponent({
       },
     )
 
-    // Capture errors from child components
     Vue.onErrorCaptured((err: Error) => {
-      // If the error is a Promise (thrown for Suspense), don't treat it as an error
-      // Just ignore it - Suspense will handle it
       if (
         err instanceof Promise ||
         (err && typeof (err as any).then === 'function')
       ) {
-        return false // Prevent from propagating as an error, but don't set error state
+        return false
       }
 
       error.value = err
       resetFn.value = reset
 
-      // Call the onError callback if provided
       if (props.onError) {
         props.onError(err)
       }
 
-      // Prevent the error from propagating further
       return false
     })
 
     return () => {
-      // If there's an error, render the fallback
       if (error.value && slots.fallback) {
-        return slots.fallback({
+        const fallbackContent = slots.fallback({
           error: error.value,
           reset,
         })
+        return Array.isArray(fallbackContent) && fallbackContent.length === 1
+          ? fallbackContent[0]
+          : fallbackContent
       }
 
-      // Otherwise render the default slot
-      return slots.default && slots.default()
+      const defaultContent = slots.default && slots.default()
+      return Array.isArray(defaultContent) && defaultContent.length === 1
+        ? defaultContent[0]
+        : defaultContent
     }
   },
 })
 
-// Main CatchBoundary component
 export function CatchBoundary(props: {
   getResetKey: () => number | string
   children: Vue.VNode
-  errorComponent?: ErrorRouteComponent
+  errorComponent?: ErrorRouteComponent | Vue.Component
   onCatch?: (error: Error) => void
 }) {
-  // Create a component to use in the template
   const CatchBoundaryWrapper = Vue.defineComponent({
     name: 'CatchBoundaryWrapper',
     inheritAttrs: false,
@@ -86,9 +80,6 @@ export function CatchBoundary(props: {
       const resetKey = Vue.computed(() => props.getResetKey())
 
       return () => {
-        // Always use our default component as a safe fallback
-        const defaultErrorComponent = ErrorComponent
-
         return Vue.h(
           VueErrorBoundary,
           {
@@ -98,14 +89,10 @@ export function CatchBoundary(props: {
           {
             default: () => props.children,
             fallback: ({ error, reset }: ErrorComponentProps) => {
-              // Safely render the error component - either the provided one or the default
               if (props.errorComponent) {
-                // Use the provided error component
                 return Vue.h(props.errorComponent, { error, reset })
-              } else {
-                // Use the default error component
-                return Vue.h(defaultErrorComponent, { error, reset })
               }
+              return Vue.h(ErrorComponent, { error, reset })
             },
           },
         )
@@ -116,7 +103,6 @@ export function CatchBoundary(props: {
   return Vue.h(CatchBoundaryWrapper)
 }
 
-// Error component
 export const ErrorComponent = Vue.defineComponent({
   name: 'ErrorComponent',
   props: {
