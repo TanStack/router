@@ -50,6 +50,29 @@ const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
   )
 }
 
+/**
+ * Builds the accumulated context from router options and all matches up to (and optionally including) the given index.
+ * Merges __routeContext and __beforeLoadContext from each match.
+ */
+const buildMatchContext = (
+  inner: InnerLoadContext,
+  index: number,
+  includeCurrentMatch: boolean = true,
+): Record<string, unknown> => {
+  const context: Record<string, unknown> = {
+    ...(inner.router.options.context ?? {}),
+  }
+  const end = includeCurrentMatch ? index : index - 1
+  for (let i = 0; i <= end; i++) {
+    const innerMatch = inner.matches[i]
+    if (!innerMatch) continue
+    const m = inner.router.getMatch(innerMatch.id)
+    if (!m) continue
+    Object.assign(context, m.__routeContext, m.__beforeLoadContext)
+  }
+  return context
+}
+
 const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
   // Find the route that should handle the not found error
   // First check if a specific route is requested to show the error
@@ -407,6 +430,12 @@ const executeBeforeLoad = (
 
   match._nonReactive.beforeLoadPromise = createControlledPromise<void>()
 
+  // Build context from all parent matches, excluding current match's __beforeLoadContext
+  // (since we're about to execute beforeLoad for this match)
+  const context = {
+    ...buildMatchContext(inner, index, false),
+    ...match.__routeContext,
+  }
   const { search, params, cause } = match
   const preload = resolvePreload(inner, matchId)
   const beforeLoadFnContext: BeforeLoadContextOptions<
@@ -423,12 +452,7 @@ const executeBeforeLoad = (
     abortController,
     params,
     preload,
-    // Include parent's __beforeLoadContext so child routes can access it during their beforeLoad
-    context: {
-      ...parentMatchContext,
-      ...parentMatch?.__beforeLoadContext,
-      ...match.__routeContext,
-    },
+    context,
     location: inner.location,
     navigate: (opts: any) =>
       inner.router.navigate({
@@ -569,19 +593,7 @@ const getLoaderContext = (
   const { params, loaderDeps, abortController, cause } =
     inner.router.getMatch(matchId)!
 
-  let context = inner.router.options.context ?? {}
-
-  for (let i = 0; i <= index; i++) {
-    const innerMatch = inner.matches[i]
-    if (!innerMatch) continue
-    const m = inner.router.getMatch(innerMatch.id)
-    if (!m) continue
-    context = {
-      ...context,
-      ...(m.__routeContext ?? {}),
-      ...(m.__beforeLoadContext ?? {}),
-    }
-  }
+  const context = buildMatchContext(inner, index)
 
   const preload = resolvePreload(inner, matchId)
 
@@ -747,19 +759,9 @@ const loadRouteMatch = async (
   const route = inner.router.looseRoutesById[routeId]!
 
   const commitContext = () => {
-    const context = { ...inner.router.options.context }
-
-    for (let i = 0; i <= index; i++) {
-      const innerMatch = inner.matches[i]
-      if (!innerMatch) continue
-      const m = inner.router.getMatch(innerMatch.id)
-      if (!m) continue
-      Object.assign(context, m.__routeContext, m.__beforeLoadContext)
-    }
-
     inner.updateMatch(matchId, (prev) => ({
       ...prev,
-      context,
+      context: buildMatchContext(inner, index),
     }))
   }
 
