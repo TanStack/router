@@ -2,7 +2,6 @@ import * as Vue from 'vue'
 import { setupCoreRouterSsrQueryIntegration } from '@tanstack/router-ssr-query-core'
 import type { RouterSsrQueryOptions } from '@tanstack/router-ssr-query-core'
 import type { AnyRouter } from '@tanstack/vue-router'
-import type { QueryClient } from '@tanstack/query-core'
 
 // Vue Query uses this string as the injection key
 const VUE_QUERY_CLIENT = 'VUE_QUERY_CLIENT'
