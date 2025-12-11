@@ -1,8 +1,8 @@
 import { createSSRApp } from 'vue'
 import {
   StartClient,
-  hydrateStart,
   configureHydrationSuppressions,
+  hydrateStart,
 } from '@tanstack/vue-start/client'
 
 hydrateStart().then((router) => {

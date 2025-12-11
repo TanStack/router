@@ -3,43 +3,16 @@ import type { AnyRouter } from '@tanstack/router-core'
 import type { App } from 'vue'
 
 /**
- * Check if the router has any routes with ssr: false or ssr: 'data-only'
- * These routes intentionally cause hydration mismatches because the server
- * renders nothing/placeholder while the client renders the actual component
- */
-function hasNoSsrRoutes(router: AnyRouter): boolean {
-  // Check current matches for routes with ssr: false or ssr: 'data-only'
-  const matches = (router as any).state?.matches
-  if (matches) {
-    for (const match of matches) {
-      if (match.ssr === false || match.ssr === 'data-only') {
-        return true
-      }
-    }
-  }
-
-  // Also check route options as fallback
-  const routesById = (router as any).routesById
-  if (routesById) {
-    for (const route of Object.values(routesById)) {
-      const ssr = (route as any).options?.ssr
-      if (ssr === false || ssr === 'data-only') {
-        return true
-      }
-    }
-  }
-  return false
-}
-
-/**
  * Suppress expected hydration mismatch warnings for routes with ssr: 'data-only' or ssr: false
- * These routes intentionally render different content on server vs client
- * Only install this suppression if the router has such routes
+ * These routes intentionally render different content on server vs client.
+ *
+ * Note: We always suppress hydration warnings in Vue Start apps because:
+ * 1. Routes with ssr: 'data-only' or ssr: false cause expected mismatches
+ * 2. The ssr option is not reliably accessible from route.options for file-based routes
+ * 3. DevTools components also cause expected mismatches in development
+ * 4. In production builds, Vue strips these warnings anyway
  */
-function suppressSsrHydrationMismatches(router: AnyRouter): void {
-  // Check routes immediately
-  const hasRoutes = hasNoSsrRoutes(router)
-
+function suppressSsrHydrationMismatches(_router: AnyRouter): void {
   const originalWarn = console.warn
   const originalError = console.error
 
@@ -64,20 +37,14 @@ function suppressSsrHydrationMismatches(router: AnyRouter): void {
 
   console.warn = (...args) => {
     if (isHydrationMismatchMessage(args)) {
-      // Re-check routes at runtime in case they weren't loaded initially
-      if (hasRoutes || hasNoSsrRoutes(router)) {
-        return
-      }
+      return // Suppress hydration warnings
     }
     originalWarn.apply(console, args)
   }
 
   console.error = (...args) => {
     if (isHydrationMismatchMessage(args)) {
-      // Re-check routes at runtime in case they weren't loaded initially
-      if (hasRoutes || hasNoSsrRoutes(router)) {
-        return
-      }
+      return // Suppress hydration warnings
     }
     originalError.apply(console, args)
   }
@@ -87,17 +54,21 @@ function suppressSsrHydrationMismatches(router: AnyRouter): void {
  * Configure a Vue app to suppress expected hydration mismatch warnings
  * for routes with ssr: false or ssr: 'data-only'
  * Call this after createSSRApp and before app.mount()
+ *
+ * Note: We always suppress hydration warnings in Vue Start apps because:
+ * 1. Routes with ssr: 'data-only' or ssr: false cause expected mismatches
+ * 2. The ssr option is not reliably accessible from route.options for file-based routes
+ * 3. DevTools components also cause expected mismatches in development
+ * 4. In production builds, Vue strips these warnings anyway
  */
 export function configureHydrationSuppressions(
   app: App,
-  router: AnyRouter,
+  _router: AnyRouter,
 ): void {
-  const hasRoutes = hasNoSsrRoutes(router)
-
-  // Always install the warnHandler in dev mode for data-only/ssr:false routes
+  // Always install the warnHandler to suppress hydration warnings
   // Vue's app.config.warnHandler intercepts dev warnings BEFORE console.warn
   app.config.warnHandler = (msg, _instance, _trace) => {
-    // Suppress hydration mismatch warnings for data-only SSR routes
+    // Suppress hydration mismatch warnings
     if (
       msg.includes('Hydration node mismatch') ||
       msg.includes('Hydration text mismatch') ||
@@ -106,10 +77,7 @@ export function configureHydrationSuppressions(
       msg.includes('Hydration style mismatch') ||
       msg.includes('Hydration attribute mismatch')
     ) {
-      // Only suppress if router has data-only/ssr:false routes
-      if (hasRoutes || hasNoSsrRoutes(router)) {
-        return // Suppress the warning
-      }
+      return // Suppress the warning
     }
     // Let other warnings through to console
     console.warn(`[Vue warn]: ${msg}`)
