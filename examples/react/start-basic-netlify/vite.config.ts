@@ -6,7 +6,8 @@ import netlifyPlugin from '@netlify/vite-plugin-tanstack-start'
 
 export default defineConfig({
   server: {
-    port: 3000,
+    port: Number(process.env.PORT) || 3000,
+    strictPort: true,
   },
   plugins: [
     tsConfigPaths({
@@ -18,4 +19,5 @@ export default defineConfig({
     viteReact(),
     netlifyPlugin(),
   ],
+})
 })
