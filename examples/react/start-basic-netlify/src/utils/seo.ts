@@ -11,15 +11,19 @@ export const seo = ({
 }) => {
   const tags = [
     { title },
-    { name: 'description', content: description },
-    { name: 'keywords', content: keywords },
+    ...(description ? [{ name: 'description', content: description }] : []),
+    ...(keywords ? [{ name: 'keywords', content: keywords }] : []),
     { name: 'twitter:title', content: title },
-    { name: 'twitter:description', content: description },
+    ...(description
+      ? [{ name: 'twitter:description', content: description }]
+      : []),
     { name: 'twitter:creator', content: '@tannerlinsley' },
     { name: 'twitter:site', content: '@tannerlinsley' },
     { property: 'og:type', content: 'website' },
     { property: 'og:title', content: title },
-    { property: 'og:description', content: description },
+    ...(description
+      ? [{ property: 'og:description', content: description }]
+      : []),
     ...(image
       ? [
           { name: 'twitter:image', content: image },
