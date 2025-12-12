@@ -50,7 +50,8 @@ export const Route = createFileRoute('/blog/posts/$postId')({
   },
   headers: () => ({
     // Cache at CDN for 1 hour, allow stale content for up to 1 day
-    'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
+    'Cache-Control':
+      'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400',
   }),
 })
 
@@ -92,10 +93,11 @@ export const Route = createFileRoute('/api/products/$productId')({
           { product },
           {
             headers: {
-              'Cache-Control': 'public, max-age=300, stale-while-revalidate=600',
+              'Cache-Control':
+                'public, max-age=300, stale-while-revalidate=600',
               'CDN-Cache-Control': 'max-age=3600', // Cloudflare-specific
             },
-          }
+          },
         )
       },
     },
@@ -119,7 +121,7 @@ const cacheMiddleware = createMiddleware().server(async ({ next }) => {
   // Add cache headers to the response
   result.response.headers.set(
     'Cache-Control',
-    'public, max-age=3600, stale-while-revalidate=86400'
+    'public, max-age=3600, stale-while-revalidate=86400',
   )
 
   return result
@@ -176,16 +178,19 @@ export const Route = createFileRoute('/api/revalidate')({
         }
 
         // Trigger CDN purge via your CDN's API
-        await fetch(`https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${CF_API_TOKEN}`,
-            'Content-Type': 'application/json',
+        await fetch(
+          `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${CF_API_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              files: [`https://yoursite.com${path}`],
+            }),
           },
-          body: JSON.stringify({
-            files: [`https://yoursite.com${path}`],
-          }),
-        })
+        )
 
         return json({ revalidated: true })
       },
@@ -255,6 +260,7 @@ export const Route = createFileRoute('/posts/$postId')({
 ```
 
 This creates a multi-tier caching strategy:
+
 1. **CDN Edge**: 1 hour cache, stale-while-revalidate for 24 hours
 2. **Client**: 60 seconds of fresh data, 5 minutes in memory
 
@@ -357,7 +363,7 @@ When content varies by query params, include them in cache keys:
 export const Route = createFileRoute('/search')({
   headers: () => ({
     'Cache-Control': 'public, max-age=300',
-    'Vary': 'Accept, Accept-Encoding',
+    Vary: 'Accept, Accept-Encoding',
   }),
 })
 ```
@@ -367,14 +373,16 @@ export const Route = createFileRoute('/search')({
 Track CDN performance to optimize cache times:
 
 ```tsx
-const cacheMonitoringMiddleware = createMiddleware().server(async ({ next }) => {
-  const result = await next()
+const cacheMonitoringMiddleware = createMiddleware().server(
+  async ({ next }) => {
+    const result = await next()
 
-  // Log cache status (from CDN headers)
-  console.log('Cache Status:', result.response.headers.get('cf-cache-status'))
+    // Log cache status (from CDN headers)
+    console.log('Cache Status:', result.response.headers.get('cf-cache-status'))
 
-  return result
-})
+    return result
+  },
+)
 ```
 
 ### 5. Combine with Static Prerendering
@@ -427,6 +435,7 @@ curl -H "Cache-Control: no-cache" https://yoursite.com/page
 ### Monitor Performance
 
 Track key metrics:
+
 - **Cache Hit Rate**: Percentage of requests served from cache
 - **Revalidation Time**: Time to regenerate stale content
 - **Time to First Byte (TTFB)**: Should be low for cached content
