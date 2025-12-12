@@ -122,6 +122,10 @@
               "to": "framework/react/guide/static-prerendering"
             },
             {
+              "label": "Incremental Static Regeneration (ISR)",
+              "to": "framework/react/guide/isr"
+            },
+            {
               "label": "Server Entry Point",
               "to": "framework/react/guide/server-entry-point"
             },
