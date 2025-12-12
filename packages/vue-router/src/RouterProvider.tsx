@@ -44,6 +44,12 @@ export const RouterContextProvider = Vue.defineComponent({
         return Vue.h(WrapComponent, null, () => childContent)
       }
 
+      // Unwrap single-element arrays to avoid implicit Fragment
+      // that would cause hydration mismatch
+      if (Array.isArray(childContent) && childContent.length === 1) {
+        return childContent[0]
+      }
+
       // Otherwise just return the child content
       return childContent
     }
