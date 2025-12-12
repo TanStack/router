@@ -53,10 +53,16 @@ export function tanstackStart(
       name: 'tanstack-react-start:config',
       configEnvironment(environmentName, options) {
         const needsOptimizeDeps =
-          environmentName === START_ENVIRONMENT_NAMES.client ||
-          (serverEnvironments.includes(environmentName) &&
-            // This indicates that the server environment has opted in to dependency optimization
-            options.optimizeDeps?.noDiscovery === false)
+          // Vitest uses Vite's config, but `optimizeDeps` (pre-bundling) causes conflicts
+          // when workspace packages (transformed by Vitest) interact with external packages (Node-native).
+          // This is especially problematic for React, leading to "Invalid hook call" errors due to
+          // duplicate React instances (one pre-bundled ESM, one native CJS).
+          // We disable this enforced optimization when running in Vitest to allow standard resolution.
+          process.env.VITEST !== 'true' &&
+          (environmentName === START_ENVIRONMENT_NAMES.client ||
+            (serverEnvironments.includes(environmentName) &&
+              // This indicates that the server environment has opted in to dependency optimization
+              options.optimizeDeps?.noDiscovery === false))
 
         // Check if @tanstack/react-router is in noExternal (as array)
         const reactRouterInNoExternal =
