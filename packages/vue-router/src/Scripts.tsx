@@ -10,6 +10,7 @@ const VUE_DEFER_SCRIPT = 'self.$_TSR_DEFER=true'
 
 export const Scripts = Vue.defineComponent({
   name: 'Scripts',
+  inheritAttrs: false,
   setup() {
     const router = useRouter()
     const nonce = router.options.ssr?.nonce

@@ -132,6 +132,7 @@ export const useTags = () => {
  */
 export const HeadContent = Vue.defineComponent({
   name: 'HeadContent',
+  inheritAttrs: false,
   setup() {
     const tags = useTags()
 

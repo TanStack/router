@@ -415,6 +415,7 @@ export const MatchInner = Vue.defineComponent({
 
 export const Outlet = Vue.defineComponent({
   name: 'Outlet',
+  inheritAttrs: false,
   setup() {
     const router = useRouter()
     const matchId = Vue.inject(matchContext)
