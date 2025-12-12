@@ -1,8 +1,4 @@
-import {
-  Link,
-  Outlet,
-  createRootRouteWithContext,
-} from '@tanstack/vue-router'
+import { Link, Outlet, createRootRouteWithContext } from '@tanstack/vue-router'
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 import { VueQueryDevtools } from '@tanstack/vue-query-devtools'
 import type { QueryClient } from '@tanstack/vue-query'
