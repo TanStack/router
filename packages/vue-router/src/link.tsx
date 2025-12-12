@@ -431,9 +431,9 @@ export function useLinkProps<
 
     let hrefValue: string
     if (maskedLocation) {
-      hrefValue = maskedLocation.url
+      hrefValue = maskedLocation.url.href
     } else {
-      hrefValue = nextLocation?.url
+      hrefValue = nextLocation?.url.href
     }
 
     // Handle origin stripping like Solid does
