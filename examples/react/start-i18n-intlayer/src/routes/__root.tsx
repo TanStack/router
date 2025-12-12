@@ -1,6 +1,11 @@
-import { createRootRoute } from '@tanstack/react-router'
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/react-router'
+
 import appCss from '../styles.css?url'
-import type { ReactNode } from 'react'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -23,10 +28,18 @@ export const Route = createRootRoute({
       },
     ],
   }),
-
+  component: Outlet,
   shellComponent: RootDocument,
 })
 
-function RootDocument({ children }: { children: ReactNode }) {
-  return children
+function RootDocument({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+        <Scripts />
+      </head>
+      <body>{children}</body>
+    </html>
+  )
 }

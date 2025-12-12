@@ -13,15 +13,14 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.17",
-    "@tanstack/react-devtools": "workspace:*",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/react-start": "workspace:*",
     "@tanstack/router-plugin": "workspace:*",
-    "intlayer": "latest",
+    "intlayer": "7.4.0",
     "nitro": "latest",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-intlayer": "latest",
+    "react-intlayer": "7.4.0",
     "tailwindcss": "^4.1.17",
     "vite-tsconfig-paths": "^5.1.4"
   },
@@ -35,8 +34,8 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.2",
-    "vite-intlayer": "latest",
-    "intlayer-editor": "latest",
+    "vite-intlayer": "7.4.0",
+    "intlayer-editor": "7.4.0",
     "web-vitals": "^5.1.0"
   }
 }

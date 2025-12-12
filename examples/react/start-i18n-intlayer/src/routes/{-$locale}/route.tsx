@@ -1,41 +1,63 @@
-import {
-  HeadContent,
-  Outlet,
-  Scripts,
-  createFileRoute,
-} from '@tanstack/react-router'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { IntlayerProvider, useLocale } from 'react-intlayer'
-import { useState } from 'react'
-import Header from '@/components/Header'
-import { LocaleSwitcher } from '@/components/locale-switcher'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import { validatePrefix } from 'intlayer';
+import { IntlayerProvider, useLocale } from 'react-intlayer';
+
+import Header from '@/components/Header';
+import { LocaleSwitcher } from '@/components/locale-switcher';
+import { useI18nHTMLAttributes } from '@/hooks/useI18nHTMLAttributes';
+import { NotFoundComponent } from './404';
+
+const queryClient = new QueryClient();
 
 export const Route = createFileRoute('/{-$locale}')({
+  beforeLoad: ({ params }) => {
+    // Get locale from route params (not from server headers, as beforeLoad runs on both client and server)
+    const localeParam = params.locale;
+
+    // If no locale provided (optional param), it's valid (will use default)
+    // In prefix-all mode, the locale is required to be a valid locale
+    const { isValid, localePrefix } = validatePrefix(localeParam);
+
+    if (isValid) {
+      // If locale is valid, continue
+      return;
+    }
+
+    throw redirect({
+      to: '/{-$locale}/404',
+      params: { locale: localePrefix },
+    });
+  },
   component: RouteComponent,
-})
+  notFoundComponent: NotFoundLayout,
+});
 
 function RouteComponent() {
-  const { locale } = Route.useParams()
-  const { defaultLocale } = useLocale()
-  const [queryClient] = useState(() => new QueryClient())
+  const { defaultLocale } = useLocale();
+  const { locale } = Route.useParams();
+
+  useI18nHTMLAttributes();
 
   return (
-    <html lang={locale ?? defaultLocale}>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
+    <IntlayerProvider locale={locale ?? defaultLocale}>
+      <QueryClientProvider client={queryClient}>
         <Header />
+        <Outlet />
+        <LocaleSwitcher />
+      </QueryClientProvider>
+    </IntlayerProvider>
+  );
+}
 
-        <IntlayerProvider locale={locale ?? defaultLocale}>
-          <QueryClientProvider client={queryClient}>
-            <Outlet />
-          </QueryClientProvider>
-          <LocaleSwitcher />
-        </IntlayerProvider>
+function NotFoundLayout() {
+  const { defaultLocale } = useLocale();
+  const { locale } = Route.useParams();
 
-        <Scripts />
-      </body>
-    </html>
-  )
+  return (
+    <IntlayerProvider locale={locale ?? defaultLocale}>
+      <NotFoundComponent />
+      <LocaleSwitcher />
+    </IntlayerProvider>
+  );
 }
