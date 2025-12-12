@@ -158,9 +158,9 @@ export function TanStackServerFnPlugin(
       // by its ID, import it, and call it.
       name: 'tanstack-start-server-fn-vite-plugin-manifest-server',
       enforce: 'pre',
-      applyToEnvironment: (env) => {
-        return appliedEnvironments.has(env.name)
-      },
+      // applyToEnvironment: (env) => {
+      //   return appliedEnvironments.has(env.name)
+      // },
       configResolved(config) {
         root = config.root
         command = config.command
