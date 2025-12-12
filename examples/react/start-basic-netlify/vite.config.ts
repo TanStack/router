@@ -4,7 +4,6 @@ import tsConfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
 import netlifyPlugin from '@netlify/vite-plugin-tanstack-start'
 
-
 export default defineConfig({
   server: {
     port: 3000,
