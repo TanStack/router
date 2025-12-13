@@ -40,11 +40,6 @@ export type UseRouterStateResult<
  * @returns The selected router state (or the full state by default).
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useRouterStateHook
  */
-/**
- * Subscribe to the router's state store with optional selection and
- * structural sharing for render optimization.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useRouterStateHook
- */
 export function useRouterState<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,

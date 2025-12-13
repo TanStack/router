@@ -88,11 +88,6 @@ declare module '@tanstack/router-core' {
  * @returns A Router instance to be provided to `RouterProvider`.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouterFunction
  */
-/**
- * Create a new React router instance from `RouterOptions`.
- * Pass the resulting router to `RouterProvider`.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouterFunction
- */
 export const createRouter: CreateRouterFn = (options) => {
   return new Router(options)
 }

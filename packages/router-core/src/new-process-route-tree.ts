@@ -35,23 +35,6 @@ type ParsedSegment = Uint16Array & {
   5: number
 }
 
-/**
- * Populates the `output` array with the parsed representation of the given `segment` string.
- *
- * Usage:
- * ```ts
- * let output
- * let cursor = 0
- * while (cursor < path.length) {
- *   output = parseSegment(path, cursor, output)
- *   const end = output[5]
- *   cursor = end + 1
- * ```
- *
- * `output` is stored outside to avoid allocations during repeated calls. It doesn't need to be typed
- * or initialized, it will be done automatically.
- */
-export function parseSegment(
   /** The full path string containing the segment. */
   path: string,
   /** The starting index of the segment within the path. */
@@ -150,16 +133,6 @@ export function parseSegment(
   return output as ParsedSegment
 }
 
-/**
- * Recursively parses the segments of the given route tree and populates a segment trie.
- *
- * @param data A reusable Uint16Array for parsing segments. (non important, we're just avoiding allocations)
- * @param route The current route to parse.
- * @param start The starting index for parsing within the route's full path.
- * @param node The current segment node in the trie to populate.
- * @param onRoute Callback invoked for each route processed.
- */
-function parseSegments<TRouteLike extends RouteLike>(
   defaultCaseSensitive: boolean,
   data: Uint16Array,
   route: TRouteLike,
@@ -430,11 +403,6 @@ function createStaticNode<T extends RouteLike>(
   }
 }
 
-/**
- * Keys must be declared in the same order as in `SegmentNode` type,
- * to ensure they are represented as the same object class in the engine.
- */
-function createDynamicNode<T extends RouteLike>(
   kind:
     | typeof SEGMENT_TYPE_PARAM
     | typeof SEGMENT_TYPE_WILDCARD
@@ -567,10 +535,6 @@ export function processRouteMasks<
   >(1000)
 }
 
-/**
- * Take an arbitrary list of routes, create a tree from them (if it hasn't been created already), and match a path against it.
- */
-export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(
   /** The path to match. */
   path: string,
   /** The `processedTree` returned by the initial `processRouteTree` call. */
@@ -584,10 +548,6 @@ export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(
   return result
 }
 
-/**
- * @deprecated keep until v2 so that `router.matchRoute` can keep not caring about the actual route tree
- */
-export function findSingleMatch(
   from: string,
   caseSensitive: boolean,
   fuzzy: boolean,
@@ -644,11 +604,6 @@ export function trimPathRight(path: string) {
   return path === '/' ? path : path.replace(/\/{1,}$/, '')
 }
 
-/**
- * Processes a route tree into a segment trie for efficient path matching.
- * Also builds lookup maps for routes by ID and by trimmed full path.
- */
-export function processRouteTree<
   TRouteLike extends Extract<RouteLike, { fullPath: string }> & { id: string },
 >(
   /** The root of the route tree to process. */
