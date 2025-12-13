@@ -541,3 +541,49 @@ test('redirect in server function called in query during SSR', async ({
   await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
   expect(page.url()).toContain('/redirect-test-ssr/target')
 })
+
+test.describe.only('server function returns 405 when method is not allowed', () => {
+  test('serverFn defined with GET method', async ({ page }) => {
+    await page.goto('/method-not-allowed/get')
+
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('get-button').click()
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('fetch-result')).toContainText('[200,"Hello, World!"]')
+
+    await page.getByTestId('post-button').click()
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('fetch-result')).toContainText('[405,"expected GET method. Got POST"]')
+
+    await page.getByTestId('put-button').click()
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('fetch-result')).toContainText('[405,"expected GET method. Got PUT"]')
+
+    await page.getByTestId('options-button').click()
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('fetch-result')).toContainText('[405,"expected GET method. Got OPTIONS"]')
+  })
+
+  test('serverFn defined with POST method', async ({ page }) => {
+    await page.goto('/method-not-allowed/post')
+
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('get-button').click()
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('fetch-result')).toContainText('[405,"expected POST method. Got GET"]')
+
+    await page.getByTestId('post-button').click()
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('fetch-result')).toContainText('[200,"Hello, World!"]')
+
+    await page.getByTestId('put-button').click()
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('fetch-result')).toContainText('[405,"expected POST method. Got PUT"]')
+
+    await page.getByTestId('options-button').click()
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('fetch-result')).toContainText('[405,"expected POST method. Got OPTIONS"]')
+  })
+})
