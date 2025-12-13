@@ -35,6 +35,8 @@ import { Route as RedirectTestSsrTargetRouteImport } from './routes/redirect-tes
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
+import { Route as MethodNotAllowedPostRouteImport } from './routes/method-not-allowed/post'
+import { Route as MethodNotAllowedGetRouteImport } from './routes/method-not-allowed/get'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as FormdataRedirectTargetNameRouteImport } from './routes/formdata-redirect/target.$name'
 
@@ -170,6 +172,16 @@ const MiddlewareClientMiddlewareRouterRoute =
     path: '/middleware/client-middleware-router',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MethodNotAllowedPostRoute = MethodNotAllowedPostRouteImport.update({
+  id: '/method-not-allowed/post',
+  path: '/method-not-allowed/post',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MethodNotAllowedGetRoute = MethodNotAllowedGetRouteImport.update({
+  id: '/method-not-allowed/get',
+  path: '/method-not-allowed/get',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CookiesSetRoute = CookiesSetRouteImport.update({
   id: '/cookies/set',
   path: '/cookies/set',
@@ -198,6 +210,8 @@ export interface FileRoutesByFullPath {
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
+  '/method-not-allowed/get': typeof MethodNotAllowedGetRoute
+  '/method-not-allowed/post': typeof MethodNotAllowedPostRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
@@ -228,6 +242,8 @@ export interface FileRoutesByTo {
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
+  '/method-not-allowed/get': typeof MethodNotAllowedGetRoute
+  '/method-not-allowed/post': typeof MethodNotAllowedPostRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
@@ -259,6 +275,8 @@ export interface FileRoutesById {
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
+  '/method-not-allowed/get': typeof MethodNotAllowedGetRoute
+  '/method-not-allowed/post': typeof MethodNotAllowedPostRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
@@ -291,6 +309,8 @@ export interface FileRouteTypes {
     | '/status'
     | '/submit-post-formdata'
     | '/cookies/set'
+    | '/method-not-allowed/get'
+    | '/method-not-allowed/post'
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
@@ -321,6 +341,8 @@ export interface FileRouteTypes {
     | '/status'
     | '/submit-post-formdata'
     | '/cookies/set'
+    | '/method-not-allowed/get'
+    | '/method-not-allowed/post'
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
@@ -351,6 +373,8 @@ export interface FileRouteTypes {
     | '/status'
     | '/submit-post-formdata'
     | '/cookies/set'
+    | '/method-not-allowed/get'
+    | '/method-not-allowed/post'
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
@@ -382,6 +406,8 @@ export interface RootRouteChildren {
   StatusRoute: typeof StatusRoute
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
   CookiesSetRoute: typeof CookiesSetRoute
+  MethodNotAllowedGetRoute: typeof MethodNotAllowedGetRoute
+  MethodNotAllowedPostRoute: typeof MethodNotAllowedPostRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
@@ -581,6 +607,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiddlewareClientMiddlewareRouterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/method-not-allowed/post': {
+      id: '/method-not-allowed/post'
+      path: '/method-not-allowed/post'
+      fullPath: '/method-not-allowed/post'
+      preLoaderRoute: typeof MethodNotAllowedPostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/method-not-allowed/get': {
+      id: '/method-not-allowed/get'
+      path: '/method-not-allowed/get'
+      fullPath: '/method-not-allowed/get'
+      preLoaderRoute: typeof MethodNotAllowedGetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cookies/set': {
       id: '/cookies/set'
       path: '/cookies/set'
@@ -614,6 +654,8 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
   CookiesSetRoute: CookiesSetRoute,
+  MethodNotAllowedGetRoute: MethodNotAllowedGetRoute,
+  MethodNotAllowedPostRoute: MethodNotAllowedPostRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
