@@ -5,9 +5,9 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
   onSuccess?: (ctx: { data: TData }) => void | Promise<void>
 }) {
   const [submittedAt, setSubmittedAt] = createSignal<number | undefined>()
-  const [variables, setVariables] = createSignal<TVariables | undefined>()
+  const [signalVariables, setVariables] = createSignal<TVariables | undefined>()
   const [error, setError] = createSignal<TError | undefined>()
-  const [data, setData] = createSignal<TData | undefined>()
+  const [signalData, setData] = createSignal<TData | undefined>()
   const [status, setStatus] = createSignal<
     'idle' | 'pending' | 'success' | 'error'
   >('idle')
@@ -35,7 +35,7 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
       return status()
     },
     get variables() {
-      return variables()
+      return signalVariables()
     },
     get submittedAt() {
       return submittedAt()
@@ -45,7 +45,7 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
       return error()
     },
     get data() {
-      return data()
+      return signalData()
     },
   }
 }

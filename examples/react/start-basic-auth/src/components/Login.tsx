@@ -38,10 +38,10 @@ export function Login() {
         })
       }}
       afterSubmit={
-        loginMutation.data ? (
+        loginMutation.stateData ? (
           <>
-            <div className="text-red-400">{loginMutation.data.message}</div>
-            {loginMutation.data.userNotFound ? (
+            <div className="text-red-400">{loginMutation.stateData.message}</div>
+            {loginMutation.stateData.userNotFound ? (
               <div>
                 <button
                   className="text-blue-500"

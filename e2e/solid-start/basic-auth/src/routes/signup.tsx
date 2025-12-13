@@ -89,9 +89,9 @@ function SignupComp() {
         })
       }}
       afterSubmit={
-        signupMutation.data()?.error ? (
+        signupMutation.signalData()?.error ? (
           <>
-            <div class="text-red-400">{signupMutation.data()?.message}</div>
+            <div class="text-red-400">{signupMutation.signalData()?.message}</div>
           </>
         ) : null
       }

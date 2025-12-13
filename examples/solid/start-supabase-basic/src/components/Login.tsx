@@ -38,11 +38,11 @@ export function Login() {
         })
       }}
       afterSubmit={
-        loginMutation.data() ? (
+        loginMutation.signalData() ? (
           <>
-            <div class="text-red-400">{loginMutation.data()?.message}</div>
-            {loginMutation.data()?.error &&
-            loginMutation.data()?.message === 'Invalid login credentials' ? (
+            <div class="text-red-400">{loginMutation.signalData()?.message}</div>
+            {loginMutation.signalData()?.error &&
+            loginMutation.signalData()?.message === 'Invalid login credentials' ? (
               <div>
                 <button
                   class="text-blue-500"
