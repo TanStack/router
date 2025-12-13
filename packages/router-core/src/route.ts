@@ -1188,6 +1188,8 @@ export interface UpdatableRouteOptions<
   in out TBeforeLoadFn,
 > extends UpdatableStaticRouteOption,
     UpdatableRouteOptionsExtensions {
+  /** If true, this route will be skipped during matching if a parse error occurs, and we'll look for another match */
+  skipRouteOnParseError?: boolean
   // If true, this route will be matched as case-sensitive
   caseSensitive?: boolean
   // If true, this route will be forcefully wrapped in a suspense boundary
