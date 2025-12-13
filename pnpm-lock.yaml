@@ -6669,6 +6669,9 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.3)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
     devDependencies:
+      '@eslint/js':
+        specifier: ^9.39.1
+        version: 9.39.2
       '@types/react':
         specifier: ^19.2.2
         version: 19.2.2
@@ -12389,6 +12392,10 @@ packages:
 
   '@eslint/js@9.36.0':
     resolution: {integrity: sha512-uhCbYtYynH30iZErszX78U+nR3pJU3RHGQ57NXy5QupD4SBVwDeU8TNBy+MjMngc1UyIW9noKqsRqfjQTBU2dw==}
+    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@eslint/js@9.39.2':
+    resolution: {integrity: sha512-q1mjIoW1VX4IvSocvM/vbTiveKC4k9eLrajNEuSsmjymSDEbpGddtpfOoN7YGAqBK3NG+uqo8ia4PDTt8buCYA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@eslint/object-schema@2.1.6':
@@ -24696,6 +24703,8 @@ snapshots:
   '@eslint/js@9.22.0': {}
 
   '@eslint/js@9.36.0': {}
+
+  '@eslint/js@9.39.2': {}
 
   '@eslint/object-schema@2.1.6': {}
 

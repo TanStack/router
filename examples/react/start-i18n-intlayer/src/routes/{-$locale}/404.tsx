@@ -1,17 +1,17 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { useIntlayer } from 'react-intlayer';
+import { createFileRoute } from '@tanstack/react-router'
+import { useIntlayer } from 'react-intlayer'
 
-import { LocalizedLink } from '@/components/localized-link';
+import { LocalizedLink } from '@/components/localized-link'
 
 export const Route = createFileRoute('/{-$locale}/404')({
   component: NotFoundComponent,
-});
+})
 
 export function NotFoundComponent() {
-  const { title, subtitle, backHome, lostMessage } = useIntlayer('not-found');
+  const { title, subtitle, backHome, lostMessage } = useIntlayer('not-found')
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-linear-to-b from-slate-900 via-slate-800 to-slate-900 px-4 text-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 px-4 text-center">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 h-64 w-64 animate-pulse rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute right-1/4 bottom-1/4 h-96 w-96 animate-pulse rounded-full bg-purple-500/10 blur-3xl" />
@@ -45,5 +45,5 @@ export function NotFoundComponent() {
         </LocalizedLink>
       </div>
     </div>
-  );
+  )
 }
