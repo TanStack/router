@@ -542,7 +542,7 @@ test('redirect in server function called in query during SSR', async ({
   expect(page.url()).toContain('/redirect-test-ssr/target')
 })
 
-test.describe.only('server function returns 405 when method is not allowed', () => {
+test.describe('server function returns 405 when method is not allowed', () => {
   test('serverFn defined with GET method', async ({ page }) => {
     await page.goto('/method-not-allowed/get')
 
