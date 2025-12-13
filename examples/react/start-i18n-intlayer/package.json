@@ -7,6 +7,7 @@
     "start": "node .output/server/index.mjs",
     "build": "vite build",
     "serve": "vite preview",
+    "lint": "eslint .",
     "test": "vitest run",
     "start:editor": "npx intlayer-editor start --with 'vite dev --port 3000'",
     "intlayer:build": "intlayer build"
@@ -17,7 +18,7 @@
     "@tanstack/react-start": "workspace:*",
     "@tanstack/router-plugin": "workspace:*",
     "intlayer": "7.4.0",
-    "nitro": "latest",
+    "nitro": "^2.9.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-intlayer": "7.4.0",
