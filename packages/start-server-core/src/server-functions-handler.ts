@@ -35,6 +35,15 @@ const FORM_DATA_CONTENT_TYPES = [
 // Maximum payload size for GET requests (1MB)
 const MAX_PAYLOAD_SIZE = 1_000_000
 
+const methodNotAllowed = (expectedMethod: string, actualMethod: string) => {
+  throw new Response(`expected ${expectedMethod} method. Got ${actualMethod}`, {
+    status: 405,
+    headers: {
+      Allow: expectedMethod,
+    },
+  })
+}
+
 export const handleServerAction = async ({
   request,
   context,
@@ -133,7 +142,7 @@ export const handleServerAction = async ({
         }
 
         if (methodLower !== 'post') {
-          throw new Error('expected POST method')
+          throw methodNotAllowed('POST', method)
         }
 
         let jsonPayload
