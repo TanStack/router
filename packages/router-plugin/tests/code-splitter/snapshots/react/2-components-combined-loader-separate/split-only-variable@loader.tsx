@@ -1,0 +1,11 @@
+// Variable used ONLY in component (split part), NOT in loader
+// Should NOT be exported from reference file or imported in split file
+const onlySplit = new Map();
+onlySplit.set('key', 'value');
+const SplitLoader = async () => {
+  // Loader doesn't use onlySplit at all
+  return {
+    data: 'loaded'
+  };
+};
+export { SplitLoader as loader };
