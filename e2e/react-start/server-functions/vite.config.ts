@@ -21,7 +21,6 @@ export default defineConfig({
       serverFns: {
         generateFunctionId: (opts) => {
           const id = `${opts.filename}/${opts.functionName}`
-          console.log('serverFn', id)
           if (FUNCTIONS_WITH_CONSTANT_ID.includes(id)) return 'constant_id'
           else return undefined
         },
