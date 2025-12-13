@@ -22,19 +22,31 @@ function MethodNotAllowedFn() {
     readonly [number, string] | null
   >(null)
   return (
-    <div className='flex flex-col gap-2'>
+    <div className="flex flex-col gap-2">
       <h1>Method Not Allowed GET</h1>
 
-      <button data-testid="get-button" onClick={() => fetchFn('GET').then(setFetchResult)}>
+      <button
+        data-testid="get-button"
+        onClick={() => fetchFn('GET').then(setFetchResult)}
+      >
         Fetch GET
       </button>
-      <button data-testid="post-button" onClick={() => fetchFn('POST').then(setFetchResult)}>
+      <button
+        data-testid="post-button"
+        onClick={() => fetchFn('POST').then(setFetchResult)}
+      >
         Fetch POST
       </button>
-      <button data-testid="put-button" onClick={() => fetchFn('PUT').then(setFetchResult)}>
+      <button
+        data-testid="put-button"
+        onClick={() => fetchFn('PUT').then(setFetchResult)}
+      >
         Fetch PUT
       </button>
-      <button data-testid="options-button" onClick={() => fetchFn('OPTIONS').then(setFetchResult)}>
+      <button
+        data-testid="options-button"
+        onClick={() => fetchFn('OPTIONS').then(setFetchResult)}
+      >
         Fetch OPTIONS
       </button>
 
