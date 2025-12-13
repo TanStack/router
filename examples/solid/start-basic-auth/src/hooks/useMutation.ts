@@ -5,9 +5,9 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
   onSuccess?: (ctx: { data: TData }) => void | Promise<void>
 }) {
   const [submittedAt, setSubmittedAt] = Solid.createSignal<number | undefined>()
-  const [variables, setVariables] = Solid.createSignal<TVariables | undefined>()
+  const [signalVariables, setVariables] = Solid.createSignal<TVariables | undefined>()
   const [error, setError] = Solid.createSignal<TError | undefined>()
-  const [data, setData] = Solid.createSignal<TData | undefined>()
+  const [signalData, setData] = Solid.createSignal<TData | undefined>()
   const [status, setStatus] = Solid.createSignal<
     'idle' | 'pending' | 'success' | 'error'
   >('idle')
@@ -32,10 +32,10 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
 
   return {
     status,
-    variables,
+    signalVariables,
     submittedAt,
     mutate,
     error,
-    data,
+    signalData,
   }
 }

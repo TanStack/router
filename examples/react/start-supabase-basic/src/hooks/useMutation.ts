@@ -5,9 +5,9 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
   onSuccess?: (ctx: { data: TData }) => void | Promise<void>
 }) {
   const [submittedAt, setSubmittedAt] = React.useState<number | undefined>()
-  const [variables, setVariables] = React.useState<TVariables | undefined>()
+  const [stateVariables, setVariables] = React.useState<TVariables | undefined>()
   const [error, setError] = React.useState<TError | undefined>()
-  const [data, setData] = React.useState<TData | undefined>()
+  const [stateData, setData] = React.useState<TData | undefined>()
   const [status, setStatus] = React.useState<
     'idle' | 'pending' | 'success' | 'error'
   >('idle')
@@ -35,10 +35,10 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
 
   return {
     status,
-    variables,
+    stateVariables,
     submittedAt,
     mutate,
     error,
-    data,
+    stateData,
   }
 }
