@@ -2,6 +2,7 @@ import * as React from 'react'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
+import { getHydrateStatus } from './hydrate-status'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 /**
@@ -115,6 +116,13 @@ export const useTags = () => {
 
   const preloadLinks = useRouterState({
     select: (state) => {
+      const { shouldHydrate } = getHydrateStatus(state.matches, router)
+
+      // If hydrate is false, don't include modulepreload links
+      if (!shouldHydrate) {
+        return []
+      }
+
       const preloadLinks: Array<RouterManagedTag> = []
 
       state.matches
