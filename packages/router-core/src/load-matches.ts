@@ -683,8 +683,6 @@ const runLoader = async (
       // so we need to wait for it to resolve before
       // we can use the options
       if (route._lazyPromise) await route._lazyPromise
-      const headResult = executeHead(inner, matchId, route)
-      const head = headResult ? await headResult : undefined
       const pendingPromise = match._nonReactive.minPendingPromise
       if (pendingPromise) await pendingPromise
 
@@ -697,7 +695,6 @@ const runLoader = async (
         status: 'success',
         isFetching: false,
         updatedAt: Date.now(),
-        ...head,
       }))
     } catch (e) {
       let error = e
@@ -721,28 +718,17 @@ const runLoader = async (
           onErrorError,
         )
       }
-      const headResult = executeHead(inner, matchId, route)
-      const head = headResult ? await headResult : undefined
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
         error,
         status: 'error',
         isFetching: false,
-        ...head,
       }))
     }
   } catch (err) {
     const match = inner.router.getMatch(matchId)
     // in case of a redirecting match during preload, the match does not exist
     if (match) {
-      const headResult = executeHead(inner, matchId, route)
-      if (headResult) {
-        const head = await headResult
-        inner.updateMatch(matchId, (prev) => ({
-          ...prev,
-          ...head,
-        }))
-      }
       match._nonReactive.loaderPromise = undefined
     }
     handleRedirectAndNotFound(inner, match, err)
@@ -767,14 +753,6 @@ const loadRouteMatch = async (
 
   if (shouldSkipLoader(inner, matchId)) {
     if (inner.router.isServer) {
-      const headResult = executeHead(inner, matchId, route)
-      if (headResult) {
-        const head = await headResult
-        inner.updateMatch(matchId, (prev) => ({
-          ...prev,
-          ...head,
-        }))
-      }
       return inner.router.getMatch(matchId)!
     }
   } else {
@@ -852,18 +830,6 @@ const loadRouteMatch = async (
         })()
       } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
         await runLoader(inner, matchId, index, route)
-      } else {
-        // if the loader did not run, still update head.
-        // reason: parent's beforeLoad may have changed the route context
-        // and only now do we know the route context (and that the loader would not run)
-        const headResult = executeHead(inner, matchId, route)
-        if (headResult) {
-          const head = await headResult
-          inner.updateMatch(matchId, (prev) => ({
-            ...prev,
-            ...head,
-          }))
-        }
       }
     }
   }
@@ -931,7 +897,47 @@ export async function loadMatches(arg: {
     for (let i = 0; i < max; i++) {
       inner.matchPromises.push(loadRouteMatch(inner, i))
     }
-    await Promise.all(inner.matchPromises)
+    // Use allSettled to ensure all loaders complete regardless of success/failure
+    const results = await Promise.allSettled(inner.matchPromises)
+
+    const failures = results
+      .filter((result) => result.status === 'rejected')
+      .map((result) => result.reason)
+
+    // Find the first redirect error and throw it immediately (skip head execution)
+    for (const err of failures) {
+      if (isRedirect(err)) {
+        throw err
+      }
+    }
+
+    // Execute all head functions serially after all loaders complete
+    // Each head execution is wrapped in try-catch to ensure all heads run even if one fails
+    // TODO: should we break out of head execution on first failure?
+    for (const match of inner.matches) {
+      const { id: matchId, routeId } = match
+      const route = inner.router.looseRoutesById[routeId]!
+      try {
+        const headResult = executeHead(inner, matchId, route)
+        if (headResult) {
+          const head = await headResult
+          inner.updateMatch(matchId, (prev) => ({
+            ...prev,
+            ...head,
+          }))
+        }
+      } catch (err) {
+        // Log error but continue executing other head functions
+        console.error(`Error executing head for route ${routeId}:`, err)
+      }
+    }
+
+    // After head execution, check for notFound errors and throw the first one
+    for (const err of failures) {
+      if (isNotFound(err)) {
+        throw err
+      }
+    }
 
     const readyPromise = triggerOnReady(inner)
     if (isPromise(readyPromise)) await readyPromise
@@ -945,7 +951,6 @@ export async function loadMatches(arg: {
       throw err
     }
   }
-
   return inner.matches
 }
 
