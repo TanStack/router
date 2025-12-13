@@ -105,7 +105,7 @@ function InvoiceComponent() {
           Save
         </button>
       </div>
-      {updateInvoiceMutation.variables?.id === invoice.id ? (
+      {updateInvoiceMutation.stateVariables?.id === invoice.id ? (
         <div key={updateInvoiceMutation.submittedAt}>
           {updateInvoiceMutation.status === 'success' ? (
             <div className="inline-block px-2 py-1 rounded-sm bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
