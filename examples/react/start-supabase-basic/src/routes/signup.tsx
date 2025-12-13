@@ -53,7 +53,7 @@ function SignupComp() {
       afterSubmit={
         signupMutation.stateData?.error ? (
           <>
-            <div className="text-red-400">{signupMutation.stateData?.message ?? 'an error occured'}</div>
+            <div className="text-red-400">{signupMutation.stateData?.message ?? 'an error occurred'}</div>
           </>
         ) : null
       }
