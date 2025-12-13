@@ -50,6 +50,7 @@ export interface ResolvedStartConfig {
   routerFilePath: string
   srcDirectory: string
   viteAppBase: string
+  viteConfigFile: string | undefined
 }
 
 export type GetConfigFn = () => {
@@ -76,6 +77,7 @@ export function TanStackStartVitePluginCore(
     routerFilePath: '',
     srcDirectory: '',
     viteAppBase: '',
+    viteConfigFile: undefined,
   }
 
   const directive = corePluginOpts.serverFn?.directive ?? 'use server'
@@ -351,14 +353,60 @@ export function TanStackStartVitePluginCore(
           },
         }
       },
+      configResolved(config) {
+        resolvedStartConfig.viteConfigFile = config.configFile || undefined
+      },
       buildApp: {
         order: 'post',
         async handler(builder) {
           const { startConfig } = getConfig()
-          await postServerBuild({ builder, startConfig })
+          const hasNitro = builder.config.plugins.some(
+            (p): p is { name: string } =>
+              typeof p === 'object' &&
+              'name' in p &&
+              typeof p.name === 'string' &&
+              p.name.startsWith('nitro:'),
+          )
+          await postServerBuild({
+            builder,
+            startConfig,
+            skipPrerender: hasNitro,
+          })
         },
       },
     },
+    // Nitro module plugin - runs prerendering after Nitro build using vite preview
+    {
+      name: 'tanstack-start-core:nitro-prerender',
+      nitro: {
+        name: 'tanstack-start-prerender',
+        setup(nitro: any) {
+          nitro.hooks.hook('compiled', async () => {
+            const { startConfig, resolvedStartConfig } = getConfig()
+            if (!startConfig.prerender?.enabled && !startConfig.spa?.enabled) {
+              return
+            }
+
+            // Write nitro.json before calling vite.preview() since Nitro's
+            // configurePreviewServer hook requires it to exist. The 'compiled'
+            // hook runs before Nitro writes the build info, so we need to
+            // write a minimal version ourselves.
+            const { writeNitroBuildInfo, postServerBuildForNitro } =
+              await import('./post-server-build')
+            await writeNitroBuildInfo({
+              outputDir: nitro.options.output.dir,
+              preset: nitro.options.preset,
+            })
+
+            await postServerBuildForNitro({
+              startConfig,
+              outputDir: nitro.options.output.publicDir,
+              configFile: resolvedStartConfig.viteConfigFile,
+            })
+          })
+        },
+      },
+    } as PluginOption,
     tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPlugin
     startCompilerPlugin({ framework: corePluginOpts.framework, environments }),
