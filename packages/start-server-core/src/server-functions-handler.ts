@@ -12,6 +12,15 @@ import { getServerFnById } from './getServerFnById'
 
 let regex: RegExp | undefined = undefined
 
+const methodNotAllowed = (expectedMethod: string, actualMethod: string) => {
+  throw new Response(`expected ${expectedMethod} method. Got ${actualMethod}`, {
+    status: 405,
+    headers: {
+      Allow: expectedMethod,
+    },
+  })
+}
+
 export const handleServerAction = async ({
   request,
   context,
@@ -119,7 +128,7 @@ export const handleServerAction = async ({
         }
 
         if (method.toLowerCase() !== 'post') {
-          throw new Error('expected POST method')
+          throw methodNotAllowed('POST', method)
         }
 
         let jsonPayload
