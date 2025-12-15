@@ -18,7 +18,7 @@ Let's create a post route file that uses a path param to match the post ID:
 - `posts.$postId.tsx`
 
 ```tsx
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params }) => {
@@ -377,7 +377,7 @@ function Navigation() {
       {/* Navigate with multiple optional parameters */}
       <Link
         to="/posts/{-$category}/{-$slug}"
-        params={{ category: 'tech', slug: 'react-tips' }}
+        params={{ category: 'tech', slug: 'solid-tips' }}
       >
         Specific Post
       </Link>
