@@ -127,7 +127,7 @@ const functions = {
     type: 'localFn',
     expected: {
       name: 'fakeFn',
-      window,
+      window: typeof window !== 'undefined' ? window : 'no window object',
     },
   },
 } satisfies Record<string, TestCase>

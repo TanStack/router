@@ -57,6 +57,7 @@ export class ServerFnCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
   private validLookupKinds: Set<LookupKind>
+
   constructor(
     private options: {
       env: 'client' | 'server'
@@ -64,7 +65,10 @@ export class ServerFnCompiler {
       lookupConfigurations: Array<LookupConfig>
       lookupKinds: Set<LookupKind>
       loadModule: (id: string) => Promise<void>
-      resolveId: (id: string, importer?: string) => Promise<string | null>
+      resolveId: (
+        id: string,
+        importer: string | undefined,
+      ) => Promise<string | null>
     },
   ) {
     this.validLookupKinds = options.lookupKinds
@@ -219,7 +223,7 @@ export class ServerFnCompiler {
       kind: LookupKind
     }> = []
     for (const handler of candidates) {
-      const kind = await this.resolveExprKind(handler, id)
+      const kind = await this.resolveExprKind(handler, id, new Set())
       if (this.validLookupKinds.has(kind as LookupKind)) {
         toRewrite.push({ callExpression: handler, kind: kind as LookupKind })
       }
@@ -293,7 +297,7 @@ export class ServerFnCompiler {
   private async resolveIdentifierKind(
     ident: string,
     id: string,
-    visited = new Set<string>(),
+    visited: Set<string>,
   ): Promise<Kind> {
     const info = await this.getModuleInfo(id)
 
@@ -321,7 +325,7 @@ export class ServerFnCompiler {
   private async resolveBindingKind(
     binding: Binding,
     fileId: string,
-    visited = new Set<string>(),
+    visited: Set<string>,
   ): Promise<Kind> {
     if (binding.resolvedKind) {
       return binding.resolvedKind
@@ -367,7 +371,7 @@ export class ServerFnCompiler {
   private async resolveExprKind(
     expr: t.Expression | null,
     fileId: string,
-    visited = new Set<string>(),
+    visited: Set<string>,
   ): Promise<Kind> {
     if (!expr) {
       return 'None'
@@ -418,7 +422,7 @@ export class ServerFnCompiler {
   private async resolveCalleeKind(
     callee: t.Expression,
     fileId: string,
-    visited = new Set<string>(),
+    visited: Set<string>,
   ): Promise<Kind> {
     if (t.isIdentifier(callee)) {
       return this.resolveIdentifierKind(callee.name, fileId, visited)

@@ -1,12 +1,11 @@
+import type { Environment } from 'vite'
 import { TRANSFORM_ID_REGEX } from '../constants'
+import type { ModuleLoaderApi } from '../module-loader-plugin/plugin'
+import { findModuleLoaderApi, stripQueryString } from '../plugin-utils'
 import { ServerFnCompiler } from './compiler'
 import type { LookupConfig, LookupKind } from './compiler'
 import type { CompileStartFrameworkOptions } from '../start-compiler-plugin/compilers'
 import type { PluginOption } from 'vite'
-
-function cleanId(id: string): string {
-  return id.split('?')[0]!
-}
 
 const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
   client: new Set(['Middleware', 'ServerFn'] as const),
@@ -38,13 +37,14 @@ const getLookupConfigurationsForEnv = (
     return [createServerFnConfig]
   }
 }
-const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
+
 export function createServerFnPlugin(opts: {
   framework: CompileStartFrameworkOptions
   directive: string
   environments: Array<{ name: string; type: 'client' | 'server' }>
 }): PluginOption {
-  const compilers: Record<string /* envName */, ServerFnCompiler> = {}
+  // Store compilers per environment name to handle concurrent transforms correctly
+  const compilers: Record<string, ServerFnCompiler> = {}
 
   function perEnvServerFnPlugin(environment: {
     name: string
@@ -56,6 +56,18 @@ export function createServerFnPlugin(opts: {
         ? [/\.\s*handler\(/, /\.\s*createMiddleware\(\)/]
         : [/\.\s*handler\(/]
 
+    let loaderApi: ModuleLoaderApi | undefined
+    let viteEnv: Environment | undefined
+    let ctxLoad:
+      | ((options: { id: string }) => Promise<{ code: string | null }>)
+      | undefined
+    let ctxResolve:
+      | ((
+          source: string,
+          importer?: string,
+        ) => Promise<{ id: string; external?: boolean | 'absolute' } | null>)
+      | undefined
+
     return {
       name: `tanstack-start-core::server-fn:${environment.name}`,
       enforce: 'pre',
@@ -65,7 +77,6 @@ export function createServerFnPlugin(opts: {
       transform: {
         filter: {
           id: {
-            exclude: new RegExp(`${SERVER_FN_LOOKUP}$`),
             include: TRANSFORM_ID_REGEX,
           },
           code: {
@@ -73,8 +84,16 @@ export function createServerFnPlugin(opts: {
           },
         },
         async handler(code, id) {
-          let compiler = compilers[this.environment.name]
+          const env = this.environment
+          const envName = env.name
+
+          let compiler = compilers[envName]
           if (!compiler) {
+            loaderApi = findModuleLoaderApi(env.plugins)
+            viteEnv = env
+            ctxLoad = this.load.bind(this)
+            ctxResolve = this.resolve.bind(this)
+
             compiler = new ServerFnCompiler({
               env: environment.type,
               directive: opts.directive,
@@ -83,44 +102,31 @@ export function createServerFnPlugin(opts: {
                 environment.type,
                 opts.framework,
               ),
-              loadModule: async (id: string) => {
-                if (this.environment.mode === 'build') {
-                  const loaded = await this.load({ id })
-                  if (!loaded.code) {
-                    throw new Error(`could not load module ${id}`)
-                  }
-                  compiler!.ingestModule({ code: loaded.code, id })
-                } else if (this.environment.mode === 'dev') {
-                  /**
-                   * in dev, vite does not return code from `ctx.load()`
-                   * so instead, we need to take a different approach
-                   * we must force vite to load the module and run it through the vite plugin pipeline
-                   * we can do this by using the `fetchModule` method
-                   * the `captureServerFnModuleLookupPlugin` captures the module code via its transform hook and invokes analyzeModuleAST
-                   */
-                  await this.environment.fetchModule(
-                    id + '?' + SERVER_FN_LOOKUP,
-                  )
-                } else {
-                  throw new Error(
-                    `could not load module ${id}: unknown environment mode ${this.environment.mode}`,
-                  )
-                }
+              loadModule: async (moduleId: string) => {
+                const ctxLoadForEnv =
+                  viteEnv!.mode === 'build' ? ctxLoad : undefined
+                const moduleCode = await loaderApi!.loadModuleCode(
+                  viteEnv!,
+                  moduleId,
+                  ctxLoadForEnv,
+                )
+                compiler!.ingestModule({ code: moduleCode, id: moduleId })
               },
-              resolveId: async (source: string, importer?: string) => {
-                const r = await this.resolve(source, importer)
-                if (r) {
-                  if (!r.external) {
-                    return cleanId(r.id)
-                  }
+              resolveId: async (
+                source: string,
+                importer: string | undefined,
+              ) => {
+                const r = await ctxResolve!(source, importer)
+                if (r && !r.external) {
+                  return stripQueryString(r.id)
                 }
                 return null
               },
             })
-            compilers[this.environment.name] = compiler
+            compilers[envName] = compiler
           }
 
-          id = cleanId(id)
+          id = stripQueryString(id)
           const result = await compiler.compile({ id, code })
           return result
         },
@@ -145,24 +151,5 @@ export function createServerFnPlugin(opts: {
     }
   }
 
-  return [
-    ...opts.environments.map(perEnvServerFnPlugin),
-    {
-      name: 'tanstack-start-core:capture-server-fn-module-lookup',
-      // we only need this plugin in dev mode
-      apply: 'serve',
-      applyToEnvironment(env) {
-        return !!opts.environments.find((e) => e.name === env.name)
-      },
-      transform: {
-        filter: {
-          id: new RegExp(`${SERVER_FN_LOOKUP}$`),
-        },
-        handler(code, id) {
-          const compiler = compilers[this.environment.name]
-          compiler?.ingestModule({ code, id: cleanId(id) })
-        },
-      },
-    },
-  ]
+  return opts.environments.map(perEnvServerFnPlugin)
 }
