@@ -10,7 +10,7 @@ export default defineConfig({
       include: /\.(?:jsx|tsx)$/,
     }),
     pluginVue(),
-		pluginVueJsx(),
+    pluginVueJsx(),
   ],
   source: {
     define: {
