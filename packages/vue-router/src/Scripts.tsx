@@ -4,10 +4,6 @@ import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
-// Script that sets the defer flag for Vue - must run BEFORE TSR bootstrap script
-// This prevents $_TSR.c() from removing scripts until Vue hydration is complete
-const VUE_DEFER_SCRIPT = 'self.$_TSR_DEFER=true'
-
 export const Scripts = Vue.defineComponent({
   name: 'Scripts',
   setup() {
@@ -68,12 +64,6 @@ export const Scripts = Vue.defineComponent({
       const allScripts: Array<RouterManagedTag> = []
 
       if (router.serverSsr) {
-        allScripts.push({
-          tag: 'script',
-          attrs: { nonce },
-          children: VUE_DEFER_SCRIPT,
-        } as RouterManagedTag)
-
         const serverBufferedScript = router.serverSsr.takeBufferedScripts()
         if (serverBufferedScript) {
           allScripts.push(serverBufferedScript)
@@ -89,7 +79,6 @@ export const Scripts = Vue.defineComponent({
           tag: 'script',
           attrs: {
             nonce,
-            class: '$tsr',
             id: '$tsr-stream-barrier',
             'data-allow-mismatch': true,
           },
