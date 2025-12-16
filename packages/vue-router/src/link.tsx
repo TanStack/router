@@ -431,9 +431,9 @@ export function useLinkProps<
 
     let hrefValue: string
     if (maskedLocation) {
-      hrefValue = maskedLocation.url
+      hrefValue = maskedLocation.url.href
     } else {
-      hrefValue = nextLocation?.url
+      hrefValue = nextLocation?.url.href
     }
 
     // Handle origin stripping like Solid does
@@ -446,13 +446,8 @@ export function useLinkProps<
     return hrefValue
   })
 
-  // Create a reactive proxy that reads computed values on access
-  // This allows the returned object to stay reactive when used in templates
-  // Use shallowReactive to preserve the ref object without unwrapping it
-  const reactiveProps: HTMLAttributes = Vue.shallowReactive({
-    ...getPropsSafeToSpread(),
-    href: undefined as string | undefined,
-    ref,
+  // Create static event handlers that don't change between renders
+  const staticEventHandlers = {
     onClick: composeEventHandlers<MouseEvent>([
       options.onClick,
       handleClick,
@@ -481,72 +476,67 @@ export function useLinkProps<
       options.onTouchStart,
       handleTouchStart,
     ]) as any,
-    disabled: !!options.disabled,
-    target: options.target,
-  })
+  }
 
-  // Watch computed values and update reactive props
-  Vue.watchEffect(() => {
-    // Update from resolved active/inactive props
-    const activeP = resolvedActiveProps.value
-    const inactiveP = resolvedInactiveProps.value
+  // Compute all props synchronously to avoid hydration mismatches
+  // Using Vue.computed ensures props are calculated at render time, not after
+  const computedProps = Vue.computed<HTMLAttributes>(() => {
+    const result: HTMLAttributes = {
+      ...getPropsSafeToSpread(),
+      href: href.value,
+      ref,
+      ...staticEventHandlers,
+      disabled: !!options.disabled,
+      target: options.target,
+    }
 
-    // Update href
-    reactiveProps.href = href.value
-
-    // Update style
+    // Add style if present
     if (resolvedStyle.value) {
-      reactiveProps.style = resolvedStyle.value
-    } else {
-      delete reactiveProps.style
+      result.style = resolvedStyle.value
     }
 
-    // Update class
+    // Add class if present
     if (resolvedClassName.value) {
-      reactiveProps.class = resolvedClassName.value
-    } else {
-      delete reactiveProps.class
+      result.class = resolvedClassName.value
     }
 
-    // Update disabled props
+    // Add disabled props
     if (options.disabled) {
-      reactiveProps.role = 'link'
-      reactiveProps['aria-disabled'] = true
-    } else {
-      delete reactiveProps.role
-      delete reactiveProps['aria-disabled']
+      result.role = 'link'
+      result['aria-disabled'] = true
     }
 
-    // Update active status
+    // Add active status
     if (isActive.value) {
-      reactiveProps['data-status'] = 'active'
-      reactiveProps['aria-current'] = 'page'
-    } else {
-      delete reactiveProps['data-status']
-      delete reactiveProps['aria-current']
+      result['data-status'] = 'active'
+      result['aria-current'] = 'page'
     }
 
-    // Update transitioning status
+    // Add transitioning status
     if (isTransitioning.value) {
-      reactiveProps['data-transitioning'] = 'transitioning'
-    } else {
-      delete reactiveProps['data-transitioning']
+      result['data-transitioning'] = 'transitioning'
     }
 
     // Merge active/inactive props (excluding class and style which are handled above)
+    const activeP = resolvedActiveProps.value
+    const inactiveP = resolvedInactiveProps.value
+
     for (const key of Object.keys(activeP)) {
       if (key !== 'class' && key !== 'style') {
-        reactiveProps[key] = activeP[key]
+        result[key] = activeP[key]
       }
     }
     for (const key of Object.keys(inactiveP)) {
       if (key !== 'class' && key !== 'style') {
-        reactiveProps[key] = inactiveP[key]
+        result[key] = inactiveP[key]
       }
     }
+
+    return result
   })
 
-  return reactiveProps
+  // Return the computed ref itself - callers should access .value
+  return computedProps as unknown as HTMLAttributes
 }
 
 // Type definitions
@@ -682,12 +672,17 @@ const LinkImpl = Vue.defineComponent({
   ],
   setup(props, { attrs, slots }) {
     // Call useLinkProps ONCE during setup with combined props and attrs
-    // The returned object includes computed values that update reactively
+    // The returned object is a computed ref that updates reactively
     const allProps = { ...props, ...attrs }
-    const linkProps = useLinkProps(allProps as any)
+    const linkPropsComputed = useLinkProps(
+      allProps as any,
+    ) as unknown as Vue.ComputedRef<HTMLAttributes>
 
     return () => {
       const Component = props._asChild || 'a'
+
+      // Access the computed value to get fresh props each render
+      const linkProps = linkPropsComputed.value
 
       const isActive = linkProps['data-status'] === 'active'
       const isTransitioning =

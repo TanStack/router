@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 import warning from 'tiny-warning'
 import { createRoute } from './route'
 

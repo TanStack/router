@@ -97,21 +97,21 @@ Create middleware to log all requests and responses:
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 
-const requestLogger = createMiddleware().handler(async ({ next }) => {
+const requestLogger = createMiddleware().server(async ({ request, next }) => {
   const startTime = Date.now()
   const timestamp = new Date().toISOString()
 
   console.log(`[${timestamp}] ${request.method} ${request.url} - Starting`)
 
   try {
-    const response = await next()
+    const result = await next()
     const duration = Date.now() - startTime
 
     console.log(
-      `[${timestamp}] ${request.method} ${request.url} - ${response.status} (${duration}ms)`,
+      `[${timestamp}] ${request.method} ${request.url} - ${result.response.status} (${duration}ms)`,
     )
 
-    return response
+    return result
   } catch (error) {
     const duration = Date.now() - startTime
     console.error(
@@ -335,16 +335,16 @@ Add helpful debug information to responses:
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 
-const debugMiddleware = createMiddleware().handler(async ({ next }) => {
-  const response = await next()
+const debugMiddleware = createMiddleware().server(async ({ next }) => {
+  const result = await next()
 
   if (process.env.NODE_ENV === 'development') {
-    response.headers.set('X-Debug-Timestamp', new Date().toISOString())
-    response.headers.set('X-Debug-Node-Version', process.version)
-    response.headers.set('X-Debug-Uptime', process.uptime().toString())
+    result.response.headers.set('X-Debug-Timestamp', new Date().toISOString())
+    result.response.headers.set('X-Debug-Node-Version', process.version)
+    result.response.headers.set('X-Debug-Uptime', process.uptime().toString())
   }
 
-  return response
+  return result
 })
 ```
 
@@ -668,7 +668,7 @@ import { trace, SpanStatusCode } from '@opentelemetry/api'
 
 const tracer = trace.getTracer('tanstack-start')
 
-const tracingMiddleware = createMiddleware().handler(
+const tracingMiddleware = createMiddleware().server(
   async ({ next, request }) => {
     const url = new URL(request.url)
 
@@ -682,10 +682,10 @@ const tracingMiddleware = createMiddleware().handler(
         })
 
         try {
-          const response = await next()
-          span.setAttribute('http.status_code', response.status)
+          const result = await next()
+          span.setAttribute('http.status_code', result.response.status)
           span.setStatus({ code: SpanStatusCode.OK })
-          return response
+          return result
         } catch (error) {
           span.recordException(error)
           span.setStatus({

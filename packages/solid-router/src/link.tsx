@@ -139,9 +139,9 @@ export function useLinkProps<
     let href
     const maskedLocation = next().maskedLocation
     if (maskedLocation) {
-      href = maskedLocation.url
+      href = maskedLocation.url.href
     } else {
-      href = next().url
+      href = next().url.href
     }
     let external = false
     if (router.origin) {

@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
+import { useEffect } from 'react'
 import {
   Link,
   Outlet,
@@ -2473,6 +2474,61 @@ describe('useRouteContext in the component', () => {
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
     expect(content).toBeInTheDocument()
+  })
+
+  test('route context, (sleep in beforeLoad), with immediate navigation', async () => {
+    const contextValues: Array<{ data: string }> = []
+
+    const rootRoute = createRootRoute({
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        return { data: 'context-from-beforeLoad' }
+      },
+      component: () => {
+        const context: { data: string } = rootRoute.useRouteContext()
+
+        // Track all context values we receive
+        contextValues.push(context)
+
+        return <Outlet />
+      },
+    })
+
+    function Component() {
+      const navigate = indexRoute.useNavigate()
+
+      // Navigate away immediately on mount
+      useEffect(() => {
+        navigate({ to: '/other' })
+      }, [navigate])
+
+      return <div>Index page</div>
+    }
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: Component,
+    })
+
+    const otherRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+      component: () => <div>Other page</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    // Wait for navigation to complete
+    await screen.findByText('Other page')
+
+    const allContextsValid = contextValues.every(
+      (c) => c.data === 'context-from-beforeLoad',
+    )
+    expect(allContextsValid).toBe(true)
   })
 
   test('route context (sleep in loader), present in the index route', async () => {

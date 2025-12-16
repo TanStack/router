@@ -121,6 +121,18 @@ await publish({
       packageDir: 'packages/solid-start-server',
     },
     {
+      name: '@tanstack/vue-start',
+      packageDir: 'packages/vue-start',
+    },
+    {
+      name: '@tanstack/vue-start-client',
+      packageDir: 'packages/vue-start-client',
+    },
+    {
+      name: '@tanstack/vue-start-server',
+      packageDir: 'packages/vue-start-server',
+    },
+    {
       name: '@tanstack/start-client-core',
       packageDir: 'packages/start-client-core',
     },

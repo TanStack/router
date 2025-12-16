@@ -1176,16 +1176,14 @@ export class RouterCore<
 
       const fullPath = url.href.replace(url.origin, '')
 
-      const { pathname, hash } = url
-
       return {
         href: fullPath,
         publicHref: href,
-        url: url.href,
-        pathname: decodePath(pathname),
+        url: url,
+        pathname: decodePath(url.pathname),
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
-        hash: hash.split('#').reverse()[0] ?? '',
+        hash: url.hash.split('#').reverse()[0] ?? '',
         state: replaceEqualDeep(previousLocation?.state, state),
       }
     }
@@ -1765,7 +1763,7 @@ export class RouterCore<
         publicHref:
           rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
         href: fullPath,
-        url: rewrittenUrl.href,
+        url: rewrittenUrl,
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
@@ -1878,8 +1876,16 @@ export class RouterCore<
     if (isSameUrl && isSameState()) {
       this.load()
     } else {
-      // eslint-disable-next-line prefer-const
-      let { maskedLocation, hashScrollIntoView, ...nextHistory } = next
+      let {
+        // eslint-disable-next-line prefer-const
+        maskedLocation,
+        // eslint-disable-next-line prefer-const
+        hashScrollIntoView,
+        // don't pass url into history since it is a URL instance that cannot be serialized
+        // eslint-disable-next-line prefer-const
+        url: _url,
+        ...nextHistory
+      } = next
 
       if (maskedLocation) {
         nextHistory = {
@@ -2000,7 +2006,7 @@ export class RouterCore<
     if (reloadDocument) {
       if (!href) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = location.url
+        href = location.url.href
       }
 
       // Check blockers for external URLs unless ignoreBlocker is true
@@ -2056,24 +2062,11 @@ export class RouterCore<
         _includeValidateSearch: true,
       })
 
-      // Normalize URLs for comparison to handle encoding differences
-      // Browser history always stores encoded URLs while buildLocation may produce decoded URLs
-      const normalizeUrl = (url: string) => {
-        try {
-          return encodeURI(decodeURI(url))
-        } catch {
-          return url
-        }
-      }
-
       if (
-        trimPath(normalizeUrl(this.latestLocation.href)) !==
-        trimPath(normalizeUrl(nextLocation.href))
+        this.latestLocation.publicHref !== nextLocation.publicHref ||
+        nextLocation.url.origin !== this.origin
       ) {
-        let href = nextLocation.url
-        if (this.origin && href.startsWith(this.origin)) {
-          href = href.replace(this.origin, '') || '/'
-        }
+        const href = this.getParsedLocationHref(nextLocation)
 
         throw redirect({ href })
       }
@@ -2395,13 +2388,18 @@ export class RouterCore<
     return this.load({ sync: opts?.sync })
   }
 
+  getParsedLocationHref = (location: ParsedLocation) => {
+    let href = location.url.href
+    if (this.origin && location.url.origin === this.origin) {
+      href = href.replace(this.origin, '') || '/'
+    }
+    return href
+  }
+
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
     if (!redirect.options.href) {
       const location = this.buildLocation(redirect.options)
-      let href = location.url
-      if (this.origin && href.startsWith(this.origin)) {
-        href = href.replace(this.origin, '') || '/'
-      }
+      const href = this.getParsedLocationHref(location)
       redirect.options.href = location.href
       redirect.headers.set('Location', href)
     }

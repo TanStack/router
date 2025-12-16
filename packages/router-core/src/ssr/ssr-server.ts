@@ -156,13 +156,33 @@ export function attachRouterServerSsrUtils({
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
       let manifestToDehydrate: Manifest | undefined = undefined
-      // only send manifest of the current routes to the client
+      // For currently matched routes, send full manifest (preloads + assets)
+      // For all other routes, only send assets (no preloads as they are handled via dynamic imports)
       if (manifest) {
+        const currentRouteIds = new Set(
+          router.state.matches.map((k) => k.routeId),
+        )
         const filteredRoutes = Object.fromEntries(
-          router.state.matches.map((k) => [
-            k.routeId,
-            manifest.routes[k.routeId],
-          ]),
+          Object.entries(manifest.routes).flatMap(
+            ([routeId, routeManifest]) => {
+              if (currentRouteIds.has(routeId)) {
+                return [[routeId, routeManifest]]
+              } else if (
+                routeManifest.assets &&
+                routeManifest.assets.length > 0
+              ) {
+                return [
+                  [
+                    routeId,
+                    {
+                      assets: routeManifest.assets,
+                    },
+                  ],
+                ]
+              }
+              return []
+            },
+          ),
         )
         manifestToDehydrate = {
           routes: filteredRoutes,
