@@ -3893,6 +3893,73 @@ importers:
         specifier: ^3.1.5
         version: 3.1.5(typescript@5.8.3)
 
+  e2e/vue-router/basic-esbuild-file-based:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.15
+        version: 4.1.15
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router
+      '@tanstack/vue-router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router-devtools
+      '@tanstack/zod-adapter':
+        specifier: workspace:*
+        version: link:../../../packages/zod-adapter
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.6
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwindcss:
+        specifier: ^4.1.17
+        version: 4.1.17
+      vue:
+        specifier: ^3.5.16
+        version: 3.5.25(typescript@5.8.3)
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.57
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.36.0
+        version: 9.36.0
+      '@playwright/test':
+        specifier: ^1.56.1
+        version: 1.56.1
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.44.1
+        version: 8.44.1(@typescript-eslint/parser@8.44.1(eslint@9.22.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.22.0(jiti@2.6.1))(typescript@5.8.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.44.1
+        version: 8.44.1(eslint@9.22.0(jiti@2.6.1))(typescript@5.8.3)
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.10
+      esbuild-plugin-vue3:
+        specifier: ^0.5.1
+        version: 0.5.1(cheerio@1.0.0)(vue@3.5.25(typescript@5.8.3))
+      eslint-plugin-vue:
+        specifier: ^9.33.0
+        version: 9.33.0(eslint@9.22.0(jiti@2.6.1))
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+      vue-eslint-parser:
+        specifier: ^9.4.3
+        version: 9.4.3(eslint@9.22.0(jiti@2.6.1))
+      vue-tsc:
+        specifier: ^3.1.5
+        version: 3.1.5(typescript@5.8.3)
+
   e2e/vue-router/basic-file-based-jsx:
     dependencies:
       '@tailwindcss/postcss':
@@ -18464,6 +18531,24 @@ packages:
       esbuild: '>=0.20'
       solid-js: 1.9.10
 
+  esbuild-plugin-vue3@0.5.1:
+    resolution: {integrity: sha512-rhTPImJ1Zi7FbVa4xWlu9dJdt+mqWxc9Z+AQd+ArbHHwtyQRe8FvER8gaTw0O6bNsBjAtU5rq0rpZEkP3QaThg==}
+    peerDependencies:
+      cheerio: ^1.0.0-rc.10
+      html-minifier: ^4.0.0
+      pug: ^3.0.2
+      sass: ^1.35.2
+      vue: ^3.4.15
+    peerDependenciesMeta:
+      cheerio:
+        optional: true
+      html-minifier:
+        optional: true
+      pug:
+        optional: true
+      sass:
+        optional: true
+
   esbuild@0.23.0:
     resolution: {integrity: sha512-1lvV17H2bMYda/WaFb2jLPeHU3zml2k4/yagNMG8Q/YtfMjCwEUZa2eXXMgZTVSL5q1n4H7sQ0X6CdJDqqeCFA==}
     engines: {node: '>=18'}
@@ -22214,6 +22299,11 @@ packages:
     peerDependencies:
       eslint: ^9.22.0
       typescript: '>=4.8.4 <6.0.0'
+
+  typescript@4.9.5:
+    resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
+    engines: {node: '>=4.2.0'}
+    hasBin: true
 
   typescript@5.4.2:
     resolution: {integrity: sha512-+2/g0Fds1ERlP6JsakQQDXjZdZMM+rqpamFZJEKh4kwTIn3iDkgKtby0CeNd5ATNZ4Ry1ax15TMx0W2V+miizQ==}
@@ -30890,6 +30980,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  esbuild-plugin-vue3@0.5.1(cheerio@1.0.0)(vue@3.5.25(typescript@5.8.3)):
+    dependencies:
+      typescript: 4.9.5
+      vue: 3.5.25(typescript@5.8.3)
+    optionalDependencies:
+      cheerio: 1.0.0
+
   esbuild@0.23.0:
     optionalDependencies:
       '@esbuild/aix-ppc64': 0.23.0
@@ -35314,6 +35411,8 @@ snapshots:
       typescript: 5.9.2
     transitivePeerDependencies:
       - supports-color
+
+  typescript@4.9.5: {}
 
   typescript@5.4.2: {}
 
