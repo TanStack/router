@@ -4018,6 +4018,55 @@ importers:
         specifier: ^3.1.5
         version: 3.1.5(typescript@5.8.3)
 
+  e2e/vue-router/basic-scroll-restoration:
+    dependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.15
+        version: 4.1.15
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router
+      '@tanstack/vue-router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router-devtools
+      '@tanstack/vue-virtual':
+        specifier: ^3.13.0
+        version: 3.13.13(vue@3.5.25(typescript@5.8.3))
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.6
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwindcss:
+        specifier: ^4.1.17
+        version: 4.1.17
+      vue:
+        specifier: ^3.5.16
+        version: 3.5.25(typescript@5.8.3)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.56.1
+        version: 1.56.1
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@vitejs/plugin-vue':
+        specifier: ^5.2.3
+        version: 5.2.4(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.8.3))
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^4.1.2
+        version: 4.2.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.8.3))
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vue-tsc:
+        specifier: ^3.1.5
+        version: 3.1.5(typescript@5.8.3)
+
   e2e/vue-router/basic-virtual-file-based:
     dependencies:
       '@tailwindcss/postcss':
@@ -16033,6 +16082,9 @@ packages:
   '@tanstack/virtual-core@3.13.12':
     resolution: {integrity: sha512-1YBOJfRHV4sXUmWsFSf5rQor4Ss82G8dQWLRbnk3GA4jeP8hQt1hxXh0tmflpC0dz3VgEv/1+qwPyLeWkQuPFA==}
 
+  '@tanstack/virtual-core@3.13.13':
+    resolution: {integrity: sha512-uQFoSdKKf5S8k51W5t7b2qpfkyIbdHMzAn+AMQvHPxKUPeo1SsGaA4JRISQT87jm28b7z8OEqPcg1IOZagQHcA==}
+
   '@tanstack/vite-config@0.4.0':
     resolution: {integrity: sha512-sTlzLXTvFwtPFAFrRNmU93ppl+atpX9ehWQDu+ZqfEX9vXxX/d1hUQp3wcbpgudA2SsIV7z0a8Hv6MBU63sGwQ==}
     engines: {node: '>=18'}
@@ -16066,6 +16118,11 @@ packages:
     peerDependenciesMeta:
       '@vue/composition-api':
         optional: true
+
+  '@tanstack/vue-virtual@3.13.13':
+    resolution: {integrity: sha512-Cf2xIEE8nWAfsX0N5nihkPYMeQRT+pHt4NEkuP8rNCn6lVnLDiV8rC8IeIxbKmQC0yPnj4SIBLwXYVf86xxKTQ==}
+    peerDependencies:
+      vue: ^2.7.0 || ^3.0.0
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -28043,6 +28100,8 @@ snapshots:
 
   '@tanstack/virtual-core@3.13.12': {}
 
+  '@tanstack/virtual-core@3.13.13': {}
+
   '@tanstack/vite-config@0.4.0(@types/node@22.10.2)(rollup@4.52.5)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
       rollup-plugin-preserve-directives: 0.4.0(rollup@4.52.5)
@@ -28089,6 +28148,11 @@ snapshots:
       '@tanstack/store': 0.8.0
       vue: 3.5.25(typescript@5.9.2)
       vue-demi: 0.14.10(vue@3.5.25(typescript@5.9.2))
+
+  '@tanstack/vue-virtual@3.13.13(vue@3.5.25(typescript@5.8.3))':
+    dependencies:
+      '@tanstack/virtual-core': 3.13.13
+      vue: 3.5.25(typescript@5.8.3)
 
   '@testing-library/dom@10.4.1':
     dependencies:
