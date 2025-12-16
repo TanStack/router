@@ -4078,6 +4078,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../../packages/router-plugin
       '@tanstack/vue-query':
         specifier: ^5.90.0
         version: 5.92.0(vue@3.5.25(typescript@5.8.3))

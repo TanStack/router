@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.15",
+    "@tanstack/router-plugin": "workspace:^",
     "@tanstack/vue-query": "^5.90.0",
     "@tanstack/vue-query-devtools": "^6.1.2",
     "@tanstack/vue-router": "workspace:^",
