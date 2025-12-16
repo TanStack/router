@@ -91,10 +91,14 @@ export function useTransitionerSetup() {
   // Vue updates DOM asynchronously (next tick). The View Transitions API expects the
   // update callback promise to resolve only after the DOM has been updated.
   // Wrap the router-core implementation to await a Vue flush before resolving.
-  const originalStartViewTransition: undefined | ((fn: () => Promise<void>) => void) =
-    (router as any).__tsrOriginalStartViewTransition ?? router.startViewTransition
+  const originalStartViewTransition:
+    | undefined
+    | ((fn: () => Promise<void>) => void) =
+    (router as any).__tsrOriginalStartViewTransition ??
+    router.startViewTransition
 
-  ;(router as any).__tsrOriginalStartViewTransition = originalStartViewTransition
+  ;(router as any).__tsrOriginalStartViewTransition =
+    originalStartViewTransition
 
   router.startViewTransition = (fn: () => Promise<void>) => {
     return originalStartViewTransition?.(async () => {

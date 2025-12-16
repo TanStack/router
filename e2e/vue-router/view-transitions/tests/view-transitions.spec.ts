@@ -3,12 +3,15 @@ import { expect, test } from '@playwright/test'
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     ;(window as any).__viewTransitionCalls = []
-
     ;(document as any).startViewTransition = (arg: any) => {
       ;(window as any).__viewTransitionCalls.push(arg)
 
       try {
-        if (arg && typeof arg === 'object' && typeof arg.update === 'function') {
+        if (
+          arg &&
+          typeof arg === 'object' &&
+          typeof arg.update === 'function'
+        ) {
           arg.update()
         } else if (typeof arg === 'function') {
           arg()
