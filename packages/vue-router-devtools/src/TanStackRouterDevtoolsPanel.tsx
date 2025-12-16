@@ -47,6 +47,7 @@ export const TanStackRouterDevtoolsPanel = /* #__PURE__ */ defineComponent({
   ] as unknown as undefined,
   setup(props: TanStackRouterDevtoolsPanelOptions) {
     const devToolRef = ref<HTMLDivElement | null>(null)
+    let isMounted = false
 
     const hookRouter = useRouter({ warn: false })
     const activeRouter = props.router ?? hookRouter
@@ -92,11 +93,14 @@ export const TanStackRouterDevtoolsPanel = /* #__PURE__ */ defineComponent({
     onMounted(() => {
       if (devToolRef.value) {
         devtools.mount(devToolRef.value)
+        isMounted = true
       }
     })
 
     onUnmounted(() => {
-      devtools.unmount()
+      if (isMounted) {
+        devtools.unmount()
+      }
     })
 
     return () => h('div', { ref: devToolRef })
