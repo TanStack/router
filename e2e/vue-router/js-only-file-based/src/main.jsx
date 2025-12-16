@@ -11,13 +11,12 @@ const router = createRouter({
   scrollRestoration: true,
 })
 
-
 const rootElement = document.getElementById('app')
 
 if (!rootElement.innerHTML) {
-	createApp({
-		setup() {
-			return () => <RouterProvider router={router} />
-		},
-	}).mount('#app')
+  createApp({
+    setup() {
+      return () => <RouterProvider router={router} />
+    },
+  }).mount('#app')
 }
