@@ -1,5 +1,4 @@
-import { createFileRoute } from '@tanstack/vue-router'
-import { Outlet } from '@tanstack/vue-router'
+import { Outlet, createFileRoute } from '@tanstack/vue-router'
 
 export const Route = createFileRoute('/_first')({
   component: LayoutComponent,
