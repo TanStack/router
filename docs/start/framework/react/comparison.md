@@ -25,51 +25,51 @@ Feature/Capability Key:
 - 🔶 Possible, but requires custom code/implementation/casting
 - 🛑 Not officially supported
 
-|                                                | TanStack Start                                   | Next.js [_(Website)_][nextjs]                         | React Router [_(Website)_][react-router]              |
-| ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
-| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-nextjs]][gh-nextjs]                        | [![][stars-react-router]][gh-react-router]            |
-| Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | ❓                                                    | ❓                                                    |
-| --                                             | --                                               | --                                                    | --                                                    |
-| **Routing Features** [_(See Full Comparison)_][router-comparison] | ✅ Built on TanStack Router                      | ✅ File-based App Router                              | ✅ File-based Nested Routes                           |
-| --                                             | --                                               | --                                                    | --                                                    |
-| **Full-Stack Features**                        | --                                               | --                                                    | --                                                    |
-| SSR                                            | ✅                                               | ✅                                                    | ✅                                                    |
-| Streaming SSR                                  | ✅                                               | ✅                                                    | ✅                                                    |
-| Selective SSR (per-route)                      | ✅                                               | 🔶                                                    | 🔶                                                    |
-| SPA Mode                                       | ✅                                               | 🔶 (via "use client")                                 | ✅                                                    |
-| Built-in Client-Side SWR Caching               | ✅ (via TanStack Router)                         | 🔶 (fetch cache only)                                 | 🛑                                                    |
-| Data Fetching Library Integration              | ✅ (Official TanStack Query, Apollo, etc.)       | 🔶 (manual integration)                               | 🔶 (manual integration)                               |
-| Static Prerendering (SSG)                      | ✅                                               | ✅                                                    | ✅                                                    |
-| Incremental Static Regeneration (ISR)          | ✅ (via Cache-Control headers)                   | ✅ (Proprietary)                                      | ✅ (via Cache-Control headers)                        |
-| React Server Components                        | 🛑 (In active development)                       | ✅                                                    | 🟡 (Experimental)                                     |
-| Server Functions                               | ✅ (RPC-based)                                   | ✅ (Server Actions)                                   | ✅ (Actions)                                          |
-| Server Function Client Middleware              | ✅                                               | 🛑                                                    | 🛑                                                    |
-| Server Function Server Middleware              | ✅                                               | 🛑                                                    | ✅                                                    |
-| Request Middleware (All Routes)                | ✅                                               | ✅                                                    | ✅                                                    |
-| Server Function Input Validation               | ✅                                               | 🔶 (manual)                                           | 🔶 (manual)                                           |
-| API Routes / Server Routes / Resource Routes   | ✅                                               | ✅                                                    | ✅                                                    |
-| `<Form>` API                                   | 🛑                                               | 🟠 (via React 19 useActionState)                      | ✅                                                    |
-| --                                             | --                                               | --                                                    | --                                                    |
-| **Developer Experience**                       | --                                               | --                                                    | --                                                    |
-| Devtools                                       | ✅                                               | 🛑                                                    | 🟠 (3rd party)                                        |
-| CLI Tooling                                    | ✅                                               | ✅                                                    | ✅                                                    |
-| Dev Server Startup Speed                       | ✅ (Fast)                                        | 🛑 (Slow)                                             | ✅ (Fast)                                             |
-| HMR Speed                                      | ✅ (Fast, Vite)                                  | 🛑 (Slow, Webpack/Turbopack)                          | ✅ (Fast, Vite)                                       |
-| Dev Navigation Speed                           | ✅                                               | 🟡                                                    | ✅                                                    |
-| Dev Resource Usage (CPU/RAM)                   | ✅ (Lightweight)                                 | 🛑 (Heavy)                                            | ✅ (Lightweight)                                      |
-| TypeScript Support                             | ✅                                               | ✅                                                    | ✅                                                    |
-| Type-First Architecture                        | ✅                                               | 🛑                                                    | 🛑                                                    |
-| --                                             | --                                               | --                                                    | --                                                    |
-| **Deployment & Hosting**                       | --                                               | --                                                    | --                                                    |
-| Deployment Flexibility                         | ✅ (Any Vite-compatible host)                    | 🟡 (Optimized for Vercel, possible elsewhere)        | ✅ (Multiple adapters)                                |
-| Edge Runtime Support                           | ✅                                               | ✅                                                    | ✅                                                    |
-| Serverless Support                             | ✅                                               | ✅                                                    | ✅                                                    |
-| Node.js Support                                | ✅                                               | ✅                                                    | ✅                                                    |
-| Docker Support                                 | ✅                                               | ✅                                                    | ✅                                                    |
-| Static Export                                  | ✅                                               | ✅                                                    | ✅                                                    |
-| Official Cloudflare Support                    | ✅                                               | 🟡                                                    | ✅                                                    |
-| Official Netlify Support                       | ✅                                               | 🟡                                                    | ✅                                                    |
-| Official Vercel Support                        | ✅ (via Nitro)                                   | ✅                                                    | ✅                                                    |
+|                                                                   | TanStack Start                                   | Next.js [_(Website)_][nextjs]                 | React Router [_(Website)_][react-router]   |
+| ----------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------- | ------------------------------------------ |
+| Github Repo / Stars                                               | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-nextjs]][gh-nextjs]                | [![][stars-react-router]][gh-react-router] |
+| Bundle Size                                                       | [![][bp-tanstack-router]][bpl-tanstack-router]   | ❓                                            | ❓                                         |
+| --                                                                | --                                               | --                                            | --                                         |
+| **Routing Features** [_(See Full Comparison)_][router-comparison] | ✅ Built on TanStack Router                      | ✅ File-based App Router                      | ✅ File-based Nested Routes                |
+| --                                                                | --                                               | --                                            | --                                         |
+| **Full-Stack Features**                                           | --                                               | --                                            | --                                         |
+| SSR                                                               | ✅                                               | ✅                                            | ✅                                         |
+| Streaming SSR                                                     | ✅                                               | ✅                                            | ✅                                         |
+| Selective SSR (per-route)                                         | ✅                                               | 🔶                                            | 🔶                                         |
+| SPA Mode                                                          | ✅                                               | 🔶 (via "use client")                         | ✅                                         |
+| Built-in Client-Side SWR Caching                                  | ✅ (via TanStack Router)                         | 🔶 (fetch cache only)                         | 🛑                                         |
+| Data Fetching Library Integration                                 | ✅ (Official TanStack Query, Apollo, etc.)       | 🔶 (manual integration)                       | 🔶 (manual integration)                    |
+| Static Prerendering (SSG)                                         | ✅                                               | ✅                                            | ✅                                         |
+| Incremental Static Regeneration (ISR)                             | ✅ (via Cache-Control headers)                   | ✅ (Proprietary)                              | ✅ (via Cache-Control headers)             |
+| React Server Components                                           | 🛑 (In active development)                       | ✅                                            | 🟡 (Experimental)                          |
+| Server Functions                                                  | ✅ (RPC-based)                                   | ✅ (Server Actions)                           | ✅ (Actions)                               |
+| Server Function Client Middleware                                 | ✅                                               | 🛑                                            | 🛑                                         |
+| Server Function Server Middleware                                 | ✅                                               | 🛑                                            | ✅                                         |
+| Request Middleware (All Routes)                                   | ✅                                               | ✅                                            | ✅                                         |
+| Server Function Input Validation                                  | ✅                                               | 🔶 (manual)                                   | 🔶 (manual)                                |
+| API Routes / Server Routes / Resource Routes                      | ✅                                               | ✅                                            | ✅                                         |
+| `<Form>` API                                                      | 🛑                                               | 🟠 (via React 19 useActionState)              | ✅                                         |
+| --                                                                | --                                               | --                                            | --                                         |
+| **Developer Experience**                                          | --                                               | --                                            | --                                         |
+| Devtools                                                          | ✅                                               | 🛑                                            | 🟠 (3rd party)                             |
+| CLI Tooling                                                       | ✅                                               | ✅                                            | ✅                                         |
+| Dev Server Startup Speed                                          | ✅ (Fast)                                        | 🛑 (Slow)                                     | ✅ (Fast)                                  |
+| HMR Speed                                                         | ✅ (Fast, Vite)                                  | 🛑 (Slow, Webpack/Turbopack)                  | ✅ (Fast, Vite)                            |
+| Dev Navigation Speed                                              | ✅                                               | 🟡                                            | ✅                                         |
+| Dev Resource Usage (CPU/RAM)                                      | ✅ (Lightweight)                                 | 🛑 (Heavy)                                    | ✅ (Lightweight)                           |
+| TypeScript Support                                                | ✅                                               | ✅                                            | ✅                                         |
+| Type-First Architecture                                           | ✅                                               | 🛑                                            | 🛑                                         |
+| --                                                                | --                                               | --                                            | --                                         |
+| **Deployment & Hosting**                                          | --                                               | --                                            | --                                         |
+| Deployment Flexibility                                            | ✅ (Any Vite-compatible host)                    | 🟡 (Optimized for Vercel, possible elsewhere) | ✅ (Multiple adapters)                     |
+| Edge Runtime Support                                              | ✅                                               | ✅                                            | ✅                                         |
+| Serverless Support                                                | ✅                                               | ✅                                            | ✅                                         |
+| Node.js Support                                                   | ✅                                               | ✅                                            | ✅                                         |
+| Docker Support                                                    | ✅                                               | ✅                                            | ✅                                         |
+| Static Export                                                     | ✅                                               | ✅                                            | ✅                                         |
+| Official Cloudflare Support                                       | ✅                                               | 🟡                                            | ✅                                         |
+| Official Netlify Support                                          | ✅                                               | 🟡                                            | ✅                                         |
+| Official Vercel Support                                           | ✅ (via Nitro)                                   | ✅                                            | ✅                                         |
 
 ---
 
@@ -284,6 +284,7 @@ All three frameworks are capable of achieving excellent production performance a
 This is where the frameworks differ significantly:
 
 **TanStack Start & React Router:**
+
 - ⚡ **Instant dev server startup** - Vite starts in milliseconds
 - ⚡ **Lightning-fast HMR** - Changes reflect instantly without page refresh
 - ⚡ **Fast dev navigation** - Full-speed routing during development
@@ -291,6 +292,7 @@ This is where the frameworks differ significantly:
 - ⚡ **High dev throughput** - Handle many concurrent requests efficiently
 
 **Next.js:**
+
 - 🐌 **Slow dev server startup** - Can take many seconds to start, especially on larger projects
 - 🐌 **Slow HMR** - Hot reloading is noticeably sluggish even with Turbopack
 - 🐌 **Throttled dev navigation** - Navigation is artificially slowed during development
@@ -299,6 +301,7 @@ This is where the frameworks differ significantly:
 **Why This Matters:**
 
 Development performance directly impacts developer productivity. Faster feedback loops mean:
+
 - More iterations per hour
 - Better flow state and focus
 - Lower machine requirements
