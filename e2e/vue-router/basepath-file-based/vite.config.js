@@ -5,7 +5,7 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-	base: '/app/',
+  base: '/app/',
   plugins: [
     tanstackRouter({
       target: 'vue',

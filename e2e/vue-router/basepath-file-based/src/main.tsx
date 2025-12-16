@@ -8,7 +8,7 @@ const router = createRouter({
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
   scrollRestoration: true,
-	basepath: '/app/'
+  basepath: '/app/',
 })
 
 // Register things for typesafety
