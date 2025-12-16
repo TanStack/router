@@ -26,7 +26,6 @@
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",
     "esbuild": "^0.25.0",
-    "esbuild-plugin-vue-jsx": "^0.1.0",
     "esbuild-plugin-vue3": "^0.5.1",
     "eslint-plugin-vue": "^9.33.0",
     "typescript": "^5.8.3",
