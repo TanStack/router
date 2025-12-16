@@ -28176,6 +28176,12 @@ snapshots:
       '@tanstack/vue-query': 5.92.0(vue@3.5.25(typescript@5.8.3))
       vue: 3.5.25(typescript@5.8.3)
 
+  '@tanstack/vue-query-devtools@6.1.2(@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.9.2)))(vue@3.5.25(typescript@5.9.2))':
+    dependencies:
+      '@tanstack/query-devtools': 5.91.1
+      '@tanstack/vue-query': 5.92.0(vue@3.5.25(typescript@5.9.2))
+      vue: 3.5.25(typescript@5.9.2)
+
   '@tanstack/vue-query@5.92.0(vue@3.5.25(typescript@5.8.3))':
     dependencies:
       '@tanstack/match-sorter-utils': 8.19.4
