@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-solid-router-e2e-sentry-integration",
+  "name": "tanstack-vue-router-e2e-sentry-integration",
   "private": true,
   "type": "module",
   "scripts": {
