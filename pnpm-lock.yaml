@@ -4481,6 +4481,9 @@ importers:
       vue:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.8.3)
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.57
     devDependencies:
       '@playwright/test':
         specifier: ^1.56.1
