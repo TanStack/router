@@ -1,6 +1,5 @@
 import { RouterProvider, createRouter } from '@tanstack/vue-router'
 import { routeTree } from './routeTree.gen'
-import './styles.css'
 import { createApp } from 'vue'
 
 // Set up a Router instance

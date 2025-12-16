@@ -1,12 +1,12 @@
 {
-  "name": "tanstack-router-e2e-vue-basic-file-based-jsx",
+  "name": "tanstack-router-e2e-vue-basic-esbuild-file-based",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "esbuild src/main.tsx --jsx=preserve --jsx-import-source=vue --serve=5601 --bundle --outfile=dist/main.js --watch --servedir=.",
-    "build": "esbuild src/main.tsx --jsx=preserve --jsx-import-source=vue --bundle --outfile=dist/main.js && tsc --noEmit",
-    "serve": "esbuild src/main.tsx --jsx=preserve --jsx-import-source=vue --bundle --outfile=dist/main.js --servedir=.",
-    "start": "dev",
+    "dev": "node src/esbuild.run.js dev --port 5601",
+    "build": "node src/esbuild.run.js build && vue-tsc --noEmit",
+    "preview": "node src/esbuild.run.js preview",
+    "start": "pnpm dev",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
@@ -25,10 +25,11 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",
-		"esbuild": "^0.25.0",
+    "esbuild": "^0.25.0",
+    "esbuild-plugin-vue-jsx": "^0.1.0",
     "esbuild-plugin-vue3": "^0.5.1",
     "eslint-plugin-vue": "^9.33.0",
-    "typescript": "~5.8.3",
+    "typescript": "^5.8.3",
     "vue-eslint-parser": "^9.4.3",
     "vue-tsc": "^3.1.5"
   }
