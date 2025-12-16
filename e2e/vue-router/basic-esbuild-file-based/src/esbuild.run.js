@@ -99,7 +99,10 @@ function startStaticServer({ port }) {
 
   const server = http.createServer(async (req, res) => {
     try {
-      const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`)
+      const url = new URL(
+        req.url ?? '/',
+        `http://${req.headers.host ?? 'localhost'}`,
+      )
       const requestPath = decodeURIComponent(url.pathname)
 
       const normalizedPath = path.posix
