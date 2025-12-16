@@ -1,4 +1,4 @@
-import { render } from 'vue-js/web'
+import { createApp } from 'vue'
 import { RouterProvider, createRouter } from '@tanstack/vue-router'
 import { routeTree } from './routeTree.gen'
 import './styles.css'
@@ -21,5 +21,9 @@ declare module '@tanstack/vue-router' {
 const rootElement = document.getElementById('app')!
 
 if (!rootElement.innerHTML) {
-  render(() => <RouterProvider router={router} />, rootElement)
+  createApp({
+    setup() {
+      return () => <RouterProvider router={router} />
+    },
+  }).mount('#app')
 }
