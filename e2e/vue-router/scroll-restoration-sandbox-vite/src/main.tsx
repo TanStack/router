@@ -31,9 +31,9 @@ declare module '@tanstack/vue-router' {
 const rootElement = document.getElementById('app')
 
 if (!rootElement?.innerHTML) {
-	createApp({
-		setup() {
-			return () => <RouterProvider router={router} />
-		},
-	}).mount('#app')
+  createApp({
+    setup() {
+      return () => <RouterProvider router={router} />
+    },
+  }).mount('#app')
 }
