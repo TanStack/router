@@ -346,3 +346,4 @@ export type {
   LocationRewrite,
   LocationRewriteFunction,
 } from '@tanstack/router-core'
+export { ClientOnly } from './ClientOnly'
