@@ -1,6 +1,6 @@
-import fs from 'node:fs'
-import { useRouter, createFileRoute } from '@tanstack/solid-router'
-import { createServerFn } from '@tanstack/solid-start'
+import * as fs from 'node:fs'
+import { createFileRoute, useRouter } from '@tanstack/vue-router'
+import { createServerFn } from '@tanstack/vue-start'
 
 const filePath = 'count.txt'
 
@@ -35,7 +35,7 @@ function Home() {
         })
       }}
     >
-      Add 1 to {state()}?
+      Add 1 to {state.value}?
     </button>
   )
 }

@@ -1,17 +1,18 @@
 import {
+  Body,
   HeadContent,
+  Html,
   Outlet,
   Scripts,
   createRootRoute,
-} from '@tanstack/solid-router'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import { HydrationScript } from 'solid-js/web'
+} from '@tanstack/vue-router'
+import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        charset: 'utf-8',
+        charSet: 'utf-8',
       },
       {
         name: 'viewport',
@@ -27,16 +28,15 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <html>
+    <Html>
       <head>
-        <HydrationScript />
-      </head>
-      <body>
         <HeadContent />
+      </head>
+      <Body>
         <Outlet />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }
