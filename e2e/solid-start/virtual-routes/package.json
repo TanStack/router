@@ -29,7 +29,7 @@
     "@types/node": "^22.10.2",
     "combinate": "^1.1.11",
     "postcss": "^8.5.1",
-    "srvx": "^0.8.6",
+    "srvx": "^0.9.8",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.10",

@@ -30,7 +30,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "cross-env": "^10.0.0",
     "postcss": "^8.5.1",
-    "srvx": "^0.8.6",
+    "srvx": "^0.9.8",
     "tailwindcss": "^4.1.17",
     "tsx": "^4.20.3",
     "typescript": "^5.7.2",
