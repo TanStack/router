@@ -5029,8 +5029,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.15
+        specifier: ^0.9.8
+        version: 0.9.8
       tailwindcss:
         specifier: ^4.1.17
         version: 4.1.17
