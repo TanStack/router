@@ -16,8 +16,7 @@ export const ScriptOnce = Vue.defineComponent({
       return () => (
         <script
           nonce={router.options.ssr?.nonce}
-          class="$tsr"
-          innerHTML={props.children}
+          innerHTML={props.children + ';document.currentScript.remove()'}
         />
       )
     }
@@ -35,7 +34,6 @@ export const ScriptOnce = Vue.defineComponent({
       return (
         <script
           nonce={router.options.ssr?.nonce}
-          class="$tsr"
           data-allow-mismatch
           innerHTML=""
         />

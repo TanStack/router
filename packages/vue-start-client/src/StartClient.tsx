@@ -2,15 +2,6 @@ import * as Vue from 'vue'
 import { RouterProvider } from '@tanstack/vue-router'
 import type { AnyRouter } from '@tanstack/router-core'
 
-declare global {
-  interface Window {
-    $_TSR?: {
-      cleanup?: () => void
-      [key: string]: unknown
-    }
-  }
-}
-
 export const StartClient = Vue.defineComponent({
   name: 'StartClient',
   props: {
@@ -20,12 +11,12 @@ export const StartClient = Vue.defineComponent({
     },
   },
   setup(props) {
-    // After Vue hydration is complete, trigger cleanup of $tsr scripts
+    // After Vue hydration is complete, signal that router hydration is complete so cleanup can happen if stream has ended
     // Use nextTick to ensure all child component onMounted hooks have completed
-    // This prevents removing scripts before components have finished transitioning
+    // This prevents the cleanup to happen before components have finished transitioning
     Vue.onMounted(() => {
       Vue.nextTick(() => {
-        window.$_TSR?.cleanup?.()
+        window.$_TSR?.h()
       })
     })
 

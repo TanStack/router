@@ -15,7 +15,7 @@ export function ScriptOnce({
     <script
       nonce={router.options.ssr?.nonce}
       class="$tsr"
-      innerHTML={children + ';typeof $_TSR !== "undefined" && $_TSR?.c()'}
+      innerHTML={children + ';document.currentScript.remove()'}
     />
   )
 }

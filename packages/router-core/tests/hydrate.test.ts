@@ -1,13 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createMemoryHistory } from '@tanstack/history'
 import { hydrate } from '@tanstack/router-core/ssr/client'
-import {
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  notFound,
-} from '../src'
-import type { TsrSsrGlobal } from '@tanstack/router-core/ssr/client'
+import { BaseRootRoute, BaseRoute, RouterCore, notFound } from '../src'
+import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { AnyRouteMatch } from '../src'
 
 describe('hydrate', () => {
@@ -25,9 +20,9 @@ describe('hydrate', () => {
 
     const history = createMemoryHistory({ initialEntries: ['/'] })
 
-    const rootRoute = createRootRoute({})
+    const rootRoute = new BaseRootRoute({})
 
-    const indexRoute = createRoute({
+    const indexRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => 'Index',
@@ -35,7 +30,7 @@ describe('hydrate', () => {
       head: mockHead,
     })
 
-    const otherRoute = createRoute({
+    const otherRoute = new BaseRoute({
       getParentRoute: () => indexRoute,
       path: '/other',
       component: () => 'Other',
@@ -45,7 +40,7 @@ describe('hydrate', () => {
       indexRoute.addChildren([otherRoute]),
     ])
 
-    mockRouter = createRouter({ routeTree, history, isServer: true })
+    mockRouter = new RouterCore({ routeTree, history, isServer: true })
   })
 
   afterEach(() => {
@@ -100,6 +95,8 @@ describe('hydrate', () => {
         lastMatchId: '/',
         matches: [],
       },
+      h: vi.fn(),
+      e: vi.fn(),
       c: vi.fn(),
       p: vi.fn(),
       buffer: mockBuffer,
@@ -127,6 +124,8 @@ describe('hydrate', () => {
         lastMatchId: '/',
         matches: [],
       },
+      h: vi.fn(),
+      e: vi.fn(),
       c: vi.fn(),
       p: vi.fn(),
       buffer: [],
@@ -148,6 +147,8 @@ describe('hydrate', () => {
         lastMatchId: '/',
         matches: [],
       },
+      h: vi.fn(),
+      e: vi.fn(),
       c: vi.fn(),
       p: vi.fn(),
       buffer: [],
@@ -199,6 +200,8 @@ describe('hydrate', () => {
         lastMatchId: '/',
         matches: dehydratedMatches,
       },
+      h: vi.fn(),
+      e: vi.fn(),
       c: vi.fn(),
       p: vi.fn(),
       buffer: [],
@@ -242,6 +245,8 @@ describe('hydrate', () => {
           },
         ],
       },
+      h: vi.fn(),
+      e: vi.fn(),
       c: vi.fn(),
       p: vi.fn(),
       buffer: [],

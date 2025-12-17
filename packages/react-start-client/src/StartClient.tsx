@@ -1,6 +1,6 @@
 import { Await, RouterProvider } from '@tanstack/react-router'
 
-import { hydrateStart } from '@tanstack/start-client-core/client'
+import { hydrateStart } from './hydrateStart'
 
 import type { AnyRouter } from '@tanstack/router-core'
 
