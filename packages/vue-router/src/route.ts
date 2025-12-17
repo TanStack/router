@@ -4,6 +4,7 @@ import {
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
+import * as Vue from 'vue'
 import { Link } from './link'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
@@ -43,7 +44,6 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
-import * as Vue from 'vue'
 import type { UseRouteContextRoute } from './useRouteContext'
 import type { LinkComponentRoute } from './link'
 
