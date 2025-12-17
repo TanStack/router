@@ -12,7 +12,7 @@
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/react-router": "^1.141.6",
     "@tanstack/react-router-devtools": "^1.141.6",
-    "@tanstack/router-plugin": "^1.141.6",
+    "@tanstack/router-plugin": "^1.141.7",
     "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

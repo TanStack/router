@@ -13,7 +13,7 @@
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/react-router": "^1.141.6",
     "@tanstack/react-router-devtools": "^1.141.6",
-    "@tanstack/router-plugin": "^1.141.6",
+    "@tanstack/router-plugin": "^1.141.7",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
     "express": "^4.21.2",

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.141.6",
-    "@tanstack/router-plugin": "^1.141.6",
+    "@tanstack/router-plugin": "^1.141.7",
     "compression": "^1.8.0",
     "express": "^4.21.2",
     "get-port": "^7.1.0",
