@@ -20,6 +20,73 @@ describe('cleanPath', () => {
   })
 })
 
+describe('multiSortBy', () => {
+  it('sorts by single accessor', () => {
+    const arr = [{ v: 3 }, { v: 1 }, { v: 2 }]
+    const result = multiSortBy(arr, [(d) => d.v])
+    expect(result.map((d) => d.v)).toEqual([1, 2, 3])
+  })
+
+  it('sorts by multiple accessors', () => {
+    const arr = [
+      { a: 2, b: 1 },
+      { a: 1, b: 2 },
+      { a: 1, b: 1 },
+    ]
+    const result = multiSortBy(arr, [(d) => d.a, (d) => d.b])
+    expect(result).toEqual([
+      { a: 1, b: 1 },
+      { a: 1, b: 2 },
+      { a: 2, b: 1 },
+    ])
+  })
+
+  it('preserves original order for equal elements', () => {
+    const arr = [
+      { a: 1, id: 'first' },
+      { a: 1, id: 'second' },
+      { a: 1, id: 'third' },
+    ]
+    const result = multiSortBy(arr, [(d) => d.a])
+    expect(result.map((d) => d.id)).toEqual(['first', 'second', 'third'])
+  })
+
+  it('handles undefined values', () => {
+    const arr = [{ v: 1 }, { v: undefined }, { v: 2 }]
+    const result = multiSortBy(arr, [(d) => d.v])
+    // undefined sorts to end
+    expect(result.map((d) => d.v)).toEqual([1, 2, undefined])
+  })
+
+  it('handles empty array', () => {
+    const result = multiSortBy([], [(d) => d])
+    expect(result).toEqual([])
+  })
+
+  it('handles single element array', () => {
+    const result = multiSortBy([{ v: 1 }], [(d) => d.v])
+    expect(result).toEqual([{ v: 1 }])
+  })
+
+  it('uses default accessor when none provided', () => {
+    const arr = [3, 1, 2]
+    const result = multiSortBy(arr)
+    expect(result).toEqual([1, 2, 3])
+  })
+
+  it('sorts strings correctly', () => {
+    const arr = [{ s: 'c' }, { s: 'a' }, { s: 'b' }]
+    const result = multiSortBy(arr, [(d) => d.s])
+    expect(result.map((d) => d.s)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('handles negative numbers in accessors for reverse sort', () => {
+    const arr = [{ v: 1 }, { v: 3 }, { v: 2 }]
+    const result = multiSortBy(arr, [(d) => -d.v])
+    expect(result.map((d) => d.v)).toEqual([3, 2, 1])
+  })
+})
+
 describe.each([
   { nonNested: true, mode: 'experimental nonNestedPaths' },
   { nonNested: false, mode: 'default' },
