@@ -46,7 +46,7 @@ export interface GeneratorPlugin {
   name: string
 
   /**
-   * Called after route tree is built. For side effects only.
+   * Called after route tree is built.
    */
   onRouteTreeChanged?: (opts: {
     routeTree: Array<RouteNode>
@@ -58,8 +58,7 @@ export interface GeneratorPlugin {
 
   /**
    * Transform route nodes after filesystem discovery. Receives all nodes
-   * and can return a modified array. Set node properties here:
-   * `skipTransform`, `componentImport`, `extension`
+   * and can return a modified array.
    */
   transformNodes?: (opts: {
     routeNodes: Array<RouteNode>
