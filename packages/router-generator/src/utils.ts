@@ -294,8 +294,7 @@ const dollarSignRegex = /\$/g
 const splitPathRegex = /[/-]/g
 const leadingDigitRegex = /^(\d)/g
 
-export function routePathToVariable(routePath: string): string {
-  const toVariableSafeChar = (char: string): string => {
+const toVariableSafeChar = (char: string): string => {
     if (alphanumericRegex.test(char)) {
       return char // Keep alphanumeric characters and underscores as is
     }
@@ -319,6 +318,7 @@ export function routePathToVariable(routePath: string): string {
     }
   }
 
+export function routePathToVariable(routePath: string): string {
   const cleaned = removeUnderscores(routePath)
   if (!cleaned) return ''
 
@@ -528,14 +528,13 @@ const closeBracketRegex = /\]/g
  */
 export function getNonNestedSegments(routePath: string): Array<string> {
   nonNestedSegmentRegex.lastIndex = 0
-  const matches = [...routePath.matchAll(nonNestedSegmentRegex)]
   const result: Array<string> = []
-  for (const match of matches) {
+  for (const match of routePath.matchAll(nonNestedSegmentRegex)) {
     const beforeStr = routePath.substring(0, match.index)
     openBracketRegex.lastIndex = 0
     closeBracketRegex.lastIndex = 0
-    const openBrackets = (beforeStr.match(openBracketRegex) || []).length
-    const closeBrackets = (beforeStr.match(closeBracketRegex) || []).length
+    const openBrackets = beforeStr.match(openBracketRegex)?.length ?? 0
+    const closeBrackets = beforeStr.match(closeBracketRegex)?.length ?? 0
     if (openBrackets === closeBrackets) {
       result.push(routePath.substring(0, match.index + 1))
     }
