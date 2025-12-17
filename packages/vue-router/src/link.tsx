@@ -630,6 +630,26 @@ export type LinkComponent<TComp> = <
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Vue.VNode
 
+export interface LinkComponentRoute<
+  in out TDefaultFrom extends string = string,
+> {
+  defaultFrom: TDefaultFrom
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    const TTo extends string | undefined = undefined,
+    const TMaskTo extends string = '',
+  >(
+    props: LinkComponentProps<
+      'a',
+      TRouter,
+      this['defaultFrom'],
+      TTo,
+      this['defaultFrom'],
+      TMaskTo
+    >,
+  ): Vue.VNode
+}
+
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => Vue.VNode>,
 ): LinkComponent<TComp> {
