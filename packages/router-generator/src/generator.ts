@@ -38,7 +38,6 @@ import {
   removeUnderscores,
   replaceBackslash,
   resetRegex,
-  routePathToVariable,
   trimPathLeft,
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
@@ -409,6 +408,7 @@ export class Generator {
       routeTree: [],
       routeNodes: [],
       routePiecesByPath: {},
+      routeNodesByPath: new Map(),
     }
 
     for (const node of routeFileResult) {
@@ -651,7 +651,10 @@ export class Generator {
           `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
             ${[
               `id: '${node.path}'`,
-              !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
+              !node.isNonPath ||
+              (node._fsRouteType === 'pathless_layout' && node.cleanedPath)
+                ? `path: '${node.cleanedPath}'`
+                : undefined,
               `getParentRoute: () => ${findParent(node)}`,
             ]
               .filter(Boolean)
@@ -1351,26 +1354,12 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
     resetRegex(this.routeGroupPatternRegex)
 
-    let parentRoute = hasParentRoute(
+    const parentRoute = hasParentRoute(
       acc.routeNodes,
       node,
       node.routePath,
       node.originalRoutePath,
     )
-
-    // if the parent route is a virtual parent route, we need to find the real parent route
-    if (parentRoute?.isVirtualParentRoute && parentRoute.children?.length) {
-      // only if this sub-parent route returns a valid parent route, we use it, if not leave it as it
-      const possibleParentRoute = hasParentRoute(
-        parentRoute.children,
-        node,
-        node.routePath,
-        node.originalRoutePath,
-      )
-      if (possibleParentRoute) {
-        parentRoute = possibleParentRoute
-      }
-    }
 
     if (parentRoute) node.parent = parentRoute
 
@@ -1419,23 +1408,11 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       acc.routePiecesByPath[node.routePath!] =
         acc.routePiecesByPath[node.routePath!] || {}
 
-      acc.routePiecesByPath[node.routePath!]![
-        node._fsRouteType === 'lazy'
-          ? 'lazy'
-          : node._fsRouteType === 'loader'
-            ? 'loader'
-            : node._fsRouteType === 'errorComponent'
-              ? 'errorComponent'
-              : node._fsRouteType === 'notFoundComponent'
-                ? 'notFoundComponent'
-                : node._fsRouteType === 'pendingComponent'
-                  ? 'pendingComponent'
-                  : 'component'
-      ] = node
+      const pieceKey =
+        node._fsRouteType === 'lazy' ? 'lazy' : (node._fsRouteType as keyof typeof acc.routePiecesByPath[string])
+      acc.routePiecesByPath[node.routePath!]![pieceKey] = node
 
-      const anchorRoute = acc.routeNodes.find(
-        (d) => d.routePath === node.routePath,
-      )
+      const anchorRoute = acc.routeNodesByPath.get(node.routePath!)
 
       // Don't create virtual routes for root route component pieces - the root route is handled separately
       if (!anchorRoute && node.routePath !== `/${rootPathId}`) {
@@ -1452,66 +1429,44 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       return
     }
 
-    const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
-    const nonPathRoute =
-      node._fsRouteType === 'pathless_layout' && node.isNonPath
+    const isPathlessLayoutWithPath =
+      node._fsRouteType === 'pathless_layout' &&
+      node.cleanedPath &&
+      node.cleanedPath.length > 0
 
-    node.isVirtualParentRequired =
-      node._fsRouteType === 'pathless_layout' || nonPathRoute
-        ? !cleanedPathIsEmpty
-        : false
+    // Special handling: pathless layouts with path need to find real ancestor
+    if (!node.isVirtual && isPathlessLayoutWithPath) {
+      const immediateParentPath = removeLastSegmentFromPath(node.routePath) || '/'
+      let searchPath = immediateParentPath
 
-    if (!node.isVirtual && node.isVirtualParentRequired) {
-      const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
-      const parentVariableName = routePathToVariable(parentRoutePath)
-
-      const anchorRoute = acc.routeNodes.find(
-        (d) => d.routePath === parentRoutePath,
-      )
-
-      if (!anchorRoute) {
-        const parentNode: RouteNode = {
-          ...node,
-          path: removeLastSegmentFromPath(node.path) || '/',
-          filePath: removeLastSegmentFromPath(node.filePath) || '/',
-          fullPath: removeLastSegmentFromPath(node.fullPath) || '/',
-          routePath: parentRoutePath,
-          variableName: parentVariableName,
-          isVirtual: true,
-          _fsRouteType: 'layout', // layout since this route will wrap other routes
-          isVirtualParentRoute: true,
-          isVirtualParentRequired: false,
+      // Find nearest real (non-virtual, non-index) parent
+      while (searchPath) {
+        const candidate = acc.routeNodesByPath.get(searchPath)
+        if (candidate && !candidate.isVirtual && candidate.path !== '/') {
+          node.parent = candidate
+          node.path = node.routePath
+          node.cleanedPath = removeGroups(
+            removeUnderscores(removeLayoutSegments(immediateParentPath)) ?? '',
+          )
+          break
         }
-
-        parentNode.children = parentNode.children ?? []
-        parentNode.children.push(node)
-
-        node.parent = parentNode
-
-        if (node._fsRouteType === 'pathless_layout') {
-          // since `node.path` is used as the `id` on the route definition, we need to update it
-          node.path = determineNodePath(node)
-        }
-
-        this.handleNode(parentNode, acc, config)
-      } else {
-        anchorRoute.children = anchorRoute.children ?? []
-        anchorRoute.children.push(node)
-
-        node.parent = anchorRoute
+        if (searchPath === '/') break
+        searchPath = removeLastSegmentFromPath(searchPath) || '/'
       }
     }
 
+    // Add to parent's children or to root
     if (node.parent) {
-      if (!node.isVirtualParentRequired) {
-        node.parent.children = node.parent.children ?? []
-        node.parent.children.push(node)
-      }
+      node.parent.children = node.parent.children ?? []
+      node.parent.children.push(node)
     } else {
       acc.routeTree.push(node)
     }
 
     acc.routeNodes.push(node)
+    if (node.routePath && !node.isVirtual) {
+      acc.routeNodesByPath.set(node.routePath, node)
+    }
   }
 
   // only process files that are relevant for the route tree generation
