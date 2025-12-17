@@ -109,6 +109,7 @@ let ignoreScroll = false
 // unless they are passed in as arguments. Why? Because we need to be able to
 // toString() it into a script tag to execute as early as possible in the browser
 // during SSR. Additionally, we also call it from within the router lifecycle
+export function restoreScroll({
   storageKey,
   key,
   behavior,
