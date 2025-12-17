@@ -4,14 +4,14 @@ import type { ErrorComponentProps } from '@tanstack/vue-router'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId } }) => fetchPost(postId),
-  errorComponent: PostErrorComponent as any,
+  errorComponent: PostErrorComponent,
   notFoundComponent: () => {
     return <p>Post not found</p>
   },
   component: PostComponent,
 })
 
-export function PostErrorComponent({ error }: ErrorComponentProps) {
+function PostErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />
 }
 
@@ -20,8 +20,8 @@ function PostComponent() {
 
   return (
     <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{post().title}</h4>
-      <div class="text-sm">{post().body}</div>
+      <h4 class="text-xl font-bold underline">{post.value.title}</h4>
+      <div class="text-sm">{post.value.body}</div>
     </div>
   )
 }

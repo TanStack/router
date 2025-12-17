@@ -1,13 +1,14 @@
 /// <reference types="vite/client" />
 import {
+  Body,
   HeadContent,
+  Html,
   Link,
   Outlet,
   Scripts,
   createRootRoute,
 } from '@tanstack/vue-router'
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
-import type { JSX } from 'solid-js'
 import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
@@ -29,19 +30,11 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
-  )
-}
-
-function RootDocument({ children }: { children: JSX.Element }) {
-  return (
-    <html>
+    <Html>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <Body>
         <div class="p-2 flex gap-2 text-lg border-b">
           <Link
             to="/"
@@ -87,11 +80,11 @@ function RootDocument({ children }: { children: JSX.Element }) {
           </Link>
         </div>
         <hr />
-        {children}
+        <Outlet />
         {/* Start rendering router matches */}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }
