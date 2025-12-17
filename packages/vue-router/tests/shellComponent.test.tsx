@@ -5,8 +5,8 @@ import { RouterProvider } from '../src/RouterProvider'
 
 describe('shellComponent', () => {
   it('should wrap the root route with shellComponent', async () => {
-    const Shell = (props: { children: any }) => (
-      <div data-testid="shell">{props.children}</div>
+    const Shell = (_: unknown, { slots }: { slots: any }) => (
+      <div data-testid="shell">{slots.default?.()}</div>
     )
 
     const rootRoute = createRootRoute({
@@ -25,4 +25,3 @@ describe('shellComponent', () => {
     expect(shell).toContainHTML('child')
   })
 })
-

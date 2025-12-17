@@ -9,6 +9,7 @@ import {
   rootRouteId,
 } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
+import { ClientOnly } from './ClientOnly'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
@@ -67,6 +68,8 @@ export const Match = Vue.defineComponent({
           routeId,
           parentRouteId,
           loadedAt: s.loadedAt,
+          ssr: match.ssr,
+          _displayPending: match._displayPending,
         }
       },
     })
@@ -84,6 +87,10 @@ export const Match = Vue.defineComponent({
       () =>
         route.value?.options?.pendingComponent ??
         router?.options?.defaultPendingComponent,
+    )
+
+    const pendingElement = Vue.computed(() =>
+      PendingComponent.value ? Vue.h(PendingComponent.value) : undefined,
     )
 
     const routeErrorComponent = Vue.computed(
@@ -104,13 +111,14 @@ export const Match = Vue.defineComponent({
         : route.value?.options?.notFoundComponent,
     )
 
-    const hasShellComponent = Vue.computed(
-      () => route.value?.isRoot && (route.value?.options as any)?.shellComponent,
-    )
+    const hasShellComponent = Vue.computed(() => {
+      if (!route.value?.isRoot) return false
+      return !!(route.value.options as RootRouteOptions).shellComponent
+    })
 
     const ShellComponent = Vue.computed(() =>
       hasShellComponent.value
-        ? ((route.value?.options as RootRouteOptions)?.shellComponent as any)
+        ? ((route.value!.options as RootRouteOptions).shellComponent as any)
         : null,
     )
 
@@ -137,95 +145,92 @@ export const Match = Vue.defineComponent({
       // Use the actual matchId from matchData, not props (which may be stale)
       const actualMatchId = matchData.value?.matchId ?? props.matchId
 
-      // Determine which components to render
-      let content: VNode = Vue.h(MatchInner, { matchId: actualMatchId })
+      const resolvedNoSsr =
+        matchData.value?.ssr === false || matchData.value?.ssr === 'data-only'
+      const shouldClientOnly =
+        resolvedNoSsr || !!matchData.value?._displayPending
 
-      // Wrap in NotFound boundary if needed
-      if (routeNotFoundComponent.value) {
-        content = Vue.h(CatchNotFound, {
-          fallback: (error: any) => {
-            // If the current not found handler doesn't exist or it has a
-            // route ID which doesn't match the current route, rethrow the error
-            if (
-              !routeNotFoundComponent.value ||
-              (error.routeId && error.routeId !== matchData.value?.routeId) ||
-              (!error.routeId && route.value && !route.value.isRoot)
+      const renderMatchContent = (): VNode => {
+        const matchInner = Vue.h(MatchInner, { matchId: actualMatchId })
+
+        let content: VNode = shouldClientOnly
+          ? Vue.h(
+              ClientOnly,
+              {
+                fallback: pendingElement.value,
+              },
+              {
+                default: () => matchInner,
+              },
             )
-              throw error
+          : matchInner
 
-            return Vue.h(routeNotFoundComponent.value, error)
-          },
-          children: content,
-        })
+        // Wrap in NotFound boundary if needed
+        if (routeNotFoundComponent.value) {
+          content = Vue.h(CatchNotFound, {
+            fallback: (error: any) => {
+              // If the current not found handler doesn't exist or it has a
+              // route ID which doesn't match the current route, rethrow the error
+              if (
+                !routeNotFoundComponent.value ||
+                (error.routeId && error.routeId !== matchData.value?.routeId) ||
+                (!error.routeId && route.value && !route.value.isRoot)
+              )
+                throw error
+
+              return Vue.h(routeNotFoundComponent.value, error)
+            },
+            children: content,
+          })
+        }
+
+        // Wrap in error boundary if needed
+        if (routeErrorComponent.value) {
+          content = CatchBoundary({
+            getResetKey: () => matchData.value?.loadedAt ?? 0,
+            errorComponent: routeErrorComponent.value || ErrorComponent,
+            onCatch: (error: Error) => {
+              // Forward not found errors (we don't want to show the error component for these)
+              if (isNotFound(error)) throw error
+              warning(false, `Error in route match: ${actualMatchId}`)
+              routeOnCatch.value?.(error)
+            },
+            children: content,
+          })
+        }
+
+        // Add scroll restoration if needed
+        const withScrollRestoration: Array<VNode> = [
+          content,
+          matchData.value?.parentRouteId === rootRouteId &&
+          router.options.scrollRestoration
+            ? Vue.h(Vue.Fragment, null, [
+                Vue.h(OnRendered),
+                Vue.h(ScrollRestoration),
+              ])
+            : null,
+        ].filter(Boolean) as Array<VNode>
+
+        // Return single child directly to avoid Fragment wrapper that causes hydration mismatch
+        if (withScrollRestoration.length === 1) {
+          return withScrollRestoration[0]!
+        }
+
+        return Vue.h(Vue.Fragment, null, withScrollRestoration)
       }
 
-      // Wrap in error boundary if needed
-      if (routeErrorComponent.value) {
-        content = CatchBoundary({
-          getResetKey: () => matchData.value?.loadedAt ?? 0,
-          errorComponent: routeErrorComponent.value || ErrorComponent,
-          onCatch: (error: Error) => {
-            // Forward not found errors (we don't want to show the error component for these)
-            if (isNotFound(error)) throw error
-            warning(false, `Error in route match: ${actualMatchId}`)
-            routeOnCatch.value?.(error)
-          },
-          children: content,
-        })
+      if (!hasShellComponent.value) {
+        return renderMatchContent()
       }
-
-      // Wrap in suspense if needed
-      // Root routes should also wrap in Suspense if they have a pendingComponent
-      const needsSuspense =
-        route.value &&
-        (route.value?.options?.wrapInSuspense ??
-          PendingComponent.value ??
-          false)
-
-      if (needsSuspense) {
-        content = Vue.h(
-          Vue.Suspense,
-          {
-            fallback: PendingComponent.value
-              ? Vue.h(PendingComponent.value)
-              : null,
-          },
-          {
-            default: () => content,
-          },
-        )
-      }
-
-      // Add scroll restoration if needed
-      const withScrollRestoration: Array<VNode> = [
-        content,
-        matchData.value?.parentRouteId === rootRouteId &&
-        router.options.scrollRestoration
-          ? Vue.h(Vue.Fragment, null, [
-              Vue.h(OnRendered),
-              Vue.h(ScrollRestoration),
-            ])
-          : null,
-      ].filter(Boolean) as Array<VNode>
-
-      // Return single child directly to avoid Fragment wrapper that causes hydration mismatch
-      if (withScrollRestoration.length === 1) {
-        const child = withScrollRestoration[0]!
-        if (!hasShellComponent.value) return child
-        return Vue.h(
-          ShellComponent.value,
-          { children: child },
-          { default: () => child },
-        )
-      }
-
-      const children = Vue.h(Vue.Fragment, null, withScrollRestoration)
-      if (!hasShellComponent.value) return children
 
       return Vue.h(
         ShellComponent.value,
-        { children },
-        { default: () => children },
+        null,
+        {
+          // Important: return a fresh VNode on each slot invocation so that shell
+          // components can re-render without reusing a cached VNode instance.
+          default: () => renderMatchContent(),
+        },
       )
     }
   },
@@ -328,6 +333,9 @@ export const MatchInner = Vue.defineComponent({
             id: match.id,
             status: match.status,
             error: match.error,
+            ssr: match.ssr,
+            _forcePending: match._forcePending,
+            _displayPending: match._displayPending,
           },
           remountKey,
         }
@@ -344,11 +352,25 @@ export const MatchInner = Vue.defineComponent({
 
     return (): VNode | null => {
       // If match doesn't exist, return null (component is being unmounted or not ready)
-      if (!combinedState.value || !match.value || !route.value) {
-        return null
-      }
+      if (!combinedState.value || !match.value || !route.value) return null
 
       // Handle different match statuses
+      if (match.value._displayPending) {
+        const PendingComponent =
+          route.value.options.pendingComponent ??
+          router.options.defaultPendingComponent
+
+        return PendingComponent ? Vue.h(PendingComponent) : null
+      }
+
+      if (match.value._forcePending) {
+        const PendingComponent =
+          route.value.options.pendingComponent ??
+          router.options.defaultPendingComponent
+
+        return PendingComponent ? Vue.h(PendingComponent) : null
+      }
+
       if (match.value.status === 'notFound') {
         invariant(isNotFound(match.value.error), 'Expected a notFound error')
         return renderRouteNotFound(router, route.value, match.value.error)

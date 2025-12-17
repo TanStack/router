@@ -136,6 +136,13 @@ export function useTransitionerSetup() {
 
   Vue.onMounted(() => {
     isMounted.value = true
+    if (!isAnyPending.value) {
+      router.__store.setState((s) =>
+        s.status === 'pending'
+          ? { ...s, status: 'idle', resolvedLocation: s.location }
+          : s,
+      )
+    }
   })
 
   Vue.onUnmounted(() => {
@@ -201,6 +208,14 @@ export function useTransitionerSetup() {
   Vue.watch(isAnyPending, (newValue) => {
     if (!isMounted.value) return
     try {
+      if (!newValue && router.__store.state.status === 'pending') {
+        router.__store.setState((s) => ({
+          ...s,
+          status: 'idle',
+          resolvedLocation: s.location,
+        }))
+      }
+
       // The router was pending and now it's not
       if (previousIsAnyPending.value.previous && !newValue) {
         const changeInfo = getLocationChangeInfo(router.state)
@@ -208,12 +223,6 @@ export function useTransitionerSetup() {
           type: 'onResolved',
           ...changeInfo,
         })
-
-        router.__store.setState((s) => ({
-          ...s,
-          status: 'idle',
-          resolvedLocation: s.location,
-        }))
 
         if (changeInfo.hrefChanged) {
           handleHashScroll(router)

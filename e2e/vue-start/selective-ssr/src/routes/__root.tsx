@@ -11,7 +11,6 @@ import {
   useRouterState,
 } from '@tanstack/vue-router'
 import { z } from 'zod'
-import type { VNode } from 'vue'
 import { ssrSchema } from '~/search'
 import appCss from '~/styles/app.css?url'
 
@@ -112,9 +111,12 @@ export const Route = createRootRoute({
   },
 })
 
-function RootDocument({ children }: { children: VNode }) {
+function RootDocument(_: unknown, { slots }: { slots: any }) {
   const routerState = useRouterState({
-    select: (state) => ({ isLoading: state.isLoading, status: state.status }),
+    select: (state) => ({
+      isLoading: state.isLoading,
+      status: state.status,
+    }),
   })
   return (
     <Html>
@@ -147,7 +149,7 @@ function RootDocument({ children }: { children: VNode }) {
           </div>
         </ClientOnly>
         <hr />
-        {children}
+        {slots.default?.()}
         <Scripts />
       </Body>
     </Html>
