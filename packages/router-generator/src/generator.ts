@@ -1447,9 +1447,12 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         const candidate = acc.routeNodesByPath.get(searchPath)
         if (candidate && !candidate.isVirtual && candidate.path !== '/') {
           node.parent = candidate
-          node.path = node.routePath
+          node.path =
+            node.routePath?.replace(candidate.routePath ?? '', '') || '/'
+          const pathRelativeToParent =
+            immediateParentPath.replace(candidate.routePath ?? '', '') || '/'
           node.cleanedPath = removeGroups(
-            removeUnderscores(removeLayoutSegments(immediateParentPath)) ?? '',
+            removeUnderscores(removeLayoutSegments(pathRelativeToParent)) ?? '',
           )
           break
         }
