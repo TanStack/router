@@ -1,5 +1,7 @@
 import {
+	Body,
   HeadContent,
+  Html,
   Link,
   Outlet,
   Scripts,
@@ -7,7 +9,6 @@ import {
 } from '@tanstack/vue-router'
 
 import { TanStackRouterDevtoolsInProd } from '@tanstack/vue-router-devtools'
-import { HydrationScript } from 'solid-js/web'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
@@ -55,12 +56,11 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <html>
+    <Html>
       <head>
-        <HydrationScript />
-      </head>
-      <body>
         <HeadContent />
+      </head>
+      <Body>
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -108,7 +108,7 @@ function RootComponent() {
         <Outlet />
         <TanStackRouterDevtoolsInProd />
         <Scripts />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }

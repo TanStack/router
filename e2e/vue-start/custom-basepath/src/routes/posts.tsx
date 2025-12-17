@@ -11,7 +11,7 @@ export const Route = createFileRoute('/posts')({
       },
     ],
   }),
-  loader: async () => fetchPosts(),
+  loader: async () => fetchposts.value,
   component: PostsComponent,
 })
 
@@ -21,7 +21,7 @@ function PostsComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        <For each={posts()}>
+        <For each={posts.value}>
           {(post) => {
             return (
               <li class="whitespace-nowrap">

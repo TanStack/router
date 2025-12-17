@@ -18,12 +18,12 @@ function PostComponent() {
 
   return (
     <div class="space-y-2" data-testid="post-view">
-      <h4 class="text-xl font-bold underline">{post().title}</h4>
-      <div class="text-sm">{post().body}</div>
+      <h4 class="text-xl font-bold underline">{post.value.title}</h4>
+      <div class="text-sm">{post.value.body}</div>
       <Link
         to="/posts/$postId/deep"
         params={{
-          postId: post().id,
+          postId: post.value.id,
         }}
         activeProps={{ class: 'text-black font-bold' }}
         class="block py-1 text-blue-800 hover:text-blue-600"
