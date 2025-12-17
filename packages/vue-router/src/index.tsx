@@ -219,6 +219,7 @@ export type {
   ActiveLinkOptions,
   LinkProps,
   LinkComponent,
+  LinkComponentRoute,
   LinkComponentProps,
   CreateLinkProps,
 } from './link'
