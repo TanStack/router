@@ -4,8 +4,8 @@ import {
   rootRouteId,
   useMatch,
   useRouter,
-} from '@tanstack/solid-router'
-import type { ErrorComponentProps } from '@tanstack/solid-router'
+} from '@tanstack/vue-router'
+import type { ErrorComponentProps } from '@tanstack/vue-router'
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   const router = useRouter()

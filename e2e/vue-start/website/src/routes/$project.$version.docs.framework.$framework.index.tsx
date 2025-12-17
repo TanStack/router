@@ -1,4 +1,4 @@
-import { redirect, createFileRoute } from '@tanstack/solid-router'
+import { redirect, createFileRoute } from '@tanstack/vue-router'
 
 export const Route = createFileRoute(
   '/$project/$version/docs/framework/$framework/',

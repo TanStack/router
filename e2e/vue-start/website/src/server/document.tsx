@@ -1,5 +1,5 @@
-import { notFound } from '@tanstack/solid-router'
-import { createServerFn } from '@tanstack/solid-start'
+import { notFound } from '@tanstack/vue-router'
+import { createServerFn } from '@tanstack/vue-start'
 
 const documents: Array<{ id: string; title: string; content: string }> = [
   {

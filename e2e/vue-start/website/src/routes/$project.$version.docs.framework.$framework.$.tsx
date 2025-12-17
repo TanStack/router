@@ -1,5 +1,5 @@
-import { ErrorComponent, createFileRoute } from '@tanstack/solid-router'
-import type { ErrorComponentProps } from '@tanstack/solid-router'
+import { ErrorComponent, createFileRoute } from '@tanstack/vue-router'
+import type { ErrorComponentProps } from '@tanstack/vue-router'
 import { NotFound } from '~/components/NotFound'
 import { getDocument } from '~/server/document'
 import { capitalize, seo } from '~/utils/seo'
