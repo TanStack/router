@@ -72,9 +72,9 @@ const RouteComponent = defineComponent({
               {results.value.clientOnServer}
             </pre>
             When we called the function on the client:
-              <pre data-testid="client-on-client">
-                {results.value.clientOnClient}
-              </pre>
+            <pre data-testid="client-on-client">
+              {results.value.clientOnClient}
+            </pre>
           </div>
         )}
       </div>

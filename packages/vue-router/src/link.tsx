@@ -592,9 +592,10 @@ export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | Vue.VNodeChild
-    | ((
-        state: { isActive: boolean; isTransitioning: boolean },
-      ) => Vue.VNodeChild)
+    | ((state: {
+        isActive: boolean
+        isTransitioning: boolean
+      }) => Vue.VNodeChild)
 }
 
 type LinkComponentVueProps<TComp> = TComp extends keyof HTMLElementTagNameMap

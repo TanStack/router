@@ -125,9 +125,7 @@ const RouteComponent = defineComponent({
                   </div>
                   <h4> result</h4>
                   <div data-testid={`result-${testId}`}>
-                    {query.isSuccess.value
-                      ? stringify(query.data.value)
-                      : ''}
+                    {query.isSuccess.value ? stringify(query.data.value) : ''}
                   </div>
                   <br />
                 </div>

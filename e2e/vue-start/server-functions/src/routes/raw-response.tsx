@@ -36,7 +36,9 @@ const RouteComponent = defineComponent({
         </button>
 
         <div class="overflow-y-auto">
-          <pre data-testid="response">{JSON.stringify(formDataResult.value)}</pre>
+          <pre data-testid="response">
+            {JSON.stringify(formDataResult.value)}
+          </pre>
         </div>
       </div>
     )

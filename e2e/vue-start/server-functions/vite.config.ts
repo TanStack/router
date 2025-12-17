@@ -26,7 +26,7 @@ export default defineConfig({
         },
       },
     }),
-		vue(),
+    vue(),
     vueJsx(),
   ],
 })

@@ -44,8 +44,9 @@ export const SerializeFormDataFnCall = defineComponent({
           It should return{' '}
           <code>
             <pre data-testid="expected-serialize-formdata-server-fn-result">
-              Hello, {testValues.name}! You are {testValues.age + testValues.__adder}{' '}
-              years old, and your favorite pets are {testValues.pet1},{testValues.pet2}.
+              Hello, {testValues.name}! You are{' '}
+              {testValues.age + testValues.__adder} years old, and your favorite
+              pets are {testValues.pet1},{testValues.pet2}.
             </pre>
           </code>
         </div>
