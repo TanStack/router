@@ -736,7 +736,7 @@ const LinkImpl = Vue.defineComponent({
       if (Component === 'svg') {
         // Create props without class for svg link
         const svgLinkProps = { ...linkProps }
-        delete (svgLinkProps).class
+        delete svgLinkProps.class
         return Vue.h('svg', {}, [Vue.h('a', svgLinkProps, slotContent)])
       }
 
