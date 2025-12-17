@@ -13,9 +13,6 @@ import type { IsRequiredParams } from './link'
  * @returns A search middleware suitable for route `search.middlewares`.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/retainSearchParamsFunction
  */
-/**
- * Retain specified search params across navigations by merging prior values.
- */
 export function retainSearchParams<TSearchSchema extends object>(
   keys: Array<keyof TSearchSchema> | true,
 ): SearchMiddleware<TSearchSchema> {
@@ -43,9 +40,6 @@ export function retainSearchParams<TSearchSchema extends object>(
  *
  * @returns A search middleware suitable for route `search.middlewares`.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/stripSearchParamsFunction
- */
-/**
- * Remove optional/default-valued search params from navigations.
  */
 export function stripSearchParams<
   TSearchSchema,
