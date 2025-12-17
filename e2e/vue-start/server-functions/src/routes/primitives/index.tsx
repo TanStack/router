@@ -1,12 +1,8 @@
 import { useQuery } from '@tanstack/vue-query'
 import { createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
-import { For, Show } from 'solid-js'
+import { defineComponent } from 'vue'
 import { z } from 'zod'
-export const Route = createFileRoute('/primitives/')({
-  component: RouteComponent,
-  ssr: true,
-})
 
 function stringify(data: any) {
   return JSON.stringify(data === undefined ? '$undefined' : data)
@@ -47,50 +43,6 @@ interface PrimitiveComponentProps<T> {
   }
 }
 
-interface TestProps<T> extends PrimitiveComponentProps<T> {
-  method: 'get' | 'post'
-}
-function Test<T>(props: TestProps<T>) {
-  const query = useQuery(() => ({
-    queryKey: [props.data.type, props.method],
-    queryFn: async () => {
-      const result = await props.serverFn[props.method]({
-        data: props.data.value,
-      })
-      if (result === undefined) {
-        return '$undefined'
-      }
-      return result
-    },
-  }))
-  const testId = `${props.method}-${props.data.type}`
-  return (
-    <div>
-      <h3>serverFn method={props.method}</h3>
-      <h4> expected </h4>
-      <div data-testid={`expected-${testId}`}>
-        {stringify(props.data.value)}
-      </div>
-      <h4> result</h4>
-      <Show when={query.isSuccess}>
-        <div data-testid={`result-${testId}`}>{stringify(query.data)}</div>
-      </Show>
-    </div>
-  )
-}
-function PrimitiveComponent<T>(props: PrimitiveComponentProps<T>) {
-  return (
-    <div>
-      <h2>data type: {props.data.type}</h2>
-      <Test {...props} method="post" />
-      <br />
-      <Test {...props} method="get" />
-      <br />
-      <br />
-    </div>
-  )
-}
-
 function makeTestCase<T>(props: PrimitiveComponentProps<T>) {
   return props
 }
@@ -127,6 +79,70 @@ const testCases = [
   }),
 ] as Array<PrimitiveComponentProps<any>>
 
-function RouteComponent() {
-  return <For each={testCases}>{(t) => <PrimitiveComponent {...t} />}</For>
-}
+type Method = 'get' | 'post'
+
+const RouteComponent = defineComponent({
+  setup() {
+    const testQueries = testCases.map((testCase) => {
+      const makeQuery = (method: Method) =>
+        useQuery(() => ({
+          queryKey: [testCase.data.type, method],
+          queryFn: async () => {
+            const result = await testCase.serverFn[method]({
+              data: testCase.data.value,
+            })
+            if (result === undefined) {
+              return '$undefined'
+            }
+            return result
+          },
+        }))
+
+      return {
+        testCase,
+        queries: {
+          post: makeQuery('post'),
+          get: makeQuery('get'),
+        },
+      }
+    })
+
+    return () => (
+      <>
+        {testQueries.map(({ testCase, queries }) => (
+          <div key={testCase.data.type}>
+            <h2>data type: {testCase.data.type}</h2>
+
+            {(['post', 'get'] as const).map((method) => {
+              const testId = `${method}-${testCase.data.type}`
+              const query = queries[method]
+              return (
+                <div key={testId}>
+                  <h3>serverFn method={method}</h3>
+                  <h4> expected </h4>
+                  <div data-testid={`expected-${testId}`}>
+                    {stringify(testCase.data.value)}
+                  </div>
+                  <h4> result</h4>
+                  <div data-testid={`result-${testId}`}>
+                    {query.isSuccess.value
+                      ? stringify(query.data.value)
+                      : ''}
+                  </div>
+                  <br />
+                </div>
+              )
+            })}
+            <br />
+            <br />
+          </div>
+        ))}
+      </>
+    )
+  },
+})
+
+export const Route = createFileRoute('/primitives/')({
+  component: RouteComponent,
+  ssr: true,
+})

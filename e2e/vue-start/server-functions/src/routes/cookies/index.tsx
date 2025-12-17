@@ -16,9 +16,9 @@ function RouteComponent() {
       data-testid="link-to-set"
       from="/cookies"
       to="./set"
-      search={search()}
+      search={search.value}
     >
-      got to route that sets the cookies with {JSON.stringify(search())}
+      got to route that sets the cookies with {JSON.stringify(search.value)}
     </Link>
   )
 }

@@ -9,7 +9,7 @@ function RouteComponent() {
   return (
     <div data-testid="formdata-redirect-target">
       Hello{' '}
-      <span data-testid="formdata-redirect-target-name">{params().name}</span>!
+      <span data-testid="formdata-redirect-target-name">{params.value.name}</span>!
     </div>
   )
 }

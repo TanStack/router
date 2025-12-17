@@ -1,6 +1,5 @@
 import { createFileRoute, deepEqual } from '@tanstack/vue-router'
 
-import { createSignal, For } from 'solid-js'
 import { createServerFn } from '@tanstack/vue-start'
 import { fooFnInsideFactoryFile } from './-functions/createFooServerFn'
 import {
@@ -13,11 +12,7 @@ import {
   localFn,
   localFnPOST,
 } from './-functions/functions'
-
-export const Route = createFileRoute('/factory/')({
-  ssr: false,
-  component: RouteComponent,
-})
+import { computed, defineComponent, ref } from 'vue'
 
 const fnInsideRoute = createServerFn({ method: 'GET' }).handler(() => {
   return {
@@ -137,17 +132,17 @@ interface TestCase {
   expected: any
   type: 'serverFn' | 'localFn'
 }
-function Test(props: TestCase) {
-  const [result, setResult] = createSignal<null | unknown>(null)
-  function comparison() {
-    if (result()) {
-      const isEqual = deepEqual(result(), props.expected)
+const Test = defineComponent((props: TestCase) => {
+  const result = ref<null | unknown>(null)
+  const comparison = computed(() => {
+    if (result.value) {
+      const isEqual = deepEqual(result.value, props.expected)
       return isEqual ? 'equal' : 'not equal'
     }
     return 'Loading...'
-  }
+  })
 
-  return (
+  return () => (
     <div
       data-testid={`test-${props.expected.name}`}
       class="p-2 border border-gray-200 rounded-md"
@@ -157,9 +152,7 @@ function Test(props: TestCase) {
         It should return{' '}
         <code>
           <pre data-testid={`expected-fn-result-${props.expected.name}`}>
-            {props.type === 'serverFn'
-              ? JSON.stringify(props.expected)
-              : 'localFn'}
+            {props.type === 'serverFn' ? JSON.stringify(props.expected) : 'localFn'}
           </pre>
         </code>
       </div>
@@ -167,14 +160,14 @@ function Test(props: TestCase) {
         fn returns:
         <br />
         <span data-testid={`fn-result-${props.expected.name}`}>
-          {result()
+          {result.value
             ? props.type === 'serverFn'
-              ? JSON.stringify(result())
+              ? JSON.stringify(result.value)
               : 'localFn'
             : 'Loading...'}
         </span>{' '}
         <span data-testid={`fn-comparison-${props.expected.name}`}>
-          {comparison()}
+          {comparison.value}
         </span>
       </p>
       <button
@@ -182,21 +175,31 @@ function Test(props: TestCase) {
         type="button"
         class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         onClick={() => {
-          props.fn().then(setResult)
+          props.fn().then((data) => {
+            result.value = data
+          })
         }}
       >
         Invoke Server Function
       </button>
     </div>
   )
-}
-function RouteComponent() {
-  return (
-    <div class="p-2 m-2 grid gap-2" data-testid="factory-route-component">
-      <h1 class="font-bold text-lg">Server functions middleware E2E tests</h1>
-      <For each={Object.entries(functions)}>
-        {([name, testCase]) => <Test {...testCase} />}
-      </For>
-    </div>
-  )
-}
+})
+
+const RouteComponent = defineComponent({
+  setup() {
+    return () => (
+      <div class="p-2 m-2 grid gap-2" data-testid="factory-route-component">
+        <h1 class="font-bold text-lg">Server functions middleware E2E tests</h1>
+        {Object.entries(functions).map(([name, testCase]) => (
+          <Test key={name} {...testCase} />
+        ))}
+      </div>
+    )
+  },
+})
+
+export const Route = createFileRoute('/factory/')({
+  ssr: false,
+  component: RouteComponent,
+})

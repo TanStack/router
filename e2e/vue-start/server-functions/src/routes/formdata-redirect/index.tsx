@@ -53,9 +53,9 @@ function SubmitPostFormDataFn() {
         method="post"
         action={greetUser.url}
         onSubmit={async (evt) => {
-          if (mode() === 'js') {
+          if (mode.value === 'js') {
             evt.preventDefault()
-            const data = new FormData(evt.currentTarget)
+            const data = new FormData(evt.currentTarget as HTMLFormElement)
             await greetUserFn({ data })
           }
         }}

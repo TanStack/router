@@ -1,10 +1,6 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import * as Solid from 'solid-js'
 import { createServerFn } from '@tanstack/vue-start'
-
-export const Route = createFileRoute('/multipart')({
-  component: MultipartServerFnCall,
-})
+import { defineComponent, ref } from 'vue'
 
 const multipartFormDataServerFn = createServerFn({ method: 'POST' })
   .inputValidator((x: unknown) => {
@@ -40,68 +36,78 @@ const multipartFormDataServerFn = createServerFn({ method: 'POST' })
     }
   })
 
-function MultipartServerFnCall() {
-  let formRef: HTMLFormElement | undefined
-  const [multipartResult, setMultipartResult] = Solid.createSignal({})
+const MultipartServerFnCall = defineComponent({
+  setup() {
+    const formRef = ref<HTMLFormElement | null>(null)
+    const multipartResult = ref<unknown>({})
 
-  const handleSubmit = (e: any) => {
-    e.preventDefault()
+    const handleSubmit = (e: Event) => {
+      e.preventDefault()
 
-    if (!formRef) {
-      return
+      if (!formRef.value) {
+        return
+      }
+
+      const formData = new FormData(formRef.value)
+      multipartFormDataServerFn({ data: formData }).then((data) => {
+        multipartResult.value = data
+      })
     }
 
-    const formData = new FormData(formRef)
-    multipartFormDataServerFn({ data: formData }).then(setMultipartResult)
-  }
-
-  return (
-    <div class="p-2 m-2 grid gap-2">
-      <h3>Multipart Server Fn POST Call</h3>
-      <div class="overflow-y-auto">
-        It should return{' '}
-        <code>
-          <pre data-testid="expected-multipart-server-fn-result">
-            {JSON.stringify({
-              value: 'test field value',
-              file: { name: 'my_file.txt', size: 9, contents: 'test data' },
-            })}
+    return () => (
+      <div class="p-2 m-2 grid gap-2">
+        <h3>Multipart Server Fn POST Call</h3>
+        <div class="overflow-y-auto">
+          It should return{' '}
+          <code>
+            <pre data-testid="expected-multipart-server-fn-result">
+              {JSON.stringify({
+                value: 'test field value',
+                file: { name: 'my_file.txt', size: 9, contents: 'test data' },
+              })}
+            </pre>
+          </code>
+        </div>
+        <form
+          class="flex flex-col gap-2"
+          action={multipartFormDataServerFn.url}
+          method="post"
+          enctype="multipart/form-data"
+          ref={(el) => {
+            formRef.value = el as HTMLFormElement
+          }}
+          data-testid="multipart-form"
+        >
+          <input type="text" name="input_field" value="test field value" />
+          <input
+            type="file"
+            name="input_file"
+            data-testid="multipart-form-file-input"
+          />
+          <button
+            type="submit"
+            class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          >
+            Submit (native)
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          >
+            Submit (onClick)
+          </button>
+        </form>
+        <div class="overflow-y-auto">
+          <pre data-testid="multipart-form-response">
+            {JSON.stringify(multipartResult.value)}
           </pre>
-        </code>
+        </div>
       </div>
-      <form
-        class="flex flex-col gap-2"
-        action={multipartFormDataServerFn.url}
-        method="post"
-        enctype="multipart/form-data"
-        ref={formRef}
-        data-testid="multipart-form"
-      >
-        <input type="text" name="input_field" value="test field value" />
-        <input
-          type="file"
-          name="input_file"
-          data-testid="multipart-form-file-input"
-        />
-        <button
-          type="submit"
-          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-        >
-          Submit (native)
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-        >
-          Submit (onClick)
-        </button>
-      </form>
-      <div class="overflow-y-auto">
-        <pre data-testid="multipart-form-response">
-          {JSON.stringify(multipartResult())}
-        </pre>
-      </div>
-    </div>
-  )
-}
+    )
+  },
+})
+
+export const Route = createFileRoute('/multipart')({
+  component: MultipartServerFnCall,
+})
