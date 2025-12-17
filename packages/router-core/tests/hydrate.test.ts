@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { hydrate } from '@tanstack/router-core/ssr/client'
 import { BaseRootRoute, BaseRoute, RouterCore, notFound } from '../src'
+import { hydrate } from '../src/ssr/client'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { AnyRouteMatch } from '../src'
 
