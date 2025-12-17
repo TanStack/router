@@ -1,7 +1,9 @@
 /// <reference types="vite/client" />
 import {
+	Body,
   ClientOnly,
   HeadContent,
+  Html,
   Link,
   Outlet,
   Scripts,
@@ -115,11 +117,11 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
     select: (state) => ({ isLoading: state.isLoading, status: state.status }),
   })
   return (
-    <html>
+    <Html>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <Body>
         <div class="p-2 flex gap-2 text-lg">
           <h1>Selective SSR E2E Test</h1>
           <Link
@@ -147,7 +149,7 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
         <hr />
         {children}
         <Scripts />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }
