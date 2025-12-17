@@ -1,33 +1,45 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import React from 'react'
+import z from 'zod'
 
-export const Route = createFileRoute('/abort-signal')({
+export const Route = createFileRoute('/abort-signal/$method')({
+  params: z.object({
+    method: z.union([z.literal('GET'), z.literal('POST')]),
+  }),
   component: RouteComponent,
 })
 
-const abortableServerFn = createServerFn().handler(
-  async ({ context, signal }) => {
-    console.log('server function started', { context, signal })
-    return new Promise<string>((resolve, reject) => {
-      if (signal.aborted) {
-        return reject(new Error('Aborted before start'))
-      }
-      const timerId = setTimeout(() => {
-        console.log('server function finished')
-        resolve('server function result')
-      }, 1000)
-      const onAbort = () => {
-        clearTimeout(timerId)
-        console.log('server function aborted')
-        reject(new Error('Aborted'))
-      }
-      signal.addEventListener('abort', onAbort, { once: true })
-    })
-  },
+function serverFnImpl(signal: AbortSignal) {
+  console.log('server function started', { signal })
+  return new Promise<string>((resolve, reject) => {
+    if (signal.aborted) {
+      return reject(new Error('Aborted before start'))
+    }
+    const timerId = setTimeout(() => {
+      console.log('server function finished')
+      resolve('server function result')
+    }, 1000)
+    const onAbort = () => {
+      clearTimeout(timerId)
+      console.log('server function aborted')
+      reject(new Error('Aborted'))
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+}
+const abortableServerFnGET = createServerFn().handler(async ({ signal }) =>
+  serverFnImpl(signal),
+)
+
+const abortableServerFnPOST = createServerFn({ method: 'POST' }).handler(
+  async ({ signal }) => serverFnImpl(signal),
 )
 
 function RouteComponent() {
+  const method = Route.useParams().method
+  const abortableServerFn =
+    method === 'GET' ? abortableServerFnGET : abortableServerFnPOST
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>(
     undefined,
   )

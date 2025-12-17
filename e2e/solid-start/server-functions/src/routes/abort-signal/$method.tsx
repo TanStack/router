@@ -1,33 +1,45 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import * as Solid from 'solid-js'
+import z from 'zod'
 
-export const Route = createFileRoute('/abort-signal')({
+export const Route = createFileRoute('/abort-signal/$method')({
+  params: z.object({
+    method: z.union([z.literal('GET'), z.literal('POST')]),
+  }),
   component: RouteComponent,
 })
 
-const abortableServerFn = createServerFn().handler(
-  async ({ context, signal }) => {
-    console.log('server function started', { context, signal })
-    return new Promise<string>((resolve, reject) => {
-      if (signal.aborted) {
-        return reject(new Error('Aborted before start'))
-      }
-      const timerId = setTimeout(() => {
-        console.log('server function finished')
-        resolve('server function result')
-      }, 1000)
-      const onAbort = () => {
-        clearTimeout(timerId)
-        console.log('server function aborted')
-        reject(new Error('Aborted'))
-      }
-      signal.addEventListener('abort', onAbort, { once: true })
-    })
-  },
+function serverFnImpl(signal: AbortSignal) {
+  console.log('server function started', { signal })
+  return new Promise<string>((resolve, reject) => {
+    if (signal.aborted) {
+      return reject(new Error('Aborted before start'))
+    }
+    const timerId = setTimeout(() => {
+      console.log('server function finished')
+      resolve('server function result')
+    }, 1000)
+    const onAbort = () => {
+      clearTimeout(timerId)
+      console.log('server function aborted')
+      reject(new Error('Aborted'))
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+}
+const abortableServerFnGET = createServerFn().handler(async ({ signal }) =>
+  serverFnImpl(signal),
+)
+
+const abortableServerFnPOST = createServerFn({ method: 'POST' }).handler(
+  async ({ signal }) => serverFnImpl(signal),
 )
 
 function RouteComponent() {
+  const params = Route.useParams()
+  const abortableServerFn = () =>
+    params().method === 'GET' ? abortableServerFnGET : abortableServerFnPOST
   const [errorMessage, setErrorMessage] = Solid.createSignal<
     string | undefined
   >(undefined)
@@ -44,7 +56,7 @@ function RouteComponent() {
         onClick={async () => {
           reset()
           const controller = new AbortController()
-          const serverFnPromise = abortableServerFn({
+          const serverFnPromise = abortableServerFn()({
             signal: controller.signal,
           })
           const timeoutPromise = new Promise((resolve) =>
@@ -67,7 +79,7 @@ function RouteComponent() {
         data-testid="run-without-abort-btn"
         onClick={async () => {
           reset()
-          const serverFnResult = await abortableServerFn()
+          const serverFnResult = await abortableServerFn()()
           setResult(serverFnResult)
         }}
       >
