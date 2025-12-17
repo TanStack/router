@@ -7,9 +7,7 @@ export const Route = createFileRoute('/abort-signal/')({
 function Home() {
   return (
     <div class="p-8">
-      <h1 class="font-bold text-lg">
-        Server functions E2E Abort Signal Tests
-      </h1>
+      <h1 class="font-bold text-lg">Server functions E2E Abort Signal Tests</h1>
       <ul class="list-disc p-4">
         <li>
           <Link to="/abort-signal/$method" params={{ method: 'GET' }}>

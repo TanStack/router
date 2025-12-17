@@ -266,7 +266,6 @@ test.describe('server function sets cookies', () => {
     await runCookieTest(page, expectedCookieValue)
   })
 })
-
 ;['GET', 'POST'].forEach((method) => {
   test.describe(`aborting a server function call: method ${method}`, () => {
     test('without aborting', async ({ page }) => {
