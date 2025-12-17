@@ -1,3 +1,5 @@
+import { TargetTemplate } from './template'
+
 export type RouteNode = {
   filePath: string
   fullPath: string
@@ -13,6 +15,10 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
   createFileRouteProps?: Set<string>
+  componentImport?: { exportName?: string; keepExtension?: boolean }
+  extension?: string
+  skipTransform?: boolean
+  template?: TargetTemplate['route']
   _isExperimentalNonNestedRoute?: boolean
 }
 

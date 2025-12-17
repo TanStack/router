@@ -749,14 +749,15 @@ export function getImportPath(
   config: Config,
   generatedRouteTreePath: string,
 ): string {
+  const relativePath = path.relative(
+    path.dirname(generatedRouteTreePath),
+    path.resolve(config.routesDirectory, node.filePath),
+  )
+  const keepExtension = node.componentImport?.keepExtension ?? false
   return replaceBackslash(
-    removeExt(
-      path.relative(
-        path.dirname(generatedRouteTreePath),
-        path.resolve(config.routesDirectory, node.filePath),
-      ),
-      config.addExtensions,
-    ),
+    keepExtension
+      ? relativePath
+      : removeExt(relativePath, config.addExtensions),
   )
 }
 
@@ -767,12 +768,17 @@ export function getImportForRouteNode(
   root: string,
 ): ImportDeclaration {
   let source = ''
+  const keepExtension = node.componentImport?.keepExtension ?? false
   if (config.importRoutesUsingAbsolutePaths) {
+    const absolutePath = path.resolve(
+      root,
+      config.routesDirectory,
+      node.filePath,
+    )
     source = replaceBackslash(
-      removeExt(
-        path.resolve(root, config.routesDirectory, node.filePath),
-        config.addExtensions,
-      ),
+      keepExtension
+        ? absolutePath
+        : removeExt(absolutePath, config.addExtensions),
     )
   } else {
     source = `./${getImportPath(node, config, generatedRouteTreePath)}`
@@ -781,7 +787,7 @@ export function getImportForRouteNode(
     source,
     specifiers: [
       {
-        imported: 'Route',
+        imported: node.componentImport?.exportName ?? 'Route',
         local: `${node.variableName}RouteImport`,
       },
     ],

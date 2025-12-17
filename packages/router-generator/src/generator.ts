@@ -516,12 +516,13 @@ export class Generator {
       }
     }
 
-    this.plugins.map((plugin) => {
-      return plugin.onRouteTreeChanged?.({
+    this.plugins.forEach((plugin) => {
+      plugin.onRouteTreeChanged?.({
         routeTree: buildResult.routeTree,
         routeNodes: buildResult.routeNodes,
         acc,
         rootRouteNode,
+        config: this.config,
       })
     })
     this.swapCaches()
@@ -549,8 +550,12 @@ export class Generator {
       (d) => d,
     ])
 
+    // Check if node is external module (not virtual and transformation not skipped)
+    const isExternal = (node: RouteNode) =>
+      !node.isVirtual && !node.skipTransform
+
     const routeImports = sortedRouteNodes
-      .filter((d) => !d.isVirtual)
+      .filter((d) => isExternal(d))
       .flatMap((node) =>
         getImportForRouteNode(
           node,
@@ -561,7 +566,7 @@ export class Generator {
       )
 
     const virtualRouteNodes = sortedRouteNodes
-      .filter((d) => d.isVirtual)
+      .filter((d) => !isExternal(d))
       .map((node) => {
         return `const ${
           node.variableName
@@ -569,7 +574,7 @@ export class Generator {
       })
 
     const imports: Array<ImportDeclaration> = []
-    if (acc.routeNodes.some((n) => n.isVirtual)) {
+    if (acc.routeNodes.some((n) => !isExternal(n))) {
       imports.push({
         specifiers: [{ imported: 'createFileRoute' }],
         source: this.targetTemplate.fullPkg,
@@ -686,17 +691,23 @@ export class Generator {
                 )
                   .filter((d) => d[1])
                   .map((d) => {
-                    // For .vue files, use 'default' as the export name since Vue SFCs export default
+                    const fileNode = d[1]!
                     const isVueFile = d[1]!.filePath.endsWith('.vue')
-                    const exportName = isVueFile ? 'default' : d[0]
-                    // Keep .vue extension for Vue files since Vite requires it
-                    const importPath = replaceBackslash(
+                    const exportName =
+                      fileNode.componentImport?.exportName ??
+                      // For .vue files, use 'default' as the export name since Vue SFCs export default
+                      (isVueFile ? 'default' : d[0])
+                    const keepExtension =
+                      fileNode.componentImport?.keepExtension ??
+                      // Keep .vue extension for Vue files since Vite requires it
                       isVueFile
+                    const importPath = replaceBackslash(
+                      keepExtension
                         ? path.relative(
                             path.dirname(config.generatedRouteTree),
                             path.resolve(
                               config.routesDirectory,
-                              d[1]!.filePath,
+                              fileNode.filePath,
                             ),
                           )
                         : removeExt(
@@ -704,7 +715,7 @@ export class Generator {
                               path.dirname(config.generatedRouteTree),
                               path.resolve(
                                 config.routesDirectory,
-                                d[1]!.filePath,
+                                fileNode.filePath,
                               ),
                             ),
                             config.addExtensions,
@@ -719,12 +730,18 @@ export class Generator {
             : '',
           lazyComponentNode
             ? (() => {
-                // For .vue files, use 'default' export since Vue SFCs export default
                 const isVueFile = lazyComponentNode.filePath.endsWith('.vue')
-                const exportAccessor = isVueFile ? 'd.default' : 'd.Route'
-                // Keep .vue extension for Vue files since Vite requires it
-                const importPath = replaceBackslash(
+                const exportName =
+                  lazyComponentNode.componentImport?.exportName ??
+                  // For .vue files, use 'default' export since Vue SFCs export default
+                  (isVueFile ? 'default' : 'Route')
+                const keepExtension =
+                  lazyComponentNode.componentImport?.keepExtension ??
+                  // Keep .vue extension for Vue files since Vite requires it
                   isVueFile
+                const exportAccessor = `d.${exportName}`
+                const importPath = replaceBackslash(
+                  keepExtension
                     ? path.relative(
                         path.dirname(config.generatedRouteTree),
                         path.resolve(
@@ -746,6 +763,7 @@ export class Generator {
                 return `.lazy(() => import('./${importPath}').then((d) => ${exportAccessor}))`
               })()
             : '',
+          node.extension || '',
         ].join(''),
       ].join('\n\n')
     })
@@ -783,22 +801,31 @@ export class Generator {
               )
                 .filter((d) => d[1])
                 .map((d) => {
-                  // For .vue files, use 'default' as the export name since Vue SFCs export default
-                  const isVueFile = d[1]!.filePath.endsWith('.vue')
-                  const exportName = isVueFile ? 'default' : d[0]
-                  // Keep .vue extension for Vue files since Vite requires it
-                  const importPath = replaceBackslash(
+                  const fileNode = d[1]!
+                  const isVueFile = fileNode.filePath.endsWith('.vue')
+                  const exportName =
+                    fileNode.componentImport?.exportName ??
+                    // For .vue files, use 'default' as the export name since Vue SFCs export default
+                    (isVueFile ? 'default' : d[0])
+                  const keepExtension =
+                    fileNode.componentImport?.keepExtension ??
+                    // Keep .vue extension for Vue files since Vite requires it
                     isVueFile
+                  const importPath = replaceBackslash(
+                    keepExtension
                       ? path.relative(
                           path.dirname(config.generatedRouteTree),
-                          path.resolve(config.routesDirectory, d[1]!.filePath),
+                          path.resolve(
+                            config.routesDirectory,
+                            fileNode.filePath,
+                          ),
                         )
                       : removeExt(
                           path.relative(
                             path.dirname(config.generatedRouteTree),
                             path.resolve(
                               config.routesDirectory,
-                              d[1]!.filePath,
+                              fileNode.filePath,
                             ),
                           ),
                           config.addExtensions,
@@ -895,6 +922,20 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       ),
       config,
     )
+
+    // Collect additional route tree content from plugins
+    for (const plugin of this.plugins) {
+      const result = plugin.getAdditionalRouteTreeContent?.({
+        routeTree: acc.routeTree,
+        routeNodes: sortedRouteNodes,
+        rootRouteNode,
+        acc,
+        config,
+      })
+      if (result?.imports) {
+        imports.push(...result.imports)
+      }
+    }
 
     let mergedImports = mergeImportDeclarations(imports)
     if (config.disableTypes) {
@@ -1008,7 +1049,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     let shouldWriteRouteFile = false
     let shouldWriteTree = false
     // now we need to either scaffold the file or transform it
-    if (!existingRouteFile.fileContent) {
+    if (!existingRouteFile.fileContent && !node.skipTransform) {
       shouldWriteRouteFile = true
       shouldWriteTree = true
       // Creating a new lazy route file
@@ -1044,7 +1085,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           ] satisfies Array<FsRouteType>
         ).every((d) => d !== node._fsRouteType)
       ) {
-        const tRouteTemplate = this.targetTemplate.route
+        const tRouteTemplate = node.template ?? this.targetTemplate.route
         updatedCacheEntry.fileContent = await fillTemplate(
           this.config,
           this.config.customScaffolding?.routeTemplate ??
@@ -1066,7 +1107,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     // Vue SFC files (.vue) don't need transformation as they can't have a Route export
     const isVueFile = node.filePath.endsWith('.vue')
 
-    if (!isVueFile) {
+    if (!isVueFile && !node.skipTransform) {
       // transform the file
       const transformResult = await transform({
         source: updatedCacheEntry.fileContent,
