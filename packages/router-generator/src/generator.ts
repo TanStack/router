@@ -11,6 +11,7 @@ import {
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
 import {
+  RoutePrefixMap,
   buildFileRoutesByPathInterface,
   buildImportString,
   buildRouteTreeConfig,
@@ -37,7 +38,6 @@ import {
   removeTrailingSlash,
   removeUnderscores,
   replaceBackslash,
-  resetRegex,
   trimPathLeft,
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
@@ -188,8 +188,13 @@ export class Generator {
   private runPromise: Promise<void> | undefined
   private fileEventQueue: Array<GeneratorEvent> = []
   private plugins: Array<GeneratorPlugin> = []
-  private static routeGroupPatternRegex = /\(.+\)/g
+  private static routeGroupPatternRegex = /\(.+\)/
   private physicalDirectories: Array<string> = []
+
+  private indexTokenRegex: RegExp
+  private routeTokenRegex: RegExp
+  private static componentPieceRegex =
+    /[./](component|errorComponent|notFoundComponent|pendingComponent|loader|lazy)[.]/
 
   constructor(opts: { config: Config; root: string; fs?: fs }) {
     this.config = opts.config
@@ -201,6 +206,9 @@ export class Generator {
 
     this.routesDirectoryPath = this.getRoutesDirectoryPath()
     this.plugins.push(...(opts.config.plugins || []))
+
+    this.indexTokenRegex = new RegExp(`[./]${this.config.indexToken}[.]`)
+    this.routeTokenRegex = new RegExp(`[./]${this.config.routeToken}[.]`)
 
     for (const plugin of this.plugins) {
       plugin.init?.({ generator: this })
@@ -346,20 +354,9 @@ export class Generator {
     const preRouteNodes = multiSortBy(beforeRouteNodes, [
       (d) => (d.routePath === '/' ? -1 : 1),
       (d) => d.routePath?.split('/').length,
-      (d) =>
-        d.filePath.match(new RegExp(`[./]${this.config.indexToken}[.]`))
-          ? 1
-          : -1,
-      (d) =>
-        d.filePath.match(
-          /[./](component|errorComponent|notFoundComponent|pendingComponent|loader|lazy)[.]/,
-        )
-          ? 1
-          : -1,
-      (d) =>
-        d.filePath.match(new RegExp(`[./]${this.config.routeToken}[.]`))
-          ? -1
-          : 1,
+      (d) => (d.filePath.match(this.indexTokenRegex) ? 1 : -1),
+      (d) => (d.filePath.match(Generator.componentPieceRegex) ? 1 : -1),
+      (d) => (d.filePath.match(this.routeTokenRegex) ? -1 : 1),
       (d) => (d.routePath?.endsWith('/') ? -1 : 1),
       (d) => d.routePath,
     ]).filter((d) => {
@@ -411,8 +408,10 @@ export class Generator {
       routeNodesByPath: new Map(),
     }
 
+    const prefixMap = new RoutePrefixMap(routeFileResult)
+
     for (const node of routeFileResult) {
-      Generator.handleNode(node, acc, this.config)
+      Generator.handleNode(node, acc, prefixMap, this.config)
     }
 
     this.crawlingResult = { rootRouteNode, routeFileResult, acc }
@@ -549,44 +548,53 @@ export class Generator {
       (d) => d,
     ])
 
-    const routeImports = sortedRouteNodes
-      .filter((d) => !d.isVirtual)
-      .flatMap((node) =>
-        getImportForRouteNode(
-          node,
-          config,
-          this.generatedRouteTreePath,
-          this.root,
-        ),
-      )
+    const routeImports: Array<ImportDeclaration> = []
+    const virtualRouteNodes: Array<string> = []
 
-    const virtualRouteNodes = sortedRouteNodes
-      .filter((d) => d.isVirtual)
-      .map((node) => {
-        return `const ${
-          node.variableName
-        }RouteImport = createFileRoute('${node.routePath}')()`
-      })
+    for (const node of sortedRouteNodes) {
+      if (node.isVirtual) {
+        virtualRouteNodes.push(
+          `const ${node.variableName}RouteImport = createFileRoute('${node.routePath}')()`,
+        )
+      } else {
+        routeImports.push(
+          getImportForRouteNode(
+            node,
+            config,
+            this.generatedRouteTreePath,
+            this.root,
+          ),
+        )
+      }
+    }
 
     const imports: Array<ImportDeclaration> = []
-    if (acc.routeNodes.some((n) => n.isVirtual)) {
+    if (virtualRouteNodes.length > 0) {
       imports.push({
         specifiers: [{ imported: 'createFileRoute' }],
         source: this.targetTemplate.fullPkg,
       })
     }
     // Add lazyRouteComponent import if there are component pieces
-    const hasComponentPieces = sortedRouteNodes.some(
-      (node) =>
-        acc.routePiecesByPath[node.routePath!]?.component ||
-        acc.routePiecesByPath[node.routePath!]?.errorComponent ||
-        acc.routePiecesByPath[node.routePath!]?.notFoundComponent ||
-        acc.routePiecesByPath[node.routePath!]?.pendingComponent,
-    )
-    // Add lazyFn import if there are loader pieces
-    const hasLoaderPieces = sortedRouteNodes.some(
-      (node) => acc.routePiecesByPath[node.routePath!]?.loader,
-    )
+    let hasComponentPieces = false
+    let hasLoaderPieces = false
+    for (const node of sortedRouteNodes) {
+      const pieces = acc.routePiecesByPath[node.routePath!]
+      if (pieces) {
+        if (
+          pieces.component ||
+          pieces.errorComponent ||
+          pieces.notFoundComponent ||
+          pieces.pendingComponent
+        ) {
+          hasComponentPieces = true
+        }
+        if (pieces.loader) {
+          hasLoaderPieces = true
+        }
+        if (hasComponentPieces && hasLoaderPieces) break
+      }
+    }
     if (hasComponentPieces || hasLoaderPieces) {
       const runtimeImport: ImportDeclaration = {
         specifiers: [],
@@ -606,21 +614,23 @@ export class Generator {
         source: this.targetTemplate.fullPkg,
         importKind: 'type',
       }
-      if (
-        sortedRouteNodes.some(
-          (d) =>
-            isRouteNodeValidForAugmentation(d) && d._fsRouteType !== 'lazy',
-        )
-      ) {
+      let needsCreateFileRoute = false
+      let needsCreateLazyFileRoute = false
+      for (const node of sortedRouteNodes) {
+        if (isRouteNodeValidForAugmentation(node)) {
+          if (node._fsRouteType !== 'lazy') {
+            needsCreateFileRoute = true
+          }
+          if (acc.routePiecesByPath[node.routePath!]?.lazy) {
+            needsCreateLazyFileRoute = true
+          }
+        }
+        if (needsCreateFileRoute && needsCreateLazyFileRoute) break
+      }
+      if (needsCreateFileRoute) {
         typeImport.specifiers.push({ imported: 'CreateFileRoute' })
       }
-      if (
-        sortedRouteNodes.some(
-          (node) =>
-            acc.routePiecesByPath[node.routePath!]?.lazy &&
-            isRouteNodeValidForAugmentation(node),
-        )
-      ) {
+      if (needsCreateLazyFileRoute) {
         typeImport.specifiers.push({ imported: 'CreateLazyFileRoute' })
       }
 
@@ -636,15 +646,13 @@ export class Generator {
     )
 
     const createUpdateRoutes = sortedRouteNodes.map((node) => {
-      const loaderNode = acc.routePiecesByPath[node.routePath!]?.loader
-      const componentNode = acc.routePiecesByPath[node.routePath!]?.component
-      const errorComponentNode =
-        acc.routePiecesByPath[node.routePath!]?.errorComponent
-      const notFoundComponentNode =
-        acc.routePiecesByPath[node.routePath!]?.notFoundComponent
-      const pendingComponentNode =
-        acc.routePiecesByPath[node.routePath!]?.pendingComponent
-      const lazyComponentNode = acc.routePiecesByPath[node.routePath!]?.lazy
+      const pieces = acc.routePiecesByPath[node.routePath!]
+      const loaderNode = pieces?.loader
+      const componentNode = pieces?.component
+      const errorComponentNode = pieces?.errorComponent
+      const notFoundComponentNode = pieces?.notFoundComponent
+      const pendingComponentNode = pieces?.pendingComponent
+      const lazyComponentNode = pieces?.lazy
 
       return [
         [
@@ -752,13 +760,11 @@ export class Generator {
 
     // Generate update for root route if it has component pieces
     const rootRoutePath = `/${rootPathId}`
-    const rootComponentNode = acc.routePiecesByPath[rootRoutePath]?.component
-    const rootErrorComponentNode =
-      acc.routePiecesByPath[rootRoutePath]?.errorComponent
-    const rootNotFoundComponentNode =
-      acc.routePiecesByPath[rootRoutePath]?.notFoundComponent
-    const rootPendingComponentNode =
-      acc.routePiecesByPath[rootRoutePath]?.pendingComponent
+    const rootPieces = acc.routePiecesByPath[rootRoutePath]
+    const rootComponentNode = rootPieces?.component
+    const rootErrorComponentNode = rootPieces?.errorComponent
+    const rootNotFoundComponentNode = rootPieces?.notFoundComponent
+    const rootPendingComponentNode = rootPieces?.pendingComponent
 
     let rootRouteUpdate = ''
     if (
@@ -816,16 +822,23 @@ export class Generator {
     let fileRoutesByFullPath = ''
 
     if (!config.disableTypes) {
+      const routeNodesByFullPath = createRouteNodesByFullPath(
+        acc.routeNodes,
+        config,
+      )
+      const routeNodesByTo = createRouteNodesByTo(acc.routeNodes, config)
+      const routeNodesById = createRouteNodesById(acc.routeNodes)
+
       fileRoutesByFullPath = [
         `export interface FileRoutesByFullPath {
-${[...createRouteNodesByFullPath(acc.routeNodes, config).entries()]
+${[...routeNodesByFullPath.entries()]
   .filter(([fullPath]) => fullPath)
   .map(([fullPath, routeNode]) => {
     return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
         `export interface FileRoutesByTo {
-${[...createRouteNodesByTo(acc.routeNodes, config).entries()]
+${[...routeNodesByTo.entries()]
   .filter(([to]) => to)
   .map(([to, routeNode]) => {
     return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
@@ -833,7 +846,7 @@ ${[...createRouteNodesByTo(acc.routeNodes, config).entries()]
 }`,
         `export interface FileRoutesById {
 '${rootRouteId}': typeof rootRouteImport,
-${[...createRouteNodesById(acc.routeNodes).entries()].map(([id, routeNode]) => {
+${[...routeNodesById.entries()].map(([id, routeNode]) => {
   return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
 })}
 }`,
@@ -841,7 +854,7 @@ ${[...createRouteNodesById(acc.routeNodes).entries()].map(([id, routeNode]) => {
 fileRoutesByFullPath: FileRoutesByFullPath
 fullPaths: ${
           acc.routeNodes.length > 0
-            ? [...createRouteNodesByFullPath(acc.routeNodes, config).keys()]
+            ? [...routeNodesByFullPath.keys()]
                 .filter((fullPath) => fullPath)
                 .map((fullPath) => `'${fullPath}'`)
                 .join('|')
@@ -850,13 +863,13 @@ fullPaths: ${
 fileRoutesByTo: FileRoutesByTo
 to: ${
           acc.routeNodes.length > 0
-            ? [...createRouteNodesByTo(acc.routeNodes, config).keys()]
+            ? [...routeNodesByTo.keys()]
                 .filter((to) => to)
                 .map((to) => `'${to}'`)
                 .join('|')
             : 'never'
         }
-id: ${[`'${rootRouteId}'`, ...[...createRouteNodesById(acc.routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
+id: ${[`'${rootRouteId}'`, ...[...routeNodesById.keys()].map((id) => `'${id}'`)].join('|')}
 fileRoutesById: FileRoutesById
 }`,
         `export interface RootRouteChildren {
@@ -1344,18 +1357,14 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
   private static handleNode(
     node: RouteNode,
     acc: HandleNodeAccumulator,
+    prefixMap: RoutePrefixMap,
     config?: Config,
   ) {
-    // Do not remove this as we need to set the lastIndex to 0 as it
-    // is necessary to reset the regex's index when using the global flag
-    // otherwise it might not match the next time it's used
     const useExperimentalNonNestedRoutes =
       config?.experimental?.nonNestedRoutes ?? false
 
-    resetRegex(this.routeGroupPatternRegex)
-
     const parentRoute = hasParentRoute(
-      acc.routeNodes,
+      prefixMap,
       node,
       node.routePath,
       node.originalRoutePath,
@@ -1425,6 +1434,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
             _fsRouteType: 'static',
           },
           acc,
+          prefixMap,
           config,
         )
       }
@@ -1447,9 +1457,12 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         const candidate = acc.routeNodesByPath.get(searchPath)
         if (candidate && !candidate.isVirtual && candidate.path !== '/') {
           node.parent = candidate
-          node.path = node.routePath
+          node.path =
+            node.routePath?.replace(candidate.routePath ?? '', '') || '/'
+          const pathRelativeToParent =
+            immediateParentPath.replace(candidate.routePath ?? '', '') || '/'
           node.cleanedPath = removeGroups(
-            removeUnderscores(removeLayoutSegments(immediateParentPath)) ?? '',
+            removeUnderscores(removeLayoutSegments(pathRelativeToParent)) ?? '',
           )
           break
         }

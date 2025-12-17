@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/prefer-for-of */
 import * as fsp from 'node:fs/promises'
 import path from 'node:path'
 import * as prettier from 'prettier'
@@ -5,34 +6,170 @@ import { rootPathId } from './filesystem/physical/rootPathId'
 import type { Config } from './config'
 import type { ImportDeclaration, RouteNode } from './types'
 
+/**
+ * Prefix map for O(1) parent route lookups.
+ * Maps each route path prefix to the route node that owns that prefix.
+ * Enables finding longest matching parent without linear search.
+ */
+export class RoutePrefixMap {
+  private prefixToRoute: Map<string, RouteNode> = new Map()
+  private layoutRoutes: Array<RouteNode> = []
+  private nonNestedRoutes: Array<RouteNode> = []
+
+  constructor(routes: Array<RouteNode>) {
+    for (const route of routes) {
+      if (!route.routePath || route.routePath === `/${rootPathId}`) continue
+
+      // Index by exact path for direct lookups
+      this.prefixToRoute.set(route.routePath, route)
+
+      // Track layout routes separately for non-nested route handling
+      if (
+        route._fsRouteType === 'pathless_layout' ||
+        route._fsRouteType === 'layout' ||
+        route._fsRouteType === '__root'
+      ) {
+        this.layoutRoutes.push(route)
+      }
+
+      // Track non-nested routes separately
+      if (route._isExperimentalNonNestedRoute) {
+        this.nonNestedRoutes.push(route)
+      }
+    }
+
+    // Sort by path length descending for longest-match-first
+    this.layoutRoutes.sort(
+      (a, b) => (b.routePath?.length ?? 0) - (a.routePath?.length ?? 0),
+    )
+    this.nonNestedRoutes.sort(
+      (a, b) => (b.routePath?.length ?? 0) - (a.routePath?.length ?? 0),
+    )
+  }
+
+  /**
+   * Find the longest matching parent route for a given path.
+   * O(k) where k is the number of path segments, not O(n) routes.
+   */
+  findParent(routePath: string): RouteNode | null {
+    if (!routePath || routePath === '/') return null
+
+    // Walk up the path segments
+    let searchPath = routePath
+    while (searchPath.length > 0) {
+      const lastSlash = searchPath.lastIndexOf('/')
+      if (lastSlash <= 0) break
+
+      searchPath = searchPath.substring(0, lastSlash)
+      const parent = this.prefixToRoute.get(searchPath)
+      if (parent && parent.routePath !== routePath) {
+        return parent
+      }
+    }
+    return null
+  }
+
+  /**
+   * Find parent for non-nested routes (needs layout route matching).
+   */
+  findParentForNonNested(
+    routePath: string,
+    originalRoutePath: string | undefined,
+    nonNestedSegments: Array<string>,
+  ): RouteNode | null {
+    // First check for other non-nested routes that are prefixes
+    // Use pre-sorted array for longest-match-first
+    for (const route of this.nonNestedRoutes) {
+      if (
+        route.routePath !== routePath &&
+        originalRoutePath?.startsWith(`${route.originalRoutePath}/`)
+      ) {
+        return route
+      }
+    }
+
+    // Then check layout routes
+    for (const route of this.layoutRoutes) {
+      if (route.routePath === '/') continue
+
+      // Skip if this route's original path + underscore matches a non-nested segment
+      if (
+        nonNestedSegments.some((seg) => seg === `${route.originalRoutePath}_`)
+      ) {
+        continue
+      }
+
+      // Check if this layout route is a prefix of the path we're looking for
+      if (
+        routePath.startsWith(`${route.routePath}/`) &&
+        route.routePath !== routePath
+      ) {
+        return route
+      }
+    }
+
+    return null
+  }
+
+  /**
+   * Check if a route exists at the given path.
+   */
+  has(routePath: string): boolean {
+    return this.prefixToRoute.has(routePath)
+  }
+
+  /**
+   * Get a route by exact path.
+   */
+  get(routePath: string): RouteNode | undefined {
+    return this.prefixToRoute.get(routePath)
+  }
+}
+
 export function multiSortBy<T>(
   arr: Array<T>,
   accessors: Array<(item: T) => any> = [(d) => d],
 ): Array<T> {
-  return arr
-    .map((d, i) => [d, i] as const)
-    .sort(([a, ai], [b, bi]) => {
-      for (const accessor of accessors) {
-        const ao = accessor(a)
-        const bo = accessor(b)
+  const len = arr.length
+  // Pre-compute all accessor values to avoid repeated function calls during sort
+  const indexed: Array<{ item: T; index: number; keys: Array<any> }> =
+    new Array(len)
+  for (let i = 0; i < len; i++) {
+    const item = arr[i]!
+    const keys = new Array(accessors.length)
+    for (let j = 0; j < accessors.length; j++) {
+      keys[j] = accessors[j]!(item)
+    }
+    indexed[i] = { item, index: i, keys }
+  }
 
-        if (typeof ao === 'undefined') {
-          if (typeof bo === 'undefined') {
-            continue
-          }
-          return 1
-        }
+  indexed.sort((a, b) => {
+    for (let j = 0; j < accessors.length; j++) {
+      const ao = a.keys[j]
+      const bo = b.keys[j]
 
-        if (ao === bo) {
+      if (typeof ao === 'undefined') {
+        if (typeof bo === 'undefined') {
           continue
         }
-
-        return ao > bo ? 1 : -1
+        return 1
       }
 
-      return ai - bi
-    })
-    .map(([d]) => d)
+      if (ao === bo) {
+        continue
+      }
+
+      return ao > bo ? 1 : -1
+    }
+
+    return a.index - b.index
+  })
+
+  const result: Array<T> = new Array(len)
+  for (let i = 0; i < len; i++) {
+    result[i] = indexed[i]!.item
+  }
+  return result
 }
 
 export function cleanPath(path: string) {
@@ -143,54 +280,74 @@ export function determineInitialRoutePath(
   }
 }
 
+const backslashRegex = /\\/g
+
 export function replaceBackslash(s: string) {
-  return s.replaceAll(/\\/gi, '/')
+  return s.replace(backslashRegex, '/')
+}
+
+const alphanumericRegex = /[a-zA-Z0-9_]/
+const splatSlashRegex = /\/\$\//g
+const trailingSplatRegex = /\$$/g
+const bracketSplatRegex = /\$\{\$\}/g
+const dollarSignRegex = /\$/g
+const splitPathRegex = /[/-]/g
+const leadingDigitRegex = /^(\d)/g
+
+const toVariableSafeChar = (char: string): string => {
+  if (alphanumericRegex.test(char)) {
+    return char // Keep alphanumeric characters and underscores as is
+  }
+
+  // Replace special characters with meaningful text equivalents
+  switch (char) {
+    case '.':
+      return 'Dot'
+    case '-':
+      return 'Dash'
+    case '@':
+      return 'At'
+    case '(':
+      return '' // Removed since route groups use parentheses
+    case ')':
+      return '' // Removed since route groups use parentheses
+    case ' ':
+      return '' // Remove spaces
+    default:
+      return `Char${char.charCodeAt(0)}` // For any other characters
+  }
 }
 
 export function routePathToVariable(routePath: string): string {
-  const toVariableSafeChar = (char: string): string => {
-    if (/[a-zA-Z0-9_]/.test(char)) {
-      return char // Keep alphanumeric characters and underscores as is
-    }
+  const cleaned = removeUnderscores(routePath)
+  if (!cleaned) return ''
 
-    // Replace special characters with meaningful text equivalents
-    switch (char) {
-      case '.':
-        return 'Dot'
-      case '-':
-        return 'Dash'
-      case '@':
-        return 'At'
-      case '(':
-        return '' // Removed since route groups use parentheses
-      case ')':
-        return '' // Removed since route groups use parentheses
-      case ' ':
-        return '' // Remove spaces
-      default:
-        return `Char${char.charCodeAt(0)}` // For any other characters
+  const parts = cleaned
+    .replace(splatSlashRegex, '/splat/')
+    .replace(trailingSplatRegex, 'splat')
+    .replace(bracketSplatRegex, 'splat')
+    .replace(dollarSignRegex, '')
+    .split(splitPathRegex)
+
+  let result = ''
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i]!
+    const segment = i > 0 ? capitalize(part) : part
+    for (let j = 0; j < segment.length; j++) {
+      result += toVariableSafeChar(segment[j]!)
     }
   }
 
-  return (
-    removeUnderscores(routePath)
-      ?.replace(/\/\$\//g, '/splat/')
-      .replace(/\$$/g, 'splat')
-      .replace(/\$\{\$\}/g, 'splat')
-      .replace(/\$/g, '')
-      .split(/[/-]/g)
-      .map((d, i) => (i > 0 ? capitalize(d) : d))
-      .join('')
-      .split('')
-      .map(toVariableSafeChar)
-      .join('')
-      // .replace(/([^a-zA-Z0-9]|[.])/gm, '')
-      .replace(/^(\d)/g, 'R$1') ?? ''
-  )
+  return result.replace(leadingDigitRegex, 'R$1')
 }
 
+const underscoreStartEndRegex = /(^_|_$)/gi
+const underscoreSlashRegex = /(\/_|_\/)/gi
+
 export function removeUnderscores(s?: string) {
-  return s?.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
+  return s
+    ?.replace(underscoreStartEndRegex, '')
+    .replace(underscoreSlashRegex, '/')
 }
 
 function escapeRegExp(s: string): string {
@@ -361,86 +518,53 @@ export function removeLastSegmentFromPath(routePath: string = '/'): string {
   return segments.join('/')
 }
 
+const nonNestedSegmentRegex = /_(?=\/|$)/g
+const openBracketRegex = /\[/g
+const closeBracketRegex = /\]/g
+
+/**
+ * Extracts non-nested segments from a route path.
+ * Used for determining parent routes in non-nested route scenarios.
+ */
+export function getNonNestedSegments(routePath: string): Array<string> {
+  nonNestedSegmentRegex.lastIndex = 0
+  const result: Array<string> = []
+  for (const match of routePath.matchAll(nonNestedSegmentRegex)) {
+    const beforeStr = routePath.substring(0, match.index)
+    openBracketRegex.lastIndex = 0
+    closeBracketRegex.lastIndex = 0
+    const openBrackets = beforeStr.match(openBracketRegex)?.length ?? 0
+    const closeBrackets = beforeStr.match(closeBracketRegex)?.length ?? 0
+    if (openBrackets === closeBrackets) {
+      result.push(routePath.substring(0, match.index + 1))
+    }
+  }
+  return result.reverse()
+}
+
+/**
+ * Find parent route using RoutePrefixMap for O(k) lookups instead of O(n).
+ */
 export function hasParentRoute(
-  routes: Array<RouteNode>,
+  prefixMap: RoutePrefixMap,
   node: RouteNode,
   routePathToCheck: string | undefined,
   originalRoutePathToCheck: string | undefined,
 ): RouteNode | null {
-  const getNonNestedSegments = (routePath: string) => {
-    const regex = /_(?=\/|$)/g
-
-    return [...routePath.matchAll(regex)]
-      .filter((match) => {
-        const beforeStr = routePath.substring(0, match.index)
-        const openBrackets = (beforeStr.match(/\[/g) || []).length
-        const closeBrackets = (beforeStr.match(/\]/g) || []).length
-        return openBrackets === closeBrackets
-      })
-      .map((match) => routePath.substring(0, match.index + 1))
-      .reverse()
-  }
-
   if (!routePathToCheck || routePathToCheck === '/') {
     return null
   }
 
-  const sortedNodes = multiSortBy(routes, [
-    (d) => d.routePath!.length * -1,
-    (d) => d.variableName,
-  ]).filter((d) => d.routePath !== `/${rootPathId}`)
-
-  const filteredNodes = node._isExperimentalNonNestedRoute
-    ? []
-    : [...sortedNodes]
-
   if (node._isExperimentalNonNestedRoute && originalRoutePathToCheck) {
     const nonNestedSegments = getNonNestedSegments(originalRoutePathToCheck)
-
-    for (const route of sortedNodes) {
-      if (route.routePath === '/') continue
-
-      if (
-        route._isExperimentalNonNestedRoute &&
-        route.routePath !== routePathToCheck &&
-        originalRoutePathToCheck.startsWith(`${route.originalRoutePath}/`)
-      ) {
-        return route
-      }
-
-      if (
-        nonNestedSegments.find(
-          (seg) => seg === `${route.originalRoutePath}_`,
-        ) ||
-        !(
-          route._fsRouteType === 'pathless_layout' ||
-          route._fsRouteType === 'layout' ||
-          route._fsRouteType === '__root'
-        )
-      ) {
-        continue
-      }
-
-      filteredNodes.push(route)
-    }
+    return prefixMap.findParentForNonNested(
+      routePathToCheck,
+      originalRoutePathToCheck,
+      nonNestedSegments,
+    )
   }
 
-  for (const route of filteredNodes) {
-    if (route.routePath === '/') continue
-
-    if (
-      routePathToCheck.startsWith(`${route.routePath}/`) &&
-      route.routePath !== routePathToCheck
-    ) {
-      return route
-    }
-  }
-
-  const segments = routePathToCheck.split('/')
-  segments.pop() // Remove the last segment
-  const parentRoutePath = segments.join('/')
-
-  return hasParentRoute(routes, node, parentRoutePath, originalRoutePathToCheck)
+  return prefixMap.findParent(routePathToCheck)
 }
 
 /**
@@ -682,28 +806,33 @@ export function lowerCaseFirstChar(value: string) {
 export function mergeImportDeclarations(
   imports: Array<ImportDeclaration>,
 ): Array<ImportDeclaration> {
-  const merged: Record<string, ImportDeclaration> = {}
+  const merged = new Map<string, ImportDeclaration>()
 
   for (const imp of imports) {
-    const key = `${imp.source}-${imp.importKind}`
-    if (!merged[key]) {
-      merged[key] = { ...imp, specifiers: [] }
+    const key = `${imp.source}-${imp.importKind ?? ''}`
+    let existing = merged.get(key)
+    if (!existing) {
+      existing = { ...imp, specifiers: [] }
+      merged.set(key, existing)
     }
+
+    const existingSpecs = existing.specifiers
     for (const specifier of imp.specifiers) {
-      // check if the specifier already exists in the merged import
-      if (
-        !merged[key].specifiers.some(
-          (existing) =>
-            existing.imported === specifier.imported &&
-            existing.local === specifier.local,
-        )
-      ) {
-        merged[key].specifiers.push(specifier)
+      let found = false
+      for (let i = 0; i < existingSpecs.length; i++) {
+        const e = existingSpecs[i]!
+        if (e.imported === specifier.imported && e.local === specifier.local) {
+          found = true
+          break
+        }
+      }
+      if (!found) {
+        existingSpecs.push(specifier)
       }
     }
   }
 
-  return Object.values(merged)
+  return [...merged.values()]
 }
 
 export const findParent = (node: RouteNode | undefined): string => {
