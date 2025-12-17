@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-solid-start-e2e-virtual-routes",
+  "name": "tanstack-vue-start-e2e-virtual-routes",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -12,14 +12,14 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/solid-router": "workspace:^",
-    "@tanstack/solid-router-devtools": "workspace:^",
-    "@tanstack/solid-start": "workspace:^",
-    "@tanstack/virtual-file-routes": "workspace:^",
+    "@tanstack/vue-router": "workspace:^",
+    "@tanstack/vue-router-devtools": "workspace:^",
+    "@tanstack/vue-start": "workspace:^",
+		"@tanstack/virtual-file-routes": "workspace:^",
     "redaxios": "^0.5.1",
-    "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0",
     "vite": "^7.1.7",
+    "vue": "^3.5.25",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -32,7 +32,8 @@
     "srvx": "^0.9.8",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.7.2",
-    "vite-plugin-solid": "^2.11.10",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vitejs/plugin-vue-jsx": "^5.1.2",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

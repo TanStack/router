@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/vue-router'
 
 export const Route = createFileRoute('/')({
   component: Home,

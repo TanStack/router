@@ -1,4 +1,4 @@
-import { createRouter } from '@tanstack/solid-router'
+import { createRouter } from '@tanstack/vue-router'
 import { routeTree } from './routeTree.gen'
 
 export function getRouter() {

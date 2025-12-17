@@ -5,8 +5,8 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
-} from '@tanstack/solid-router'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+} from '@tanstack/vue-router'
+import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 import type { JSX } from 'solid-js'
 import appCss from '~/styles/app.css?url'
 

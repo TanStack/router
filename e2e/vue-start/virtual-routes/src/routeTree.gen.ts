@@ -164,7 +164,7 @@ export interface RootRouteChildren {
   ClassicHelloRouteRoute: typeof ClassicHelloRouteRouteWithChildren
 }
 
-declare module '@tanstack/solid-router' {
+declare module '@tanstack/vue-router' {
   interface FileRoutesByPath {
     '/posts': {
       id: '/posts'
@@ -317,8 +317,8 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/solid-start'
-declare module '@tanstack/solid-start' {
+import type { createStart } from '@tanstack/vue-start'
+declare module '@tanstack/vue-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>

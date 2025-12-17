@@ -1,5 +1,5 @@
-import { notFound } from '@tanstack/solid-router'
-import { createServerFn } from '@tanstack/solid-start'
+import { notFound } from '@tanstack/vue-router'
+import { createServerFn } from '@tanstack/vue-start'
 import axios from 'redaxios'
 
 export type PostType = {

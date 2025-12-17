@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
-import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import viteSolid from 'vite-plugin-solid'
+import { tanstackStart } from '@tanstack/vue-start/plugin/vite'
+import vue from '@vitejs/plugin-vue'
+import vueJsx from '@vitejs/plugin-vue-jsx'
 
 export default defineConfig({
   server: {
@@ -16,6 +17,7 @@ export default defineConfig({
         virtualRouteConfig: './routes.ts',
       },
     }),
-    viteSolid({ ssr: true }),
+    vue(),
+    vueJsx(),
   ],
 })
