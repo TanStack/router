@@ -1,12 +1,13 @@
 import {
+  Body,
   HeadContent,
+  Html,
   Link,
   Outlet,
   Scripts,
   createRootRoute,
   linkOptions,
 } from '@tanstack/vue-router'
-import { Dynamic, HydrationScript } from 'solid-js/web'
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -24,8 +25,8 @@ export const Route = createRootRoute({
       },
       ...seo({
         title:
-          'TanStack Start | Type-Safe, Client-First, Full-Stack React Framework',
-        description: `TanStack Start is a type-safe, client-first, full-stack React framework. `,
+          'TanStack Start | Type-Safe, Client-First, Full-Stack Vue Framework',
+        description: `TanStack Start is a type-safe, client-first, full-stack Vue framework. `,
       }),
     ],
     links: [
@@ -60,12 +61,11 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <html>
+    <Html>
       <head>
-        <HydrationScript />
-      </head>
-      <body>
         <HeadContent />
+      </head>
+      <Body>
         <Nav type="header" />
         <hr />
         <Outlet />
@@ -73,16 +73,21 @@ function RootComponent() {
         <Nav type="footer" />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }
 
 function Nav({ type }: { type: 'header' | 'footer' }) {
-  const Elem = type === 'header' ? 'header' : 'footer'
   const prefix = type === 'header' ? 'Head' : 'Foot'
-  return (
-    <Dynamic component={Elem} class="p-2 flex gap-2 text-lg">
+  const optionsList = [
+    linkOptions({ to: '/normal-page' }),
+    linkOptions({ to: '/with-loader' }),
+    linkOptions({ to: '/with-search', search: { where: type } }),
+  ] as const
+
+  const content = (
+    <>
       <Link
         to="/"
         activeProps={{
@@ -92,14 +97,9 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
       >
         {prefix}-/
       </Link>{' '}
-      {(
-        [
-          linkOptions({ to: '/normal-page' }),
-          linkOptions({ to: '/with-loader' }),
-          linkOptions({ to: '/with-search', search: { where: type } }),
-        ] as const
-      ).map((options, i) => (
+      {optionsList.map((options, i) => (
         <Link
+          key={i}
           {...options}
           activeProps={{
             class: 'font-bold',
@@ -108,6 +108,12 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
           {prefix}-{options.to}
         </Link>
       ))}
-    </Dynamic>
+    </>
+  )
+
+  return type === 'header' ? (
+    <header class="p-2 flex gap-2 text-lg">{content}</header>
+  ) : (
+    <footer class="p-2 flex gap-2 text-lg">{content}</footer>
   )
 }
