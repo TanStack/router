@@ -36,9 +36,9 @@ function Page() {
         data-testid="selected-doc-heading"
         class="text-xl font-bold underline"
       >
-        {post().title}
+        {post.value.title}
       </h4>
-      <div class="text-sm">{post().content}</div>
+      <div class="text-sm">{post.value.content}</div>
     </div>
   )
 }

@@ -25,7 +25,7 @@ function Page() {
         data-testid="selected-example-heading"
         class="text-xl font-bold underline"
       >
-        {params()._splat} example
+        {params.value._splat} example
       </h4>
     </div>
   )

@@ -14,7 +14,7 @@ test('resolves to the overview docs page', async ({ page }) => {
   await page.goto('/router/latest/docs')
 
   await expect(page.getByTestId(routeTestId)).toContainText(
-    '/router/latest/docs/framework/solid/overview',
+    '/router/latest/docs/framework/vue/overview',
   )
 })
 
@@ -29,5 +29,5 @@ test('clicking on Documentation link navigates to the overview docs page', async
   await page.waitForLoadState('networkidle')
 
   const pathname = new URL(page.url()).pathname
-  expect(pathname).toBe('/router/latest/docs/framework/solid/overview')
+  expect(pathname).toBe('/router/latest/docs/framework/vue/overview')
 })

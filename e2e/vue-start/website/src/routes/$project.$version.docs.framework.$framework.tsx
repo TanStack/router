@@ -41,8 +41,8 @@ function Page() {
         <div class="p-4">
           <p class="mb-1 border-b">Version</p>
           <ul>
-            {project().versions.map((version) => (
-              <li>
+            {project.value.versions.map((version) => (
+              <li key={version}>
                 <Link
                   from="/$project/$version/docs/framework/$framework"
                   to="/$project/$version/docs/framework/$framework/$"
@@ -59,8 +59,8 @@ function Page() {
         <div class="p-4">
           <p class="mb-1 border-b">Framework</p>
           <ul>
-            {project().frameworks.map((framework) => (
-              <li>
+            {project.value.frameworks.map((framework) => (
+              <li key={framework}>
                 <Link
                   from="/$project/$version/docs/framework/$framework"
                   to="/$project/$version/docs/framework/$framework/$"
@@ -77,8 +77,8 @@ function Page() {
         <div class="p-4">
           <p class="mb-1 border-b">Content</p>
           <ul>
-            {documents().map((doc) => (
-              <li>
+            {documents.value.map((doc) => (
+              <li key={doc.id}>
                 <Link
                   from="/$project/$version/docs/framework/$framework"
                   to="/$project/$version/docs/framework/$framework/$"
@@ -94,8 +94,8 @@ function Page() {
         <div class="p-4">
           <p class="mb-1 border-b">Examples</p>
           <ul>
-            {project().examples.map((example) => (
-              <li>
+            {project.value.examples.map((example) => (
+              <li key={example}>
                 <Link
                   from="/$project/$version/docs/framework/$framework"
                   to="/$project/$version/docs/framework/$framework/examples/$"
@@ -114,7 +114,7 @@ function Page() {
           class="text-sm lg:text-base pb-4 border-b break-all"
           data-testid="selected-route-label"
         >
-          {pathname()}
+          {pathname.value}
         </p>
         <Outlet />
       </main>

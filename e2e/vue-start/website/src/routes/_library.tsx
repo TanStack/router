@@ -34,8 +34,8 @@ function Layout() {
         <div class="p-4">
           <p class="mb-1 border-b">Libraries</p>
           <ul>
-            {loaderData().libraries.map((library) => (
-              <li>
+            {loaderData.value.libraries.map((library) => (
+              <li key={library}>
                 <Link
                   to="/$project"
                   params={{ project: library }}
@@ -53,7 +53,7 @@ function Layout() {
           class="text-sm lg:text-base pb-4 border-b break-all"
           data-testid="selected-route-label"
         >
-          {pathname()}
+          {pathname.value}
         </p>
         <Outlet />
       </main>

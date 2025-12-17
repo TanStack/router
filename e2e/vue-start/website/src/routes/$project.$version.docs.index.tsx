@@ -6,7 +6,7 @@ export const Route = createFileRoute('/$project/$version/docs/')({
       from: '/$project/$version/docs',
       to: '/$project/$version/docs/framework/$framework/$',
       params: {
-        framework: 'solid',
+        framework: 'vue',
         _splat: 'overview',
       },
     })

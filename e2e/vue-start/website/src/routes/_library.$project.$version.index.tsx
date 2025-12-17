@@ -10,9 +10,9 @@ function Page() {
   return (
     <div>
       <h1 class="text-2xl mb-2" data-testid="landing-page-heading">
-        {params().project} landing page
+        {params.value.project} landing page
       </h1>
-      <p data-testid="landing-page-version">version: {params().version}</p>
+      <p data-testid="landing-page-version">version: {params.value.version}</p>
       <p>
         <Link aria-label="Documentation" from="/$project/$version" to="./docs">
           Get started with our documentation.
