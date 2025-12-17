@@ -65,9 +65,7 @@ export function mdxRouteGen(): GeneratorPlugin {
                 tsrImports: () =>
                   `import RouteComponent from \'./${mdxSibling.filePath}\';`,
                 tsrExportStart: (routePath) =>
-                  config.verboseFileRoutes === false
-                    ? 'export const Route = createFileRoute('
-                    : `export const Route = createFileRoute('${routePath}')(`,
+                  `export const Route = createFileRoute('${routePath}')(`,
                 tsrExportEnd: () => ');',
               },
             },
