@@ -1,9 +1,15 @@
-import { useQuery } from '@tanstack/solid-query'
-import { ErrorComponent, Link, createFileRoute } from '@tanstack/vue-router'
+import { useQuery } from '@tanstack/vue-query'
+import {
+  ErrorComponent,
+  Link,
+  createFileRoute,
+  type ErrorComponentProps,
+} from '@tanstack/vue-router'
+import { defineComponent } from 'vue'
 import { postQueryOptions } from '~/utils/posts'
 
-export function PostErrorComponent({ error }: { error: any }) {
-  return <ErrorComponent error={error} />
+export function PostErrorComponent(props: ErrorComponentProps) {
+  return <ErrorComponent error={props.error} />
 }
 
 export const Route = createFileRoute('/posts/$postId')({
@@ -14,24 +20,28 @@ export const Route = createFileRoute('/posts/$postId')({
   component: PostComponent,
 })
 
-function PostComponent() {
-  const params = Route.useParams()
-  const postQuery = useQuery(() => postQueryOptions(params().postId))
+const PostComponent = defineComponent({
+  setup() {
+    const params = Route.useParams()
+    const postQuery = useQuery(() => postQueryOptions(params.value.postId))
 
-  return (
-    <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{postQuery.data?.title}</h4>
-      <div class="text-sm">{postQuery.data?.body}</div>
-      <Link
-        to="/posts/$postId/deep"
-        params={{
-          postId: postQuery.data?.id ?? '',
-        }}
-        activeProps={{ class: 'text-black font-bold' }}
-        class="inline-block py-1 text-blue-800 hover:text-blue-600"
-      >
-        Deep View
-      </Link>
-    </div>
-  )
-}
+    return () => (
+      <div class="space-y-2">
+        <h4 class="text-xl font-bold underline">
+          {postQuery.data.value?.title}
+        </h4>
+        <div class="text-sm">{postQuery.data.value?.body}</div>
+        <Link
+          to="/posts/$postId/deep"
+          params={{
+            postId: postQuery.data.value?.id ?? '',
+          }}
+          activeProps={{ class: 'text-black font-bold' }}
+          class="inline-block py-1 text-blue-800 hover:text-blue-600"
+        >
+          Deep View
+        </Link>
+      </div>
+    )
+  },
+})

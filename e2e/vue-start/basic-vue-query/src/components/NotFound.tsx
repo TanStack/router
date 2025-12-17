@@ -1,7 +1,6 @@
 import { Link } from '@tanstack/vue-router'
-import type { JSX } from 'solid-js'
 
-export function NotFound(props?: { children?: JSX.Element }) {
+export function NotFound(props?: { children?: any }) {
   return (
     <div class="space-y-2 p-2">
       <div>

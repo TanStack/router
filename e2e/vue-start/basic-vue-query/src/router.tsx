@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/solid-query'
+import { QueryClient } from '@tanstack/vue-query'
 import { createRouter } from '@tanstack/vue-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/vue-router-ssr-query'
 import { routeTree } from './routeTree.gen'
@@ -20,4 +20,10 @@ export function getRouter() {
     queryClient,
   })
   return router
+}
+
+declare module '@tanstack/vue-router' {
+  interface Register {
+    router: ReturnType<typeof getRouter>
+  }
 }

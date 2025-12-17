@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/vue-query'
 import { Link, Outlet, createFileRoute } from '@tanstack/vue-router'
-import { For, Suspense } from 'solid-js'
+import { defineComponent } from 'vue'
 import { postsQueryOptions } from '~/utils/posts'
 
 export const Route = createFileRoute('/posts')({
@@ -11,21 +11,21 @@ export const Route = createFileRoute('/posts')({
   component: PostsComponent,
 })
 
-function PostsComponent() {
-  const postsQuery = useQuery(() => postsQueryOptions())
+const PostsComponent = defineComponent({
+  setup() {
+    const postsQuery = useQuery(postsQueryOptions())
 
-  return (
-    <div class="p-2 flex gap-2">
-      <ul class="list-disc pl-4">
-        <Suspense fallback={<div>Loading posts...</div>}>
-          <For
-            each={[
-              ...(postsQuery.data || []),
-              { id: 'i-do-not-exist', title: 'Non-existent Post' },
-            ]}
-          >
-            {(post) => (
-              <li class="whitespace-nowrap">
+    return () => {
+      const posts = [
+        ...(postsQuery.data.value ?? []),
+        { id: 'i-do-not-exist', title: 'Non-existent Post' },
+      ]
+
+      return (
+        <div class="p-2 flex gap-2">
+          <ul class="list-disc pl-4">
+            {posts.map((post) => (
+              <li class="whitespace-nowrap" key={post.id}>
                 <Link
                   to="/posts/$postId"
                   params={{
@@ -37,12 +37,12 @@ function PostsComponent() {
                   <div>{post.title.substring(0, 20)}</div>
                 </Link>
               </li>
-            )}
-          </For>
-        </Suspense>
-      </ul>
-      <hr />
-      <Outlet />
-    </div>
-  )
-}
+            ))}
+          </ul>
+          <hr />
+          <Outlet />
+        </div>
+      )
+    }
+  },
+})

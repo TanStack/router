@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/solid-query'
+import { queryOptions } from '@tanstack/vue-query'
 import axios from 'redaxios'
 
 export type User = {

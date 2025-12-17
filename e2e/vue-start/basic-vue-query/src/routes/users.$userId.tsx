@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/vue-query'
 import { ErrorComponent, createFileRoute } from '@tanstack/vue-router'
 import type { ErrorComponentProps } from '@tanstack/vue-router'
+import { defineComponent } from 'vue'
 
 import { NotFound } from '~/components/NotFound'
 import { userQueryOptions } from '~/utils/users'
@@ -20,17 +21,18 @@ function UserErrorComponent(props: ErrorComponentProps) {
   return <ErrorComponent error={props.error} />
 }
 
-function UserComponent() {
-  const params = Route.useParams()
-  const userQuery = useQuery(() => userQueryOptions(params().userId))
-  const user = () => userQuery.data
+const UserComponent = defineComponent({
+  setup() {
+    const params = Route.useParams()
+    const userQuery = useQuery(() => userQueryOptions(params.value.userId))
 
-  return (
-    <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">
-        {user()?.name ?? 'loading...'}
-      </h4>
-      <div class="text-sm">{user()?.email ?? ''}</div>
-    </div>
-  )
-}
+    return () => (
+      <div class="space-y-2">
+        <h4 class="text-xl font-bold underline">
+          {userQuery.data.value?.name ?? 'loading...'}
+        </h4>
+        <div class="text-sm">{userQuery.data.value?.email ?? ''}</div>
+      </div>
+    )
+  },
+})

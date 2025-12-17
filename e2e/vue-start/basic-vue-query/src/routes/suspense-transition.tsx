@@ -1,6 +1,6 @@
-import { queryOptions, useQuery } from '@tanstack/solid-query'
+import { queryOptions, useQuery } from '@tanstack/vue-query'
 import { Link, createFileRoute } from '@tanstack/vue-router'
-import { Suspense } from 'solid-js'
+import { Suspense, defineComponent } from 'vue'
 
 const doubleQueryOptions = (n: number) =>
   queryOptions({
@@ -40,25 +40,49 @@ function SuspenseTransitionComponent() {
   )
 }
 
-function Result() {
-  const search = Route.useSearch()
-  const doubleQuery = useQuery(() => doubleQueryOptions(search().n))
+const Result = defineComponent({
+  setup() {
+    const search = Route.useSearch()
 
-  return (
-    <div class="mt-2 border p-4">
-      {/* This manual Suspense boundary should transition, not immediately show fallback */}
-      <Suspense
-        fallback={<div data-testid="suspense-fallback">Loading...</div>}
-      >
-        <div data-testid="suspense-content">
-          <div>
-            n: <span data-testid="n-value">{search().n}</span>
-          </div>
-          <div>
-            double: <span data-testid="double-value">{doubleQuery.data}</span>
-          </div>
+    return () => (
+      <div class="mt-2 border p-4">
+        {/* This manual Suspense boundary should transition, not immediately show fallback */}
+        <Suspense>
+          {{
+            default: () => (
+              <SuspenseResult key={search.value.n} n={search.value.n} />
+            ),
+            fallback: () => (
+              <div data-testid="suspense-fallback">Loading...</div>
+            ),
+          }}
+        </Suspense>
+      </div>
+    )
+  },
+})
+
+const SuspenseResult = defineComponent({
+  props: {
+    n: {
+      type: Number,
+      required: true,
+    },
+  },
+  async setup(props) {
+    const doubleQuery = useQuery(doubleQueryOptions(props.n))
+    await doubleQuery.suspense()
+
+    return () => (
+      <div data-testid="suspense-content">
+        <div>
+          n: <span data-testid="n-value">{props.n}</span>
         </div>
-      </Suspense>
-    </div>
-  )
-}
+        <div>
+          double:{' '}
+          <span data-testid="double-value">{doubleQuery.data.value}</span>
+        </div>
+      </div>
+    )
+  },
+})

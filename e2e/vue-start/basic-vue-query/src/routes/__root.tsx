@@ -1,14 +1,15 @@
 /// <reference types="vite/client" />
 import {
+  Body,
   HeadContent,
+  Html,
   Link,
   Outlet,
   Scripts,
   createRootRouteWithContext,
 } from '@tanstack/vue-router'
 import { TanStackRouterDevtoolsInProd } from '@tanstack/vue-router-devtools'
-import { HydrationScript } from 'solid-js/web'
-import type { QueryClient } from '@tanstack/solid-query'
+import type { QueryClient } from '@tanstack/vue-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -20,7 +21,7 @@ export const Route = createRootRouteWithContext<{
   head: () => ({
     meta: [
       {
-        charset: 'utf-8',
+        charSet: 'utf-8',
       },
       {
         name: 'viewport',
@@ -28,8 +29,8 @@ export const Route = createRootRouteWithContext<{
       },
       ...seo({
         title:
-          'TanStack Start | Type-Safe, Client-First, Full-Stack Solid Framework',
-        description: `TanStack Start is a type-safe, client-first, full-stack Solid framework. `,
+          'TanStack Start | Type-Safe, Client-First, Full-Stack Vue Framework',
+        description: `TanStack Start is a type-safe, client-first, full-stack Vue framework.`,
       }),
     ],
     links: [
@@ -74,14 +75,13 @@ function RootComponent() {
   )
 }
 
-function RootDocument(props: { children?: any }) {
+function RootDocument(_: unknown, { slots }: { slots: any }) {
   return (
-    <html>
+    <Html>
       <head>
-        <HydrationScript />
-      </head>
-      <body>
         <HeadContent />
+      </head>
+      <Body>
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -132,10 +132,10 @@ function RootDocument(props: { children?: any }) {
           </Link>
         </div>
         <hr />
-        {props.children}
+        {slots.default?.()}
         <TanStackRouterDevtoolsInProd position="bottom-right" />
         <Scripts />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }

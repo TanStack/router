@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/vue-query'
 import { Link, Outlet, createFileRoute } from '@tanstack/vue-router'
-import { For } from 'solid-js'
+import { defineComponent } from 'vue'
 
 import { usersQueryOptions } from '~/utils/users'
 
@@ -11,36 +11,38 @@ export const Route = createFileRoute('/users')({
   component: UsersComponent,
 })
 
-function UsersComponent() {
-  const usersQuery = useQuery(() => usersQueryOptions())
+const UsersComponent = defineComponent({
+  setup() {
+    const usersQuery = useQuery(usersQueryOptions())
 
-  return (
-    <div class="p-2 flex gap-2">
-      <ul class="list-disc pl-4">
-        <For
-          each={[
-            ...(usersQuery.data ?? []),
-            { id: 'i-do-not-exist', name: 'Non-existent User', email: '' },
-          ]}
-        >
-          {(user) => (
-            <li class="whitespace-nowrap">
-              <Link
-                to="/users/$userId"
-                params={{
-                  userId: String(user.id),
-                }}
-                class="block py-1 text-blue-800 hover:text-blue-600"
-                activeProps={{ class: 'text-black font-bold' }}
-              >
-                <div>{user.name}</div>
-              </Link>
-            </li>
-          )}
-        </For>
-      </ul>
-      <hr />
-      <Outlet />
-    </div>
-  )
-}
+    return () => {
+      const users = [
+        ...(usersQuery.data.value ?? []),
+        { id: 'i-do-not-exist', name: 'Non-existent User', email: '' },
+      ]
+
+      return (
+        <div class="p-2 flex gap-2">
+          <ul class="list-disc pl-4">
+            {users.map((user) => (
+              <li class="whitespace-nowrap" key={user.id}>
+                <Link
+                  to="/users/$userId"
+                  params={{
+                    userId: String(user.id),
+                  }}
+                  class="block py-1 text-blue-800 hover:text-blue-600"
+                  activeProps={{ class: 'text-black font-bold' }}
+                >
+                  <div>{user.name}</div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <hr />
+          <Outlet />
+        </div>
+      )
+    }
+  },
+})

@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/vue-router'
-import { Suspense } from 'solid-js'
-import { queryOptions, useQuery } from '@tanstack/solid-query'
+import { queryOptions, useQuery } from '@tanstack/vue-query'
+import { Suspense, defineComponent } from 'vue'
 import { z } from 'zod'
 
 const searchSchema = z.object({
@@ -26,13 +26,35 @@ export const Route = createFileRoute('/transition/count/query')({
   component: TransitionPage,
 })
 
-function TransitionPage() {
-  const search = Route.useSearch()
+const TransitionPage = defineComponent({
+  setup() {
+    const search = Route.useSearch()
 
-  const doubleQuery = useQuery(() => doubleQueryOptions(search().n))
+    return () => (
+      <Suspense>
+        {{
+          default: () => (
+            <TransitionPageInner key={search.value.n} n={search.value.n} />
+          ),
+          fallback: () => 'Loading...',
+        }}
+      </Suspense>
+    )
+  },
+})
 
-  return (
-    <Suspense fallback="Loading...">
+const TransitionPageInner = defineComponent({
+  props: {
+    n: {
+      type: Number,
+      required: true,
+    },
+  },
+  async setup(props) {
+    const doubleQuery = useQuery(doubleQueryOptions(props.n))
+    await doubleQuery.suspense()
+
+    return () => (
       <div class="p-2">
         <Link
           data-testid="increase-button"
@@ -44,12 +66,12 @@ function TransitionPage() {
         </Link>
 
         <div class="mt-2">
-          <div data-testid="n-value">n: {doubleQuery.data?.n}</div>
+          <div data-testid="n-value">n: {doubleQuery.data.value?.n}</div>
           <div data-testid="double-value">
-            double: {doubleQuery.data?.double}
+            double: {doubleQuery.data.value?.double}
           </div>
         </div>
       </div>
-    </Suspense>
-  )
-}
+    )
+  },
+})

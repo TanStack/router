@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import { queryOptions, useQuery } from '@tanstack/solid-query'
-import { Suspense, createSignal } from 'solid-js'
+import { queryOptions, useQuery } from '@tanstack/vue-query'
+import { Suspense, defineComponent, ref } from 'vue'
 
 const deferredQueryOptions = () =>
   queryOptions({
@@ -23,32 +23,45 @@ export const Route = createFileRoute('/deferred')({
   component: Deferred,
 })
 
-function Deferred() {
-  const [count, setCount] = createSignal(0)
+const Deferred = defineComponent({
+  setup() {
+    const count = ref(0)
 
-  return (
-    <div class="p-2">
-      <Suspense fallback="Loading Middleman...">
-        <DeferredQuery />
-      </Suspense>
-      <div>Count: {count()}</div>
-      <div>
-        <button onClick={() => setCount(count() + 1)}>Increment</button>
+    return () => (
+      <div class="p-2">
+        <Suspense>
+          {{
+            default: () => <DeferredQuery />,
+            fallback: () => 'Loading Middleman...',
+          }}
+        </Suspense>
+        <div>Count: {count.value}</div>
+        <div>
+          <button onClick={() => (count.value += 1)}>Increment</button>
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  },
+})
 
-function DeferredQuery() {
-  const deferredQuery = useQuery(() => deferredQueryOptions())
-  const data = () => deferredQuery.data
+const DeferredQuery = defineComponent({
+  async setup() {
+    const deferredQuery = useQuery(deferredQueryOptions())
+    await deferredQuery.suspense()
 
-  return (
-    <div>
-      <h1>Deferred Query</h1>
-      <div>Status: {data()?.status ?? 'loading...'}</div>
-      <div>Message: {data()?.message ?? ''}</div>
-      <div>Time: {data() ? new Date(data()!.time).toISOString() : ''}</div>
-    </div>
-  )
-}
+    return () => {
+      const data = deferredQuery.data.value
+
+      return (
+        <div>
+          <h1>Deferred Query</h1>
+          <div>Status: {data?.status ?? 'loading...'}</div>
+          <div>Message: {data?.message ?? ''}</div>
+          <div>
+            Time: {data ? new Date(data.time).toISOString() : ''}
+          </div>
+        </div>
+      )
+    }
+  },
+})

@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/vue-router'
-import { useQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/vue-query'
+import { defineComponent } from 'vue'
 import { postQueryOptions } from '../utils/posts'
 import { PostErrorComponent } from './posts.$postId'
 
@@ -20,17 +21,21 @@ export const Route = createFileRoute('/posts_/$postId/deep')({
   component: PostDeepComponent,
 })
 
-function PostDeepComponent() {
-  const params = Route.useParams()
-  const postQuery = useQuery(() => postQueryOptions(params().postId))
+const PostDeepComponent = defineComponent({
+  setup() {
+    const params = Route.useParams()
+    const postQuery = useQuery(() => postQueryOptions(params.value.postId))
 
-  return (
-    <div class="p-2 space-y-2">
-      <Link to="/posts" class="block py-1 text-blue-800 hover:text-blue-600">
-        ← All Posts
-      </Link>
-      <h4 class="text-xl font-bold underline">{postQuery.data?.title}</h4>
-      <div class="text-sm">{postQuery.data?.body}</div>
-    </div>
-  )
-}
+    return () => (
+      <div class="p-2 space-y-2">
+        <Link to="/posts" class="block py-1 text-blue-800 hover:text-blue-600">
+          ← All Posts
+        </Link>
+        <h4 class="text-xl font-bold underline">
+          {postQuery.data.value?.title}
+        </h4>
+        <div class="text-sm">{postQuery.data.value?.body}</div>
+      </div>
+    )
+  },
+})
