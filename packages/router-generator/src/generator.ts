@@ -1409,7 +1409,9 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         acc.routePiecesByPath[node.routePath!] || {}
 
       const pieceKey =
-        node._fsRouteType === 'lazy' ? 'lazy' : (node._fsRouteType as keyof typeof acc.routePiecesByPath[string])
+        node._fsRouteType === 'lazy'
+          ? 'lazy'
+          : (node._fsRouteType as keyof (typeof acc.routePiecesByPath)[string])
       acc.routePiecesByPath[node.routePath!]![pieceKey] = node
 
       const anchorRoute = acc.routeNodesByPath.get(node.routePath!)
@@ -1436,7 +1438,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
     // Special handling: pathless layouts with path need to find real ancestor
     if (!node.isVirtual && isPathlessLayoutWithPath) {
-      const immediateParentPath = removeLastSegmentFromPath(node.routePath) || '/'
+      const immediateParentPath =
+        removeLastSegmentFromPath(node.routePath) || '/'
       let searchPath = immediateParentPath
 
       // Find nearest real (non-virtual, non-index) parent
