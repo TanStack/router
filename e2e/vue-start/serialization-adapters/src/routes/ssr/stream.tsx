@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/vue-router'
-import { Suspense } from 'solid-js'
+import { Suspense } from 'vue'
 import { RenderData, makeData } from '~/data'
 
 export const Route = createFileRoute('/ssr/stream')({
@@ -23,10 +23,18 @@ function RouteComponent() {
     <div>
       <h3 data-testid="stream-heading">Stream</h3>
       <div data-testid="some-data">{loaderData.value.someString}</div>
-      <Suspense fallback={<div>Loading...</div>}>
-        <Await promise={loaderData.value.dataPromise}>
-          {(data) => <RenderData id="stream" data={data} />}
-        </Await>
+      <Suspense>
+        {{
+          default: () => (
+            <Await
+              promise={loaderData.value.dataPromise}
+              children={(data: ReturnType<typeof makeData>) => (
+                <RenderData id="stream" data={data} />
+              )}
+            />
+          ),
+          fallback: () => <div>Loading...</div>,
+        }}
       </Suspense>
     </div>
   )

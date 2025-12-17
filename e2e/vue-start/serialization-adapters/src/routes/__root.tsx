@@ -1,22 +1,22 @@
 /// <reference types="vite/client" />
 import {
+  Body,
   ClientOnly,
   HeadContent,
+  Html,
   Link,
   Scripts,
   createRootRoute,
   useRouterState,
 } from '@tanstack/vue-router'
-import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
-import { HydrationScript } from 'solid-js/web'
-import type { JSX } from 'solid-js'
+import { TanStackRouterDevtoolsInProd } from '@tanstack/vue-router-devtools'
 import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        charset: 'utf-8',
+        charSet: 'utf-8',
       },
       {
         name: 'viewport',
@@ -32,16 +32,16 @@ export const Route = createRootRoute({
   notFoundComponent: (e) => <div>404 - Not Found {JSON.stringify(e.data)}</div>,
 })
 
-function RootDocument({ children }: { children: JSX.Element }) {
-  const { isLoading, status } = useRouterState({
+function RootDocument(_: unknown, { slots }: { slots: any }) {
+  const routerState = useRouterState({
     select: (state) => ({ isLoading: state.isLoading, status: state.status }),
-  })()
+  })
   return (
-    <html>
+    <Html>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <Body>
         <div class="p-2 flex gap-2 text-lg">
           <h1>Serialization Adapters E2E Test</h1>
           <Link
@@ -57,17 +57,20 @@ function RootDocument({ children }: { children: JSX.Element }) {
         <ClientOnly>
           <div>
             router isLoading:{' '}
-            <b data-testid="router-isLoading">{isLoading ? 'true' : 'false'}</b>
+            <b data-testid="router-isLoading">
+              {routerState.value.isLoading ? 'true' : 'false'}
+            </b>
           </div>
           <div>
-            router status: <b data-testid="router-status">{status}</b>
+            router status:{' '}
+            <b data-testid="router-status">{routerState.value.status}</b>
           </div>
         </ClientOnly>
         <hr />
-        {children}
+        {slots.default?.()}
         <Scripts />
-        <TanStackRouterDevtools position="bottom-right" />
-      </body>
-    </html>
+        <TanStackRouterDevtoolsInProd position="bottom-right" />
+      </Body>
+    </Html>
   )
 }

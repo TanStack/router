@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
 import { setResponseStatus } from '@tanstack/vue-start/server'
-import { createSignal } from 'solid-js'
+import { defineComponent, ref } from 'vue'
 import { z } from 'zod'
 import { CustomError } from '~/CustomError'
 
@@ -16,53 +16,57 @@ const serverFnThrowing = createServerFn()
     throw new CustomError('Invalid input', { foo: 'bar', bar: BigInt(123) })
   })
 
+const RouteComponent = defineComponent({
+  name: 'ServerFunctionCustomErrorRoute',
+  setup() {
+    const validResponse = ref<any>(null)
+    const invalidResponse = ref<CustomError | null>(null)
+
+    return () => (
+      <div>
+        <button
+          data-testid="server-function-valid-input"
+          onClick={() =>
+            serverFnThrowing({ data: { hello: 'world' } }).then(
+              (res) => (validResponse.value = res),
+            )
+          }
+        >
+          trigger valid input
+        </button>
+        <div data-testid="server-function-valid-response">
+          {JSON.stringify(validResponse.value)}
+        </div>
+
+        <br />
+        <button
+          data-testid="server-function-invalid-input"
+          onClick={() =>
+            serverFnThrowing({ data: { hello: 'error' } }).catch((err) => {
+              if (err instanceof CustomError) {
+                invalidResponse.value = err
+              } else {
+                throw new Error('expected CustomError')
+              }
+            })
+          }
+        >
+          trigger invalid input
+        </button>
+        <div data-testid="server-function-invalid-response">
+          {invalidResponse.value
+            ? JSON.stringify({
+                message: invalidResponse.value.message,
+                foo: invalidResponse.value.foo,
+                bar: invalidResponse.value.bar.toString(),
+              })
+            : JSON.stringify(invalidResponse.value)}
+        </div>
+      </div>
+    )
+  },
+})
+
 export const Route = createFileRoute('/server-function/custom-error')({
   component: RouteComponent,
 })
-
-function RouteComponent() {
-  const [validResponse, setValidResponse] = createSignal<any>(null)
-  const [invalidResponse, setInvalidResponse] =
-    createSignal<CustomError | null>(null)
-
-  return (
-    <div>
-      <button
-        data-testid="server-function-valid-input"
-        onClick={() =>
-          serverFnThrowing({ data: { hello: 'world' } }).then(setValidResponse)
-        }
-      >
-        trigger valid input
-      </button>
-      <div data-testid="server-function-valid-response">
-        {JSON.stringify(validResponse())}
-      </div>
-
-      <br />
-      <button
-        data-testid="server-function-invalid-input"
-        onClick={() =>
-          serverFnThrowing({ data: { hello: 'error' } }).catch((err) => {
-            if (err instanceof CustomError) {
-              setInvalidResponse(err)
-            } else {
-              throw new Error('expected CustomError')
-            }
-          })
-        }
-      >
-        trigger invalid input
-      </button>
-      <div data-testid="server-function-invalid-response">
-        {invalidResponse()
-          ? JSON.stringify({
-              message: invalidResponse()?.message,
-              foo: invalidResponse()?.foo,
-              bar: invalidResponse()?.bar.toString(),
-            })
-          : JSON.stringify(invalidResponse())}
-      </div>
-    </div>
-  )
-}
