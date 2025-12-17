@@ -28,11 +28,6 @@ export interface ClientOnlyProps {
  * )
  * ```
  */
-/**
- * Render children only after client hydration; otherwise render `fallback`.
- * Useful for components that require browser-only APIs.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/clientOnlyComponent
- */
 export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
   return useHydrated() ? (
     <React.Fragment>{children}</React.Fragment>
@@ -59,9 +54,6 @@ export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
  * )
  * ```
  * @returns True if the JS has been hydrated already, false otherwise.
- */
-/**
- * Return a boolean indicating whether client hydration has occurred.
  */
 export function useHydrated(): boolean {
   return React.useSyncExternalStore(
