@@ -1,6 +1,6 @@
 import { Await, createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
-import { Suspense, createSignal } from 'solid-js'
+import { Suspense, defineComponent, ref } from 'vue'
 
 const personServerFn = createServerFn({ method: 'GET' })
   .inputValidator((data: { name: string }) => data)
@@ -15,6 +15,56 @@ const slowServerFn = createServerFn({ method: 'GET' })
     return { name: data.name, randomNumber: Math.floor(Math.random() * 100) }
   })
 
+const Deferred = defineComponent({
+  setup() {
+    const count = ref(0)
+    const loaderData = Route.useLoaderData()
+
+    return () => (
+      <div class="p-2">
+        <div data-testid="regular-person">
+          {loaderData.value.person.name} -{' '}
+          {loaderData.value.person.randomNumber}
+        </div>
+        <Suspense>
+          {{
+            default: () => (
+              <Await
+                promise={loaderData.value.deferredPerson}
+                children={(data: { name: string; randomNumber: number }) => (
+                  <div data-testid="deferred-person">
+                    {data.name} - {data.randomNumber}
+                  </div>
+                )}
+              />
+            ),
+            fallback: () => <div>Loading person...</div>,
+          }}
+        </Suspense>
+        <Suspense>
+          {{
+            default: () => (
+              <Await
+                promise={loaderData.value.deferredStuff}
+                children={(data: string) => (
+                  <h3 data-testid="deferred-stuff">{data}</h3>
+                )}
+              />
+            ),
+            fallback: () => <div>Loading stuff...</div>,
+          }}
+        </Suspense>
+        <div data-testid="count">Count: {count.value}</div>
+        <div>
+          <button data-testid="increment" onClick={() => count.value++}>
+            Increment
+          </button>
+        </div>
+      </div>
+    )
+  },
+})
+
 export const Route = createFileRoute('/deferred')({
   loader: async () => {
     return {
@@ -27,39 +77,3 @@ export const Route = createFileRoute('/deferred')({
   },
   component: Deferred,
 })
-
-function Deferred() {
-  const [count, setCount] = createSignal(0)
-  // const { deferredStuff, deferredPerson, person } = Route.useLoaderData()
-  const loaderData = Route.useLoaderData()
-
-  return (
-    <div class="p-2">
-      <div data-testid="regular-person">
-        {loaderData().person.name} - {loaderData().person.randomNumber}
-      </div>
-      <Suspense fallback={<div>Loading person...</div>}>
-        <Await
-          promise={loaderData().deferredPerson}
-          children={(data) => (
-            <div data-testid="deferred-person">
-              {data.name} - {data.randomNumber}
-            </div>
-          )}
-        />
-      </Suspense>
-      <Suspense fallback={<div>Loading stuff...</div>}>
-        <Await
-          promise={loaderData().deferredStuff}
-          children={(data) => <h3 data-testid="deferred-stuff">{data}</h3>}
-        />
-      </Suspense>
-      <div>Count: {count()}</div>
-      <div>
-        <button onClick={() => setCount((count) => count + 1)}>
-          Increment
-        </button>
-      </div>
-    </div>
-  )
-}

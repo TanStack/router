@@ -1,5 +1,5 @@
 import {
-	Body,
+  Body,
   HeadContent,
   Html,
   Link,
@@ -22,8 +22,8 @@ export const Route = createRootRoute({
       },
       ...seo({
         title:
-          'TanStack Start | Type-Safe, Client-First, Full-Stack React Framework',
-        description: `TanStack Start is a type-safe, client-first, full-stack React framework. `,
+          'TanStack Start | Type-Safe, Client-First, Full-Stack Vue Framework',
+        description: `TanStack Start is a type-safe, client-first, full-stack Vue framework. `,
       }),
     ],
     links: [

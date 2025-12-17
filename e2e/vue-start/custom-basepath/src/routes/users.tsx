@@ -22,24 +22,22 @@ function UsersComponent() {
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
         {[
-          ...users(),
+          ...users.value,
           { id: 'i-do-not-exist', name: 'Non-existent User', email: '' },
-        ].map((user) => {
-          return (
-            <li class="whitespace-nowrap">
-              <Link
-                to="/users/$userId"
-                params={{
-                  userId: String(user.id),
-                }}
-                class="block py-1 text-blue-800 hover:text-blue-600"
-                activeProps={{ class: 'text-black font-bold' }}
-              >
-                <div>{user.name}</div>
-              </Link>
-            </li>
-          )
-        })}
+        ].map((user) => (
+          <li class="whitespace-nowrap" key={user.id}>
+            <Link
+              to="/users/$userId"
+              params={{
+                userId: String(user.id),
+              }}
+              class="block py-1 text-blue-800 hover:text-blue-600"
+              activeProps={{ class: 'text-black font-bold' }}
+            >
+              <div>{user.name}</div>
+            </Link>
+          </li>
+        ))}
       </ul>
       <hr />
       <Outlet />

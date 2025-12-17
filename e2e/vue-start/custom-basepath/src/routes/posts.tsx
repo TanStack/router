@@ -1,5 +1,4 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/vue-router'
-import { For } from 'solid-js'
 
 import { fetchPosts } from '~/utils/posts'
 
@@ -11,7 +10,7 @@ export const Route = createFileRoute('/posts')({
       },
     ],
   }),
-  loader: async () => fetchposts.value,
+  loader: async () => fetchPosts(),
   component: PostsComponent,
 })
 
@@ -21,24 +20,20 @@ function PostsComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        <For each={posts.value}>
-          {(post) => {
-            return (
-              <li class="whitespace-nowrap">
-                <Link
-                  to="/posts/$postId"
-                  params={{
-                    postId: post.id,
-                  }}
-                  class="block py-1 text-blue-800 hover:text-blue-600"
-                  activeProps={{ class: 'text-black font-bold' }}
-                >
-                  <div>{post.title.substring(0, 20)}</div>
-                </Link>
-              </li>
-            )
-          }}
-        </For>
+        {posts.value.map((post) => (
+          <li class="whitespace-nowrap" key={post.id}>
+            <Link
+              to="/posts/$postId"
+              params={{
+                postId: post.id,
+              }}
+              class="block py-1 text-blue-800 hover:text-blue-600"
+              activeProps={{ class: 'text-black font-bold' }}
+            >
+              <div>{post.title.substring(0, 20)}</div>
+            </Link>
+          </li>
+        ))}
       </ul>
       <hr />
       <Outlet />
