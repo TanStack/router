@@ -711,11 +711,7 @@ export const findParent = (node: RouteNode | undefined): string => {
     return `rootRouteImport`
   }
   if (node.parent) {
-    if (node.isVirtualParentRequired) {
-      return `${node.parent.variableName}Route`
-    } else {
-      return `${node.parent.variableName}Route`
-    }
+    return `${node.parent.variableName}Route`
   }
   return findParent(node.parent)
 }
