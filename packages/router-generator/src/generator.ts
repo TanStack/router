@@ -736,8 +736,7 @@ export class Generator {
                   lazyComponentNode.componentImport?.keepExtension ??
                   // Keep .vue extension for Vue files since Vite requires it
                   isVueFile
-                const exportAccessor =
-                  exportName === 'default' ? 'd.default' : 'd.Route'
+                const exportAccessor = `d.${exportName}`
                 const importPath = replaceBackslash(
                   keepExtension
                     ? path.relative(
