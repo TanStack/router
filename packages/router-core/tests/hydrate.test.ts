@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { BaseRootRoute, BaseRoute, RouterCore, notFound } from '../src'
-import type { TsrSsrGlobal } from '../src/ssr/types';
-import type { AnyRouteMatch} from '../src';
+import type { TsrSsrGlobal } from '../src/ssr/types'
+import type { AnyRouteMatch } from '../src'
 
 describe('hydrate', () => {
   let mockWindow: { $_TSR?: TsrSsrGlobal }
@@ -20,7 +20,7 @@ describe('hydrate', () => {
 
     const history = createMemoryHistory({ initialEntries: ['/'] })
 
-    const rootRoute = new BaseRootRoute({})    
+    const rootRoute = new BaseRootRoute({})
 
     const indexRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
