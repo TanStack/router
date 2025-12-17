@@ -49,9 +49,7 @@ const DeferredQuery = defineComponent({
           <h1>Deferred Query</h1>
           <div>Status: {data?.status ?? 'loading...'}</div>
           <div>Message: {data?.message ?? ''}</div>
-          <div>
-            Time: {data ? new Date(data.time).toISOString() : ''}
-          </div>
+          <div>Time: {data ? new Date(data.time).toISOString() : ''}</div>
         </div>
       )
     }

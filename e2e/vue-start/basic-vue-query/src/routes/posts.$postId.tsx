@@ -17,9 +17,7 @@ function PostComponent() {
 
   return (
     <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">
-        {postQuery.data.value?.title}
-      </h4>
+      <h4 class="text-xl font-bold underline">{postQuery.data.value?.title}</h4>
       <div class="text-sm">{postQuery.data.value?.body}</div>
       <Link
         to="/posts/$postId/deep"
