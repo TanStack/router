@@ -150,7 +150,11 @@ export class RouteApi<
   ) => {
     const router = useRouter()
     const fullPath = router.routesById[this.id as string].fullPath
-    return Vue.h(Link as any, { from: fullPath as never, ...(props as any) }, ctx?.slots)
+    return Vue.h(
+      Link as any,
+      { from: fullPath as never, ...(props as any) },
+      ctx?.slots,
+    )
   }) as LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']>
 }
 

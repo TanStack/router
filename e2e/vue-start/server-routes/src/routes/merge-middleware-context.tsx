@@ -58,7 +58,8 @@ const MergeMiddlewareContext = defineComponent({
                 </div>
 
                 <div data-testid="has-test" class="p-2 border rounded-sm">
-                  Has test: {apiResponse.value?.context?.test ? 'true' : 'false'}
+                  Has test:{' '}
+                  {apiResponse.value?.context?.test ? 'true' : 'false'}
                 </div>
               </div>
             </div>
