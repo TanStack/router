@@ -15,14 +15,6 @@ const deferredQueryOptions = () =>
     },
   })
 
-export const Route = createFileRoute('/deferred')({
-  loader: ({ context }) => {
-    // Kick off loading as early as possible!
-    context.queryClient.prefetchQuery(deferredQueryOptions())
-  },
-  component: Deferred,
-})
-
 const Deferred = defineComponent({
   setup() {
     const count = ref(0)
@@ -64,4 +56,12 @@ const DeferredQuery = defineComponent({
       )
     }
   },
+})
+
+export const Route = createFileRoute('/deferred')({
+  loader: ({ context }) => {
+    // Kick off loading as early as possible!
+    context.queryClient.prefetchQuery(deferredQueryOptions())
+  },
+  component: Deferred,
 })

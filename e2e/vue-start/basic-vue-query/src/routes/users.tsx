@@ -4,13 +4,6 @@ import { defineComponent } from 'vue'
 
 import { usersQueryOptions } from '~/utils/users'
 
-export const Route = createFileRoute('/users')({
-  loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(usersQueryOptions())
-  },
-  component: UsersComponent,
-})
-
 const UsersComponent = defineComponent({
   setup() {
     const usersQuery = useQuery(usersQueryOptions())
@@ -45,4 +38,11 @@ const UsersComponent = defineComponent({
       )
     }
   },
+})
+
+export const Route = createFileRoute('/users')({
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(usersQueryOptions())
+  },
+  component: UsersComponent,
 })

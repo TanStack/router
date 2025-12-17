@@ -3,19 +3,19 @@ import { Link, Outlet, createFileRoute } from '@tanstack/vue-router'
 import { defineComponent } from 'vue'
 import { postsQueryOptions } from '~/utils/posts'
 
-export const Route = createFileRoute('/posts')({
-  loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(postsQueryOptions())
-  },
-  head: () => ({ meta: [{ title: 'Posts' }] }),
-  component: PostsComponent,
-})
-
 const PostsComponent = defineComponent({
   setup() {
     const postsQuery = useQuery(postsQueryOptions())
 
     return () => {
+      if (postsQuery.isLoading.value && !postsQuery.data.value) {
+        return (
+          <div class="p-2 flex gap-2">
+            <div>Loading posts...</div>
+          </div>
+        )
+      }
+
       const posts = [
         ...(postsQuery.data.value ?? []),
         { id: 'i-do-not-exist', title: 'Non-existent Post' },
@@ -45,4 +45,12 @@ const PostsComponent = defineComponent({
       )
     }
   },
+})
+
+export const Route = createFileRoute('/posts')({
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(postsQueryOptions())
+  },
+  head: () => ({ meta: [{ title: 'Posts' }] }),
+  component: PostsComponent,
 })
