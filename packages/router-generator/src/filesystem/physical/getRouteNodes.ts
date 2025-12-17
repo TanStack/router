@@ -255,7 +255,7 @@ export async function getRouteNodes(
 
   await recurse('./')
 
-  // Let plugins transform nodes (set properties like skipTransform, componentImport, etc.)
+  // Let plugins transform nodes.
   for (const plugin of plugins) {
     if (plugin.transformNodes) {
       const result = plugin.transformNodes({
