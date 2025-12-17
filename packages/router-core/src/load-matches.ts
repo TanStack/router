@@ -901,7 +901,11 @@ export async function loadMatches(arg: {
     const results = await Promise.allSettled(inner.matchPromises)
 
     const failures = results
-      .filter((result) => result.status === 'rejected')
+      // TODO when we drop support for TS 5.4, we can use the built-in type guard for PromiseRejectedResult
+      .filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected',
+      )
       .map((result) => result.reason)
 
     // Find the first redirect error and throw it immediately (skip head execution)
