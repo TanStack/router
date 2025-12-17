@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { BaseRootRoute, BaseRoute, RouterCore, notFound } from '../src'
+import type { TsrSsrGlobal } from '../src/ssr/types';
 import type { AnyRouteMatch} from '../src';
-import type { TsrSsrGlobal } from '@tanstack/router-core/ssr/client'
 
 describe('hydrate', () => {
   let mockWindow: { $_TSR?: TsrSsrGlobal }
