@@ -749,7 +749,8 @@ const LinkImpl = Vue.defineComponent({
 /**
  * Link component with proper TypeScript generics support
  */
-export const Link: LinkComponent<'a'> = LinkImpl as any
+export const Link = LinkImpl as unknown as Vue.Component<unknown> &
+  LinkComponent<'a'>
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
