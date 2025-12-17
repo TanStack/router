@@ -52,6 +52,15 @@ interface StyledProps {
   [key: string]: unknown
 }
 
+type PropsOfComponent<TComp> =
+  // Functional components
+  TComp extends (props: infer P, ...args: Array<unknown>) => any
+    ? P
+    : // Vue components (defineComponent, class components, etc)
+      TComp extends Vue.Component<infer P>
+      ? P
+      : Record<string, unknown>
+
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
@@ -98,7 +107,7 @@ export function useLinkProps<
   const next = Vue.computed(() => {
     // Depend on search to rebuild when search changes
     currentSearch.value
-    return router.buildLocation(_options.value)
+    return router.buildLocation(_options.value as any)
   })
 
   const preload = Vue.computed(() => {
@@ -160,7 +169,7 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router.preloadRoute(_options.value).catch((err: any) => {
+    router.preloadRoute(_options.value as any).catch((err: any) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
@@ -563,7 +572,7 @@ export type ActiveLinkOptions<
 type ActiveLinkProps<TComp> = Partial<
   (TComp extends keyof HTMLElementTagNameMap
     ? LinkHTMLAttributes
-    : Record<string, unknown>) & {
+    : PropsOfComponent<TComp>) & {
     [key: `data-${string}`]: unknown
   }
 >
@@ -603,9 +612,7 @@ export interface LinkPropsChildren {
 
 type LinkComponentVueProps<TComp> = TComp extends keyof HTMLElementTagNameMap
   ? Omit<LinkHTMLAttributes, keyof CreateLinkProps>
-  : TComp extends Vue.Component
-    ? Record<string, any>
-    : Record<string, any>
+  : Omit<PropsOfComponent<TComp>, keyof CreateLinkProps>
 
 export type LinkComponentProps<
   TComp = 'a',

@@ -14,7 +14,7 @@ function prependDoctype(
   let sentDoctype = false
 
   return new NodeReadableStream<Uint8Array>({
-    async start(controller) {
+    start(controller) {
       const reader = readable.getReader()
 
       async function pump(): Promise<void> {
