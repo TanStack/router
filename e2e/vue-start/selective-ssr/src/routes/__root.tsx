@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import {
-	Body,
+  Body,
   ClientOnly,
   HeadContent,
   Html,
@@ -11,7 +11,7 @@ import {
   useRouterState,
 } from '@tanstack/vue-router'
 import { z } from 'zod'
-import type * as Solid from 'solid-js'
+import type { VNode } from 'vue'
 import { ssrSchema } from '~/search'
 import appCss from '~/styles/app.css?url'
 
@@ -112,7 +112,7 @@ export const Route = createRootRoute({
   },
 })
 
-function RootDocument({ children }: { children: Solid.JSX.Element }) {
+function RootDocument({ children }: { children: VNode }) {
   const routerState = useRouterState({
     select: (state) => ({ isLoading: state.isLoading, status: state.status }),
   })

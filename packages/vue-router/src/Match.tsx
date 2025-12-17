@@ -16,7 +16,7 @@ import { matchContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { VNode } from 'vue'
-import type { AnyRoute } from '@tanstack/router-core'
+import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
 export const Match = Vue.defineComponent({
   name: 'Match',
@@ -102,6 +102,16 @@ export const Match = Vue.defineComponent({
           (route.value?.options?.notFoundComponent ??
           router?.options?.notFoundRoute?.options?.component)
         : route.value?.options?.notFoundComponent,
+    )
+
+    const hasShellComponent = Vue.computed(
+      () => route.value?.isRoot && (route.value?.options as any)?.shellComponent,
+    )
+
+    const ShellComponent = Vue.computed(() =>
+      hasShellComponent.value
+        ? ((route.value?.options as RootRouteOptions)?.shellComponent as any)
+        : null,
     )
 
     // Create a ref for the current matchId that we provide to child components
@@ -200,9 +210,23 @@ export const Match = Vue.defineComponent({
 
       // Return single child directly to avoid Fragment wrapper that causes hydration mismatch
       if (withScrollRestoration.length === 1) {
-        return withScrollRestoration[0]!
+        const child = withScrollRestoration[0]!
+        if (!hasShellComponent.value) return child
+        return Vue.h(
+          ShellComponent.value,
+          { children: child },
+          { default: () => child },
+        )
       }
-      return Vue.h(Vue.Fragment, null, withScrollRestoration)
+
+      const children = Vue.h(Vue.Fragment, null, withScrollRestoration)
+      if (!hasShellComponent.value) return children
+
+      return Vue.h(
+        ShellComponent.value,
+        { children },
+        { default: () => children },
+      )
     }
   },
 })
