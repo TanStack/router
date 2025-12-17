@@ -223,15 +223,11 @@ export const Match = Vue.defineComponent({
         return renderMatchContent()
       }
 
-      return Vue.h(
-        ShellComponent.value,
-        null,
-        {
-          // Important: return a fresh VNode on each slot invocation so that shell
-          // components can re-render without reusing a cached VNode instance.
-          default: () => renderMatchContent(),
-        },
-      )
+      return Vue.h(ShellComponent.value, null, {
+        // Important: return a fresh VNode on each slot invocation so that shell
+        // components can re-render without reusing a cached VNode instance.
+        default: () => renderMatchContent(),
+      })
     }
   },
 })

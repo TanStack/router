@@ -28,6 +28,6 @@
     "@vitejs/plugin-vue": "^6.0.3",
     "@vitejs/plugin-vue-jsx": "^5.1.2",
     "vite-tsconfig-paths": "^5.1.4",
-		"vue-tsc": "^3.1.8"
+    "vue-tsc": "^3.1.8"
   }
 }
