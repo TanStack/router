@@ -10,6 +10,7 @@ import {
   route,
 } from '@tanstack/virtual-file-routes'
 import { Generator, getConfig } from '../src'
+import { mdxRouteGen } from './plugins/mdx'
 import type { Config } from '../src'
 
 function makeFolderDir(folder: string) {
@@ -153,6 +154,9 @@ function rewriteConfigByFolderName(
     case 'routeFilePrefix':
       config.routeFileIgnorePattern = 'ignoredPattern'
       config.routeFilePrefix = 'r&'
+      break
+    case 'mdx-route-gen':
+      config.plugins = [mdxRouteGen()]
       break
     default:
       break

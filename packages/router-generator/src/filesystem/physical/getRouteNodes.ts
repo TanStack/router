@@ -27,6 +27,7 @@ export function isVirtualConfigFile(fileName: string): boolean {
 export async function getRouteNodes(
   config: Pick<
     Config,
+    | 'plugins'
     | 'routesDirectory'
     | 'routeFilePrefix'
     | 'routeFileIgnorePrefix'
@@ -38,8 +39,12 @@ export async function getRouteNodes(
   >,
   root: string,
 ): Promise<GetRouteNodesResult> {
-  const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
-    config
+  const {
+    plugins = [],
+    routeFilePrefix,
+    routeFileIgnorePrefix,
+    routeFileIgnorePattern,
+  } = config
 
   const logger = logging({ disabled: config.disableLogging })
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
@@ -127,9 +132,19 @@ export async function getRouteNodes(
         const fullPath = replaceBackslash(path.join(fullDir, dirent.name))
         const relativePath = path.posix.join(dir, dirent.name)
 
+        const isBuiltinFile =
+          fullPath.match(/\.(tsx|ts|jsx|js|vue)$/) ||
+          plugins.find((p) =>
+            p.isBuiltInFile?.({
+              fileName: dirent.name,
+              fullPath,
+              relativePath,
+            }),
+          )
+
         if (dirent.isDirectory()) {
           await recurse(relativePath)
-        } else if (fullPath.match(/\.(tsx|ts|jsx|js|vue)$/)) {
+        } else if (isBuiltinFile) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
           const {
@@ -170,8 +185,7 @@ export async function getRouteNodes(
             routeType = 'pathless_layout'
           }
 
-          // Only show deprecation warning for .tsx/.ts files, not .vue files
-          // Vue files using .component.vue is the Vue-native way
+          // Only show deprecation warning for .tsx/.ts files, not .vue or plugin files
           const isVueFile = filePath.endsWith('.vue')
           if (!isVueFile) {
             ;(
@@ -240,9 +254,23 @@ export async function getRouteNodes(
 
   await recurse('./')
 
+  // Let plugins transform nodes (set properties like skipTransform, componentImport, etc.)
+  let transformedNodes = routeNodes
+  for (const plugin of plugins) {
+    if (plugin.transformNodes) {
+      const result = plugin.transformNodes({
+        routeNodes: transformedNodes,
+        config: config as Config,
+      })
+      if (result) {
+        transformedNodes = result
+      }
+    }
+  }
+
   // Find the root route node - prefer the actual route file over component/loader files
   const rootRouteNode =
-    routeNodes.find(
+    transformedNodes.find(
       (d) =>
         d.routePath === `/${rootPathId}` &&
         ![
@@ -253,7 +281,7 @@ export async function getRouteNodes(
           'loader',
           'lazy',
         ].includes(d._fsRouteType),
-    ) ?? routeNodes.find((d) => d.routePath === `/${rootPathId}`)
+    ) ?? transformedNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
     rootRouteNode._fsRouteType = '__root'
     rootRouteNode.variableName = 'root'
@@ -261,7 +289,7 @@ export async function getRouteNodes(
 
   return {
     rootRouteNode,
-    routeNodes,
+    routeNodes: transformedNodes,
     physicalDirectories: allPhysicalDirectories,
   }
 }
