@@ -1,5 +1,7 @@
 import {
+  Body,
   HeadContent,
+  Html,
   Outlet,
   Scripts,
   createRootRoute,
@@ -31,15 +33,15 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <html>
+    <Html>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <Body>
         <Outlet />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }
