@@ -295,28 +295,28 @@ const splitPathRegex = /[/-]/g
 const leadingDigitRegex = /^(\d)/g
 
 const toVariableSafeChar = (char: string): string => {
-    if (alphanumericRegex.test(char)) {
-      return char // Keep alphanumeric characters and underscores as is
-    }
-
-    // Replace special characters with meaningful text equivalents
-    switch (char) {
-      case '.':
-        return 'Dot'
-      case '-':
-        return 'Dash'
-      case '@':
-        return 'At'
-      case '(':
-        return '' // Removed since route groups use parentheses
-      case ')':
-        return '' // Removed since route groups use parentheses
-      case ' ':
-        return '' // Remove spaces
-      default:
-        return `Char${char.charCodeAt(0)}` // For any other characters
-    }
+  if (alphanumericRegex.test(char)) {
+    return char // Keep alphanumeric characters and underscores as is
   }
+
+  // Replace special characters with meaningful text equivalents
+  switch (char) {
+    case '.':
+      return 'Dot'
+    case '-':
+      return 'Dash'
+    case '@':
+      return 'At'
+    case '(':
+      return '' // Removed since route groups use parentheses
+    case ')':
+      return '' // Removed since route groups use parentheses
+    case ' ':
+      return '' // Remove spaces
+    default:
+      return `Char${char.charCodeAt(0)}` // For any other characters
+  }
+}
 
 export function routePathToVariable(routePath: string): string {
   const cleaned = removeUnderscores(routePath)
