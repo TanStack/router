@@ -689,10 +689,15 @@ export class Generator {
                   .filter((d) => d[1])
                   .map((d) => {
                     const fileNode = d[1]!
+                    const isVueFile = d[1]!.filePath.endsWith('.vue')
                     const exportName =
-                      fileNode.componentImport?.exportName ?? d[0]
+                      fileNode.componentImport?.exportName ??
+                      // For .vue files, use 'default' as the export name since Vue SFCs export default
+                      (isVueFile ? 'default' : d[0])
                     const keepExtension =
-                      fileNode.componentImport?.keepExtension ?? false
+                      fileNode.componentImport?.keepExtension ??
+                      // Keep .vue extension for Vue files since Vite requires it
+                      isVueFile
                     const importPath = replaceBackslash(
                       keepExtension
                         ? path.relative(
@@ -722,10 +727,15 @@ export class Generator {
             : '',
           lazyComponentNode
             ? (() => {
+                const isVueFile = lazyComponentNode.filePath.endsWith('.vue')
                 const exportName =
-                  lazyComponentNode.componentImport?.exportName ?? 'Route'
+                  lazyComponentNode.componentImport?.exportName ??
+                  // For .vue files, use 'default' export since Vue SFCs export default
+                  (isVueFile ? 'default' : 'Route')
                 const keepExtension =
-                  lazyComponentNode.componentImport?.keepExtension ?? false
+                  lazyComponentNode.componentImport?.keepExtension ??
+                  // Keep .vue extension for Vue files since Vite requires it
+                  isVueFile
                 const exportAccessor =
                   exportName === 'default' ? 'd.default' : 'd.Route'
                 const importPath = replaceBackslash(
@@ -790,10 +800,15 @@ export class Generator {
                 .filter((d) => d[1])
                 .map((d) => {
                   const fileNode = d[1]!
+                  const isVueFile = fileNode.filePath.endsWith('.vue')
                   const exportName =
-                    fileNode.componentImport?.exportName ?? d[0]
+                    fileNode.componentImport?.exportName ??
+                    // For .vue files, use 'default' as the export name since Vue SFCs export default
+                    (isVueFile ? 'default' : d[0])
                   const keepExtension =
-                    fileNode.componentImport?.keepExtension ?? false
+                    fileNode.componentImport?.keepExtension ??
+                    // Keep .vue extension for Vue files since Vite requires it
+                    isVueFile
                   const importPath = replaceBackslash(
                     keepExtension
                       ? path.relative(
