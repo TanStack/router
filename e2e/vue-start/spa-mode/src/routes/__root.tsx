@@ -1,7 +1,9 @@
 /// <reference types="vite/client" />
 import {
+  Body,
   ClientOnly,
   HeadContent,
+  Html,
   Link,
   Outlet,
   Scripts,
@@ -9,8 +11,6 @@ import {
   useRouterState,
 } from '@tanstack/vue-router'
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
-import { HydrationScript } from 'solid-js/web'
-import type * as Solid from 'solid-js'
 import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
@@ -51,10 +51,10 @@ export const Route = createRootRoute({
       <div data-testid="root-container">
         <h2 data-testid="root-heading">root</h2>
         <div>
-          loader: <b data-testid="root-loader">{loaderData().root}</b>
+          loader: <b data-testid="root-loader">{loaderData.value.root}</b>
         </div>
         <div>
-          context: <b data-testid="root-context">{context().root}</b>
+          context: <b data-testid="root-context">{context.value.root}</b>
         </div>
         <hr />
         <Outlet />
@@ -64,17 +64,16 @@ export const Route = createRootRoute({
   pendingComponent: () => <div>__root Loading...</div>,
 })
 
-function RootDocument({ children }: { children: Solid.JSX.Element }) {
+function RootDocument(_: unknown, { slots }: { slots: any }) {
   const routerState = useRouterState({
     select: (state) => ({ isLoading: state.isLoading, status: state.status }),
   })
   return (
-    <html>
+    <Html>
       <head>
-        <HydrationScript />
-      </head>
-      <body>
         <HeadContent />
+      </head>
+      <Body>
         <div class="p-2 flex gap-2 text-lg">
           <h1>SPA Mode E2E Test</h1>
           <Link
@@ -91,19 +90,19 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
           <div>
             router isLoading:{' '}
             <b data-testid="router-isLoading">
-              {routerState().isLoading ? 'true' : 'false'}
+              {routerState.value.isLoading ? 'true' : 'false'}
             </b>
           </div>
           <div>
             router status:{' '}
-            <b data-testid="router-status">{routerState().status}</b>
+            <b data-testid="router-status">{routerState.value.status}</b>
           </div>
         </ClientOnly>
         <hr />
-        {children}
+        {slots.default?.()}
         <Scripts />
         <TanStackRouterDevtools position="bottom-right" />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }
