@@ -13,6 +13,7 @@ import {
   localFnPOST,
 } from './-functions/functions'
 import { computed, defineComponent, ref } from 'vue'
+import type { PropType } from 'vue'
 
 const fnInsideRoute = createServerFn({ method: 'GET' }).handler(() => {
   return {
@@ -132,58 +133,76 @@ interface TestCase {
   expected: any
   type: 'serverFn' | 'localFn'
 }
-const Test = defineComponent((props: TestCase) => {
-  const result = ref<null | unknown>(null)
-  const comparison = computed(() => {
-    if (result.value) {
-      const isEqual = deepEqual(result.value, props.expected)
-      return isEqual ? 'equal' : 'not equal'
-    }
-    return 'Loading...'
-  })
+const Test = defineComponent({
+  props: {
+    fn: {
+      type: Function as PropType<() => Promise<any>>,
+      required: true,
+    },
+    expected: {
+      type: Object as PropType<any>,
+      required: true,
+    },
+    type: {
+      type: String as PropType<TestCase['type']>,
+      required: true,
+    },
+  },
+  setup(props) {
+    const result = ref<null | unknown>(null)
+    const comparison = computed(() => {
+      if (result.value) {
+        const isEqual = deepEqual(result.value, props.expected)
+        return isEqual ? 'equal' : 'not equal'
+      }
+      return 'Loading...'
+    })
 
-  return () => (
-    <div
-      data-testid={`test-${props.expected.name}`}
-      class="p-2 border border-gray-200 rounded-md"
-    >
-      <h2 class="font-bold text-lg"></h2>
-      <div>
-        It should return{' '}
-        <code>
-          <pre data-testid={`expected-fn-result-${props.expected.name}`}>
-            {props.type === 'serverFn' ? JSON.stringify(props.expected) : 'localFn'}
-          </pre>
-        </code>
-      </div>
-      <p>
-        fn returns:
-        <br />
-        <span data-testid={`fn-result-${props.expected.name}`}>
-          {result.value
-            ? props.type === 'serverFn'
-              ? JSON.stringify(result.value)
-              : 'localFn'
-            : 'Loading...'}
-        </span>{' '}
-        <span data-testid={`fn-comparison-${props.expected.name}`}>
-          {comparison.value}
-        </span>
-      </p>
-      <button
-        data-testid={`btn-fn-${props.expected.name}`}
-        type="button"
-        class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-        onClick={() => {
-          props.fn().then((data) => {
-            result.value = data
-          })
-        }}
+    return () => (
+      <div
+        data-testid={`test-${props.expected.name}`}
+        class="p-2 border border-gray-200 rounded-md"
       >
-        Invoke Server Function
-      </button>
-    </div>
-  )
+        <h2 class="font-bold text-lg"></h2>
+        <div>
+          It should return{' '}
+          <code>
+            <pre data-testid={`expected-fn-result-${props.expected.name}`}>
+              {props.type === 'serverFn'
+                ? JSON.stringify(props.expected)
+                : 'localFn'}
+            </pre>
+          </code>
+        </div>
+        <p>
+          fn returns:
+          <br />
+          <span data-testid={`fn-result-${props.expected.name}`}>
+            {result.value
+              ? props.type === 'serverFn'
+                ? JSON.stringify(result.value)
+                : 'localFn'
+              : 'Loading...'}
+          </span>{' '}
+          <span data-testid={`fn-comparison-${props.expected.name}`}>
+            {comparison.value}
+          </span>
+        </p>
+        <button
+          data-testid={`btn-fn-${props.expected.name}`}
+          type="button"
+          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          onClick={() => {
+            props.fn().then((data) => {
+              result.value = data
+            })
+          }}
+        >
+          Invoke Server Function
+        </button>
+      </div>
+    )
+  },
 })
 
 const RouteComponent = defineComponent({

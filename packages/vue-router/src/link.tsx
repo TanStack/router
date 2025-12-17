@@ -591,8 +591,10 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | Vue.VNode
-    | ((state: { isActive: boolean; isTransitioning: boolean }) => Vue.VNode)
+    | Vue.VNodeChild
+    | ((
+        state: { isActive: boolean; isTransitioning: boolean },
+      ) => Vue.VNodeChild)
 }
 
 type LinkComponentVueProps<TComp> = TComp extends keyof HTMLElementTagNameMap
@@ -620,9 +622,12 @@ export type CreateLinkProps = LinkProps<
   string
 >
 
-export type LinkComponent<TComp> = <
+export type LinkComponent<
+  in out TComp,
+  in out TDefaultFrom extends string = string,
+> = <
   TRouter extends AnyRouter = RegisteredRouter,
-  const TFrom extends string = string,
+  const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
@@ -657,7 +662,7 @@ export function createLink<const TComp>(
     name: 'CreatedLink',
     inheritAttrs: false,
     setup(_, { attrs, slots }) {
-      return () => Vue.h(Link, { ...attrs, _asChild: Comp }, slots)
+      return () => Vue.h(LinkImpl as any, { ...attrs, _asChild: Comp }, slots)
     },
   }) as any
 }
@@ -743,17 +748,7 @@ const LinkImpl = Vue.defineComponent({
 /**
  * Link component with proper TypeScript generics support
  */
-export const Link = LinkImpl as unknown as {
-  <
-    TRouter extends AnyRouter = RegisteredRouter,
-    TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-    TTo extends string | undefined = '.',
-    TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-    TMaskTo extends string = '.',
-  >(
-    props: LinkComponentProps<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  ): Vue.VNode
-}
+export const Link: LinkComponent<'a'> = LinkImpl as any
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
