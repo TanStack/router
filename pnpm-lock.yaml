@@ -4965,6 +4965,82 @@ importers:
         specifier: ^3.1.8
         version: 3.1.8(typescript@5.9.2)
 
+  e2e/vue-start/server-functions:
+    dependencies:
+      '@tanstack/vue-query':
+        specifier: ^5.90.9
+        version: 5.92.0(vue@3.5.25(typescript@5.9.2))
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router
+      '@tanstack/vue-router-devtools':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router-devtools
+      '@tanstack/vue-router-ssr-query':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router-ssr-query
+      '@tanstack/vue-start':
+        specifier: workspace:*
+        version: link:../../../packages/vue-start
+      js-cookie:
+        specifier: ^3.0.5
+        version: 3.0.5
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vue:
+        specifier: ^3.5.25
+        version: 3.5.25(typescript@5.9.2)
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.57
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.56.1
+        version: 1.56.1
+      '@tailwindcss/postcss':
+        specifier: ^4.1.15
+        version: 4.1.15
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/js-cookie':
+        specifier: ^3.0.6
+        version: 3.0.6
+      '@types/node':
+        specifier: 22.10.2
+        version: 22.10.2
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.3
+        version: 6.0.3(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^5.1.2
+        version: 5.1.2(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.6
+      srvx:
+        specifier: ^0.8.6
+        version: 0.8.15
+      tailwindcss:
+        specifier: ^4.1.17
+        version: 4.1.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
   e2e/vue-start/server-routes:
     dependencies:
       '@tanstack/vue-query':
