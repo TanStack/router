@@ -49,7 +49,7 @@ export async function getRouteNodes(
   const logger = logging({ disabled: config.disableLogging })
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
 
-  const routeNodes: Array<RouteNode> = []
+  let routeNodes: Array<RouteNode> = []
   const allPhysicalDirectories: Array<string> = []
 
   async function recurse(dir: string) {
@@ -186,6 +186,7 @@ export async function getRouteNodes(
           }
 
           // Only show deprecation warning for .tsx/.ts files, not .vue or plugin files
+          // Vue files using .component.vue is the Vue-native way
           const isVueFile = filePath.endsWith('.vue')
           if (!isVueFile) {
             ;(
@@ -255,22 +256,21 @@ export async function getRouteNodes(
   await recurse('./')
 
   // Let plugins transform nodes (set properties like skipTransform, componentImport, etc.)
-  let transformedNodes = routeNodes
   for (const plugin of plugins) {
     if (plugin.transformNodes) {
       const result = plugin.transformNodes({
-        routeNodes: transformedNodes,
+        routeNodes,
         config: config as Config,
       })
       if (result) {
-        transformedNodes = result
+        routeNodes = result
       }
     }
   }
 
   // Find the root route node - prefer the actual route file over component/loader files
   const rootRouteNode =
-    transformedNodes.find(
+    routeNodes.find(
       (d) =>
         d.routePath === `/${rootPathId}` &&
         ![
@@ -281,7 +281,7 @@ export async function getRouteNodes(
           'loader',
           'lazy',
         ].includes(d._fsRouteType),
-    ) ?? transformedNodes.find((d) => d.routePath === `/${rootPathId}`)
+    ) ?? routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
     rootRouteNode._fsRouteType = '__root'
     rootRouteNode.variableName = 'root'
@@ -289,7 +289,7 @@ export async function getRouteNodes(
 
   return {
     rootRouteNode,
-    routeNodes: transformedNodes,
+    routeNodes,
     physicalDirectories: allPhysicalDirectories,
   }
 }
