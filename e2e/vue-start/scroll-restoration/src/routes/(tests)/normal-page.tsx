@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/vue-router'
 import * as Solid from 'solid-js'
 
 import { ScrollBlock } from '../-components/scroll-block'

@@ -5,9 +5,9 @@ import {
   Scripts,
   createRootRoute,
   linkOptions,
-} from '@tanstack/solid-router'
+} from '@tanstack/vue-router'
 import { Dynamic, HydrationScript } from 'solid-js/web'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'

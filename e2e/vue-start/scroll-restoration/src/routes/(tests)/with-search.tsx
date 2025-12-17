@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/vue-router'
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { ScrollBlock } from '../-components/scroll-block'
