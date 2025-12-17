@@ -8,9 +8,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
+import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PathlessLayoutRouteImport } from './routes/_pathlessLayout'
 import { Route as AuthRouteImport } from './routes/_auth'
@@ -29,103 +27,85 @@ import { Route as DashboardInvoicesIndexRouteImport } from './routes/dashboard.i
 import { Route as DashboardUsersUserRouteImport } from './routes/dashboard.users.user'
 import { Route as DashboardInvoicesInvoiceIdRouteImport } from './routes/dashboard.invoices.$invoiceId'
 
-// Create/Update Routes
-
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const PathlessLayoutRoute = PathlessLayoutRouteImport.update({
   id: '/_pathlessLayout',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const DashboardRouteRoute = DashboardRouteRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const ExpensiveIndexRoute = ExpensiveIndexRouteImport.update({
   id: '/expensive/',
   path: '/expensive/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-
 const PathlessLayoutRouteBRoute = PathlessLayoutRouteBRouteImport.update({
   id: '/route-b',
   path: '/route-b',
   getParentRoute: () => PathlessLayoutRoute,
 } as any)
-
 const PathlessLayoutRouteARoute = PathlessLayoutRouteARouteImport.update({
   id: '/route-a',
   path: '/route-a',
   getParentRoute: () => PathlessLayoutRoute,
 } as any)
-
 const AuthProfileRoute = AuthProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AuthRoute,
 } as any)
-
 const thisFolderIsNotInTheUrlRouteGroupRoute =
   thisFolderIsNotInTheUrlRouteGroupRouteImport.update({
     id: '/(this-folder-is-not-in-the-url)/route-group',
     path: '/route-group',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
 const DashboardUsersRouteRoute = DashboardUsersRouteRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-
 const DashboardInvoicesRouteRoute = DashboardInvoicesRouteRouteImport.update({
   id: '/invoices',
   path: '/invoices',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-
 const DashboardUsersIndexRoute = DashboardUsersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardUsersRouteRoute,
 } as any)
-
 const DashboardInvoicesIndexRoute = DashboardInvoicesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardInvoicesRouteRoute,
 } as any)
-
 const DashboardUsersUserRoute = DashboardUsersUserRouteImport.update({
   id: '/user',
   path: '/user',
   getParentRoute: () => DashboardUsersRouteRoute,
 } as any)
-
 const DashboardInvoicesInvoiceIdRoute =
   DashboardInvoicesInvoiceIdRouteImport.update({
     id: '/$invoiceId',
@@ -133,133 +113,243 @@ const DashboardInvoicesInvoiceIdRoute =
     getParentRoute: () => DashboardInvoicesRouteRoute,
   } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteRouteWithChildren
+  '/login': typeof LoginRoute
+  '/dashboard/invoices': typeof DashboardInvoicesRouteRouteWithChildren
+  '/dashboard/users': typeof DashboardUsersRouteRouteWithChildren
+  '/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
+  '/profile': typeof AuthProfileRoute
+  '/route-a': typeof PathlessLayoutRouteARoute
+  '/route-b': typeof PathlessLayoutRouteBRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/expensive': typeof ExpensiveIndexRoute
+  '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
+  '/dashboard/users/user': typeof DashboardUsersUserRoute
+  '/dashboard/invoices/': typeof DashboardInvoicesIndexRoute
+  '/dashboard/users/': typeof DashboardUsersIndexRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
+  '/profile': typeof AuthProfileRoute
+  '/route-a': typeof PathlessLayoutRouteARoute
+  '/route-b': typeof PathlessLayoutRouteBRoute
+  '/dashboard': typeof DashboardIndexRoute
+  '/expensive': typeof ExpensiveIndexRoute
+  '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
+  '/dashboard/users/user': typeof DashboardUsersUserRoute
+  '/dashboard/invoices': typeof DashboardInvoicesIndexRoute
+  '/dashboard/users': typeof DashboardUsersIndexRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteRouteWithChildren
+  '/_auth': typeof AuthRouteWithChildren
+  '/_pathlessLayout': typeof PathlessLayoutRouteWithChildren
+  '/login': typeof LoginRoute
+  '/dashboard/invoices': typeof DashboardInvoicesRouteRouteWithChildren
+  '/dashboard/users': typeof DashboardUsersRouteRouteWithChildren
+  '/(this-folder-is-not-in-the-url)/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
+  '/_auth/profile': typeof AuthProfileRoute
+  '/_pathlessLayout/route-a': typeof PathlessLayoutRouteARoute
+  '/_pathlessLayout/route-b': typeof PathlessLayoutRouteBRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/expensive/': typeof ExpensiveIndexRoute
+  '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
+  '/dashboard/users/user': typeof DashboardUsersUserRoute
+  '/dashboard/invoices/': typeof DashboardInvoicesIndexRoute
+  '/dashboard/users/': typeof DashboardUsersIndexRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/dashboard/invoices'
+    | '/dashboard/users'
+    | '/route-group'
+    | '/profile'
+    | '/route-a'
+    | '/route-b'
+    | '/dashboard/'
+    | '/expensive'
+    | '/dashboard/invoices/$invoiceId'
+    | '/dashboard/users/user'
+    | '/dashboard/invoices/'
+    | '/dashboard/users/'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/login'
+    | '/route-group'
+    | '/profile'
+    | '/route-a'
+    | '/route-b'
+    | '/dashboard'
+    | '/expensive'
+    | '/dashboard/invoices/$invoiceId'
+    | '/dashboard/users/user'
+    | '/dashboard/invoices'
+    | '/dashboard/users'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/_auth'
+    | '/_pathlessLayout'
+    | '/login'
+    | '/dashboard/invoices'
+    | '/dashboard/users'
+    | '/(this-folder-is-not-in-the-url)/route-group'
+    | '/_auth/profile'
+    | '/_pathlessLayout/route-a'
+    | '/_pathlessLayout/route-b'
+    | '/dashboard/'
+    | '/expensive/'
+    | '/dashboard/invoices/$invoiceId'
+    | '/dashboard/users/user'
+    | '/dashboard/invoices/'
+    | '/dashboard/users/'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
+  AuthRoute: typeof AuthRouteWithChildren
+  PathlessLayoutRoute: typeof PathlessLayoutRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  thisFolderIsNotInTheUrlRouteGroupRoute: typeof thisFolderIsNotInTheUrlRouteGroupRoute
+  ExpensiveIndexRoute: typeof ExpensiveIndexRoute
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRoute
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_pathlessLayout': {
       id: '/_pathlessLayout'
       path: ''
       fullPath: ''
       preLoaderRoute: typeof PathlessLayoutRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRoute
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/dashboard/invoices': {
-      id: '/dashboard/invoices'
-      path: '/invoices'
-      fullPath: '/dashboard/invoices'
-      preLoaderRoute: typeof DashboardInvoicesRouteRouteImport
-      parentRoute: typeof DashboardRouteRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/dashboard/users': {
-      id: '/dashboard/users'
-      path: '/users'
-      fullPath: '/dashboard/users'
-      preLoaderRoute: typeof DashboardUsersRouteRouteImport
-      parentRoute: typeof DashboardRouteRouteImport
-    }
-    '/(this-folder-is-not-in-the-url)/route-group': {
-      id: '/(this-folder-is-not-in-the-url)/route-group'
-      path: '/route-group'
-      fullPath: '/route-group'
-      preLoaderRoute: typeof thisFolderIsNotInTheUrlRouteGroupRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/_auth/profile': {
-      id: '/_auth/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AuthProfileRouteImport
-      parentRoute: typeof AuthRouteImport
-    }
-    '/_pathlessLayout/route-a': {
-      id: '/_pathlessLayout/route-a'
-      path: '/route-a'
-      fullPath: '/route-a'
-      preLoaderRoute: typeof PathlessLayoutRouteARouteImport
-      parentRoute: typeof PathlessLayoutRouteImport
-    }
-    '/_pathlessLayout/route-b': {
-      id: '/_pathlessLayout/route-b'
-      path: '/route-b'
-      fullPath: '/route-b'
-      preLoaderRoute: typeof PathlessLayoutRouteBRouteImport
-      parentRoute: typeof PathlessLayoutRouteImport
-    }
-    '/dashboard/': {
-      id: '/dashboard/'
+    '/': {
+      id: '/'
       path: '/'
-      fullPath: '/dashboard/'
-      preLoaderRoute: typeof DashboardIndexRouteImport
-      parentRoute: typeof DashboardRouteRouteImport
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/expensive/': {
       id: '/expensive/'
       path: '/expensive'
       fullPath: '/expensive'
       preLoaderRoute: typeof ExpensiveIndexRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
-    '/dashboard/invoices/$invoiceId': {
-      id: '/dashboard/invoices/$invoiceId'
-      path: '/$invoiceId'
-      fullPath: '/dashboard/invoices/$invoiceId'
-      preLoaderRoute: typeof DashboardInvoicesInvoiceIdRouteImport
-      parentRoute: typeof DashboardInvoicesRouteRouteImport
-    }
-    '/dashboard/users/user': {
-      id: '/dashboard/users/user'
-      path: '/user'
-      fullPath: '/dashboard/users/user'
-      preLoaderRoute: typeof DashboardUsersUserRouteImport
-      parentRoute: typeof DashboardUsersRouteRouteImport
-    }
-    '/dashboard/invoices/': {
-      id: '/dashboard/invoices/'
+    '/dashboard/': {
+      id: '/dashboard/'
       path: '/'
-      fullPath: '/dashboard/invoices/'
-      preLoaderRoute: typeof DashboardInvoicesIndexRouteImport
-      parentRoute: typeof DashboardInvoicesRouteRouteImport
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/_pathlessLayout/route-b': {
+      id: '/_pathlessLayout/route-b'
+      path: '/route-b'
+      fullPath: '/route-b'
+      preLoaderRoute: typeof PathlessLayoutRouteBRouteImport
+      parentRoute: typeof PathlessLayoutRoute
+    }
+    '/_pathlessLayout/route-a': {
+      id: '/_pathlessLayout/route-a'
+      path: '/route-a'
+      fullPath: '/route-a'
+      preLoaderRoute: typeof PathlessLayoutRouteARouteImport
+      parentRoute: typeof PathlessLayoutRoute
+    }
+    '/_auth/profile': {
+      id: '/_auth/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthProfileRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/(this-folder-is-not-in-the-url)/route-group': {
+      id: '/(this-folder-is-not-in-the-url)/route-group'
+      path: '/route-group'
+      fullPath: '/route-group'
+      preLoaderRoute: typeof thisFolderIsNotInTheUrlRouteGroupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/users': {
+      id: '/dashboard/users'
+      path: '/users'
+      fullPath: '/dashboard/users'
+      preLoaderRoute: typeof DashboardUsersRouteRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/dashboard/invoices': {
+      id: '/dashboard/invoices'
+      path: '/invoices'
+      fullPath: '/dashboard/invoices'
+      preLoaderRoute: typeof DashboardInvoicesRouteRouteImport
+      parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/users/': {
       id: '/dashboard/users/'
       path: '/'
       fullPath: '/dashboard/users/'
       preLoaderRoute: typeof DashboardUsersIndexRouteImport
-      parentRoute: typeof DashboardUsersRouteRouteImport
+      parentRoute: typeof DashboardUsersRouteRoute
+    }
+    '/dashboard/invoices/': {
+      id: '/dashboard/invoices/'
+      path: '/'
+      fullPath: '/dashboard/invoices/'
+      preLoaderRoute: typeof DashboardInvoicesIndexRouteImport
+      parentRoute: typeof DashboardInvoicesRouteRoute
+    }
+    '/dashboard/users/user': {
+      id: '/dashboard/users/user'
+      path: '/user'
+      fullPath: '/dashboard/users/user'
+      preLoaderRoute: typeof DashboardUsersUserRouteImport
+      parentRoute: typeof DashboardUsersRouteRoute
+    }
+    '/dashboard/invoices/$invoiceId': {
+      id: '/dashboard/invoices/$invoiceId'
+      path: '/$invoiceId'
+      fullPath: '/dashboard/invoices/$invoiceId'
+      preLoaderRoute: typeof DashboardInvoicesInvoiceIdRouteImport
+      parentRoute: typeof DashboardInvoicesRouteRoute
     }
   }
 }
-
-// Create and export the route tree
 
 interface DashboardInvoicesRouteRouteChildren {
   DashboardInvoicesInvoiceIdRoute: typeof DashboardInvoicesInvoiceIdRoute
@@ -330,128 +420,6 @@ const PathlessLayoutRouteWithChildren = PathlessLayoutRoute._addFileChildren(
   PathlessLayoutRouteChildren,
 )
 
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRouteRouteWithChildren
-  '': typeof PathlessLayoutRouteWithChildren
-  '/login': typeof LoginRoute
-  '/dashboard/invoices': typeof DashboardInvoicesRouteRouteWithChildren
-  '/dashboard/users': typeof DashboardUsersRouteRouteWithChildren
-  '/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
-  '/profile': typeof AuthProfileRoute
-  '/route-a': typeof PathlessLayoutRouteARoute
-  '/route-b': typeof PathlessLayoutRouteBRoute
-  '/dashboard/': typeof DashboardIndexRoute
-  '/expensive': typeof ExpensiveIndexRoute
-  '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
-  '/dashboard/users/user': typeof DashboardUsersUserRoute
-  '/dashboard/invoices/': typeof DashboardInvoicesIndexRoute
-  '/dashboard/users/': typeof DashboardUsersIndexRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '': typeof PathlessLayoutRouteWithChildren
-  '/login': typeof LoginRoute
-  '/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
-  '/profile': typeof AuthProfileRoute
-  '/route-a': typeof PathlessLayoutRouteARoute
-  '/route-b': typeof PathlessLayoutRouteBRoute
-  '/dashboard': typeof DashboardIndexRoute
-  '/expensive': typeof ExpensiveIndexRoute
-  '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
-  '/dashboard/users/user': typeof DashboardUsersUserRoute
-  '/dashboard/invoices': typeof DashboardInvoicesIndexRoute
-  '/dashboard/users': typeof DashboardUsersIndexRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRouteRouteWithChildren
-  '/_auth': typeof AuthRouteWithChildren
-  '/_pathlessLayout': typeof PathlessLayoutRouteWithChildren
-  '/login': typeof LoginRoute
-  '/dashboard/invoices': typeof DashboardInvoicesRouteRouteWithChildren
-  '/dashboard/users': typeof DashboardUsersRouteRouteWithChildren
-  '/(this-folder-is-not-in-the-url)/route-group': typeof thisFolderIsNotInTheUrlRouteGroupRoute
-  '/_auth/profile': typeof AuthProfileRoute
-  '/_pathlessLayout/route-a': typeof PathlessLayoutRouteARoute
-  '/_pathlessLayout/route-b': typeof PathlessLayoutRouteBRoute
-  '/dashboard/': typeof DashboardIndexRoute
-  '/expensive/': typeof ExpensiveIndexRoute
-  '/dashboard/invoices/$invoiceId': typeof DashboardInvoicesInvoiceIdRoute
-  '/dashboard/users/user': typeof DashboardUsersUserRoute
-  '/dashboard/invoices/': typeof DashboardInvoicesIndexRoute
-  '/dashboard/users/': typeof DashboardUsersIndexRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/dashboard'
-    | ''
-    | '/login'
-    | '/dashboard/invoices'
-    | '/dashboard/users'
-    | '/route-group'
-    | '/profile'
-    | '/route-a'
-    | '/route-b'
-    | '/dashboard/'
-    | '/expensive'
-    | '/dashboard/invoices/$invoiceId'
-    | '/dashboard/users/user'
-    | '/dashboard/invoices/'
-    | '/dashboard/users/'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | ''
-    | '/login'
-    | '/route-group'
-    | '/profile'
-    | '/route-a'
-    | '/route-b'
-    | '/dashboard'
-    | '/expensive'
-    | '/dashboard/invoices/$invoiceId'
-    | '/dashboard/users/user'
-    | '/dashboard/invoices'
-    | '/dashboard/users'
-  id:
-    | '__root__'
-    | '/'
-    | '/dashboard'
-    | '/_auth'
-    | '/_pathlessLayout'
-    | '/login'
-    | '/dashboard/invoices'
-    | '/dashboard/users'
-    | '/(this-folder-is-not-in-the-url)/route-group'
-    | '/_auth/profile'
-    | '/_pathlessLayout/route-a'
-    | '/_pathlessLayout/route-b'
-    | '/dashboard/'
-    | '/expensive/'
-    | '/dashboard/invoices/$invoiceId'
-    | '/dashboard/users/user'
-    | '/dashboard/invoices/'
-    | '/dashboard/users/'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DashboardRouteRoute: typeof DashboardRouteRouteWithChildren
-  AuthRoute: typeof AuthRouteWithChildren
-  PathlessLayoutRoute: typeof PathlessLayoutRouteWithChildren
-  LoginRoute: typeof LoginRoute
-  thisFolderIsNotInTheUrlRouteGroupRoute: typeof thisFolderIsNotInTheUrlRouteGroupRoute
-  ExpensiveIndexRoute: typeof ExpensiveIndexRoute
-}
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRouteRoute: DashboardRouteRouteWithChildren,
@@ -462,107 +430,6 @@ const rootRouteChildren: RootRouteChildren = {
     thisFolderIsNotInTheUrlRouteGroupRoute,
   ExpensiveIndexRoute: ExpensiveIndexRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/dashboard",
-        "/_auth",
-        "/_pathlessLayout",
-        "/login",
-        "/(this-folder-is-not-in-the-url)/route-group",
-        "/expensive/"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/dashboard": {
-      "filePath": "dashboard.route.tsx",
-      "children": [
-        "/dashboard/invoices",
-        "/dashboard/users",
-        "/dashboard/"
-      ]
-    },
-    "/_auth": {
-      "filePath": "_auth.tsx",
-      "children": [
-        "/_auth/profile"
-      ]
-    },
-    "/_pathlessLayout": {
-      "filePath": "_pathlessLayout.tsx",
-      "children": [
-        "/_pathlessLayout/route-a",
-        "/_pathlessLayout/route-b"
-      ]
-    },
-    "/login": {
-      "filePath": "login.tsx"
-    },
-    "/dashboard/invoices": {
-      "filePath": "dashboard.invoices.route.tsx",
-      "parent": "/dashboard",
-      "children": [
-        "/dashboard/invoices/$invoiceId",
-        "/dashboard/invoices/"
-      ]
-    },
-    "/dashboard/users": {
-      "filePath": "dashboard.users.route.tsx",
-      "parent": "/dashboard",
-      "children": [
-        "/dashboard/users/user",
-        "/dashboard/users/"
-      ]
-    },
-    "/(this-folder-is-not-in-the-url)/route-group": {
-      "filePath": "(this-folder-is-not-in-the-url)/route-group.tsx"
-    },
-    "/_auth/profile": {
-      "filePath": "_auth.profile.tsx",
-      "parent": "/_auth"
-    },
-    "/_pathlessLayout/route-a": {
-      "filePath": "_pathlessLayout.route-a.tsx",
-      "parent": "/_pathlessLayout"
-    },
-    "/_pathlessLayout/route-b": {
-      "filePath": "_pathlessLayout.route-b.tsx",
-      "parent": "/_pathlessLayout"
-    },
-    "/dashboard/": {
-      "filePath": "dashboard.index.tsx",
-      "parent": "/dashboard"
-    },
-    "/expensive/": {
-      "filePath": "expensive/index.tsx"
-    },
-    "/dashboard/invoices/$invoiceId": {
-      "filePath": "dashboard.invoices.$invoiceId.tsx",
-      "parent": "/dashboard/invoices"
-    },
-    "/dashboard/users/user": {
-      "filePath": "dashboard.users.user.tsx",
-      "parent": "/dashboard/users"
-    },
-    "/dashboard/invoices/": {
-      "filePath": "dashboard.invoices.index.tsx",
-      "parent": "/dashboard/invoices"
-    },
-    "/dashboard/users/": {
-      "filePath": "dashboard.users.index.tsx",
-      "parent": "/dashboard/users"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

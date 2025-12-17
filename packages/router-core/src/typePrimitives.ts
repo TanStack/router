@@ -10,7 +10,7 @@ import type { RouteIds } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { UseParamsResult } from './useParams'
 import type { UseSearchResult } from './useSearch'
-import type { Constrain, ConstrainLiteral } from './utils'
+import type { ConstrainLiteral } from './utils'
 
 export type ValidateFromPath<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -75,16 +75,22 @@ export type ValidateNavigateOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TOptions = unknown,
   TDefaultFrom extends string = string,
-> = Constrain<
-  TOptions,
-  NavigateOptions<
+> =
+  TOptions extends NavigateOptions<
     TRouter,
     InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
     InferMaskFrom<TOptions>,
     InferMaskTo<TOptions>
   >
->
+    ? TOptions
+    : NavigateOptions<
+        TRouter,
+        InferFrom<TOptions, TDefaultFrom>,
+        InferTo<TOptions>,
+        InferMaskFrom<TOptions>,
+        InferMaskTo<TOptions>
+      >
 
 export type ValidateNavigateOptionsArray<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -102,16 +108,22 @@ export type ValidateRedirectOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TOptions = unknown,
   TDefaultFrom extends string = string,
-> = Constrain<
-  TOptions,
-  RedirectOptions<
+> =
+  TOptions extends RedirectOptions<
     TRouter,
     InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
     InferMaskFrom<TOptions>,
     InferMaskTo<TOptions>
   >
->
+    ? TOptions
+    : RedirectOptions<
+        TRouter,
+        InferFrom<TOptions, TDefaultFrom>,
+        InferTo<TOptions>,
+        InferMaskFrom<TOptions>,
+        InferMaskTo<TOptions>
+      >
 
 export type ValidateRedirectOptionsArray<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -170,12 +182,17 @@ export type ValidateUseSearchResult<
 export type ValidateUseParamsResult<
   TOptions,
   TRouter extends AnyRouter = RegisteredRouter,
-> = Constrain<
-  TOptions,
-  UseParamsResult<
+> =
+  TOptions extends UseParamsResult<
     TRouter,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
     InferSelected<TOptions>
   >
->
+    ? TOptions
+    : UseParamsResult<
+        TRouter,
+        InferFrom<TOptions>,
+        InferStrict<TOptions>,
+        InferSelected<TOptions>
+      >

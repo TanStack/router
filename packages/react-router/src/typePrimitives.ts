@@ -1,6 +1,5 @@
 import type {
   AnyRouter,
-  Constrain,
   InferFrom,
   InferMaskFrom,
   InferMaskTo,
@@ -19,9 +18,8 @@ export type ValidateLinkOptions<
   TOptions = unknown,
   TDefaultFrom extends string = string,
   TComp = 'a',
-> = Constrain<
-  TOptions,
-  LinkComponentProps<
+> =
+  TOptions extends LinkComponentProps<
     TComp,
     TRouter,
     InferFrom<TOptions, TDefaultFrom>,
@@ -29,7 +27,15 @@ export type ValidateLinkOptions<
     InferMaskFrom<TOptions>,
     InferMaskTo<TOptions>
   >
->
+    ? TOptions
+    : LinkComponentProps<
+        TComp,
+        TRouter,
+        InferFrom<TOptions, TDefaultFrom>,
+        InferTo<TOptions>,
+        InferMaskFrom<TOptions>,
+        InferMaskTo<TOptions>
+      >
 
 /**
  * @private
@@ -43,9 +49,8 @@ export type InferStructuralSharing<TOptions> = TOptions extends {
 export type ValidateUseSearchOptions<
   TOptions,
   TRouter extends AnyRouter = RegisteredRouter,
-> = Constrain<
-  TOptions,
-  UseSearchOptions<
+> =
+  TOptions extends UseSearchOptions<
     TRouter,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
@@ -53,14 +58,21 @@ export type ValidateUseSearchOptions<
     InferSelected<TOptions>,
     InferStructuralSharing<TOptions>
   >
->
+    ? TOptions
+    : UseSearchOptions<
+        TRouter,
+        InferFrom<TOptions>,
+        InferStrict<TOptions>,
+        InferShouldThrow<TOptions>,
+        InferSelected<TOptions>,
+        InferStructuralSharing<TOptions>
+      >
 
 export type ValidateUseParamsOptions<
   TOptions,
   TRouter extends AnyRouter = RegisteredRouter,
-> = Constrain<
-  TOptions,
-  UseParamsOptions<
+> =
+  TOptions extends UseParamsOptions<
     TRouter,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
@@ -68,7 +80,15 @@ export type ValidateUseParamsOptions<
     InferSelected<TOptions>,
     InferSelected<TOptions>
   >
->
+    ? TOptions
+    : UseParamsOptions<
+        TRouter,
+        InferFrom<TOptions>,
+        InferStrict<TOptions>,
+        InferShouldThrow<TOptions>,
+        InferSelected<TOptions>,
+        InferSelected<TOptions>
+      >
 export type ValidateLinkOptionsArray<
   TRouter extends AnyRouter = RegisteredRouter,
   TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
