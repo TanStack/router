@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  RoutePrefixMap,
   cleanPath,
   determineInitialRoutePath,
   isValidNonNestedRoute,
@@ -11,7 +12,7 @@ import {
   removeUnderscores,
   routePathToVariable,
 } from '../src/utils'
-import type { ImportDeclaration } from '../src/types'
+import type { ImportDeclaration, RouteNode } from '../src/types'
 
 describe('cleanPath', () => {
   it('keeps path with leading slash and trailing slash', () => {
@@ -401,5 +402,221 @@ describe('isValidNonNestedRoute', () => {
         experimental: { nonNestedRoutes: false },
       }),
     ).toBe(false)
+  })
+})
+
+describe('RoutePrefixMap', () => {
+  const createRoute = (
+    overrides: Partial<RouteNode> & { routePath: string },
+  ): RouteNode => ({
+    filePath: 'test.tsx',
+    fullPath: overrides.routePath,
+    variableName: 'Test',
+    _fsRouteType: 'static',
+    ...overrides,
+  })
+
+  describe('constructor', () => {
+    it('indexes routes by path', () => {
+      const routes = [
+        createRoute({ routePath: '/users' }),
+        createRoute({ routePath: '/users/profile' }),
+      ]
+      const map = new RoutePrefixMap(routes)
+
+      expect(map.has('/users')).toBe(true)
+      expect(map.has('/users/profile')).toBe(true)
+      expect(map.has('/posts')).toBe(false)
+    })
+
+    it('skips root path /__root', () => {
+      const routes = [createRoute({ routePath: '/__root' })]
+      const map = new RoutePrefixMap(routes)
+
+      expect(map.has('/__root')).toBe(false)
+    })
+
+    it('skips empty/undefined routePaths', () => {
+      const routes = [createRoute({ routePath: '' })]
+      const map = new RoutePrefixMap(routes)
+
+      expect(map.has('')).toBe(false)
+    })
+
+    it('tracks layout routes separately', () => {
+      const routes = [
+        createRoute({ routePath: '/app', _fsRouteType: 'layout' }),
+        createRoute({ routePath: '/admin', _fsRouteType: 'pathless_layout' }),
+        createRoute({ routePath: '/users', _fsRouteType: 'static' }),
+      ]
+      const map = new RoutePrefixMap(routes)
+
+      // all indexed
+      expect(map.has('/app')).toBe(true)
+      expect(map.has('/admin')).toBe(true)
+      expect(map.has('/users')).toBe(true)
+    })
+  })
+
+  describe('get', () => {
+    it('returns route by exact path', () => {
+      const route = createRoute({ routePath: '/users' })
+      const map = new RoutePrefixMap([route])
+
+      expect(map.get('/users')).toBe(route)
+      expect(map.get('/other')).toBeUndefined()
+    })
+  })
+
+  describe('findParent', () => {
+    it('returns null for root path', () => {
+      const map = new RoutePrefixMap([])
+
+      expect(map.findParent('/')).toBeNull()
+    })
+
+    it('returns null for empty path', () => {
+      const map = new RoutePrefixMap([])
+
+      expect(map.findParent('')).toBeNull()
+    })
+
+    it('finds immediate parent', () => {
+      const parent = createRoute({ routePath: '/users' })
+      const map = new RoutePrefixMap([parent])
+
+      expect(map.findParent('/users/profile')).toBe(parent)
+    })
+
+    it('finds ancestor when immediate parent missing', () => {
+      const grandparent = createRoute({ routePath: '/users' })
+      const map = new RoutePrefixMap([grandparent])
+
+      expect(map.findParent('/users/settings/profile')).toBe(grandparent)
+    })
+
+    it('finds closest ancestor with multiple levels', () => {
+      const grandparent = createRoute({ routePath: '/users' })
+      const parent = createRoute({ routePath: '/users/settings' })
+      const map = new RoutePrefixMap([grandparent, parent])
+
+      expect(map.findParent('/users/settings/profile')).toBe(parent)
+    })
+
+    it('returns null when no parent exists', () => {
+      const map = new RoutePrefixMap([createRoute({ routePath: '/posts' })])
+
+      expect(map.findParent('/users/profile')).toBeNull()
+    })
+
+    it('does not return self as parent', () => {
+      const route = createRoute({ routePath: '/users' })
+      const map = new RoutePrefixMap([route])
+
+      expect(map.findParent('/users')).toBeNull()
+    })
+  })
+
+  describe('findParentForNonNested', () => {
+    it('finds other non-nested route as parent', () => {
+      const nonNestedParent = createRoute({
+        routePath: '/app/users',
+        originalRoutePath: '/app_/users',
+        _isExperimentalNonNestedRoute: true,
+      })
+      const map = new RoutePrefixMap([nonNestedParent])
+
+      // originalRoutePath must start with parent's originalRoutePath + '/'
+      const result = map.findParentForNonNested(
+        '/app/users/profile',
+        '/app_/users/profile',
+        [],
+      )
+      expect(result).toBe(nonNestedParent)
+    })
+
+    it('finds layout route as parent for non-nested', () => {
+      const layout = createRoute({
+        routePath: '/app',
+        _fsRouteType: 'layout',
+      })
+      const map = new RoutePrefixMap([layout])
+
+      const result = map.findParentForNonNested('/app/users', '/app_/users', [])
+      expect(result).toBe(layout)
+    })
+
+    it('skips root layout route', () => {
+      const rootLayout = createRoute({
+        routePath: '/',
+        _fsRouteType: 'layout',
+      })
+      const map = new RoutePrefixMap([rootLayout])
+
+      const result = map.findParentForNonNested('/users', '/users_', [])
+      expect(result).toBeNull()
+    })
+
+    it('skips layout routes matching non-nested segments', () => {
+      const layout = createRoute({
+        routePath: '/app',
+        originalRoutePath: '/app',
+        _fsRouteType: 'layout',
+      })
+      const map = new RoutePrefixMap([layout])
+
+      const result = map.findParentForNonNested('/app/users', '/app_/users', [
+        '/app_',
+      ])
+      expect(result).toBeNull()
+    })
+
+    it('returns null when no suitable parent', () => {
+      const map = new RoutePrefixMap([])
+
+      const result = map.findParentForNonNested('/users', '/users_', [])
+      expect(result).toBeNull()
+    })
+
+    it('finds longest matching non-nested parent when multiple exist', () => {
+      const parentRoute = createRoute({
+        routePath: '/non-nested/deep/$baz/bar',
+        originalRoutePath: '/non-nested/deep/$baz_/bar',
+        _isExperimentalNonNestedRoute: true,
+      })
+      const grandparentRoute = createRoute({
+        routePath: '/non-nested/deep/$baz',
+        originalRoutePath: '/non-nested/deep/$baz',
+        _fsRouteType: 'layout',
+      })
+      const map = new RoutePrefixMap([grandparentRoute, parentRoute])
+
+      // Child route should find the closest non-nested parent
+      const result = map.findParentForNonNested(
+        '/non-nested/deep/$baz/bar/$foo',
+        '/non-nested/deep/$baz_/bar/$foo',
+        ['/non-nested/deep/$baz_'],
+      )
+      expect(result).toBe(parentRoute)
+    })
+
+    it('correctly handles index vs route distinction via parent matching', () => {
+      // Simulates route.tsx and index.tsx for same path prefix
+      const layoutRoute = createRoute({
+        routePath: '/non-nested/deep/$baz/bar/$foo',
+        originalRoutePath: '/non-nested/deep/$baz_/bar/$foo',
+        _isExperimentalNonNestedRoute: true,
+        _fsRouteType: 'layout',
+      })
+      const map = new RoutePrefixMap([layoutRoute])
+
+      // Index route looking for parent should find layout
+      const result = map.findParentForNonNested(
+        '/non-nested/deep/$baz/bar/$foo/',
+        '/non-nested/deep/$baz_/bar/$foo/',
+        ['/non-nested/deep/$baz_'],
+      )
+      expect(result).toBe(layoutRoute)
+    })
   })
 })
