@@ -915,7 +915,7 @@ export async function loadMatches(arg: {
       }
     }
 
-    // Execute all head functions serially after all loaders complete
+    // serially execute head functions after all loaders have completed (successfully or not)
     // Each head execution is wrapped in try-catch to ensure all heads run even if one fails
     // TODO: should we break out of head execution on first failure?
     for (const match of inner.matches) {
