@@ -1,12 +1,14 @@
 /// <reference types="vite/client" />
 import {
+  Body,
   HeadContent,
+  Html,
   Link,
+  Outlet,
   Scripts,
   createRootRoute,
 } from '@tanstack/vue-router'
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
-import type { VNode } from 'vue'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -16,7 +18,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        charset: 'utf-8',
+        charSet: 'utf-8',
       },
       {
         name: 'viewport',
@@ -24,8 +26,8 @@ export const Route = createRootRoute({
       },
       ...seo({
         title:
-          'TanStack Start | Type-Safe, Client-First, Full-Stack React Framework',
-        description: `TanStack Start is a type-safe, client-first, full-stack React framework. `,
+          'TanStack Start | Type-Safe, Client-First, Full-Stack Vue Framework',
+        description: `TanStack Start is a type-safe, client-first, full-stack Vue framework.`,
       }),
     ],
     links: [
@@ -54,15 +56,16 @@ export const Route = createRootRoute({
   errorComponent: DefaultCatchBoundary,
   notFoundComponent: () => <NotFound />,
   shellComponent: RootDocument,
+  component: () => <Outlet />,
 })
 
-function RootDocument({ children }: { children: VNode }) {
+function RootDocument(_: unknown, { slots }: { slots: any }) {
   return (
-    <html>
+    <Html>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <Body>
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -75,10 +78,10 @@ function RootDocument({ children }: { children: VNode }) {
           </Link>
         </div>
         <hr />
-        {children}
+        {slots.default?.()}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }
