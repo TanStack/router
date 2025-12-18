@@ -19,7 +19,7 @@ function StaticPage() {
   return (
     <div>
       <h1 data-testid="static-heading">Static Page</h1>
-      <p data-testid="static-content">The value is {data().myVar}</p>
+      <p data-testid="static-content">The value is {data.value.myVar}</p>
     </div>
   )
 }
