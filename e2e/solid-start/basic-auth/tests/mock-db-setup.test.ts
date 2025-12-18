@@ -1,8 +1,6 @@
 import { test as setup } from '@playwright/test'
 
-import { PrismaClient } from '@prisma/client'
-
-const prismaClient = new PrismaClient()
+import { prismaClient } from '../src/utils/prisma'
 
 setup('create new database', async () => {
   if (
