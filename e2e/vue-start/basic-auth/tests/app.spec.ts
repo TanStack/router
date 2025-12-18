@@ -5,11 +5,7 @@ async function waitForHydration(page: Page) {
   await page.waitForFunction(() => typeof (window as any).$_TSR === 'undefined')
 }
 
-async function signup(
-  page: Page,
-  email: string,
-  password: string,
-) {
+async function signup(page: Page, email: string, password: string) {
   await page.goto('/signup')
   await waitForHydration(page)
   await page.fill('input[name="email"]', email)

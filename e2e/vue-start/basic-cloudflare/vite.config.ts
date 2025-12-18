@@ -13,7 +13,7 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-        cloudflare({ viteEnvironment: { name: 'ssr' }, inspectorPort: false }),
+    cloudflare({ viteEnvironment: { name: 'ssr' }, inspectorPort: false }),
     tanstackStart({
       prerender: {
         enabled: true,

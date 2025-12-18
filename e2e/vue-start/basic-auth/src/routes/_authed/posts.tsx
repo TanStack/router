@@ -8,22 +8,23 @@ function PostsComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        {[...posts.value, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
-          (post) => (
-            <li class="whitespace-nowrap" key={post.id}>
-              <Link
-                to="/posts/$postId"
-                params={{
-                  postId: post.id,
-                }}
-                class="block py-1 text-blue-800 hover:text-blue-600"
-                activeProps={{ class: 'text-black font-bold' }}
-              >
-                <div>{post.title.substring(0, 20)}</div>
-              </Link>
-            </li>
-          ),
-        )}
+        {[
+          ...posts.value,
+          { id: 'i-do-not-exist', title: 'Non-existent Post' },
+        ].map((post) => (
+          <li class="whitespace-nowrap" key={post.id}>
+            <Link
+              to="/posts/$postId"
+              params={{
+                postId: post.id,
+              }}
+              class="block py-1 text-blue-800 hover:text-blue-600"
+              activeProps={{ class: 'text-black font-bold' }}
+            >
+              <div>{post.title.substring(0, 20)}</div>
+            </Link>
+          </li>
+        ))}
       </ul>
       <hr />
       <Outlet />
