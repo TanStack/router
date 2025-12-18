@@ -17,14 +17,22 @@ export const loginFn = createServerFn({
       },
     })
 
-    const hashedPassword = await hashPassword(data.password)
-
-    // Avoid leaking whether the user exists
-    if (!user || user.password !== hashedPassword) {
+    // Check if the user exists
+    if (!user) {
       return {
         error: true,
         userNotFound: true,
         message: 'User not found',
+      }
+    }
+
+    // Check if the password is correct
+    const hashedPassword = await hashPassword(data.password)
+
+    if (user.password !== hashedPassword) {
+      return {
+        error: true,
+        message: 'Incorrect password',
       }
     }
 

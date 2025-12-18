@@ -53,7 +53,7 @@ test('Login fails with incorrect password', async ({ page }) => {
   await signup(page, email, 'test')
   await page.goto('/logout')
   await login(page, email, 'badpassword')
-  await expect(page.getByText('User not found')).toBeVisible()
+  await expect(page.getByText('Incorrect password')).toBeVisible()
 })
 
 test('Can sign up from a not found user', async ({ page }) => {
