@@ -70,6 +70,8 @@ export function useMatch<
 > {
   const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
 
+  let lastKnownMatch: any | undefined
+
   // Store to track pending error for deferred throwing
   const pendingError = Vue.ref<Error | null>(null)
 
@@ -86,10 +88,17 @@ export function useMatch<
           opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
         )
 
-        // If there's a pending match or we're transitioning, return undefined without throwing
+        // During transitions, Vue can render a component tree while router state is moving
+        // between `matches` and `pendingMatches`. Keep returning the last known match
+        // so hooks like `useParams()` don't temporarily become `undefined` and crash.
         if (pendingMatch || state.isTransitioning) {
           pendingError.value = null
-          return undefined
+          const fallbackMatch = lastKnownMatch ?? pendingMatch
+          return fallbackMatch
+            ? opts.select
+              ? opts.select(fallbackMatch)
+              : fallbackMatch
+            : undefined
         }
 
         // Store the error to throw later if shouldThrow is enabled
@@ -103,6 +112,7 @@ export function useMatch<
       }
 
       pendingError.value = null
+      lastKnownMatch = match
       return opts.select ? opts.select(match) : match
     },
   } as any)
