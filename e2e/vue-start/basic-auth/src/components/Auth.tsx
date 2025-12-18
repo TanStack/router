@@ -7,18 +7,18 @@ export function Auth({
   afterSubmit,
 }: {
   actionText: string
-  onSubmit: (e: HTMLFormElement) => void
+  onSubmit: (form: HTMLFormElement) => void
   status: 'pending' | 'idle' | 'success' | 'error'
-  afterSubmit?: VNode
+  afterSubmit?: VNode | null
 }) {
   return (
     <div class="fixed inset-0 bg-white dark:bg-black flex items-start justify-center p-8">
       <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
         <h1 class="text-2xl font-bold mb-4">{actionText}</h1>
         <form
-          onSubmit={(e: any) => {
-            e.preventDefault()
-            onSubmit(e)
+          onSubmit={(event) => {
+            event.preventDefault()
+            onSubmit(event.currentTarget as HTMLFormElement)
           }}
           class="space-y-4"
         >
@@ -45,9 +45,15 @@ export function Auth({
             />
           </div>
           <button
-            type="submit"
+            type="button"
             class="w-full bg-cyan-600 text-white rounded-sm py-2 font-black uppercase"
             disabled={status === 'pending'}
+            onClick={(event) => {
+              const form = (event.currentTarget as HTMLButtonElement).form
+              if (form) {
+                onSubmit(form)
+              }
+            }}
           >
             {status === 'pending' ? '...' : actionText}
           </button>

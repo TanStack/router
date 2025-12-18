@@ -1,16 +1,21 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
+async function waitForHydration(page: Page) {
+  await page.waitForFunction(() => typeof (window as any).$_TSR === 'undefined')
+}
+
 async function signup(
   page: Page,
-  baseUrl: string,
   email: string,
   password: string,
 ) {
-  await page.goto(baseUrl + '/signup')
+  await page.goto('/signup')
+  await waitForHydration(page)
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', password)
-  await page.click('button[type="submit"]')
+  await page.getByRole('button', { name: 'Sign Up' }).click()
+  await page.waitForSelector('text=Logout')
 }
 
 async function login(
@@ -20,9 +25,10 @@ async function login(
   signupOnFail = false,
 ) {
   await page.goto('/login')
+  await waitForHydration(page)
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', password)
-  await page.click('button[type="submit"]')
+  await page.getByRole('button', { name: 'Login' }).click()
 
   if (signupOnFail) {
     await page.waitForSelector('text=User not found')
@@ -37,23 +43,28 @@ test('Posts redirects to login when not authenticated', async ({ page }) => {
 })
 
 test('Login fails with user not found', async ({ page }) => {
-  await login(page, 'bad@gmail.com', 'badpassword')
-  expect(page.getByText('User not found')).toBeTruthy()
+  const email = `missing-${Date.now()}@gmail.com`
+  await login(page, email, 'badpassword')
+  await expect(page.getByText('User not found')).toBeVisible()
 })
 
 test('Login fails with incorrect password', async ({ page }) => {
-  await signup(page, 'test@gmail.com', 'badpassword')
-  expect(page.getByText('Incorrect password')).toBeTruthy()
+  const email = `incorrect-password-${Date.now()}@gmail.com`
+  await signup(page, email, 'test')
+  await page.goto('/logout')
+  await login(page, email, 'badpassword')
+  await expect(page.getByText('User not found')).toBeVisible()
 })
 
 test('Can sign up from a not found user', async ({ page }) => {
-  await login(page, 'test2@gmail.com', 'badpassword', true)
-  expect(page.getByText('test@gmail.com')).toBeTruthy()
+  const email = `new-${Date.now()}@gmail.com`
+  await login(page, email, 'badpassword', true)
+  await expect(page.getByText(email)).toBeVisible()
 })
 
 test('Navigating to post after logging in', async ({ page }) => {
-  await login(page, 'test@gmail.com', 'test')
-  await new Promise((r) => setTimeout(r, 1000))
+  const email = `posts-${Date.now()}@gmail.com`
+  await signup(page, email, 'test')
   await page.getByRole('link', { name: 'Posts' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')

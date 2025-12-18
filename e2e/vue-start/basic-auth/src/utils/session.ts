@@ -1,9 +1,8 @@
 // src/services/session.server.ts
 import { useSession } from '@tanstack/vue-start/server'
-import type { User } from '@prisma/client'
 
 type SessionUser = {
-  userEmail: User['email']
+  userEmail: string
 }
 
 export function useAppSession() {

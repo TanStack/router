@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/vue-router'
 import { createServerFn, useServerFn } from '@tanstack/vue-start'
+import { defineComponent } from 'vue'
 
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { useMutation } from '~/hooks/useMutation'
@@ -65,36 +66,43 @@ export const signupFn = createServerFn({
     })
   })
 
+const SignupComp = defineComponent({
+  name: 'Signup',
+  setup() {
+    const signup = useServerFn(signupFn)
+
+    const signupMutation = useMutation({
+      fn: signup,
+    })
+
+    return () => (
+      <Auth
+        actionText="Sign Up"
+        status={signupMutation.status.value}
+        onSubmit={(form) => {
+          const formData = new FormData(form)
+
+          signupMutation.mutate({
+            data: {
+              email: formData.get('email') as string,
+              password: formData.get('password') as string,
+            },
+          })
+        }}
+        afterSubmit={
+          signupMutation.data.value?.error ? (
+            <>
+              <div class="text-red-400">
+                {signupMutation.data.value?.message}
+              </div>
+            </>
+          ) : null
+        }
+      />
+    )
+  },
+})
+
 export const Route = createFileRoute('/signup')({
   component: SignupComp,
 })
-
-function SignupComp() {
-  const signupMutation = useMutation({
-    fn: useServerFn(signupFn),
-  })
-
-  return (
-    <Auth
-      actionText="Sign Up"
-      status={signupMutation.status()}
-      onSubmit={(e) => {
-        const formData = new FormData(e.target as any as HTMLFormElement)
-
-        signupMutation.mutate({
-          data: {
-            email: formData.get('email') as string,
-            password: formData.get('password') as string,
-          },
-        })
-      }}
-      afterSubmit={
-        signupMutation.data()?.error ? (
-          <>
-            <div class="text-red-400">{signupMutation.data()?.message}</div>
-          </>
-        ) : null
-      }
-    />
-  )
-}

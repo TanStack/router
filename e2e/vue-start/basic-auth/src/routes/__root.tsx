@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 import {
+  Body,
   HeadContent,
+  Html,
   Link,
   Outlet,
   Scripts,
@@ -9,7 +11,6 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/vue-router-devtools'
 import { createServerFn } from '@tanstack/vue-start'
 
-import type { VNode } from 'vue'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
@@ -48,8 +49,8 @@ export const Route = createRootRoute({
       },
       ...seo({
         title:
-          'TanStack Start | Type-Safe, Client-First, Full-Stack React Framework',
-        description: `TanStack Start is a type-safe, client-first, full-stack React framework. `,
+          'TanStack Start | Type-Safe, Client-First, Full-Stack Vue Framework',
+        description: `TanStack Start is a type-safe, client-first, full-stack Vue framework.`,
       }),
     ],
     links: [
@@ -75,34 +76,21 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
-  errorComponent: (props) => {
-    return (
-      <RootDocument>
-        <DefaultCatchBoundary {...props} />
-      </RootDocument>
-    )
-  },
+  shellComponent: RootShell,
+  errorComponent: (props) => <DefaultCatchBoundary {...props} />,
   notFoundComponent: () => <NotFound />,
-  component: RootComponent,
+  component: () => <Outlet />,
 })
 
-function RootComponent() {
-  return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
-  )
-}
-
-function RootDocument({ children }: { children: VNode }) {
+function RootShell(_: unknown, { slots }: { slots: any }) {
   const routeContext = Route.useRouteContext()
 
   return (
-    <html>
+    <Html>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <Body>
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
@@ -133,10 +121,10 @@ function RootDocument({ children }: { children: VNode }) {
           </div>
         </div>
         <hr />
-        {children}
+        {slots.default?.()}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
-      </body>
-    </html>
+      </Body>
+    </Html>
   )
 }
