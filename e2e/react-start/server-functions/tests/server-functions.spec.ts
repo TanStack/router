@@ -543,3 +543,24 @@ test('redirect in server function called in query during SSR', async ({
   await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
   expect(page.url()).toContain('/redirect-test-ssr/target')
 })
+
+test('server function called only from server (not client) works correctly', async ({
+  page,
+}) => {
+  await page.goto('/server-only-fn')
+
+  await page.waitForLoadState('networkidle')
+
+  const expected =
+    (await page
+      .getByTestId('expected-server-only-fn-result')
+      .textContent()) || ''
+  expect(expected).not.toBe('')
+
+  await page.getByTestId('test-server-only-fn-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('server-only-fn-result')).toContainText(
+    expected,
+  )
+})
