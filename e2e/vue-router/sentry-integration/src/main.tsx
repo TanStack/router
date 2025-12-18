@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 
-// import { tanstackRouterBrowserTracingIntegration } from '@sentry/vue/tanstackrouter'
+import { tanstackRouterBrowserTracingIntegration } from '@sentry/vue/tanstackrouter'
 import * as Sentry from '@sentry/vue'
 
 import {
@@ -77,7 +77,7 @@ declare module '@tanstack/vue-router' {
 
 Sentry.init({
   dsn: 'https://examplePublicKey@o0.ingest.sentry.io/0',
-  // integrations: [tanstackRouterBrowserTracingIntegration(router)],
+  integrations: [tanstackRouterBrowserTracingIntegration(router)],
   transport: () => ({
     send: (): Promise<any> => Promise.resolve(),
     flush: () => Promise.resolve(true),

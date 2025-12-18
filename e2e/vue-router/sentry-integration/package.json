@@ -11,9 +11,9 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@sentry/vue": "^10.31.0",
-    "@sentry/tracing": "^7.120.3",
-    "@sentry/vite-plugin": "^3.1.2",
+    "@sentry/vue": "^10.32.0",
+    "@sentry/tracing": "^7.120.4",
+    "@sentry/vite-plugin": "^4.6.1",
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
