@@ -115,9 +115,7 @@ export function Markdown({ content, className }: MarkdownProps) {
           if (href?.startsWith('/')) {
             // Internal link - use your router's Link component
             return (
-              <Link to={href}>
-                {domToReact(domNode.children, options)}
-              </Link>
+              <Link to={href}>{domToReact(domNode.children, options)}</Link>
             )
           }
         }
@@ -136,11 +134,7 @@ export function Markdown({ content, className }: MarkdownProps) {
     },
   }
 
-  return (
-    <div className={className}>
-      {parse(result.markup, options)}
-    </div>
-  )
+  return <div className={className}>{parse(result.markup, options)}</div>
 }
 ```
 
@@ -221,14 +215,16 @@ export default defineConfig({
 
 Create markdown files in your designated directory:
 
-```markdown
-<!-- src/blog/hello-world.md -->
----
+````markdown
+## <!-- src/blog/hello-world.md -->
+
 title: Hello World
 published: 2024-01-15
 authors:
-  - Jane Doe
-description: My first blog post
+
+- Jane Doe
+  description: My first blog post
+
 ---
 
 ![Hero Image](/images/hero.jpg)
@@ -242,7 +238,9 @@ Here's some content with **bold** and _italic_ text.
 ```javascript
 console.log('Hello, world!')
 ```
-```
+````
+
+````
 
 ### Using the Collection
 
@@ -280,7 +278,7 @@ function BlogIndex() {
     </div>
   )
 }
-```
+````
 
 ### Rendering a Single Post
 
@@ -308,7 +306,9 @@ function BlogPost() {
     <article>
       <header>
         <h1>{post.title}</h1>
-        <p>By {post.authors.join(', ')} on {post.published}</p>
+        <p>
+          By {post.authors.join(', ')} on {post.published}
+        </p>
       </header>
       <Markdown content={post.content} className="prose" />
     </article>
@@ -371,11 +371,11 @@ export const fetchDocs = createServerFn({ method: 'GET' })
     // Set cache headers for CDN caching
     context.response.headers.set(
       'Cache-Control',
-      'public, max-age=0, must-revalidate'
+      'public, max-age=0, must-revalidate',
     )
     context.response.headers.set(
       'CDN-Cache-Control',
-      'max-age=300, stale-while-revalidate=300'
+      'max-age=300, stale-while-revalidate=300',
     )
 
     // ... fetch logic
@@ -465,7 +465,7 @@ import { codeToHtml } from 'shiki'
 // Process code blocks after parsing
 export async function highlightCode(
   code: string,
-  language: string
+  language: string,
 ): Promise<string> {
   return codeToHtml(code, {
     lang: language,
@@ -483,7 +483,7 @@ Then handle code blocks in your Markdown component:
 // In your Markdown component's replace function
 if (domNode.name === 'pre') {
   const codeElement = domNode.children.find(
-    (child) => child instanceof Element && child.name === 'code'
+    (child) => child instanceof Element && child.name === 'code',
   )
   if (codeElement) {
     const className = codeElement.attribs.class || ''
@@ -497,9 +497,9 @@ if (domNode.name === 'pre') {
 
 ## Summary
 
-| Approach | Best For | Pros | Cons |
-|----------|----------|------|------|
-| content-collections | Blog posts, static docs bundled with app | Type-safe, build-time processing, fast runtime | Requires rebuild for content updates |
-| Dynamic fetching | External docs, frequently updated content | Always fresh, no rebuild needed | Runtime overhead, requires error handling |
+| Approach            | Best For                                  | Pros                                           | Cons                                      |
+| ------------------- | ----------------------------------------- | ---------------------------------------------- | ----------------------------------------- |
+| content-collections | Blog posts, static docs bundled with app  | Type-safe, build-time processing, fast runtime | Requires rebuild for content updates      |
+| Dynamic fetching    | External docs, frequently updated content | Always fresh, no rebuild needed                | Runtime overhead, requires error handling |
 
 Choose the approach that best fits your content update frequency and deployment workflow. For hybrid scenarios, you can use both methods in the same application.
