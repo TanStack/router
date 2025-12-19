@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "@tanstack/start-client-core": "workspace:*",
-    "seroval": "^1.4.0"
+    "seroval": "^1.4.1"
   },
   "peerDependencies": {
     "@tanstack/react-start": "workspace:*",
