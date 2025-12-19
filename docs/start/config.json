@@ -164,6 +164,10 @@
             {
               "label": "Tailwind CSS Integration",
               "to": "framework/react/guide/tailwind-integration"
+            },
+            {
+              "label": "Rendering Markdown",
+              "to": "framework/react/guide/rendering-markdown"
             }
           ]
         },
