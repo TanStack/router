@@ -12342,8 +12342,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       h3-v2:
-        specifier: npm:h3@2.0.0-beta.5
-        version: h3@2.0.0-beta.5(crossws@0.4.1(srvx@0.9.8))
+        specifier: npm:h3@2.0.1-rc.6
+        version: h3@2.0.1-rc.6(crossws@0.4.1(srvx@0.9.8))
       seroval:
         specifier: ^1.4.1
         version: 1.4.1
@@ -20296,8 +20296,8 @@ packages:
   h3@1.15.4:
     resolution: {integrity: sha512-z5cFQWDffyOe4vQ9xIqNfCZdV4p//vy6fBnr8Q1AWnVZ0teurKMG66rLj++TKwKPUP3u7iMUvrvKaEUiQw2QWQ==}
 
-  h3@2.0.0-beta.5:
-    resolution: {integrity: sha512-ApIkLH+nTxzCC0Nq/GN1v6jkvu2eOLfdTnTs6ghiuG1EYHWJBDLzhk5tn7SZMEUNsLUjG4qfmqzBx2LG9I7Q/w==}
+  h3@2.0.1-rc.2:
+    resolution: {integrity: sha512-2vS7OETzPDzGQxmmcs6ttu7p0NW25zAdkPXYOr43dn4GZf81uUljJvupa158mcpUGpsQUqIy4O4THWUQT1yVeA==}
     engines: {node: '>=20.11.1'}
     peerDependencies:
       crossws: ^0.4.1
@@ -20305,8 +20305,8 @@ packages:
       crossws:
         optional: true
 
-  h3@2.0.1-rc.2:
-    resolution: {integrity: sha512-2vS7OETzPDzGQxmmcs6ttu7p0NW25zAdkPXYOr43dn4GZf81uUljJvupa158mcpUGpsQUqIy4O4THWUQT1yVeA==}
+  h3@2.0.1-rc.6:
+    resolution: {integrity: sha512-kKLFVFNJlDVTbQjakz1ZTFSHB9+oi9+Khf0v7xQsUKU3iOqu2qmrFzTD56YsDvvj2nBgqVDphGRXB2VRursw4w==}
     engines: {node: '>=20.11.1'}
     peerDependencies:
       crossws: ^0.4.1
@@ -22601,6 +22601,9 @@ packages:
 
   rou3@0.5.1:
     resolution: {integrity: sha512-OXMmJ3zRk2xeXFGfA3K+EOPHC5u7RDFG7lIOx0X1pdnhUkI8MdVrbV+sNsD80ElpUZ+MRHdyxPnFthq9VHs8uQ==}
+
+  rou3@0.7.12:
+    resolution: {integrity: sha512-iFE4hLDuloSWcD7mjdCDhx2bKcIsYbtOTpfH5MHHLSKMOUyjqQXTeZVa289uuwEGEKFoE/BAPbhaU4B774nceg==}
 
   rou3@0.7.8:
     resolution: {integrity: sha512-21X/el5fdOaEsqwl3an/d9kpZ8hshVIyrwFCpsoleJ4ccAGRbN+PVoxyXzWXkHDxfMkVnLe4yzx+imz2qoem2Q==}
@@ -33216,15 +33219,6 @@ snapshots:
       ufo: 1.6.1
       uncrypto: 0.1.3
 
-  h3@2.0.0-beta.5(crossws@0.4.1(srvx@0.9.8)):
-    dependencies:
-      cookie-es: 2.0.0
-      fetchdts: 0.1.7
-      rou3: 0.7.8
-      srvx: 0.8.15
-    optionalDependencies:
-      crossws: 0.4.1(srvx@0.9.8)
-
   h3@2.0.1-rc.2(crossws@0.4.1(srvx@0.8.15)):
     dependencies:
       cookie-es: 2.0.0
@@ -33233,6 +33227,13 @@ snapshots:
       srvx: 0.8.15
     optionalDependencies:
       crossws: 0.4.1(srvx@0.8.15)
+
+  h3@2.0.1-rc.6(crossws@0.4.1(srvx@0.9.8)):
+    dependencies:
+      rou3: 0.7.12
+      srvx: 0.9.8
+    optionalDependencies:
+      crossws: 0.4.1(srvx@0.9.8)
 
   handle-thing@2.0.1: {}
 
@@ -35784,6 +35785,8 @@ snapshots:
       fsevents: 2.3.3
 
   rou3@0.5.1: {}
+
+  rou3@0.7.12: {}
 
   rou3@0.7.8: {}
 
