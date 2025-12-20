@@ -70,3 +70,56 @@ test('createIsomorphicFn with arguments', () => {
   expectTypeOf(fn2).toBeCallableWith(1, 'a')
   expectTypeOf(fn2).returns.toEqualTypeOf<string | number>()
 })
+
+test('createIsomorphicFn with type', () => {
+  const fn1 = createIsomorphicFn()
+    .$withType<(a: string) => string>()
+    .server((a) => {
+      expectTypeOf(a).toEqualTypeOf<string>()
+      return 'data'
+    })
+    .client((a) => {
+      expectTypeOf(a).toEqualTypeOf<string>()
+      return 'data'
+    })
+  expectTypeOf(fn1).toBeCallableWith('foo')
+  expectTypeOf(fn1).returns.toEqualTypeOf<string>()
+
+  const fn2 = createIsomorphicFn()
+    .$withType<(a: string, b: number) => boolean>()
+    .client((a, b) => {
+      expectTypeOf(a).toEqualTypeOf<string>()
+      expectTypeOf(b).toEqualTypeOf<number>()
+      return true as const
+    })
+    .server((a, b) => {
+      expectTypeOf(a).toEqualTypeOf<string>()
+      expectTypeOf(b).toEqualTypeOf<number>()
+      return false as const
+    })
+  expectTypeOf(fn2).toBeCallableWith('foo', 1)
+  expectTypeOf(fn2).returns.toEqualTypeOf<boolean>()
+
+  const noServerImpl = createIsomorphicFn()
+    .$withType<(a: string) => string>()
+    .client((a) => 'data')
+  expectTypeOf(noServerImpl).not.toBeFunction()
+
+  // Missing server implementation
+  const noClientImpl = createIsomorphicFn()
+    .$withType<(a: string) => string>()
+    .server((a) => 'data')
+  expectTypeOf(noClientImpl).not.toBeFunction()
+
+  const _invalidFnReturn = createIsomorphicFn()
+    .$withType<(a: string) => string>()
+    .server(() => '1')
+    // @ts-expect-error - invalid return type
+    .client(() => 2)
+
+  const _invalidFnArgs = createIsomorphicFn()
+    .$withType<(a: string) => string>()
+    .server((a: string) => 'data')
+    // @ts-expect-error - invalid argument type
+    .client((a: number) => 'data')
+})

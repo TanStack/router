@@ -83,6 +83,28 @@ A no-op (short for "no operation") is a function that does nothing when executed
 function noop() {}
 ```
 
+### Restricting the type of the implementations
+
+You can use `.$withType<TFn>()` to enforce the type of both the server and client implementations matches the same function signature.
+
+```tsx
+import { createIsomorphicFn } from '@tanstack/react-start'
+import type { Environment } from '@/types/environment'
+
+const getEnv = createIsomorphicFn()
+  .$withType<() => Environment>()
+  .server(() => 'server')
+  .client(() => 'client')
+
+const env = getEnv()
+//    ^? Environment
+```
+
+You will get a type error if either implementation mismatches from the function signature passed to `$withType`.
+
+> [!NOTE]
+> When using `$withType()`, TypeScript will enforce that you define both the server and client implementations.
+
 ---
 
 ## `env`Only Functions
