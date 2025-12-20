@@ -221,7 +221,8 @@ testCases.forEach(({ description, testId }) => {
 
 test('navigating to an unnested route', async ({ page }) => {
   const postId = 'hello-world'
-  page.goto(`/posts/${postId}/edit`)
+  await page.goto(`/posts/${postId}/edit`)
+  await page.waitForURL(`/posts/${postId}/edit`)
   await expect(page.getByTestId('params-via-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-api')).toContainText(postId)
