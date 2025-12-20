@@ -12,6 +12,8 @@ import {
   fooFnPOST,
   localFn,
   localFnPOST,
+  reexportedFactoryFn,
+  starReexportedFactoryFn,
 } from './-functions/functions'
 
 export const Route = createFileRoute('/factory/')({
@@ -128,6 +130,26 @@ const functions = {
     expected: {
       name: 'fakeFn',
       window,
+    },
+  },
+  // Test that re-exported factories (using `export { foo } from './module'`) work correctly
+  // The middleware from reexportFactory should execute and add { reexport: 'reexport-middleware-executed' } to context
+  reexportedFactoryFn: {
+    fn: reexportedFactoryFn,
+    type: 'serverFn',
+    expected: {
+      name: 'reexportedFactoryFn',
+      context: { reexport: 'reexport-middleware-executed' },
+    },
+  },
+  // Test that star re-exported factories (using `export * from './module'`) work correctly
+  // The middleware from starReexportFactory should execute and add { starReexport: 'star-reexport-middleware-executed' } to context
+  starReexportedFactoryFn: {
+    fn: starReexportedFactoryFn,
+    type: 'serverFn',
+    expected: {
+      name: 'starReexportedFactoryFn',
+      context: { starReexport: 'star-reexport-middleware-executed' },
     },
   },
 } satisfies Record<string, TestCase>
