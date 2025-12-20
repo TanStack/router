@@ -47,7 +47,7 @@ export const handleServerAction = async ({
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
   }
 
-  const action = await getServerFnById(serverFnId)
+  const action = await getServerFnById(serverFnId, { fromClient: true })
 
   // Known FormData 'Content-Type' header values
   const formDataContentTypes = [

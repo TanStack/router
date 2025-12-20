@@ -81,8 +81,10 @@ export function startManifestPlugin(opts: {
       handler(id) {
         const { resolvedStartConfig } = opts.getConfig()
         if (id === resolvedModuleId) {
-          if (this.environment.config.consumer !== 'server') {
-            // this will ultimately fail the build if the plugin is used outside the server environment
+          if (
+            this.environment.name !== resolvedStartConfig.serverFnProviderEnv
+          ) {
+            // this will ultimately fail the build if the plugin is used outside the provider environment
             // TODO: do we need special handling for `serve`?
             return `export default {}`
           }

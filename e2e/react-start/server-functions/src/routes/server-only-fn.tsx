@@ -11,7 +11,6 @@ import { fnOnlyCalledByServer } from '~/functions/fnOnlyCalledByServer'
  * and is never referenced directly from client code.
  */
 
-
 // This function IS called from the client, and it calls serverOnlyFn on the server
 const proxyFnThatCallsServerOnlyFn = createServerFn().handler(async () => {
   // Call the server-only function from within another server function
@@ -20,6 +19,10 @@ const proxyFnThatCallsServerOnlyFn = createServerFn().handler(async () => {
     fromServerOnlyFn: result,
     wrapper: 'client-callable wrapper',
   }
+})
+
+const getFnOnlyCalledByServer = createServerFn().handler(async () => {
+  return fnOnlyCalledByServer
 })
 
 export const Route = createFileRoute('/server-only-fn')({
@@ -31,6 +34,10 @@ function ServerOnlyFnTest() {
     fromServerOnlyFn: { message: string; secret: number }
     wrapper: string
   } | null>(null)
+
+  const [callFromServerResult, setCallFromServerResult] = React.useState<
+    string | null
+  >(null)
 
   return (
     <div className="p-2 m-2 grid gap-2">
@@ -72,6 +79,27 @@ function ServerOnlyFnTest() {
       >
         Test Server-Only Function
       </button>
+
+      <button
+        data-testid="call-server-fn-from-client-btn"
+        className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        onClick={async () => {
+          try {
+            const fn = await getFnOnlyCalledByServer()
+            await fn()
+            setCallFromServerResult('success')
+          } catch (e) {
+            setCallFromServerResult('error')
+          }
+        }}
+      >
+        Call Server Fn From Client
+      </button>
+      {callFromServerResult && (
+        <div data-testid="call-server-fn-from-client-result">
+          {callFromServerResult}
+        </div>
+      )}
     </div>
   )
 }

@@ -32,6 +32,7 @@ async function compile(opts: {
       return id
     },
     directive: 'use server',
+    directiveSplitParam: 'tsr-directive-use-server',
   })
   const result = await compiler.compile({ code: opts.code, id: opts.id })
   return result

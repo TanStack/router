@@ -552,9 +552,8 @@ test('server function called only from server (not client) works correctly', asy
   await page.waitForLoadState('networkidle')
 
   const expected =
-    (await page
-      .getByTestId('expected-server-only-fn-result')
-      .textContent()) || ''
+    (await page.getByTestId('expected-server-only-fn-result').textContent()) ||
+    ''
   expect(expected).not.toBe('')
 
   await page.getByTestId('test-server-only-fn-btn').click()
@@ -563,4 +562,21 @@ test('server function called only from server (not client) works correctly', asy
   await expect(page.getByTestId('server-only-fn-result')).toContainText(
     expected,
   )
+})
+
+test.use({
+  whitelistErrors: [
+    /Failed to load resource: the server responded with a status of 500/,
+  ],
+})
+test('server function called only from server (not client) cannot be called from the client', async ({
+  page,
+}) => {
+  await page.goto('/server-only-fn')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('call-server-fn-from-client-btn').click()
+  await expect(
+    page.getByTestId('call-server-fn-from-client-result'),
+  ).toContainText('error')
 })

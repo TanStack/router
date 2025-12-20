@@ -1,4 +1,4 @@
-import { createServerFn } from "@tanstack/react-start"
+import { createServerFn } from '@tanstack/react-start'
 
 // This function is ONLY called from the server, never directly from client code
 export const fnOnlyCalledByServer = createServerFn().handler(() => {

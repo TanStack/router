@@ -23,6 +23,11 @@ export type TanStackServerFnPluginOpts = {
   callers: Array<
     ServerFnPluginEnvOpts & {
       envConsumer: 'client' | 'server'
+      /**
+       * Custom getServerFnById implementation for server callers.
+       * Required for server callers that need to load modules from a different
+       * environment.
+       */
       getServerFnById?: string
     }
   >
@@ -153,6 +158,11 @@ export function TanStackServerFnPlugin(
       .map((c) => [c.envName, c]),
   )
 
+  // SSR is the provider when the provider environment is also a server caller environment
+  // In this case, server-only-referenced functions won't be in the manifest (they're handled via direct imports)
+  // When SSR is NOT the provider, server-only-referenced functions ARE in the manifest and need isClientReferenced check
+  const ssrIsProvider = serverCallerEnvironments.has(opts.provider.envName)
+
   return [
     // The client plugin is used to compile the client directives
     // and save them so we can create a manifest
@@ -162,6 +172,9 @@ export function TanStackServerFnPlugin(
       generateFunctionId,
       provider: opts.provider,
       callers: opts.callers,
+      // Provide access to known directive functions so SSR callers can use
+      // canonical extracted filenames from the client build
+      getKnownDirectiveFns: () => directiveFnsById,
     }),
     {
       name: 'tanstack-start-server-fn-vite-plugin-validate-serverfn-id',
@@ -231,21 +244,67 @@ export function TanStackServerFnPlugin(
             return mod
           }
 
-          const mod = `
-          const manifest = {${Object.entries(directiveFnsById)
-            .map(
-              ([id, fn]: any) =>
-                `'${id}': {
+          // When SSR is the provider, server-only-referenced functions aren't in the manifest,
+          // so no isClientReferenced check is needed.
+          // When SSR is NOT the provider (custom provider env), server-only-referenced
+          // functions ARE in the manifest and need the isClientReferenced check to
+          // block direct client HTTP requests to server-only-referenced functions.
+          const includeClientReferencedCheck = !ssrIsProvider
+          return generateManifestModule(
+            directiveFnsById,
+            includeClientReferencedCheck,
+          )
+        },
+      },
+    },
+  ]
+}
+
+/**
+ * Generates the manifest module code for server functions.
+ * @param directiveFnsById - Map of function IDs to their directive function info
+ * @param includeClientReferencedCheck - Whether to include isClientReferenced flag and runtime check.
+ *   This is needed when SSR is NOT the provider, so server-only-referenced functions in the manifest
+ *   can be blocked from client HTTP requests.
+ */
+function generateManifestModule(
+  directiveFnsById: Record<string, DirectiveFn>,
+  includeClientReferencedCheck: boolean,
+): string {
+  const manifestEntries = Object.entries(directiveFnsById)
+    .map(([id, fn]) => {
+      const baseEntry = `'${id}': {
                   functionName: '${fn.functionName}',
-                  importer: () => import(${JSON.stringify(fn.extractedFilename)})
-                }`,
-            )
-            .join(',')}}
-            export async function getServerFnById(id) {
+        importer: () => import(${JSON.stringify(fn.extractedFilename)})${
+          includeClientReferencedCheck
+            ? `,
+        isClientReferenced: ${fn.isClientReferenced ?? true}`
+            : ''
+        }
+      }`
+      return baseEntry
+    })
+    .join(',')
+
+  const getServerFnByIdParams = includeClientReferencedCheck ? 'id, opts' : 'id'
+  const clientReferencedCheck = includeClientReferencedCheck
+    ? `
+      // If called from client, only allow client-referenced functions
+      if (opts?.fromClient && !serverFnInfo.isClientReferenced) {
+        throw new Error('Server function not accessible from client: ' + id)
+      }
+`
+    : ''
+
+  return `
+    const manifest = {${manifestEntries}}
+
+    export async function getServerFnById(${getServerFnByIdParams}) {
               const serverFnInfo = manifest[id]
               if (!serverFnInfo) {
                 throw new Error('Server function info not found for ' + id)
               }
+${clientReferencedCheck}
               const fnModule = await serverFnInfo.importer()
 
               if (!fnModule) {
@@ -266,12 +325,6 @@ export function TanStackServerFnPlugin(
               return action
             }
           `
-
-          return mod
-        },
-      },
-    },
-  ]
 }
 
 function resolveViteId(id: string) {
