@@ -6,10 +6,9 @@ import { GLOBAL_TSR } from './constants'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
 import { TSR_SCRIPT_BARRIER_ID } from './transformStreamWithRouter'
+import type { DehydratedMatch, DehydratedRouter } from './types'
 import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter } from '../router'
-import type { DehydratedMatch } from './ssr-client'
-import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
 import type { Manifest, RouterManagedTag } from '../manifest'
 
@@ -91,7 +90,7 @@ class ScriptBuffer {
     if (bufferedScripts.length === 0) {
       return undefined
     }
-    bufferedScripts.push(`${GLOBAL_TSR}.c()`)
+    bufferedScripts.push(`document.currentScript.remove()`)
     const joinedScripts = bufferedScripts.join(';')
     return joinedScripts
   }
@@ -143,7 +142,7 @@ export function attachRouterServerSsrUtils({
         if (!script) {
           return ''
         }
-        return `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''} class='$tsr'>${script}</script>`
+        return `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''}>${script}</script>`
       })
     },
     dehydrate: async () => {
@@ -156,13 +155,33 @@ export function attachRouterServerSsrUtils({
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
       let manifestToDehydrate: Manifest | undefined = undefined
-      // only send manifest of the current routes to the client
+      // For currently matched routes, send full manifest (preloads + assets)
+      // For all other routes, only send assets (no preloads as they are handled via dynamic imports)
       if (manifest) {
+        const currentRouteIds = new Set(
+          router.state.matches.map((k) => k.routeId),
+        )
         const filteredRoutes = Object.fromEntries(
-          router.state.matches.map((k) => [
-            k.routeId,
-            manifest.routes[k.routeId],
-          ]),
+          Object.entries(manifest.routes).flatMap(
+            ([routeId, routeManifest]) => {
+              if (currentRouteIds.has(routeId)) {
+                return [[routeId, routeManifest]]
+              } else if (
+                routeManifest.assets &&
+                routeManifest.assets.length > 0
+              ) {
+                return [
+                  [
+                    routeId,
+                    {
+                      assets: routeManifest.assets,
+                    },
+                  ],
+                ]
+              }
+              return []
+            },
+          ),
         )
         manifestToDehydrate = {
           routes: filteredRoutes,
@@ -203,7 +222,7 @@ export function attachRouterServerSsrUtils({
         },
         scopeId: SCOPE_ID,
         onDone: () => {
-          scriptBuffer.enqueue(GLOBAL_TSR + '.streamEnd=true')
+          scriptBuffer.enqueue(GLOBAL_TSR + '.e()')
           p.resolve('')
         },
         onError: (err) => p.reject(err),

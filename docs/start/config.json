@@ -30,6 +30,10 @@
               "to": "framework/react/build-from-scratch"
             },
             {
+              "label": "Comparison",
+              "to": "framework/react/comparison"
+            },
+            {
               "label": "Migrate from Next.js",
               "to": "framework/react/migrate-from-next-js"
             }
@@ -122,6 +126,10 @@
               "to": "framework/react/guide/static-prerendering"
             },
             {
+              "label": "Incremental Static Regeneration (ISR)",
+              "to": "framework/react/guide/isr"
+            },
+            {
               "label": "Server Entry Point",
               "to": "framework/react/guide/server-entry-point"
             },
@@ -156,6 +164,10 @@
             {
               "label": "Tailwind CSS Integration",
               "to": "framework/react/guide/tailwind-integration"
+            },
+            {
+              "label": "Rendering Markdown",
+              "to": "framework/react/guide/rendering-markdown"
             }
           ]
         },

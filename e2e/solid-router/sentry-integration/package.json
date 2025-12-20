@@ -11,16 +11,16 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@sentry/solid": "^10.22.0",
-    "@sentry/tracing": "^7.120.3",
-    "@sentry/vite-plugin": "^3.1.2",
+    "@sentry/solid": "^10.32.0",
+    "@sentry/tracing": "^7.120.4",
+    "@sentry/vite-plugin": "^4.6.1",
     "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "postcss": "^8.5.1",
     "solid-js": "^1.9.10",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.15"
+    "tailwindcss": "^4.1.17"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",

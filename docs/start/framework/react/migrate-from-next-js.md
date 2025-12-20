@@ -347,7 +347,7 @@ function Component() {
 + }) // [!code ++]
 ```
 
-Learn more about the [Server Functions](../guide/server-functions).
+Learn more about the [Server Functions](./guide/server-functions).
 
 ### Server Routes ~Handlers~
 
@@ -364,7 +364,7 @@ Learn more about the [Server Functions](../guide/server-functions).
 + }) // [!code ++]
 ```
 
-Learn more about the [Server Routes](../guide/server-routes).
+Learn more about the [Server Routes](./guide/server-routes).
 
 ### Fonts
 

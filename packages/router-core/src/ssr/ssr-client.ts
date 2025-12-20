@@ -2,35 +2,18 @@ import invariant from 'tiny-invariant'
 import { batch } from '@tanstack/store'
 import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
-import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
+import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
+import type { DehydratedMatch, TsrSsrGlobal } from './types'
+import type { AnyRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
-import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
 import type { AnySerializationAdapter } from './serializer/transformer'
-import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
 
 declare global {
   interface Window {
     [GLOBAL_TSR]?: TsrSsrGlobal
     [GLOBAL_SEROVAL]?: any
   }
-}
-
-export interface TsrSsrGlobal {
-  router?: DehydratedRouter
-  // clean scripts; shortened since this is sent for each streamed script
-  c: () => void
-  // push script into buffer; shortened since this is sent for each streamed script as soon as the first custom transformer was invoked
-  p: (script: () => void) => void
-  buffer: Array<() => void>
-  // custom transformers, shortened since this is sent for each streamed value that needs a custom transformer
-  t?: Map<string, (value: any) => any>
-  // this flag indicates whether the transformers were initialized
-  initialized?: boolean
-  // router is hydrated and doesnt need the streamed values anymore
-  hydrated?: boolean
-  // stream has ended
-  streamEnd?: boolean
 }
 
 function hydrateMatch(
@@ -44,22 +27,6 @@ function hydrateMatch(
   match.ssr = deyhydratedMatch.ssr
   match.updatedAt = deyhydratedMatch.u
   match.error = deyhydratedMatch.e
-}
-export interface DehydratedMatch {
-  i: MakeRouteMatch['id']
-  b?: MakeRouteMatch['__beforeLoadContext']
-  l?: MakeRouteMatch['loaderData']
-  e?: MakeRouteMatch['error']
-  u: MakeRouteMatch['updatedAt']
-  s: MakeRouteMatch['status']
-  ssr?: MakeRouteMatch['ssr']
-}
-
-export interface DehydratedRouter {
-  manifest: Manifest | undefined
-  dehydratedData?: any
-  lastMatchId?: string
-  matches: Array<DehydratedMatch>
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {
@@ -178,10 +145,6 @@ export async function hydrate(router: AnyRouter): Promise<any> {
 
   // Allow the user to handle custom hydration data
   await router.options.hydrate?.(dehydratedData)
-
-  window.$_TSR.hydrated = true
-  // potentially clean up streamed values IF stream has ended already
-  window.$_TSR.c()
 
   // now that all necessary data is hydrated:
   // 1) fully reconstruct the route context

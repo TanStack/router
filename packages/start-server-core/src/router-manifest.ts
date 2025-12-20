@@ -36,7 +36,7 @@ export async function getStartManifest() {
 
   const manifest = {
     routes: Object.fromEntries(
-      Object.entries(startManifest.routes).map(([k, v]) => {
+      Object.entries(startManifest.routes).flatMap(([k, v]) => {
         const result = {} as {
           preloads?: Array<string>
           assets?: Array<RouterManagedTag>
@@ -53,7 +53,7 @@ export async function getStartManifest() {
         if (!hasData) {
           return []
         }
-        return [k, result]
+        return [[k, result]]
       }),
     ),
   }

@@ -5,7 +5,7 @@ import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
 
 export const baseConfigSchema = z.object({
-  target: z.enum(['react', 'solid']).optional().default('react'),
+  target: z.enum(['react', 'solid', 'vue']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
@@ -54,8 +54,6 @@ export const configSchema = baseConfigSchema.extend({
     .object({
       // TODO: This has been made stable and is now "autoCodeSplitting". Remove in next major version.
       enableCodeSplitting: z.boolean().optional(),
-      // TODO: This resolves issues with non-nested paths in file-based routing. To be made default in next major version.
-      nonNestedRoutes: z.boolean().optional(),
     })
     .optional(),
   plugins: z.array(z.custom<GeneratorPlugin>()).optional(),

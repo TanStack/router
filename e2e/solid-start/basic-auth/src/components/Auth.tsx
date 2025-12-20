@@ -9,7 +9,7 @@ export function Auth({
   actionText: string
   onSubmit: (e: HTMLFormElement) => void
   status: 'pending' | 'idle' | 'success' | 'error'
-  afterSubmit?: JSX.Element
+  afterSubmit?: () => JSX.Element
 }) {
   return (
     <div class="fixed inset-0 bg-white dark:bg-black flex items-start justify-center p-8">
@@ -51,7 +51,7 @@ export function Auth({
           >
             {status === 'pending' ? '...' : actionText}
           </button>
-          {afterSubmit ? afterSubmit : null}
+          {afterSubmit ? afterSubmit() : null}
         </form>
       </div>
     </div>

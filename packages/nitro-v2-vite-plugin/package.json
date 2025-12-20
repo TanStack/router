@@ -1,12 +1,12 @@
 {
   "name": "@tanstack/nitro-v2-vite-plugin",
-  "version": "1.139.0",
+  "version": "1.141.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TanStack/router.git",
+    "url": "git+https://github.com/TanStack/router.git",
     "directory": "packages/nitro-v2-vite-plugin"
   },
   "homepage": "https://tanstack.com/router",

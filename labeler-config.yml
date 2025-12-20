@@ -100,6 +100,24 @@
 'package: virtual-file-routes':
   - changed-files:
       - any-glob-to-any-file: 'packages/virtual-file-routes/**/*'
+'package: vue-router':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router/**/*'
+'package: vue-router-devtools':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router-devtools/**/*'
+'package: vue-router-ssr-query':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-router-ssr-query/**/*'
+'package: vue-start':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-start/**/*'
+'package: vue-start-client':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-start-client/**/*'
+'package: vue-start-server':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/vue-start-server/**/*'
 'package: zod-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/zod-adapter/**/*'

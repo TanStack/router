@@ -1,39 +1,8 @@
 ---
 ref: docs/router/framework/react/quick-start.md
-replace: { 'React': 'Solid' }
+replace: { 'React': 'Solid', 'react': 'solid' }
 ---
 
-[//]: # 'Requirements'
-
-- `solid-js`v1.x.x
-
-[//]: # 'Requirements'
-[//]: # 'installCommand'
-
-```sh
-npm install @tanstack/solid-router
-# or
-pnpm add @tanstack/solid-router
-#or
-yarn add @tanstack/solid-router
-# or
-bun add @tanstack/solid-router
-# or
-deno add npm:@tanstack/solid-router
-```
-
-[//]: # 'installCommand'
-[//]: # 'packageJson'
-
-```json
-{
-  "dependencies": {
-    "@tanstack/solid-router": "^x.x.x"
-  }
-}
-```
-
-[//]: # 'packageJson'
 [//]: # 'createAppCommand'
 
 ```sh
@@ -63,3 +32,34 @@ npx create-tsrouter-app@latest my-app --framework solid
 ```
 
 [//]: # 'createAppCommandCodeBased'
+[//]: # 'Requirements'
+
+- `solid-js` v1.x.x
+
+[//]: # 'Requirements'
+[//]: # 'installCommand'
+
+```sh
+npm install @tanstack/solid-router
+# or
+pnpm add @tanstack/solid-router
+#or
+yarn add @tanstack/solid-router
+# or
+bun add @tanstack/solid-router
+# or
+deno add npm:@tanstack/solid-router
+```
+
+[//]: # 'installCommand'
+[//]: # 'packageJson'
+
+```json
+{
+  "dependencies": {
+    "@tanstack/solid-router": "^x.x.x"
+  }
+}
+```
+
+[//]: # 'packageJson'

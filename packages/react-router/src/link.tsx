@@ -127,7 +127,9 @@ export function useLinkProps<
     if (disabled) {
       return undefined
     }
-    let href = next.maskedLocation ? next.maskedLocation.url : next.url
+    let href = next.maskedLocation
+      ? next.maskedLocation.url.href
+      : next.url.href
 
     let external = false
     if (router.origin) {

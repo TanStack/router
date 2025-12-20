@@ -48,7 +48,7 @@ TanStack Router is a type-safe router with built-in caching and URL state manage
 - **Critical**: Always run unit and type tests during development - do not proceed if they fail
 - **Test types:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`, `pnpm test:build`
 - **Full CI suite:** `pnpm test:ci`
-- **Fix formatting:** `pnpm prettier:write`
+- **Fix formatting:** `pnpm format`
 - **Efficient targeted testing workflow:**
   1. **Affected only:** `npx nx affected --target=test:unit` (compares to main branch)
   2. **Specific packages:** `npx nx run @tanstack/react-router:test:unit`

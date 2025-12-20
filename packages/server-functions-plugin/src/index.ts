@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 import crypto from 'node:crypto'
+import assert from 'node:assert'
 import { TanStackDirectiveFunctionsPluginEnv } from '@tanstack/directive-functions-plugin'
-import type { DevEnvironment, Plugin } from 'vite'
+import type { Plugin } from 'vite'
 import type {
   DirectiveFn,
   GenerateFunctionIdFn,
@@ -39,16 +40,26 @@ const debug =
   process.env.TSR_VITE_DEBUG &&
   ['true', 'server-functions-plugin'].includes(process.env.TSR_VITE_DEBUG)
 
+const validateServerFnIdVirtualModule = `virtual:tanstack-start-validate-server-fn-id`
+
+function parseIdQuery(id: string): {
+  filename: string
+  query: {
+    [k: string]: string
+  }
+} {
+  if (!id.includes('?')) return { filename: id, query: {} }
+  const [filename, rawQuery] = id.split(`?`, 2) as [string, string]
+  const query = Object.fromEntries(new URLSearchParams(rawQuery))
+  return { filename, query }
+}
+
 export function TanStackServerFnPlugin(
   opts: TanStackServerFnPluginOpts,
 ): Array<Plugin> {
   const directiveFnsById: Record<string, DirectiveFn> = {}
-  let serverDevEnv: DevEnvironment | undefined
 
   const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
-    if (serverDevEnv) {
-      return
-    }
     if (debug) {
       console.info(`onDirectiveFnsById received: `, d)
     }
@@ -153,6 +164,24 @@ export function TanStackServerFnPlugin(
       callers: opts.callers,
     }),
     {
+      name: 'tanstack-start-server-fn-vite-plugin-validate-serverfn-id',
+      apply: 'serve',
+      load: {
+        filter: {
+          id: new RegExp(resolveViteId(validateServerFnIdVirtualModule)),
+        },
+        handler(id) {
+          const parsed = parseIdQuery(id)
+          assert(parsed)
+          assert(parsed.query.id)
+          if (directiveFnsById[parsed.query.id]) {
+            return `export {}`
+          }
+          this.error(`Invalid server function ID: ${parsed.query.id}`)
+        },
+      },
+    },
+    {
       // On the server, we need to be able to read the server-function manifest from the client build.
       // This is likely used in the handler for server functions, so we can find the server function
       // by its ID, import it, and call it.
@@ -191,6 +220,8 @@ export function TanStackServerFnPlugin(
           if (this.environment.mode !== 'build') {
             const mod = `
             export async function getServerFnById(id) {
+              const validateIdImport = ${JSON.stringify(validateServerFnIdVirtualModule)} + '?id=' + id
+              await import(/* @vite-ignore */ '/@id/__x00__' + validateIdImport)
               const decoded = Buffer.from(id, 'base64url').toString('utf8')
               const devServerFn = JSON.parse(decoded)
               const mod = await import(/* @vite-ignore */ devServerFn.file)
