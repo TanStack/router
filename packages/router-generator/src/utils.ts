@@ -205,100 +205,44 @@ export function determineInitialRoutePath(routePath: string) {
 }
 
 /**
- * Checks if a segment is escaped (wrapped in brackets) in the original path.
- * This is used to determine if special strings like 'index', 'route', etc.
- * should be treated literally or with their special meaning.
- *
- * @param originalSegment - The segment from originalRoutePath (may contain brackets)
- * @param escapedSegment - The segment from routePath (brackets removed)
- * @returns true if the segment was escaped with brackets
+ * Checks if a segment is fully escaped (entirely wrapped in brackets with no nested brackets).
+ * E.g., "[index]" -> true, "[_layout]" -> true, "foo[.]bar" -> false, "index" -> false
  */
-export function isSegmentEscaped(
-  originalSegment: string,
-  escapedSegment: string,
-): boolean {
-  // If the original segment contains bracket escaping that matches the escaped segment,
-  // the entire segment was escaped
-  // E.g., originalSegment = "[index]", escapedSegment = "index" -> true
-  // E.g., originalSegment = "index", escapedSegment = "index" -> false
-  // E.g., originalSegment = "foo[.]bar", escapedSegment = "foo.bar" -> partial escape, not fully escaped
-
-  // Check if the original segment is exactly the escaped segment wrapped in brackets
-  if (originalSegment === `[${escapedSegment}]`) {
-    return true
-  }
-
-  // Check for leading underscore escaping: [_]foo -> _foo
-  if (
-    originalSegment.startsWith('[_]') &&
-    escapedSegment.startsWith('_') &&
-    originalSegment.slice(3) === escapedSegment.slice(1)
-  ) {
-    return true
-  }
-
-  // Check for trailing underscore escaping: foo[_] -> foo_
-  if (
-    originalSegment.endsWith('[_]') &&
-    escapedSegment.endsWith('_') &&
-    originalSegment.slice(0, -3) === escapedSegment.slice(0, -1)
-  ) {
-    return true
-  }
-
-  return false
+function isFullyEscapedSegment(originalSegment: string): boolean {
+  return (
+    originalSegment.startsWith('[') &&
+    originalSegment.endsWith(']') &&
+    !originalSegment.slice(1, -1).includes('[') &&
+    !originalSegment.slice(1, -1).includes(']')
+  )
 }
 
 /**
  * Checks if the leading underscore in a segment is escaped.
- * E.g., "[_]layout" has an escaped leading underscore
- * E.g., "[_1nd3x]" has an escaped leading underscore (whole segment escaped, starts with _)
- * E.g., "_layout" has a non-escaped leading underscore (pathless layout)
+ * Returns true if:
+ * - Segment starts with [_] pattern: "[_]layout" -> "_layout"
+ * - Segment is fully escaped and content starts with _: "[_1nd3x]" -> "_1nd3x"
  */
 export function hasEscapedLeadingUnderscore(originalSegment: string): boolean {
-  // Check for [_] prefix pattern: [_]layout -> _layout
-  if (originalSegment.startsWith('[_]')) {
-    return true
-  }
-
-  // Check for fully escaped segment that starts with underscore: [_1nd3x] -> _1nd3x
-  // The segment must be wrapped in brackets and the content must start with underscore
-  if (
-    originalSegment.startsWith('[_') &&
-    originalSegment.endsWith(']') &&
-    !originalSegment.slice(1, -1).includes('[') &&
-    !originalSegment.slice(1, -1).includes(']')
-  ) {
-    return true
-  }
-
-  return false
+  // Pattern: [_]something or [_something]
+  return (
+    originalSegment.startsWith('[_]') ||
+    (originalSegment.startsWith('[_') && isFullyEscapedSegment(originalSegment))
+  )
 }
 
 /**
  * Checks if the trailing underscore in a segment is escaped.
- * E.g., "blog[_]" has an escaped trailing underscore
- * E.g., "[_r0ut3_]" has an escaped trailing underscore (whole segment escaped, ends with _)
- * E.g., "blog_" has a non-escaped trailing underscore (escape from parent layout)
+ * Returns true if:
+ * - Segment ends with [_] pattern: "blog[_]" -> "blog_"
+ * - Segment is fully escaped and content ends with _: "[_r0ut3_]" -> "_r0ut3_"
  */
 export function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
-  // Check for [_] suffix pattern: blog[_] -> blog_
-  if (originalSegment.endsWith('[_]')) {
-    return true
-  }
-
-  // Check for fully escaped segment that ends with underscore: [_r0ut3_] -> _r0ut3_
-  // The segment must be wrapped in brackets and the content must end with underscore
-  if (
-    originalSegment.startsWith('[') &&
-    originalSegment.endsWith('_]') &&
-    !originalSegment.slice(1, -1).includes('[') &&
-    !originalSegment.slice(1, -1).includes(']')
-  ) {
-    return true
-  }
-
-  return false
+  // Pattern: something[_] or [something_]
+  return (
+    originalSegment.endsWith('[_]') ||
+    (originalSegment.endsWith('_]') && isFullyEscapedSegment(originalSegment))
+  )
 }
 
 const backslashRegex = /\\/g
@@ -432,20 +376,10 @@ export function removeLayoutSegmentsWithEscape(
   const routeSegments = routePath.split('/')
   const originalSegments = originalPath.split('/')
 
+  // Keep segments that are NOT pathless (i.e., don't start with unescaped underscore)
   const newSegments = routeSegments.filter((segment, i) => {
     const originalSegment = originalSegments[i] || ''
-
-    // If the segment starts with underscore but the underscore is escaped,
-    // keep the segment (it's not a layout segment)
-    if (
-      segment.startsWith('_') &&
-      hasEscapedLeadingUnderscore(originalSegment)
-    ) {
-      return true
-    }
-
-    // Otherwise, filter out segments starting with underscore (layout segments)
-    return !segment.startsWith('_')
+    return !isSegmentPathless(segment, originalSegment)
   })
 
   return newSegments.join('/')
