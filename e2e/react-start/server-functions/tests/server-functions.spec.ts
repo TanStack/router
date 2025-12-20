@@ -591,3 +591,27 @@ test('star re-exported server function factory middleware executes correctly', a
     page.getByTestId('fn-comparison-starReexportedFactoryFn'),
   ).toContainText('equal')
 })
+
+test('nested star re-exported server function factory middleware executes correctly', async ({
+  page,
+}) => {
+  // This test specifically verifies that when a server function factory is re-exported
+  // through a nested chain (A -> B -> C) using `export * from './module'` syntax,
+  // the middleware still executes correctly.
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  // Click the button for the nested re-exported factory function
+  await page.getByTestId('btn-fn-nestedReexportedFactoryFn').click()
+
+  // Wait for the result
+  await expect(
+    page.getByTestId('fn-result-nestedReexportedFactoryFn'),
+  ).toContainText('nested-middleware-executed')
+
+  // Verify the full context was returned (middleware executed)
+  await expect(
+    page.getByTestId('fn-comparison-nestedReexportedFactoryFn'),
+  ).toContainText('equal')
+})

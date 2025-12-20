@@ -352,6 +352,52 @@ export class ServerFnCompiler {
     return resolvedKind
   }
 
+  /**
+   * Recursively find an export in a module, following `export * from` chains.
+   * Returns the module info and binding if found, or undefined if not found.
+   */
+  private async findExportInModule(
+    moduleInfo: ModuleInfo,
+    exportName: string,
+    visitedModules = new Set<string>(),
+  ): Promise<{ moduleInfo: ModuleInfo; binding: Binding } | undefined> {
+    // Prevent infinite loops in circular re-exports
+    if (visitedModules.has(moduleInfo.id)) {
+      return undefined
+    }
+    visitedModules.add(moduleInfo.id)
+
+    // First check direct exports
+    const directExport = moduleInfo.exports.get(exportName)
+    if (directExport) {
+      const binding = moduleInfo.bindings.get(directExport.name)
+      if (binding) {
+        return { moduleInfo, binding }
+      }
+    }
+
+    // If not found, recursively check re-export-all sources
+    for (const reExportSource of moduleInfo.reExportAllSources) {
+      const reExportTarget = await this.options.resolveId(
+        reExportSource,
+        moduleInfo.id,
+      )
+      if (reExportTarget) {
+        const reExportModule = await this.getModuleInfo(reExportTarget)
+        const result = await this.findExportInModule(
+          reExportModule,
+          exportName,
+          visitedModules,
+        )
+        if (result) {
+          return result
+        }
+      }
+    }
+
+    return undefined
+  }
+
   private async resolveBindingKind(
     binding: Binding,
     fileId: string,
@@ -368,60 +414,28 @@ export class ServerFnCompiler {
 
       const importedModule = await this.getModuleInfo(target)
 
-      // Try to find the export in the module's direct exports
-      const moduleExport = importedModule.exports.get(binding.importedName)
-
-      // If not found directly, check re-export-all sources (`export * from './module'`)
-      if (!moduleExport && importedModule.reExportAllSources.length > 0) {
-        for (const reExportSource of importedModule.reExportAllSources) {
-          const reExportTarget = await this.options.resolveId(
-            reExportSource,
-            importedModule.id,
-          )
-          if (reExportTarget) {
-            const reExportModule = await this.getModuleInfo(reExportTarget)
-            const reExportEntry = reExportModule.exports.get(
+      // Find the export, recursively searching through export * from chains
+      const found = await this.findExportInModule(
+        importedModule,
               binding.importedName,
             )
-            if (reExportEntry) {
-              // Found the export in a re-exported module, resolve from there
-              const reExportBinding = reExportModule.bindings.get(
-                reExportEntry.name,
-              )
-              if (reExportBinding) {
-                if (reExportBinding.resolvedKind) {
-                  return reExportBinding.resolvedKind
-                }
-                const resolvedKind = await this.resolveBindingKind(
-                  reExportBinding,
-                  reExportModule.id,
-                  visited,
-                )
-                reExportBinding.resolvedKind = resolvedKind
-                return resolvedKind
-              }
-            }
-          }
-        }
+
+      if (!found) {
+        return 'None'
       }
 
-      if (!moduleExport) {
-        return 'None'
-      }
-      const importedBinding = importedModule.bindings.get(moduleExport.name)
-      if (!importedBinding) {
-        return 'None'
-      }
-      if (importedBinding.resolvedKind) {
-        return importedBinding.resolvedKind
+      const { moduleInfo: foundModule, binding: foundBinding } = found
+
+      if (foundBinding.resolvedKind) {
+        return foundBinding.resolvedKind
       }
 
       const resolvedKind = await this.resolveBindingKind(
-        importedBinding,
-        importedModule.id,
+        foundBinding,
+        foundModule.id,
         visited,
       )
-      importedBinding.resolvedKind = resolvedKind
+      foundBinding.resolvedKind = resolvedKind
       return resolvedKind
     }
 

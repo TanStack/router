@@ -12,6 +12,7 @@ import {
   fooFnPOST,
   localFn,
   localFnPOST,
+  nestedReexportedFactoryFn,
   reexportedFactoryFn,
   starReexportedFactoryFn,
 } from './-functions/functions'
@@ -150,6 +151,16 @@ const functions = {
     expected: {
       name: 'starReexportedFactoryFn',
       context: { starReexport: 'star-reexport-middleware-executed' },
+    },
+  },
+  // Test that nested star re-exported factories (A -> B -> C chain) work correctly
+  // The middleware from nestedReexportFactory should execute and add { nested: 'nested-middleware-executed' } to context
+  nestedReexportedFactoryFn: {
+    fn: nestedReexportedFactoryFn,
+    type: 'serverFn',
+    expected: {
+      name: 'nestedReexportedFactoryFn',
+      context: { nested: 'nested-middleware-executed' },
     },
   },
 } satisfies Record<string, TestCase>

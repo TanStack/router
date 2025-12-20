@@ -6,6 +6,8 @@ import { createFakeFn } from './createFakeFn'
 import { reexportFactory } from './reexportIndex'
 // Test star re-export syntax: `export * from './module'`
 import { starReexportFactory } from './starReexportIndex'
+// Test nested star re-export syntax: A -> B -> C chain
+import { nestedReexportFactory } from './nestedReexportA'
 
 export const fooFn = createFooServerFn().handler(({ context }) => {
   return {
@@ -111,6 +113,17 @@ export const starReexportedFactoryFn = starReexportFactory().handler(
   ({ context }) => {
     return {
       name: 'starReexportedFactoryFn',
+      context,
+    }
+  },
+)
+
+// Test that nested star re-exported factories (A -> B -> C chain) work correctly
+// The middleware from nestedReexportFactory should execute and add { nested: 'nested-middleware-executed' } to context
+export const nestedReexportedFactoryFn = nestedReexportFactory().handler(
+  ({ context }) => {
+    return {
+      name: 'nestedReexportedFactoryFn',
       context,
     }
   },
