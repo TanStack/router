@@ -154,6 +154,7 @@ export function determineInitialRoutePath(routePath: string) {
     '!',
     '$',
     '%',
+    '_',
   ])
 
   const originalRoutePath =
