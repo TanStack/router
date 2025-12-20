@@ -76,7 +76,7 @@ describe('determineInitialRoutePath', () => {
 
     expect(consoleSpy).toBeCalledWith(
       'Error: Disallowed character "/" found in square brackets in route path "/a[/]".\n' +
-        'You cannot use any of the following characters in square brackets: /, \\, ?, #, :, *, <, >, |, !, $, %\n' +
+        'You cannot use any of the following characters in square brackets: /, \\, ?, #, :, *, <, >, |, !, $, %, _\n' +
         'Please remove and/or replace them.',
     )
 
@@ -87,11 +87,6 @@ describe('determineInitialRoutePath', () => {
     expect(determineInitialRoutePath('/a[.]')).toStrictEqual({
       routePath: '/a.',
       originalRoutePath: '/a[.]',
-    })
-
-    expect(determineInitialRoutePath('/a[_]')).toStrictEqual({
-      routePath: '/a_',
-      originalRoutePath: '/a[_]',
     })
   })
 
@@ -119,16 +114,6 @@ describe('determineInitialRoutePath', () => {
     expect(determineInitialRoutePath('a_.route.b')).toStrictEqual({
       routePath: `/a_/route/b`,
       originalRoutePath: '/a_/route/b',
-    })
-
-    expect(determineInitialRoutePath('/a_/_route_/b_/c/d[_]')).toStrictEqual({
-      routePath: `/a_/_route_/b_/c/d_`,
-      originalRoutePath: '/a_/_route_/b_/c/d[_]',
-    })
-
-    expect(determineInitialRoutePath('/a_/_route_/b_/c/d[_]')).toStrictEqual({
-      routePath: `/a_/_route_/b_/c/d_`,
-      originalRoutePath: '/a_/_route_/b_/c/d[_]',
     })
   })
 })
