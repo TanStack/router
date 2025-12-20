@@ -11,6 +11,7 @@ async function compile(opts: {
   env: 'client' | 'server'
   code: string
   id: string
+  isProviderFile: boolean
 }) {
   const compiler = new ServerFnCompiler({
     ...opts,
@@ -29,7 +30,11 @@ async function compile(opts: {
     },
     directive: 'use server',
   })
-  const result = await compiler.compile({ code: opts.code, id: opts.id })
+  const result = await compiler.compile({
+    code: opts.code,
+    id: opts.id,
+    isProviderFile: opts.isProviderFile,
+  })
   return result
 }
 
@@ -45,7 +50,12 @@ describe('createServerFn compiles correctly', async () => {
     test.each(['client', 'server'] as const)(
       `should compile for ${filename} %s`,
       async (env) => {
-        const result = await compile({ env, code, id: filename })
+        const result = await compile({
+          env,
+          code,
+          id: filename,
+          isProviderFile: env === 'server',
+        })
 
         await expect(result!.code).toMatchFileSnapshot(
           `./snapshots/${env}/${filename}`,
@@ -66,12 +76,25 @@ describe('createServerFn compiles correctly', async () => {
       id: 'test.ts',
       code,
       env: 'client',
+      isProviderFile: false,
     })
 
-    const compiledResultServer = await compile({
+    // Server caller (route file - no directive split param)
+    // Should NOT have the second argument since implementation comes from extracted chunk
+    const compiledResultServerCaller = await compile({
       id: 'test.ts',
       code,
       env: 'server',
+      isProviderFile: false,
+    })
+
+    // Server provider (extracted file - has directive split param)
+    // Should HAVE the second argument since this is the implementation file
+    const compiledResultServerProvider = await compile({
+      id: 'test.ts?tsr-directive-use-server',
+      code,
+      env: 'server',
+      isProviderFile: true,
     })
 
     expect(compiledResultClient!.code).toMatchInlineSnapshot(`
@@ -83,7 +106,18 @@ describe('createServerFn compiles correctly', async () => {
       });"
     `)
 
-    expect(compiledResultServer!.code).toMatchInlineSnapshot(`
+    // Server caller: no second argument (implementation from extracted chunk)
+    expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/react-start';
+      const myServerFn = createServerFn().handler((opts, signal) => {
+        "use server";
+
+        return myServerFn.__executeServer(opts, signal);
+      });"
+    `)
+
+    // Server provider: has second argument (this is the implementation file)
+    expect(compiledResultServerProvider!.code).toMatchInlineSnapshot(`
       "import { createServerFn } from '@tanstack/react-start';
       const myFunc = () => {
         return 'hello from the server';
@@ -113,6 +147,7 @@ describe('createServerFn compiles correctly', async () => {
       id: 'test.ts',
       code,
       env: 'client',
+      isProviderFile: false,
     })
 
     expect(compiledResult!.code).toMatchInlineSnapshot(`
@@ -129,14 +164,37 @@ describe('createServerFn compiles correctly', async () => {
       });"
     `)
 
-    // Server
-    const compiledResultServer = await compile({
+    // Server caller (route file) - no second argument
+    const compiledResultServerCaller = await compile({
       id: 'test.ts',
       code,
       env: 'server',
+      isProviderFile: false,
     })
 
-    expect(compiledResultServer!.code).toMatchInlineSnapshot(`
+    expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
+      "import { createServerFn } from '@tanstack/react-start';
+      export const exportedFn = createServerFn().handler((opts, signal) => {
+        "use server";
+
+        return exportedFn.__executeServer(opts, signal);
+      });
+      const nonExportedFn = createServerFn().handler((opts, signal) => {
+        "use server";
+
+        return nonExportedFn.__executeServer(opts, signal);
+      });"
+    `)
+
+    // Server provider (extracted file) - has second argument
+    const compiledResultServerProvider = await compile({
+      id: 'test.ts?tsr-directive-use-server',
+      code,
+      env: 'server',
+      isProviderFile: true,
+    })
+
+    expect(compiledResultServerProvider!.code).toMatchInlineSnapshot(`
       "import { createServerFn } from '@tanstack/react-start';
       const exportedVar = 'exported';
       export const exportedFn = createServerFn().handler((opts, signal) => {

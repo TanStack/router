@@ -42,7 +42,20 @@ import type { RequestHandler } from './request-handler'
 interface StartEvent {
   h3Event: H3Event
 }
-const eventStorage = new AsyncLocalStorage<StartEvent>()
+
+// Use a global symbol to ensure the same AsyncLocalStorage instance is shared
+// across different bundles that may each bundle this module.
+const GLOBAL_EVENT_STORAGE_KEY = Symbol.for('tanstack-start:event-storage')
+
+const globalObj = globalThis as typeof globalThis & {
+  [GLOBAL_EVENT_STORAGE_KEY]?: AsyncLocalStorage<StartEvent>
+}
+
+if (!globalObj[GLOBAL_EVENT_STORAGE_KEY]) {
+  globalObj[GLOBAL_EVENT_STORAGE_KEY] = new AsyncLocalStorage<StartEvent>()
+}
+
+const eventStorage = globalObj[GLOBAL_EVENT_STORAGE_KEY]
 
 export type { ResponseHeaderName, RequestHeaderName }
 

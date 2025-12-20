@@ -11,6 +11,11 @@ export function handleCreateServerFn(
     env: 'client' | 'server'
     code: string
     directive: string
+    /**
+     * Whether this file is a provider file (extracted server function file).
+     * Only provider files should have the handler implementation as a second argument.
+     */
+    isProviderFile: boolean
   },
 ) {
   // Traverse the member expression and find the call expressions for
@@ -151,7 +156,11 @@ export function handleCreateServerFn(
     ),
   )
 
-  if (opts.env === 'server') {
+  // Add the serverFn as a second argument on the server side,
+  // but ONLY for provider files (extracted server function files).
+  // Caller files must NOT have the second argument because the implementation is already available in the extracted chunk
+  // and including it would duplicate code
+  if (opts.env === 'server' && opts.isProviderFile) {
     callExpressionPaths.handler.node.arguments.push(handlerFn)
   }
 }

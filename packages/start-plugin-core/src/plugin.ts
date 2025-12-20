@@ -50,11 +50,13 @@ export interface ResolvedStartConfig {
   routerFilePath: string
   srcDirectory: string
   viteAppBase: string
+  serverFnProviderEnv: string
 }
 
 export type GetConfigFn = () => {
   startConfig: TanStackStartOutputConfig
   resolvedStartConfig: ResolvedStartConfig
+  corePluginOpts: TanStackStartVitePluginCoreOptions
 }
 
 function isFullUrl(str: string): boolean {
@@ -70,12 +72,19 @@ export function TanStackStartVitePluginCore(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
   startPluginOpts: TanStackStartInputConfig,
 ): Array<PluginOption> {
+  // Determine the provider environment for server functions
+  // If providerEnv is set, use that; otherwise default to SSR as the provider
+  const serverFnProviderEnv =
+    corePluginOpts.serverFn?.providerEnv || VITE_ENVIRONMENT_NAMES.server
+  const ssrIsProvider = serverFnProviderEnv === VITE_ENVIRONMENT_NAMES.server
+
   const resolvedStartConfig: ResolvedStartConfig = {
     root: '',
     startFilePath: undefined,
     routerFilePath: '',
     srcDirectory: '',
     viteAppBase: '',
+    serverFnProviderEnv,
   }
 
   const directive = corePluginOpts.serverFn?.directive ?? 'use server'
@@ -92,7 +101,7 @@ export function TanStackStartVitePluginCore(
         resolvedStartConfig.root,
       )
     }
-    return { startConfig, resolvedStartConfig }
+    return { startConfig, resolvedStartConfig, corePluginOpts }
   }
 
   const capturedBundle: Partial<
@@ -347,6 +356,22 @@ export function TanStackStartVitePluginCore(
                 // Build the SSR bundle
                 await builder.build(server)
               }
+
+              // If a custom provider environment is configured (not SSR),
+              // build it last so the manifest includes functions from all environments
+              if (!ssrIsProvider) {
+                const providerEnv = builder.environments[serverFnProviderEnv]
+                if (!providerEnv) {
+                  throw new Error(
+                    `Provider environment "${serverFnProviderEnv}" not found`,
+                  )
+                }
+                if (!providerEnv.isBuilt) {
+                  // Build the provider environment last
+                  // This ensures all server functions are discovered from client/ssr builds
+                  await builder.build(providerEnv)
+                }
+              }
             },
           },
         }
@@ -383,20 +408,24 @@ export function TanStackStartVitePluginCore(
           envName: VITE_ENVIRONMENT_NAMES.client,
         },
         {
-          envConsumer: 'server',
+          envConsumer: 'server' as const,
           getRuntimeCode: () =>
             `import { createSsrRpc } from '@tanstack/${corePluginOpts.framework}-start/ssr-rpc'`,
           envName: VITE_ENVIRONMENT_NAMES.server,
-          replacer: (d) => `createSsrRpc('${d.functionId}')`,
-          getServerFnById: corePluginOpts.serverFn?.ssr?.getServerFnById,
+          replacer: (d: any) =>
+            // When the function is client-referenced, it's in the manifest - use manifest lookup
+            // When SSR is NOT the provider, always use manifest lookup (no import() for different env)
+            // Otherwise, use the importer for functions only referenced on the server when SSR is the provider
+            d.isClientReferenced || !ssrIsProvider
+              ? `createSsrRpc('${d.functionId}')`
+              : `createSsrRpc('${d.functionId}', () => import(${JSON.stringify(d.extractedFilename)}).then(m => m['${d.functionName}']))`,
         },
       ],
       provider: {
         getRuntimeCode: () =>
           `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-rpc'`,
         replacer: (d) => `createServerRpc('${d.functionId}', ${d.fn})`,
-        envName:
-          corePluginOpts.serverFn?.providerEnv || VITE_ENVIRONMENT_NAMES.server,
+        envName: serverFnProviderEnv,
       },
     }),
     loadEnvPlugin(),

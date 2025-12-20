@@ -201,7 +201,15 @@ export class ServerFnCompiler {
     return this.moduleCache.delete(id)
   }
 
-  public async compile({ code, id }: { code: string; id: string }) {
+  public async compile({
+    code,
+    id,
+    isProviderFile,
+  }: {
+    code: string
+    id: string
+    isProviderFile: boolean
+  }) {
     if (!this.initialized) {
       await this.init(id)
     }
@@ -257,6 +265,7 @@ export class ServerFnCompiler {
           env: this.options.env,
           code,
           directive: this.options.directive,
+          isProviderFile,
         })
       } else {
         handleCreateMiddleware(p.nodePath, { env: this.options.env })

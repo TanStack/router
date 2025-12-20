@@ -39,12 +39,18 @@ const getLookupConfigurationsForEnv = (
   }
 }
 const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
+
+function buildDirectiveSplitParam(directive: string) {
+  return `tsr-directive-${directive.replace(/[^a-zA-Z0-9]/g, '-')}`
+}
+
 export function createServerFnPlugin(opts: {
   framework: CompileStartFrameworkOptions
   directive: string
   environments: Array<{ name: string; type: 'client' | 'server' }>
 }): PluginOption {
   const compilers: Record<string /* envName */, ServerFnCompiler> = {}
+  const directiveSplitParam = buildDirectiveSplitParam(opts.directive)
 
   function perEnvServerFnPlugin(environment: {
     name: string
@@ -120,8 +126,10 @@ export function createServerFnPlugin(opts: {
             compilers[this.environment.name] = compiler
           }
 
+          const isProviderFile = id.includes(directiveSplitParam)
+
           id = cleanId(id)
-          const result = await compiler.compile({ id, code })
+          const result = await compiler.compile({ id, code, isProviderFile })
           return result
         },
       },

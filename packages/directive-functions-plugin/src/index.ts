@@ -35,10 +35,21 @@ const createDirectiveRx = (directive: string) =>
 
 export type DirectiveFunctionsVitePluginEnvOptions = {
   directive: string
-  callers: Array<DirectiveFunctionsViteEnvOptions & { envName: string }>
+  callers: Array<
+    DirectiveFunctionsViteEnvOptions & {
+      envName: string
+      envConsumer?: 'client' | 'server'
+    }
+  >
   provider: DirectiveFunctionsViteEnvOptions & { envName: string }
   onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
   generateFunctionId: GenerateFunctionIdFn
+  /**
+   * Returns the currently known directive functions from previous builds.
+   * Used by server callers to look up canonical extracted filenames,
+   * ensuring they import from the same extracted file as the client.
+   */
+  getKnownDirectiveFns?: () => Record<string, DirectiveFn>
 }
 
 function buildDirectiveSplitParam(directive: string) {
@@ -79,7 +90,13 @@ export function TanStackDirectiveFunctionsPluginEnv(
 
         const isDirectiveSplitParam = id.includes(directiveSplitParam)
 
-        let envOptions: DirectiveFunctionsViteEnvOptions & { envName: string }
+        let envOptions: DirectiveFunctionsViteEnvOptions & {
+          envName: string
+          envConsumer?: 'client' | 'server'
+        }
+        // Use provider options ONLY for extracted function files (files with directive split param)
+        // For all other files, use caller options even if we're in the provider environment
+        // This ensures route files reference extracted functions instead of duplicating implementations
         if (isDirectiveSplitParam) {
           envOptions = opts.provider
           if (debug)
@@ -88,15 +105,35 @@ export function TanStackDirectiveFunctionsPluginEnv(
               id,
             )
         } else {
-          envOptions = opts.callers.find(
+          // For non-extracted files, use caller options based on current environment
+          const callerOptions = opts.callers.find(
             (e) => e.envName === this.environment.name,
-          )!
-          if (debug)
-            console.info(
-              `Compiling Directives for caller in environment ${envOptions.envName}: `,
-              id,
-            )
+          )
+          // If no caller is found for this environment (e.g., separate provider environment only processes extracted files),
+          // fall back to provider options
+          if (callerOptions) {
+            envOptions = callerOptions
+            if (debug)
+              console.info(
+                `Compiling Directives for caller in environment ${envOptions.envName}: `,
+                id,
+              )
+          } else {
+            envOptions = opts.provider
+            if (debug)
+              console.info(
+                `Compiling Directives for provider (fallback) in environment ${opts.provider.envName}: `,
+                id,
+              )
+          }
         }
+        // Get known directive functions for looking up canonical extracted filenames
+        // This ensures SSR callers import from the same extracted file as the client
+        const knownDirectiveFns = opts.getKnownDirectiveFns?.()
+
+        // Determine if this is a client environment
+        const isClientEnvironment = envOptions.envConsumer === 'client'
+
         const { compiledResult, directiveFnsById } = compileDirectives({
           directive: opts.directive,
           getRuntimeCode: envOptions.getRuntimeCode,
@@ -107,6 +144,8 @@ export function TanStackDirectiveFunctionsPluginEnv(
           filename: id,
           directiveSplitParam,
           isDirectiveSplitParam,
+          knownDirectiveFns,
+          isClientEnvironment,
         })
         // when we process a file with a directive split param, we have already encountered the directives in that file
         // (otherwise we wouldn't have gotten here)

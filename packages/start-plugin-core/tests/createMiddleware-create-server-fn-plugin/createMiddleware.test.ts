@@ -33,7 +33,11 @@ async function compile(opts: {
     },
     directive: 'use server',
   })
-  const result = await compiler.compile({ code: opts.code, id: opts.id })
+  const result = await compiler.compile({
+    code: opts.code,
+    id: opts.id,
+    isProviderFile: false,
+  })
   return result
 }
 
