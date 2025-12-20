@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/solid-router": "^1.141.8",
     "@tanstack/solid-router-devtools": "^1.141.8",
-    "@tanstack/solid-start": "^1.142.0",
+    "@tanstack/solid-start": "^1.142.1",
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
