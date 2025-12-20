@@ -76,7 +76,7 @@ describe('determineInitialRoutePath', () => {
 
     expect(consoleSpy).toBeCalledWith(
       'Error: Disallowed character "/" found in square brackets in route path "/a[/]".\n' +
-        'You cannot use any of the following characters in square brackets: /, \\, ?, #, :, *, <, >, |, !, $, %, _\n' +
+        'You cannot use any of the following characters in square brackets: /, \\, ?, #, :, *, <, >, |, !, $, %\n' +
         'Please remove and/or replace them.',
     )
 
