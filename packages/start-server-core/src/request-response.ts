@@ -337,11 +337,9 @@ export function clearSession(config: Partial<SessionConfig>): Promise<void> {
   return h3_clearSession(event, { name: 'start', ...config })
 }
 
-// not public API
 export function getResponse() {
   const event = getH3Event()
-  // @ts-expect-error accessing internal symbol
-  return event[Symbol.for('h3.internal.event.res')]
+  return event.res
 }
 
 // not public API (yet)
