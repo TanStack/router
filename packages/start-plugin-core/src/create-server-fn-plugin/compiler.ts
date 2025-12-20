@@ -51,6 +51,8 @@ interface ModuleInfo {
   ast: ReturnType<typeof parseAst>
   bindings: Map<string, Binding>
   exports: Map<string, ExportEntry>
+  // Track `export * from './module'` declarations for re-export resolution
+  reExportAllSources: Array<string>
 }
 
 export class ServerFnCompiler {
@@ -86,6 +88,7 @@ export class ServerFnCompiler {
             exports: new Map(),
             code: '',
             id: libId,
+            reExportAllSources: [],
           }
           this.moduleCache.set(libId, rootModule)
         }
@@ -116,6 +119,7 @@ export class ServerFnCompiler {
 
     const bindings = new Map<string, Binding>()
     const exports = new Map<string, ExportEntry>()
+    const reExportAllSources: Array<string> = []
 
     // we are only interested in top-level bindings, hence we don't traverse the AST
     // instead we only iterate over the program body
@@ -178,6 +182,16 @@ export class ServerFnCompiler {
               ? sp.exported.name
               : sp.exported.value
             exports.set(exported, { tag: 'Normal', name: local })
+
+            // When re-exporting from another module (export { foo } from './module'),
+            // create an import binding so the server function can be resolved
+            if (node.source) {
+              bindings.set(local, {
+                type: 'import',
+                source: node.source.value,
+                importedName: local,
+              })
+            }
           }
         }
       } else if (t.isExportDefaultDeclaration(node)) {
@@ -189,10 +203,21 @@ export class ServerFnCompiler {
           bindings.set(synth, { type: 'var', init: d as t.Expression })
           exports.set('default', { tag: 'Default', name: synth })
         }
+      } else if (t.isExportAllDeclaration(node)) {
+        // Handle `export * from './module'` syntax
+        // Track the source so we can look up exports from it when needed
+        reExportAllSources.push(node.source.value)
       }
     }
 
-    const info: ModuleInfo = { code, id, ast, bindings, exports }
+    const info: ModuleInfo = {
+      code,
+      id,
+      ast,
+      bindings,
+      exports,
+      reExportAllSources,
+    }
     this.moduleCache.set(id, info)
     return info
   }
@@ -343,7 +368,43 @@ export class ServerFnCompiler {
 
       const importedModule = await this.getModuleInfo(target)
 
+      // Try to find the export in the module's direct exports
       const moduleExport = importedModule.exports.get(binding.importedName)
+
+      // If not found directly, check re-export-all sources (`export * from './module'`)
+      if (!moduleExport && importedModule.reExportAllSources.length > 0) {
+        for (const reExportSource of importedModule.reExportAllSources) {
+          const reExportTarget = await this.options.resolveId(
+            reExportSource,
+            importedModule.id,
+          )
+          if (reExportTarget) {
+            const reExportModule = await this.getModuleInfo(reExportTarget)
+            const reExportEntry = reExportModule.exports.get(
+              binding.importedName,
+            )
+            if (reExportEntry) {
+              // Found the export in a re-exported module, resolve from there
+              const reExportBinding = reExportModule.bindings.get(
+                reExportEntry.name,
+              )
+              if (reExportBinding) {
+                if (reExportBinding.resolvedKind) {
+                  return reExportBinding.resolvedKind
+                }
+                const resolvedKind = await this.resolveBindingKind(
+                  reExportBinding,
+                  reExportModule.id,
+                  visited,
+                )
+                reExportBinding.resolvedKind = resolvedKind
+                return resolvedKind
+              }
+            }
+          }
+        }
+      }
+
       if (!moduleExport) {
         return 'None'
       }
