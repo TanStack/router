@@ -7,9 +7,6 @@ export default defineConfig({
   plugins: [
     tanstackRouter({
       target: 'react',
-      experimental: {
-        nonNestedRoutes: process.env.MODE === 'nonnested',
-      },
     }),
     react(),
   ],

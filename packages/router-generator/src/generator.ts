@@ -34,7 +34,6 @@ import {
   removeGroups,
   removeLastSegmentFromPath,
   removeLayoutSegments,
-  removeLeadingUnderscores,
   removeTrailingSlash,
   removeUnderscores,
   replaceBackslash,
@@ -822,11 +821,8 @@ export class Generator {
     let fileRoutesByFullPath = ''
 
     if (!config.disableTypes) {
-      const routeNodesByFullPath = createRouteNodesByFullPath(
-        acc.routeNodes,
-        config,
-      )
-      const routeNodesByTo = createRouteNodesByTo(acc.routeNodes, config)
+      const routeNodesByFullPath = createRouteNodesByFullPath(acc.routeNodes)
+      const routeNodesByTo = createRouteNodesByTo(acc.routeNodes)
       const routeNodesById = createRouteNodesById(acc.routeNodes)
 
       fileRoutesByFullPath = [
@@ -1360,15 +1356,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     prefixMap: RoutePrefixMap,
     config?: Config,
   ) {
-    const useExperimentalNonNestedRoutes =
-      config?.experimental?.nonNestedRoutes ?? false
-
-    const parentRoute = hasParentRoute(
-      prefixMap,
-      node,
-      node.routePath,
-      node.originalRoutePath,
-    )
+    const parentRoute = hasParentRoute(prefixMap, node, node.routePath)
 
     if (parentRoute) node.parent = parentRoute
 
@@ -1383,15 +1371,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       lastRouteSegment.startsWith('_') ||
       split.every((part) => this.routeGroupPatternRegex.test(part))
 
-    // with new nonNestedPaths feature we can be sure any remaining trailing underscores are escaped and should remain
-    // TODO with new major we can remove check and only remove leading underscores
     node.cleanedPath = removeGroups(
-      (useExperimentalNonNestedRoutes
-        ? removeLeadingUnderscores(
-            removeLayoutSegments(node.path ?? ''),
-            config?.routeToken ?? '',
-          )
-        : removeUnderscores(removeLayoutSegments(node.path))) ?? '',
+      removeUnderscores(removeLayoutSegments(node.path)) ?? '',
     )
 
     if (

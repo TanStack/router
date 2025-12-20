@@ -13,7 +13,6 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
   createFileRouteProps?: Set<string>
-  _isExperimentalNonNestedRoute?: boolean
 }
 
 export interface GetRouteNodesResult {
