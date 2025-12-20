@@ -444,7 +444,10 @@ describe('removeLayoutSegmentsWithEscape', () => {
       '/foo',
     )
     expect(
-      removeLayoutSegmentsWithEscape('/_auth/_admin/dashboard', '/_auth/_admin/dashboard'),
+      removeLayoutSegmentsWithEscape(
+        '/_auth/_admin/dashboard',
+        '/_auth/_admin/dashboard',
+      ),
     ).toBe('/dashboard')
   })
 
@@ -461,9 +464,9 @@ describe('removeLayoutSegmentsWithEscape', () => {
     expect(
       removeLayoutSegmentsWithEscape('/_layout/foo', '/[_layout]/foo'),
     ).toBe('/_layout/foo')
-    expect(
-      removeLayoutSegmentsWithEscape('/_1nd3x/bar', '/[_1nd3x]/bar'),
-    ).toBe('/_1nd3x/bar')
+    expect(removeLayoutSegmentsWithEscape('/_1nd3x/bar', '/[_1nd3x]/bar')).toBe(
+      '/_1nd3x/bar',
+    )
   })
 
   it('handles mixed escaped and non-escaped layout segments', () => {
@@ -474,10 +477,7 @@ describe('removeLayoutSegmentsWithEscape', () => {
       ),
     ).toBe('/_auth/dashboard')
     expect(
-      removeLayoutSegmentsWithEscape(
-        '/_foo/_bar/_baz',
-        '/_foo/[_bar]/_baz',
-      ),
+      removeLayoutSegmentsWithEscape('/_foo/_bar/_baz', '/_foo/[_bar]/_baz'),
     ).toBe('/_bar')
   })
 

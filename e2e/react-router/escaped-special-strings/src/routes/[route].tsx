@@ -12,8 +12,9 @@ function EscapedRouteComponent() {
       <h2 data-testid="page-title">Escaped Route Page</h2>
       <p data-testid="page-path">/route</p>
       <p data-testid="page-description">
-        This route was created using [route].tsx to escape the special "route" token.
-        It renders at the literal path /route instead of being a layout configuration.
+        This route was created using [route].tsx to escape the special "route"
+        token. It renders at the literal path /route instead of being a layout
+        configuration.
       </p>
     </div>
   )

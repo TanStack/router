@@ -16,7 +16,14 @@ function RootComponent() {
   return (
     <div>
       <h1>Escaped Special Strings Test</h1>
-      <nav style={{ display: 'flex', gap: '1rem', padding: '1rem', borderBottom: '1px solid #ccc' }}>
+      <nav
+        style={{
+          display: 'flex',
+          gap: '1rem',
+          padding: '1rem',
+          borderBottom: '1px solid #ccc',
+        }}
+      >
         <Link to="/index" data-testid="link-index">
           /index
         </Link>

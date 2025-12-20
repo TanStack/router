@@ -12,8 +12,9 @@ function EscapedLazyComponent() {
       <h2 data-testid="page-title">Escaped Lazy Page</h2>
       <p data-testid="page-path">/lazy</p>
       <p data-testid="page-description">
-        This route was created using [lazy].tsx to escape the special "lazy" token.
-        It renders at the literal path /lazy instead of being a lazy-loaded route.
+        This route was created using [lazy].tsx to escape the special "lazy"
+        token. It renders at the literal path /lazy instead of being a
+        lazy-loaded route.
       </p>
     </div>
   )

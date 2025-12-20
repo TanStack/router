@@ -12,8 +12,9 @@ function EscapedUnderscoreLayoutComponent() {
       <h2 data-testid="page-title">Escaped Underscore Layout Page</h2>
       <p data-testid="page-path">/_layout</p>
       <p data-testid="page-description">
-        This route was created using [_]layout.tsx to escape the leading underscore.
-        It renders at the literal path /_layout instead of being a pathless layout.
+        This route was created using [_]layout.tsx to escape the leading
+        underscore. It renders at the literal path /_layout instead of being a
+        pathless layout.
       </p>
     </div>
   )
