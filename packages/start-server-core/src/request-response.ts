@@ -327,8 +327,8 @@ export function clearSession(config: Partial<SessionConfig>): Promise<void> {
 // not public API
 export function getResponse() {
   const event = getH3Event()
-	// @ts-expect-error accessing internal symbol
-  return event[Symbol.for("h3.internal.event.res")]
+  // @ts-expect-error accessing internal symbol
+  return event[Symbol.for('h3.internal.event.res')]
 }
 
 // not public API (yet)
