@@ -19,38 +19,47 @@ import type {
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
+import type { AnchorHTMLAttributes, ReservedProps } from '@vue/runtime-dom'
 import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
-// Type definitions to replace missing Vue JSX types
 type EventHandler<TEvent = Event> = (e: TEvent) => void
-interface HTMLAttributes {
-  class?: string
-  style?: Record<string, string | number>
-  onClick?: EventHandler<MouseEvent>
-  onFocus?: EventHandler<FocusEvent>
-  // Vue 3's h() function expects lowercase event names after 'on' prefix
-  onMouseenter?: EventHandler<MouseEvent>
-  onMouseleave?: EventHandler<MouseEvent>
-  onMouseover?: EventHandler<MouseEvent>
-  onMouseout?: EventHandler<MouseEvent>
-  onTouchstart?: EventHandler<TouchEvent>
-  // Also accept the camelCase versions for external API compatibility
-  onMouseEnter?: EventHandler<MouseEvent>
-  onMouseLeave?: EventHandler<MouseEvent>
-  onMouseOver?: EventHandler<MouseEvent>
-  onMouseOut?: EventHandler<MouseEvent>
-  onTouchStart?: EventHandler<TouchEvent>
-  [key: string]: any
+
+type DataAttributes = {
+  [K in `data-${string}`]?: unknown
 }
 
+type LinkHTMLAttributes = AnchorHTMLAttributes &
+  ReservedProps &
+  DataAttributes & {
+    // Vue's runtime-dom types use lowercase event names.
+    // Also accept camelCase versions for external API compatibility.
+    onMouseEnter?: EventHandler<MouseEvent>
+    onMouseLeave?: EventHandler<MouseEvent>
+    onMouseOver?: EventHandler<MouseEvent>
+    onMouseOut?: EventHandler<MouseEvent>
+    onTouchStart?: EventHandler<TouchEvent>
+
+    // `disabled` is not a valid <a> attribute, but is useful when using `asChild`.
+    disabled?: boolean
+  }
+
 interface StyledProps {
-  class?: string
-  style?: Record<string, string | number>
-  [key: string]: any
+  class?: LinkHTMLAttributes['class']
+  style?: LinkHTMLAttributes['style']
+  [key: string]: unknown
 }
+
+type PropsOfComponent<TComp> =
+  // Functional components
+  TComp extends (props: infer P, ...args: Array<unknown>) => any
+    ? P
+    : // Vue components (defineComponent, class components, etc)
+      TComp extends Vue.Component<infer P>
+      ? P
+      : Record<string, unknown>
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -60,7 +69,7 @@ export function useLinkProps<
   TMaskTo extends string = '',
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-): HTMLAttributes {
+): LinkHTMLAttributes {
   const router = useRouter()
   const isTransitioning = Vue.ref(false)
   let hasRenderFetched = false
@@ -195,6 +204,7 @@ export function useLinkProps<
   // Create safe props that can be spread
   const getPropsSafeToSpread = () => {
     const result: Record<string, any> = {}
+    const optionRecord = options as unknown as Record<string, unknown>
     for (const key in options) {
       if (
         ![
@@ -233,7 +243,7 @@ export function useLinkProps<
           'additionalProps',
         ].includes(key)
       ) {
-        result[key] = options[key]
+        result[key] = optionRecord[key]
       }
     }
     return result
@@ -241,7 +251,7 @@ export function useLinkProps<
 
   if (type.value === 'external') {
     // External links just have simple props
-    const externalProps: HTMLAttributes = {
+    const externalProps: Record<string, unknown> = {
       ...getPropsSafeToSpread(),
       ref,
       href: options.to,
@@ -265,11 +275,11 @@ export function useLinkProps<
       }
     })
 
-    return externalProps
+    return externalProps as LinkHTMLAttributes
   }
 
   // The click handler
-  const handleClick = (e: MouseEvent): void => {
+  const handleClick = (e: PointerEvent): void => {
     // Check actual element's target attribute as fallback
     const elementTarget = (
       e.currentTarget as HTMLAnchorElement | SVGAElement
@@ -307,7 +317,7 @@ export function useLinkProps<
         startTransition: options.startTransition,
         viewTransition: options.viewTransition,
         ignoreBlocker: options.ignoreBlocker,
-      } as any)
+      })
     }
   }
 
@@ -448,7 +458,7 @@ export function useLinkProps<
 
   // Create static event handlers that don't change between renders
   const staticEventHandlers = {
-    onClick: composeEventHandlers<MouseEvent>([
+    onClick: composeEventHandlers<PointerEvent>([
       options.onClick,
       handleClick,
     ]) as any,
@@ -480,8 +490,8 @@ export function useLinkProps<
 
   // Compute all props synchronously to avoid hydration mismatches
   // Using Vue.computed ensures props are calculated at render time, not after
-  const computedProps = Vue.computed<HTMLAttributes>(() => {
-    const result: HTMLAttributes = {
+  const computedProps = Vue.computed<LinkHTMLAttributes>(() => {
+    const result: Record<string, unknown> = {
       ...getPropsSafeToSpread(),
       href: href.value,
       ref,
@@ -523,20 +533,20 @@ export function useLinkProps<
 
     for (const key of Object.keys(activeP)) {
       if (key !== 'class' && key !== 'style') {
-        result[key] = activeP[key]
+        result[key] = (activeP as any)[key]
       }
     }
     for (const key of Object.keys(inactiveP)) {
       if (key !== 'class' && key !== 'style') {
-        result[key] = inactiveP[key]
+        result[key] = (inactiveP as any)[key]
       }
     }
 
-    return result
+    return result as LinkHTMLAttributes
   })
 
   // Return the computed ref itself - callers should access .value
-  return computedProps as unknown as HTMLAttributes
+  return computedProps as unknown as LinkHTMLAttributes
 }
 
 // Type definitions
@@ -547,7 +557,7 @@ export type UseLinkPropsOptions<
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
 > = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
-  HTMLAttributes
+  LinkHTMLAttributes
 
 export type ActiveLinkOptions<
   TComp = 'a',
@@ -560,7 +570,9 @@ export type ActiveLinkOptions<
   ActiveLinkOptionProps<TComp>
 
 type ActiveLinkProps<TComp> = Partial<
-  HTMLAttributes & {
+  (TComp extends keyof HTMLElementTagNameMap
+    ? LinkHTMLAttributes
+    : PropsOfComponent<TComp>) & {
     [key: `data-${string}`]: unknown
   }
 >
@@ -591,15 +603,16 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | Vue.VNode
-    | ((state: { isActive: boolean; isTransitioning: boolean }) => Vue.VNode)
+    | Vue.VNodeChild
+    | ((state: {
+        isActive: boolean
+        isTransitioning: boolean
+      }) => Vue.VNodeChild)
 }
 
 type LinkComponentVueProps<TComp> = TComp extends keyof HTMLElementTagNameMap
-  ? Omit<HTMLAttributes, keyof CreateLinkProps>
-  : TComp extends Vue.Component
-    ? Record<string, any>
-    : Record<string, any>
+  ? Omit<LinkHTMLAttributes, keyof CreateLinkProps>
+  : Omit<PropsOfComponent<TComp>, keyof CreateLinkProps>
 
 export type LinkComponentProps<
   TComp = 'a',
@@ -620,15 +633,38 @@ export type CreateLinkProps = LinkProps<
   string
 >
 
-export type LinkComponent<TComp> = <
+export type LinkComponent<
+  in out TComp,
+  in out TDefaultFrom extends string = string,
+> = <
   TRouter extends AnyRouter = RegisteredRouter,
-  const TFrom extends string = string,
+  const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Vue.VNode
+
+export interface LinkComponentRoute<
+  in out TDefaultFrom extends string = string,
+> {
+  defaultFrom: TDefaultFrom
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    const TTo extends string | undefined = undefined,
+    const TMaskTo extends string = '',
+  >(
+    props: LinkComponentProps<
+      'a',
+      TRouter,
+      this['defaultFrom'],
+      TTo,
+      this['defaultFrom'],
+      TMaskTo
+    >,
+  ): Vue.VNode
+}
 
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => Vue.VNode>,
@@ -637,7 +673,7 @@ export function createLink<const TComp>(
     name: 'CreatedLink',
     inheritAttrs: false,
     setup(_, { attrs, slots }) {
-      return () => Vue.h(Link, { ...attrs, _asChild: Comp }, slots)
+      return () => Vue.h(LinkImpl as any, { ...attrs, _asChild: Comp }, slots)
     },
   }) as any
 }
@@ -676,7 +712,7 @@ const LinkImpl = Vue.defineComponent({
     const allProps = { ...props, ...attrs }
     const linkPropsComputed = useLinkProps(
       allProps as any,
-    ) as unknown as Vue.ComputedRef<HTMLAttributes>
+    ) as unknown as Vue.ComputedRef<LinkHTMLAttributes>
 
     return () => {
       const Component = props._asChild || 'a'
@@ -700,7 +736,7 @@ const LinkImpl = Vue.defineComponent({
       if (Component === 'svg') {
         // Create props without class for svg link
         const svgLinkProps = { ...linkProps }
-        delete (svgLinkProps as any).class
+        delete svgLinkProps.class
         return Vue.h('svg', {}, [Vue.h('a', svgLinkProps, slotContent)])
       }
 
@@ -723,17 +759,9 @@ const LinkImpl = Vue.defineComponent({
 /**
  * Link component with proper TypeScript generics support
  */
-export const Link = LinkImpl as unknown as {
-  <
-    TRouter extends AnyRouter = RegisteredRouter,
-    TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-    TTo extends string | undefined = '.',
-    TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-    TMaskTo extends string = '.',
-  >(
-    props: LinkComponentProps<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  ): Vue.VNode
-}
+export const Link = LinkImpl as unknown as Vue.Component<unknown> &
+  Vue.Component<CreateLinkProps> &
+  LinkComponent<'a'>
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)

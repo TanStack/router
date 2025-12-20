@@ -56,7 +56,7 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             a: boolean
           }
@@ -80,7 +80,7 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             b: string
           }
@@ -103,7 +103,7 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             c: number
           }
@@ -129,7 +129,7 @@ test('createMiddleware merges server context', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             d: number
           }
@@ -236,7 +236,7 @@ test('createMiddleware merges client context and sends to the server', () => {
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             e: string
           }
@@ -314,7 +314,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer1: string
           }
@@ -353,7 +353,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer2: string
           }
@@ -403,7 +403,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer3: string
           }
@@ -463,7 +463,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer4: string
           }
@@ -532,7 +532,7 @@ test('createMiddleware merges server context and client context, sends server co
 
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
-        _types: {
+        '~types': {
           context: {
             fromServer5: string
           }

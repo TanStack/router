@@ -155,6 +155,15 @@ function RootComponent() {
           }}
         >
           Masks
+        </Link>{' '}
+        <Link
+          to="/pathless-layout"
+          data-testid="link-to-pathless-layout"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Pathless Layout
         </Link>
       </div>
       <hr />

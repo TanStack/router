@@ -9,7 +9,6 @@ import {
 import type { LRUCache } from './lru-cache'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
-/** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
   return cleanPath(
     paths
@@ -21,26 +20,22 @@ export function joinPaths(paths: Array<string | undefined>) {
 }
 
 /** Remove repeated slashes from a path string. */
-/** Remove repeated slashes from a path string. */
 export function cleanPath(path: string) {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')
 }
 
 /** Trim leading slashes (except preserving root '/'). */
-/** Trim leading slashes (except preserving root '/'). */
 export function trimPathLeft(path: string) {
   return path === '/' ? path : path.replace(/^\/{1,}/, '')
 }
 
-/** Trim trailing slashes (except preserving root '/'). */
 /** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
   const len = path.length
   return len > 1 && path[len - 1] === '/' ? path.replace(/\/{1,}$/, '') : path
 }
 
-/** Trim both leading and trailing slashes. */
 /** Trim both leading and trailing slashes. */
 export function trimPath(path: string) {
   return trimPathRight(trimPathLeft(path))
@@ -58,10 +53,6 @@ export function removeTrailingSlash(value: string, basepath: string): string {
 // see the usage in the isActive under useLinkProps
 // /sample/path1 = /sample/path1/
 // /sample/path1/some <> /sample/path1
-/**
- * Compare two pathnames for exact equality after normalizing trailing slashes
- * relative to the provided `basepath`.
- */
 /**
  * Compare two pathnames for exact equality after normalizing trailing slashes
  * relative to the provided `basepath`.
@@ -240,10 +231,6 @@ function encodeParam(
  *
  * - Encodes params safely (configurable allowed characters)
  * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
- */
-/**
- * Interpolate params and wildcards into a route path template.
- * Encodes safely and supports optional params and custom decode char maps.
  */
 export function interpolatePath({
   path,

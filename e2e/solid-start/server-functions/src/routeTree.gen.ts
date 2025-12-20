@@ -20,7 +20,6 @@ import { Route as HeadersRouteImport } from './routes/headers'
 import { Route as EnvOnlyRouteImport } from './routes/env-only'
 import { Route as DeadCodePreserveRouteImport } from './routes/dead-code-preserve'
 import { Route as ConsistentRouteImport } from './routes/consistent'
-import { Route as AbortSignalRouteImport } from './routes/abort-signal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RedirectTestIndexRouteImport } from './routes/redirect-test/index'
 import { Route as RedirectTestSsrIndexRouteImport } from './routes/redirect-test-ssr/index'
@@ -29,12 +28,14 @@ import { Route as MiddlewareIndexRouteImport } from './routes/middleware/index'
 import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-redirect/index'
 import { Route as FactoryIndexRouteImport } from './routes/factory/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
+import { Route as AbortSignalIndexRouteImport } from './routes/abort-signal/index'
 import { Route as RedirectTestTargetRouteImport } from './routes/redirect-test/target'
 import { Route as RedirectTestSsrTargetRouteImport } from './routes/redirect-test-ssr/target'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
+import { Route as AbortSignalMethodRouteImport } from './routes/abort-signal/$method'
 import { Route as FormdataRedirectTargetNameRouteImport } from './routes/formdata-redirect/target.$name'
 
 const SubmitPostFormdataRoute = SubmitPostFormdataRouteImport.update({
@@ -92,11 +93,6 @@ const ConsistentRoute = ConsistentRouteImport.update({
   path: '/consistent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AbortSignalRoute = AbortSignalRouteImport.update({
-  id: '/abort-signal',
-  path: '/abort-signal',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -137,6 +133,11 @@ const CookiesIndexRoute = CookiesIndexRouteImport.update({
   path: '/cookies/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AbortSignalIndexRoute = AbortSignalIndexRouteImport.update({
+  id: '/abort-signal/',
+  path: '/abort-signal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RedirectTestTargetRoute = RedirectTestTargetRouteImport.update({
   id: '/redirect-test/target',
   path: '/redirect-test/target',
@@ -169,6 +170,11 @@ const CookiesSetRoute = CookiesSetRouteImport.update({
   path: '/cookies/set',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AbortSignalMethodRoute = AbortSignalMethodRouteImport.update({
+  id: '/abort-signal/$method',
+  path: '/abort-signal/$method',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FormdataRedirectTargetNameRoute =
   FormdataRedirectTargetNameRouteImport.update({
     id: '/formdata-redirect/target/$name',
@@ -178,7 +184,6 @@ const FormdataRedirectTargetNameRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/abort-signal': typeof AbortSignalRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -190,12 +195,14 @@ export interface FileRoutesByFullPath {
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
+  '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
+  '/abort-signal': typeof AbortSignalIndexRoute
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
@@ -207,7 +214,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/abort-signal': typeof AbortSignalRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -219,12 +225,14 @@ export interface FileRoutesByTo {
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
+  '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
+  '/abort-signal': typeof AbortSignalIndexRoute
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
@@ -237,7 +245,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/abort-signal': typeof AbortSignalRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -249,12 +256,14 @@ export interface FileRoutesById {
   '/serialize-form-data': typeof SerializeFormDataRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
+  '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
+  '/abort-signal/': typeof AbortSignalIndexRoute
   '/cookies/': typeof CookiesIndexRoute
   '/factory/': typeof FactoryIndexRoute
   '/formdata-redirect/': typeof FormdataRedirectIndexRoute
@@ -268,7 +277,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/abort-signal'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -280,12 +288,14 @@ export interface FileRouteTypes {
     | '/serialize-form-data'
     | '/status'
     | '/submit-post-formdata'
+    | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
+    | '/abort-signal'
     | '/cookies'
     | '/factory'
     | '/formdata-redirect'
@@ -297,7 +307,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/abort-signal'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -309,12 +318,14 @@ export interface FileRouteTypes {
     | '/serialize-form-data'
     | '/status'
     | '/submit-post-formdata'
+    | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
+    | '/abort-signal'
     | '/cookies'
     | '/factory'
     | '/formdata-redirect'
@@ -326,7 +337,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/abort-signal'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -338,12 +348,14 @@ export interface FileRouteTypes {
     | '/serialize-form-data'
     | '/status'
     | '/submit-post-formdata'
+    | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
+    | '/abort-signal/'
     | '/cookies/'
     | '/factory/'
     | '/formdata-redirect/'
@@ -356,7 +368,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AbortSignalRoute: typeof AbortSignalRoute
   ConsistentRoute: typeof ConsistentRoute
   DeadCodePreserveRoute: typeof DeadCodePreserveRoute
   EnvOnlyRoute: typeof EnvOnlyRoute
@@ -368,12 +379,14 @@ export interface RootRouteChildren {
   SerializeFormDataRoute: typeof SerializeFormDataRoute
   StatusRoute: typeof StatusRoute
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
+  AbortSignalMethodRoute: typeof AbortSignalMethodRoute
   CookiesSetRoute: typeof CookiesSetRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
   RedirectTestSsrTargetRoute: typeof RedirectTestSsrTargetRoute
   RedirectTestTargetRoute: typeof RedirectTestTargetRoute
+  AbortSignalIndexRoute: typeof AbortSignalIndexRoute
   CookiesIndexRoute: typeof CookiesIndexRoute
   FactoryIndexRoute: typeof FactoryIndexRoute
   FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
@@ -463,13 +476,6 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ConsistentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/abort-signal': {
-      id: '/abort-signal'
-      path: '/abort-signal'
-      fullPath: '/abort-signal'
-      preLoaderRoute: typeof AbortSignalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -526,6 +532,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof CookiesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/abort-signal/': {
+      id: '/abort-signal/'
+      path: '/abort-signal'
+      fullPath: '/abort-signal'
+      preLoaderRoute: typeof AbortSignalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/redirect-test/target': {
       id: '/redirect-test/target'
       path: '/redirect-test/target'
@@ -568,6 +581,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof CookiesSetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/abort-signal/$method': {
+      id: '/abort-signal/$method'
+      path: '/abort-signal/$method'
+      fullPath: '/abort-signal/$method'
+      preLoaderRoute: typeof AbortSignalMethodRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/formdata-redirect/target/$name': {
       id: '/formdata-redirect/target/$name'
       path: '/formdata-redirect/target/$name'
@@ -580,7 +600,6 @@ declare module '@tanstack/solid-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AbortSignalRoute: AbortSignalRoute,
   ConsistentRoute: ConsistentRoute,
   DeadCodePreserveRoute: DeadCodePreserveRoute,
   EnvOnlyRoute: EnvOnlyRoute,
@@ -592,12 +611,14 @@ const rootRouteChildren: RootRouteChildren = {
   SerializeFormDataRoute: SerializeFormDataRoute,
   StatusRoute: StatusRoute,
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
+  AbortSignalMethodRoute: AbortSignalMethodRoute,
   CookiesSetRoute: CookiesSetRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
   RedirectTestSsrTargetRoute: RedirectTestSsrTargetRoute,
   RedirectTestTargetRoute: RedirectTestTargetRoute,
+  AbortSignalIndexRoute: AbortSignalIndexRoute,
   CookiesIndexRoute: CookiesIndexRoute,
   FactoryIndexRoute: FactoryIndexRoute,
   FormdataRedirectIndexRoute: FormdataRedirectIndexRoute,

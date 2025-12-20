@@ -1,7 +1,4 @@
-export type {
-  DehydratedRouter,
-  JsonResponse,
-} from '@tanstack/router-core/ssr/client'
+export type { JsonResponse } from '@tanstack/router-core/ssr/client'
 
 export { hydrate, json, mergeHeaders } from '@tanstack/router-core/ssr/client'
 

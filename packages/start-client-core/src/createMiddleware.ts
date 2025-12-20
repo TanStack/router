@@ -108,7 +108,7 @@ export interface FunctionMiddlewareWithTypes<
   TClientContext,
   TClientSendContext,
 > {
-  _types: FunctionMiddlewareTypes<
+  '~types': FunctionMiddlewareTypes<
     TRegister,
     TMiddlewares,
     TInputValidator,
@@ -187,9 +187,9 @@ export type IntersectAllValidatorInputs<TMiddlewares, TInputValidator> =
 export type IntersectAllMiddleware<
   TMiddlewares,
   TType extends
-    | keyof AnyFunctionMiddleware['_types']
-    | keyof AnyRequestMiddleware['_types']
-    | keyof AnyServerFn['_types'],
+    | keyof AnyFunctionMiddleware['~types']
+    | keyof AnyRequestMiddleware['~types']
+    | keyof AnyServerFn['~types'],
   TAcc = undefined,
 > = TMiddlewares extends readonly [infer TMiddleware, ...infer TRest]
   ? TMiddleware extends
@@ -201,7 +201,7 @@ export type IntersectAllMiddleware<
         TType,
         IntersectAssign<
           TAcc,
-          TMiddleware['_types'][TType & keyof TMiddleware['_types']]
+          TMiddleware['~types'][TType & keyof TMiddleware['~types']]
         >
       >
     : TAcc
@@ -246,9 +246,9 @@ export type AssignAllClientContextBeforeNext<
 export type AssignAllMiddleware<
   TMiddlewares,
   TType extends
-    | keyof AnyFunctionMiddleware['_types']
-    | keyof AnyRequestMiddleware['_types']
-    | keyof AnyServerFn['_types'],
+    | keyof AnyFunctionMiddleware['~types']
+    | keyof AnyRequestMiddleware['~types']
+    | keyof AnyServerFn['~types'],
   TAcc = undefined,
 > = TMiddlewares extends readonly [infer TMiddleware, ...infer TRest]
   ? TMiddleware extends
@@ -258,7 +258,7 @@ export type AssignAllMiddleware<
     ? AssignAllMiddleware<
         TRest,
         TType,
-        Assign<TAcc, TMiddleware['_types'][TType & keyof TMiddleware['_types']]>
+        Assign<TAcc, TMiddleware['~types'][TType & keyof TMiddleware['~types']]>
       >
     : TAcc
   : TAcc
@@ -480,7 +480,7 @@ export type FunctionServerResultWithContext<
   in out TSendContext,
 > = {
   'use functions must return the result of next()': true
-  _types: {
+  '~types': {
     context: TServerContext
     sendContext: TSendContext
   }
@@ -703,7 +703,7 @@ export interface RequestMiddlewareWithTypes<
   TMiddlewares,
   TServerContext,
 > {
-  _types: RequestMiddlewareTypes<TRegister, TMiddlewares, TServerContext>
+  '~types': RequestMiddlewareTypes<TRegister, TMiddlewares, TServerContext>
   options: RequestMiddlewareOptions<TRegister, TMiddlewares, TServerContext>
 }
 
