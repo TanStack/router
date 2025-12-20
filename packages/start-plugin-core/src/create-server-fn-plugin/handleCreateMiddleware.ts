@@ -8,13 +8,10 @@ export function handleCreateMiddleware(
     env: 'client' | 'server'
   },
 ) {
+  if (opts.env === 'server') {
+    throw new Error('handleCreateMiddleware should not be called on the server')
+  }
   const rootCallExpression = getRootCallExpression(path)
-
-  // if (debug)
-  //   console.info(
-  //     'Handling createMiddleware call expression:',
-  //     rootCallExpression.toString(),
-  //   )
 
   const callExpressionPaths = {
     middleware: null as babel.NodePath<t.CallExpression> | null,
@@ -51,15 +48,13 @@ export function handleCreateMiddleware(
       )
     }
 
-    // If we're on the client, remove the validator call expression
-    if (opts.env === 'client') {
-      if (
-        t.isMemberExpression(callExpressionPaths.inputValidator.node.callee)
-      ) {
-        callExpressionPaths.inputValidator.replaceWith(
-          callExpressionPaths.inputValidator.node.callee.object,
-        )
-      }
+    // remove the validator call expression
+    if (
+      t.isMemberExpression(callExpressionPaths.inputValidator.node.callee)
+    ) {
+      callExpressionPaths.inputValidator.replaceWith(
+        callExpressionPaths.inputValidator.node.callee.object,
+      )
     }
   }
 
@@ -69,10 +64,9 @@ export function handleCreateMiddleware(
 
   if (
     callExpressionPaths.server &&
-    serverFnPath.node &&
-    opts.env === 'client'
+    serverFnPath.node
   ) {
-    // If we're on the client, remove the server call expression
+    // remove the server call expression
     if (t.isMemberExpression(callExpressionPaths.server.node.callee)) {
       callExpressionPaths.server.replaceWith(
         callExpressionPaths.server.node.callee.object,
