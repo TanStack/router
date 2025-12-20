@@ -76,7 +76,7 @@ export const localFnPOST = localFnFactory({ method: 'POST' })
 export const fakeFn = createFakeFn().handler(async () => {
   return {
     name: 'fakeFn',
-    window,
+    window: typeof window !== 'undefined' ? window : 'no window object',
   }
 })
 

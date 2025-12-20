@@ -20,6 +20,8 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { createServerFnPlugin } from './create-server-fn-plugin/plugin'
+import { moduleLoaderPlugin } from './module-loader-plugin/plugin'
+import { splitExportsPlugin } from './split-exports-plugin/plugin'
 import type { ViteEnvironmentNames } from './constants'
 import type {
   TanStackStartInputConfig,
@@ -360,12 +362,22 @@ export function TanStackStartVitePluginCore(
       },
     },
     tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
+    // Module loader plugin provides shared module loading capabilities
+    // Must be before plugins that need to load module code (split-exports, create-server-fn)
+    moduleLoaderPlugin(),
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPlugin
     startCompilerPlugin({ framework: corePluginOpts.framework, environments }),
     createServerFnPlugin({
       framework: corePluginOpts.framework,
       directive,
       environments,
+    }),
+    // Split exports plugin rewrites imports to enable better dead code elimination
+    // Must run AFTER server function plugins so that .handler() calls are already transformed
+    // before split-exports creates module variants with query strings
+    splitExportsPlugin({
+      enabled: startPluginOpts?.importOptimization?.enabled ?? true,
+      getConfig,
     }),
 
     TanStackServerFnPlugin({
