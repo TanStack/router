@@ -19,7 +19,7 @@
     "@rsbuild/core": "^1.2.4",
     "@rsbuild/plugin-babel": "^1.0.6",
     "@rsbuild/plugin-solid": "^1.0.6",
-    "@tanstack/router-plugin": "^1.141.8",
+    "@tanstack/router-plugin": "^1.141.9",
     "typescript": "^5.6.2"
   }
 }
