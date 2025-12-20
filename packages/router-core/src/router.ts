@@ -1758,11 +1758,11 @@ export class RouterCore<
 
       // If a rewrite function is provided, use it to rewrite the URL
       const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
+      const rewrittenFullPath = `${rewrittenUrl.pathname}${searchStr}${hashStr}`
 
       return {
-        publicHref:
-          rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
-        href: fullPath,
+        publicHref: rewrittenFullPath,
+        href: rewrittenFullPath,
         url: rewrittenUrl,
         pathname: nextPathname,
         search: nextSearch,

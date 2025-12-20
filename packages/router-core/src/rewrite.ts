@@ -52,7 +52,15 @@ export function rewriteBasepath(opts: {
       return url
     },
     output: ({ url }) => {
+      if (url.pathname === checkBasepath) {
+        url.pathname = '/'
+      } else if (url.pathname.startsWith(checkBasepathWithSlash)) {
+        // Handle basepath with trailing content (e.g., /my-app/users -> /users)
+        url.pathname = url.pathname.slice(normalizedBasepath.length)
+      }
+
       url.pathname = joinPaths(['/', trimmedBasepath, url.pathname])
+
       return url
     },
   } satisfies LocationRewrite

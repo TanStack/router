@@ -47,9 +47,8 @@ test('Server function URLs correctly include app basepath', async ({
 test('client-side redirect', async ({ page, baseURL }) => {
   await page.goto('/redirect')
   await page.getByTestId('link-to-throw-it').click()
-  await page.waitForLoadState('networkidle')
-
-  expect(await page.getByTestId('post-view').isVisible()).toBe(true)
+  await page.waitForURL(`${baseURL}/posts/1`)
+  await expect(page.getByTestId('post-view')).toBeInViewport()
   expect(page.url()).toBe(`${baseURL}/posts/1`)
 })
 
