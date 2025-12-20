@@ -3,12 +3,17 @@ import {
   RoutePrefixMap,
   cleanPath,
   determineInitialRoutePath,
+  hasEscapedLeadingUnderscore,
+  hasEscapedTrailingUnderscore,
+  isSegmentPathless,
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
+  removeLayoutSegmentsWithEscape,
   removeLeadingUnderscores,
   removeTrailingUnderscores,
   removeUnderscores,
+  removeUnderscoresWithEscape,
   routePathToVariable,
 } from '../src/utils'
 import type { ImportDeclaration, RouteNode } from '../src/types'
@@ -76,7 +81,7 @@ describe('determineInitialRoutePath', () => {
 
     expect(consoleSpy).toBeCalledWith(
       'Error: Disallowed character "/" found in square brackets in route path "/a[/]".\n' +
-        'You cannot use any of the following characters in square brackets: /, \\, ?, #, :, *, <, >, |, !, $, %, _\n' +
+        'You cannot use any of the following characters in square brackets: /, \\, ?, #, :, *, <, >, |, !, $, %\n' +
         'Please remove and/or replace them.',
     )
 
@@ -293,6 +298,199 @@ describe('removeTrailingUnderscores', () => {
     expect(
       removeTrailingUnderscores('/_test_/abc/_route_/d_/_e', '_route'),
     ).toBe('/_test/abc/_route/d/_e')
+  })
+})
+
+describe('hasEscapedLeadingUnderscore', () => {
+  it('returns true for [_] prefix pattern', () => {
+    expect(hasEscapedLeadingUnderscore('[_]layout')).toBe(true)
+    expect(hasEscapedLeadingUnderscore('[_]foo')).toBe(true)
+    expect(hasEscapedLeadingUnderscore('[_]')).toBe(true)
+  })
+
+  it('returns true for fully escaped segment starting with underscore', () => {
+    expect(hasEscapedLeadingUnderscore('[_layout]')).toBe(true)
+    expect(hasEscapedLeadingUnderscore('[_foo]')).toBe(true)
+    expect(hasEscapedLeadingUnderscore('[_1nd3x]')).toBe(true)
+    expect(hasEscapedLeadingUnderscore('[_]')).toBe(true)
+  })
+
+  it('returns false for non-escaped leading underscore', () => {
+    expect(hasEscapedLeadingUnderscore('_layout')).toBe(false)
+    expect(hasEscapedLeadingUnderscore('_foo')).toBe(false)
+  })
+
+  it('returns false for segments without leading underscore', () => {
+    expect(hasEscapedLeadingUnderscore('layout')).toBe(false)
+    expect(hasEscapedLeadingUnderscore('[layout]')).toBe(false)
+    expect(hasEscapedLeadingUnderscore('foo[_]')).toBe(false)
+  })
+
+  it('returns false for partial escapes with nested brackets', () => {
+    expect(hasEscapedLeadingUnderscore('[_foo[bar]')).toBe(false)
+    expect(hasEscapedLeadingUnderscore('[_foo]bar]')).toBe(false)
+  })
+})
+
+describe('hasEscapedTrailingUnderscore', () => {
+  it('returns true for [_] suffix pattern', () => {
+    expect(hasEscapedTrailingUnderscore('blog[_]')).toBe(true)
+    expect(hasEscapedTrailingUnderscore('foo[_]')).toBe(true)
+    expect(hasEscapedTrailingUnderscore('[_]')).toBe(true)
+  })
+
+  it('returns true for fully escaped segment ending with underscore', () => {
+    expect(hasEscapedTrailingUnderscore('[blog_]')).toBe(true)
+    expect(hasEscapedTrailingUnderscore('[foo_]')).toBe(true)
+    expect(hasEscapedTrailingUnderscore('[_r0ut3_]')).toBe(true)
+    expect(hasEscapedTrailingUnderscore('[_]')).toBe(true)
+  })
+
+  it('returns false for non-escaped trailing underscore', () => {
+    expect(hasEscapedTrailingUnderscore('blog_')).toBe(false)
+    expect(hasEscapedTrailingUnderscore('foo_')).toBe(false)
+  })
+
+  it('returns false for segments without trailing underscore', () => {
+    expect(hasEscapedTrailingUnderscore('blog')).toBe(false)
+    expect(hasEscapedTrailingUnderscore('[blog]')).toBe(false)
+    expect(hasEscapedTrailingUnderscore('[_]foo')).toBe(false)
+  })
+
+  it('returns false for partial escapes with nested brackets', () => {
+    expect(hasEscapedTrailingUnderscore('[foo[bar]_]')).toBe(false)
+    expect(hasEscapedTrailingUnderscore('[foo]bar_]')).toBe(false)
+  })
+})
+
+describe('isSegmentPathless', () => {
+  it('returns true for non-escaped leading underscore', () => {
+    expect(isSegmentPathless('_layout', '_layout')).toBe(true)
+    expect(isSegmentPathless('_foo', '_foo')).toBe(true)
+  })
+
+  it('returns false for escaped leading underscore with [_] prefix', () => {
+    expect(isSegmentPathless('_layout', '[_]layout')).toBe(false)
+    expect(isSegmentPathless('_foo', '[_]foo')).toBe(false)
+  })
+
+  it('returns false for fully escaped segment', () => {
+    expect(isSegmentPathless('_layout', '[_layout]')).toBe(false)
+    expect(isSegmentPathless('_1nd3x', '[_1nd3x]')).toBe(false)
+  })
+
+  it('returns false for segments not starting with underscore', () => {
+    expect(isSegmentPathless('layout', 'layout')).toBe(false)
+    expect(isSegmentPathless('foo', '[foo]')).toBe(false)
+  })
+})
+
+describe('removeUnderscoresWithEscape', () => {
+  it('removes non-escaped leading underscores', () => {
+    expect(removeUnderscoresWithEscape('/_layout', '/_layout')).toBe('/layout')
+    expect(removeUnderscoresWithEscape('/_foo/_bar', '/_foo/_bar')).toBe(
+      '/foo/bar',
+    )
+  })
+
+  it('removes non-escaped trailing underscores', () => {
+    expect(removeUnderscoresWithEscape('/blog_', '/blog_')).toBe('/blog')
+    expect(removeUnderscoresWithEscape('/foo_/bar_', '/foo_/bar_')).toBe(
+      '/foo/bar',
+    )
+  })
+
+  it('preserves escaped leading underscores with [_] prefix', () => {
+    expect(removeUnderscoresWithEscape('/_layout', '/[_]layout')).toBe(
+      '/_layout',
+    )
+    expect(removeUnderscoresWithEscape('/_foo', '/[_]foo')).toBe('/_foo')
+  })
+
+  it('preserves escaped trailing underscores with [_] suffix', () => {
+    expect(removeUnderscoresWithEscape('/blog_', '/blog[_]')).toBe('/blog_')
+    expect(removeUnderscoresWithEscape('/foo_', '/foo[_]')).toBe('/foo_')
+  })
+
+  it('preserves fully escaped segments with underscores', () => {
+    expect(removeUnderscoresWithEscape('/_layout', '/[_layout]')).toBe(
+      '/_layout',
+    )
+    expect(removeUnderscoresWithEscape('/_r0ut3_', '/[_r0ut3_]')).toBe(
+      '/_r0ut3_',
+    )
+  })
+
+  it('handles mixed escaped and non-escaped underscores', () => {
+    expect(
+      removeUnderscoresWithEscape('/_foo/_bar_/baz_', '/_foo/[_]bar_/baz[_]'),
+    ).toBe('/foo/_bar/baz_')
+  })
+
+  it('falls back to removeUnderscores when no originalPath', () => {
+    expect(removeUnderscoresWithEscape('/_foo_')).toBe('/foo')
+    expect(removeUnderscoresWithEscape('/_foo_', undefined)).toBe('/foo')
+  })
+
+  it('returns empty string for empty/undefined routePath', () => {
+    expect(removeUnderscoresWithEscape(undefined)).toBe('')
+    expect(removeUnderscoresWithEscape('')).toBe('')
+  })
+})
+
+describe('removeLayoutSegmentsWithEscape', () => {
+  it('removes non-escaped layout segments', () => {
+    expect(removeLayoutSegmentsWithEscape('/_layout/foo', '/_layout/foo')).toBe(
+      '/foo',
+    )
+    expect(
+      removeLayoutSegmentsWithEscape(
+        '/_auth/_admin/dashboard',
+        '/_auth/_admin/dashboard',
+      ),
+    ).toBe('/dashboard')
+  })
+
+  it('preserves escaped layout segments with [_] prefix', () => {
+    expect(
+      removeLayoutSegmentsWithEscape('/_layout/foo', '/[_]layout/foo'),
+    ).toBe('/_layout/foo')
+    expect(
+      removeLayoutSegmentsWithEscape('/_auth/dashboard', '/[_]auth/dashboard'),
+    ).toBe('/_auth/dashboard')
+  })
+
+  it('preserves fully escaped segments starting with underscore', () => {
+    expect(
+      removeLayoutSegmentsWithEscape('/_layout/foo', '/[_layout]/foo'),
+    ).toBe('/_layout/foo')
+    expect(removeLayoutSegmentsWithEscape('/_1nd3x/bar', '/[_1nd3x]/bar')).toBe(
+      '/_1nd3x/bar',
+    )
+  })
+
+  it('handles mixed escaped and non-escaped layout segments', () => {
+    expect(
+      removeLayoutSegmentsWithEscape(
+        '/_auth/_admin/dashboard',
+        '/[_]auth/_admin/dashboard',
+      ),
+    ).toBe('/_auth/dashboard')
+    expect(
+      removeLayoutSegmentsWithEscape('/_foo/_bar/_baz', '/_foo/[_bar]/_baz'),
+    ).toBe('/_bar')
+  })
+
+  it('falls back to removeLayoutSegments when no originalPath', () => {
+    expect(removeLayoutSegmentsWithEscape('/_foo/bar/_baz')).toBe('/bar')
+    expect(removeLayoutSegmentsWithEscape('/_foo/bar/_baz', undefined)).toBe(
+      '/bar',
+    )
+  })
+
+  it('handles root path', () => {
+    expect(removeLayoutSegmentsWithEscape('/')).toBe('/')
+    expect(removeLayoutSegmentsWithEscape()).toBe('/')
   })
 })
 
