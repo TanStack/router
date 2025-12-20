@@ -28,7 +28,7 @@ function App() {
           })
         }
       >
-        Navigate to /redirect with document reload
+        Navigate to /redirect
       </button>
     </div>
   )

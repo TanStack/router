@@ -36,30 +36,36 @@ export function rewriteBasepath(opts: {
     ? normalizedBasepathWithSlash
     : normalizedBasepathWithSlash.toLowerCase()
 
+  const removeBasePath = (pathname: string) => {
+    const normalizedPath = opts.caseSensitive
+      ? pathname
+      : pathname.toLowerCase()
+
+    // Handle exact basepath match (e.g., /my-app -> /)
+    if (normalizedPath === checkBasepath) {
+      return '/'
+    }
+
+    if (normalizedPath.startsWith(checkBasepathWithSlash)) {
+      // Handle basepath with trailing content (e.g., /my-app/users -> /users)
+      return pathname.slice(normalizedBasepath.length)
+    }
+
+    return pathname
+  }
+
   return {
     input: ({ url }) => {
-      const pathname = opts.caseSensitive
-        ? url.pathname
-        : url.pathname.toLowerCase()
+      url.pathname = removeBasePath(url.pathname)
 
-      // Handle exact basepath match (e.g., /my-app -> /)
-      if (pathname === checkBasepath) {
-        url.pathname = '/'
-      } else if (pathname.startsWith(checkBasepathWithSlash)) {
-        // Handle basepath with trailing content (e.g., /my-app/users -> /users)
-        url.pathname = url.pathname.slice(normalizedBasepath.length)
-      }
       return url
     },
     output: ({ url }) => {
-      if (url.pathname === checkBasepath) {
-        url.pathname = '/'
-      } else if (url.pathname.startsWith(checkBasepathWithSlash)) {
-        // Handle basepath with trailing content (e.g., /my-app/users -> /users)
-        url.pathname = url.pathname.slice(normalizedBasepath.length)
-      }
-
-      url.pathname = joinPaths(['/', trimmedBasepath, url.pathname])
+      url.pathname = joinPaths([
+        '/',
+        trimmedBasepath,
+        removeBasePath(url.pathname),
+      ])
 
       return url
     },
