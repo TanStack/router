@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SubmitPostFormdataRouteImport } from './routes/submit-post-formdata'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as ServerOnlyFnRouteImport } from './routes/server-only-fn'
+import { Route as ServerFnInClientOnlyFnRouteImport } from './routes/server-fn-in-client-only-fn'
 import { Route as SerializeFormDataRouteImport } from './routes/serialize-form-data'
 import { Route as ReturnNullRouteImport } from './routes/return-null'
 import { Route as RawResponseRouteImport } from './routes/raw-response'
@@ -53,6 +54,11 @@ const StatusRoute = StatusRouteImport.update({
 const ServerOnlyFnRoute = ServerOnlyFnRouteImport.update({
   id: '/server-only-fn',
   path: '/server-only-fn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServerFnInClientOnlyFnRoute = ServerFnInClientOnlyFnRouteImport.update({
+  id: '/server-fn-in-client-only-fn',
+  path: '/server-fn-in-client-only-fn',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SerializeFormDataRoute = SerializeFormDataRouteImport.update({
@@ -206,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
+  '/server-fn-in-client-only-fn': typeof ServerFnInClientOnlyFnRoute
   '/server-only-fn': typeof ServerOnlyFnRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
+  '/server-fn-in-client-only-fn': typeof ServerFnInClientOnlyFnRoute
   '/server-only-fn': typeof ServerOnlyFnRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
+  '/server-fn-in-client-only-fn': typeof ServerFnInClientOnlyFnRoute
   '/server-only-fn': typeof ServerOnlyFnRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
@@ -305,6 +314,7 @@ export interface FileRouteTypes {
     | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
+    | '/server-fn-in-client-only-fn'
     | '/server-only-fn'
     | '/status'
     | '/submit-post-formdata'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
+    | '/server-fn-in-client-only-fn'
     | '/server-only-fn'
     | '/status'
     | '/submit-post-formdata'
@@ -369,6 +380,7 @@ export interface FileRouteTypes {
     | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
+    | '/server-fn-in-client-only-fn'
     | '/server-only-fn'
     | '/status'
     | '/submit-post-formdata'
@@ -402,6 +414,7 @@ export interface RootRouteChildren {
   RawResponseRoute: typeof RawResponseRoute
   ReturnNullRoute: typeof ReturnNullRoute
   SerializeFormDataRoute: typeof SerializeFormDataRoute
+  ServerFnInClientOnlyFnRoute: typeof ServerFnInClientOnlyFnRoute
   ServerOnlyFnRoute: typeof ServerOnlyFnRoute
   StatusRoute: typeof StatusRoute
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
@@ -444,6 +457,13 @@ declare module '@tanstack/react-router' {
       path: '/server-only-fn'
       fullPath: '/server-only-fn'
       preLoaderRoute: typeof ServerOnlyFnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/server-fn-in-client-only-fn': {
+      id: '/server-fn-in-client-only-fn'
+      path: '/server-fn-in-client-only-fn'
+      fullPath: '/server-fn-in-client-only-fn'
+      preLoaderRoute: typeof ServerFnInClientOnlyFnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/serialize-form-data': {
@@ -650,6 +670,7 @@ const rootRouteChildren: RootRouteChildren = {
   RawResponseRoute: RawResponseRoute,
   ReturnNullRoute: ReturnNullRoute,
   SerializeFormDataRoute: SerializeFormDataRoute,
+  ServerFnInClientOnlyFnRoute: ServerFnInClientOnlyFnRoute,
   ServerOnlyFnRoute: ServerOnlyFnRoute,
   StatusRoute: StatusRoute,
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,

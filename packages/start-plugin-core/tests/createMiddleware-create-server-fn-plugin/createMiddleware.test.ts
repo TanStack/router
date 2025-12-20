@@ -50,15 +50,13 @@ describe('createMiddleware compiles correctly', async () => {
     )
     const code = file.toString()
 
-    test.each(['client', 'server'] as const)(
-      `should compile for ${filename} %s`,
-      async (env) => {
-        const result = await compile({ env, code, id: filename })
+    // Note: Middleware compilation only happens on the client
+    test(`should compile for ${filename} client`, async () => {
+      const result = await compile({ env: 'client', code, id: filename })
 
-        await expect(result!.code).toMatchFileSnapshot(
-          `./snapshots/${env}/${filename}`,
-        )
-      },
-    )
+      await expect(result!.code).toMatchFileSnapshot(
+        `./snapshots/client/${filename}`,
+      )
+    })
   })
 })
