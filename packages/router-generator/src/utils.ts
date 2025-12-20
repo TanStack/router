@@ -14,7 +14,6 @@ import type { ImportDeclaration, RouteNode } from './types'
 export class RoutePrefixMap {
   private prefixToRoute: Map<string, RouteNode> = new Map()
   private layoutRoutes: Array<RouteNode> = []
-  private nonNestedRoutes: Array<RouteNode> = []
 
   constructor(routes: Array<RouteNode>) {
     for (const route of routes) {
@@ -23,7 +22,6 @@ export class RoutePrefixMap {
       // Index by exact path for direct lookups
       this.prefixToRoute.set(route.routePath, route)
 
-      // Track layout routes separately for non-nested route handling
       if (
         route._fsRouteType === 'pathless_layout' ||
         route._fsRouteType === 'layout' ||
@@ -31,18 +29,10 @@ export class RoutePrefixMap {
       ) {
         this.layoutRoutes.push(route)
       }
-
-      // Track non-nested routes separately
-      if (route._isExperimentalNonNestedRoute) {
-        this.nonNestedRoutes.push(route)
-      }
     }
 
     // Sort by path length descending for longest-match-first
     this.layoutRoutes.sort(
-      (a, b) => (b.routePath?.length ?? 0) - (a.routePath?.length ?? 0),
-    )
-    this.nonNestedRoutes.sort(
       (a, b) => (b.routePath?.length ?? 0) - (a.routePath?.length ?? 0),
     )
   }
@@ -66,48 +56,6 @@ export class RoutePrefixMap {
         return parent
       }
     }
-    return null
-  }
-
-  /**
-   * Find parent for non-nested routes (needs layout route matching).
-   */
-  findParentForNonNested(
-    routePath: string,
-    originalRoutePath: string | undefined,
-    nonNestedSegments: Array<string>,
-  ): RouteNode | null {
-    // First check for other non-nested routes that are prefixes
-    // Use pre-sorted array for longest-match-first
-    for (const route of this.nonNestedRoutes) {
-      if (
-        route.routePath !== routePath &&
-        originalRoutePath?.startsWith(`${route.originalRoutePath}/`)
-      ) {
-        return route
-      }
-    }
-
-    // Then check layout routes
-    for (const route of this.layoutRoutes) {
-      if (route.routePath === '/') continue
-
-      // Skip if this route's original path + underscore matches a non-nested segment
-      if (
-        nonNestedSegments.some((seg) => seg === `${route.originalRoutePath}_`)
-      ) {
-        continue
-      }
-
-      // Check if this layout route is a prefix of the path we're looking for
-      if (
-        routePath.startsWith(`${route.routePath}/`) &&
-        route.routePath !== routePath
-      ) {
-        return route
-      }
-    }
-
     return null
   }
 
@@ -192,10 +140,7 @@ export function removeTrailingSlash(s: string) {
 const BRACKET_CONTENT_RE = /\[(.*?)\]/g
 const SPLIT_REGEX = /(?<!\[)\.(?!\])/g
 
-export function determineInitialRoutePath(
-  routePath: string,
-  config?: Pick<Config, 'experimental' | 'routeToken' | 'indexToken'>,
-) {
+export function determineInitialRoutePath(routePath: string) {
   const DISALLOWED_ESCAPE_CHARS = new Set([
     '/',
     '\\',
@@ -216,31 +161,7 @@ export function determineInitialRoutePath(
       `/${(cleanPath(routePath) || '').split(SPLIT_REGEX).join('/')}`,
     ) || ''
 
-  // check if the route path is a valid non-nested path,
-  // TODO with new major rename to reflect not experimental anymore
-  const isExperimentalNonNestedRoute = isValidNonNestedRoute(
-    originalRoutePath,
-    config,
-  )
-
-  let cleanedRoutePath = routePath
-
-  // we already identified the path as non-nested and can now remove the trailing underscores
-  // we need to do this now before we encounter any escaped trailing underscores
-  // this way we can be sure any remaining trailing underscores should remain
-  // TODO with new major we can remove check and always remove leading underscores
-  if (config?.experimental?.nonNestedRoutes) {
-    // we should leave trailing underscores if the route path is the root path
-    if (originalRoutePath !== `/${rootPathId}`) {
-      // remove trailing underscores on various path segments
-      cleanedRoutePath = removeTrailingUnderscores(
-        originalRoutePath,
-        config.routeToken,
-      )
-    }
-  }
-
-  const parts = cleanedRoutePath.split(SPLIT_REGEX)
+  const parts = routePath.split(SPLIT_REGEX)
 
   // Escape any characters that in square brackets
   // we keep the original path untouched
@@ -275,7 +196,6 @@ export function determineInitialRoutePath(
 
   return {
     routePath: final,
-    isExperimentalNonNestedRoute,
     originalRoutePath,
   }
 }
@@ -518,30 +438,6 @@ export function removeLastSegmentFromPath(routePath: string = '/'): string {
   return segments.join('/')
 }
 
-const nonNestedSegmentRegex = /_(?=\/|$)/g
-const openBracketRegex = /\[/g
-const closeBracketRegex = /\]/g
-
-/**
- * Extracts non-nested segments from a route path.
- * Used for determining parent routes in non-nested route scenarios.
- */
-export function getNonNestedSegments(routePath: string): Array<string> {
-  nonNestedSegmentRegex.lastIndex = 0
-  const result: Array<string> = []
-  for (const match of routePath.matchAll(nonNestedSegmentRegex)) {
-    const beforeStr = routePath.substring(0, match.index)
-    openBracketRegex.lastIndex = 0
-    closeBracketRegex.lastIndex = 0
-    const openBrackets = beforeStr.match(openBracketRegex)?.length ?? 0
-    const closeBrackets = beforeStr.match(closeBracketRegex)?.length ?? 0
-    if (openBrackets === closeBrackets) {
-      result.push(routePath.substring(0, match.index + 1))
-    }
-  }
-  return result.reverse()
-}
-
 /**
  * Find parent route using RoutePrefixMap for O(k) lookups instead of O(n).
  */
@@ -549,19 +445,9 @@ export function hasParentRoute(
   prefixMap: RoutePrefixMap,
   node: RouteNode,
   routePathToCheck: string | undefined,
-  originalRoutePathToCheck: string | undefined,
 ): RouteNode | null {
   if (!routePathToCheck || routePathToCheck === '/') {
     return null
-  }
-
-  if (node._isExperimentalNonNestedRoute && originalRoutePathToCheck) {
-    const nonNestedSegments = getNonNestedSegments(originalRoutePathToCheck)
-    return prefixMap.findParentForNonNested(
-      routePathToCheck,
-      originalRoutePathToCheck,
-      nonNestedSegments,
-    )
   }
 
   return prefixMap.findParent(routePathToCheck)
@@ -606,16 +492,9 @@ export const inferPath = (routeNode: RouteNode): string => {
 /**
  * Infers the full path for use by TS
  */
-export const inferFullPath = (
-  routeNode: RouteNode,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
-): string => {
-  // with new nonNestedPaths feature we can be sure any remaining trailing underscores are escaped and should remain
-  // TODO with new major we can remove check and only remove leading underscores
+export const inferFullPath = (routeNode: RouteNode): string => {
   const fullPath = removeGroups(
-    (config?.experimental?.nonNestedRoutes
-      ? removeLayoutSegments(routeNode.routePath)
-      : removeUnderscores(removeLayoutSegments(routeNode.routePath))) ?? '',
+    removeUnderscores(removeLayoutSegments(routeNode.routePath)) ?? '',
   )
 
   return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')
@@ -626,13 +505,9 @@ export const inferFullPath = (
  */
 export const createRouteNodesByFullPath = (
   routeNodes: Array<RouteNode>,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
 ): Map<string, RouteNode> => {
   return new Map(
-    routeNodes.map((routeNode) => [
-      inferFullPath(routeNode, config),
-      routeNode,
-    ]),
+    routeNodes.map((routeNode) => [inferFullPath(routeNode), routeNode]),
   )
 }
 
@@ -641,11 +516,10 @@ export const createRouteNodesByFullPath = (
  */
 export const createRouteNodesByTo = (
   routeNodes: Array<RouteNode>,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
 ): Map<string, RouteNode> => {
   return new Map(
     dedupeBranchesAndIndexRoutes(routeNodes).map((routeNode) => [
-      inferTo(routeNode, config),
+      inferTo(routeNode),
       routeNode,
     ]),
   )
@@ -668,11 +542,8 @@ export const createRouteNodesById = (
 /**
  * Infers to path
  */
-export const inferTo = (
-  routeNode: RouteNode,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
-): string => {
-  const fullPath = inferFullPath(routeNode, config)
+export const inferTo = (routeNode: RouteNode): string => {
+  const fullPath = inferFullPath(routeNode)
 
   if (fullPath === '/') return fullPath
 
@@ -711,7 +582,7 @@ export function checkRouteFullPathUniqueness(
   config: Config,
 ) {
   const routes = _routes.map((d) => {
-    const inferredFullPath = inferFullPath(d, config)
+    const inferredFullPath = inferFullPath(d)
     return { ...d, inferredFullPath }
   })
 
@@ -849,7 +720,7 @@ export function buildFileRoutesByPathInterface(opts: {
   routeNodes: Array<RouteNode>
   module: string
   interfaceName: string
-  config?: Pick<Config, 'experimental' | 'routeToken'>
+  config?: Pick<Config, 'routeToken'>
 }): string {
   return `declare module '${opts.module}' {
   interface ${opts.interfaceName} {
@@ -863,7 +734,7 @@ export function buildFileRoutesByPathInterface(opts: {
         return `'${filePathId}': {
           id: '${filePathId}'
           path: '${inferPath(routeNode)}'
-          fullPath: '${inferFullPath(routeNode, opts.config)}'
+          fullPath: '${inferFullPath(routeNode)}'
           preLoaderRoute: ${preloaderRoute}
           parentRoute: typeof ${parent}
         }`
@@ -915,52 +786,4 @@ export function getImportForRouteNode(
       },
     ],
   } satisfies ImportDeclaration
-}
-
-/**
- * Used to validate if a route is a pathless layout route
- * @param normalizedRoutePath Normalized route path, i.e `/foo/_layout/route.tsx` and `/foo._layout.route.tsx` to `/foo/_layout/route`
- * @param config The `router-generator` configuration object
- * @returns Boolean indicating if the route is a pathless layout route
- */
-export function isValidNonNestedRoute(
-  normalizedRoutePath: string,
-  config?: Pick<Config, 'experimental' | 'routeToken' | 'indexToken'>,
-): boolean {
-  if (!config?.experimental?.nonNestedRoutes) {
-    return false
-  }
-
-  const segments = normalizedRoutePath.split('/').filter(Boolean)
-
-  if (segments.length === 0) {
-    return false
-  }
-
-  const lastRouteSegment = segments[segments.length - 1]!
-
-  // If segment === __root, then exit as false
-  if (lastRouteSegment === rootPathId) {
-    return false
-  }
-
-  if (
-    lastRouteSegment !== config.indexToken &&
-    lastRouteSegment !== config.routeToken &&
-    lastRouteSegment.endsWith('_')
-  ) {
-    return true
-  }
-
-  for (const segment of segments.slice(0, -1).reverse()) {
-    if (segment === config.routeToken) {
-      return false
-    }
-
-    if (segment.endsWith('_')) {
-      return true
-    }
-  }
-
-  return false
 }
