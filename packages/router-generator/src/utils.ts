@@ -140,23 +140,26 @@ export function removeTrailingSlash(s: string) {
 const BRACKET_CONTENT_RE = /\[(.*?)\]/g
 const SPLIT_REGEX = /(?<!\[)\.(?!\])/g
 
-export function determineInitialRoutePath(routePath: string) {
-  const DISALLOWED_ESCAPE_CHARS = new Set([
-    '/',
-    '\\',
-    '?',
-    '#',
-    ':',
-    '*',
-    '<',
-    '>',
-    '|',
-    '!',
-    '$',
-    '%',
-    '_',
-  ])
+/**
+ * Characters that cannot be escaped in square brackets.
+ * These are characters that would cause issues in URLs or file systems.
+ */
+const DISALLOWED_ESCAPE_CHARS = new Set([
+  '/',
+  '\\',
+  '?',
+  '#',
+  ':',
+  '*',
+  '<',
+  '>',
+  '|',
+  '!',
+  '$',
+  '%',
+])
 
+export function determineInitialRoutePath(routePath: string) {
   const originalRoutePath =
     cleanPath(
       `/${(cleanPath(routePath) || '').split(SPLIT_REGEX).join('/')}`,
@@ -199,6 +202,47 @@ export function determineInitialRoutePath(routePath: string) {
     routePath: final,
     originalRoutePath,
   }
+}
+
+/**
+ * Checks if a segment is fully escaped (entirely wrapped in brackets with no nested brackets).
+ * E.g., "[index]" -> true, "[_layout]" -> true, "foo[.]bar" -> false, "index" -> false
+ */
+function isFullyEscapedSegment(originalSegment: string): boolean {
+  return (
+    originalSegment.startsWith('[') &&
+    originalSegment.endsWith(']') &&
+    !originalSegment.slice(1, -1).includes('[') &&
+    !originalSegment.slice(1, -1).includes(']')
+  )
+}
+
+/**
+ * Checks if the leading underscore in a segment is escaped.
+ * Returns true if:
+ * - Segment starts with [_] pattern: "[_]layout" -> "_layout"
+ * - Segment is fully escaped and content starts with _: "[_1nd3x]" -> "_1nd3x"
+ */
+export function hasEscapedLeadingUnderscore(originalSegment: string): boolean {
+  // Pattern: [_]something or [_something]
+  return (
+    originalSegment.startsWith('[_]') ||
+    (originalSegment.startsWith('[_') && isFullyEscapedSegment(originalSegment))
+  )
+}
+
+/**
+ * Checks if the trailing underscore in a segment is escaped.
+ * Returns true if:
+ * - Segment ends with [_] pattern: "blog[_]" -> "blog_"
+ * - Segment is fully escaped and content ends with _: "[_r0ut3_]" -> "_r0ut3_"
+ */
+export function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
+  // Pattern: something[_] or [something_]
+  return (
+    originalSegment.endsWith('[_]') ||
+    (originalSegment.endsWith('_]') && isFullyEscapedSegment(originalSegment))
+  )
 }
 
 const backslashRegex = /\\/g
@@ -269,6 +313,92 @@ export function removeUnderscores(s?: string) {
   return s
     ?.replace(underscoreStartEndRegex, '')
     .replace(underscoreSlashRegex, '/')
+}
+
+/**
+ * Removes underscores from a path, but preserves underscores that were escaped
+ * in the original path (indicated by [_] syntax).
+ *
+ * @param routePath - The path with brackets removed
+ * @param originalPath - The original path that may contain [_] escape sequences
+ * @returns The path with non-escaped underscores removed
+ */
+export function removeUnderscoresWithEscape(
+  routePath?: string,
+  originalPath?: string,
+): string {
+  if (!routePath) return ''
+  if (!originalPath) return removeUnderscores(routePath) ?? ''
+
+  const routeSegments = routePath.split('/')
+  const originalSegments = originalPath.split('/')
+
+  const newSegments = routeSegments.map((segment, i) => {
+    const originalSegment = originalSegments[i] || ''
+
+    // Check if leading underscore is escaped
+    const leadingEscaped = hasEscapedLeadingUnderscore(originalSegment)
+    // Check if trailing underscore is escaped
+    const trailingEscaped = hasEscapedTrailingUnderscore(originalSegment)
+
+    let result = segment
+
+    // Remove leading underscore only if not escaped
+    if (result.startsWith('_') && !leadingEscaped) {
+      result = result.slice(1)
+    }
+
+    // Remove trailing underscore only if not escaped
+    if (result.endsWith('_') && !trailingEscaped) {
+      result = result.slice(0, -1)
+    }
+
+    return result
+  })
+
+  return newSegments.join('/')
+}
+
+/**
+ * Removes layout segments (segments starting with underscore) from a path,
+ * but preserves segments where the underscore was escaped.
+ *
+ * @param routePath - The path with brackets removed
+ * @param originalPath - The original path that may contain [_] escape sequences
+ * @returns The path with non-escaped layout segments removed
+ */
+export function removeLayoutSegmentsWithEscape(
+  routePath: string = '/',
+  originalPath?: string,
+): string {
+  if (!originalPath) return removeLayoutSegments(routePath)
+
+  const routeSegments = routePath.split('/')
+  const originalSegments = originalPath.split('/')
+
+  // Keep segments that are NOT pathless (i.e., don't start with unescaped underscore)
+  const newSegments = routeSegments.filter((segment, i) => {
+    const originalSegment = originalSegments[i] || ''
+    return !isSegmentPathless(segment, originalSegment)
+  })
+
+  return newSegments.join('/')
+}
+
+/**
+ * Checks if a segment should be treated as a pathless/layout segment.
+ * A segment is pathless if it starts with underscore and the underscore is not escaped.
+ *
+ * @param segment - The segment from routePath (brackets removed)
+ * @param originalSegment - The segment from originalRoutePath (may contain brackets)
+ * @returns true if the segment is pathless (has non-escaped leading underscore)
+ */
+export function isSegmentPathless(
+  segment: string,
+  originalSegment: string,
+): boolean {
+  if (!segment.startsWith('_')) return false
+  return !hasEscapedLeadingUnderscore(originalSegment)
 }
 
 function escapeRegExp(s: string): string {
@@ -495,7 +625,13 @@ export const inferPath = (routeNode: RouteNode): string => {
  */
 export const inferFullPath = (routeNode: RouteNode): string => {
   const fullPath = removeGroups(
-    removeUnderscores(removeLayoutSegments(routeNode.routePath)) ?? '',
+    removeUnderscoresWithEscape(
+      removeLayoutSegmentsWithEscape(
+        routeNode.routePath,
+        routeNode.originalRoutePath,
+      ),
+      routeNode.originalRoutePath,
+    ),
   )
 
   return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')

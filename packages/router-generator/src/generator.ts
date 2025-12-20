@@ -28,14 +28,15 @@ import {
   getResolvedRouteNodeVariableName,
   hasParentRoute,
   isRouteNodeValidForAugmentation,
+  isSegmentPathless,
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
   removeGroups,
   removeLastSegmentFromPath,
-  removeLayoutSegments,
+  removeLayoutSegmentsWithEscape,
   removeTrailingSlash,
-  removeUnderscores,
+  removeUnderscoresWithEscape,
   replaceBackslash,
   trimPathLeft,
 } from './utils'
@@ -1363,16 +1364,30 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     node.path = determineNodePath(node)
 
     const trimmedPath = trimPathLeft(node.path ?? '')
+    const trimmedOriginalPath = trimPathLeft(
+      node.originalRoutePath?.replace(
+        node.parent?.originalRoutePath ?? '',
+        '',
+      ) ?? '',
+    )
 
     const split = trimmedPath.split('/')
+    const originalSplit = trimmedOriginalPath.split('/')
     const lastRouteSegment = split[split.length - 1] ?? trimmedPath
+    const lastOriginalSegment =
+      originalSplit[originalSplit.length - 1] ?? trimmedOriginalPath
 
+    // A segment is non-path if it starts with underscore AND the underscore is not escaped
     node.isNonPath =
-      lastRouteSegment.startsWith('_') ||
+      isSegmentPathless(lastRouteSegment, lastOriginalSegment) ||
       split.every((part) => this.routeGroupPatternRegex.test(part))
 
+    // Use escape-aware functions to compute cleanedPath
     node.cleanedPath = removeGroups(
-      removeUnderscores(removeLayoutSegments(node.path)) ?? '',
+      removeUnderscoresWithEscape(
+        removeLayoutSegmentsWithEscape(node.path, node.originalRoutePath),
+        node.originalRoutePath,
+      ),
     )
 
     if (
@@ -1431,6 +1446,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     if (!node.isVirtual && isPathlessLayoutWithPath) {
       const immediateParentPath =
         removeLastSegmentFromPath(node.routePath) || '/'
+      const immediateParentOriginalPath =
+        removeLastSegmentFromPath(node.originalRoutePath) || '/'
       let searchPath = immediateParentPath
 
       // Find nearest real (non-virtual, non-index) parent
@@ -1442,8 +1459,19 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
             node.routePath?.replace(candidate.routePath ?? '', '') || '/'
           const pathRelativeToParent =
             immediateParentPath.replace(candidate.routePath ?? '', '') || '/'
+          const originalPathRelativeToParent =
+            immediateParentOriginalPath.replace(
+              candidate.originalRoutePath ?? '',
+              '',
+            ) || '/'
           node.cleanedPath = removeGroups(
-            removeUnderscores(removeLayoutSegments(pathRelativeToParent)) ?? '',
+            removeUnderscoresWithEscape(
+              removeLayoutSegmentsWithEscape(
+                pathRelativeToParent,
+                originalPathRelativeToParent,
+              ),
+              originalPathRelativeToParent,
+            ),
           )
           break
         }
