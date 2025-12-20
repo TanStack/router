@@ -6,7 +6,6 @@ import {
   findReferencedIdentifiers,
 } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
-import { handleCreateMiddleware } from '../create-server-fn-plugin/handleCreateMiddleware'
 import { transformFuncs } from './constants'
 import { handleCreateIsomorphicFnCallExpression } from './isomorphicFn'
 import {
@@ -39,16 +38,6 @@ export function compileStartOutputFactory(
         handleCallExpression: handleCreateIsomorphicFnCallExpression,
         paths: [],
       },
-    }
-
-    // createMiddleware only performs modifications in the client environment
-    // so we can avoid executing this on the server
-    if (opts.env === 'client') {
-      identifiers.createMiddleware = {
-        name: 'createMiddleware',
-        handleCallExpression: handleCreateMiddleware,
-        paths: [],
-      }
     }
 
     const ast = parseAst(opts)

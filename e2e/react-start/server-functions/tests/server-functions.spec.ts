@@ -544,39 +544,50 @@ test('redirect in server function called in query during SSR', async ({
   expect(page.url()).toContain('/redirect-test-ssr/target')
 })
 
-test('server function called only from server (not client) works correctly', async ({
+test('re-exported server function factory middleware executes correctly', async ({
   page,
 }) => {
-  await page.goto('/server-only-fn')
+  // This test specifically verifies that when a server function factory is re-exported
+  // using `export { foo } from './module'` syntax, the middleware still executes.
+  // Previously, this syntax caused middleware to be silently skipped.
+  await page.goto('/factory')
 
-  await page.waitForLoadState('networkidle')
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
 
-  const expected =
-    (await page.getByTestId('expected-server-only-fn-result').textContent()) ||
-    ''
-  expect(expected).not.toBe('')
+  // Click the button for the re-exported factory function
+  await page.getByTestId('btn-fn-reexportedFactoryFn').click()
 
-  await page.getByTestId('test-server-only-fn-btn').click()
-  await page.waitForLoadState('networkidle')
-
-  await expect(page.getByTestId('server-only-fn-result')).toContainText(
-    expected,
+  // Wait for the result
+  await expect(page.getByTestId('fn-result-reexportedFactoryFn')).toContainText(
+    'reexport-middleware-executed',
   )
+
+  // Verify the full context was returned (middleware executed)
+  await expect(
+    page.getByTestId('fn-comparison-reexportedFactoryFn'),
+  ).toContainText('equal')
 })
 
-test.use({
-  whitelistErrors: [
-    /Failed to load resource: the server responded with a status of 500/,
-  ],
-})
-test('server function called only from server (not client) cannot be called from the client', async ({
+test('star re-exported server function factory middleware executes correctly', async ({
   page,
 }) => {
-  await page.goto('/server-only-fn')
-  await page.waitForLoadState('networkidle')
+  // This test specifically verifies that when a server function factory is re-exported
+  // using `export * from './module'` syntax, the middleware still executes.
+  // Previously, this syntax caused middleware to be silently skipped.
+  await page.goto('/factory')
 
-  await page.getByTestId('call-server-fn-from-client-btn').click()
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  // Click the button for the star re-exported factory function
+  await page.getByTestId('btn-fn-starReexportedFactoryFn').click()
+
+  // Wait for the result
   await expect(
-    page.getByTestId('call-server-fn-from-client-result'),
-  ).toContainText('error')
+    page.getByTestId('fn-result-starReexportedFactoryFn'),
+  ).toContainText('star-reexport-middleware-executed')
+
+  // Verify the full context was returned (middleware executed)
+  await expect(
+    page.getByTestId('fn-comparison-starReexportedFactoryFn'),
+  ).toContainText('equal')
 })

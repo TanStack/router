@@ -385,14 +385,17 @@ export function TanStackStartVitePluginCore(
       },
     },
     tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
-    // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPlugin
-    startCompilerPlugin({ framework: corePluginOpts.framework, environments }),
+    // N.B. Server function plugins must run BEFORE startCompilerPlugin because:
+    // 1. createServerFnPlugin transforms createServerFn().handler() to inject 'use server' directive
+    // 2. TanStackServerFnPlugin extracts 'use server' functions and registers them in the manifest
+    // 3. startCompilerPlugin handles createClientOnlyFn/createServerOnlyFn and runs DCE
+    // If startCompilerPlugin runs first, DCE may remove server function code before it can be registered
+    // (e.g., when a server function is only referenced inside a createClientOnlyFn callback)
     createServerFnPlugin({
       framework: corePluginOpts.framework,
       directive,
       environments,
     }),
-
     TanStackServerFnPlugin({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
@@ -428,6 +431,7 @@ export function TanStackStartVitePluginCore(
         envName: serverFnProviderEnv,
       },
     }),
+    startCompilerPlugin({ framework: corePluginOpts.framework, environments }),
     loadEnvPlugin(),
     startManifestPlugin({
       getClientBundle: () => getBundle(VITE_ENVIRONMENT_NAMES.client),
