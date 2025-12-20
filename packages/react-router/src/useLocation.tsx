@@ -4,26 +4,30 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 import type {
-  AnyRouter,
+  Register,
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
 
 export interface UseLocationBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
   TStructuralSharing extends boolean = boolean,
 > {
   select?: (
-    state: RouterState<TRouter['routeTree']>['location'],
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+    state: RouterState<RegisteredRouter<TRegister>['routeTree']>['location'],
+  ) => ValidateSelected<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
 }
 
 export type UseLocationResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
 > = unknown extends TSelected
-  ? RouterState<TRouter['routeTree']>['location']
+  ? RouterState<RegisteredRouter<TRegister>['routeTree']>['location']
   : TSelected
 
 /**
@@ -38,15 +42,19 @@ export type UseLocationResult<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLocationHook
  */
 export function useLocation<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseLocationBaseOptions<TRouter, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-): UseLocationResult<TRouter, TSelected> {
+  opts?: UseLocationBaseOptions<TRegister, TSelected, TStructuralSharing> &
+    StructuralSharingOption<
+      RegisteredRouter<TRegister>,
+      TSelected,
+      TStructuralSharing
+    >,
+): UseLocationResult<TRegister, TSelected> {
   return useRouterState({
     select: (state: any) =>
       opts?.select ? opts.select(state.location) : state.location,
-  } as any) as UseLocationResult<TRouter, TSelected>
+  } as any) as UseLocationResult<TRegister, TSelected>
 }

@@ -1,7 +1,12 @@
 import type { InferFileRouteTypes } from './fileRoute'
 import type { AddTrailingSlash, RemoveTrailingSlashes } from './link'
 import type { AnyRoute } from './route'
-import type { AnyRouter, TrailingSlashOption } from './router'
+import type {
+  AnyRouter,
+  Register,
+  RegisteredRouter,
+  TrailingSlashOption,
+} from './router'
 import type { PartialMergeAll } from './utils'
 
 export type ParseRoute<TRouteTree, TAcc = TRouteTree> = TRouteTree extends {
@@ -59,30 +64,30 @@ export type RouteIds<TRouteTree extends AnyRoute> =
     ? CodeRouteIds<TRouteTree>
     : InferFileRouteTypes<TRouteTree>['id']
 
-export type ParentPath<TRouter extends AnyRouter> =
-  TrailingSlashOptionByRouter<TRouter> extends 'always'
+export type ParentPath<TRegister extends Register> =
+  TrailingSlashOptionByRouter<TRegister> extends 'always'
     ? '../'
-    : TrailingSlashOptionByRouter<TRouter> extends 'never'
+    : TrailingSlashOptionByRouter<TRegister> extends 'never'
       ? '..'
       : '../' | '..'
 
-export type CurrentPath<TRouter extends AnyRouter> =
-  TrailingSlashOptionByRouter<TRouter> extends 'always'
+export type CurrentPath<TRegister extends Register> =
+  TrailingSlashOptionByRouter<TRegister> extends 'always'
     ? './'
-    : TrailingSlashOptionByRouter<TRouter> extends 'never'
+    : TrailingSlashOptionByRouter<TRegister> extends 'never'
       ? '.'
       : './' | '.'
 
-export type ToPath<TRouter extends AnyRouter, TTo extends string> =
-  TrailingSlashOptionByRouter<TRouter> extends 'always'
+export type ToPath<TRegister extends Register, TTo extends string> =
+  TrailingSlashOptionByRouter<TRegister> extends 'always'
     ? AddTrailingSlash<TTo>
-    : TrailingSlashOptionByRouter<TRouter> extends 'never'
+    : TrailingSlashOptionByRouter<TRegister> extends 'never'
       ? RemoveTrailingSlashes<TTo>
       : AddTrailingSlash<TTo> | RemoveTrailingSlashes<TTo>
 
-export type CatchAllPaths<TRouter extends AnyRouter> =
-  | CurrentPath<TRouter>
-  | ParentPath<TRouter>
+export type CatchAllPaths<TRegister extends Register> =
+  | CurrentPath<TRegister>
+  | ParentPath<TRegister>
 
 export type CodeRoutesByPath<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
@@ -138,76 +143,92 @@ export type RouteToPathByTrailingSlashOption<TRoute extends AnyRoute> = {
   never: RouteToPathNeverTrailingSlash<TRoute>
 }
 
-export type TrailingSlashOptionByRouter<TRouter extends AnyRouter> =
-  TrailingSlashOption extends TRouter['options']['trailingSlash']
-    ? 'never'
-    : NonNullable<TRouter['options']['trailingSlash']>
+export type TrailingSlashOptionByRouter<TRegister extends Register> =
+  RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? TrailingSlashOption extends TRouter['options']['trailingSlash']
+      ? 'never'
+      : NonNullable<TRouter['options']['trailingSlash']>
+    : never
 
 export type RouteToByRouter<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TRoute extends AnyRoute,
-> = RouteToPathByTrailingSlashOption<TRoute>[TrailingSlashOptionByRouter<TRouter>]
+> = RouteToPathByTrailingSlashOption<TRoute>[TrailingSlashOptionByRouter<TRegister>]
 
-export type CodeRouteToPath<TRouter extends AnyRouter> =
-  ParseRouteWithoutBranches<TRouter['routeTree']> extends infer TRoute extends
-    AnyRoute
-    ? TRoute extends any
-      ? RouteToByRouter<TRouter, TRoute>
+export type CodeRouteToPath<TRegister extends Register> =
+  RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? ParseRouteWithoutBranches<
+        TRouter['routeTree']
+      > extends infer TRoute extends AnyRoute
+      ? TRoute extends any
+        ? RouteToByRouter<TRegister, TRoute>
+        : never
       : never
     : never
 
 export type FileRouteToPath<
-  TRouter extends AnyRouter,
-  TTo = InferFileRouteTypes<TRouter['routeTree']>['to'],
-  TTrailingSlashOption = TrailingSlashOptionByRouter<TRouter>,
+  TRegister extends Register,
+  TTo = RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? InferFileRouteTypes<TRouter['routeTree']>['to']
+    : never,
+  TTrailingSlashOption = TrailingSlashOptionByRouter<TRegister>,
 > = 'never' extends TTrailingSlashOption
   ? TTo
   : 'always' extends TTrailingSlashOption
     ? AddTrailingSlash<TTo>
     : TTo | AddTrailingSlash<TTo>
 
-export type RouteToPath<TRouter extends AnyRouter> = unknown extends TRouter
+export type RouteToPath<TRegister extends Register> = unknown extends TRegister
   ? string
-  : InferFileRouteTypes<TRouter['routeTree']> extends never
-    ? CodeRouteToPath<TRouter>
-    : FileRouteToPath<TRouter>
-
-export type CodeRoutesByToPath<TRouter extends AnyRouter> =
-  ParseRouteWithoutBranches<TRouter['routeTree']> extends infer TRoutes extends
-    AnyRoute
-    ? {
-        [TRoute in TRoutes as RouteToByRouter<TRouter, TRoute>]: TRoute
-      }
+  : RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? InferFileRouteTypes<TRouter['routeTree']> extends never
+      ? CodeRouteToPath<TRegister>
+      : FileRouteToPath<TRegister>
     : never
 
-export type RoutesByToPath<TRouter extends AnyRouter> =
-  InferFileRouteTypes<TRouter['routeTree']> extends never
-    ? CodeRoutesByToPath<TRouter>
-    : InferFileRouteTypes<TRouter['routeTree']>['fileRoutesByTo']
+export type CodeRoutesByToPath<TRegister extends Register> =
+  RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? ParseRouteWithoutBranches<
+        TRouter['routeTree']
+      > extends infer TRoutes extends AnyRoute
+      ? {
+          [TRoute in TRoutes as RouteToByRouter<TRegister, TRoute>]: TRoute
+        }
+      : never
+    : never
 
-export type CodeRouteByToPath<TRouter extends AnyRouter, TTo> = Extract<
-  RoutesByToPath<TRouter>[TTo & keyof RoutesByToPath<TRouter>],
+export type RoutesByToPath<TRegister extends Register> =
+  RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? InferFileRouteTypes<TRouter['routeTree']> extends never
+      ? CodeRoutesByToPath<TRegister>
+      : InferFileRouteTypes<TRouter['routeTree']>['fileRoutesByTo']
+    : never
+
+export type CodeRouteByToPath<TRegister extends Register, TTo> = Extract<
+  RoutesByToPath<TRegister>[TTo & keyof RoutesByToPath<TRegister>],
   AnyRoute
 >
 
-export type FileRouteByToPath<TRouter extends AnyRouter, TTo> =
-  'never' extends TrailingSlashOptionByRouter<TRouter>
-    ? CodeRouteByToPath<TRouter, TTo>
-    : 'always' extends TrailingSlashOptionByRouter<TRouter>
+export type FileRouteByToPath<TRegister extends Register, TTo> =
+  'never' extends TrailingSlashOptionByRouter<TRegister>
+    ? CodeRouteByToPath<TRegister, TTo>
+    : 'always' extends TrailingSlashOptionByRouter<TRegister>
       ? TTo extends '/'
-        ? CodeRouteByToPath<TRouter, TTo>
+        ? CodeRouteByToPath<TRegister, TTo>
         : TTo extends `${infer TPath}/`
-          ? CodeRouteByToPath<TRouter, TPath>
+          ? CodeRouteByToPath<TRegister, TPath>
           : never
       : CodeRouteByToPath<
-          TRouter,
+          TRegister,
           TTo extends '/' ? TTo : RemoveTrailingSlashes<TTo>
         >
 
-export type RouteByToPath<TRouter extends AnyRouter, TTo> =
-  InferFileRouteTypes<TRouter['routeTree']> extends never
-    ? CodeRouteByToPath<TRouter, TTo>
-    : FileRouteByToPath<TRouter, TTo>
+export type RouteByToPath<TRegister extends Register, TTo> =
+  RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? InferFileRouteTypes<TRouter['routeTree']> extends never
+      ? CodeRouteByToPath<TRegister, TTo>
+      : FileRouteByToPath<TRegister, TTo>
+    : never
 
 export type FullSearchSchema<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute

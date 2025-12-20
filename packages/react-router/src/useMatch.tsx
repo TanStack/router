@@ -10,6 +10,7 @@ import type {
   AnyRouter,
   MakeRouteMatch,
   MakeRouteMatchUnion,
+  Register,
   RegisteredRouter,
   StrictOrFrom,
   ThrowConstraint,
@@ -17,7 +18,7 @@ import type {
 } from '@tanstack/router-core'
 
 export interface UseMatchBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
@@ -25,54 +26,69 @@ export interface UseMatchBaseOptions<
   TStructuralSharing extends boolean,
 > {
   select?: (
-    match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+    match: MakeRouteMatch<
+      RegisteredRouter<TRegister>['routeTree'],
+      TFrom,
+      TStrict
+    >,
+  ) => ValidateSelected<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
   shouldThrow?: TThrow
 }
 
-export type UseMatchRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseMatchRoute<TRegister extends Register, out TFrom> = <
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
   opts?: UseMatchBaseOptions<
-    TRouter,
+    TRegister,
     TFrom,
     true,
     true,
     TSelected,
     TStructuralSharing
   > &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-) => UseMatchResult<TRouter, TFrom, true, TSelected>
+    StructuralSharingOption<
+      RegisteredRouter<TRegister>,
+      TSelected,
+      TStructuralSharing
+    >,
+) => UseMatchResult<TRegister, TFrom, true, TSelected>
 
 export type UseMatchOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string | undefined,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
   TStructuralSharing extends boolean,
-> = StrictOrFrom<TRouter, TFrom, TStrict> &
+> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom, TStrict> &
   UseMatchBaseOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TStrict,
     TThrow,
     TSelected,
     TStructuralSharing
   > &
-  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
+  StructuralSharingOption<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
 
 export type UseMatchResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TSelected,
 > = unknown extends TSelected
   ? TStrict extends true
-    ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
-    : MakeRouteMatchUnion<TRouter>
+    ? MakeRouteMatch<RegisteredRouter<TRegister>['routeTree'], TFrom, TStrict>
+    : MakeRouteMatchUnion<RegisteredRouter<TRegister>>
   : TSelected
 
 /**
@@ -80,7 +96,7 @@ export type UseMatchResult<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchHook
  */
 export function useMatch<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
@@ -88,14 +104,17 @@ export function useMatch<
   TStructuralSharing extends boolean = boolean,
 >(
   opts: UseMatchOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TStrict,
     ThrowConstraint<TStrict, TThrow>,
     TSelected,
     TStructuralSharing
   >,
-): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
+): ThrowOrOptional<
+  UseMatchResult<TRegister, TFrom, TStrict, TSelected>,
+  TThrow
+> {
   const nearestMatchId = React.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )

@@ -67,13 +67,13 @@ declare module '@tanstack/router-core' {
     in out TId extends string,
     in out TFullPath extends string,
   > {
-    useMatch: UseMatchRoute<TId>
-    useRouteContext: UseRouteContextRoute<TId>
-    useSearch: UseSearchRoute<TId>
-    useParams: UseParamsRoute<TId>
-    useLoaderDeps: UseLoaderDepsRoute<TId>
-    useLoaderData: UseLoaderDataRoute<TId>
-    useNavigate: () => UseNavigateResult<TFullPath>
+    useMatch: UseMatchRoute<Register, TId>
+    useRouteContext: UseRouteContextRoute<Register, TId>
+    useSearch: UseSearchRoute<Register, TId>
+    useParams: UseParamsRoute<Register, TId>
+    useLoaderDeps: UseLoaderDepsRoute<Register, TId>
+    useLoaderData: UseLoaderDataRoute<Register, TId>
+    useNavigate: () => UseNavigateResult<Register, TFullPath>
     Link: LinkComponentRoute<TFullPath>
   }
 }
@@ -87,17 +87,16 @@ declare module '@tanstack/router-core' {
  * @returns A `RouteApi` instance bound to the given route ID.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/getRouteApiFunction
  */
-export function getRouteApi<
-  const TId,
-  TRouter extends AnyRouter = RegisteredRouter,
->(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
-  return new RouteApi<TId, TRouter>({ id })
+export function getRouteApi<const TId, TRegister extends Register = Register>(
+  id: ConstrainLiteral<TId, RouteIds<RegisteredRouter<TRegister>['routeTree']>>,
+) {
+  return new RouteApi<TId, TRegister>({ id })
 }
 
 export class RouteApi<
   TId,
-  TRouter extends AnyRouter = RegisteredRouter,
-> extends BaseRouteApi<TId, TRouter> {
+  TRegister extends Register = Register,
+> extends BaseRouteApi<TId, RegisteredRouter<TRegister>> {
   /**
    * @deprecated Use the `getRouteApi` function instead.
    */
@@ -105,7 +104,7 @@ export class RouteApi<
     super({ id })
   }
 
-  useMatch: UseMatchRoute<TId> = (opts) => {
+  useMatch: UseMatchRoute<TRegister, TId> = (opts) => {
     return useMatch({
       select: opts?.select,
       from: this.id,
@@ -113,14 +112,14 @@ export class RouteApi<
     } as any) as any
   }
 
-  useRouteContext: UseRouteContextRoute<TId> = (opts) => {
+  useRouteContext: UseRouteContextRoute<TRegister, TId> = (opts) => {
     return useMatch({
       from: this.id as any,
       select: (d) => (opts?.select ? opts.select(d.context) : d.context),
     }) as any
   }
 
-  useSearch: UseSearchRoute<TId> = (opts) => {
+  useSearch: UseSearchRoute<TRegister, TId> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
@@ -129,7 +128,7 @@ export class RouteApi<
     } as any) as any
   }
 
-  useParams: UseParamsRoute<TId> = (opts) => {
+  useParams: UseParamsRoute<TRegister, TId> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
@@ -138,16 +137,17 @@ export class RouteApi<
     } as any) as any
   }
 
-  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
+  useLoaderDeps: UseLoaderDepsRoute<TRegister, TId> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.id, strict: false } as any)
   }
 
-  useLoaderData: UseLoaderDataRoute<TId> = (opts) => {
+  useLoaderData: UseLoaderDataRoute<TRegister, TId> = (opts) => {
     return useLoaderData({ ...opts, from: this.id, strict: false } as any)
   }
 
   useNavigate = (): UseNavigateResult<
-    RouteTypesById<TRouter, TId>['fullPath']
+    TRegister,
+    RouteTypesById<RegisteredRouter<TRegister>, TId>['fullPath']
   > => {
     const router = useRouter()
     return useNavigate({ from: router.routesById[this.id as string].fullPath })
@@ -157,18 +157,19 @@ export class RouteApi<
     return notFound({ routeId: this.id as string, ...opts })
   }
 
-  Link: LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']> =
-    React.forwardRef((props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      const router = useRouter()
-      const fullPath = router.routesById[this.id as string].fullPath
-      return <Link ref={ref} from={fullPath as never} {...props} />
-    }) as unknown as LinkComponentRoute<
-      RouteTypesById<TRouter, TId>['fullPath']
-    >
+  Link: LinkComponentRoute<
+    RouteTypesById<RegisteredRouter<TRegister>, TId>['fullPath']
+  > = React.forwardRef((props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
+    const router = useRouter()
+    const fullPath = router.routesById[this.id as string].fullPath
+    return <Link ref={ref} from={fullPath as never} {...props} />
+  }) as unknown as LinkComponentRoute<
+    RouteTypesById<RegisteredRouter<TRegister>, TId>['fullPath']
+  >
 }
 
 export class Route<
-    in out TRegister = unknown,
+    in out TRegister extends Register = Register,
     in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
     in out TPath extends RouteConstraints['TPath'] = '/',
     in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -263,7 +264,7 @@ export class Route<
     ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
-  useMatch: UseMatchRoute<TId> = (opts) => {
+  useMatch: UseMatchRoute<TRegister, TId> = (opts) => {
     return useMatch({
       select: opts?.select,
       from: this.id,
@@ -271,7 +272,7 @@ export class Route<
     } as any) as any
   }
 
-  useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
+  useRouteContext: UseRouteContextRoute<TRegister, TId> = (opts?) => {
     return useMatch({
       ...opts,
       from: this.id,
@@ -279,7 +280,7 @@ export class Route<
     }) as any
   }
 
-  useSearch: UseSearchRoute<TId> = (opts) => {
+  useSearch: UseSearchRoute<Register, TId> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
@@ -288,7 +289,7 @@ export class Route<
     } as any) as any
   }
 
-  useParams: UseParamsRoute<TId> = (opts) => {
+  useParams: UseParamsRoute<Register, TId> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
@@ -297,15 +298,15 @@ export class Route<
     } as any) as any
   }
 
-  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
+  useLoaderDeps: UseLoaderDepsRoute<TRegister, TId> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.id } as any)
   }
 
-  useLoaderData: UseLoaderDataRoute<TId> = (opts) => {
+  useLoaderData: UseLoaderDataRoute<TRegister, TId> = (opts) => {
     return useLoaderData({ ...opts, from: this.id } as any)
   }
 
-  useNavigate = (): UseNavigateResult<TFullPath> => {
+  useNavigate = (): UseNavigateResult<TRegister, TFullPath> => {
     return useNavigate({ from: this.fullPath })
   }
 
@@ -328,7 +329,7 @@ export class Route<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouteFunction
  */
 export function createRoute<
-  TRegister = unknown,
+  TRegister extends Register = Register,
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   TPath extends RouteConstraints['TPath'] = '/',
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -434,7 +435,7 @@ export type AnyRootRoute = RootRoute<
  */
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
-    TRegister = Register,
+    TRegister extends Register = Register,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
@@ -475,7 +476,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-    in out TRegister = unknown,
+    in out TRegister extends Register = Register,
     in out TSearchValidator = undefined,
     in out TRouterContext = {},
     in out TRouteContextFn = AnyContext,
@@ -539,7 +540,7 @@ export class RootRoute<
     ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
-  useMatch: UseMatchRoute<RootRouteId> = (opts) => {
+  useMatch: UseMatchRoute<TRegister, RootRouteId> = (opts) => {
     return useMatch({
       select: opts?.select,
       from: this.id,
@@ -547,7 +548,7 @@ export class RootRoute<
     } as any) as any
   }
 
-  useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
+  useRouteContext: UseRouteContextRoute<TRegister, RootRouteId> = (opts) => {
     return useMatch({
       ...opts,
       from: this.id,
@@ -555,7 +556,7 @@ export class RootRoute<
     }) as any
   }
 
-  useSearch: UseSearchRoute<RootRouteId> = (opts) => {
+  useSearch: UseSearchRoute<TRegister, RootRouteId> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
@@ -564,7 +565,7 @@ export class RootRoute<
     } as any) as any
   }
 
-  useParams: UseParamsRoute<RootRouteId> = (opts) => {
+  useParams: UseParamsRoute<TRegister, RootRouteId> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
@@ -573,15 +574,15 @@ export class RootRoute<
     } as any) as any
   }
 
-  useLoaderDeps: UseLoaderDepsRoute<RootRouteId> = (opts) => {
+  useLoaderDeps: UseLoaderDepsRoute<TRegister, RootRouteId> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.id } as any)
   }
 
-  useLoaderData: UseLoaderDataRoute<RootRouteId> = (opts) => {
+  useLoaderData: UseLoaderDataRoute<TRegister, RootRouteId> = (opts) => {
     return useLoaderData({ ...opts, from: this.id } as any)
   }
 
-  useNavigate = (): UseNavigateResult<'/'> => {
+  useNavigate = (): UseNavigateResult<TRegister, '/'> => {
     return useNavigate({ from: this.fullPath })
   }
 
@@ -603,7 +604,7 @@ export class RootRoute<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRootRouteFunction
  */
 export function createRootRoute<
-  TRegister = Register,
+  TRegister extends Register = Register,
   TSearchValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,
@@ -663,7 +664,7 @@ export function createRouteMask<
 >(
   opts: {
     routeTree: TRouteTree
-  } & ToMaskOptions<RouterCore<TRouteTree, 'never', boolean>, TFrom, TTo>,
+  } & ToMaskOptions<any, TFrom, TTo>,
 ): RouteMask<TRouteTree> {
   return opts as any
 }
@@ -686,7 +687,7 @@ export type ErrorRouteComponent = AsyncRouteComponent<ErrorComponentProps>
 export type NotFoundRouteComponent = RouteTypes<NotFoundRouteProps>['component']
 
 export class NotFoundRoute<
-  TRegister,
+  TRegister extends Register,
   TParentRoute extends AnyRootRoute,
   TRouterContext = AnyContext,
   TRouteContextFn = AnyContext,

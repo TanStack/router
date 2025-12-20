@@ -18,6 +18,7 @@ import type {
   LinkOptions,
   RegisteredRouter,
   RoutePaths,
+  Register,
 } from '@tanstack/router-core'
 import type { ReactNode } from 'react'
 import type {
@@ -38,16 +39,16 @@ import type {
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLinkPropsHook
  */
 export function useLinkProps<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string = string,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(
-  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  options: UseLinkPropsOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo>,
   forwardedRef?: React.ForwardedRef<Element>,
 ): React.ComponentPropsWithRef<'a'> {
-  const router = useRouter()
+  const router = useRouter<TRegister>()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
@@ -278,7 +279,7 @@ export function useLinkProps<
         startTransition,
         viewTransition,
         ignoreBlocker,
-      })
+      } as any)
     }
   }
 
@@ -416,22 +417,22 @@ type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
     : never
 
 export type UseLinkPropsOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-  TTo extends string | undefined = '.',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-  TMaskTo extends string = '.',
-> = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
-  UseLinkReactProps<'a'>
-
-export type ActiveLinkOptions<
-  TComp = 'a',
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = ActiveLinkOptions<'a', TRegister, TFrom, TTo, TMaskFrom, TMaskTo> &
+  UseLinkReactProps<'a'>
+
+export type ActiveLinkOptions<
+  TComp = 'a',
+  TRegister extends Register = Register,
+  TFrom extends string = string,
+  TTo extends string | undefined = '.',
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '.',
+> = LinkOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo> &
   ActiveLinkOptionProps<TComp>
 
 type ActiveLinkProps<TComp> = Partial<
@@ -455,12 +456,12 @@ export interface ActiveLinkOptionProps<TComp = 'a'> {
 
 export type LinkProps<
   TComp = 'a',
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = ActiveLinkOptions<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = ActiveLinkOptions<TComp, TRegister, TFrom, TTo, TMaskFrom, TMaskTo> &
   LinkPropsChildren
 
 export interface LinkPropsChildren {
@@ -480,13 +481,13 @@ type LinkComponentReactProps<TComp> = Omit<
 
 export type LinkComponentProps<
   TComp = 'a',
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = LinkComponentReactProps<TComp> &
-  LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  LinkProps<TComp, TRegister, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type CreateLinkProps = LinkProps<
   any,
@@ -501,13 +502,13 @@ export type LinkComponent<
   in out TComp,
   in out TDefaultFrom extends string = string,
 > = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(
-  props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  props: LinkComponentProps<TComp, TRegister, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => React.ReactElement
 
 export interface LinkComponentRoute<
@@ -515,13 +516,13 @@ export interface LinkComponentRoute<
 > {
   defaultFrom: TDefaultFrom
   <
-    TRouter extends AnyRouter = RegisteredRouter,
+    TRegister extends Register = Register,
     const TTo extends string | undefined = undefined,
     const TMaskTo extends string = '',
   >(
     props: LinkComponentProps<
       'a',
-      TRouter,
+      TRegister,
       this['defaultFrom'],
       TTo,
       this['defaultFrom'],
@@ -606,17 +607,17 @@ function isCtrlEvent(e: React.MouseEvent) {
 export type LinkOptionsFnOptions<
   TOptions,
   TComp,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 > =
   TOptions extends ReadonlyArray<any>
-    ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
-    : ValidateLinkOptions<TRouter, TOptions, string, TComp>
+    ? ValidateLinkOptionsArray<TRegister, TOptions, string, TComp>
+    : ValidateLinkOptions<TRegister, TOptions, string, TComp>
 
 export type LinkOptionsFn<TComp> = <
   const TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 >(
-  options: LinkOptionsFnOptions<TOptions, TComp, TRouter>,
+  options: LinkOptionsFnOptions<TOptions, TComp, TRegister>,
 ) => TOptions
 
 /**

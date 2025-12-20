@@ -1,5 +1,6 @@
 import type { RouteIds } from './routeInfo'
-import type { AnyRouter } from './router'
+import type { AnyRoute } from './route'
+import type { AnyRouter, Register, RegisteredRouter } from './router'
 
 export type Awaitable<T> = T | Promise<T>
 export type NoInfer<T> = [T][T extends any ? 0 : never]
@@ -397,7 +398,7 @@ export type ThrowOrOptional<T, TThrow extends boolean> = TThrow extends true
   : T | undefined
 
 export type StrictOrFrom<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean = true,
 > = TStrict extends false
@@ -406,7 +407,14 @@ export type StrictOrFrom<
       strict: TStrict
     }
   : {
-      from: ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
+      from: ConstrainLiteral<
+        TFrom,
+        RouteIds<
+          RegisteredRouter<TRegister>['routeTree'] extends AnyRoute
+            ? RegisteredRouter<TRegister>['routeTree']
+            : AnyRoute
+        >
+      >
       strict?: TStrict
     }
 

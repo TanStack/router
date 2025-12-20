@@ -9,13 +9,14 @@ import type {
   InferStrict,
   InferTo,
   RegisteredRouter,
+  Register,
 } from '@tanstack/router-core'
 import type { LinkComponentProps } from './link'
 import type { UseParamsOptions } from './useParams'
 import type { UseSearchOptions } from './useSearch'
 
 export type ValidateLinkOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TOptions = unknown,
   TDefaultFrom extends string = string,
   TComp = 'a',
@@ -23,7 +24,7 @@ export type ValidateLinkOptions<
   TOptions,
   LinkComponentProps<
     TComp,
-    TRouter,
+    TRegister,
     InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
     InferMaskFrom<TOptions>,
@@ -42,11 +43,11 @@ export type InferStructuralSharing<TOptions> = TOptions extends {
 
 export type ValidateUseSearchOptions<
   TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 > = Constrain<
   TOptions,
   UseSearchOptions<
-    TRouter,
+    TRegister,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
     InferShouldThrow<TOptions>,
@@ -57,26 +58,26 @@ export type ValidateUseSearchOptions<
 
 export type ValidateUseParamsOptions<
   TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 > = Constrain<
   TOptions,
   UseParamsOptions<
-    TRouter,
+    TRegister,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
     InferShouldThrow<TOptions>,
     InferSelected<TOptions>,
-    InferSelected<TOptions>
+    InferStructuralSharing<TOptions>
   >
 >
 export type ValidateLinkOptionsArray<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
   TDefaultFrom extends string = string,
   TComp = 'a',
 > = {
   [K in keyof TOptions]: ValidateLinkOptions<
-    TRouter,
+    TRegister,
     TOptions[K],
     TDefaultFrom,
     TComp

@@ -1,9 +1,12 @@
 import type { NavigateOptions } from './link'
-import type { RegisteredRouter } from './router'
+import type { Register, RegisteredRouter } from './router'
 
-export type UseNavigateResult<TDefaultFrom extends string> = <
-  TRouter extends RegisteredRouter,
-  TTo extends string | undefined,
+export type UseNavigateResult<
+  TRegister extends Register = Register,
+  TDefaultFrom extends string = string,
+> = <
+  TRouter extends RegisteredRouter<TRegister> = RegisteredRouter<TRegister>,
+  TTo extends string | undefined = undefined,
   TFrom extends string = TDefaultFrom,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',

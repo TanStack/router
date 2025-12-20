@@ -1,7 +1,7 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
 import { getRouterContext } from './routerContext'
-import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
+import type { Register, RegisteredRouter } from '@tanstack/router-core'
 
 /**
  * Access the current TanStack Router instance from React context.
@@ -13,9 +13,9 @@ import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
  * @returns The registered router instance.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useRouterHook
  */
-export function useRouter<TRouter extends AnyRouter = RegisteredRouter>(opts?: {
+export function useRouter<TRegister extends Register = Register>(opts?: {
   warn?: boolean
-}): TRouter {
+}): RegisteredRouter<TRegister> {
   const value = React.useContext(getRouterContext())
   warning(
     !((opts?.warn ?? true) && !value),

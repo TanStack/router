@@ -2,10 +2,9 @@ import * as React from 'react'
 import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
 import type {
-  AnyRouter,
   FromPathOption,
   NavigateOptions,
-  RegisteredRouter,
+  Register,
   UseNavigateResult,
 } from '@tanstack/router-core'
 
@@ -24,22 +23,22 @@ import type {
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useNavigateHook
  */
 export function useNavigate<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
-  from?: FromPathOption<TRouter, TDefaultFrom>
-}): UseNavigateResult<TDefaultFrom> {
-  const router = useRouter()
+  from?: FromPathOption<TRegister, TDefaultFrom>
+}): UseNavigateResult<TRegister, TDefaultFrom> {
+  const router = useRouter<TRegister>()
 
   return React.useCallback(
     (options: NavigateOptions) => {
       return router.navigate({
         ...options,
         from: options.from ?? _defaultOpts?.from,
-      })
+      } as any)
     },
     [_defaultOpts?.from, router],
-  ) as UseNavigateResult<TDefaultFrom>
+  ) as UseNavigateResult<TRegister, TDefaultFrom>
 }
 
 /**
@@ -52,17 +51,17 @@ export function useNavigate<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/navigateComponent
  */
 export function Navigate<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string = string,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
->(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
-  const router = useRouter()
-  const navigate = useNavigate()
+>(props: NavigateOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo>): null {
+  const router = useRouter<TRegister>()
+  const navigate = useNavigate<TRegister>()
 
   const previousPropsRef = React.useRef<NavigateOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TTo,
     TMaskFrom,
@@ -70,7 +69,7 @@ export function Navigate<
   > | null>(null)
   useLayoutEffect(() => {
     if (previousPropsRef.current !== props) {
-      navigate(props)
+      navigate(props as any)
       previousPropsRef.current = props
     }
   }, [router, props, navigate])

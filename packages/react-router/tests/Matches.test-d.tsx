@@ -8,7 +8,7 @@ import {
   useMatchRoute,
   useMatches,
 } from '../src'
-import type { AnyRouteMatch, RouteMatch } from '../src'
+import type { AnyRouteMatch, Register, RouteMatch } from '../src'
 
 const rootRoute = createRootRoute()
 
@@ -146,7 +146,13 @@ const defaultRouter = createRouter({
 
 type DefaultRouter = typeof defaultRouter
 
-const useDefaultMatchRoute = useMatchRoute<DefaultRouter>
+declare module '@tanstack/router-core' {
+  interface Register {
+    router: DefaultRouter
+  }
+}
+
+const useDefaultMatchRoute = useMatchRoute
 
 test('when matching a route with params', () => {
   const matchRoute = useDefaultMatchRoute()
@@ -158,7 +164,7 @@ test('when matching a route with params', () => {
       '/' | '.' | '..' | '/invoices' | '/invoices/$invoiceId' | '/comments/$id'
     >()
 
-  expectTypeOf(MatchRoute<DefaultRouter, string, '/invoices/$invoiceId'>)
+  expectTypeOf(MatchRoute<Register, string, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -183,7 +189,7 @@ test('when matching a route with params underneath a layout route', () => {
 })
 
 test('useMatches returns a union of all matches', () => {
-  expectTypeOf(useMatches<DefaultRouter>()).toEqualTypeOf<
+  expectTypeOf(useMatches()).toEqualTypeOf<
     Array<
       | RootMatch
       | IndexMatch
@@ -197,7 +203,7 @@ test('useMatches returns a union of all matches', () => {
 })
 
 test('when filtering useMatches by search', () => {
-  const matches = useMatches<DefaultRouter>()
+  const matches = useMatches()
 
   expectTypeOf(isMatch<(typeof matches)[number], ''>)
     .parameter(1)

@@ -14,6 +14,7 @@ import type {
 } from './routeInfo'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
   ViewTransitionOptions,
 } from './router'
@@ -205,14 +206,14 @@ export type ResolveRelativePath<TFrom, TTo = '.'> = string extends TFrom
         : never
 
 export type FindDescendantToPaths<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TPrefix extends string,
-> = `${TPrefix}/${string}` & RouteToPath<TRouter>
+> = `${TPrefix}/${string}` & RouteToPath<TRegister>
 
 export type InferDescendantToPaths<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TPrefix extends string,
-  TPaths = FindDescendantToPaths<TRouter, TPrefix>,
+  TPaths = FindDescendantToPaths<TRegister, TPrefix>,
 > = TPaths extends `${TPrefix}/`
   ? never
   : TPaths extends `${TPrefix}/${infer TRest}`
@@ -220,79 +221,79 @@ export type InferDescendantToPaths<
     : never
 
 export type RelativeToPath<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TTo extends string,
   TResolvedPath extends string,
 > =
-  | (TResolvedPath & RouteToPath<TRouter> extends never
+  | (TResolvedPath & RouteToPath<TRegister> extends never
       ? never
-      : ToPath<TRouter, TTo>)
-  | `${RemoveTrailingSlashes<TTo>}/${InferDescendantToPaths<TRouter, RemoveTrailingSlashes<TResolvedPath>>}`
+      : ToPath<TRegister, TTo>)
+  | `${RemoveTrailingSlashes<TTo>}/${InferDescendantToPaths<TRegister, RemoveTrailingSlashes<TResolvedPath>>}`
 
 export type RelativeToParentPath<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string,
   TTo extends string,
   TResolvedPath extends string = ResolveRelativePath<TFrom, TTo>,
 > =
-  | RelativeToPath<TRouter, TTo, TResolvedPath>
+  | RelativeToPath<TRegister, TTo, TResolvedPath>
   | (TTo extends `${string}..` | `${string}../`
       ? TResolvedPath extends '/' | ''
         ? never
         : FindDescendantToPaths<
-              TRouter,
+              TRegister,
               RemoveTrailingSlashes<TResolvedPath>
             > extends never
           ? never
-          : `${RemoveTrailingSlashes<TTo>}/${ParentPath<TRouter>}`
+          : `${RemoveTrailingSlashes<TTo>}/${ParentPath<TRegister>}`
       : never)
 
 export type RelativeToCurrentPath<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string,
   TTo extends string,
   TResolvedPath extends string = ResolveRelativePath<TFrom, TTo>,
-> = RelativeToPath<TRouter, TTo, TResolvedPath> | CurrentPath<TRouter>
+> = RelativeToPath<TRegister, TTo, TResolvedPath> | CurrentPath<TRegister>
 
-export type AbsoluteToPath<TRouter extends AnyRouter, TFrom extends string> =
+export type AbsoluteToPath<TRegister extends Register, TFrom extends string> =
   | (string extends TFrom
-      ? CurrentPath<TRouter>
+      ? CurrentPath<TRegister>
       : TFrom extends `/`
         ? never
-        : CurrentPath<TRouter>)
+        : CurrentPath<TRegister>)
   | (string extends TFrom
-      ? ParentPath<TRouter>
+      ? ParentPath<TRegister>
       : TFrom extends `/`
         ? never
-        : ParentPath<TRouter>)
-  | RouteToPath<TRouter>
+        : ParentPath<TRegister>)
+  | RouteToPath<TRegister>
   | (TFrom extends '/'
       ? never
       : string extends TFrom
         ? never
-        : InferDescendantToPaths<TRouter, RemoveTrailingSlashes<TFrom>>)
+        : InferDescendantToPaths<TRegister, RemoveTrailingSlashes<TFrom>>)
 
 export type RelativeToPathAutoComplete<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string,
   TTo extends string,
 > = string extends TTo
   ? string
   : string extends TFrom
-    ? AbsoluteToPath<TRouter, TFrom>
+    ? AbsoluteToPath<TRegister, TFrom>
     : TTo & `..${string}` extends never
       ? TTo & `.${string}` extends never
-        ? AbsoluteToPath<TRouter, TFrom>
-        : RelativeToCurrentPath<TRouter, TFrom, TTo>
-      : RelativeToParentPath<TRouter, TFrom, TTo>
+        ? AbsoluteToPath<TRegister, TFrom>
+        : RelativeToCurrentPath<TRegister, TFrom, TTo>
+      : RelativeToParentPath<TRegister, TFrom, TTo>
 
 export type NavigateOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & NavigateOptionProps
+> = ToOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo> & NavigateOptionProps
 
 /**
  * The NavigateOptions type is used to describe the options that can be used when describing a navigation action in TanStack Router.
@@ -356,40 +357,41 @@ export interface NavigateOptionProps {
 }
 
 export type ToOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = ToSubOptions<TRouter, TFrom, TTo> & MaskOptions<TRouter, TMaskFrom, TMaskTo>
+> = ToSubOptions<TRegister, TFrom, TTo> &
+  MaskOptions<TRegister, TMaskFrom, TMaskTo>
 
 export interface MaskOptions<
-  in out TRouter extends AnyRouter,
+  in out TRegister extends Register,
   in out TMaskFrom extends string,
   in out TMaskTo extends string,
 > {
   _fromLocation?: ParsedLocation
-  mask?: ToMaskOptions<TRouter, TMaskFrom, TMaskTo>
+  mask?: ToMaskOptions<TRegister, TMaskFrom, TMaskTo>
 }
 
 export type ToMaskOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TMaskFrom extends string = string,
   TMaskTo extends string = '.',
-> = ToSubOptions<TRouter, TMaskFrom, TMaskTo> & {
+> = ToSubOptions<TRegister, TMaskFrom, TMaskTo> & {
   unmaskOnReload?: boolean
 }
 
 export type ToSubOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
-> = ToSubOptionsProps<TRouter, TFrom, TTo> &
-  SearchParamOptions<TRouter, TFrom, TTo> &
-  PathParamOptions<TRouter, TFrom, TTo>
+> = ToSubOptionsProps<TRegister, TFrom, TTo> &
+  SearchParamOptions<TRegister, TFrom, TTo> &
+  PathParamOptions<TRegister, TFrom, TTo>
 
 export interface RequiredToOptions<
-  in out TRouter extends AnyRouter,
+  in out TRegister extends Register,
   in out TFrom extends string,
   in out TTo extends string | undefined,
 > {
@@ -399,11 +401,11 @@ export interface RequiredToOptions<
    * @example "/dashboard" or "../profile"
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#href)
    */
-  to: ToPathOption<TRouter, TFrom, TTo> & {}
+  to: ToPathOption<TRegister, TFrom, TTo> & {}
 }
 
 export interface OptionalToOptions<
-  in out TRouter extends AnyRouter,
+  in out TRegister extends Register,
   in out TFrom extends string,
   in out TTo extends string | undefined,
 > {
@@ -413,96 +415,112 @@ export interface OptionalToOptions<
    * @example "/dashboard" or "../profile"
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#href)
    */
-  to?: ToPathOption<TRouter, TFrom, TTo> & {}
+  to?: ToPathOption<TRegister, TFrom, TTo> & {}
 }
 
 export type MakeToRequired<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string,
   TTo extends string | undefined,
 > = string extends TFrom
   ? string extends TTo
-    ? OptionalToOptions<TRouter, TFrom, TTo>
-    : TTo & CatchAllPaths<TRouter> extends never
-      ? RequiredToOptions<TRouter, TFrom, TTo>
-      : OptionalToOptions<TRouter, TFrom, TTo>
-  : OptionalToOptions<TRouter, TFrom, TTo>
+    ? OptionalToOptions<TRegister, TFrom, TTo>
+    : TTo extends CatchAllPaths<TRegister>
+      ? RequiredToOptions<TRegister, TFrom, TTo>
+      : OptionalToOptions<TRegister, TFrom, TTo>
+  : OptionalToOptions<TRegister, TFrom, TTo>
 
 export type ToSubOptionsProps<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TRegister extends Register = Register,
+  TFrom extends
+    | (RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+        ? RoutePaths<TRouter['routeTree']>
+        : never)
+    | string = string,
   TTo extends string | undefined = '.',
-> = MakeToRequired<TRouter, TFrom, TTo> & {
+> = MakeToRequired<TRegister, TFrom, TTo> & {
   hash?: true | Updater<string>
   state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
-  from?: FromPathOption<TRouter, TFrom> & {}
+  from?: FromPathOption<TRegister, TFrom> & {}
   unsafeRelative?: 'path'
 }
 
 export type ParamsReducerFn<
-  in out TRouter extends AnyRouter,
+  in out TRegister extends Register,
   in out TParamVariant extends ParamVariant,
   in out TFrom,
   in out TTo,
 > = (
-  current: Expand<ResolveFromParams<TRouter, TParamVariant, TFrom>>,
-) => Expand<ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>>
+  current: Expand<ResolveFromParams<TRegister, TParamVariant, TFrom>>,
+) => Expand<ResolveRelativeToParams<TRegister, TParamVariant, TFrom, TTo>>
 
 type ParamsReducer<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TParamVariant extends ParamVariant,
   TFrom,
   TTo,
 > =
-  | Expand<ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>>
-  | (ParamsReducerFn<TRouter, TParamVariant, TFrom, TTo> & {})
+  | Expand<ResolveRelativeToParams<TRegister, TParamVariant, TFrom, TTo>>
+  | (ParamsReducerFn<TRegister, TParamVariant, TFrom, TTo> & {})
 
 type ParamVariant = 'PATH' | 'SEARCH'
 
 export type ResolveRoute<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TTo,
   TPath = ResolveRelativePath<TFrom, TTo>,
 > = TPath extends string
   ? TFrom extends TPath
-    ? RouteByPath<TRouter['routeTree'], TPath>
-    : RouteByToPath<TRouter, TPath>
+    ? RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+      ? RouteByPath<TRouter['routeTree'], TPath>
+      : never
+    : RouteByToPath<TRegister, TPath>
   : never
 
 type ResolveFromParamType<TParamVariant extends ParamVariant> =
   TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchema'
 
 type ResolveFromAllParams<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TParamVariant extends ParamVariant,
 > = TParamVariant extends 'PATH'
-  ? AllParams<TRouter['routeTree']>
-  : FullSearchSchema<TRouter['routeTree']>
+  ? RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? AllParams<TRouter['routeTree']>
+    : never
+  : RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? FullSearchSchema<TRouter['routeTree']>
+    : never
 
 type ResolveFromParams<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TParamVariant extends ParamVariant,
   TFrom,
 > = string extends TFrom
-  ? ResolveFromAllParams<TRouter, TParamVariant>
-  : RouteByPath<
-      TRouter['routeTree'],
-      TFrom
-    >['types'][ResolveFromParamType<TParamVariant>]
+  ? ResolveFromAllParams<TRegister, TParamVariant>
+  : RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? RouteByPath<
+        TRouter['routeTree'],
+        TFrom
+      >['types'][ResolveFromParamType<TParamVariant>]
+    : never
 
 type ResolveToParamType<TParamVariant extends ParamVariant> =
   TParamVariant extends 'PATH' ? 'allParams' : 'fullSearchSchemaInput'
 
 type ResolveAllToParams<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TParamVariant extends ParamVariant,
 > = TParamVariant extends 'PATH'
-  ? AllParams<TRouter['routeTree']>
-  : FullSearchSchemaInput<TRouter['routeTree']>
+  ? RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? AllParams<TRouter['routeTree']>
+    : never
+  : RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? FullSearchSchemaInput<TRouter['routeTree']>
+    : never
 
 export type ResolveToParams<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TParamVariant extends ParamVariant,
   TFrom,
   TTo,
@@ -511,49 +529,49 @@ export type ResolveToParams<
     ? undefined extends TPath
       ? never
       : string extends TPath
-        ? ResolveAllToParams<TRouter, TParamVariant>
-        : TPath extends CatchAllPaths<TRouter>
-          ? ResolveAllToParams<TRouter, TParamVariant>
+        ? ResolveAllToParams<TRegister, TParamVariant>
+        : TPath extends CatchAllPaths<TRegister>
+          ? ResolveAllToParams<TRegister, TParamVariant>
           : ResolveRoute<
-              TRouter,
+              TRegister,
               TFrom,
               TTo
             >['types'][ResolveToParamType<TParamVariant>]
     : never
 
 type ResolveRelativeToParams<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TParamVariant extends ParamVariant,
   TFrom,
   TTo,
-  TToParams = ResolveToParams<TRouter, TParamVariant, TFrom, TTo>,
+  TToParams = ResolveToParams<TRegister, TParamVariant, TFrom, TTo>,
 > = TParamVariant extends 'SEARCH'
   ? TToParams
   : string extends TFrom
     ? TToParams
     : MakeDifferenceOptional<
-        ResolveFromParams<TRouter, TParamVariant, TFrom>,
+        ResolveFromParams<TRegister, TParamVariant, TFrom>,
         TToParams
       >
 
 export interface MakeOptionalSearchParams<
-  in out TRouter extends AnyRouter,
+  in out TRegister extends Register,
   in out TFrom,
   in out TTo,
 > {
-  search?: true | (ParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {})
+  search?: true | (ParamsReducer<TRegister, 'SEARCH', TFrom, TTo> & {})
 }
 
 export interface MakeOptionalPathParams<
-  in out TRouter extends AnyRouter,
+  in out TRegister extends Register,
   in out TFrom,
   in out TTo,
 > {
-  params?: true | (ParamsReducer<TRouter, 'PATH', TFrom, TTo> & {})
+  params?: true | (ParamsReducer<TRegister, 'PATH', TFrom, TTo> & {})
 }
 
 type MakeRequiredParamsReducer<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TParamVariant extends ParamVariant,
   TFrom,
   TTo,
@@ -561,32 +579,37 @@ type MakeRequiredParamsReducer<
   | (string extends TFrom
       ? never
       : ResolveFromParams<
-            TRouter,
+            TRegister,
             TParamVariant,
             TFrom
-          > extends ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
+          > extends ResolveRelativeToParams<
+            TRegister,
+            TParamVariant,
+            TFrom,
+            TTo
+          >
         ? true
         : never)
-  | (ParamsReducer<TRouter, TParamVariant, TFrom, TTo> & {})
+  | (ParamsReducer<TRegister, TParamVariant, TFrom, TTo> & {})
 
 export interface MakeRequiredPathParams<
-  in out TRouter extends AnyRouter,
+  in out TRegister extends Register,
   in out TFrom,
   in out TTo,
 > {
-  params: MakeRequiredParamsReducer<TRouter, 'PATH', TFrom, TTo> & {}
+  params: MakeRequiredParamsReducer<TRegister, 'PATH', TFrom, TTo> & {}
 }
 
 export interface MakeRequiredSearchParams<
-  in out TRouter extends AnyRouter,
+  in out TRegister extends Register,
   in out TFrom,
   in out TTo,
 > {
-  search: MakeRequiredParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {}
+  search: MakeRequiredParamsReducer<TRegister, 'SEARCH', TFrom, TTo> & {}
 }
 
 export type IsRequired<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TParamVariant extends ParamVariant,
   TFrom,
   TTo,
@@ -594,39 +617,44 @@ export type IsRequired<
   ResolveRelativePath<TFrom, TTo> extends infer TPath
     ? undefined extends TPath
       ? never
-      : TPath extends CatchAllPaths<TRouter>
+      : TPath extends CatchAllPaths<TRegister>
         ? never
         : IsRequiredParams<
-            ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
+            ResolveRelativeToParams<TRegister, TParamVariant, TFrom, TTo>
           >
     : never
 
-export type SearchParamOptions<TRouter extends AnyRouter, TFrom, TTo> =
-  IsRequired<TRouter, 'SEARCH', TFrom, TTo> extends never
-    ? MakeOptionalSearchParams<TRouter, TFrom, TTo>
-    : MakeRequiredSearchParams<TRouter, TFrom, TTo>
+export type SearchParamOptions<TRegister extends Register, TFrom, TTo> =
+  IsRequired<TRegister, 'SEARCH', TFrom, TTo> extends never
+    ? MakeOptionalSearchParams<TRegister, TFrom, TTo>
+    : MakeRequiredSearchParams<TRegister, TFrom, TTo>
 
-export type PathParamOptions<TRouter extends AnyRouter, TFrom, TTo> =
-  IsRequired<TRouter, 'PATH', TFrom, TTo> extends never
-    ? MakeOptionalPathParams<TRouter, TFrom, TTo>
-    : MakeRequiredPathParams<TRouter, TFrom, TTo>
+export type PathParamOptions<TRegister extends Register, TFrom, TTo> =
+  IsRequired<TRegister, 'PATH', TFrom, TTo> extends never
+    ? MakeOptionalPathParams<TRegister, TFrom, TTo>
+    : MakeRequiredPathParams<TRegister, TFrom, TTo>
 
 export type ToPathOption<
-  TRouter extends AnyRouter = AnyRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = string,
 > = ConstrainLiteral<
   TTo,
   RelativeToPathAutoComplete<
-    TRouter,
+    TRegister,
     NoInfer<TFrom> extends string ? NoInfer<TFrom> : '',
     NoInfer<TTo> & string
   >
 >
 
-export type FromPathOption<TRouter extends AnyRouter, TFrom> = ConstrainLiteral<
+export type FromPathOption<
+  TRegister extends Register,
   TFrom,
-  RoutePaths<TRouter['routeTree']>
+> = ConstrainLiteral<
+  TFrom,
+  RegisteredRouter<TRegister> extends infer TRouter extends AnyRouter
+    ? RoutePaths<TRouter['routeTree']>
+    : never
 >
 
 /**
@@ -692,12 +720,13 @@ export interface LinkOptionsProps {
 }
 
 export type LinkOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & LinkOptionsProps
+> = NavigateOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo> &
+  LinkOptionsProps
 
 export type LinkCurrentTargetElement = {
   preloadTimeout?: null | ReturnType<typeof setTimeout>

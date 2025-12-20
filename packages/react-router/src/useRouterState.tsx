@@ -4,6 +4,7 @@ import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
@@ -13,20 +14,30 @@ import type {
 } from './structuralSharing'
 
 export type UseRouterStateOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
   TStructuralSharing,
 > = {
-  router?: TRouter
+  router?: RegisteredRouter<TRegister>
   select?: (
-    state: RouterState<TRouter['routeTree']>,
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
-} & StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
+    state: RouterState<RegisteredRouter<TRegister>['routeTree']>,
+  ) => ValidateSelected<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
+} & StructuralSharingOption<
+  RegisteredRouter<TRegister>,
+  TSelected,
+  TStructuralSharing
+>
 
 export type UseRouterStateResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
-> = unknown extends TSelected ? RouterState<TRouter['routeTree']> : TSelected
+> = unknown extends TSelected
+  ? RouterState<RegisteredRouter<TRegister>['routeTree']>
+  : TSelected
 
 /**
  * Subscribe to the router's state store with optional selection and
@@ -41,18 +52,24 @@ export type UseRouterStateResult<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useRouterStateHook
  */
 export function useRouterState<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseRouterStateOptions<TRouter, TSelected, TStructuralSharing>,
-): UseRouterStateResult<TRouter, TSelected> {
-  const contextRouter = useRouter<TRouter>({
+  opts?: UseRouterStateOptions<TRegister, TSelected, TStructuralSharing>,
+): UseRouterStateResult<TRegister, TSelected> {
+  const contextRouter = useRouter<TRegister>({
     warn: opts?.router === undefined,
   })
   const router = opts?.router || contextRouter
   const previousResult =
-    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
+    useRef<
+      ValidateSelected<
+        RegisteredRouter<TRegister>,
+        TSelected,
+        TStructuralSharing
+      >
+    >(undefined)
 
   return useStore(router.__store, (state) => {
     if (opts?.select) {
@@ -67,5 +84,5 @@ export function useRouterState<
       return opts.select(state)
     }
     return state
-  }) as UseRouterStateResult<TRouter, TSelected>
+  }) as UseRouterStateResult<TRegister, TSelected>
 }

@@ -3,6 +3,7 @@ import { Matches } from './Matches'
 import { getRouterContext } from './routerContext'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
@@ -12,13 +13,13 @@ import type {
  * updates router options from props. Most apps should use `RouterProvider`.
  */
 export function RouterContextProvider<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TDehydrated extends Record<string, any> = Record<string, any>,
 >({
   router,
   children,
   ...rest
-}: RouterProps<TRouter, TDehydrated> & {
+}: RouterProps<TRegister, TDehydrated> & {
   children: React.ReactNode
 }) {
   if (Object.keys(rest).length > 0) {
@@ -58,9 +59,9 @@ export function RouterContextProvider<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouterFunction
  */
 export function RouterProvider<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TDehydrated extends Record<string, any> = Record<string, any>,
->({ router, ...rest }: RouterProps<TRouter, TDehydrated>) {
+>({ router, ...rest }: RouterProps<TRegister, TDehydrated>) {
   return (
     <RouterContextProvider router={router} {...rest}>
       <Matches />
@@ -69,25 +70,29 @@ export function RouterProvider<
 }
 
 export type RouterProps<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TDehydrated extends Record<string, any> = Record<string, any>,
 > = Omit<
   RouterOptions<
-    TRouter['routeTree'],
-    NonNullable<TRouter['options']['trailingSlash']>,
-    NonNullable<TRouter['options']['defaultStructuralSharing']>,
-    TRouter['history'],
+    RegisteredRouter<TRegister>['routeTree'],
+    NonNullable<RegisteredRouter<TRegister>['options']['trailingSlash']>,
+    NonNullable<
+      RegisteredRouter<TRegister>['options']['defaultStructuralSharing']
+    >,
+    RegisteredRouter<TRegister>['history'],
     TDehydrated
   >,
   'context'
 > & {
-  router: TRouter
+  router: RegisteredRouter<TRegister>
   context?: Partial<
     RouterOptions<
-      TRouter['routeTree'],
-      NonNullable<TRouter['options']['trailingSlash']>,
-      NonNullable<TRouter['options']['defaultStructuralSharing']>,
-      TRouter['history'],
+      RegisteredRouter<TRegister>['routeTree'],
+      NonNullable<RegisteredRouter<TRegister>['options']['trailingSlash']>,
+      NonNullable<
+        RegisteredRouter<TRegister>['options']['defaultStructuralSharing']
+      >,
+      RegisteredRouter<TRegister>['history'],
       TDehydrated
     >['context']
   >

@@ -1,20 +1,32 @@
 import type { AllParams, RouteById } from './routeInfo'
-import type { AnyRouter } from './router'
+import type { AnyRoute } from './route'
+import type { AnyRouter, Register, RegisteredRouter } from './router'
 import type { Expand } from './utils'
 
 export type ResolveUseParams<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
 > = TStrict extends false
-  ? AllParams<TRouter['routeTree']>
-  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['allParams']>
+  ? AllParams<
+      RegisteredRouter<TRegister>['routeTree'] extends AnyRoute
+        ? RegisteredRouter<TRegister>['routeTree']
+        : AnyRoute
+    >
+  : Expand<
+      RouteById<
+        RegisteredRouter<TRegister>['routeTree'] extends AnyRoute
+          ? RegisteredRouter<TRegister>['routeTree']
+          : AnyRoute,
+        TFrom
+      >['types']['allParams']
+    >
 
 export type UseParamsResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TSelected,
 > = unknown extends TSelected
-  ? ResolveUseParams<TRouter, TFrom, TStrict>
+  ? ResolveUseParams<TRegister, TFrom, TStrict>
   : TSelected

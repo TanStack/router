@@ -114,7 +114,7 @@ export type RegisteredSsr<TRegister = Register> = TRegister extends {
   : false
 
 export type RegisteredRouter<TRegister = Register> = TRegister extends {
-  router: infer TRouter
+  router: infer TRouter extends AnyRouter
 }
   ? TRouter
   : AnyRouter
@@ -2060,7 +2060,7 @@ export class RouterCore<
         hash: true,
         state: true,
         _includeValidateSearch: true,
-      })
+      } as any)
 
       if (
         this.latestLocation.publicHref !== nextLocation.publicHref ||
@@ -2068,7 +2068,7 @@ export class RouterCore<
       ) {
         const href = this.getParsedLocationHref(nextLocation)
 
-        throw redirect({ href })
+        throw redirect({ href } as any)
       }
     }
 

@@ -24,6 +24,7 @@ import type {
   MatchRouteOptions,
   NoInfer,
   RegisteredRouter,
+  Register,
   ResolveRelativePath,
   ResolveRoute,
   RouteByPath,
@@ -112,15 +113,17 @@ function MatchesInner() {
 }
 
 export type UseMatchRouteOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = ToSubOptionsProps<TRouter, TFrom, TTo> &
-  DeepPartial<MakeOptionalSearchParams<TRouter, TFrom, TTo>> &
-  DeepPartial<MakeOptionalPathParams<TRouter, TFrom, TTo>> &
-  MaskOptions<TRouter, TMaskFrom, TMaskTo> &
+> = ToSubOptionsProps<RegisteredRouter<TRegister>, TFrom, TTo> &
+  DeepPartial<
+    MakeOptionalSearchParams<RegisteredRouter<TRegister>, TFrom, TTo>
+  > &
+  DeepPartial<MakeOptionalPathParams<RegisteredRouter<TRegister>, TFrom, TTo>> &
+  MaskOptions<RegisteredRouter<TRegister>, TMaskFrom, TMaskTo> &
   MatchRouteOptions
 
 /**
@@ -135,8 +138,8 @@ export type UseMatchRouteOptions<
  * @returns A `matchRoute(options)` function that returns `false` or params.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchRouteHook
  */
-export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
-  const router = useRouter()
+export function useMatchRoute<TRegister extends Register = Register>() {
+  const router = useRouter<TRegister>()
 
   useRouterState({
     select: (s) => [s.location.href, s.resolvedLocation?.href, s.status],
@@ -150,10 +153,16 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
       const TMaskFrom extends string = TFrom,
       const TMaskTo extends string = '',
     >(
-      opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+      opts: UseMatchRouteOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo>,
     ):
       | false
-      | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']> => {
+      | Expand<
+          ResolveRoute<
+            RegisteredRouter<TRegister>,
+            TFrom,
+            TTo
+          >['types']['allParams']
+        > => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       return router.matchRoute(rest as any, {
@@ -168,17 +177,17 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 }
 
 export type MakeMatchRouteOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
+> = UseMatchRouteOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
         params?: RouteByPath<
-          TRouter['routeTree'],
+          RegisteredRouter<TRegister>['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
       ) => React.ReactNode)
@@ -193,13 +202,15 @@ export type MakeMatchRouteOptions<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/matchRouteComponent
  */
 export function MatchRoute<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string = string,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
->(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
-  const matchRoute = useMatchRoute()
+>(
+  props: MakeMatchRouteOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo>,
+): any {
+  const matchRoute = useMatchRoute<TRegister>()
   const params = matchRoute(props as any) as boolean
 
   if (typeof props.children === 'function') {
@@ -210,37 +221,49 @@ export function MatchRoute<
 }
 
 export interface UseMatchesBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
   TStructuralSharing,
 > {
   select?: (
-    matches: Array<MakeRouteMatchUnion<TRouter>>,
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+    matches: Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+  ) => ValidateSelected<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
 }
 
 export type UseMatchesResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
-> = unknown extends TSelected ? Array<MakeRouteMatchUnion<TRouter>> : TSelected
+> = unknown extends TSelected
+  ? Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>
+  : TSelected
 
 export function useMatches<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-): UseMatchesResult<TRouter, TSelected> {
-  return useRouterState({
-    select: (state: RouterState<TRouter['routeTree']>) => {
+  opts?: UseMatchesBaseOptions<TRegister, TSelected, TStructuralSharing> &
+    StructuralSharingOption<
+      RegisteredRouter<TRegister>,
+      TSelected,
+      TStructuralSharing
+    >,
+): UseMatchesResult<TRegister, TSelected> {
+  return useRouterState<TRegister, TSelected, TStructuralSharing>({
+    select: (state: RouterState<RegisteredRouter<TRegister>['routeTree']>) => {
       const matches = state.matches
       return opts?.select
-        ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
+        ? opts.select(
+            matches as Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+          )
         : matches
     },
     structuralSharing: opts?.structuralSharing,
-  } as any) as UseMatchesResult<TRouter, TSelected>
+  } as any) as UseMatchesResult<TRegister, TSelected>
 }
 
 /**
@@ -260,17 +283,23 @@ export function useMatches<
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchesHook
  */
 export function useParentMatches<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-): UseMatchesResult<TRouter, TSelected> {
+  opts?: UseMatchesBaseOptions<TRegister, TSelected, TStructuralSharing> &
+    StructuralSharingOption<
+      RegisteredRouter<TRegister>,
+      TSelected,
+      TStructuralSharing
+    >,
+): UseMatchesResult<TRegister, TSelected> {
   const contextMatchId = React.useContext(matchContext)
 
-  return useMatches({
-    select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
+  return useMatches<TRegister, TSelected, TStructuralSharing>({
+    select: (
+      matches: Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+    ) => {
       matches = matches.slice(
         0,
         matches.findIndex((d) => d.id === contextMatchId),
@@ -286,17 +315,23 @@ export function useParentMatches<
  * match (or selected parent) in the match tree.
  */
 export function useChildMatches<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-): UseMatchesResult<TRouter, TSelected> {
+  opts?: UseMatchesBaseOptions<TRegister, TSelected, TStructuralSharing> &
+    StructuralSharingOption<
+      RegisteredRouter<TRegister>,
+      TSelected,
+      TStructuralSharing
+    >,
+): UseMatchesResult<TRegister, TSelected> {
   const contextMatchId = React.useContext(matchContext)
 
-  return useMatches({
-    select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
+  return useMatches<TRegister, TSelected, TStructuralSharing>({
+    select: (
+      matches: Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+    ) => {
       matches = matches.slice(
         matches.findIndex((d) => d.id === contextMatchId) + 1,
       )

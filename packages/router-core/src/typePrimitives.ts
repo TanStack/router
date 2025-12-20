@@ -7,7 +7,7 @@ import type {
 } from './link'
 import type { RedirectOptions } from './redirect'
 import type { RouteIds } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { AnyRouter, Register, RegisteredRouter } from './router'
 import type { UseParamsResult } from './useParams'
 import type { UseSearchResult } from './useSearch'
 import type { Constrain, ConstrainLiteral } from './utils'
@@ -169,11 +169,11 @@ export type ValidateUseSearchResult<
 
 export type ValidateUseParamsResult<
   TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 > = Constrain<
   TOptions,
   UseParamsResult<
-    TRouter,
+    TRegister,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
     InferSelected<TOptions>

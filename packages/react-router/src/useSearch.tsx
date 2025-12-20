@@ -6,6 +6,7 @@ import type {
 import type {
   AnyRouter,
   RegisteredRouter,
+  Register,
   ResolveUseSearch,
   StrictOrFrom,
   ThrowConstraint,
@@ -14,7 +15,7 @@ import type {
 } from '@tanstack/router-core'
 
 export interface UseSearchBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
@@ -22,44 +23,55 @@ export interface UseSearchBaseOptions<
   TStructuralSharing,
 > {
   select?: (
-    state: ResolveUseSearch<TRouter, TFrom, TStrict>,
-  ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+    state: ResolveUseSearch<RegisteredRouter<TRegister>, TFrom, TStrict>,
+  ) => ValidateSelected<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
   shouldThrow?: TThrow
 }
 
 export type UseSearchOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
   TStructuralSharing,
-> = StrictOrFrom<TRouter, TFrom, TStrict> &
+> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom, TStrict> &
   UseSearchBaseOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TStrict,
     TThrow,
     TSelected,
     TStructuralSharing
   > &
-  StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
+  StructuralSharingOption<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
 
-export type UseSearchRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseSearchRoute<TRegister extends Register, out TFrom> = <
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
   opts?: UseSearchBaseOptions<
-    TRouter,
+    TRegister,
     TFrom,
     /* TStrict */ true,
     /* TThrow */ true,
     TSelected,
     TStructuralSharing
   > &
-    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-) => UseSearchResult<TRouter, TFrom, true, TSelected>
+    StructuralSharingOption<
+      RegisteredRouter<TRegister>,
+      TSelected,
+      TStructuralSharing
+    >,
+) => UseSearchResult<RegisteredRouter<TRegister>, TFrom, true, TSelected>
 
 /**
  * Read and select the current route's search parameters with type-safety.
@@ -74,7 +86,7 @@ export type UseSearchRoute<out TFrom> = <
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useSearchHook
  */
 export function useSearch<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
@@ -82,7 +94,7 @@ export function useSearch<
   TStructuralSharing extends boolean = boolean,
 >(
   opts: UseSearchOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TStrict,
     ThrowConstraint<TStrict, TThrow>,
@@ -90,7 +102,7 @@ export function useSearch<
     TStructuralSharing
   >,
 ): ThrowOrOptional<
-  UseSearchResult<TRouter, TFrom, TStrict, TSelected>,
+  UseSearchResult<RegisteredRouter<TRegister>, TFrom, TStrict, TSelected>,
   TThrow
 > {
   return useMatch({
