@@ -75,6 +75,10 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.indexToken = '_1nd3x'
       config.routeToken = '_r0ut3_'
       break
+    case 'escaped-custom-tokens':
+      config.indexToken = '_1nd3x'
+      config.routeToken = '_r0ut3_'
+      break
     case 'virtual':
       {
         const virtualRouteConfig = rootRoute('root.tsx', [
