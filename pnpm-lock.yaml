@@ -12342,8 +12342,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       h3-v2:
-        specifier: npm:h3@2.0.1-rc.6
-        version: h3@2.0.1-rc.6(crossws@0.4.1(srvx@0.9.8))
+        specifier: npm:h3@2.0.1-rc.2
+        version: h3@2.0.1-rc.2(crossws@0.4.1(srvx@0.9.8))
       seroval:
         specifier: ^1.4.1
         version: 1.4.1
@@ -20305,15 +20305,6 @@ packages:
       crossws:
         optional: true
 
-  h3@2.0.1-rc.6:
-    resolution: {integrity: sha512-kKLFVFNJlDVTbQjakz1ZTFSHB9+oi9+Khf0v7xQsUKU3iOqu2qmrFzTD56YsDvvj2nBgqVDphGRXB2VRursw4w==}
-    engines: {node: '>=20.11.1'}
-    peerDependencies:
-      crossws: ^0.4.1
-    peerDependenciesMeta:
-      crossws:
-        optional: true
-
   handle-thing@2.0.1:
     resolution: {integrity: sha512-9Qn4yBxelxoh2Ow62nP+Ka/kMnOXRi8BXnRaUwezLNhqelnN49xKz4F/dPP8OYLxLxq6JDtZb2i9XznUQbNPTg==}
 
@@ -22604,9 +22595,6 @@ packages:
 
   rou3@0.7.12:
     resolution: {integrity: sha512-iFE4hLDuloSWcD7mjdCDhx2bKcIsYbtOTpfH5MHHLSKMOUyjqQXTeZVa289uuwEGEKFoE/BAPbhaU4B774nceg==}
-
-  rou3@0.7.8:
-    resolution: {integrity: sha512-21X/el5fdOaEsqwl3an/d9kpZ8hshVIyrwFCpsoleJ4ccAGRbN+PVoxyXzWXkHDxfMkVnLe4yzx+imz2qoem2Q==}
 
   router@2.2.0:
     resolution: {integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==}
@@ -33223,15 +33211,17 @@ snapshots:
     dependencies:
       cookie-es: 2.0.0
       fetchdts: 0.1.7
-      rou3: 0.7.8
+      rou3: 0.7.12
       srvx: 0.8.15
     optionalDependencies:
       crossws: 0.4.1(srvx@0.8.15)
 
-  h3@2.0.1-rc.6(crossws@0.4.1(srvx@0.9.8)):
+  h3@2.0.1-rc.2(crossws@0.4.1(srvx@0.9.8)):
     dependencies:
+      cookie-es: 2.0.0
+      fetchdts: 0.1.7
       rou3: 0.7.12
-      srvx: 0.9.8
+      srvx: 0.8.15
     optionalDependencies:
       crossws: 0.4.1(srvx@0.9.8)
 
@@ -35787,8 +35777,6 @@ snapshots:
   rou3@0.5.1: {}
 
   rou3@0.7.12: {}
-
-  rou3@0.7.8: {}
 
   router@2.2.0:
     dependencies:
