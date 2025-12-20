@@ -49,9 +49,7 @@ export function handleCreateMiddleware(
     }
 
     // remove the validator call expression
-    if (
-      t.isMemberExpression(callExpressionPaths.inputValidator.node.callee)
-    ) {
+    if (t.isMemberExpression(callExpressionPaths.inputValidator.node.callee)) {
       callExpressionPaths.inputValidator.replaceWith(
         callExpressionPaths.inputValidator.node.callee.object,
       )
@@ -62,10 +60,7 @@ export function handleCreateMiddleware(
     'arguments.0',
   ) as babel.NodePath<any>
 
-  if (
-    callExpressionPaths.server &&
-    serverFnPath.node
-  ) {
+  if (callExpressionPaths.server && serverFnPath.node) {
     // remove the server call expression
     if (t.isMemberExpression(callExpressionPaths.server.node.callee)) {
       callExpressionPaths.server.replaceWith(
