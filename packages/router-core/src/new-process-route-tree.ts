@@ -536,16 +536,16 @@ function createDynamicNode<T extends RouteLike>(
 
 type StaticSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-    | typeof SEGMENT_TYPE_PATHNAME
-    | typeof SEGMENT_TYPE_PATHLESS
-    | typeof SEGMENT_TYPE_INDEX
+  | typeof SEGMENT_TYPE_PATHNAME
+  | typeof SEGMENT_TYPE_PATHLESS
+  | typeof SEGMENT_TYPE_INDEX
 }
 
 type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-    | typeof SEGMENT_TYPE_PARAM
-    | typeof SEGMENT_TYPE_WILDCARD
-    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+  | typeof SEGMENT_TYPE_PARAM
+  | typeof SEGMENT_TYPE_WILDCARD
+  | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   prefix?: string
   suffix?: string
   caseSensitive: boolean
@@ -802,7 +802,6 @@ function findMatch<T extends RouteLike>(
   return {
     route,
     params,
-    error: leaf.error,
   }
 }
 
@@ -823,9 +822,9 @@ function extractParams<T extends RouteLike>(
     params?: Record<string, string>
   },
 ): [
-  params: Record<string, string>,
-  state: { part: number; node: number; path: number },
-] {
+    params: Record<string, string>,
+    state: { part: number; node: number; path: number },
+  ] {
   const list = buildBranch(leaf.node)
   let nodeParts: Array<string> | null = null
   const params: Record<string, string> = {}
@@ -932,9 +931,6 @@ type MatchStackFrame<T extends RouteLike> = {
   // TODO: I'm not sure, but I think we need both the raw strings for `interpolatePath` and the parsed values for the final match object
   // I think they can still be accumulated (separately) in a single object (each) because `interpolatePath` returns the `usedParams` anyway
   params?: Record<string, string>
-  /** capture error from parse function */
-  // TODO: we might need to get a Map<route, error> instead, so that matches can be built correctly
-  error?: unknown
 }
 
 function getNodeMatch<T extends RouteLike>(
@@ -980,26 +976,13 @@ function getNodeMatch<T extends RouteLike>(
   while (stack.length) {
     const frame = stack.pop()!
     const { node, index, skipped, depth, statics, dynamics, optionals } = frame
-    let { extract, params, error } = frame
+    let { extract, params } = frame
 
-    if (node.parse) {
-      // if there is a parse function, we need to extract the params that we have so far and run it.
-      // if this function throws, we cannot consider this a valid match
-      try {
-        ;[params, extract] = extractParams(path, parts, frame)
-        frame.extract = extract
-        frame.params = params
-        params = node.parse(params)
-        frame.params = params
-      } catch (e) {
-        if (!error) {
-          error = e
-          frame.error = e
-        }
-        if (node.skipRouteOnParseError) continue
-        // TODO: when *not* continuing, we need to accumulate all errors so we can assign them to the
-        // corresponding match objects in `matchRoutesInternal`?
-      }
+    if (node.skipRouteOnParseError && node.parse) {
+      const result = validateMatchParams(path, parts, frame)
+      if (!result) continue
+      params = result[0]
+      extract = result[1]
     }
 
     // In fuzzy mode, track the best partial match we've found so far
@@ -1036,7 +1019,10 @@ function getNodeMatch<T extends RouteLike>(
         optionals,
         extract,
         params,
-        error,
+      }
+      if (node.index.skipRouteOnParseError && node.index.parse) {
+        const result = validateMatchParams(path, parts, indexFrame)
+        if (!result) continue
       }
       // perfect match, no need to continue
       // this is an optimization, algorithm should work correctly without this block
@@ -1078,20 +1064,10 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
-          error,
         }
-        // TODO: should we handle wildcard candidates like any other frame?
-        // then we wouldn't need to duplicate the parsing logic here
-        if (segment.parse) {
-          try {
-            const [params, extract] = extractParams(path, parts, frame)
-            frame.extract = extract
-            frame.params = params
-            frame.params = segment.parse(params)
-          } catch (e) {
-            frame.error = e
-            if (segment.skipRouteOnParseError) continue
-          }
+        if (segment.skipRouteOnParseError && segment.parse) {
+          const result = validateMatchParams(path, parts, frame)
+          if (!result) continue
         }
         wildcardMatch = frame
         break
@@ -1115,7 +1091,6 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
-          error,
         }) // enqueue skipping the optional
       }
       if (!isBeyondPath) {
@@ -1139,7 +1114,6 @@ function getNodeMatch<T extends RouteLike>(
             optionals: optionals + 1,
             extract,
             params,
-            error,
           })
         }
       }
@@ -1167,7 +1141,6 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
-          error,
         })
       }
     }
@@ -1188,7 +1161,6 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
-          error,
         })
       }
     }
@@ -1207,7 +1179,6 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
-          error,
         })
       }
     }
@@ -1227,7 +1198,6 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
-          error,
         })
       }
     }
@@ -1255,6 +1225,19 @@ function getNodeMatch<T extends RouteLike>(
   }
 
   return null
+}
+
+function validateMatchParams<T extends RouteLike>(path: string, parts: Array<string>, frame: MatchStackFrame<T>) {
+  try {
+    const result = extractParams(path, parts, frame)
+    frame.params = result[0]
+    frame.extract = result[1]
+    result[0] = frame.node.parse!(result[0])
+    frame.params = result[0]
+    return result
+  } catch {
+    return null
+  }
 }
 
 function isFrameMoreSpecific(
