@@ -863,6 +863,217 @@ describe('findRouteMatch', () => {
       })
     })
   })
+  describe('pathless routes', () => {
+    it('builds segment tree correctly', () => {
+      const tree = {
+        path: '/',
+        isRoot: true,
+        id: '__root__',
+        fullPath: '/',
+        children: [
+          {
+            path: '/',
+            id: '/',
+            fullPath: '/',
+            options: {},
+          },
+          {
+            id: '/$foo/_layout',
+            path: '$foo',
+            fullPath: '/$foo',
+            options: {
+              params: { parse: () => { } },
+              skipRouteOnParseError: true,
+            },
+            children: [
+              {
+                id: '/$foo/_layout/bar',
+                path: 'bar',
+                fullPath: '/$foo/bar',
+                options: {},
+              },
+              {
+                id: '/$foo/_layout/',
+                path: '/',
+                fullPath: '/$foo/',
+                options: {},
+              },
+            ],
+          },
+          {
+            id: '/$foo/hello',
+            path: '$foo/hello',
+            fullPath: '/$foo/hello',
+            options: {},
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(processedTree.segmentTree).toMatchInlineSnapshot(`
+        {
+          "depth": 0,
+          "dynamic": [
+            {
+              "caseSensitive": false,
+              "depth": 1,
+              "dynamic": null,
+              "fullPath": "/$foo",
+              "index": null,
+              "kind": 1,
+              "optional": null,
+              "parent": [Circular],
+              "parse": null,
+              "pathless": [
+                {
+                  "depth": 2,
+                  "dynamic": null,
+                  "fullPath": "/$foo",
+                  "index": {
+                    "depth": 3,
+                    "dynamic": null,
+                    "fullPath": "/$foo/",
+                    "index": null,
+                    "kind": 5,
+                    "optional": null,
+                    "parent": [Circular],
+                    "parse": null,
+                    "pathless": null,
+                    "route": {
+                      "fullPath": "/$foo/",
+                      "id": "/$foo/_layout/",
+                      "options": {},
+                      "path": "/",
+                    },
+                    "skipRouteOnParseError": false,
+                    "static": null,
+                    "staticInsensitive": null,
+                    "wildcard": null,
+                  },
+                  "kind": 4,
+                  "optional": null,
+                  "parent": [Circular],
+                  "parse": [Function],
+                  "pathless": null,
+                  "route": {
+                    "children": [
+                      {
+                        "fullPath": "/$foo/bar",
+                        "id": "/$foo/_layout/bar",
+                        "options": {},
+                        "path": "bar",
+                      },
+                      {
+                        "fullPath": "/$foo/",
+                        "id": "/$foo/_layout/",
+                        "options": {},
+                        "path": "/",
+                      },
+                    ],
+                    "fullPath": "/$foo",
+                    "id": "/$foo/_layout",
+                    "options": {
+                      "params": {
+                        "parse": [Function],
+                      },
+                      "skipRouteOnParseError": true,
+                    },
+                    "path": "$foo",
+                  },
+                  "skipRouteOnParseError": true,
+                  "static": null,
+                  "staticInsensitive": Map {
+                    "bar" => {
+                      "depth": 3,
+                      "dynamic": null,
+                      "fullPath": "/$foo/bar",
+                      "index": null,
+                      "kind": 0,
+                      "optional": null,
+                      "parent": [Circular],
+                      "parse": null,
+                      "pathless": null,
+                      "route": {
+                        "fullPath": "/$foo/bar",
+                        "id": "/$foo/_layout/bar",
+                        "options": {},
+                        "path": "bar",
+                      },
+                      "skipRouteOnParseError": false,
+                      "static": null,
+                      "staticInsensitive": null,
+                      "wildcard": null,
+                    },
+                  },
+                  "wildcard": null,
+                },
+              ],
+              "prefix": undefined,
+              "route": null,
+              "skipRouteOnParseError": false,
+              "static": null,
+              "staticInsensitive": Map {
+                "hello" => {
+                  "depth": 2,
+                  "dynamic": null,
+                  "fullPath": "/$foo/hello",
+                  "index": null,
+                  "kind": 0,
+                  "optional": null,
+                  "parent": [Circular],
+                  "parse": null,
+                  "pathless": null,
+                  "route": {
+                    "fullPath": "/$foo/hello",
+                    "id": "/$foo/hello",
+                    "options": {},
+                    "path": "$foo/hello",
+                  },
+                  "skipRouteOnParseError": false,
+                  "static": null,
+                  "staticInsensitive": null,
+                  "wildcard": null,
+                },
+              },
+              "suffix": undefined,
+              "wildcard": null,
+            },
+          ],
+          "fullPath": "/",
+          "index": {
+            "depth": 1,
+            "dynamic": null,
+            "fullPath": "/",
+            "index": null,
+            "kind": 5,
+            "optional": null,
+            "parent": [Circular],
+            "parse": null,
+            "pathless": null,
+            "route": {
+              "fullPath": "/",
+              "id": "/",
+              "options": {},
+              "path": "/",
+            },
+            "skipRouteOnParseError": false,
+            "static": null,
+            "staticInsensitive": null,
+            "wildcard": null,
+          },
+          "kind": 0,
+          "optional": null,
+          "parent": null,
+          "parse": null,
+          "pathless": null,
+          "route": null,
+          "skipRouteOnParseError": false,
+          "static": null,
+          "staticInsensitive": null,
+          "wildcard": null,
+        }
+      `)
+    })
+  })
 })
 
 describe('processRouteMasks', { sequential: true }, () => {
