@@ -345,9 +345,10 @@ function parseSegments<TRouteLike extends RouteLike>(
           node.wildcard.push(next)
         }
       }
-      node = nextNode!
+      node = nextNode
     }
 
+    // create pathless node
     if (
       parse &&
       skipRouteOnParseError &&
@@ -384,9 +385,10 @@ function parseSegments<TRouteLike extends RouteLike>(
 
     node.parse = parse
     node.skipRouteOnParseError = skipRouteOnParseError
+
+    // make node "matchable"
     if (isLeaf && !node.route) {
       node.route = route
-      // when replacing, replace all attributes that are route-specific (`fullPath` only at the moment)
       node.fullPath = route.fullPath ?? route.from
     }
   }
@@ -948,7 +950,7 @@ function getNodeMatch<T extends RouteLike>(
 
   const trailingSlash = !last(parts)
   const pathIsIndex = trailingSlash && path !== '/'
-  const partsLength = parts.length
+  const partsLength = parts.length - (trailingSlash ? 1 : 0)
 
   type Frame = MatchStackFrame<T>
 
@@ -1032,6 +1034,9 @@ function getNodeMatch<T extends RouteLike>(
         statics,
         dynamics,
         optionals,
+        extract,
+        params,
+        error,
       }
       // perfect match, no need to continue
       // this is an optimization, algorithm should work correctly without this block
@@ -1205,22 +1210,6 @@ function getNodeMatch<T extends RouteLike>(
           error,
         })
       }
-    }
-
-    // 0. Try index match
-    if (node.index) {
-      stack.push({
-        node: node.index,
-        index: index + 1,
-        skipped,
-        depth: depth + 1,
-        statics: statics + 1,
-        dynamics,
-        optionals,
-        extract,
-        params,
-        error,
-      })
     }
 
     // 0. Try pathless match
