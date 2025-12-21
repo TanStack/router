@@ -78,18 +78,18 @@ Feature/Capability Key:
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
 
 [bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router
-[bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router
 [gh-tanstack-router]: https://github.com/tanstack/router
-[stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
+[stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?style=flat&logo=github&color=%2310b981
+[bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router
 [_]: _
-[router]: https://github.com/remix-run/react-router
+[router]: https://reactrouter.com
 [bp-router]: https://badgen.net/bundlephobia/minzip/react-router
 [gh-router]: https://github.com/remix-run/react-router
-[stars-router]: https://img.shields.io/github/stars/remix-run/react-router?label=%F0%9F%8C%9F
+[stars-router]: https://img.shields.io/github/stars/remix-run/react-router?style=flat&logo=github&color=%23F44250
 [bpl-router]: https://bundlephobia.com/result?p=react-router
 [_]: _
 [nextjs]: https://nextjs.org/docs/routing/introduction
 [bp-nextjs]: https://badgen.net/bundlephobia/minzip/next.js?label=All
 [gh-nextjs]: https://github.com/vercel/next.js
-[stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?label=%F0%9F%8C%9F
+[stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?style=flat&logo=github&color=%23000
 [bpl-nextjs]: https://bundlephobia.com/result?p=next
