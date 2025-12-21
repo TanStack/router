@@ -95,16 +95,18 @@ class ScriptBuffer {
   /**
    * Flushes any pending scripts synchronously.
    * Call this before emitting onSerializationFinished to ensure all scripts are injected.
+   *
+   * IMPORTANT: Only injects if the barrier has been lifted. Before the barrier is lifted,
+   * scripts should remain in the queue so takeBufferedScripts() can retrieve them
    */
   flush() {
+    if (!this._scriptBarrierLifted) return
     if (this._cleanedUp) return
     this._pendingMicrotask = false
     const scriptsToInject = this.takeAll()
     if (scriptsToInject && this.router?.serverSsr) {
       this.router.serverSsr.injectScript(scriptsToInject)
     }
-    // Clear any remaining scripts to avoid double-injection if a queued microtask runs
-    this._queue = []
   }
 
   takeAll() {
