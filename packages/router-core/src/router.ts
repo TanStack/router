@@ -747,16 +747,27 @@ export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
 }) => void
 
 export interface ServerSsr {
-  injectedHtml: Array<InjectedHtmlEntry>
-  injectHtml: (getHtml: () => string | Promise<string>) => Promise<void>
-  injectScript: (
-    getScript: () => string | Promise<string>,
-    opts?: { logScript?: boolean },
-  ) => Promise<void>
+  /**
+   * Injects HTML synchronously into the stream.
+   * Emits an onInjectedHtml event that listeners can handle.
+   * If no subscriber is listening, the HTML is buffered and can be retrieved via takeBufferedHtml().
+   */
+  injectHtml: (html: string) => void
+  /**
+   * Injects a script tag synchronously into the stream.
+   */
+  injectScript: (script: string) => void
   isDehydrated: () => boolean
+  isSerializationFinished: () => boolean
   onRenderFinished: (listener: () => void) => void
+  onSerializationFinished: (listener: () => void) => void
   dehydrate: () => Promise<void>
   takeBufferedScripts: () => RouterManagedTag | undefined
+  /**
+   * Takes any buffered HTML that was injected.
+   * Returns the buffered HTML string (which may include multiple script tags) or undefined if empty.
+   */
+  takeBufferedHtml: () => string | undefined
   liftScriptBarrier: () => void
 }
 

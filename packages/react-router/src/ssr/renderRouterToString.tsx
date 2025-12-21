@@ -14,10 +14,12 @@ export const renderRouterToString = async ({
   try {
     let html = ReactDOMServer.renderToString(children)
     router.serverSsr!.setRenderFinished()
-    const injectedHtml = await Promise.all(router.serverSsr!.injectedHtml).then(
-      (htmls) => htmls.join(''),
-    )
-    html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
+
+    const injectedHtml = router.serverSsr!.takeBufferedHtml()
+    if (injectedHtml) {
+      html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
+    }
+
     return new Response(`<!DOCTYPE html>${html}`, {
       status: router.state.statusCode,
       headers: responseHeaders,

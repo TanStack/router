@@ -44,7 +44,6 @@ type RouterEvents = {
   }
   onInjectedHtml: {
     type: 'onInjectedHtml'
-    promise: Promise<string>
   }
   onRendered: {
     type: 'onRendered'
