@@ -8,6 +8,7 @@ import {
 } from 'babel-dead-code-elimination'
 import { handleCreateServerFn } from './handleCreateServerFn'
 import { handleCreateMiddleware } from './handleCreateMiddleware'
+import type { MethodChainPaths, RewriteCandidate } from './types'
 
 type Binding =
   | {
@@ -41,6 +42,16 @@ const LookupSetup: Record<
   },
 }
 
+// Pre-computed map: identifier name -> LookupKind for fast candidate detection
+const IdentifierToKind = new Map<string, LookupKind>()
+for (const [kind, setup] of Object.entries(LookupSetup) as Array<
+  [LookupKind, { candidateCallIdentifier: Set<string> }]
+>) {
+  for (const id of setup.candidateCallIdentifier) {
+    IdentifierToKind.set(id, kind)
+  }
+}
+
 export type LookupConfig = {
   libName: string
   rootExport: string
@@ -51,12 +62,18 @@ interface ModuleInfo {
   ast: ReturnType<typeof parseAst>
   bindings: Map<string, Binding>
   exports: Map<string, ExportEntry>
+  // Track `export * from './module'` declarations for re-export resolution
+  reExportAllSources: Array<string>
 }
 
 export class ServerFnCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
   private validLookupKinds: Set<LookupKind>
+  // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
+  // Maps: libName → (exportName → Kind)
+  // This allows O(1) resolution for the common case without async resolveId calls
+  private knownRootImports = new Map<string, Map<string, Kind>>()
   constructor(
     private options: {
       env: 'client' | 'server'
@@ -86,6 +103,7 @@ export class ServerFnCompiler {
             exports: new Map(),
             code: '',
             id: libId,
+            reExportAllSources: [],
           }
           this.moduleCache.set(libId, rootModule)
         }
@@ -105,6 +123,14 @@ export class ServerFnCompiler {
           resolvedKind: `Root` satisfies Kind,
         })
         this.moduleCache.set(libId, rootModule)
+
+        // Also populate the fast lookup map for direct imports
+        let libExports = this.knownRootImports.get(config.libName)
+        if (!libExports) {
+          libExports = new Map()
+          this.knownRootImports.set(config.libName, libExports)
+        }
+        libExports.set(config.rootExport, 'Root')
       }),
     )
 
@@ -116,6 +142,7 @@ export class ServerFnCompiler {
 
     const bindings = new Map<string, Binding>()
     const exports = new Map<string, ExportEntry>()
+    const reExportAllSources: Array<string> = []
 
     // we are only interested in top-level bindings, hence we don't traverse the AST
     // instead we only iterate over the program body
@@ -178,6 +205,16 @@ export class ServerFnCompiler {
               ? sp.exported.name
               : sp.exported.value
             exports.set(exported, { tag: 'Normal', name: local })
+
+            // When re-exporting from another module (export { foo } from './module'),
+            // create an import binding so the server function can be resolved
+            if (node.source) {
+              bindings.set(local, {
+                type: 'import',
+                source: node.source.value,
+                importedName: local,
+              })
+            }
           }
         }
       } else if (t.isExportDefaultDeclaration(node)) {
@@ -189,10 +226,21 @@ export class ServerFnCompiler {
           bindings.set(synth, { type: 'var', init: d as t.Expression })
           exports.set('default', { tag: 'Default', name: synth })
         }
+      } else if (t.isExportAllDeclaration(node)) {
+        // Handle `export * from './module'` syntax
+        // Track the source so we can look up exports from it when needed
+        reExportAllSources.push(node.source.value)
       }
     }
 
-    const info: ModuleInfo = { code, id, ast, bindings, exports }
+    const info: ModuleInfo = {
+      code,
+      id,
+      ast,
+      bindings,
+      exports,
+      reExportAllSources,
+    }
     this.moduleCache.set(id, info)
     return info
   }
@@ -201,7 +249,15 @@ export class ServerFnCompiler {
     return this.moduleCache.delete(id)
   }
 
-  public async compile({ code, id }: { code: string; id: string }) {
+  public async compile({
+    code,
+    id,
+    isProviderFile,
+  }: {
+    code: string
+    id: string
+    isProviderFile: boolean
+  }) {
     if (!this.initialized) {
       await this.init(id)
     }
@@ -214,36 +270,98 @@ export class ServerFnCompiler {
     }
 
     // let's find out which of the candidates are actually server functions
-    const toRewrite: Array<{
-      callExpression: t.CallExpression
-      kind: LookupKind
-    }> = []
-    for (const handler of candidates) {
-      const kind = await this.resolveExprKind(handler, id)
+    // Resolve all candidates in parallel for better performance
+    const resolvedCandidates = await Promise.all(
+      candidates.map(async (candidate) => ({
+        candidate,
+        kind: await this.resolveExprKind(candidate, id),
+      })),
+    )
+
+    // Map from candidate/root node -> kind
+    // Note: For top-level variable declarations, candidate === root (the outermost CallExpression)
+    const toRewriteMap = new Map<t.CallExpression, LookupKind>()
+    for (const { candidate, kind } of resolvedCandidates) {
       if (this.validLookupKinds.has(kind as LookupKind)) {
-        toRewrite.push({ callExpression: handler, kind: kind as LookupKind })
+        toRewriteMap.set(candidate, kind as LookupKind)
       }
     }
-    if (toRewrite.length === 0) {
+    if (toRewriteMap.size === 0) {
       return null
     }
 
+    // Single-pass traversal to find NodePaths and collect method chains
     const pathsToRewrite: Array<{
-      nodePath: babel.NodePath<t.CallExpression>
+      path: babel.NodePath<t.CallExpression>
       kind: LookupKind
+      methodChain: MethodChainPaths
     }> = []
+
+    // First, collect all CallExpression paths in the AST for O(1) lookup
+    const callExprPaths = new Map<
+      t.CallExpression,
+      babel.NodePath<t.CallExpression>
+    >()
+
     babel.traverse(ast, {
       CallExpression(path) {
-        const found = toRewrite.findIndex((h) => path.node === h.callExpression)
-        if (found !== -1) {
-          pathsToRewrite.push({ nodePath: path, kind: toRewrite[found]!.kind })
-          // delete from toRewrite
-          toRewrite.splice(found, 1)
-        }
+        callExprPaths.set(path.node, path)
       },
     })
 
-    if (toRewrite.length > 0) {
+    // Now process candidates - we can look up any CallExpression path in O(1)
+    for (const [node, kind] of toRewriteMap) {
+      const path = callExprPaths.get(node)
+      if (!path) {
+        continue
+      }
+
+      // Collect method chain paths by walking DOWN from root through the chain
+      const methodChain: MethodChainPaths = {
+        middleware: null,
+        inputValidator: null,
+        handler: null,
+        server: null,
+        client: null,
+      }
+
+      // Walk down the call chain using nodes, look up paths from map
+      let currentNode: t.CallExpression = node
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const callee = currentNode.callee
+        if (!t.isMemberExpression(callee)) {
+          break
+        }
+
+        // Record method chain path if it's a known method
+        if (t.isIdentifier(callee.property)) {
+          const name = callee.property.name as keyof MethodChainPaths
+          if (name in methodChain) {
+            const currentPath = callExprPaths.get(currentNode)!
+            // Get first argument path
+            const args = currentPath.get('arguments')
+            const firstArgPath =
+              Array.isArray(args) && args.length > 0 ? (args[0] ?? null) : null
+            methodChain[name] = {
+              callPath: currentPath,
+              firstArgPath,
+            }
+          }
+        }
+
+        // Move to the inner call (the object of the member expression)
+        if (!t.isCallExpression(callee.object)) {
+          break
+        }
+        currentNode = callee.object
+      }
+
+      pathsToRewrite.push({ path, kind, methodChain })
+    }
+
+    // Verify we found all candidates (pathsToRewrite should have same size as toRewriteMap had)
+    if (pathsToRewrite.length !== toRewriteMap.size) {
       throw new Error(
         `Internal error: could not find all paths to rewrite. please file an issue`,
       )
@@ -251,17 +369,21 @@ export class ServerFnCompiler {
 
     const refIdents = findReferencedIdentifiers(ast)
 
-    pathsToRewrite.map((p) => {
-      if (p.kind === 'ServerFn') {
-        handleCreateServerFn(p.nodePath, {
+    for (const { path, kind, methodChain } of pathsToRewrite) {
+      const candidate: RewriteCandidate = { path, methodChain }
+      if (kind === 'ServerFn') {
+        handleCreateServerFn(candidate, {
           env: this.options.env,
           code,
           directive: this.options.directive,
+          isProviderFile,
         })
       } else {
-        handleCreateMiddleware(p.nodePath, { env: this.options.env })
+        handleCreateMiddleware(candidate, {
+          env: this.options.env,
+        })
       }
-    })
+    }
 
     deadCodeElimination(ast, refIdents)
 
@@ -278,12 +400,12 @@ export class ServerFnCompiler {
 
     for (const binding of bindings.values()) {
       if (binding.type === 'var') {
-        const handler = isCandidateCallExpression(
+        const candidate = isCandidateCallExpression(
           binding.init,
           this.validLookupKinds,
         )
-        if (handler) {
-          candidates.push(handler)
+        if (candidate) {
+          candidates.push(candidate)
         }
       }
     }
@@ -318,6 +440,61 @@ export class ServerFnCompiler {
     return resolvedKind
   }
 
+  /**
+   * Recursively find an export in a module, following `export * from` chains.
+   * Returns the module info and binding if found, or undefined if not found.
+   */
+  private async findExportInModule(
+    moduleInfo: ModuleInfo,
+    exportName: string,
+    visitedModules = new Set<string>(),
+  ): Promise<{ moduleInfo: ModuleInfo; binding: Binding } | undefined> {
+    // Prevent infinite loops in circular re-exports
+    if (visitedModules.has(moduleInfo.id)) {
+      return undefined
+    }
+    visitedModules.add(moduleInfo.id)
+
+    // First check direct exports
+    const directExport = moduleInfo.exports.get(exportName)
+    if (directExport) {
+      const binding = moduleInfo.bindings.get(directExport.name)
+      if (binding) {
+        return { moduleInfo, binding }
+      }
+    }
+
+    // If not found, recursively check re-export-all sources in parallel
+    // Valid code won't have duplicate exports across chains, so first match wins
+    if (moduleInfo.reExportAllSources.length > 0) {
+      const results = await Promise.all(
+        moduleInfo.reExportAllSources.map(async (reExportSource) => {
+          const reExportTarget = await this.options.resolveId(
+            reExportSource,
+            moduleInfo.id,
+          )
+          if (reExportTarget) {
+            const reExportModule = await this.getModuleInfo(reExportTarget)
+            return this.findExportInModule(
+              reExportModule,
+              exportName,
+              visitedModules,
+            )
+          }
+          return undefined
+        }),
+      )
+      // Return the first valid result
+      for (const result of results) {
+        if (result) {
+          return result
+        }
+      }
+    }
+
+    return undefined
+  }
+
   private async resolveBindingKind(
     binding: Binding,
     fileId: string,
@@ -327,6 +504,19 @@ export class ServerFnCompiler {
       return binding.resolvedKind
     }
     if (binding.type === 'import') {
+      // Fast path: check if this is a direct import from a known library
+      // (e.g., import { createServerFn } from '@tanstack/react-start')
+      // This avoids async resolveId calls for the common case
+      const knownExports = this.knownRootImports.get(binding.source)
+      if (knownExports) {
+        const kind = knownExports.get(binding.importedName)
+        if (kind) {
+          binding.resolvedKind = kind
+          return kind
+        }
+      }
+
+      // Slow path: resolve through the module graph
       const target = await this.options.resolveId(binding.source, fileId)
       if (!target) {
         return 'None'
@@ -334,24 +524,28 @@ export class ServerFnCompiler {
 
       const importedModule = await this.getModuleInfo(target)
 
-      const moduleExport = importedModule.exports.get(binding.importedName)
-      if (!moduleExport) {
+      // Find the export, recursively searching through export * from chains
+      const found = await this.findExportInModule(
+        importedModule,
+        binding.importedName,
+      )
+
+      if (!found) {
         return 'None'
       }
-      const importedBinding = importedModule.bindings.get(moduleExport.name)
-      if (!importedBinding) {
-        return 'None'
-      }
-      if (importedBinding.resolvedKind) {
-        return importedBinding.resolvedKind
+
+      const { moduleInfo: foundModule, binding: foundBinding } = found
+
+      if (foundBinding.resolvedKind) {
+        return foundBinding.resolvedKind
       }
 
       const resolvedKind = await this.resolveBindingKind(
-        importedBinding,
-        importedModule.id,
+        foundBinding,
+        foundModule.id,
         visited,
       )
-      importedBinding.resolvedKind = resolvedKind
+      foundBinding.resolvedKind = resolvedKind
       return resolvedKind
     }
 
@@ -373,6 +567,15 @@ export class ServerFnCompiler {
       return 'None'
     }
 
+    // Unwrap common TypeScript/parenthesized wrappers first for efficiency
+    while (
+      t.isTSAsExpression(expr) ||
+      t.isTSNonNullExpression(expr) ||
+      t.isParenthesizedExpression(expr)
+    ) {
+      expr = expr.expression
+    }
+
     let result: Kind = 'None'
 
     if (t.isCallExpression(expr)) {
@@ -384,15 +587,12 @@ export class ServerFnCompiler {
         fileId,
         visited,
       )
-      if (calleeKind !== 'None') {
-        if (calleeKind === `Root` || calleeKind === `Builder`) {
-          return `Builder`
-        }
-        for (const kind of this.validLookupKinds) {
-          if (calleeKind === kind) {
-            return kind
-          }
-        }
+      if (calleeKind === 'Root' || calleeKind === 'Builder') {
+        return 'Builder'
+      }
+      // Use direct Set.has() instead of iterating
+      if (this.validLookupKinds.has(calleeKind as LookupKind)) {
+        return calleeKind
       }
     } else if (t.isMemberExpression(expr) && t.isIdentifier(expr.property)) {
       result = await this.resolveCalleeKind(expr.object, fileId, visited)
@@ -400,16 +600,6 @@ export class ServerFnCompiler {
 
     if (result === 'None' && t.isIdentifier(expr)) {
       result = await this.resolveIdentifierKind(expr.name, fileId, visited)
-    }
-
-    if (result === 'None' && t.isTSAsExpression(expr)) {
-      result = await this.resolveExprKind(expr.expression, fileId, visited)
-    }
-    if (result === 'None' && t.isTSNonNullExpression(expr)) {
-      result = await this.resolveExprKind(expr.expression, fileId, visited)
-    }
-    if (result === 'None' && t.isParenthesizedExpression(expr)) {
-      result = await this.resolveExprKind(expr.expression, fileId, visited)
     }
 
     return result
@@ -506,17 +696,18 @@ export class ServerFnCompiler {
 function isCandidateCallExpression(
   node: t.Node | null | undefined,
   lookupKinds: Set<LookupKind>,
-): undefined | t.CallExpression {
+): t.CallExpression | undefined {
   if (!t.isCallExpression(node)) return undefined
 
   const callee = node.callee
   if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.property)) {
     return undefined
   }
-  for (const kind of lookupKinds) {
-    if (LookupSetup[kind].candidateCallIdentifier.has(callee.property.name)) {
-      return node
-    }
+
+  // Use pre-computed map for O(1) lookup instead of iterating over lookupKinds
+  const kind = IdentifierToKind.get(callee.property.name)
+  if (kind && lookupKinds.has(kind)) {
+    return node
   }
 
   return undefined

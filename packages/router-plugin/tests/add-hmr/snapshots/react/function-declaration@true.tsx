@@ -34,7 +34,7 @@ if (import.meta.hot) {
         ;
         function walkReplaceSegmentTree(route, node) {
           if (node.route?.id === route.id) node.route = route;
-          if (node.notFound?.id === route.id) node.notFound = route;
+          if (node.index) walkReplaceSegmentTree(route, node.index);
           node.static?.forEach(child => walkReplaceSegmentTree(route, child));
           node.staticInsensitive?.forEach(child => walkReplaceSegmentTree(route, child));
           node.dynamic?.forEach(child => walkReplaceSegmentTree(route, child));

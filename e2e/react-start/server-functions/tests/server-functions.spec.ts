@@ -543,3 +543,75 @@ test('redirect in server function called in query during SSR', async ({
   await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
   expect(page.url()).toContain('/redirect-test-ssr/target')
 })
+
+test('re-exported server function factory middleware executes correctly', async ({
+  page,
+}) => {
+  // This test specifically verifies that when a server function factory is re-exported
+  // using `export { foo } from './module'` syntax, the middleware still executes.
+  // Previously, this syntax caused middleware to be silently skipped.
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  // Click the button for the re-exported factory function
+  await page.getByTestId('btn-fn-reexportedFactoryFn').click()
+
+  // Wait for the result
+  await expect(page.getByTestId('fn-result-reexportedFactoryFn')).toContainText(
+    'reexport-middleware-executed',
+  )
+
+  // Verify the full context was returned (middleware executed)
+  await expect(
+    page.getByTestId('fn-comparison-reexportedFactoryFn'),
+  ).toContainText('equal')
+})
+
+test('star re-exported server function factory middleware executes correctly', async ({
+  page,
+}) => {
+  // This test specifically verifies that when a server function factory is re-exported
+  // using `export * from './module'` syntax, the middleware still executes.
+  // Previously, this syntax caused middleware to be silently skipped.
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  // Click the button for the star re-exported factory function
+  await page.getByTestId('btn-fn-starReexportedFactoryFn').click()
+
+  // Wait for the result
+  await expect(
+    page.getByTestId('fn-result-starReexportedFactoryFn'),
+  ).toContainText('star-reexport-middleware-executed')
+
+  // Verify the full context was returned (middleware executed)
+  await expect(
+    page.getByTestId('fn-comparison-starReexportedFactoryFn'),
+  ).toContainText('equal')
+})
+
+test('nested star re-exported server function factory middleware executes correctly', async ({
+  page,
+}) => {
+  // This test specifically verifies that when a server function factory is re-exported
+  // through a nested chain (A -> B -> C) using `export * from './module'` syntax,
+  // the middleware still executes correctly.
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  // Click the button for the nested re-exported factory function
+  await page.getByTestId('btn-fn-nestedReexportedFactoryFn').click()
+
+  // Wait for the result
+  await expect(
+    page.getByTestId('fn-result-nestedReexportedFactoryFn'),
+  ).toContainText('nested-middleware-executed')
+
+  // Verify the full context was returned (middleware executed)
+  await expect(
+    page.getByTestId('fn-comparison-nestedReexportedFactoryFn'),
+  ).toContainText('equal')
+})

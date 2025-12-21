@@ -718,7 +718,7 @@ describe('findRouteMatch', () => {
             path: 'dashboard/',
           },
           {
-            id: '/dashboard',
+            id: '/dashboard/invoices',
             fullPath: '/dashboard/invoices',
             path: 'invoices',
           },
@@ -882,7 +882,7 @@ describe('findRouteMatch', () => {
             path: '$foo',
             fullPath: '/$foo',
             options: {
-              params: { parse: () => { } },
+              params: { parse: () => {} },
               skipRouteOnParseError: true,
             },
             children: [

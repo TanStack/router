@@ -35,16 +35,15 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@tailwindcss/postcss": "^4.1.15",
+    "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.10.2",
     "@vitejs/plugin-vue": "^5.2.4",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "combinate": "^1.1.11",
-    "postcss": "^8.5.1",
     "srvx": "^0.9.8",
-    "tailwindcss": "^4.1.15",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
   }

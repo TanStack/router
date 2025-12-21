@@ -88,6 +88,12 @@ function Home() {
         <li>
           <Link to="/factory">Server Functions Factory E2E tests</Link>
         </li>
+        <li>
+          <Link to="/server-only-fn">
+            Server Function only called by Server Environment is kept in the
+            server build
+          </Link>
+        </li>
       </ul>
     </div>
   )

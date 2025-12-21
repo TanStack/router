@@ -7,9 +7,12 @@ export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
 export const SEGMENT_TYPE_WILDCARD = 2
 export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
-const SEGMENT_TYPE_PATHLESS = 4 // only used in matching to represent pathless routes that need to carry more information
-const SEGMENT_TYPE_INDEX = 5
+const SEGMENT_TYPE_INDEX = 4
+const SEGMENT_TYPE_PATHLESS = 5 // only used in matching to represent pathless routes that need to carry more information
 
+/**
+ * All the kinds of segments that can be present in a route path.
+ */
 export type SegmentKind =
   | typeof SEGMENT_TYPE_PATHNAME
   | typeof SEGMENT_TYPE_PARAM
@@ -17,6 +20,11 @@ export type SegmentKind =
   | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   | typeof SEGMENT_TYPE_PATHLESS
   | typeof SEGMENT_TYPE_INDEX
+
+/**
+ * All the kinds of segments that can be present in the segment tree.
+ */
+type ExtendedSegmentKind = SegmentKind | typeof SEGMENT_TYPE_INDEX
 
 const PARAM_W_CURLY_BRACES_RE =
   /^([^{]*)\{\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/ // prefix{$paramName}suffix
@@ -360,6 +368,7 @@ function parseSegments<TRouteLike extends RouteLike>(
     }
 
     const isLeaf = (route.path || !route.children) && !route.isRoot
+    // create index node
     if (isLeaf && path.endsWith('/')) {
       const indexNode = createStaticNode<TRouteLike>(
         route.fullPath ?? route.from,
@@ -524,16 +533,16 @@ function createDynamicNode<T extends RouteLike>(
 
 type StaticSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-  | typeof SEGMENT_TYPE_PATHNAME
-  | typeof SEGMENT_TYPE_PATHLESS
-  | typeof SEGMENT_TYPE_INDEX
+    | typeof SEGMENT_TYPE_PATHNAME
+    | typeof SEGMENT_TYPE_PATHLESS
+    | typeof SEGMENT_TYPE_INDEX
 }
 
 type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-  | typeof SEGMENT_TYPE_PARAM
-  | typeof SEGMENT_TYPE_WILDCARD
-  | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+    | typeof SEGMENT_TYPE_PARAM
+    | typeof SEGMENT_TYPE_WILDCARD
+    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   prefix?: string
   suffix?: string
   caseSensitive: boolean
@@ -544,16 +553,17 @@ type AnySegmentNode<T extends RouteLike> =
   | DynamicSegmentNode<T>
 
 type SegmentNode<T extends RouteLike> = {
-  kind: SegmentKind
+  kind: ExtendedSegmentKind
 
   pathless: Array<StaticSegmentNode<T>> | null
 
+  /** Exact index segment (highest priority) */
   index: StaticSegmentNode<T> | null
 
-  /** Static segments (highest priority) */
+  /** Static segments (2nd priority) */
   static: Map<string, StaticSegmentNode<T>> | null
 
-  /** Case insensitive static segments (second highest priority) */
+  /** Case insensitive static segments (3rd highest priority) */
   staticInsensitive: Map<string, StaticSegmentNode<T>> | null
 
   /** Dynamic segments ($param) */
@@ -810,9 +820,9 @@ function extractParams<T extends RouteLike>(
     params?: Record<string, string>
   },
 ): [
-    params: Record<string, string>,
-    state: { part: number; node: number; path: number },
-  ] {
+  params: Record<string, string>,
+  state: { part: number; node: number; path: number },
+] {
   const list = buildBranch(leaf.node)
   let nodeParts: Array<string> | null = null
   const params: Record<string, string> = {}
@@ -930,6 +940,11 @@ function getNodeMatch<T extends RouteLike>(
   segmentTree: AnySegmentNode<T>,
   fuzzy: boolean,
 ) {
+  // quick check for root index
+  // this is an optimization, algorithm should work correctly without this block
+  if (path === '/' && segmentTree.index)
+    return { node: segmentTree.index, skipped: 0 }
+
   const trailingSlash = !last(parts)
   const pathIsIndex = trailingSlash && path !== '/'
   const partsLength = parts.length
@@ -985,26 +1000,48 @@ function getNodeMatch<T extends RouteLike>(
     }
 
     // In fuzzy mode, track the best partial match we've found so far
-    if (fuzzy && node.kind !== SEGMENT_TYPE_INDEX && isFrameMoreSpecific(bestFuzzy, frame)) {
+    if (
+      fuzzy &&
+      node.route &&
+      node.kind !== SEGMENT_TYPE_INDEX &&
+      isFrameMoreSpecific(bestFuzzy, frame)
+    ) {
       bestFuzzy = frame
     }
 
     const isBeyondPath = index === partsLength
     if (isBeyondPath) {
-      if (node.route && (!pathIsIndex || node.kind === SEGMENT_TYPE_INDEX)) {
-        if (isFrameMoreSpecific(bestMatch, frame)) {
-          bestMatch = frame
-        }
-
-        // perfect match, no need to continue
-        if (statics === partsLength && node.kind === SEGMENT_TYPE_INDEX) return bestMatch
+      if (node.route && !pathIsIndex && isFrameMoreSpecific(bestMatch, frame)) {
+        bestMatch = frame
       }
-      // beyond the length of the path parts, only skipped optional segments or wildcard segments can match
-      if (!node.optional && !node.wildcard) continue
+      // beyond the length of the path parts, only index segments, or skipped optional segments, or wildcard segments can match
+      if (!node.optional && !node.wildcard && !node.index) continue
     }
 
     const part = isBeyondPath ? undefined : parts[index]!
     let lowerPart: string
+
+    // 0. Try index match
+    if (isBeyondPath && node.index) {
+      const indexFrame = {
+        node: node.index,
+        index,
+        skipped,
+        depth: depth + 1,
+        statics,
+        dynamics,
+        optionals,
+      }
+      // perfect match, no need to continue
+      // this is an optimization, algorithm should work correctly without this block
+      if (statics === partsLength && !dynamics && !optionals && !skipped) {
+        return indexFrame
+      }
+      if (isFrameMoreSpecific(bestMatch, indexFrame)) {
+        // index matches skip the stack because they cannot have children
+        bestMatch = indexFrame
+      }
+    }
 
     // 5. Try wildcard match
     if (node.wildcard && isFrameMoreSpecific(wildcardMatch, frame)) {
@@ -1024,9 +1061,10 @@ function getNodeMatch<T extends RouteLike>(
           if (casePart !== suffix) continue
         }
         // the first wildcard match is the highest priority one
+        // wildcard matches skip the stack because they cannot have children
         const frame = {
           node: segment,
-          index,
+          index: partsLength,
           skipped,
           depth,
           statics,
@@ -1243,8 +1281,10 @@ function isFrameMoreSpecific(
         (next.dynamics === prev.dynamics &&
           (next.optionals > prev.optionals ||
             (next.optionals === prev.optionals &&
-              ((next.node.kind === SEGMENT_TYPE_INDEX) > (prev.node.kind === SEGMENT_TYPE_INDEX) ||
-                ((next.node.kind === SEGMENT_TYPE_INDEX) === (prev.node.kind === SEGMENT_TYPE_INDEX) &&
+              ((next.node.kind === SEGMENT_TYPE_INDEX) >
+                (prev.node.kind === SEGMENT_TYPE_INDEX) ||
+                ((next.node.kind === SEGMENT_TYPE_INDEX) ===
+                  (prev.node.kind === SEGMENT_TYPE_INDEX) &&
                   next.depth > prev.depth)))))))
   )
 }
