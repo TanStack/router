@@ -1,5 +1,5 @@
 ---
-title: Comparison | TanStack Router & TanStack Start vs Next.js vs React Router / Remix
+title: Comparison | TanStack Router vs Next.js vs React Router
 toc: false
 ---
 
@@ -17,7 +17,7 @@ Feature/Capability Key:
 - 🔶 Possible, but requires custom code/implementation/casting
 - 🛑 Not officially supported
 
-|                                                | TanStack Router / Start                          | React Router DOM [_(Website)_][router]                | Next.JS [_(Website)_][nextjs]                         |
+|                                                | TanStack Router                                  | React Router [_(Website)_][router]                    | Next.JS [_(Website)_][nextjs]                         |
 | ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
 | Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-router]][gh-router]                        | [![][stars-nextjs]][gh-nextjs]                        |
 | Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | [![][bp-router]][bpl-router]                          | ❓                                                    |
