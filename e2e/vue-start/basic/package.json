@@ -42,7 +42,6 @@
     "@vitejs/plugin-vue": "^5.2.4",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "combinate": "^1.1.11",
-    "postcss": "^8.5.1",
     "srvx": "^0.9.8",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",

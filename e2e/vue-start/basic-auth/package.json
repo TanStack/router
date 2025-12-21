@@ -30,7 +30,6 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "dotenv": "^17.2.3",
-    "postcss": "^8.5.1",
     "prisma": "^7.0.0",
     "srvx": "^0.9.8",
     "tailwindcss": "^4.1.18",

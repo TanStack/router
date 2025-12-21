@@ -18,7 +18,6 @@
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^22.5.4",
     "nitro": "^3.0.1-alpha.1",
-    "postcss": "^8.5.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",

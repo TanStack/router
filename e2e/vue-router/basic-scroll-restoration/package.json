@@ -15,7 +15,6 @@
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-virtual": "^3.13.0",
-    "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
     "vue": "^3.5.16",
     "tailwindcss": "^4.1.18"

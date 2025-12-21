@@ -34,7 +34,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "dotenv": "^17.2.3",
-    "postcss": "^8.5.1",
     "prisma": "^7.0.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",

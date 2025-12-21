@@ -18,7 +18,6 @@
     "express": "^4.21.2",
     "get-port": "^7.1.0",
     "node-fetch": "^3.3.2",
-    "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.1.18",

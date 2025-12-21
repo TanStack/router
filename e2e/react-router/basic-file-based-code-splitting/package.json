@@ -17,7 +17,6 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
-    "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.1.18",

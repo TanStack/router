@@ -16,7 +16,6 @@
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/virtual-file-routes": "workspace:^",
-    "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",

@@ -20,7 +20,6 @@
     "@trpc/server": "^11.4.3",
     "@trpc/tanstack-react-query": "^11.4.3",
     "express": "^4.21.2",
-    "postcss": "^8.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "redaxios": "^0.5.1",

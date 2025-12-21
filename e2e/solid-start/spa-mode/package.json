@@ -21,7 +21,6 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "postcss": "^8.5.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",

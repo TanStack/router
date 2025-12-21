@@ -20,7 +20,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
     "@tanstack/solid-router-devtools": "^1.141.8",
-    "postcss": "^8.5.1",
     "tailwindcss": "4.1.18",
     "vite": "^7.1.7",
     "vite-plugin-dts": "^4.5.4",

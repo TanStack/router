@@ -25,7 +25,6 @@
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^22.5.4",
     "dotenv": "^17.2.3",
-    "postcss": "^8.5.1",
     "prisma": "^7.0.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",

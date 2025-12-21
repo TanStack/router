@@ -19,7 +19,6 @@
     "@tanstack/valibot-adapter": "^1.141.8",
     "@tanstack/zod-adapter": "^1.141.8",
     "arktype": "^2.1.7",
-    "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.1.18",

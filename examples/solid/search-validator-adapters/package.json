@@ -19,7 +19,6 @@
     "@tanstack/valibot-adapter": "^1.141.8",
     "@tanstack/zod-adapter": "^1.141.8",
     "arktype": "^2.1.7",
-    "postcss": "^8.5.1",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.1.18",
     "valibot": "1.0.0-beta.15",
