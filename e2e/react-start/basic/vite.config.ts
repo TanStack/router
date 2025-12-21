@@ -4,6 +4,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { isSpaMode } from './tests/utils/isSpaMode'
 import { isPrerender } from './tests/utils/isPrerender'
+import tailwindcss from '@tailwindcss/vite'
 
 const spaModeConfiguration = {
   enabled: true,
@@ -32,6 +33,7 @@ export default defineConfig({
     port: 3000,
   },
   plugins: [
+    tailwindcss(),
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),

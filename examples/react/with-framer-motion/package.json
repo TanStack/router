@@ -9,15 +9,14 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.15",
+    "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.141.8",
     "@tanstack/react-router-devtools": "^1.141.8",
     "framer-motion": "^11.18.2",
-    "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^4.1.18",
     "zod": "^3.24.2"
   },
   "devDependencies": {

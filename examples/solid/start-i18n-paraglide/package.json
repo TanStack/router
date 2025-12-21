@@ -21,8 +21,8 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4",
-    "@tailwindcss/vite": "^4.1.17",
-    "tailwindcss": "^4.1.13",
+    "@tailwindcss/vite": "^4.1.18",
+    "tailwindcss": "^4.1.18",
     "@inlang/paraglide-js": "^2.4.0"
   }
 }
