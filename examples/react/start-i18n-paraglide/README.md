@@ -79,10 +79,11 @@ In `server.ts` intercept the request with the paraglideMiddleware.
 ```ts
 import { paraglideMiddleware } from './paraglide/server.js'
 import handler from '@tanstack/react-start/server-entry'
+
 export default {
-  fetch(req: Request): Promise<Response> {
-    return paraglideMiddleware(req, ({ request }) => handler.fetch(request))
-  },
+    fetch(req: Request): Promise<Response> {
+        return paraglideMiddleware(req, () => handler.fetch(req))
+    },
 }
 ```
 
