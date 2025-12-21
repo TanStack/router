@@ -734,7 +734,7 @@ function findMatch<T extends RouteLike>(
 function extractParams<T extends RouteLike>(
   path: string,
   parts: Array<string>,
-  leaf: { node: AnySegmentNode<T>; skipped?: number },
+  leaf: { node: AnySegmentNode<T>; skipped: number },
 ) {
   const list = buildBranch(leaf.node)
   let nodeParts: Array<string> | null = null
@@ -768,7 +768,7 @@ function extractParams<T extends RouteLike>(
         params[name] = decodeURIComponent(part!)
       }
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-      if (leaf.skipped! & (1 << nodeIndex)) {
+      if (leaf.skipped & (1 << nodeIndex)) {
         partIndex-- // stay on the same part
         continue
       }
@@ -846,7 +846,8 @@ function getNodeMatch<T extends RouteLike>(
 ) {
   // quick check for root index
   // this is an optimization, algorithm should work correctly without this block
-  if (path === '/' && segmentTree.index) return { node: segmentTree.index }
+  if (path === '/' && segmentTree.index)
+    return { node: segmentTree.index, skipped: 0 }
 
   const trailingSlash = !last(parts)
   const pathIsIndex = trailingSlash && path !== '/'
