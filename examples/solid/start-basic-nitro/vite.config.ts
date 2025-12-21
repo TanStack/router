@@ -12,7 +12,7 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    nitro({ config: { preset: 'node-server' } }),
+    nitro({ preset: 'node-server' }),
     tanstackStart(),
     viteSolid({ ssr: true }),
   ],
