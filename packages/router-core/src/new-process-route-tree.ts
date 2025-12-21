@@ -352,7 +352,7 @@ function parseSegments<TRouteLike extends RouteLike>(
     }
 
     // make node "matchable"
-    if (isLeaf) {
+    if (isLeaf && !node.route) {
       node.route = route
       node.fullPath = route.fullPath ?? route.from
     }
