@@ -895,22 +895,8 @@ function getNodeMatch<T extends RouteLike>(
 
     const isBeyondPath = index === partsLength
     if (isBeyondPath) {
-      if (node.route && (!pathIsIndex || node.kind === SEGMENT_TYPE_INDEX)) {
-        if (isFrameMoreSpecific(bestMatch, frame)) {
-          bestMatch = frame
-        }
-
-        // perfect match, no need to continue
-        // this is an optimization, algorithm should work correctly without this block
-        if (
-          statics === partsLength &&
-          !dynamics &&
-          !optionals &&
-          !skipped &&
-          node.kind === SEGMENT_TYPE_INDEX
-        ) {
-          return bestMatch
-        }
+      if (node.route && !pathIsIndex && isFrameMoreSpecific(bestMatch, frame)) {
+        bestMatch = frame
       }
       // beyond the length of the path parts, only index segments, or skipped optional segments, or wildcard segments can match
       if (!node.optional && !node.wildcard && !node.index) continue
@@ -918,6 +904,28 @@ function getNodeMatch<T extends RouteLike>(
 
     const part = isBeyondPath ? undefined : parts[index]!
     let lowerPart: string
+
+    // 0. Try index match
+    if (isBeyondPath && node.index) {
+      const indexFrame = {
+        node: node.index,
+        index,
+        skipped,
+        depth: depth + 1,
+        statics,
+        dynamics,
+        optionals,
+      }
+      // perfect match, no need to continue
+      // this is an optimization, algorithm should work correctly without this block
+      if (statics === partsLength && !dynamics && !optionals && !skipped) {
+        return indexFrame
+      }
+      if (isFrameMoreSpecific(bestMatch, indexFrame)) {
+        // index matches skip the stack because they cannot have children
+        bestMatch = indexFrame
+      }
+    }
 
     // 5. Try wildcard match
     if (node.wildcard && isFrameMoreSpecific(wildcardMatch, frame)) {
@@ -937,9 +945,10 @@ function getNodeMatch<T extends RouteLike>(
           if (casePart !== suffix) continue
         }
         // the first wildcard match is the highest priority one
+        // wildcard matches skip the stack because they cannot have children
         wildcardMatch = {
           node: segment,
-          index,
+          index: partsLength,
           skipped,
           depth,
           statics,
@@ -1047,19 +1056,6 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
         })
       }
-    }
-
-    // 0. Try index match
-    if (isBeyondPath && node.index) {
-      stack.push({
-        node: node.index,
-        index,
-        skipped,
-        depth: depth + 1,
-        statics,
-        dynamics,
-        optionals,
-      })
     }
   }
 
