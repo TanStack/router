@@ -1,12 +1,15 @@
 import * as t from '@babel/types'
-import {
-  codeFrameError,
-  getRootCallExpression,
-} from '../start-compiler-plugin/utils'
-import type * as babel from '@babel/core'
+import { codeFrameError } from '../start-compiler-plugin/utils'
+import type { RewriteCandidate } from './types'
 
+/**
+ * Handles createServerFn transformations.
+ *
+ * @param candidate - The rewrite candidate containing path and method chain
+ * @param opts - Options including the environment, code, directive, and provider file flag
+ */
 export function handleCreateServerFn(
-  path: babel.NodePath<t.CallExpression>,
+  candidate: RewriteCandidate,
   opts: {
     env: 'client' | 'server'
     code: string
@@ -18,56 +21,20 @@ export function handleCreateServerFn(
     isProviderFile: boolean
   },
 ) {
-  // Traverse the member expression and find the call expressions for
-  // the validator, handler, and middleware methods. Check to make sure they
-  // are children of the createServerFn call expression.
-
-  const validMethods = ['middleware', 'inputValidator', 'handler'] as const
-  type ValidMethods = (typeof validMethods)[number]
-  const callExpressionPaths: Record<
-    ValidMethods,
-    babel.NodePath<t.CallExpression> | null
-  > = {
-    middleware: null,
-    inputValidator: null,
-    handler: null,
-  }
-
-  const rootCallExpression = getRootCallExpression(path)
-
-  // if (debug)
-  //   console.info(
-  //     'Handling createServerFn call expression:',
-  //     rootCallExpression.toString(),
-  //   )
+  const { path, methodChain } = candidate
+  const { inputValidator, handler } = methodChain
 
   // Check if the call is assigned to a variable
-  if (!rootCallExpression.parentPath.isVariableDeclarator()) {
+  if (!path.parentPath.isVariableDeclarator()) {
     throw new Error('createServerFn must be assigned to a variable!')
   }
 
   // Get the identifier name of the variable
-  const variableDeclarator = rootCallExpression.parentPath.node
+  const variableDeclarator = path.parentPath.node
   const existingVariableName = (variableDeclarator.id as t.Identifier).name
 
-  rootCallExpression.traverse({
-    MemberExpression(memberExpressionPath) {
-      if (t.isIdentifier(memberExpressionPath.node.property)) {
-        const name = memberExpressionPath.node.property.name as ValidMethods
-
-        if (
-          validMethods.includes(name) &&
-          memberExpressionPath.parentPath.isCallExpression()
-        ) {
-          callExpressionPaths[name] = memberExpressionPath.parentPath
-        }
-      }
-    },
-  })
-
-  if (callExpressionPaths.inputValidator) {
-    const innerInputExpression =
-      callExpressionPaths.inputValidator.node.arguments[0]
+  if (inputValidator) {
+    const innerInputExpression = inputValidator.callPath.node.arguments[0]
 
     if (!innerInputExpression) {
       throw new Error(
@@ -77,11 +44,9 @@ export function handleCreateServerFn(
 
     // If we're on the client, remove the validator call expression
     if (opts.env === 'client') {
-      if (
-        t.isMemberExpression(callExpressionPaths.inputValidator.node.callee)
-      ) {
-        callExpressionPaths.inputValidator.replaceWith(
-          callExpressionPaths.inputValidator.node.callee.object,
+      if (t.isMemberExpression(inputValidator.callPath.node.callee)) {
+        inputValidator.callPath.replaceWith(
+          inputValidator.callPath.node.callee.object,
         )
       }
     }
@@ -90,11 +55,9 @@ export function handleCreateServerFn(
   // First, we need to move the handler function to a nested function call
   // that is applied to the arguments passed to the server function.
 
-  const handlerFnPath = callExpressionPaths.handler?.get(
-    'arguments.0',
-  ) as babel.NodePath<any>
+  const handlerFnPath = handler?.firstArgPath
 
-  if (!callExpressionPaths.handler || !handlerFnPath.node) {
+  if (!handler || !handlerFnPath?.node) {
     throw codeFrameError(
       opts.code,
       path.node.callee.loc!,
@@ -102,7 +65,7 @@ export function handleCreateServerFn(
     )
   }
 
-  const handlerFn = handlerFnPath.node
+  const handlerFn = handlerFnPath.node as t.Expression
 
   // So, the way we do this is we give the handler function a way
   // to access the serverFn ctx on the server via function scope.
@@ -161,6 +124,6 @@ export function handleCreateServerFn(
   // Caller files must NOT have the second argument because the implementation is already available in the extracted chunk
   // and including it would duplicate code
   if (opts.env === 'server' && opts.isProviderFile) {
-    callExpressionPaths.handler.node.arguments.push(handlerFn)
+    handler.callPath.node.arguments.push(handlerFn)
   }
 }

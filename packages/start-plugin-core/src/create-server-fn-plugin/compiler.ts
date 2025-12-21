@@ -8,6 +8,7 @@ import {
 } from 'babel-dead-code-elimination'
 import { handleCreateServerFn } from './handleCreateServerFn'
 import { handleCreateMiddleware } from './handleCreateMiddleware'
+import type { MethodChainPaths } from './types'
 
 type Binding =
   | {
@@ -39,6 +40,16 @@ const LookupSetup: Record<
   Middleware: {
     candidateCallIdentifier: new Set(['server', 'client', 'createMiddlewares']),
   },
+}
+
+// Pre-computed map: identifier name -> LookupKind for fast candidate detection
+const IdentifierToKind = new Map<string, LookupKind>()
+for (const [kind, setup] of Object.entries(LookupSetup) as Array<
+  [LookupKind, { candidateCallIdentifier: Set<string> }]
+>) {
+  for (const id of setup.candidateCallIdentifier) {
+    IdentifierToKind.set(id, kind)
+  }
 }
 
 export type LookupConfig = {
@@ -247,36 +258,97 @@ export class ServerFnCompiler {
     }
 
     // let's find out which of the candidates are actually server functions
-    const toRewrite: Array<{
-      callExpression: t.CallExpression
-      kind: LookupKind
-    }> = []
-    for (const handler of candidates) {
-      const kind = await this.resolveExprKind(handler, id)
+    // Resolve all candidates in parallel for better performance
+    const resolvedCandidates = await Promise.all(
+      candidates.map(async (candidate) => ({
+        candidate,
+        kind: await this.resolveExprKind(candidate, id),
+      })),
+    )
+
+    // Map from candidate/root node -> kind
+    // Note: For top-level variable declarations, candidate === root (the outermost CallExpression)
+    const toRewriteMap = new Map<t.CallExpression, LookupKind>()
+    for (const { candidate, kind } of resolvedCandidates) {
       if (this.validLookupKinds.has(kind as LookupKind)) {
-        toRewrite.push({ callExpression: handler, kind: kind as LookupKind })
+        toRewriteMap.set(candidate, kind as LookupKind)
       }
     }
-    if (toRewrite.length === 0) {
+    if (toRewriteMap.size === 0) {
       return null
     }
 
+    // Single-pass traversal to find NodePaths and collect method chains
     const pathsToRewrite: Array<{
-      nodePath: babel.NodePath<t.CallExpression>
+      path: babel.NodePath<t.CallExpression>
       kind: LookupKind
+      methodChain: MethodChainPaths
     }> = []
+
+    // First, collect all CallExpression paths in the AST for O(1) lookup
+    const callExprPaths = new Map<
+      t.CallExpression,
+      babel.NodePath<t.CallExpression>
+    >()
+
     babel.traverse(ast, {
       CallExpression(path) {
-        const found = toRewrite.findIndex((h) => path.node === h.callExpression)
-        if (found !== -1) {
-          pathsToRewrite.push({ nodePath: path, kind: toRewrite[found]!.kind })
-          // delete from toRewrite
-          toRewrite.splice(found, 1)
-        }
+        callExprPaths.set(path.node, path)
       },
     })
 
-    if (toRewrite.length > 0) {
+    // Now process candidates - we can look up any CallExpression path in O(1)
+    for (const [node, kind] of toRewriteMap) {
+      const path = callExprPaths.get(node)
+      if (!path) {
+        continue
+      }
+
+      // Collect method chain paths by walking DOWN from root through the chain
+      const methodChain: MethodChainPaths = {
+        middleware: null,
+        inputValidator: null,
+        handler: null,
+        server: null,
+        client: null,
+      }
+
+      // Walk down the call chain using nodes, look up paths from map
+      let currentNode: t.CallExpression = node
+      while (true) {
+        const callee = currentNode.callee
+        if (!t.isMemberExpression(callee)) {
+          break
+        }
+
+        // Record method chain path if it's a known method
+        if (t.isIdentifier(callee.property)) {
+          const name = callee.property.name as keyof MethodChainPaths
+          if (name in methodChain) {
+            const currentPath = callExprPaths.get(currentNode)!
+            // Get first argument path
+            const args = currentPath.get('arguments')
+            const firstArgPath =
+              Array.isArray(args) && args.length > 0 ? (args[0] ?? null) : null
+            methodChain[name] = {
+              callPath: currentPath,
+              firstArgPath,
+            }
+          }
+        }
+
+        // Move to the inner call (the object of the member expression)
+        if (!t.isCallExpression(callee.object)) {
+          break
+        }
+        currentNode = callee.object
+      }
+
+      pathsToRewrite.push({ path, kind, methodChain })
+    }
+
+    // Verify we found all candidates (pathsToRewrite should have same size as toRewriteMap had)
+    if (pathsToRewrite.length !== toRewriteMap.size) {
       throw new Error(
         `Internal error: could not find all paths to rewrite. please file an issue`,
       )
@@ -284,18 +356,20 @@ export class ServerFnCompiler {
 
     const refIdents = findReferencedIdentifiers(ast)
 
-    pathsToRewrite.map((p) => {
+    for (const p of pathsToRewrite) {
       if (p.kind === 'ServerFn') {
-        handleCreateServerFn(p.nodePath, {
+        handleCreateServerFn(p, {
           env: this.options.env,
           code,
           directive: this.options.directive,
           isProviderFile,
         })
       } else {
-        handleCreateMiddleware(p.nodePath, { env: this.options.env })
+        handleCreateMiddleware(p, {
+          env: this.options.env,
+        })
       }
-    })
+    }
 
     deadCodeElimination(ast, refIdents)
 
@@ -312,12 +386,12 @@ export class ServerFnCompiler {
 
     for (const binding of bindings.values()) {
       if (binding.type === 'var') {
-        const handler = isCandidateCallExpression(
+        const candidate = isCandidateCallExpression(
           binding.init,
           this.validLookupKinds,
         )
-        if (handler) {
-          candidates.push(handler)
+        if (candidate) {
+          candidates.push(candidate)
         }
       }
     }
@@ -376,19 +450,28 @@ export class ServerFnCompiler {
       }
     }
 
-    // If not found, recursively check re-export-all sources
-    for (const reExportSource of moduleInfo.reExportAllSources) {
-      const reExportTarget = await this.options.resolveId(
-        reExportSource,
-        moduleInfo.id,
+    // If not found, recursively check re-export-all sources in parallel
+    // Valid code won't have duplicate exports across chains, so first match wins
+    if (moduleInfo.reExportAllSources.length > 0) {
+      const results = await Promise.all(
+        moduleInfo.reExportAllSources.map(async (reExportSource) => {
+          const reExportTarget = await this.options.resolveId(
+            reExportSource,
+            moduleInfo.id,
+          )
+          if (reExportTarget) {
+            const reExportModule = await this.getModuleInfo(reExportTarget)
+            return this.findExportInModule(
+              reExportModule,
+              exportName,
+              visitedModules,
+            )
+          }
+          return undefined
+        }),
       )
-      if (reExportTarget) {
-        const reExportModule = await this.getModuleInfo(reExportTarget)
-        const result = await this.findExportInModule(
-          reExportModule,
-          exportName,
-          visitedModules,
-        )
+      // Return the first valid result
+      for (const result of results) {
         if (result) {
           return result
         }
@@ -417,8 +500,8 @@ export class ServerFnCompiler {
       // Find the export, recursively searching through export * from chains
       const found = await this.findExportInModule(
         importedModule,
-              binding.importedName,
-            )
+        binding.importedName,
+      )
 
       if (!found) {
         return 'None'
@@ -457,6 +540,15 @@ export class ServerFnCompiler {
       return 'None'
     }
 
+    // Unwrap common TypeScript/parenthesized wrappers first for efficiency
+    while (
+      t.isTSAsExpression(expr) ||
+      t.isTSNonNullExpression(expr) ||
+      t.isParenthesizedExpression(expr)
+    ) {
+      expr = expr.expression
+    }
+
     let result: Kind = 'None'
 
     if (t.isCallExpression(expr)) {
@@ -468,15 +560,12 @@ export class ServerFnCompiler {
         fileId,
         visited,
       )
-      if (calleeKind !== 'None') {
-        if (calleeKind === `Root` || calleeKind === `Builder`) {
-          return `Builder`
-        }
-        for (const kind of this.validLookupKinds) {
-          if (calleeKind === kind) {
-            return kind
-          }
-        }
+      if (calleeKind === 'Root' || calleeKind === 'Builder') {
+        return 'Builder'
+      }
+      // Use direct Set.has() instead of iterating
+      if (this.validLookupKinds.has(calleeKind as LookupKind)) {
+        return calleeKind
       }
     } else if (t.isMemberExpression(expr) && t.isIdentifier(expr.property)) {
       result = await this.resolveCalleeKind(expr.object, fileId, visited)
@@ -484,16 +573,6 @@ export class ServerFnCompiler {
 
     if (result === 'None' && t.isIdentifier(expr)) {
       result = await this.resolveIdentifierKind(expr.name, fileId, visited)
-    }
-
-    if (result === 'None' && t.isTSAsExpression(expr)) {
-      result = await this.resolveExprKind(expr.expression, fileId, visited)
-    }
-    if (result === 'None' && t.isTSNonNullExpression(expr)) {
-      result = await this.resolveExprKind(expr.expression, fileId, visited)
-    }
-    if (result === 'None' && t.isParenthesizedExpression(expr)) {
-      result = await this.resolveExprKind(expr.expression, fileId, visited)
     }
 
     return result
@@ -590,17 +669,18 @@ export class ServerFnCompiler {
 function isCandidateCallExpression(
   node: t.Node | null | undefined,
   lookupKinds: Set<LookupKind>,
-): undefined | t.CallExpression {
+): t.CallExpression | undefined {
   if (!t.isCallExpression(node)) return undefined
 
   const callee = node.callee
   if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.property)) {
     return undefined
   }
-  for (const kind of lookupKinds) {
-    if (LookupSetup[kind].candidateCallIdentifier.has(callee.property.name)) {
-      return node
-    }
+
+  // Use pre-computed map for O(1) lookup instead of iterating over lookupKinds
+  const kind = IdentifierToKind.get(callee.property.name)
+  if (kind && lookupKinds.has(kind)) {
+    return node
   }
 
   return undefined
