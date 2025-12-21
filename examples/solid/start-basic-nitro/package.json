@@ -17,7 +17,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.15",
     "@types/node": "^22.5.4",
-    "nitro": "^3.0.1-alpha.0",
+    "nitro": "^3.0.1-alpha.1",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.7.2",
