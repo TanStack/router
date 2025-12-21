@@ -19,13 +19,13 @@ function createConcurrentPromises(
   )
 }
 
-// Create batches of concurrent promises
-const batch1 = createConcurrentPromises(5, 100) // 5 promises resolving at 100ms
-const batch2 = createConcurrentPromises(5, 200) // 5 promises resolving at 200ms
-const batch3 = createConcurrentPromises(5, 300) // 5 promises resolving at 300ms
-
 export const Route = createFileRoute('/concurrent')({
   loader: async () => {
+    // Create fresh batches of concurrent promises for each request
+    const batch1 = createConcurrentPromises(5, 100) // 5 promises resolving at 100ms
+    const batch2 = createConcurrentPromises(5, 200) // 5 promises resolving at 200ms
+    const batch3 = createConcurrentPromises(5, 300) // 5 promises resolving at 300ms
+
     return {
       // Batch 1: 5 promises resolving at exactly the same time (100ms)
       concurrent1_1: batch1[0],

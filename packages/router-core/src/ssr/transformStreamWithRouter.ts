@@ -336,6 +336,23 @@ export function transformStreamWithRouter(
           continue
         }
 
+        // Handling partial closing tags split across chunks:
+        //
+        // Since `chunkString = leftover + text`, any incomplete tag fragment from the
+        // previous chunk is prepended to the current chunk, allowing split tags like
+        // "</di" + "v>" to be re-detected as a complete "</div>" in the combined string.
+        //
+        // - If a closing tag IS found (lastClosingTagEnd > 0): We enqueue content up to
+        //   the end of that tag, flush router HTML, and store the remainder in `leftover`.
+        //   This remainder may contain a partial tag (e.g., "</sp") which will be
+        //   prepended to the next chunk for re-detection.
+        //
+        // - If NO closing tag is found: The entire chunk is buffered in `leftover` and
+        //   will be prepended to the next chunk. This ensures partial tags are never
+        //   lost and will be detected once the rest of the tag arrives.
+        //
+        // This approach guarantees correct injection points even when closing tags span
+        // chunk boundaries.
         const lastClosingTagEnd = findLastClosingTagEnd(chunkString)
 
         if (lastClosingTagEnd > 0) {
