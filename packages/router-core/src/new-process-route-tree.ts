@@ -18,13 +18,14 @@ export type SegmentKind =
   | typeof SEGMENT_TYPE_PARAM
   | typeof SEGMENT_TYPE_WILDCARD
   | typeof SEGMENT_TYPE_OPTIONAL_PARAM
-  | typeof SEGMENT_TYPE_PATHLESS
-  | typeof SEGMENT_TYPE_INDEX
 
 /**
  * All the kinds of segments that can be present in the segment tree.
  */
-type ExtendedSegmentKind = SegmentKind | typeof SEGMENT_TYPE_INDEX
+type ExtendedSegmentKind =
+  | SegmentKind
+  | typeof SEGMENT_TYPE_INDEX
+  | typeof SEGMENT_TYPE_PATHLESS
 
 const PARAM_W_CURLY_BRACES_RE =
   /^([^{]*)\{\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/ // prefix{$paramName}suffix
