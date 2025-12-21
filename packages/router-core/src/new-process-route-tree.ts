@@ -846,7 +846,6 @@ function getNodeMatch<T extends RouteLike>(
 ) {
   // quick check for root index
   // this is an optimization, algorithm should work correctly without this block
-  // TODO: it doesn't actually work correctly without this block
   if (path === '/' && segmentTree.index) return { node: segmentTree.index }
 
   const trailingSlash = !last(parts)
@@ -1050,7 +1049,7 @@ function getNodeMatch<T extends RouteLike>(
     }
 
     // 0. Try index match
-    if (node.index && index > 1 && index >= partsLength) {
+    if (node.index && index >= partsLength) {
       stack.push({
         node: node.index,
         index: index + 1,
