@@ -7,12 +7,21 @@ export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
 export const SEGMENT_TYPE_WILDCARD = 2
 export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
+const SEGMENT_TYPE_INDEX = 4
 
+/**
+ * All the kinds of segments that can be present in a route path.
+ */
 export type SegmentKind =
   | typeof SEGMENT_TYPE_PATHNAME
   | typeof SEGMENT_TYPE_PARAM
   | typeof SEGMENT_TYPE_WILDCARD
   | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+
+/**
+ * All the kinds of segments that can be present in the segment tree.
+ */
+type ExtendedSegmentKind = SegmentKind | typeof SEGMENT_TYPE_INDEX
 
 const PARAM_W_CURLY_BRACES_RE =
   /^([^{]*)\{\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/ // prefix{$paramName}suffix
@@ -326,20 +335,26 @@ function parseSegments<TRouteLike extends RouteLike>(
       }
       node = nextNode
     }
-    if ((route.path || !route.children) && !route.isRoot) {
-      const isIndex = path.endsWith('/')
-      // we cannot fuzzy match an index route,
-      // but if there is *also* a layout route at this path, save it as notFound
-      // we can use it when fuzzy matching to display the NotFound component in the layout route
-      if (!isIndex) node.notFound = route
-      // does the new route take precedence over an existing one?
-      // yes if previous is not an index route and new one is an index route
-      if (!node.route || (!node.isIndex && isIndex)) {
-        node.route = route
-        // when replacing, replace all attributes that are route-specific (`fullPath` only at the moment)
-        node.fullPath = route.fullPath ?? route.from
-      }
-      node.isIndex ||= isIndex
+
+    const isLeaf = (route.path || !route.children) && !route.isRoot
+
+    // create index node
+    if (isLeaf && path.endsWith('/')) {
+      const indexNode = createStaticNode<TRouteLike>(
+        route.fullPath ?? route.from,
+      )
+      indexNode.kind = SEGMENT_TYPE_INDEX
+      indexNode.parent = node
+      depth++
+      indexNode.depth = depth
+      node.index = indexNode
+      node = indexNode
+    }
+
+    // make node "matchable"
+    if (isLeaf) {
+      node.route = route
+      node.fullPath = route.fullPath ?? route.from
     }
   }
   if (route.children)
@@ -417,6 +432,7 @@ function createStaticNode<T extends RouteLike>(
   return {
     kind: SEGMENT_TYPE_PATHNAME,
     depth: 0,
+    index: null,
     static: null,
     staticInsensitive: null,
     dynamic: null,
@@ -425,8 +441,6 @@ function createStaticNode<T extends RouteLike>(
     route: null,
     fullPath,
     parent: null,
-    isIndex: false,
-    notFound: null,
   }
 }
 
@@ -447,6 +461,7 @@ function createDynamicNode<T extends RouteLike>(
   return {
     kind,
     depth: 0,
+    index: null,
     static: null,
     staticInsensitive: null,
     dynamic: null,
@@ -455,8 +470,6 @@ function createDynamicNode<T extends RouteLike>(
     route: null,
     fullPath,
     parent: null,
-    isIndex: false,
-    notFound: null,
     caseSensitive,
     prefix,
     suffix,
@@ -464,7 +477,7 @@ function createDynamicNode<T extends RouteLike>(
 }
 
 type StaticSegmentNode<T extends RouteLike> = SegmentNode<T> & {
-  kind: typeof SEGMENT_TYPE_PATHNAME
+  kind: typeof SEGMENT_TYPE_PATHNAME | typeof SEGMENT_TYPE_INDEX
 }
 
 type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
@@ -482,12 +495,15 @@ type AnySegmentNode<T extends RouteLike> =
   | DynamicSegmentNode<T>
 
 type SegmentNode<T extends RouteLike> = {
-  kind: SegmentKind
+  kind: ExtendedSegmentKind
 
-  /** Static segments (highest priority) */
+  /** Exact index segment (highest priority) */
+  index: StaticSegmentNode<T> | null
+
+  /** Static segments (2nd priority) */
   static: Map<string, StaticSegmentNode<T>> | null
 
-  /** Case insensitive static segments (second highest priority) */
+  /** Case insensitive static segments (3rd highest priority) */
   staticInsensitive: Map<string, StaticSegmentNode<T>> | null
 
   /** Dynamic segments ($param) */
@@ -508,12 +524,6 @@ type SegmentNode<T extends RouteLike> = {
   parent: AnySegmentNode<T> | null
 
   depth: number
-
-  /** is it an index route (trailing / path), only valid for nodes with a `route` */
-  isIndex: boolean
-
-  /** Same as `route`, but only present if both an "index route" and a "layout route" exist at this path */
-  notFound: T | null
 }
 
 type RouteLike = {
@@ -711,13 +721,10 @@ function findMatch<T extends RouteLike>(
 ): { route: T; params: Record<string, string> } | null {
   const parts = path.split('/')
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
-  if (!leaf) return null
+  if (!leaf?.node.route) return null
   const params = extractParams(path, parts, leaf)
-  const isFuzzyMatch = '**' in leaf
-  if (isFuzzyMatch) params['**'] = leaf['**']
-  const route = isFuzzyMatch
-    ? (leaf.node.notFound ?? leaf.node.route!)
-    : leaf.node.route!
+  if ('**' in leaf) params['**'] = leaf['**']!
+  const route = leaf.node.route
   return {
     route,
     params,
@@ -727,7 +734,7 @@ function findMatch<T extends RouteLike>(
 function extractParams<T extends RouteLike>(
   path: string,
   parts: Array<string>,
-  leaf: { node: AnySegmentNode<T>; skipped: number },
+  leaf: { node: AnySegmentNode<T>; skipped?: number },
 ) {
   const list = buildBranch(leaf.node)
   let nodeParts: Array<string> | null = null
@@ -761,7 +768,7 @@ function extractParams<T extends RouteLike>(
         params[name] = decodeURIComponent(part!)
       }
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-      if (leaf.skipped & (1 << nodeIndex)) {
+      if (leaf.skipped! & (1 << nodeIndex)) {
         partIndex-- // stay on the same part
         continue
       }
@@ -837,6 +844,11 @@ function getNodeMatch<T extends RouteLike>(
   segmentTree: AnySegmentNode<T>,
   fuzzy: boolean,
 ) {
+  // quick check for root index
+  // this is an optimization, algorithm should work correctly without this block
+  // TODO: it doesn't actually work correctly without this block
+  if (path === '/' && segmentTree.index) return { node: segmentTree.index }
+
   const trailingSlash = !last(parts)
   const pathIsIndex = trailingSlash && path !== '/'
   const partsLength = parts.length - (trailingSlash ? 1 : 0)
@@ -872,22 +884,36 @@ function getNodeMatch<T extends RouteLike>(
     let { node, index, skipped, depth, statics, dynamics, optionals } = frame
 
     // In fuzzy mode, track the best partial match we've found so far
-    if (fuzzy && node.notFound && isFrameMoreSpecific(bestFuzzy, frame)) {
+    if (
+      fuzzy &&
+      node.route &&
+      node.kind !== SEGMENT_TYPE_INDEX &&
+      isFrameMoreSpecific(bestFuzzy, frame)
+    ) {
       bestFuzzy = frame
     }
 
-    const isBeyondPath = index === partsLength
+    const isBeyondPath = index >= partsLength
     if (isBeyondPath) {
-      if (node.route && (!pathIsIndex || node.isIndex)) {
+      if (node.route && (!pathIsIndex || node.kind === SEGMENT_TYPE_INDEX)) {
         if (isFrameMoreSpecific(bestMatch, frame)) {
           bestMatch = frame
         }
 
         // perfect match, no need to continue
-        if (statics === partsLength && node.isIndex) return bestMatch
+        // this is an optimization, algorithm should work correctly without this block
+        if (
+          statics === partsLength &&
+          !dynamics &&
+          !optionals &&
+          !skipped &&
+          node.kind === SEGMENT_TYPE_INDEX
+        ) {
+          return bestMatch
+        }
       }
-      // beyond the length of the path parts, only skipped optional segments or wildcard segments can match
-      if (!node.optional && !node.wildcard) continue
+      // beyond the length of the path parts, only index segments, or skipped optional segments, or wildcard segments can match
+      if (!node.optional && !node.wildcard && !node.index) continue
     }
 
     const part = isBeyondPath ? undefined : parts[index]!
@@ -1022,6 +1048,19 @@ function getNodeMatch<T extends RouteLike>(
         })
       }
     }
+
+    // 0. Try index match
+    if (node.index && index > 1 && index >= partsLength) {
+      stack.push({
+        node: node.index,
+        index: index + 1,
+        skipped,
+        depth: depth + 1,
+        statics,
+        dynamics,
+        optionals,
+      })
+    }
   }
 
   if (bestMatch && wildcardMatch) {
@@ -1064,8 +1103,10 @@ function isFrameMoreSpecific(
         (next.dynamics === prev.dynamics &&
           (next.optionals > prev.optionals ||
             (next.optionals === prev.optionals &&
-              (next.node.isIndex > prev.node.isIndex ||
-                (next.node.isIndex === prev.node.isIndex &&
+              ((next.node.kind === SEGMENT_TYPE_INDEX) >
+                (prev.node.kind === SEGMENT_TYPE_INDEX) ||
+                ((next.node.kind === SEGMENT_TYPE_INDEX) ===
+                  (prev.node.kind === SEGMENT_TYPE_INDEX) &&
                   next.depth > prev.depth)))))))
   )
 }
