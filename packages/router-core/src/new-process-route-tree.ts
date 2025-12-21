@@ -412,16 +412,18 @@ function sortDynamic(
     suffix?: string
     caseSensitive: boolean
     parse: null | ((params: Record<string, string>) => any)
+    skipRouteOnParseError: boolean
   },
   b: {
     prefix?: string
     suffix?: string
     caseSensitive: boolean
     parse: null | ((params: Record<string, string>) => any)
+    skipRouteOnParseError: boolean
   },
 ) {
-  if (a.parse && !b.parse) return -1
-  if (!a.parse && b.parse) return 1
+  if (a.parse && a.skipRouteOnParseError && (!b.parse || !b.skipRouteOnParseError)) return -1
+  if ((!a.parse || !a.skipRouteOnParseError) && b.parse && b.skipRouteOnParseError) return 1
   if (a.prefix && b.prefix && a.prefix !== b.prefix) {
     if (a.prefix.startsWith(b.prefix)) return -1
     if (b.prefix.startsWith(a.prefix)) return 1
