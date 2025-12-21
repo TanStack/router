@@ -721,10 +721,10 @@ function findMatch<T extends RouteLike>(
 ): { route: T; params: Record<string, string> } | null {
   const parts = path.split('/')
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
-  if (!leaf?.node.route) return null
+  if (!leaf) return null
   const params = extractParams(path, parts, leaf)
   if ('**' in leaf) params['**'] = leaf['**']!
-  const route = leaf.node.route
+  const route = leaf.node.route!
   return {
     route,
     params,
