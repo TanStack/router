@@ -1050,7 +1050,7 @@ function getNodeMatch<T extends RouteLike>(
     }
 
     // 0. Try index match
-    if (node.index && index >= partsLength) {
+    if (isBeyondPath && node.index) {
       stack.push({
         node: node.index,
         index: index + 1,
