@@ -91,5 +91,3 @@ Feature/Capability Key:
 [nextjs]: https://nextjs.org/docs/routing/introduction
 [stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?style=flat&logo=github&color=%23000
 [gh-nextjs]: https://github.com/vercel/next.js
-[bp-nextjs]: https://badgen.net/bundlephobia/minzip/next.js?label=All
-[bpl-nextjs]: https://bundlephobia.com/result?p=next
