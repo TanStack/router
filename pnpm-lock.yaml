@@ -216,9 +216,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -311,9 +308,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -366,9 +360,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -418,9 +409,6 @@ importers:
       '@tanstack/router-devtools':
         specifier: workspace:*
         version: link:../../../packages/router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -473,9 +461,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -525,9 +510,6 @@ importers:
       '@tanstack/react-virtual':
         specifier: ^3.13.0
         version: 3.13.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -577,9 +559,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -632,9 +611,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -718,9 +694,6 @@ importers:
       '@tanstack/router-cli':
         specifier: workspace:*
         version: link:../../../packages/router-cli
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -764,9 +737,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -926,9 +896,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -984,9 +951,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -1033,9 +997,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -1134,9 +1095,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -1216,9 +1174,6 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       prisma:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.8.2)
@@ -1274,9 +1229,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -1353,9 +1305,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -1411,9 +1360,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -1512,9 +1458,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: 4.1.18
         version: 4.1.18
@@ -1576,9 +1519,6 @@ importers:
       cross-env:
         specifier: ^10.0.0
         version: 10.0.0
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -1655,9 +1595,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -1725,9 +1662,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -1786,9 +1720,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -1844,9 +1775,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -1923,9 +1851,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -2005,9 +1930,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -2054,9 +1976,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.2
         version: 19.2.2(@types/react@19.2.2)
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -2127,9 +2046,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -2191,9 +2107,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -2249,9 +2162,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2329,9 +2239,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2375,9 +2282,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       solid-js:
         specifier: 1.9.10
         version: 1.9.10
@@ -2415,9 +2319,6 @@ importers:
       '@tanstack/solid-virtual':
         specifier: ^3.13.0
         version: 3.13.12(solid-js@1.9.10)
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2458,9 +2359,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2504,9 +2402,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2550,9 +2445,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2596,9 +2488,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2639,9 +2528,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2676,9 +2562,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2817,9 +2700,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2866,9 +2746,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2906,9 +2783,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -2992,9 +2866,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3059,9 +2930,6 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       prisma:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
@@ -3111,9 +2979,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -3181,9 +3046,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3276,9 +3138,6 @@ importers:
       cross-env:
         specifier: ^10.0.0
         version: 10.0.0
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3346,9 +3205,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -3407,9 +3263,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3447,9 +3300,6 @@ importers:
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3502,9 +3352,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3572,9 +3419,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3645,9 +3489,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3688,9 +3529,6 @@ importers:
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -3752,9 +3590,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3810,9 +3645,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -3849,9 +3681,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -3895,9 +3724,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4005,9 +3831,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4075,9 +3898,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4127,9 +3947,6 @@ importers:
       '@tanstack/vue-virtual':
         specifier: ^3.13.0
         version: 3.13.13(vue@3.5.25(typescript@5.8.3))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4185,9 +4002,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4243,9 +4057,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4295,9 +4106,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4350,9 +4158,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4402,9 +4207,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4457,9 +4259,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4613,9 +4412,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4671,9 +4467,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4723,9 +4516,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -4818,9 +4608,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -4888,9 +4675,6 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       prisma:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
@@ -4943,9 +4727,6 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.2
         version: 5.1.2(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -5056,9 +4837,6 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.2
         version: 5.1.2(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -5117,9 +4895,6 @@ importers:
       cross-env:
         specifier: ^10.0.0
         version: 10.0.0
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -5190,9 +4965,6 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -5254,9 +5026,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -5297,9 +5066,6 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.2
         version: 5.1.2(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -5349,9 +5115,6 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.2
         version: 5.1.2(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -5431,9 +5194,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -5507,9 +5267,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -5553,9 +5310,6 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.2
         version: 5.1.2(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -5620,9 +5374,6 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -5681,9 +5432,6 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.2
         version: 5.1.2(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.2))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       srvx:
         specifier: ^0.9.8
         version: 0.9.8
@@ -5711,9 +5459,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -5763,9 +5508,6 @@ importers:
       firebase:
         specifier: ^11.4.0
         version: 11.4.0
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -5812,9 +5554,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -5858,9 +5597,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -5907,9 +5643,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -5953,9 +5686,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -5999,9 +5729,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6048,9 +5775,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6100,9 +5824,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6250,9 +5971,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6302,9 +6020,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6348,9 +6063,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6440,9 +6152,6 @@ importers:
       immer:
         specifier: ^10.1.1
         version: 10.1.1
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6492,9 +6201,6 @@ importers:
       immer:
         specifier: ^10.1.1
         version: 10.1.1
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6547,9 +6253,6 @@ importers:
       immer:
         specifier: ^10.1.1
         version: 10.1.1
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6605,9 +6308,6 @@ importers:
       immer:
         specifier: ^10.1.1
         version: 10.1.1
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6657,9 +6357,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6709,9 +6406,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6755,9 +6449,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6798,9 +6489,6 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -6875,9 +6563,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -7081,9 +6766,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: 4.1.18
         version: 4.1.18
@@ -7321,9 +7003,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: 4.1.18
         version: 4.1.18
@@ -7444,9 +7123,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: 4.1.18
         version: 4.1.18
@@ -7548,9 +7224,6 @@ importers:
       '@tanstack/react-virtual':
         specifier: ^3.13.0
         version: 3.13.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -7606,9 +7279,6 @@ importers:
       arktype:
         specifier: ^2.1.7
         version: 2.1.7
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -7729,9 +7399,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.6.0
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -7796,9 +7463,6 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       prisma:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.8.2)
@@ -7857,9 +7521,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.6.0
         version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -7909,9 +7570,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.6.0
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -7976,9 +7634,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -8031,9 +7686,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: 4.1.18
         version: 4.1.18
@@ -8089,9 +7741,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.2
         version: 19.2.2(@types/react@19.2.2)
-      postcss:
-        specifier: ^8.4.49
-        version: 8.5.3
       tailwindcss:
         specifier: 4.1.18
         version: 4.1.18
@@ -8229,9 +7878,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.2
         version: 19.2.2(@types/react@19.2.2)
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -8317,9 +7963,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -8467,9 +8110,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -8623,9 +8263,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -8754,9 +8391,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -8833,9 +8467,6 @@ importers:
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../../../packages/router-plugin
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -8882,9 +8513,6 @@ importers:
       framer-motion:
         specifier: ^11.18.2
         version: 11.18.2(@emotion/is-prop-valid@1.3.1)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -8940,9 +8568,6 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.21.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -9010,9 +8635,6 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.21.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       react:
         specifier: ^19.2.0
         version: 19.2.0
@@ -9062,9 +8684,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9105,9 +8724,6 @@ importers:
       firebase:
         specifier: ^11.4.0
         version: 11.4.0
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9145,9 +8761,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9188,9 +8801,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9225,9 +8835,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9259,9 +8866,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9299,9 +8903,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9345,9 +8946,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9388,9 +8986,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9480,9 +9075,6 @@ importers:
       node-fetch:
         specifier: ^3.3.2
         version: 3.3.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9529,9 +9121,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9572,9 +9161,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9609,9 +9195,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9683,9 +9266,6 @@ importers:
       immer:
         specifier: ^10.1.1
         version: 10.1.1
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9723,9 +9303,6 @@ importers:
       immer:
         specifier: ^10.1.1
         version: 10.1.1
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9772,9 +9349,6 @@ importers:
       immer:
         specifier: ^10.1.1
         version: 10.1.1
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9821,9 +9395,6 @@ importers:
       immer:
         specifier: ^10.1.1
         version: 10.1.1
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9864,9 +9435,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9904,9 +9472,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9941,9 +9506,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -9975,9 +9537,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       solid-js:
         specifier: 1.9.10
         version: 1.9.10
@@ -10037,9 +9596,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -10283,9 +9839,6 @@ importers:
       '@tanstack/solid-virtual':
         specifier: ^3.13.0
         version: 3.13.12(solid-js@1.9.10)
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       solid-js:
         specifier: 1.9.10
         version: 1.9.10
@@ -10332,9 +9885,6 @@ importers:
       arktype:
         specifier: ^2.1.7
         version: 2.1.7
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       solid-js:
         specifier: 1.9.10
         version: 1.9.10
@@ -10391,9 +9941,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -10449,9 +9996,6 @@ importers:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       prisma:
         specifier: ^7.0.0
         version: 7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
@@ -10501,9 +10045,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -10544,9 +10085,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -10590,9 +10128,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -10633,9 +10168,6 @@ importers:
       nitro:
         specifier: ^3.0.1-alpha.1
         version: 3.0.1-alpha.1(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(chokidar@4.0.3)(ioredis@5.8.0)(lru-cache@11.2.2)(mysql2@3.15.3)(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -10688,9 +10220,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -10737,9 +10266,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.4.49
-        version: 8.5.3
       tailwindcss:
         specifier: 4.1.18
         version: 4.1.18
@@ -11009,9 +10535,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -11135,9 +10658,6 @@ importers:
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       tailwindcss:
         specifier: ^4.1.18
         version: 4.1.18
@@ -11168,9 +10688,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -11205,9 +10722,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -11257,9 +10771,6 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.21.2
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -11294,9 +10805,6 @@ importers:
       '@tanstack/vue-router-devtools':
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -11343,9 +10851,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -11407,9 +10912,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: workspace:*
         version: link:../../../packages/zod-adapter
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.6
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
