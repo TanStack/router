@@ -1,6 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { ServerFnCompiler } from '../../src/create-server-fn-plugin/compiler'
 
 async function getFilenames() {
@@ -213,5 +213,100 @@ describe('createServerFn compiles correctly', async () => {
         return nonExportedVar;
       });"
     `)
+  })
+
+  test('should use fast path for direct imports from known library (no extra resolveId calls)', async () => {
+    const code = `
+      import { createServerFn } from '@tanstack/react-start'
+      const myServerFn = createServerFn().handler(async () => {
+        return 'hello'
+      })`
+
+    const resolveIdMock = vi.fn(async (id: string) => id)
+
+    const compiler = new ServerFnCompiler({
+      env: 'client',
+      loadModule: async () => {},
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+        },
+      ],
+      resolveId: resolveIdMock,
+      directive: 'use server',
+    })
+
+    await compiler.compile({
+      code,
+      id: 'test.ts',
+      isProviderFile: false,
+    })
+
+    // resolveId should only be called once during init() for the library itself
+    // It should NOT be called again to resolve the import binding because
+    // the fast path uses knownRootImports map for O(1) lookup
+    expect(resolveIdMock).toHaveBeenCalledTimes(1)
+    expect(resolveIdMock).toHaveBeenCalledWith(
+      '@tanstack/react-start',
+      'test.ts',
+    )
+  })
+
+  test('should use slow path for factory pattern (resolveId called for import resolution)', async () => {
+    // This simulates a factory pattern where createServerFn is re-exported from a local file
+    const factoryCode = `
+      import { createFooServerFn } from './factory'
+      const myServerFn = createFooServerFn().handler(async () => {
+        return 'hello'
+      })`
+
+    const resolveIdMock = vi.fn(async (id: string) => id)
+
+    const compiler = new ServerFnCompiler({
+      env: 'client',
+      loadModule: async (id) => {
+        // Simulate the factory module being loaded
+        if (id === './factory') {
+          compiler.ingestModule({
+            code: `
+              import { createServerFn } from '@tanstack/react-start'
+              export const createFooServerFn = createServerFn
+            `,
+            id: './factory',
+          })
+        }
+      },
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+        },
+      ],
+      resolveId: resolveIdMock,
+      directive: 'use server',
+    })
+
+    await compiler.compile({
+      code: factoryCode,
+      id: 'test.ts',
+      isProviderFile: false,
+    })
+
+    // resolveId should be called exactly twice:
+    // 1. Once during init() for '@tanstack/react-start'
+    // 2. Once to resolve './factory' import (slow path - not in knownRootImports)
+    //
+    // Note: The factory module's import from '@tanstack/react-start' ALSO uses
+    // the fast path (knownRootImports), so no additional resolveId call is needed there.
+    expect(resolveIdMock).toHaveBeenCalledTimes(2)
+    expect(resolveIdMock).toHaveBeenNthCalledWith(
+      1,
+      '@tanstack/react-start',
+      'test.ts',
+    )
+    expect(resolveIdMock).toHaveBeenNthCalledWith(2, './factory', 'test.ts')
   })
 })
