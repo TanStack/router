@@ -35,7 +35,6 @@ const textEncoder = new TextEncoder()
 
 /**
  * Finds the position just after the last valid HTML closing tag in the string.
- * Uses optimized charCodeAt approach (5x-370x faster than regex for typical HTML).
  *
  * Valid closing tags match the pattern: </[a-zA-Z][\w:.-]*>
  * Examples: </div>, </my-component>, </slot:name.nested>
