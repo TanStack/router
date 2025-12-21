@@ -327,6 +327,7 @@ export class ServerFnCompiler {
 
       // Walk down the call chain using nodes, look up paths from map
       let currentNode: t.CallExpression = node
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const callee = currentNode.callee
         if (!t.isMemberExpression(callee)) {
