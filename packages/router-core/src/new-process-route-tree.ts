@@ -422,8 +422,18 @@ function sortDynamic(
     skipRouteOnParseError: boolean
   },
 ) {
-  if (a.parse && a.skipRouteOnParseError && (!b.parse || !b.skipRouteOnParseError)) return -1
-  if ((!a.parse || !a.skipRouteOnParseError) && b.parse && b.skipRouteOnParseError) return 1
+  if (
+    a.parse &&
+    a.skipRouteOnParseError &&
+    (!b.parse || !b.skipRouteOnParseError)
+  )
+    return -1
+  if (
+    (!a.parse || !a.skipRouteOnParseError) &&
+    b.parse &&
+    b.skipRouteOnParseError
+  )
+    return 1
   if (a.prefix && b.prefix && a.prefix !== b.prefix) {
     if (a.prefix.startsWith(b.prefix)) return -1
     if (b.prefix.startsWith(a.prefix)) return 1
@@ -538,16 +548,16 @@ function createDynamicNode<T extends RouteLike>(
 
 type StaticSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-  | typeof SEGMENT_TYPE_PATHNAME
-  | typeof SEGMENT_TYPE_PATHLESS
-  | typeof SEGMENT_TYPE_INDEX
+    | typeof SEGMENT_TYPE_PATHNAME
+    | typeof SEGMENT_TYPE_PATHLESS
+    | typeof SEGMENT_TYPE_INDEX
 }
 
 type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-  | typeof SEGMENT_TYPE_PARAM
-  | typeof SEGMENT_TYPE_WILDCARD
-  | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+    | typeof SEGMENT_TYPE_PARAM
+    | typeof SEGMENT_TYPE_WILDCARD
+    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   prefix?: string
   suffix?: string
   caseSensitive: boolean
@@ -824,9 +834,9 @@ function extractParams<T extends RouteLike>(
     params?: Record<string, string>
   },
 ): [
-    params: Record<string, string>,
-    state: { part: number; node: number; path: number },
-  ] {
+  params: Record<string, string>,
+  state: { part: number; node: number; path: number },
+] {
   const list = buildBranch(leaf.node)
   let nodeParts: Array<string> | null = null
   const params: Record<string, string> = {}
@@ -1229,7 +1239,11 @@ function getNodeMatch<T extends RouteLike>(
   return null
 }
 
-function validateMatchParams<T extends RouteLike>(path: string, parts: Array<string>, frame: MatchStackFrame<T>) {
+function validateMatchParams<T extends RouteLike>(
+  path: string,
+  parts: Array<string>,
+  frame: MatchStackFrame<T>,
+) {
   try {
     const result = extractParams(path, parts, frame)
     frame.params = result[0]
