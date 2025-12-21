@@ -893,7 +893,7 @@ function getNodeMatch<T extends RouteLike>(
       bestFuzzy = frame
     }
 
-    const isBeyondPath = index >= partsLength
+    const isBeyondPath = index === partsLength
     if (isBeyondPath) {
       if (node.route && (!pathIsIndex || node.kind === SEGMENT_TYPE_INDEX)) {
         if (isFrameMoreSpecific(bestMatch, frame)) {
@@ -1053,7 +1053,7 @@ function getNodeMatch<T extends RouteLike>(
     if (isBeyondPath && node.index) {
       stack.push({
         node: node.index,
-        index: index + 1,
+        index,
         skipped,
         depth: depth + 1,
         statics,
