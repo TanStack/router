@@ -2044,8 +2044,14 @@ describe('Link', () => {
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
-      path: '$postId/',
+      path: '$postId',
       component: PostComponent,
+    })
+
+    const postIndexRoute = createRoute({
+      getParentRoute: () => postRoute,
+      path: '/',
+      component: () => <div>Post Index</div>,
     })
 
     const DetailsComponent = () => {
@@ -2080,7 +2086,11 @@ describe('Link', () => {
         indexRoute,
         layoutRoute.addChildren([
           postsRoute.addChildren([
-            postRoute.addChildren([detailsRoute, informationRoute]),
+            postRoute.addChildren([
+              postIndexRoute,
+              detailsRoute,
+              informationRoute,
+            ]),
           ]),
         ]),
       ]),

@@ -40,8 +40,7 @@ function handleRouteUpdate(
     node: AnyRouter['processedTree']['segmentTree'],
   ) {
     if (node.route?.id === route.id) node.route = route
-    if (node.notFound?.id === route.id) node.notFound = route
-
+    if (node.index) walkReplaceSegmentTree(route, node.index)
     node.static?.forEach((child) => walkReplaceSegmentTree(route, child))
     node.staticInsensitive?.forEach((child) =>
       walkReplaceSegmentTree(route, child),
