@@ -10,12 +10,11 @@
     "@tanstack/solid-router": "^1.141.8",
     "@tanstack/solid-router-devtools": "^1.141.8",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.17"
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
     "@babel/preset-typescript": "^7.27.1",
-    "@tailwindcss/postcss": "^4.1.15",
     "@tanstack/router-plugin": "^1.142.0",
     "babel-loader": "^10.0.0",
     "babel-preset-solid": "^1.9.10",

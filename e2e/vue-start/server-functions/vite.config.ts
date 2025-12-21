@@ -3,6 +3,7 @@ import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/vue-start/plugin/vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+import tailwindcss from '@tailwindcss/vite'
 
 const FUNCTIONS_WITH_CONSTANT_ID = [
   'src/routes/submit-post-formdata.tsx/greetUser_createServerFn_handler',
@@ -14,6 +15,7 @@ export default defineConfig({
     port: 3000,
   },
   plugins: [
+    tailwindcss(),
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),

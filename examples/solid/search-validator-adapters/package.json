@@ -10,7 +10,7 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.15",
+    "@tailwindcss/vite": "^4.1.18",
     "@tanstack/arktype-adapter": "^1.141.8",
     "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-router": "^1.141.8",
@@ -21,7 +21,7 @@
     "arktype": "^2.1.7",
     "postcss": "^8.5.1",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^4.1.18",
     "valibot": "1.0.0-beta.15",
     "zod": "^3.24.2"
   },
