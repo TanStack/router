@@ -36,7 +36,7 @@ export function handleCreateMiddleware(
     }
   }
 
-  if (server && server.firstArgPath?.node) {
+  if (server) {
     // remove the server call expression
     if (t.isMemberExpression(server.callPath.node.callee)) {
       server.callPath.replaceWith(server.callPath.node.callee.object)

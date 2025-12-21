@@ -8,7 +8,7 @@ import {
 } from 'babel-dead-code-elimination'
 import { handleCreateServerFn } from './handleCreateServerFn'
 import { handleCreateMiddleware } from './handleCreateMiddleware'
-import type { MethodChainPaths } from './types'
+import type { MethodChainPaths, RewriteCandidate } from './types'
 
 type Binding =
   | {
@@ -70,6 +70,10 @@ export class ServerFnCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
   private validLookupKinds: Set<LookupKind>
+  // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
+  // Maps: libName → (exportName → Kind)
+  // This allows O(1) resolution for the common case without async resolveId calls
+  private knownRootImports = new Map<string, Map<string, Kind>>()
   constructor(
     private options: {
       env: 'client' | 'server'
@@ -119,6 +123,14 @@ export class ServerFnCompiler {
           resolvedKind: `Root` satisfies Kind,
         })
         this.moduleCache.set(libId, rootModule)
+
+        // Also populate the fast lookup map for direct imports
+        let libExports = this.knownRootImports.get(config.libName)
+        if (!libExports) {
+          libExports = new Map()
+          this.knownRootImports.set(config.libName, libExports)
+        }
+        libExports.set(config.rootExport, 'Root')
       }),
     )
 
@@ -356,16 +368,17 @@ export class ServerFnCompiler {
 
     const refIdents = findReferencedIdentifiers(ast)
 
-    for (const p of pathsToRewrite) {
-      if (p.kind === 'ServerFn') {
-        handleCreateServerFn(p, {
+    for (const { path, kind, methodChain } of pathsToRewrite) {
+      const candidate: RewriteCandidate = { path, methodChain }
+      if (kind === 'ServerFn') {
+        handleCreateServerFn(candidate, {
           env: this.options.env,
           code,
           directive: this.options.directive,
           isProviderFile,
         })
       } else {
-        handleCreateMiddleware(p, {
+        handleCreateMiddleware(candidate, {
           env: this.options.env,
         })
       }
@@ -490,6 +503,19 @@ export class ServerFnCompiler {
       return binding.resolvedKind
     }
     if (binding.type === 'import') {
+      // Fast path: check if this is a direct import from a known library
+      // (e.g., import { createServerFn } from '@tanstack/react-start')
+      // This avoids async resolveId calls for the common case
+      const knownExports = this.knownRootImports.get(binding.source)
+      if (knownExports) {
+        const kind = knownExports.get(binding.importedName)
+        if (kind) {
+          binding.resolvedKind = kind
+          return kind
+        }
+      }
+
+      // Slow path: resolve through the module graph
       const target = await this.options.resolveId(binding.source, fileId)
       if (!target) {
         return 'None'

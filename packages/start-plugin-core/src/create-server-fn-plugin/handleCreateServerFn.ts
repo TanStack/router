@@ -31,7 +31,14 @@ export function handleCreateServerFn(
 
   // Get the identifier name of the variable
   const variableDeclarator = path.parentPath.node
-  const existingVariableName = (variableDeclarator.id as t.Identifier).name
+  if (!t.isIdentifier(variableDeclarator.id)) {
+    throw codeFrameError(
+      opts.code,
+      variableDeclarator.id.loc!,
+      'createServerFn must be assigned to a simple identifier, not a destructuring pattern',
+    )
+  }
+  const existingVariableName = variableDeclarator.id.name
 
   if (inputValidator) {
     const innerInputExpression = inputValidator.callPath.node.arguments[0]
@@ -65,7 +72,16 @@ export function handleCreateServerFn(
     )
   }
 
-  const handlerFn = handlerFnPath.node as t.Expression
+  // Validate the handler argument is an expression (not a SpreadElement, etc.)
+  if (!t.isExpression(handlerFnPath.node)) {
+    throw codeFrameError(
+      opts.code,
+      handlerFnPath.node.loc!,
+      `handler() must be called with an expression, not a ${handlerFnPath.node.type}`,
+    )
+  }
+
+  const handlerFn = handlerFnPath.node
 
   // So, the way we do this is we give the handler function a way
   // to access the serverFn ctx on the server via function scope.
