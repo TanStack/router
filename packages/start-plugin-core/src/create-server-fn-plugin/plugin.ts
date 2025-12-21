@@ -57,9 +57,12 @@ export function createServerFnPlugin(opts: {
     type: 'client' | 'server'
   }): PluginOption {
     // in server environments, we don't transform middleware calls
+    // for client environments, we need to match:
+    // - `.handler(` for createServerFn
+    // - `.server(` for createMiddleware
     const transformCodeFilter =
       environment.type === 'client'
-        ? [/\.\s*handler\(/, /\.\s*createMiddleware\(\)/]
+        ? [/\.\s*handler\(/, /\.\s*server\(/]
         : [/\.\s*handler\(/]
 
     return {

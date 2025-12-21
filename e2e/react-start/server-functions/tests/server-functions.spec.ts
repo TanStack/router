@@ -615,3 +615,23 @@ test('nested star re-exported server function factory middleware executes correc
     page.getByTestId('fn-comparison-nestedReexportedFactoryFn'),
   ).toContainText('equal')
 })
+
+test('server-only imports in middleware.server() are stripped from client build', async ({
+  page,
+}) => {
+  // This test verifies that server-only imports (like getRequestHeaders from @tanstack/react-start/server)
+  // inside createMiddleware().server() are properly stripped from the client build.
+  // If the .server() part is not removed, the build would fail with node:async_hooks externalization errors.
+  // The fact that this page loads at all proves the server code was stripped correctly.
+  await page.goto('/middleware/server-import-middleware')
+
+  await page.waitForLoadState('networkidle')
+
+  // Click the button to call the server function with middleware
+  await page.getByTestId('test-server-import-middleware-btn').click()
+
+  // Wait for the result - should contain our custom test header value
+  await expect(
+    page.getByTestId('server-import-middleware-result'),
+  ).toContainText('test-header-value')
+})

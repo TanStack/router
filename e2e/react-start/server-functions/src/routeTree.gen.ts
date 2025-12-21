@@ -34,6 +34,7 @@ import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as AbortSignalIndexRouteImport } from './routes/abort-signal/index'
 import { Route as RedirectTestTargetRouteImport } from './routes/redirect-test/target'
 import { Route as RedirectTestSsrTargetRouteImport } from './routes/redirect-test-ssr/target'
+import { Route as MiddlewareServerImportMiddlewareRouteImport } from './routes/middleware/server-import-middleware'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
@@ -166,6 +167,12 @@ const RedirectTestSsrTargetRoute = RedirectTestSsrTargetRouteImport.update({
   path: '/redirect-test-ssr/target',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MiddlewareServerImportMiddlewareRoute =
+  MiddlewareServerImportMiddlewareRouteImport.update({
+    id: '/middleware/server-import-middleware',
+    path: '/middleware/server-import-middleware',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MiddlewareSendServerFnRoute = MiddlewareSendServerFnRouteImport.update({
   id: '/middleware/send-serverFn',
   path: '/middleware/send-serverFn',
@@ -221,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/abort-signal': typeof AbortSignalIndexRoute
@@ -254,6 +262,7 @@ export interface FileRoutesByTo {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/abort-signal': typeof AbortSignalIndexRoute
@@ -288,6 +297,7 @@ export interface FileRoutesById {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/abort-signal/': typeof AbortSignalIndexRoute
@@ -323,6 +333,7 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/server-import-middleware'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/abort-signal'
@@ -356,6 +367,7 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/server-import-middleware'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/abort-signal'
@@ -389,6 +401,7 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/server-import-middleware'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/abort-signal/'
@@ -423,6 +436,7 @@ export interface RootRouteChildren {
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
+  MiddlewareServerImportMiddlewareRoute: typeof MiddlewareServerImportMiddlewareRoute
   RedirectTestSsrTargetRoute: typeof RedirectTestSsrTargetRoute
   RedirectTestTargetRoute: typeof RedirectTestTargetRoute
   AbortSignalIndexRoute: typeof AbortSignalIndexRoute
@@ -613,6 +627,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTestSsrTargetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/server-import-middleware': {
+      id: '/middleware/server-import-middleware'
+      path: '/middleware/server-import-middleware'
+      fullPath: '/middleware/server-import-middleware'
+      preLoaderRoute: typeof MiddlewareServerImportMiddlewareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/send-serverFn': {
       id: '/middleware/send-serverFn'
       path: '/middleware/send-serverFn'
@@ -679,6 +700,7 @@ const rootRouteChildren: RootRouteChildren = {
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
+  MiddlewareServerImportMiddlewareRoute: MiddlewareServerImportMiddlewareRoute,
   RedirectTestSsrTargetRoute: RedirectTestSsrTargetRoute,
   RedirectTestTargetRoute: RedirectTestTargetRoute,
   AbortSignalIndexRoute: AbortSignalIndexRoute,
