@@ -14,7 +14,7 @@ async function compile(opts: {
 }) {
   const compiler = new ServerFnCompiler({
     ...opts,
-    loadModule: async (id) => {
+    loadModule: async () => {
       // do nothing in test
     },
     lookupKinds: new Set(['Middleware']),
@@ -22,10 +22,12 @@ async function compile(opts: {
       {
         libName: `@tanstack/react-start`,
         rootExport: 'createMiddleware',
+        kind: 'Root',
       },
       {
         libName: `@tanstack/react-start`,
         rootExport: 'createStart',
+        kind: 'Root',
       },
     ],
     resolveId: async (id) => {
@@ -77,6 +79,7 @@ describe('createMiddleware compiles correctly', async () => {
         {
           libName: '@tanstack/react-start',
           rootExport: 'createMiddleware',
+          kind: 'Root',
         },
       ],
       resolveId: resolveIdMock,
@@ -92,11 +95,9 @@ describe('createMiddleware compiles correctly', async () => {
     // resolveId should only be called once during init() for the library itself
     // It should NOT be called again to resolve the import binding because
     // the fast path uses knownRootImports map for O(1) lookup
+    // Note: init() now resolves from project root, not from a specific file
     expect(resolveIdMock).toHaveBeenCalledTimes(1)
-    expect(resolveIdMock).toHaveBeenCalledWith(
-      '@tanstack/react-start',
-      'test.ts',
-    )
+    expect(resolveIdMock).toHaveBeenCalledWith('@tanstack/react-start')
   })
 
   test('should use slow path for factory pattern (resolveId called for import resolution)', async () => {
@@ -128,6 +129,7 @@ describe('createMiddleware compiles correctly', async () => {
         {
           libName: '@tanstack/react-start',
           rootExport: 'createMiddleware',
+          kind: 'Root',
         },
       ],
       resolveId: resolveIdMock,
@@ -141,17 +143,13 @@ describe('createMiddleware compiles correctly', async () => {
     })
 
     // resolveId should be called exactly twice:
-    // 1. Once during init() for '@tanstack/react-start'
+    // 1. Once during init() for '@tanstack/react-start' (no importer - resolved from project root)
     // 2. Once to resolve './factory' import (slow path - not in knownRootImports)
     //
     // Note: The factory module's import from '@tanstack/react-start' ALSO uses
     // the fast path (knownRootImports), so no additional resolveId call is needed there.
     expect(resolveIdMock).toHaveBeenCalledTimes(2)
-    expect(resolveIdMock).toHaveBeenNthCalledWith(
-      1,
-      '@tanstack/react-start',
-      'test.ts',
-    )
+    expect(resolveIdMock).toHaveBeenNthCalledWith(1, '@tanstack/react-start')
     expect(resolveIdMock).toHaveBeenNthCalledWith(2, './factory', 'test.ts')
   })
 })

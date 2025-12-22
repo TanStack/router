@@ -8,6 +8,8 @@ import {
 } from 'babel-dead-code-elimination'
 import { handleCreateServerFn } from './handleCreateServerFn'
 import { handleCreateMiddleware } from './handleCreateMiddleware'
+import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
+import { handleEnvOnlyFn } from './handleEnvOnly'
 import type { MethodChainPaths, RewriteCandidate } from './types'
 
 type Binding =
@@ -30,31 +32,85 @@ type ExportEntry =
 
 type Kind = 'None' | `Root` | `Builder` | LookupKind
 
-export type LookupKind = 'ServerFn' | 'Middleware'
+export type LookupKind =
+  | 'ServerFn'
+  | 'Middleware'
+  | 'IsomorphicFn'
+  | 'ServerOnlyFn'
+  | 'ClientOnlyFn'
 
-const LookupSetup: Record<
-  LookupKind,
-  { candidateCallIdentifier: Set<string> }
-> = {
-  ServerFn: { candidateCallIdentifier: new Set(['handler']) },
+// Detection strategy for each kind
+type MethodChainSetup = {
+  type: 'methodChain'
+  candidateCallIdentifier: Set<string>
+  // If true, a call to the root function (e.g., createIsomorphicFn()) is also a candidate
+  // even without chained method calls. This is used for IsomorphicFn which can be
+  // called without .client() or .server() (resulting in a no-op function).
+  allowRootAsCandidate?: boolean
+}
+type DirectCallSetup = { type: 'directCall' }
+
+const LookupSetup: Record<LookupKind, MethodChainSetup | DirectCallSetup> = {
+  ServerFn: {
+    type: 'methodChain',
+    candidateCallIdentifier: new Set(['handler']),
+  },
   Middleware: {
+    type: 'methodChain',
     candidateCallIdentifier: new Set(['server', 'client', 'createMiddlewares']),
   },
+  IsomorphicFn: {
+    type: 'methodChain',
+    candidateCallIdentifier: new Set(['server', 'client']),
+    allowRootAsCandidate: true, // createIsomorphicFn() alone is valid (returns no-op)
+  },
+  ServerOnlyFn: { type: 'directCall' },
+  ClientOnlyFn: { type: 'directCall' },
 }
 
-// Pre-computed map: identifier name -> LookupKind for fast candidate detection
-const IdentifierToKind = new Map<string, LookupKind>()
+// Pre-computed map: identifier name -> Set<LookupKind> for fast candidate detection (method chain only)
+// Multiple kinds can share the same identifier (e.g., 'server' and 'client' are used by both Middleware and IsomorphicFn)
+const IdentifierToKinds = new Map<string, Set<LookupKind>>()
 for (const [kind, setup] of Object.entries(LookupSetup) as Array<
-  [LookupKind, { candidateCallIdentifier: Set<string> }]
+  [LookupKind, MethodChainSetup | DirectCallSetup]
 >) {
-  for (const id of setup.candidateCallIdentifier) {
-    IdentifierToKind.set(id, kind)
+  if (setup.type === 'methodChain') {
+    for (const id of setup.candidateCallIdentifier) {
+      let kinds = IdentifierToKinds.get(id)
+      if (!kinds) {
+        kinds = new Set()
+        IdentifierToKinds.set(id, kinds)
+      }
+      kinds.add(kind)
+    }
   }
+}
+
+// Check if any of the valid lookup kinds use direct call pattern
+function hasDirectCallKinds(lookupKinds: Set<LookupKind>): boolean {
+  for (const kind of lookupKinds) {
+    if (LookupSetup[kind].type === 'directCall') {
+      return true
+    }
+  }
+  return false
+}
+
+// Check if any of the valid lookup kinds allow root calls as candidates
+function hasRootAsCandidateAllowed(lookupKinds: Set<LookupKind>): boolean {
+  for (const kind of lookupKinds) {
+    const setup = LookupSetup[kind]
+    if (setup.type === 'methodChain' && setup.allowRootAsCandidate) {
+      return true
+    }
+  }
+  return false
 }
 
 export type LookupConfig = {
   libName: string
   rootExport: string
+  kind: LookupKind | 'Root' // 'Root' for builder pattern, LookupKind for direct call
 }
 interface ModuleInfo {
   id: string
@@ -87,10 +143,10 @@ export class ServerFnCompiler {
     this.validLookupKinds = options.lookupKinds
   }
 
-  private async init(id: string) {
+  private async init() {
     await Promise.all(
       this.options.lookupConfigurations.map(async (config) => {
-        const libId = await this.options.resolveId(config.libName, id)
+        const libId = await this.options.resolveId(config.libName)
         if (!libId) {
           throw new Error(`could not resolve "${config.libName}"`)
         }
@@ -120,7 +176,7 @@ export class ServerFnCompiler {
         rootModule.bindings.set(config.rootExport, {
           type: 'var',
           init: t.identifier(config.rootExport),
-          resolvedKind: `Root` satisfies Kind,
+          resolvedKind: config.kind satisfies Kind,
         })
         this.moduleCache.set(libId, rootModule)
 
@@ -130,7 +186,7 @@ export class ServerFnCompiler {
           libExports = new Map()
           this.knownRootImports.set(config.libName, libExports)
         }
-        libExports.set(config.rootExport, 'Root')
+        libExports.set(config.rootExport, config.kind)
       }),
     )
 
@@ -259,7 +315,7 @@ export class ServerFnCompiler {
     isProviderFile: boolean
   }) {
     if (!this.initialized) {
-      await this.init(id)
+      await this.init()
     }
     const { bindings, ast } = this.ingestModule({ code, id })
     const candidates = this.collectCandidates(bindings)
@@ -378,9 +434,19 @@ export class ServerFnCompiler {
           directive: this.options.directive,
           isProviderFile,
         })
-      } else {
+      } else if (kind === 'Middleware') {
         handleCreateMiddleware(candidate, {
           env: this.options.env,
+        })
+      } else if (kind === 'IsomorphicFn') {
+        handleCreateIsomorphicFn(candidate, {
+          env: this.options.env,
+        })
+      } else {
+        // ServerOnlyFn or ClientOnlyFn
+        handleEnvOnlyFn(candidate, {
+          env: this.options.env,
+          kind,
         })
       }
     }
@@ -397,15 +463,37 @@ export class ServerFnCompiler {
   // collects all candidate CallExpressions at top-level
   private collectCandidates(bindings: Map<string, Binding>) {
     const candidates: Array<t.CallExpression> = []
+    const checkDirectCalls = hasDirectCallKinds(this.validLookupKinds)
+    const hasRootAsCandidateKinds = hasRootAsCandidateAllowed(
+      this.validLookupKinds,
+    )
 
     for (const binding of bindings.values()) {
-      if (binding.type === 'var') {
-        const candidate = isCandidateCallExpression(
+      if (binding.type === 'var' && t.isCallExpression(binding.init)) {
+        // Pattern 1: Method chain pattern (.handler(), .server(), etc.)
+        const methodChainCandidate = isCandidateCallExpression(
           binding.init,
           this.validLookupKinds,
         )
-        if (candidate) {
-          candidates.push(candidate)
+        if (methodChainCandidate) {
+          candidates.push(methodChainCandidate)
+          continue
+        }
+
+        // Pattern 2: Direct call pattern
+        // Handles:
+        // - createServerOnlyFn(), createClientOnlyFn() (direct call kinds)
+        // - createIsomorphicFn() (root-as-candidate kinds)
+        // - TanStackStart.createServerOnlyFn() (namespace calls)
+        if (checkDirectCalls || hasRootAsCandidateKinds) {
+          if (
+            t.isIdentifier(binding.init.callee) ||
+            (t.isMemberExpression(binding.init.callee) &&
+              t.isIdentifier(binding.init.callee.property))
+          ) {
+            // Include as candidate - kind resolution will verify it's actually a known export
+            candidates.push(binding.init)
+          }
         }
       }
     }
@@ -588,6 +676,19 @@ export class ServerFnCompiler {
         visited,
       )
       if (calleeKind === 'Root' || calleeKind === 'Builder') {
+        // For kinds that allow root as candidate (e.g., IsomorphicFn),
+        // a call to the root function directly should return that kind.
+        // This handles both direct calls (createIsomorphicFn()) and
+        // namespace calls (TanStackStart.createIsomorphicFn())
+        if (calleeKind === 'Root') {
+          for (const kind of this.validLookupKinds) {
+            const setup = LookupSetup[kind]
+            if (setup.type === 'methodChain' && setup.allowRootAsCandidate) {
+              // The callee already resolved to 'Root', so this kind allows root as candidate
+              return kind
+            }
+          }
+        }
         return 'Builder'
       }
       // Use direct Set.has() instead of iterating
@@ -617,18 +718,25 @@ export class ServerFnCompiler {
     if (t.isMemberExpression(callee) && t.isIdentifier(callee.property)) {
       const prop = callee.property.name
 
+      // Check method chain patterns for each valid lookup kind
+      const serverFnSetup = LookupSetup['ServerFn']
       if (
         this.validLookupKinds.has('ServerFn') &&
-        LookupSetup['ServerFn'].candidateCallIdentifier.has(prop)
+        serverFnSetup.type === 'methodChain' &&
+        serverFnSetup.candidateCallIdentifier.has(prop)
       ) {
         const base = await this.resolveExprKind(callee.object, fileId, visited)
         if (base === 'Root' || base === 'Builder') {
           return 'ServerFn'
         }
         return 'None'
-      } else if (
+      }
+
+      const middlewareSetup = LookupSetup['Middleware']
+      if (
         this.validLookupKinds.has('Middleware') &&
-        LookupSetup['Middleware'].candidateCallIdentifier.has(prop)
+        middlewareSetup.type === 'methodChain' &&
+        middlewareSetup.candidateCallIdentifier.has(prop)
       ) {
         const base = await this.resolveExprKind(callee.object, fileId, visited)
         if (base === 'Root' || base === 'Builder' || base === 'Middleware') {
@@ -636,6 +744,21 @@ export class ServerFnCompiler {
         }
         return 'None'
       }
+
+      const isomorphicSetup = LookupSetup['IsomorphicFn']
+      if (
+        this.validLookupKinds.has('IsomorphicFn') &&
+        isomorphicSetup.type === 'methodChain' &&
+        isomorphicSetup.candidateCallIdentifier.has(prop)
+      ) {
+        const base = await this.resolveExprKind(callee.object, fileId, visited)
+        // Allow chaining: createIsomorphicFn().server().client() or .client().server()
+        if (base === 'Root' || base === 'Builder' || base === 'IsomorphicFn') {
+          return 'IsomorphicFn'
+        }
+        return 'None'
+      }
+
       // Check if the object is a namespace import
       if (t.isIdentifier(callee.object)) {
         const info = await this.getModuleInfo(fileId)
@@ -704,10 +827,16 @@ function isCandidateCallExpression(
     return undefined
   }
 
-  // Use pre-computed map for O(1) lookup instead of iterating over lookupKinds
-  const kind = IdentifierToKind.get(callee.property.name)
-  if (kind && lookupKinds.has(kind)) {
-    return node
+  // Use pre-computed map for O(1) lookup
+  // IdentifierToKinds maps identifier -> Set<LookupKind> to handle shared identifiers
+  const possibleKinds = IdentifierToKinds.get(callee.property.name)
+  if (possibleKinds) {
+    // Check if any of the possible kinds are in the valid lookup kinds
+    for (const kind of possibleKinds) {
+      if (lookupKinds.has(kind)) {
+        return node
+      }
+    }
   }
 
   return undefined

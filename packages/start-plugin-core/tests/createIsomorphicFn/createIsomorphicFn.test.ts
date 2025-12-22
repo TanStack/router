@@ -2,9 +2,38 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { afterAll, describe, expect, test, vi } from 'vitest'
 
-import { compileStartOutputFactory } from '../../src/start-compiler-plugin/compilers'
+import { ServerFnCompiler } from '../../src/create-server-fn-plugin/compiler'
 
-const compileStartOutput = compileStartOutputFactory('react')
+async function compile(opts: {
+  env: 'client' | 'server'
+  code: string
+  id: string
+}) {
+  const compiler = new ServerFnCompiler({
+    ...opts,
+    loadModule: async () => {
+      // do nothing in test
+    },
+    lookupKinds: new Set(['IsomorphicFn']),
+    lookupConfigurations: [
+      {
+        libName: `@tanstack/react-start`,
+        rootExport: 'createIsomorphicFn',
+        kind: 'Root',
+      },
+    ],
+    resolveId: async (id) => {
+      return id
+    },
+    directive: 'use server',
+  })
+  const result = await compiler.compile({
+    code: opts.code,
+    id: opts.id,
+    isProviderFile: false,
+  })
+  return result
+}
 
 async function getFilenames() {
   return await readdir(path.resolve(import.meta.dirname, './test-files'))
@@ -38,49 +67,48 @@ describe('createIsomorphicFn compiles correctly', async () => {
     test.each(['client', 'server'] as const)(
       `should compile for ${filename} %s`,
       async (env) => {
-        const compiledResult = compileStartOutput({
+        const compiledResult = await compile({
           env,
           code,
-          filename,
-          dce: false,
+          id: filename,
         })
 
-        await expect(compiledResult.code).toMatchFileSnapshot(
+        await expect(compiledResult!.code).toMatchFileSnapshot(
           `./snapshots/${env}/${filename}`,
         )
       },
     )
   })
-  test('should error if implementation not provided', () => {
-    expect(() => {
-      compileStartOutput({
+
+  test('should error if implementation not provided', async () => {
+    await expect(
+      compile({
         env: 'client',
         code: `
         import { createIsomorphicFn } from '@tanstack/react-start'
         const clientOnly = createIsomorphicFn().client()`,
-        filename: 'no-fn.ts',
-        dce: false,
-      })
-    }).toThrowError()
-    expect(() => {
-      compileStartOutput({
+        id: 'no-fn.ts',
+      }),
+    ).rejects.toThrowError()
+
+    await expect(
+      compile({
         env: 'server',
         code: `
         import { createIsomorphicFn } from '@tanstack/react-start'
         const serverOnly = createIsomorphicFn().server()`,
-        filename: 'no-fn.ts',
-        dce: false,
-      })
-    }).toThrowError()
+        id: 'no-fn.ts',
+      }),
+    ).rejects.toThrowError()
   })
-  test('should warn to console if no implementations provided', () => {
-    compileStartOutput({
+
+  test('should warn to console if no implementations provided', async () => {
+    await compile({
       env: 'client',
       code: `
       import { createIsomorphicFn } from '@tanstack/react-start'
       const noImpl = createIsomorphicFn()`,
-      filename: 'no-fn.ts',
-      dce: false,
+      id: 'no-fn.ts',
     })
     expect(consoleSpy).toHaveBeenCalledWith(
       noImplWarning,

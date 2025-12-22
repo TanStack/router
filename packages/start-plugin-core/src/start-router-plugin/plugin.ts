@@ -17,7 +17,7 @@ import type {
 } from '@tanstack/router-generator'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
 import type { TanStackStartInputConfig } from '../schema'
-import type { GetConfigFn, TanStackStartVitePluginCoreOptions } from '../plugin'
+import { TanStackStartVitePluginCoreOptions, GetConfigFn } from '../types'
 
 function isServerOnlyNode(node: RouteNode | undefined) {
   if (!node?.createFileRouteProps) {

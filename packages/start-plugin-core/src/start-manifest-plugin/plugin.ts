@@ -4,9 +4,9 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { tsrSplit } from '@tanstack/router-plugin'
 import { resolveViteId } from '../utils'
 import { ENTRY_POINTS } from '../constants'
-import type { GetConfigFn } from '../plugin'
 import type { PluginOption, Rollup } from 'vite'
 import type { Manifest, RouterManagedTag } from '@tanstack/router-core'
+import { GetConfigFn } from '../types'
 
 const getCSSRecursively = (
   chunk: Rollup.OutputChunk,
