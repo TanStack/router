@@ -19,7 +19,11 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { createServerFnPlugin } from './create-server-fn-plugin/plugin'
-import type { GetConfigFn, ResolvedStartConfig, TanStackStartVitePluginCoreOptions } from './types'
+import type {
+  GetConfigFn,
+  ResolvedStartConfig,
+  TanStackStartVitePluginCoreOptions,
+} from './types'
 import type { ViteEnvironmentNames } from './constants'
 import type {
   TanStackStartInputConfig,

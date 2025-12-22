@@ -1,4 +1,4 @@
-import type { TanStackStartOutputConfig } from "./schema"
+import type { TanStackStartOutputConfig } from './schema'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
 
