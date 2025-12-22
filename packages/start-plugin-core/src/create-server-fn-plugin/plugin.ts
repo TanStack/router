@@ -1,11 +1,12 @@
 import { TRANSFORM_ID_REGEX } from '../constants'
-import { CompileStartFrameworkOptions } from '../types'
 import { ServerFnCompiler } from './compiler'
+import type { CompileStartFrameworkOptions } from '../types'
 import type { LookupConfig, LookupKind } from './compiler'
 import type { PluginOption } from 'vite'
 
 function cleanId(id: string): string {
-  return id.split('?')[0]!
+  const queryIndex = id.indexOf('?')
+  return queryIndex === -1 ? id : id.substring(0, queryIndex)
 }
 
 const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
@@ -76,7 +77,6 @@ function buildDirectiveSplitParam(directive: string) {
   return `tsr-directive-${directive.replace(/[^a-zA-Z0-9]/g, '-')}`
 }
 
-
 const commonTransformCodeFilter = [
   /\.\s*handler\(/,
   /createIsomorphicFn/,
@@ -103,10 +103,7 @@ export function createServerFnPlugin(opts: {
     // - `createClientOnlyFn` for client-only functions
     const transformCodeFilter =
       environment.type === 'client'
-        ? [
-          ...commonTransformCodeFilter,
-          /createMiddleware\s*\(/,
-        ]
+        ? [...commonTransformCodeFilter, /createMiddleware\s*\(/]
         : commonTransformCodeFilter
 
     return {

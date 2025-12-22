@@ -86,27 +86,6 @@ for (const [kind, setup] of Object.entries(LookupSetup) as Array<
   }
 }
 
-// Check if any of the valid lookup kinds use direct call pattern
-function hasDirectCallKinds(lookupKinds: Set<LookupKind>): boolean {
-  for (const kind of lookupKinds) {
-    if (LookupSetup[kind].type === 'directCall') {
-      return true
-    }
-  }
-  return false
-}
-
-// Check if any of the valid lookup kinds allow root calls as candidates
-function hasRootAsCandidateAllowed(lookupKinds: Set<LookupKind>): boolean {
-  for (const kind of lookupKinds) {
-    const setup = LookupSetup[kind]
-    if (setup.type === 'methodChain' && setup.allowRootAsCandidate) {
-      return true
-    }
-  }
-  return false
-}
-
 export type LookupConfig = {
   libName: string
   rootExport: string
@@ -114,8 +93,6 @@ export type LookupConfig = {
 }
 interface ModuleInfo {
   id: string
-  code: string
-  ast: ReturnType<typeof parseAst>
   bindings: Map<string, Binding>
   exports: Map<string, ExportEntry>
   // Track `export * from './module'` declarations for re-export resolution
@@ -126,6 +103,11 @@ export class ServerFnCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
   private validLookupKinds: Set<LookupKind>
+  // Precomputed flags for candidate detection (avoid recomputing on each collectCandidates call)
+  private hasDirectCallKinds: boolean
+  private hasRootAsCandidateKinds: boolean
+  // For IsomorphicFn, we need to know which kind allows root as candidate (precomputed)
+  private rootAsCandidateKind: LookupKind | null = null
   // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
   // Maps: libName → (exportName → Kind)
   // This allows O(1) resolution for the common case without async resolveId calls
@@ -141,6 +123,19 @@ export class ServerFnCompiler {
     },
   ) {
     this.validLookupKinds = options.lookupKinds
+
+    // Precompute flags for candidate detection
+    this.hasDirectCallKinds = false
+    this.hasRootAsCandidateKinds = false
+    for (const kind of options.lookupKinds) {
+      const setup = LookupSetup[kind]
+      if (setup.type === 'directCall') {
+        this.hasDirectCallKinds = true
+      } else if (setup.allowRootAsCandidate) {
+        this.hasRootAsCandidateKinds = true
+        this.rootAsCandidateKind = kind
+      }
+    }
   }
 
   private async init() {
@@ -154,10 +149,8 @@ export class ServerFnCompiler {
         if (!rootModule) {
           // insert root binding
           rootModule = {
-            ast: null as any,
             bindings: new Map(),
             exports: new Map(),
-            code: '',
             id: libId,
             reExportAllSources: [],
           }
@@ -175,7 +168,7 @@ export class ServerFnCompiler {
         })
         rootModule.bindings.set(config.rootExport, {
           type: 'var',
-          init: t.identifier(config.rootExport),
+          init: null, // Not needed since resolvedKind is set
           resolvedKind: config.kind satisfies Kind,
         })
         this.moduleCache.set(libId, rootModule)
@@ -290,15 +283,13 @@ export class ServerFnCompiler {
     }
 
     const info: ModuleInfo = {
-      code,
       id,
-      ast,
       bindings,
       exports,
       reExportAllSources,
     }
     this.moduleCache.set(id, info)
-    return info
+    return { info, ast }
   }
 
   public invalidateModule(id: string) {
@@ -317,8 +308,8 @@ export class ServerFnCompiler {
     if (!this.initialized) {
       await this.init()
     }
-    const { bindings, ast } = this.ingestModule({ code, id })
-    const candidates = this.collectCandidates(bindings)
+    const { info, ast } = this.ingestModule({ code, id })
+    const candidates = this.collectCandidates(info.bindings)
     if (candidates.length === 0) {
       // this hook will only be invoked if there is `.handler(` | `.server(` | `.client(` in the code,
       // so not discovering a handler candidate is rather unlikely, but maybe possible?
@@ -463,10 +454,6 @@ export class ServerFnCompiler {
   // collects all candidate CallExpressions at top-level
   private collectCandidates(bindings: Map<string, Binding>) {
     const candidates: Array<t.CallExpression> = []
-    const checkDirectCalls = hasDirectCallKinds(this.validLookupKinds)
-    const hasRootAsCandidateKinds = hasRootAsCandidateAllowed(
-      this.validLookupKinds,
-    )
 
     for (const binding of bindings.values()) {
       if (binding.type === 'var' && t.isCallExpression(binding.init)) {
@@ -485,7 +472,7 @@ export class ServerFnCompiler {
         // - createServerOnlyFn(), createClientOnlyFn() (direct call kinds)
         // - createIsomorphicFn() (root-as-candidate kinds)
         // - TanStackStart.createServerOnlyFn() (namespace calls)
-        if (checkDirectCalls || hasRootAsCandidateKinds) {
+        if (this.hasDirectCallKinds || this.hasRootAsCandidateKinds) {
           if (
             t.isIdentifier(binding.init.callee) ||
             (t.isMemberExpression(binding.init.callee) &&
@@ -680,14 +667,8 @@ export class ServerFnCompiler {
         // a call to the root function directly should return that kind.
         // This handles both direct calls (createIsomorphicFn()) and
         // namespace calls (TanStackStart.createIsomorphicFn())
-        if (calleeKind === 'Root') {
-          for (const kind of this.validLookupKinds) {
-            const setup = LookupSetup[kind]
-            if (setup.type === 'methodChain' && setup.allowRootAsCandidate) {
-              // The callee already resolved to 'Root', so this kind allows root as candidate
-              return kind
-            }
-          }
+        if (calleeKind === 'Root' && this.rootAsCandidateKind) {
+          return this.rootAsCandidateKind
         }
         return 'Builder'
       }
