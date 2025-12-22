@@ -707,7 +707,8 @@ export function findSingleMatch(
 
 type RouteMatch<T extends Extract<RouteLike, { fullPath: string }>> = {
   route: T
-  params: Record<string, string>
+  rawParams: Record<string, string>
+  parsedParams?: Record<string, unknown>
   branch: ReadonlyArray<T>
 }
 
@@ -804,21 +805,33 @@ function findMatch<T extends RouteLike>(
   path: string,
   segmentTree: AnySegmentNode<T>,
   fuzzy = false,
-): { route: T; params: Record<string, string> } | null {
+): {
+  route: T
+  /**
+   * The raw (unparsed) params extracted from the path.
+   * This will be the exhaustive list of all params defined in the route's path.
+   */
+  rawParams: Record<string, string>
+  /**
+   * The accumlulated parsed params of each route in the branch that had `skipRouteOnParseError` enabled.
+   * Will not contain all params defined in the route's path. Those w/ a `params.parse` but no `skipRouteOnParseError` will need to be parsed separately.
+   */
+  parsedParams?: Record<string, unknown>
+} | null {
   const parts = path.split('/')
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
   if (!leaf) return null
-  const [params] = extractParams(path, parts, leaf)
-  const route = leaf.node.route!
+  const [rawParams] = extractParams(path, parts, leaf)
   return {
-    route,
-    params,
+    route: leaf.node.route!,
+    rawParams,
+    parsedParams: leaf.parsedParams,
   }
 }
 
 /**
  * This function is "resumable":
- * - the `leaf` input can contain `extract` and `params` properties from a previous `extractParams` call
+ * - the `leaf` input can contain `extract` and `rawParams` properties from a previous `extractParams` call
  * - the returned `state` can be passed back as `extract` in a future call to continue extracting params from where we left off
  *
  * Inputs are *not* mutated.
@@ -830,15 +843,15 @@ function extractParams<T extends RouteLike>(
     node: AnySegmentNode<T>
     skipped: number
     extract?: { part: number; node: number; path: number }
-    params?: Record<string, string>
+    rawParams?: Record<string, string>
   },
 ): [
-  params: Record<string, string>,
+  rawParams: Record<string, string>,
   state: { part: number; node: number; path: number },
 ] {
   const list = buildBranch(leaf.node)
   let nodeParts: Array<string> | null = null
-  const params: Record<string, string> = {}
+  const rawParams: Record<string, string> = {}
   let partIndex = leaf.extract?.part ?? 0
   let nodeIndex = leaf.extract?.node ?? 0
   let pathIndex = leaf.extract?.path ?? 0
@@ -861,10 +874,10 @@ function extractParams<T extends RouteLike>(
           nodePart.length - sufLength - 1,
         )
         const value = part!.substring(preLength, part!.length - sufLength)
-        params[name] = decodeURIComponent(value)
+        rawParams[name] = decodeURIComponent(value)
       } else {
         const name = nodePart.substring(1)
-        params[name] = decodeURIComponent(part!)
+        rawParams[name] = decodeURIComponent(part!)
       }
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
       if (leaf.skipped & (1 << nodeIndex)) {
@@ -883,7 +896,7 @@ function extractParams<T extends RouteLike>(
         node.suffix || node.prefix
           ? part!.substring(preLength, part!.length - sufLength)
           : part
-      if (value) params[name] = decodeURIComponent(value)
+      if (value) rawParams[name] = decodeURIComponent(value)
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
       const value = path.substring(
@@ -892,13 +905,13 @@ function extractParams<T extends RouteLike>(
       )
       const splat = decodeURIComponent(value)
       // TODO: Deprecate *
-      params['*'] = splat
-      params._splat = splat
+      rawParams['*'] = splat
+      rawParams._splat = splat
       break
     }
   }
-  if (leaf.params) Object.assign(params, leaf.params)
-  return [params, { part: partIndex, node: nodeIndex, path: pathIndex }]
+  if (leaf.rawParams) Object.assign(rawParams, leaf.rawParams)
+  return [rawParams, { part: partIndex, node: nodeIndex, path: pathIndex }]
 }
 
 function buildRouteBranch<T extends RouteLike>(route: T) {
@@ -939,9 +952,8 @@ type MatchStackFrame<T extends RouteLike> = {
   /** intermediary state for param extraction */
   extract?: { part: number; node: number; path: number }
   /** intermediary params from param extraction */
-  // TODO: I'm not sure, but I think we need both the raw strings for `interpolatePath` and the parsed values for the final match object
-  // I think they can still be accumulated (separately) in a single object (each) because `interpolatePath` returns the `usedParams` anyway
-  params?: Record<string, string>
+  rawParams?: Record<string, string>
+  parsedParams?: Record<string, unknown>
 }
 
 function getNodeMatch<T extends RouteLike>(
@@ -953,7 +965,10 @@ function getNodeMatch<T extends RouteLike>(
   // quick check for root index
   // this is an optimization, algorithm should work correctly without this block
   if (path === '/' && segmentTree.index)
-    return { node: segmentTree.index, skipped: 0 }
+    return { node: segmentTree.index, skipped: 0 } as Pick<
+      Frame,
+      'node' | 'skipped' | 'parsedParams'
+    >
 
   const trailingSlash = !last(parts)
   const pathIsIndex = trailingSlash && path !== '/'
@@ -987,13 +1002,14 @@ function getNodeMatch<T extends RouteLike>(
   while (stack.length) {
     const frame = stack.pop()!
     const { node, index, skipped, depth, statics, dynamics, optionals } = frame
-    let { extract, params } = frame
+    let { extract, rawParams, parsedParams } = frame
 
     if (node.skipRouteOnParseError && node.parse) {
       const result = validateMatchParams(path, parts, frame)
       if (!result) continue
-      params = result[0]
-      extract = result[1]
+      rawParams = frame.rawParams
+      extract = frame.extract
+      parsedParams = frame.parsedParams
     }
 
     // In fuzzy mode, track the best partial match we've found so far
@@ -1029,7 +1045,8 @@ function getNodeMatch<T extends RouteLike>(
         dynamics,
         optionals,
         extract,
-        params,
+        rawParams,
+        parsedParams,
       }
       if (node.index.skipRouteOnParseError && node.index.parse) {
         const result = validateMatchParams(path, parts, indexFrame)
@@ -1074,7 +1091,8 @@ function getNodeMatch<T extends RouteLike>(
           dynamics,
           optionals,
           extract,
-          params,
+          rawParams,
+          parsedParams,
         }
         if (segment.skipRouteOnParseError && segment.parse) {
           const result = validateMatchParams(path, parts, frame)
@@ -1101,7 +1119,8 @@ function getNodeMatch<T extends RouteLike>(
           dynamics,
           optionals,
           extract,
-          params,
+          rawParams,
+          parsedParams,
         }) // enqueue skipping the optional
       }
       if (!isBeyondPath) {
@@ -1124,7 +1143,8 @@ function getNodeMatch<T extends RouteLike>(
             dynamics,
             optionals: optionals + 1,
             extract,
-            params,
+            rawParams,
+            parsedParams,
           })
         }
       }
@@ -1151,7 +1171,8 @@ function getNodeMatch<T extends RouteLike>(
           dynamics: dynamics + 1,
           optionals,
           extract,
-          params,
+          rawParams,
+          parsedParams,
         })
       }
     }
@@ -1171,7 +1192,8 @@ function getNodeMatch<T extends RouteLike>(
           dynamics,
           optionals,
           extract,
-          params,
+          rawParams,
+          parsedParams,
         })
       }
     }
@@ -1189,7 +1211,8 @@ function getNodeMatch<T extends RouteLike>(
           dynamics,
           optionals,
           extract,
-          params,
+          rawParams,
+          parsedParams,
         })
       }
     }
@@ -1208,7 +1231,8 @@ function getNodeMatch<T extends RouteLike>(
           dynamics,
           optionals,
           extract,
-          params,
+          rawParams,
+          parsedParams,
         })
       }
     }
@@ -1230,8 +1254,8 @@ function getNodeMatch<T extends RouteLike>(
       sliceIndex += parts[i]!.length
     }
     const splat = sliceIndex === path.length ? '/' : path.slice(sliceIndex)
-    bestFuzzy.params ??= {}
-    bestFuzzy.params['**'] = decodeURIComponent(splat)
+    bestFuzzy.rawParams ??= {}
+    bestFuzzy.rawParams['**'] = decodeURIComponent(splat)
     return bestFuzzy
   }
 
@@ -1245,11 +1269,12 @@ function validateMatchParams<T extends RouteLike>(
 ) {
   try {
     const result = extractParams(path, parts, frame)
-    frame.params = result[0]
+    frame.rawParams = result[0]
     frame.extract = result[1]
-    result[0] = frame.node.parse!(result[0])
-    frame.params = result[0]
-    return result
+    const parsed = frame.node.parse!(result[0])
+    frame.parsedParams ??= {}
+    Object.assign(frame.parsedParams, parsed)
+    return true
   } catch {
     return null
   }
