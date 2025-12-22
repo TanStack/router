@@ -1,5 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
-import { createIsomorphicFn } from '../createIsomorphicFn'
+import { createIsomorphicFn } from '../src/createIsomorphicFn'
 
 test('createIsomorphicFn with no implementations', () => {
   const fn = createIsomorphicFn()

@@ -1,5 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
-import { createClientOnlyFn, createServerOnlyFn } from '../envOnly'
+import { createClientOnlyFn, createServerOnlyFn } from '../src/envOnly'
 
 const inputFn = () => 'output'
 

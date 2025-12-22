@@ -1,51 +1,9 @@
-// a function that can have different implementations on the client and server.
-// implementations not provided will default to a no-op function.
+export {
+  createIsomorphicFn,
+  type IsomorphicFn,
+  type ServerOnlyFn,
+  type ClientOnlyFn,
+  type IsomorphicFnBase,
+} from './createIsomorphicFn'
 
-export type IsomorphicFn<
-  TArgs extends Array<any> = [],
-  TServer = undefined,
-  TClient = undefined,
-> = (...args: TArgs) => TServer | TClient
-
-export interface ServerOnlyFn<TArgs extends Array<any>, TServer>
-  extends IsomorphicFn<TArgs, TServer> {
-  client: <TClient>(
-    clientImpl: (...args: TArgs) => TClient,
-  ) => IsomorphicFn<TArgs, TServer, TClient>
-}
-
-export interface ClientOnlyFn<TArgs extends Array<any>, TClient>
-  extends IsomorphicFn<TArgs, undefined, TClient> {
-  server: <TServer>(
-    serverImpl: (...args: TArgs) => TServer,
-  ) => IsomorphicFn<TArgs, TServer, TClient>
-}
-
-export interface IsomorphicFnBase extends IsomorphicFn {
-  server: <TArgs extends Array<any>, TServer>(
-    serverImpl: (...args: TArgs) => TServer,
-  ) => ServerOnlyFn<TArgs, TServer>
-  client: <TArgs extends Array<any>, TClient>(
-    clientImpl: (...args: TArgs) => TClient,
-  ) => ClientOnlyFn<TArgs, TClient>
-}
-
-// this is a dummy function, it will be replaced by the transformer
-// if we use `createIsomorphicFn` in this library itself, vite tries to execute it before the transformer runs
-// therefore we must return a dummy function that allows calling `server` and `client` method chains.
-export function createIsomorphicFn(): IsomorphicFnBase {
-  return {
-    server: () => ({ client: () => () => {} }),
-    client: () => ({ server: () => () => {} }),
-  } as any
-}
-
-type EnvOnlyFn = <TFn extends (...args: Array<any>) => any>(fn: TFn) => TFn
-
-// A function that will only be available in the server build
-// If called on the client, it will throw an error
-export const createServerOnlyFn: EnvOnlyFn = (fn) => fn
-
-// A function that will only be available in the client build
-// If called on the server, it will throw an error
-export const createClientOnlyFn: EnvOnlyFn = (fn) => fn
+export { createServerOnlyFn, createClientOnlyFn } from './envOnly'
