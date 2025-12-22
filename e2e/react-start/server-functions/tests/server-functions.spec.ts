@@ -635,3 +635,32 @@ test('server-only imports in middleware.server() are stripped from client build'
     page.getByTestId('server-import-middleware-result'),
   ).toContainText('test-header-value')
 })
+
+test('middleware factories with server-only imports are stripped from client build', async ({
+  page,
+}) => {
+  // This test verifies that middleware factories (functions returning createMiddleware().server())
+  // with server-only imports are properly stripped from the client build.
+  // If the .server() part inside the factory is not removed, the build would fail with
+  // node:async_hooks externalization errors because getRequestHeaders uses node:async_hooks internally.
+  // The fact that this page loads at all proves the server code was stripped correctly.
+  await page.goto('/middleware/middleware-factory')
+
+  await page.waitForLoadState('networkidle')
+
+  // Click the button to call the server function with factory middlewares
+  await page.getByTestId('test-middleware-factory-btn').click()
+
+  // Wait for the result - should contain our custom header value from the factory middleware
+  await expect(page.getByTestId('header-value')).toContainText(
+    'factory-header-value',
+  )
+
+  // Also verify the prefixed headers were matched correctly
+  await expect(page.getByTestId('matched-headers')).toContainText(
+    'x-factory-one',
+  )
+  await expect(page.getByTestId('matched-headers')).toContainText(
+    'x-factory-two',
+  )
+})

@@ -1,28 +1,35 @@
 import { TRANSFORM_ID_REGEX } from '../constants'
-import { ServerFnCompiler } from './compiler'
+import {
+  KindDetectionPatterns,
+  LookupKindsPerEnv,
+  ServerFnCompiler,
+  detectKindsInCode,
+} from './compiler'
 import type { CompileStartFrameworkOptions } from '../types'
 import type { LookupConfig, LookupKind } from './compiler'
 import type { PluginOption } from 'vite'
 
 function cleanId(id: string): string {
+  // Remove null byte prefix used by Vite/Rollup for virtual modules
+  if (id.startsWith('\0')) {
+    id = id.slice(1)
+  }
   const queryIndex = id.indexOf('?')
   return queryIndex === -1 ? id : id.substring(0, queryIndex)
 }
 
-const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
-  client: new Set([
-    'Middleware',
-    'ServerFn',
-    'IsomorphicFn',
-    'ServerOnlyFn',
-    'ClientOnlyFn',
-  ] as const),
-  server: new Set([
-    'ServerFn',
-    'IsomorphicFn',
-    'ServerOnlyFn',
-    'ClientOnlyFn',
-  ] as const),
+// Derive transform code filter from KindDetectionPatterns (single source of truth)
+function getTransformCodeFilterForEnv(env: 'client' | 'server'): Array<RegExp> {
+  const validKinds = LookupKindsPerEnv[env]
+  const patterns: Array<RegExp> = []
+  for (const [kind, pattern] of Object.entries(KindDetectionPatterns) as Array<
+    [LookupKind, RegExp]
+  >) {
+    if (validKinds.has(kind)) {
+      patterns.push(pattern)
+    }
+  }
+  return patterns
 }
 
 const getLookupConfigurationsForEnv = (
@@ -77,12 +84,6 @@ function buildDirectiveSplitParam(directive: string) {
   return `tsr-directive-${directive.replace(/[^a-zA-Z0-9]/g, '-')}`
 }
 
-const commonTransformCodeFilter = [
-  /\.\s*handler\(/,
-  /createIsomorphicFn/,
-  /createServerOnlyFn/,
-  /createClientOnlyFn/,
-]
 export function createServerFnPlugin(opts: {
   framework: CompileStartFrameworkOptions
   directive: string
@@ -95,16 +96,8 @@ export function createServerFnPlugin(opts: {
     name: string
     type: 'client' | 'server'
   }): PluginOption {
-    // Code filter patterns for transform functions:
-    // - `.handler(` for createServerFn
-    // - `createMiddleware(` for middleware (client only)
-    // - `createIsomorphicFn` for isomorphic functions
-    // - `createServerOnlyFn` for server-only functions
-    // - `createClientOnlyFn` for client-only functions
-    const transformCodeFilter =
-      environment.type === 'client'
-        ? [...commonTransformCodeFilter, /createMiddleware\s*\(/]
-        : commonTransformCodeFilter
+    // Derive transform code filter from KindDetectionPatterns (single source of truth)
+    const transformCodeFilter = getTransformCodeFilterForEnv(environment.type)
 
     return {
       name: `tanstack-start-core::server-fn:${environment.name}`,
@@ -172,8 +165,16 @@ export function createServerFnPlugin(opts: {
 
           const isProviderFile = id.includes(directiveSplitParam)
 
+          // Detect which kinds are present in this file before parsing
+          const detectedKinds = detectKindsInCode(code, environment.type)
+
           id = cleanId(id)
-          const result = await compiler.compile({ id, code, isProviderFile })
+          const result = await compiler.compile({
+            id,
+            code,
+            isProviderFile,
+            detectedKinds,
+          })
           return result
         },
       },

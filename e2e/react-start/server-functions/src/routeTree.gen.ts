@@ -37,6 +37,7 @@ import { Route as RedirectTestSsrTargetRouteImport } from './routes/redirect-tes
 import { Route as MiddlewareServerImportMiddlewareRouteImport } from './routes/middleware/server-import-middleware'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
+import { Route as MiddlewareMiddlewareFactoryRouteImport } from './routes/middleware/middleware-factory'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as AbortSignalMethodRouteImport } from './routes/abort-signal/$method'
@@ -184,6 +185,12 @@ const MiddlewareRequestMiddlewareRoute =
     path: '/middleware/request-middleware',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MiddlewareMiddlewareFactoryRoute =
+  MiddlewareMiddlewareFactoryRouteImport.update({
+    id: '/middleware/middleware-factory',
+    path: '/middleware/middleware-factory',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MiddlewareClientMiddlewareRouterRoute =
   MiddlewareClientMiddlewareRouterRouteImport.update({
     id: '/middleware/client-middleware-router',
@@ -226,6 +233,7 @@ export interface FileRoutesByFullPath {
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
@@ -260,6 +268,7 @@ export interface FileRoutesByTo {
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
@@ -295,6 +304,7 @@ export interface FileRoutesById {
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/middleware-factory'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/middleware/server-import-middleware'
@@ -365,6 +376,7 @@ export interface FileRouteTypes {
     | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/middleware-factory'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/middleware/server-import-middleware'
@@ -399,6 +411,7 @@ export interface FileRouteTypes {
     | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/middleware-factory'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/middleware/server-import-middleware'
@@ -434,6 +447,7 @@ export interface RootRouteChildren {
   AbortSignalMethodRoute: typeof AbortSignalMethodRoute
   CookiesSetRoute: typeof CookiesSetRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
+  MiddlewareMiddlewareFactoryRoute: typeof MiddlewareMiddlewareFactoryRoute
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
   MiddlewareServerImportMiddlewareRoute: typeof MiddlewareServerImportMiddlewareRoute
@@ -648,6 +662,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiddlewareRequestMiddlewareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/middleware-factory': {
+      id: '/middleware/middleware-factory'
+      path: '/middleware/middleware-factory'
+      fullPath: '/middleware/middleware-factory'
+      preLoaderRoute: typeof MiddlewareMiddlewareFactoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/client-middleware-router': {
       id: '/middleware/client-middleware-router'
       path: '/middleware/client-middleware-router'
@@ -698,6 +719,7 @@ const rootRouteChildren: RootRouteChildren = {
   AbortSignalMethodRoute: AbortSignalMethodRoute,
   CookiesSetRoute: CookiesSetRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
+  MiddlewareMiddlewareFactoryRoute: MiddlewareMiddlewareFactoryRoute,
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
   MiddlewareServerImportMiddlewareRoute: MiddlewareServerImportMiddlewareRoute,
