@@ -68,6 +68,57 @@ const LookupSetup: Record<LookupKind, MethodChainSetup | DirectCallSetup> = {
   ClientOnlyFn: { type: 'directCall' },
 }
 
+// Single source of truth for detecting which kinds are present in code
+// These patterns are used for:
+// 1. Pre-scanning code to determine which kinds to look for (before AST parsing)
+// 2. Deriving the plugin's transform code filter
+export const KindDetectionPatterns: Record<LookupKind, RegExp> = {
+  ServerFn: /\.handler\s*\(/,
+  Middleware: /createMiddleware/,
+  IsomorphicFn: /createIsomorphicFn/,
+  ServerOnlyFn: /createServerOnlyFn/,
+  ClientOnlyFn: /createClientOnlyFn/,
+}
+
+// Which kinds are valid for each environment
+export const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
+  client: new Set([
+    'Middleware',
+    'ServerFn',
+    'IsomorphicFn',
+    'ServerOnlyFn',
+    'ClientOnlyFn',
+  ] as const),
+  server: new Set([
+    'ServerFn',
+    'IsomorphicFn',
+    'ServerOnlyFn',
+    'ClientOnlyFn',
+  ] as const),
+}
+
+/**
+ * Detects which LookupKinds are present in the code using string matching.
+ * This is a fast pre-scan before AST parsing to limit the work done during compilation.
+ */
+export function detectKindsInCode(
+  code: string,
+  env: 'client' | 'server',
+): Set<LookupKind> {
+  const detected = new Set<LookupKind>()
+  const validForEnv = LookupKindsPerEnv[env]
+
+  for (const [kind, pattern] of Object.entries(KindDetectionPatterns) as Array<
+    [LookupKind, RegExp]
+  >) {
+    if (validForEnv.has(kind) && pattern.test(code)) {
+      detected.add(kind)
+    }
+  }
+
+  return detected
+}
+
 // Pre-computed map: identifier name -> Set<LookupKind> for fast candidate detection (method chain only)
 // Multiple kinds can share the same identifier (e.g., 'server' and 'client' are used by both Middleware and IsomorphicFn)
 const IdentifierToKinds = new Map<string, Set<LookupKind>>()
@@ -86,6 +137,16 @@ for (const [kind, setup] of Object.entries(LookupSetup) as Array<
   }
 }
 
+// Known factory function names for direct call and root-as-candidate patterns
+// These are the names that, when called directly, create a new function.
+// Used to filter nested candidates - we only want to include actual factory calls,
+// not invocations of already-created functions (e.g., `myServerFn()` should NOT be a candidate)
+const DirectCallFactoryNames = new Set([
+  'createServerOnlyFn',
+  'createClientOnlyFn',
+  'createIsomorphicFn',
+])
+
 export type LookupConfig = {
   libName: string
   rootExport: string
@@ -100,13 +161,79 @@ interface ModuleInfo {
   reExportAllSources: Array<string>
 }
 
+/**
+ * Computes whether any file kinds need direct-call candidate detection.
+ * This includes both directCall types (ServerOnlyFn, ClientOnlyFn) and
+ * allowRootAsCandidate types (IsomorphicFn).
+ */
+function needsDirectCallDetection(kinds: Set<LookupKind>): boolean {
+  for (const kind of kinds) {
+    const setup = LookupSetup[kind]
+    if (setup.type === 'directCall' || setup.allowRootAsCandidate) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Checks if a CallExpression is a direct-call candidate for NESTED detection.
+ * Returns true if the callee is a known factory function name.
+ * This is stricter than top-level detection because we need to filter out
+ * invocations of existing server functions (e.g., `myServerFn()`).
+ */
+function isNestedDirectCallCandidate(node: t.CallExpression): boolean {
+  let calleeName: string | undefined
+  if (t.isIdentifier(node.callee)) {
+    calleeName = node.callee.name
+  } else if (
+    t.isMemberExpression(node.callee) &&
+    t.isIdentifier(node.callee.property)
+  ) {
+    calleeName = node.callee.property.name
+  }
+  return calleeName !== undefined && DirectCallFactoryNames.has(calleeName)
+}
+
+/**
+ * Checks if a CallExpression path is a top-level direct-call candidate.
+ * Top-level means the call is the init of a VariableDeclarator at program level.
+ * We accept any simple identifier call or namespace call at top level
+ * (e.g., `isomorphicFn()`, `TanStackStart.createServerOnlyFn()`) and let
+ * resolution verify it. This handles renamed imports.
+ */
+function isTopLevelDirectCallCandidate(
+  path: babel.NodePath<t.CallExpression>,
+): boolean {
+  const node = path.node
+
+  // Must be a simple identifier call or namespace call
+  const isSimpleCall =
+    t.isIdentifier(node.callee) ||
+    (t.isMemberExpression(node.callee) &&
+      t.isIdentifier(node.callee.object) &&
+      t.isIdentifier(node.callee.property))
+
+  if (!isSimpleCall) {
+    return false
+  }
+
+  // Must be top-level: VariableDeclarator -> VariableDeclaration -> Program
+  const parent = path.parent
+  if (!t.isVariableDeclarator(parent) || parent.init !== node) {
+    return false
+  }
+  const grandParent = path.parentPath?.parent
+  if (!t.isVariableDeclaration(grandParent)) {
+    return false
+  }
+  return t.isProgram(path.parentPath?.parentPath?.parent)
+}
+
 export class ServerFnCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
   private validLookupKinds: Set<LookupKind>
-  // Precomputed flags for candidate detection (avoid recomputing on each collectCandidates call)
-  private hasDirectCallKinds: boolean
-  private hasRootAsCandidateKinds: boolean
   // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
   // Maps: libName → (exportName → Kind)
   // This allows O(1) resolution for the common case without async resolveId calls
@@ -122,18 +249,6 @@ export class ServerFnCompiler {
     },
   ) {
     this.validLookupKinds = options.lookupKinds
-
-    // Precompute flags for candidate detection
-    this.hasDirectCallKinds = false
-    this.hasRootAsCandidateKinds = false
-    for (const kind of options.lookupKinds) {
-      const setup = LookupSetup[kind]
-      if (setup.type === 'directCall') {
-        this.hasDirectCallKinds = true
-      } else if (setup.allowRootAsCandidate) {
-        this.hasRootAsCandidateKinds = true
-      }
-    }
   }
 
   private async init() {
@@ -310,68 +425,106 @@ export class ServerFnCompiler {
     code,
     id,
     isProviderFile,
+    detectedKinds,
   }: {
     code: string
     id: string
     isProviderFile: boolean
+    /** Pre-detected kinds present in this file. If not provided, all valid kinds are checked. */
+    detectedKinds?: Set<LookupKind>
   }) {
     if (!this.initialized) {
       await this.init()
     }
-    const { info, ast } = this.ingestModule({ code, id })
-    const candidates = this.collectCandidates(info.bindings)
-    if (candidates.length === 0) {
-      // this hook will only be invoked if there is `.handler(` | `.server(` | `.client(` in the code,
-      // so not discovering a handler candidate is rather unlikely, but maybe possible?
+
+    // Use detected kinds if provided, otherwise fall back to all valid kinds for this env
+    const fileKinds = detectedKinds
+      ? new Set([...detectedKinds].filter((k) => this.validLookupKinds.has(k)))
+      : this.validLookupKinds
+
+    // Early exit if no kinds to process
+    if (fileKinds.size === 0) {
       return null
     }
 
-    // let's find out which of the candidates are actually server functions
-    // Resolve all candidates in parallel for better performance
+    const checkDirectCalls = needsDirectCallDetection(fileKinds)
+
+    const { ast } = this.ingestModule({ code, id })
+
+    // Single-pass traversal to:
+    // 1. Collect candidate paths (only candidates, not all CallExpressions)
+    // 2. Build a map for looking up paths of nested calls in method chains
+    const candidatePaths: Array<babel.NodePath<t.CallExpression>> = []
+    // Map for nested chain lookup - only populated for CallExpressions that are
+    // part of a method chain (callee.object is a CallExpression)
+    const chainCallPaths = new Map<
+      t.CallExpression,
+      babel.NodePath<t.CallExpression>
+    >()
+
+    babel.traverse(ast, {
+      CallExpression: (path) => {
+        const node = path.node
+        const parent = path.parent
+
+        // Check if this call is part of a larger chain (inner call)
+        // If so, store it for method chain lookup but don't treat as candidate
+        if (
+          t.isMemberExpression(parent) &&
+          t.isCallExpression(path.parentPath?.parent)
+        ) {
+          // This is an inner call in a chain - store for later lookup
+          chainCallPaths.set(node, path)
+          return
+        }
+
+        // Pattern 1: Method chain pattern (.handler(), .server(), .client(), etc.)
+        if (isMethodChainCandidate(node, fileKinds)) {
+          candidatePaths.push(path)
+          return
+        }
+
+        // Pattern 2: Direct call pattern
+        if (checkDirectCalls) {
+          if (isTopLevelDirectCallCandidate(path)) {
+            candidatePaths.push(path)
+          } else if (isNestedDirectCallCandidate(node)) {
+            candidatePaths.push(path)
+          }
+        }
+      },
+    })
+
+    if (candidatePaths.length === 0) {
+      return null
+    }
+
+    // Resolve all candidates in parallel to determine their kinds
     const resolvedCandidates = await Promise.all(
-      candidates.map(async (candidate) => ({
-        candidate,
-        kind: await this.resolveExprKind(candidate, id),
+      candidatePaths.map(async (path) => ({
+        path,
+        kind: await this.resolveExprKind(path.node, id),
       })),
     )
 
-    // Map from candidate/root node -> kind
-    // Note: For top-level variable declarations, candidate === root (the outermost CallExpression)
-    const toRewriteMap = new Map<t.CallExpression, LookupKind>()
-    for (const { candidate, kind } of resolvedCandidates) {
-      if (this.validLookupKinds.has(kind as LookupKind)) {
-        toRewriteMap.set(candidate, kind as LookupKind)
-      }
-    }
-    if (toRewriteMap.size === 0) {
+    // Filter to valid candidates
+    const validCandidates = resolvedCandidates.filter(({ kind }) =>
+      this.validLookupKinds.has(kind as LookupKind),
+    ) as Array<{ path: babel.NodePath<t.CallExpression>; kind: LookupKind }>
+
+    if (validCandidates.length === 0) {
       return null
     }
 
-    // Single-pass traversal to find NodePaths and collect method chains
+    // Process valid candidates to collect method chains
     const pathsToRewrite: Array<{
       path: babel.NodePath<t.CallExpression>
       kind: LookupKind
       methodChain: MethodChainPaths
     }> = []
 
-    // First, collect all CallExpression paths in the AST for O(1) lookup
-    const callExprPaths = new Map<
-      t.CallExpression,
-      babel.NodePath<t.CallExpression>
-    >()
-
-    babel.traverse(ast, {
-      CallExpression(path) {
-        callExprPaths.set(path.node, path)
-      },
-    })
-
-    // Now process candidates - we can look up any CallExpression path in O(1)
-    for (const [node, kind] of toRewriteMap) {
-      const path = callExprPaths.get(node)
-      if (!path) {
-        continue
-      }
+    for (const { path, kind } of validCandidates) {
+      const node = path.node
 
       // Collect method chain paths by walking DOWN from root through the chain
       const methodChain: MethodChainPaths = {
@@ -384,6 +537,8 @@ export class ServerFnCompiler {
 
       // Walk down the call chain using nodes, look up paths from map
       let currentNode: t.CallExpression = node
+      let currentPath: babel.NodePath<t.CallExpression> = path
+
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const callee = currentNode.callee
@@ -395,7 +550,6 @@ export class ServerFnCompiler {
         if (t.isIdentifier(callee.property)) {
           const name = callee.property.name as keyof MethodChainPaths
           if (name in methodChain) {
-            const currentPath = callExprPaths.get(currentNode)!
             // Get first argument path
             const args = currentPath.get('arguments')
             const firstArgPath =
@@ -412,16 +566,15 @@ export class ServerFnCompiler {
           break
         }
         currentNode = callee.object
+        // Look up path from chain map, or use candidate path if not found
+        const nextPath = chainCallPaths.get(currentNode)
+        if (!nextPath) {
+          break
+        }
+        currentPath = nextPath
       }
 
       pathsToRewrite.push({ path, kind, methodChain })
-    }
-
-    // Verify we found all candidates (pathsToRewrite should have same size as toRewriteMap had)
-    if (pathsToRewrite.length !== toRewriteMap.size) {
-      throw new Error(
-        `Internal error: could not find all paths to rewrite. please file an issue`,
-      )
     }
 
     const refIdents = findReferencedIdentifiers(ast)
@@ -459,42 +612,6 @@ export class ServerFnCompiler {
       sourceFileName: id,
       filename: id,
     })
-  }
-
-  // collects all candidate CallExpressions at top-level
-  private collectCandidates(bindings: Map<string, Binding>) {
-    const candidates: Array<t.CallExpression> = []
-
-    for (const binding of bindings.values()) {
-      if (binding.type === 'var' && t.isCallExpression(binding.init)) {
-        // Pattern 1: Method chain pattern (.handler(), .server(), etc.)
-        const methodChainCandidate = isCandidateCallExpression(
-          binding.init,
-          this.validLookupKinds,
-        )
-        if (methodChainCandidate) {
-          candidates.push(methodChainCandidate)
-          continue
-        }
-
-        // Pattern 2: Direct call pattern
-        // Handles:
-        // - createServerOnlyFn(), createClientOnlyFn() (direct call kinds)
-        // - createIsomorphicFn() (root-as-candidate kinds)
-        // - TanStackStart.createServerOnlyFn() (namespace calls)
-        if (this.hasDirectCallKinds || this.hasRootAsCandidateKinds) {
-          if (
-            t.isIdentifier(binding.init.callee) ||
-            (t.isMemberExpression(binding.init.callee) &&
-              t.isIdentifier(binding.init.callee.property))
-          ) {
-            // Include as candidate - kind resolution will verify it's actually a known export
-            candidates.push(binding.init)
-          }
-        }
-      }
-    }
-    return candidates
   }
 
   private async resolveIdentifierKind(
@@ -793,15 +910,17 @@ export class ServerFnCompiler {
   }
 }
 
-function isCandidateCallExpression(
-  node: t.Node | null | undefined,
+/**
+ * Checks if a CallExpression has a method chain pattern that matches any of the lookup kinds.
+ * E.g., `.handler()`, `.server()`, `.client()`, `.createMiddlewares()`
+ */
+function isMethodChainCandidate(
+  node: t.CallExpression,
   lookupKinds: Set<LookupKind>,
-): t.CallExpression | undefined {
-  if (!t.isCallExpression(node)) return undefined
-
+): boolean {
   const callee = node.callee
   if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.property)) {
-    return undefined
+    return false
   }
 
   // Use pre-computed map for O(1) lookup
@@ -811,10 +930,10 @@ function isCandidateCallExpression(
     // Check if any of the possible kinds are in the valid lookup kinds
     for (const kind of possibleKinds) {
       if (lookupKinds.has(kind)) {
-        return node
+        return true
       }
     }
   }
 
-  return undefined
+  return false
 }

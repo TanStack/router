@@ -41,6 +41,15 @@ function RouteComponent() {
             Server imports in middleware are stripped from client build
           </Route.Link>
         </li>
+        <li>
+          <Route.Link
+            to="./middleware-factory"
+            data-testid="middleware-factory-link"
+          >
+            Middleware factories with server imports are stripped from client
+            build
+          </Route.Link>
+        </li>
       </ul>
     </div>
   )
