@@ -19,6 +19,19 @@ export class RoutePrefixMap {
     for (const route of routes) {
       if (!route.routePath || route.routePath === `/${rootPathId}`) continue
 
+      // Skip route pieces (lazy, loader, component, etc.) - they are merged with main routes
+      // and should not be valid parent candidates
+      if (
+        route._fsRouteType === 'lazy' ||
+        route._fsRouteType === 'loader' ||
+        route._fsRouteType === 'component' ||
+        route._fsRouteType === 'pendingComponent' ||
+        route._fsRouteType === 'errorComponent' ||
+        route._fsRouteType === 'notFoundComponent'
+      ) {
+        continue
+      }
+
       // Index by exact path for direct lookups
       this.prefixToRoute.set(route.routePath, route)
 
