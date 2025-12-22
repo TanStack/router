@@ -1,11 +1,10 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import { json } from '@tanstack/vue-start'
 
 export const Route = createFileRoute('/api/only-any')({
   server: {
     handlers: {
       ANY: ({ request }) => {
-        return json(
+        return Response.json(
           {
             handler: 'ANY',
             method: request.method,

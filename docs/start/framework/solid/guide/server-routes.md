@@ -367,20 +367,19 @@ export const Route = createFileRoute('/hello')({
 // {"message":"Hello, World!"}
 ```
 
-## Using the `json` helper function
+## Using the `Response.json` helper function
 
-Or you can use the `json` helper function to automatically set the `Content-Type` header to `application/json` and serialize the JSON object for you.
+Or you can use the [`Response.json`](https://developer.mozilla.org/en-US/docs/Web/API/Response/json_static) helper function to automatically set the `Content-Type` header to `application/json` and serialize the JSON object for you.
 
 ```ts
 // routes/hello.ts
 import { createFileRoute } from '@tanstack/solid-router'
-import { json } from '@tanstack/solid-start'
 
 export const Route = createFileRoute('/hello')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        return json({ message: 'Hello, World!' })
+        return Response.json({ message: 'Hello, World!' })
       },
     },
   },
@@ -397,7 +396,6 @@ You can set the status code of the response by passing it as a property of the s
 ```ts
 // routes/hello.ts
 import { createFileRoute } from '@tanstack/solid-router'
-import { json } from '@tanstack/solid-start'
 
 export const Route = createFileRoute('/hello')({
   server: {
@@ -409,7 +407,7 @@ export const Route = createFileRoute('/hello')({
             status: 404,
           })
         }
-        return json(user)
+        return Response.json(user)
       },
     },
   },
