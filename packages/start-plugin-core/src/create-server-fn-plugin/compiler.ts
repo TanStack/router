@@ -223,11 +223,11 @@ function isTopLevelDirectCallCandidate(
   if (!t.isVariableDeclarator(parent) || parent.init !== node) {
     return false
   }
-  const grandParent = path.parentPath?.parent
+  const grandParent = path.parentPath.parent
   if (!t.isVariableDeclaration(grandParent)) {
     return false
   }
-  return t.isProgram(path.parentPath?.parentPath?.parent)
+  return t.isProgram(path.parentPath.parentPath?.parent)
 }
 
 export class ServerFnCompiler {
@@ -471,7 +471,7 @@ export class ServerFnCompiler {
         // If so, store it for method chain lookup but don't treat as candidate
         if (
           t.isMemberExpression(parent) &&
-          t.isCallExpression(path.parentPath?.parent)
+          t.isCallExpression(path.parentPath.parent)
         ) {
           // This is an inner call in a chain - store for later lookup
           chainCallPaths.set(node, path)

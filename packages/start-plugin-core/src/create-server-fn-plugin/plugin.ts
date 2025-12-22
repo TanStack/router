@@ -1,9 +1,9 @@
 import { TRANSFORM_ID_REGEX } from '../constants'
 import {
-  detectKindsInCode,
   KindDetectionPatterns,
   LookupKindsPerEnv,
   ServerFnCompiler,
+  detectKindsInCode,
 } from './compiler'
 import type { CompileStartFrameworkOptions } from '../types'
 import type { LookupConfig, LookupKind } from './compiler'
