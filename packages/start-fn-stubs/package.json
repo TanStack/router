@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-fn-stubs",
-  "version": "1.142.8",
+  "version": "1.142.9",
   "description": "Stub functions for TanStack Start isomorphic and environment-specific functions",
   "author": "Tanner Linsley",
   "license": "MIT",
