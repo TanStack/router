@@ -111,13 +111,13 @@ describe('findRouteMatch', () => {
         const tree = makeTree(['/{-$id}'])
         const res = findRouteMatch('/', tree)
         expect(res?.route.id).toBe('/{-$id}')
-        expect(res?.params).toEqual({})
+        expect(res?.rawParams).toEqual({})
       })
       it('wildcard at the root matches /', () => {
         const tree = makeTree(['/$'])
         const res = findRouteMatch('/', tree)
         expect(res?.route.id).toBe('/$')
-        expect(res?.params).toEqual({ '*': '', _splat: '' })
+        expect(res?.rawParams).toEqual({ '*': '', _splat: '' })
       })
       it('dynamic at the root DOES NOT match /', () => {
         const tree = makeTree(['/$id'])
@@ -457,13 +457,16 @@ describe('findRouteMatch', () => {
     })
     it('multiple optionals at the end -> favor earlier segments', () => {
       const tree = makeTree(['/a/{-$b}/{-$c}/{-$d}/{-$e}'])
-      expect(findRouteMatch('/a/b/c', tree)?.params).toEqual({ b: 'b', c: 'c' })
+      expect(findRouteMatch('/a/b/c', tree)?.rawParams).toEqual({
+        b: 'b',
+        c: 'c',
+      })
     })
     it('optional and wildcard at the end can still be omitted', () => {
       const tree = makeTree(['/a/{-$id}/$'])
       const result = findRouteMatch('/a', tree)
       expect(result?.route.id).toBe('/a/{-$id}/$')
-      expect(result?.params).toEqual({ '*': '', _splat: '' })
+      expect(result?.rawParams).toEqual({ '*': '', _splat: '' })
     })
     it('multi-segment wildcard w/ prefix', () => {
       const tree = makeTree(['/file{$}'])
@@ -544,7 +547,7 @@ describe('findRouteMatch', () => {
       const { processedTree } = processRouteTree(tree)
       const res = findRouteMatch('/a/b/foo', processedTree, true)
       expect(res?.route.id).toBe('/a/b/$')
-      expect(res?.params).toEqual({ _splat: 'foo', '*': 'foo' })
+      expect(res?.rawParams).toEqual({ _splat: 'foo', '*': 'foo' })
     })
     describe('edge-case #5969: trailing empty wildcard should match', () => {
       it('basic', () => {
@@ -636,7 +639,7 @@ describe('findRouteMatch', () => {
       const tree = makeTree(['/a/b/c', '/a/b', '/a'])
       const match = findRouteMatch('/a/b/x/y', tree, true)
       expect(match?.route?.id).toBe('/a/b')
-      expect(match?.params).toMatchInlineSnapshot(`
+      expect(match?.rawParams).toMatchInlineSnapshot(`
         {
           "**": "x/y",
         }
@@ -697,7 +700,7 @@ describe('findRouteMatch', () => {
         true,
       )
       expect(match?.route.id).toBe('/dashboard')
-      expect(match?.params).toEqual({ '**': 'foo' })
+      expect(match?.rawParams).toEqual({ '**': 'foo' })
     })
 
     it('cannot use an index route as a fuzzy match', () => {
@@ -769,7 +772,7 @@ describe('findRouteMatch', () => {
         true,
       )
       expect(match?.route.id).toBe('/dashboard')
-      expect(match?.params).toEqual({ '**': 'foo' })
+      expect(match?.rawParams).toEqual({ '**': 'foo' })
       const actualMatch = findRouteMatch('/dashboard', processed.processedTree)
       expect(actualMatch?.route.id).toBe('/dashboard/')
     })
@@ -797,7 +800,7 @@ describe('findRouteMatch', () => {
         (char, encoded) => {
           const tree = makeTree([`/a/$id`])
           const result = findRouteMatch(`/a/${encoded}`, tree)
-          expect(result?.params).toEqual({ id: char })
+          expect(result?.rawParams).toEqual({ id: char })
         },
       )
       it.each(URISyntaxCharacters)(
@@ -805,7 +808,7 @@ describe('findRouteMatch', () => {
         (char, encoded) => {
           const tree = makeTree([`/a/{-$id}`])
           const result = findRouteMatch(`/a/${encoded}`, tree)
-          expect(result?.params).toEqual({ id: char })
+          expect(result?.rawParams).toEqual({ id: char })
         },
       )
       it.each(URISyntaxCharacters)(
@@ -813,7 +816,7 @@ describe('findRouteMatch', () => {
         (char, encoded) => {
           const tree = makeTree([`/a/$`])
           const result = findRouteMatch(`/a/${encoded}`, tree)
-          expect(result?.params).toEqual({ '*': char, _splat: char })
+          expect(result?.rawParams).toEqual({ '*': char, _splat: char })
         },
       )
       it('wildcard splat supports multiple URI encoded characters in multiple URL segments', () => {
@@ -821,14 +824,14 @@ describe('findRouteMatch', () => {
         const path = URISyntaxCharacters.map(([, encoded]) => encoded).join('/')
         const decoded = URISyntaxCharacters.map(([char]) => char).join('/')
         const result = findRouteMatch(`/a/${path}`, tree)
-        expect(result?.params).toEqual({ '*': decoded, _splat: decoded })
+        expect(result?.rawParams).toEqual({ '*': decoded, _splat: decoded })
       })
       it('fuzzy splat supports multiple URI encoded characters in multiple URL segments', () => {
         const tree = makeTree(['/a'])
         const path = URISyntaxCharacters.map(([, encoded]) => encoded).join('/')
         const decoded = URISyntaxCharacters.map(([char]) => char).join('/')
         const result = findRouteMatch(`/a/${path}`, tree, true)
-        expect(result?.params).toEqual({ '**': decoded })
+        expect(result?.rawParams).toEqual({ '**': decoded })
       })
     })
     describe('edge-cases', () => {
@@ -859,7 +862,7 @@ describe('findRouteMatch', () => {
         const { processedTree } = processRouteTree(tree)
         const result = findRouteMatch(`/sv`, processedTree)
         expect(result?.route.id).toBe('/_pathless/{-$language}/')
-        expect(result?.params).toEqual({ language: 'sv' })
+        expect(result?.rawParams).toEqual({ language: 'sv' })
       })
     })
   })
@@ -1105,16 +1108,16 @@ describe('processRouteMasks', { sequential: true }, () => {
   it('can match dynamic route masks w/ `findFlatMatch`', () => {
     const res = findFlatMatch('/a/123/d', processedTree)
     expect(res?.route.from).toBe('/a/$param/d')
-    expect(res?.params).toEqual({ param: '123' })
+    expect(res?.rawParams).toEqual({ param: '123' })
   })
   it('can match optional route masks w/ `findFlatMatch`', () => {
     const res = findFlatMatch('/a/d', processedTree)
     expect(res?.route.from).toBe('/a/{-$optional}/d')
-    expect(res?.params).toEqual({})
+    expect(res?.rawParams).toEqual({})
   })
   it('can match prefix/suffix wildcard route masks w/ `findFlatMatch`', () => {
     const res = findFlatMatch('/a/b/file/path.txt', processedTree)
     expect(res?.route.from).toBe('/a/b/{$}.txt')
-    expect(res?.params).toEqual({ '*': 'file/path', _splat: 'file/path' })
+    expect(res?.rawParams).toEqual({ '*': 'file/path', _splat: 'file/path' })
   })
 })
