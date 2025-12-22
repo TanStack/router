@@ -91,6 +91,7 @@ export type LookupConfig = {
   rootExport: string
   kind: LookupKind | 'Root' // 'Root' for builder pattern, LookupKind for direct call
 }
+
 interface ModuleInfo {
   id: string
   bindings: Map<string, Binding>
@@ -139,8 +140,28 @@ export class ServerFnCompiler {
   }
 
   private async init() {
+    // Register internal stub package exports for recognition.
+    // These don't need module resolution - only the knownRootImports fast path.
+    this.knownRootImports.set(
+      '@tanstack/start-fn-stubs',
+      new Map<string, Kind>([
+        ['createIsomorphicFn', 'Root'],
+        ['createServerOnlyFn', 'ServerOnlyFn'],
+        ['createClientOnlyFn', 'ClientOnlyFn'],
+      ]),
+    )
+
     await Promise.all(
       this.options.lookupConfigurations.map(async (config) => {
+        // Populate the fast lookup map for direct imports (by package name)
+        // This allows O(1) recognition of imports from known packages.
+        let libExports = this.knownRootImports.get(config.libName)
+        if (!libExports) {
+          libExports = new Map()
+          this.knownRootImports.set(config.libName, libExports)
+        }
+        libExports.set(config.rootExport, config.kind)
+
         const libId = await this.options.resolveId(config.libName)
         if (!libId) {
           throw new Error(`could not resolve "${config.libName}"`)
@@ -172,14 +193,6 @@ export class ServerFnCompiler {
           resolvedKind: config.kind satisfies Kind,
         })
         this.moduleCache.set(libId, rootModule)
-
-        // Also populate the fast lookup map for direct imports
-        let libExports = this.knownRootImports.get(config.libName)
-        if (!libExports) {
-          libExports = new Map()
-          this.knownRootImports.set(config.libName, libExports)
-        }
-        libExports.set(config.rootExport, config.kind)
       }),
     )
 
@@ -699,45 +712,38 @@ export class ServerFnCompiler {
     if (t.isMemberExpression(callee) && t.isIdentifier(callee.property)) {
       const prop = callee.property.name
 
-      // Check method chain patterns for each valid lookup kind
-      const serverFnSetup = LookupSetup['ServerFn']
-      if (
-        this.validLookupKinds.has('ServerFn') &&
-        serverFnSetup.type === 'methodChain' &&
-        serverFnSetup.candidateCallIdentifier.has(prop)
-      ) {
+      // Check if this property matches any method chain pattern
+      const possibleKinds = IdentifierToKinds.get(prop)
+      if (possibleKinds) {
+        // Resolve base expression ONCE and reuse for all pattern checks
         const base = await this.resolveExprKind(callee.object, fileId, visited)
-        if (base === 'Root' || base === 'Builder') {
-          return 'ServerFn'
-        }
-        return 'None'
-      }
 
-      const middlewareSetup = LookupSetup['Middleware']
-      if (
-        this.validLookupKinds.has('Middleware') &&
-        middlewareSetup.type === 'methodChain' &&
-        middlewareSetup.candidateCallIdentifier.has(prop)
-      ) {
-        const base = await this.resolveExprKind(callee.object, fileId, visited)
-        if (base === 'Root' || base === 'Builder' || base === 'Middleware') {
-          return 'Middleware'
-        }
-        return 'None'
-      }
+        // Check each possible kind that uses this identifier
+        for (const kind of possibleKinds) {
+          if (!this.validLookupKinds.has(kind)) continue
 
-      const isomorphicSetup = LookupSetup['IsomorphicFn']
-      if (
-        this.validLookupKinds.has('IsomorphicFn') &&
-        isomorphicSetup.type === 'methodChain' &&
-        isomorphicSetup.candidateCallIdentifier.has(prop)
-      ) {
-        const base = await this.resolveExprKind(callee.object, fileId, visited)
-        // Allow chaining: createIsomorphicFn().server().client() or .client().server()
-        if (base === 'Root' || base === 'Builder' || base === 'IsomorphicFn') {
-          return 'IsomorphicFn'
+          if (kind === 'ServerFn') {
+            if (base === 'Root' || base === 'Builder') {
+              return 'ServerFn'
+            }
+          } else if (kind === 'Middleware') {
+            if (
+              base === 'Root' ||
+              base === 'Builder' ||
+              base === 'Middleware'
+            ) {
+              return 'Middleware'
+            }
+          } else if (kind === 'IsomorphicFn') {
+            if (
+              base === 'Root' ||
+              base === 'Builder' ||
+              base === 'IsomorphicFn'
+            ) {
+              return 'IsomorphicFn'
+            }
+          }
         }
-        return 'None'
       }
 
       // Check if the object is a namespace import
