@@ -114,7 +114,7 @@
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
-    "babel-dead-code-elimination": "^1.0.10",
+    "babel-dead-code-elimination": "^1.0.11",
     "chokidar": "^3.6.0",
     "unplugin": "^2.1.2",
     "zod": "^3.24.2"
