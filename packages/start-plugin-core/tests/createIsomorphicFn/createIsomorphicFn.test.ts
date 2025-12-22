@@ -19,7 +19,7 @@ async function compile(opts: {
       {
         libName: `@tanstack/react-start`,
         rootExport: 'createIsomorphicFn',
-        kind: 'Root',
+        kind: 'IsomorphicFn',
       },
     ],
     resolveId: async (id) => {

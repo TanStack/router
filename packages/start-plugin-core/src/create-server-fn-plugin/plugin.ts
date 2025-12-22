@@ -39,7 +39,7 @@ const getLookupConfigurationsForEnv = (
     {
       libName: `@tanstack/${framework}-start`,
       rootExport: 'createIsomorphicFn',
-      kind: 'Root',
+      kind: 'IsomorphicFn',
     },
     {
       libName: `@tanstack/${framework}-start`,

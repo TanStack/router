@@ -107,8 +107,6 @@ export class ServerFnCompiler {
   // Precomputed flags for candidate detection (avoid recomputing on each collectCandidates call)
   private hasDirectCallKinds: boolean
   private hasRootAsCandidateKinds: boolean
-  // For IsomorphicFn, we need to know which kind allows root as candidate (precomputed)
-  private rootAsCandidateKind: LookupKind | null = null
   // Fast lookup for direct imports from known libraries (e.g., '@tanstack/react-start')
   // Maps: libName → (exportName → Kind)
   // This allows O(1) resolution for the common case without async resolveId calls
@@ -134,7 +132,6 @@ export class ServerFnCompiler {
         this.hasDirectCallKinds = true
       } else if (setup.allowRootAsCandidate) {
         this.hasRootAsCandidateKinds = true
-        this.rootAsCandidateKind = kind
       }
     }
   }
@@ -145,7 +142,7 @@ export class ServerFnCompiler {
     this.knownRootImports.set(
       '@tanstack/start-fn-stubs',
       new Map<string, Kind>([
-        ['createIsomorphicFn', 'Root'],
+        ['createIsomorphicFn', 'IsomorphicFn'],
         ['createServerOnlyFn', 'ServerOnlyFn'],
         ['createClientOnlyFn', 'ClientOnlyFn'],
       ]),
@@ -676,13 +673,6 @@ export class ServerFnCompiler {
         visited,
       )
       if (calleeKind === 'Root' || calleeKind === 'Builder') {
-        // For kinds that allow root as candidate (e.g., IsomorphicFn),
-        // a call to the root function directly should return that kind.
-        // This handles both direct calls (createIsomorphicFn()) and
-        // namespace calls (TanStackStart.createIsomorphicFn())
-        if (calleeKind === 'Root' && this.rootAsCandidateKind) {
-          return this.rootAsCandidateKind
-        }
         return 'Builder'
       }
       // Use direct Set.has() instead of iterating
