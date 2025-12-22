@@ -19,13 +19,13 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { createServerFnPlugin } from './create-server-fn-plugin/plugin'
+import type { GetConfigFn, ResolvedStartConfig, TanStackStartVitePluginCoreOptions } from './types'
 import type { ViteEnvironmentNames } from './constants'
 import type {
   TanStackStartInputConfig,
   TanStackStartOutputConfig,
 } from './schema'
 import type { PluginOption } from 'vite'
-import { TanStackStartVitePluginCoreOptions, ResolvedStartConfig, GetConfigFn } from './types'
 
 function isFullUrl(str: string): boolean {
   try {

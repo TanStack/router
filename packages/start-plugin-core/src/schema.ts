@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
-import { TanStackStartVitePluginCoreOptions } from './types'
+import type { TanStackStartVitePluginCoreOptions } from './types'
 
 const tsrConfig = configSchema
   .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
