@@ -709,6 +709,8 @@ type RouteMatch<T extends Extract<RouteLike, { fullPath: string }>> = {
   route: T
   params: Record<string, string>
   branch: ReadonlyArray<T>
+  /** Parsed params from routes with skipRouteOnParseError, accumulated during matching */
+  parsedParams?: Record<string, unknown>
 }
 
 export function findRouteMatch<
@@ -804,7 +806,11 @@ function findMatch<T extends RouteLike>(
   path: string,
   segmentTree: AnySegmentNode<T>,
   fuzzy = false,
-): { route: T; params: Record<string, string> } | null {
+): {
+  route: T
+  params: Record<string, string>
+  parsedParams?: Record<string, unknown>
+} | null {
   const parts = path.split('/')
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
   if (!leaf) return null
@@ -813,6 +819,7 @@ function findMatch<T extends RouteLike>(
   return {
     route,
     params,
+    parsedParams: leaf.parsedParams,
   }
 }
 
@@ -938,10 +945,10 @@ type MatchStackFrame<T extends RouteLike> = {
   optionals: number
   /** intermediary state for param extraction */
   extract?: { part: number; node: number; path: number }
-  /** intermediary params from param extraction */
-  // TODO: I'm not sure, but I think we need both the raw strings for `interpolatePath` and the parsed values for the final match object
-  // I think they can still be accumulated (separately) in a single object (each) because `interpolatePath` returns the `usedParams` anyway
+  /** intermediary raw string params from param extraction (for interpolatePath) */
   params?: Record<string, string>
+  /** intermediary parsed params from routes with skipRouteOnParseError */
+  parsedParams?: Record<string, unknown>
 }
 
 function getNodeMatch<T extends RouteLike>(
@@ -953,7 +960,7 @@ function getNodeMatch<T extends RouteLike>(
   // quick check for root index
   // this is an optimization, algorithm should work correctly without this block
   if (path === '/' && segmentTree.index)
-    return { node: segmentTree.index, skipped: 0 }
+    return { node: segmentTree.index, skipped: 0, parsedParams: undefined }
 
   const trailingSlash = !last(parts)
   const pathIsIndex = trailingSlash && path !== '/'
@@ -987,13 +994,14 @@ function getNodeMatch<T extends RouteLike>(
   while (stack.length) {
     const frame = stack.pop()!
     const { node, index, skipped, depth, statics, dynamics, optionals } = frame
-    let { extract, params } = frame
+    let { extract, params, parsedParams } = frame
 
     if (node.skipRouteOnParseError && node.parse) {
       const result = validateMatchParams(path, parts, frame)
       if (!result) continue
       params = result[0]
       extract = result[1]
+      parsedParams = frame.parsedParams
     }
 
     // In fuzzy mode, track the best partial match we've found so far
@@ -1030,6 +1038,7 @@ function getNodeMatch<T extends RouteLike>(
         optionals,
         extract,
         params,
+        parsedParams,
       }
       if (node.index.skipRouteOnParseError && node.index.parse) {
         const result = validateMatchParams(path, parts, indexFrame)
@@ -1075,6 +1084,7 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
+          parsedParams,
         }
         if (segment.skipRouteOnParseError && segment.parse) {
           const result = validateMatchParams(path, parts, frame)
@@ -1102,6 +1112,7 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
+          parsedParams,
         }) // enqueue skipping the optional
       }
       if (!isBeyondPath) {
@@ -1125,6 +1136,7 @@ function getNodeMatch<T extends RouteLike>(
             optionals: optionals + 1,
             extract,
             params,
+            parsedParams,
           })
         }
       }
@@ -1152,6 +1164,7 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
+          parsedParams,
         })
       }
     }
@@ -1172,6 +1185,7 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
+          parsedParams,
         })
       }
     }
@@ -1190,6 +1204,7 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
+          parsedParams,
         })
       }
     }
@@ -1209,6 +1224,7 @@ function getNodeMatch<T extends RouteLike>(
           optionals,
           extract,
           params,
+          parsedParams,
         })
       }
     }
@@ -1247,8 +1263,9 @@ function validateMatchParams<T extends RouteLike>(
     const result = extractParams(path, parts, frame)
     frame.params = result[0]
     frame.extract = result[1]
-    result[0] = frame.node.parse!(result[0])
-    frame.params = result[0]
+    const parsedParams = frame.node.parse!(result[0])
+    // Accumulate parsed params from this route
+    frame.parsedParams = { ...frame.parsedParams, ...parsedParams }
     return result
   } catch {
     return null
