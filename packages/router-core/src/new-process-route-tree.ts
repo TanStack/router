@@ -709,7 +709,6 @@ type RouteMatch<T extends Extract<RouteLike, { fullPath: string }>> = {
   route: T
   params: Record<string, string>
   branch: ReadonlyArray<T>
-  error?: unknown
 }
 
 export function findRouteMatch<
@@ -805,7 +804,7 @@ function findMatch<T extends RouteLike>(
   path: string,
   segmentTree: AnySegmentNode<T>,
   fuzzy = false,
-): { route: T; params: Record<string, string>; error?: unknown } | null {
+): { route: T; params: Record<string, string>; } | null {
   const parts = path.split('/')
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
   if (!leaf) return null
