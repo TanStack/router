@@ -1272,8 +1272,7 @@ function validateMatchParams<T extends RouteLike>(
     frame.rawParams = result[0]
     frame.extract = result[1]
     const parsed = frame.node.parse!(result[0])
-    frame.parsedParams ??= {}
-    Object.assign(frame.parsedParams, parsed)
+    frame.parsedParams = Object.assign({}, frame.parsedParams, parsed)
     return true
   } catch {
     return null
