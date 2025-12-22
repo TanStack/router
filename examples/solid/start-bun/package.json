@@ -18,8 +18,8 @@
     "@tanstack/solid-router": "^1.142.8",
     "@tanstack/solid-router-devtools": "^1.142.8",
     "@tanstack/solid-router-ssr-query": "^1.142.8",
-    "@tanstack/solid-start": "^1.142.9",
-    "@tanstack/router-plugin": "^1.142.8",
+    "@tanstack/solid-start": "^1.142.10",
+    "@tanstack/router-plugin": "^1.142.10",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.1.18",
     "vite-tsconfig-paths": "^5.1.4"
