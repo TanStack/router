@@ -145,6 +145,10 @@ await publish({
       packageDir: 'packages/start-storage-context',
     },
     {
+      name: '@tanstack/start-fn-stubs',
+      packageDir: 'packages/start-fn-stubs',
+    },
+    {
       name: '@tanstack/react-start',
       packageDir: 'packages/react-start',
     },

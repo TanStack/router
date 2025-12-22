@@ -23,6 +23,7 @@ async function compile(opts: {
       {
         libName: `@tanstack/react-start`,
         rootExport: 'createServerFn',
+        kind: 'Root',
       },
     ],
     resolveId: async (id) => {
@@ -232,6 +233,7 @@ describe('createServerFn compiles correctly', async () => {
         {
           libName: '@tanstack/react-start',
           rootExport: 'createServerFn',
+          kind: 'Root',
         },
       ],
       resolveId: resolveIdMock,
@@ -248,10 +250,7 @@ describe('createServerFn compiles correctly', async () => {
     // It should NOT be called again to resolve the import binding because
     // the fast path uses knownRootImports map for O(1) lookup
     expect(resolveIdMock).toHaveBeenCalledTimes(1)
-    expect(resolveIdMock).toHaveBeenCalledWith(
-      '@tanstack/react-start',
-      'test.ts',
-    )
+    expect(resolveIdMock).toHaveBeenCalledWith('@tanstack/react-start')
   })
 
   test('should use slow path for factory pattern (resolveId called for import resolution)', async () => {
@@ -283,6 +282,7 @@ describe('createServerFn compiles correctly', async () => {
         {
           libName: '@tanstack/react-start',
           rootExport: 'createServerFn',
+          kind: 'Root',
         },
       ],
       resolveId: resolveIdMock,
@@ -302,11 +302,7 @@ describe('createServerFn compiles correctly', async () => {
     // Note: The factory module's import from '@tanstack/react-start' ALSO uses
     // the fast path (knownRootImports), so no additional resolveId call is needed there.
     expect(resolveIdMock).toHaveBeenCalledTimes(2)
-    expect(resolveIdMock).toHaveBeenNthCalledWith(
-      1,
-      '@tanstack/react-start',
-      'test.ts',
-    )
+    expect(resolveIdMock).toHaveBeenNthCalledWith(1, '@tanstack/react-start')
     expect(resolveIdMock).toHaveBeenNthCalledWith(2, './factory', 'test.ts')
   })
 })

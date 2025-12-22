@@ -82,6 +82,9 @@
 'package: start-client-core':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-client-core/**/*'
+'package: start-fn-stubs':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/start-fn-stubs/**/*'
 'package: start-plugin-core':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-plugin-core/**/*'

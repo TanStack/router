@@ -1,41 +1,74 @@
 import { TRANSFORM_ID_REGEX } from '../constants'
 import { ServerFnCompiler } from './compiler'
+import type { CompileStartFrameworkOptions } from '../types'
 import type { LookupConfig, LookupKind } from './compiler'
-import type { CompileStartFrameworkOptions } from '../start-compiler-plugin/compilers'
 import type { PluginOption } from 'vite'
 
 function cleanId(id: string): string {
-  return id.split('?')[0]!
+  const queryIndex = id.indexOf('?')
+  return queryIndex === -1 ? id : id.substring(0, queryIndex)
 }
 
 const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
-  client: new Set(['Middleware', 'ServerFn'] as const),
-  server: new Set(['ServerFn'] as const),
+  client: new Set([
+    'Middleware',
+    'ServerFn',
+    'IsomorphicFn',
+    'ServerOnlyFn',
+    'ClientOnlyFn',
+  ] as const),
+  server: new Set([
+    'ServerFn',
+    'IsomorphicFn',
+    'ServerOnlyFn',
+    'ClientOnlyFn',
+  ] as const),
 }
 
 const getLookupConfigurationsForEnv = (
   env: 'client' | 'server',
   framework: CompileStartFrameworkOptions,
 ): Array<LookupConfig> => {
-  const createServerFnConfig: LookupConfig = {
-    libName: `@tanstack/${framework}-start`,
-    rootExport: 'createServerFn',
-  }
+  // Common configs for all environments
+  const commonConfigs: Array<LookupConfig> = [
+    {
+      libName: `@tanstack/${framework}-start`,
+      rootExport: 'createServerFn',
+      kind: 'Root',
+    },
+    {
+      libName: `@tanstack/${framework}-start`,
+      rootExport: 'createIsomorphicFn',
+      kind: 'IsomorphicFn',
+    },
+    {
+      libName: `@tanstack/${framework}-start`,
+      rootExport: 'createServerOnlyFn',
+      kind: 'ServerOnlyFn',
+    },
+    {
+      libName: `@tanstack/${framework}-start`,
+      rootExport: 'createClientOnlyFn',
+      kind: 'ClientOnlyFn',
+    },
+  ]
+
   if (env === 'client') {
     return [
       {
         libName: `@tanstack/${framework}-start`,
         rootExport: 'createMiddleware',
+        kind: 'Root',
       },
       {
         libName: `@tanstack/${framework}-start`,
         rootExport: 'createStart',
+        kind: 'Root',
       },
-
-      createServerFnConfig,
+      ...commonConfigs,
     ]
   } else {
-    return [createServerFnConfig]
+    return commonConfigs
   }
 }
 const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
@@ -44,6 +77,12 @@ function buildDirectiveSplitParam(directive: string) {
   return `tsr-directive-${directive.replace(/[^a-zA-Z0-9]/g, '-')}`
 }
 
+const commonTransformCodeFilter = [
+  /\.\s*handler\(/,
+  /createIsomorphicFn/,
+  /createServerOnlyFn/,
+  /createClientOnlyFn/,
+]
 export function createServerFnPlugin(opts: {
   framework: CompileStartFrameworkOptions
   directive: string
@@ -56,11 +95,16 @@ export function createServerFnPlugin(opts: {
     name: string
     type: 'client' | 'server'
   }): PluginOption {
-    // in server environments, we don't transform middleware calls
+    // Code filter patterns for transform functions:
+    // - `.handler(` for createServerFn
+    // - `createMiddleware(` for middleware (client only)
+    // - `createIsomorphicFn` for isomorphic functions
+    // - `createServerOnlyFn` for server-only functions
+    // - `createClientOnlyFn` for client-only functions
     const transformCodeFilter =
       environment.type === 'client'
-        ? [/\.\s*handler\(/, /\.\s*createMiddleware\(\)/]
-        : [/\.\s*handler\(/]
+        ? [...commonTransformCodeFilter, /createMiddleware\s*\(/]
+        : commonTransformCodeFilter
 
     return {
       name: `tanstack-start-core::server-fn:${environment.name}`,

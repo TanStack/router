@@ -25,14 +25,6 @@ export interface MethodChainPaths {
 
 export type MethodChainKey = keyof MethodChainPaths
 
-export const METHOD_CHAIN_KEYS: ReadonlyArray<MethodChainKey> = [
-  'middleware',
-  'inputValidator',
-  'handler',
-  'server',
-  'client',
-] as const
-
 /**
  * Information about a candidate that needs to be rewritten.
  */

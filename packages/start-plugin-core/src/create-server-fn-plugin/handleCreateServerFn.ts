@@ -1,5 +1,5 @@
 import * as t from '@babel/types'
-import { codeFrameError } from '../start-compiler-plugin/utils'
+import { codeFrameError } from './utils'
 import type { RewriteCandidate } from './types'
 
 /**

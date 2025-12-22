@@ -6,7 +6,6 @@ import { crawlFrameworkPkgs } from 'vitefu'
 import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
-import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
@@ -20,44 +19,17 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { createServerFnPlugin } from './create-server-fn-plugin/plugin'
+import type {
+  GetConfigFn,
+  ResolvedStartConfig,
+  TanStackStartVitePluginCoreOptions,
+} from './types'
 import type { ViteEnvironmentNames } from './constants'
 import type {
   TanStackStartInputConfig,
   TanStackStartOutputConfig,
 } from './schema'
 import type { PluginOption } from 'vite'
-import type { CompileStartFrameworkOptions } from './start-compiler-plugin/compilers'
-
-export interface TanStackStartVitePluginCoreOptions {
-  framework: CompileStartFrameworkOptions
-  defaultEntryPaths: {
-    client: string
-    server: string
-    start: string
-  }
-  serverFn?: {
-    directive?: string
-    ssr?: {
-      getServerFnById?: string
-    }
-    providerEnv?: string
-  }
-}
-
-export interface ResolvedStartConfig {
-  root: string
-  startFilePath: string | undefined
-  routerFilePath: string
-  srcDirectory: string
-  viteAppBase: string
-  serverFnProviderEnv: string
-}
-
-export type GetConfigFn = () => {
-  startConfig: TanStackStartOutputConfig
-  resolvedStartConfig: ResolvedStartConfig
-  corePluginOpts: TanStackStartVitePluginCoreOptions
-}
 
 function isFullUrl(str: string): boolean {
   try {
@@ -431,7 +403,8 @@ export function TanStackStartVitePluginCore(
         envName: serverFnProviderEnv,
       },
     }),
-    startCompilerPlugin({ framework: corePluginOpts.framework, environments }),
+    // Note: startCompilerPlugin functionality (createIsomorphicFn, createServerOnlyFn, createClientOnlyFn)
+    // is now merged into createServerFnPlugin above
     loadEnvPlugin(),
     startManifestPlugin({
       getClientBundle: () => getBundle(VITE_ENVIRONMENT_NAMES.client),
