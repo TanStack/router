@@ -8,7 +8,7 @@ import {
   useMatchRoute,
   useMatches,
 } from '../src'
-import type { AnyRouteMatch, RouteMatch } from '@tanstack/router-core'
+import type { AnyRouteMatch, Register, RouteMatch } from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
 
 const rootRoute = createRootRoute()
@@ -145,9 +145,15 @@ const defaultRouter = createRouter({
   routeTree,
 })
 
+declare module '@tanstack/router-core' {
+  interface Register {
+    router: typeof defaultRouter
+  }
+}
+
 type DefaultRouter = typeof defaultRouter
 
-const useDefaultMatchRoute = useMatchRoute<DefaultRouter>
+const useDefaultMatchRoute = useMatchRoute
 
 test('when matching a route with params', () => {
   const matchRoute = useDefaultMatchRoute()
@@ -159,46 +165,50 @@ test('when matching a route with params', () => {
       '/' | '.' | '..' | '/invoices' | '/invoices/$invoiceId' | '/comments/$id'
     >()
 
-  expectTypeOf(MatchRoute<DefaultRouter, string, '/invoices/$invoiceId'>)
+  expectTypeOf(
+    MatchRoute<{ router: DefaultRouter }, string, '/invoices/$invoiceId'>,
+  )
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
       '/' | '.' | '..' | '/invoices' | '/invoices/$invoiceId' | '/comments/$id'
     >()
 
-  expectTypeOf(
-    matchRoute({
-      to: '/invoices/$invoiceId',
-    }),
-  ).toEqualTypeOf<Solid.Accessor<false | { invoiceId: string }>>()
+  const match = matchRoute({
+    to: '/invoices/$invoiceId',
+  })
+
+  expectTypeOf(match()).toEqualTypeOf<false | { invoiceId: string }>()
 })
 
 test('when matching a route with params underneath a layout route', () => {
   const matchRoute = useDefaultMatchRoute()
 
-  expectTypeOf(
-    matchRoute({
-      to: '/comments/$id',
-    }),
-  ).toEqualTypeOf<Solid.Accessor<false | { id: string }>>()
+  const match = matchRoute({
+    to: '/comments/$id',
+  })
+
+  expectTypeOf(match()).toEqualTypeOf<false | { id: string }>()
 })
 
 test('useMatches returns a union of all matches', () => {
-  expectTypeOf(useMatches<DefaultRouter>()()).toEqualTypeOf<
-    Array<
-      | RootMatch
-      | IndexMatch
-      | InvoicesMatch
-      | InvoicesIndexMatch
-      | InvoiceMatch
-      | LayoutMatch
-      | CommentsMatch
+  expectTypeOf(useMatches()).toEqualTypeOf<
+    Solid.Accessor<
+      Array<
+        | RootMatch
+        | IndexMatch
+        | InvoicesMatch
+        | InvoicesIndexMatch
+        | InvoiceMatch
+        | LayoutMatch
+        | CommentsMatch
+      >
     >
   >
 })
 
 test('when filtering useMatches by search', () => {
-  const matches = useMatches<DefaultRouter>()()
+  const matches = useMatches()()
 
   expectTypeOf(isMatch<(typeof matches)[number], ''>)
     .parameter(1)
@@ -213,7 +223,7 @@ test('when filtering useMatches by search', () => {
 })
 
 test('when filtering useMatches by loaderData with an array', () => {
-  const matches = useMatches<DefaultRouter>()()
+  const matches = useMatches()()
 
   expectTypeOf(isMatch<(typeof matches)[number], ''>)
     .parameter(1)

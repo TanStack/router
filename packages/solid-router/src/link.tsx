@@ -16,10 +16,12 @@ import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
 
 import type {
-  AnyRouter,
   Constrain,
   LinkCurrentTargetElement,
   LinkOptions,
+  MakeToRequired,
+  NavigateOptions,
+  Register,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -29,13 +31,17 @@ import type {
 } from './typePrimitives'
 
 export function useLinkProps<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
-  TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
-  TMaskTo extends string = '',
+  TRegister extends Register = Register,
+  const TFrom extends
+    | RoutePaths<RegisteredRouter<TRegister>['routeTree']>
+    | string = string,
+  const TTo extends string = '',
+  const TMaskFrom extends
+    | RoutePaths<RegisteredRouter<TRegister>['routeTree']>
+    | string = TFrom,
+  const TMaskTo extends string = '',
 >(
-  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  options: UseLinkPropsOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
@@ -313,7 +319,7 @@ export function useLinkProps<
         startTransition: local.startTransition,
         viewTransition: local.viewTransition,
         ignoreBlocker: local.ignoreBlocker,
-      })
+      } as any)
     }
   }
 
@@ -443,22 +449,26 @@ export function useLinkProps<
 }
 
 export type UseLinkPropsOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TRegister extends Register = Register,
+  TFrom extends
+    | RoutePaths<RegisteredRouter<TRegister>['routeTree']>
+    | string = string,
   TTo extends string | undefined = '.',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskFrom extends
+    | RoutePaths<RegisteredRouter<TRegister>['routeTree']>
+    | string = TFrom,
   TMaskTo extends string = '.',
-> = ActiveLinkOptions<'a', TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = ActiveLinkOptions<'a', TRegister, TFrom, TTo, TMaskFrom, TMaskTo> &
   Omit<Solid.ComponentProps<'a'>, 'style'> & { style?: Solid.JSX.CSSProperties }
 
 export type ActiveLinkOptions<
   TComp = 'a',
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = LinkOptions<RegisteredRouter<TRegister>, TFrom, TTo, TMaskFrom, TMaskTo> &
   ActiveLinkOptionProps<TComp>
 
 type ActiveLinkProps<TComp> = Partial<
@@ -482,12 +492,13 @@ export interface ActiveLinkOptionProps<TComp = 'a'> {
 
 export type LinkProps<
   TComp = 'a',
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
-> = ActiveLinkOptions<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+> = MakeToRequired<TRegister, TFrom, TTo> &
+  ActiveLinkOptions<TComp, TRegister, TFrom, TTo, TMaskFrom, TMaskTo> &
   LinkPropsChildren
 
 export interface LinkPropsChildren {
@@ -506,17 +517,17 @@ type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
 
 export type LinkComponentProps<
   TComp = 'a',
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = LinkComponentSolidProps<TComp> &
-  LinkProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  LinkProps<TComp, TRegister, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type CreateLinkProps = LinkProps<
   any,
-  any,
+  Register,
   string,
   string,
   string,
@@ -527,13 +538,13 @@ export type LinkComponent<
   in out TComp,
   in out TDefaultFrom extends string = string,
 > = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(
-  props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  props: LinkComponentProps<TComp, TRegister, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Solid.JSX.Element
 
 export interface LinkComponentRoute<
@@ -541,13 +552,13 @@ export interface LinkComponentRoute<
 > {
   defaultFrom: TDefaultFrom
   <
-    TRouter extends AnyRouter = RegisteredRouter,
+    TRegister extends Register = Register,
     const TTo extends string | undefined = undefined,
     const TMaskTo extends string = '',
   >(
     props: LinkComponentProps<
       'a',
-      TRouter,
+      TRegister,
       this['defaultFrom'],
       TTo,
       this['defaultFrom'],
@@ -559,7 +570,7 @@ export interface LinkComponentRoute<
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => Solid.JSX.Element>,
 ): LinkComponent<TComp> {
-  return (props) => <Link {...props} _asChild={Comp} />
+  return (props) => <Link {...(props as any)} _asChild={Comp} />
 }
 
 export const Link: LinkComponent<'a'> = (props) => {
@@ -612,17 +623,17 @@ function isCtrlEvent(e: MouseEvent) {
 export type LinkOptionsFnOptions<
   TOptions,
   TComp,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 > =
   TOptions extends ReadonlyArray<any>
-    ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
-    : ValidateLinkOptions<TRouter, TOptions, string, TComp>
+    ? ValidateLinkOptionsArray<TRegister, TOptions, string, TComp>
+    : ValidateLinkOptions<TRegister, TOptions, string, TComp>
 
 export type LinkOptionsFn<TComp> = <
   const TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 >(
-  options: LinkOptionsFnOptions<TOptions, TComp, TRouter>,
+  options: LinkOptionsFnOptions<TOptions, TComp, TRegister>,
 ) => TOptions
 
 export const linkOptions: LinkOptionsFn<'a'> = (options) => {

@@ -14,7 +14,6 @@ import type { UseSearchRoute } from './useSearch'
 import type {
   AnyContext,
   AnyRoute,
-  AnyRouter,
   Constrain,
   ConstrainLiteral,
   FileBaseRouteOptions,
@@ -182,13 +181,13 @@ export function FileRouteLoader<
 
 declare module '@tanstack/router-core' {
   export interface LazyRoute<in out TRoute extends AnyRoute> {
-    useMatch: UseMatchRoute<TRoute['id']>
-    useRouteContext: UseRouteContextRoute<TRoute['id']>
-    useSearch: UseSearchRoute<TRoute['id']>
-    useParams: UseParamsRoute<TRoute['id']>
-    useLoaderDeps: UseLoaderDepsRoute<TRoute['id']>
-    useLoaderData: UseLoaderDataRoute<TRoute['id']>
-    useNavigate: () => UseNavigateResult<TRoute['fullPath']>
+    useMatch: UseMatchRoute<Register, TRoute['id']>
+    useRouteContext: UseRouteContextRoute<Register, TRoute['id']>
+    useSearch: UseSearchRoute<Register, TRoute['id']>
+    useParams: UseParamsRoute<Register, TRoute['id']>
+    useLoaderDeps: UseLoaderDepsRoute<Register, TRoute['id']>
+    useLoaderData: UseLoaderDataRoute<Register, TRoute['id']>
+    useNavigate: () => UseNavigateResult<Register, TRoute['fullPath']>
   }
 }
 
@@ -205,53 +204,58 @@ export class LazyRoute<TRoute extends AnyRoute> {
     this.options = opts
   }
 
-  useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
+  useMatch: UseMatchRoute<Register, TRoute['id']> = (opts) => {
     return useMatch({
       select: opts?.select,
       from: this.options.id,
     } as any) as any
   }
 
-  useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
+  useRouteContext: UseRouteContextRoute<Register, TRoute['id']> = (opts) => {
     return useMatch({
       from: this.options.id,
       select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
     }) as any
   }
 
-  useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
+  useSearch: UseSearchRoute<Register, TRoute['id']> = (opts) => {
     return useSearch({
       select: opts?.select,
       from: this.options.id,
     } as any) as any
   }
 
-  useParams: UseParamsRoute<TRoute['id']> = (opts) => {
+  useParams: UseParamsRoute<Register, TRoute['id']> = (opts) => {
     return useParams({
       select: opts?.select,
       from: this.options.id,
     } as any) as any
   }
 
-  useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {
+  useLoaderDeps: UseLoaderDepsRoute<Register, TRoute['id']> = (opts) => {
     return useLoaderDeps({ ...opts, from: this.options.id } as any)
   }
 
-  useLoaderData: UseLoaderDataRoute<TRoute['id']> = (opts) => {
+  useLoaderData: UseLoaderDataRoute<Register, TRoute['id']> = (opts) => {
     return useLoaderData({ ...opts, from: this.options.id } as any)
   }
 
-  useNavigate = (): UseNavigateResult<TRoute['fullPath']> => {
+  useNavigate = (): UseNavigateResult<Register, TRoute['fullPath']> => {
     const router = useRouter()
     return useNavigate({ from: router.routesById[this.options.id].fullPath })
   }
 }
 
 export function createLazyRoute<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TId extends string = string,
-  TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
->(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
+  TRoute extends AnyRoute = RouteById<
+    RegisteredRouter<TRegister>['routeTree'],
+    TId
+  >,
+>(
+  id: ConstrainLiteral<TId, RouteIds<RegisteredRouter<TRegister>['routeTree']>>,
+) {
   return (opts: LazyRouteOptions) => {
     return new LazyRoute<TRoute>({
       id: id,

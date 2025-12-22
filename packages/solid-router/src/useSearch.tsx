@@ -1,7 +1,11 @@
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type {
-  AnyRouter,
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
+import type {
+  Register,
   RegisteredRouter,
   ResolveUseSearch,
   StrictOrFrom,
@@ -11,59 +15,93 @@ import type {
 } from '@tanstack/router-core'
 
 export interface UseSearchBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
+  TStructuralSharing,
 > {
-  select?: (state: ResolveUseSearch<TRouter, TFrom, TStrict>) => TSelected
+  select?: (
+    state: ResolveUseSearch<RegisteredRouter<TRegister>, TFrom, TStrict>,
+  ) => ValidateSelected<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
   shouldThrow?: TThrow
 }
 
 export type UseSearchOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
-> = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseSearchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
+  TStructuralSharing,
+> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom, TStrict> &
+  UseSearchBaseOptions<
+    TRegister,
+    TFrom,
+    TStrict,
+    TThrow,
+    TSelected,
+    TStructuralSharing
+  > &
+  StructuralSharingOption<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
 
-export type UseSearchRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseSearchRoute<TRegister extends Register, out TFrom> = <
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
   opts?: UseSearchBaseOptions<
-    TRouter,
+    TRegister,
     TFrom,
     /* TStrict */ true,
     /* TThrow */ true,
-    TSelected
-  >,
-) => Accessor<UseSearchResult<TRouter, TFrom, true, TSelected>>
+    TSelected,
+    TStructuralSharing
+  > &
+    StructuralSharingOption<
+      RegisteredRouter<TRegister>,
+      TSelected,
+      TStructuralSharing
+    >,
+) => Accessor<
+  UseSearchResult<RegisteredRouter<TRegister>, TFrom, true, TSelected>
+>
 
 export function useSearch<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
   opts: UseSearchOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TStrict,
     ThrowConstraint<TStrict, TThrow>,
-    TSelected
-  >,
+    TSelected,
+    TStructuralSharing
+  > = {} as any,
 ): Accessor<
-  ThrowOrOptional<UseSearchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+  ThrowOrOptional<
+    UseSearchResult<RegisteredRouter<TRegister>, TFrom, TStrict, TSelected>,
+    TThrow
+  >
 > {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
+    structuralSharing: opts.structuralSharing,
     select: (match: any) => {
       return opts.select ? opts.select(match.search) : match.search
     },

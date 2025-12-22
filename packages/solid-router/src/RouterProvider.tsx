@@ -3,19 +3,20 @@ import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
 
 export function RouterContextProvider<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TDehydrated extends Record<string, any> = Record<string, any>,
 >({
   router,
   children,
   ...rest
-}: RouterProps<TRouter, TDehydrated> & {
+}: RouterProps<TRegister, TDehydrated> & {
   children: () => Solid.JSX.Element
 }) {
   // Allow the router to update options on the router instance
@@ -42,9 +43,9 @@ export function RouterContextProvider<
 }
 
 export function RouterProvider<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TDehydrated extends Record<string, any> = Record<string, any>,
->({ router, ...rest }: RouterProps<TRouter, TDehydrated>) {
+>({ router, ...rest }: RouterProps<TRegister, TDehydrated>) {
   return (
     <RouterContextProvider router={router} {...rest}>
       {() => <Matches />}
@@ -53,25 +54,25 @@ export function RouterProvider<
 }
 
 export type RouterProps<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TDehydrated extends Record<string, any> = Record<string, any>,
 > = Omit<
   RouterOptions<
-    TRouter['routeTree'],
-    NonNullable<TRouter['options']['trailingSlash']>,
+    RegisteredRouter<TRegister>['routeTree'],
+    NonNullable<RegisteredRouter<TRegister>['options']['trailingSlash']>,
     false,
-    TRouter['history'],
+    RegisteredRouter<TRegister>['history'],
     TDehydrated
   >,
   'context'
 > & {
-  router: TRouter
+  router: RegisteredRouter<TRegister>
   context?: Partial<
     RouterOptions<
-      TRouter['routeTree'],
-      NonNullable<TRouter['options']['trailingSlash']>,
+      RegisteredRouter<TRegister>['routeTree'],
+      NonNullable<RegisteredRouter<TRegister>['options']['trailingSlash']>,
       false,
-      TRouter['history'],
+      RegisteredRouter<TRegister>['history'],
       TDehydrated
     >['context']
   >

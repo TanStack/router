@@ -1,7 +1,11 @@
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type {
-  AnyRouter,
+  StructuralSharingOption,
+  ValidateSelected,
+} from './structuralSharing'
+import type {
+  Register,
   RegisteredRouter,
   ResolveUseParams,
   StrictOrFrom,
@@ -11,60 +15,89 @@ import type {
 } from '@tanstack/router-core'
 
 export interface UseParamsBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
+  TStructuralSharing,
 > {
-  select?: (params: ResolveUseParams<TRouter, TFrom, TStrict>) => TSelected
+  select?: (
+    params: ResolveUseParams<TRegister, TFrom, TStrict>,
+  ) => ValidateSelected<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
   shouldThrow?: TThrow
 }
 
 export type UseParamsOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string | undefined,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
-> = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseParamsBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
+  TStructuralSharing,
+> = StrictOrFrom<TRegister, TFrom, TStrict> &
+  UseParamsBaseOptions<
+    TRegister,
+    TFrom,
+    TStrict,
+    TThrow,
+    TSelected,
+    TStructuralSharing
+  > &
+  StructuralSharingOption<
+    RegisteredRouter<TRegister>,
+    TSelected,
+    TStructuralSharing
+  >
 
-export type UseParamsRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseParamsRoute<TRegister extends Register, out TFrom> = <
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
   opts?: UseParamsBaseOptions<
-    TRouter,
+    TRegister,
     TFrom,
     /* TStrict */ true,
     /* TThrow */ true,
-    TSelected
-  >,
-) => Accessor<UseParamsResult<TRouter, TFrom, true, TSelected>>
+    TSelected,
+    TStructuralSharing
+  > &
+    StructuralSharingOption<
+      RegisteredRouter<TRegister>,
+      TSelected,
+      TStructuralSharing
+    >,
+) => Accessor<UseParamsResult<TRegister, TFrom, true, TSelected>>
 
 export function useParams<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
   TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
 >(
   opts: UseParamsOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TStrict,
     ThrowConstraint<TStrict, TThrow>,
-    TSelected
-  >,
+    TSelected,
+    TStructuralSharing
+  > = {} as any,
 ): Accessor<
-  ThrowOrOptional<UseParamsResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+  ThrowOrOptional<UseParamsResult<TRegister, TFrom, TStrict, TSelected>, TThrow>
 > {
   return useMatch({
     from: opts.from!,
     shouldThrow: opts.shouldThrow,
     strict: opts.strict,
-    select: (match) => {
+    structuralSharing: opts.structuralSharing,
+    select: (match: any) => {
       const params = opts.strict === false ? match.params : match._strictParams
 
       return opts.select ? opts.select(params) : params

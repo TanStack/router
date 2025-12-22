@@ -2,7 +2,7 @@
 import { useStore } from '@tanstack/solid-store'
 import { useRouter } from './useRouter'
 import type {
-  AnyRouter,
+  Register,
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
@@ -34,23 +34,27 @@ function deepEqual(a: any, b: any): boolean {
   return true
 }
 
-export type UseRouterStateOptions<TRouter extends AnyRouter, TSelected> = {
-  router?: TRouter
-  select?: (state: RouterState<TRouter['routeTree']>) => TSelected
+export type UseRouterStateOptions<TRegister extends Register, TSelected> = {
+  router?: RegisteredRouter<TRegister>
+  select?: (
+    state: RouterState<RegisteredRouter<TRegister>['routeTree']>,
+  ) => TSelected
 }
 
 export type UseRouterStateResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
-> = unknown extends TSelected ? RouterState<TRouter['routeTree']> : TSelected
+> = unknown extends TSelected
+  ? RouterState<RegisteredRouter<TRegister>['routeTree']>
+  : TSelected
 
 export function useRouterState<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseRouterStateOptions<TRouter, TSelected>,
-): Accessor<UseRouterStateResult<TRouter, TSelected>> {
-  const contextRouter = useRouter<TRouter>({
+  opts?: UseRouterStateOptions<TRegister, TSelected>,
+): Accessor<UseRouterStateResult<TRegister, TSelected>> {
+  const contextRouter = useRouter<TRegister>({
     warn: opts?.router === undefined,
   })
   const router = opts?.router || contextRouter
@@ -68,5 +72,5 @@ export function useRouterState<
       // return new object references but with the same values.
       equal: deepEqual,
     },
-  ) as Accessor<UseRouterStateResult<TRouter, TSelected>>
+  ) as Accessor<UseRouterStateResult<TRegister, TSelected>>
 }

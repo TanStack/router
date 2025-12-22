@@ -1,31 +1,44 @@
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type {
-  AnyRouter,
+  Register,
   RegisteredRouter,
   UseRouteContextBaseOptions,
   UseRouteContextOptions,
   UseRouteContextResult,
 } from '@tanstack/router-core'
 
-export type UseRouteContextRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+export type UseRouteContextRoute<TRegister extends Register, out TFrom> = <
   TSelected = unknown,
 >(
-  opts?: UseRouteContextBaseOptions<TRouter, TFrom, true, TSelected>,
-) => Accessor<UseRouteContextResult<TRouter, TFrom, true, TSelected>>
+  opts?: UseRouteContextBaseOptions<
+    RegisteredRouter<TRegister>,
+    TFrom,
+    true,
+    TSelected
+  >,
+) => Accessor<
+  UseRouteContextResult<RegisteredRouter<TRegister>, TFrom, true, TSelected>
+>
 
 export function useRouteContext<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
 >(
-  opts: UseRouteContextOptions<TRouter, TFrom, TStrict, TSelected>,
-): Accessor<UseRouteContextResult<TRouter, TFrom, TStrict, TSelected>> {
+  opts: UseRouteContextOptions<
+    RegisteredRouter<TRegister>,
+    TFrom,
+    TStrict,
+    TSelected
+  >,
+): Accessor<
+  UseRouteContextResult<RegisteredRouter<TRegister>, TFrom, TStrict, TSelected>
+> {
   return useMatch({
     ...(opts as any),
-    select: (match) =>
+    select: (match: any) =>
       opts.select ? opts.select(match.context) : match.context,
   }) as any
 }

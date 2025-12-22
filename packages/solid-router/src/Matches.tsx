@@ -10,7 +10,6 @@ import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
 import type {
   AnyRoute,
-  AnyRouter,
   DeepPartial,
   Expand,
   MakeOptionalPathParams,
@@ -19,6 +18,7 @@ import type {
   MaskOptions,
   MatchRouteOptions,
   NoInfer,
+  Register,
   RegisteredRouter,
   ResolveRelativePath,
   ResolveRoute,
@@ -109,18 +109,20 @@ function MatchesInner() {
 }
 
 export type UseMatchRouteOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = ToSubOptionsProps<TRouter, TFrom, TTo> &
-  DeepPartial<MakeOptionalSearchParams<TRouter, TFrom, TTo>> &
-  DeepPartial<MakeOptionalPathParams<TRouter, TFrom, TTo>> &
-  MaskOptions<TRouter, TMaskFrom, TMaskTo> &
+> = ToSubOptionsProps<RegisteredRouter<TRegister>, TFrom, TTo> &
+  DeepPartial<
+    MakeOptionalSearchParams<RegisteredRouter<TRegister>, TFrom, TTo>
+  > &
+  DeepPartial<MakeOptionalPathParams<RegisteredRouter<TRegister>, TFrom, TTo>> &
+  MaskOptions<RegisteredRouter<TRegister>, TMaskFrom, TMaskTo> &
   MatchRouteOptions
 
-export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
+export function useMatchRoute<TRegister extends Register = Register>() {
   const router = useRouter()
 
   const status = useRouterState({
@@ -133,9 +135,16 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     const TMaskFrom extends string = TFrom,
     const TMaskTo extends string = '',
   >(
-    opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+    opts: UseMatchRouteOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo>,
   ): Solid.Accessor<
-    false | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']>
+    | false
+    | Expand<
+        ResolveRoute<
+          RegisteredRouter<TRegister>,
+          TFrom,
+          TTo
+        >['types']['allParams']
+      >
   > => {
     const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
@@ -154,17 +163,17 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 }
 
 export type MakeMatchRouteOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
+> = UseMatchRouteOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
         params?: RouteByPath<
-          TRouter['routeTree'],
+          RegisteredRouter<TRegister>['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
       ) => Solid.JSX.Element)
@@ -172,12 +181,14 @@ export type MakeMatchRouteOptions<
 }
 
 export function MatchRoute<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string = string,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
->(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
+>(
+  props: MakeMatchRouteOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo>,
+): any {
   const status = useRouterState({
     select: (s) => s.status,
   })
@@ -198,41 +209,49 @@ export function MatchRoute<
   )
 }
 
-export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {
-  select?: (matches: Array<MakeRouteMatchUnion<TRouter>>) => TSelected
+export interface UseMatchesBaseOptions<TRegister extends Register, TSelected> {
+  select?: (
+    matches: Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+  ) => TSelected
 }
 
 export type UseMatchesResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
-> = unknown extends TSelected ? Array<MakeRouteMatchUnion<TRouter>> : TSelected
+> = unknown extends TSelected
+  ? Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>
+  : TSelected
 
 export function useMatches<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
-): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
+  opts?: UseMatchesBaseOptions<TRegister, TSelected>,
+): Solid.Accessor<UseMatchesResult<TRegister, TSelected>> {
   return useRouterState({
-    select: (state: RouterState<TRouter['routeTree']>) => {
+    select: (state: RouterState<RegisteredRouter<TRegister>['routeTree']>) => {
       const matches = state.matches
       return opts?.select
-        ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
+        ? opts.select(
+            matches as Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+          )
         : matches
     },
-  } as any) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
+  } as any) as Solid.Accessor<UseMatchesResult<TRegister, TSelected>>
 }
 
 export function useParentMatches<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
-): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
+  opts?: UseMatchesBaseOptions<TRegister, TSelected>,
+): Solid.Accessor<UseMatchesResult<TRegister, TSelected>> {
   const contextMatchId = Solid.useContext(matchContext)
 
   return useMatches({
-    select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
+    select: (
+      matches: Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+    ) => {
       matches = matches.slice(
         0,
         matches.findIndex((d) => d.id === contextMatchId()),
@@ -243,15 +262,17 @@ export function useParentMatches<
 }
 
 export function useChildMatches<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
-): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
+  opts?: UseMatchesBaseOptions<TRegister, TSelected>,
+): Solid.Accessor<UseMatchesResult<TRegister, TSelected>> {
   const contextMatchId = Solid.useContext(matchContext)
 
   return useMatches({
-    select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
+    select: (
+      matches: Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+    ) => {
       matches = matches.slice(
         matches.findIndex((d) => d.id === contextMatchId()) + 1,
       )

@@ -12,10 +12,11 @@ import type {
   InferStrict,
   InferTo,
   RegisteredRouter,
+  Register,
 } from '@tanstack/router-core'
 
 export type ValidateLinkOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TOptions = unknown,
   TDefaultFrom extends string = string,
   TComp = 'a',
@@ -23,7 +24,7 @@ export type ValidateLinkOptions<
   TOptions,
   LinkComponentProps<
     TComp,
-    TRouter,
+    TRegister,
     InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
     InferMaskFrom<TOptions>,
@@ -31,44 +32,55 @@ export type ValidateLinkOptions<
   >
 >
 
-export type ValidateLinkOptionsArray<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
-  TDefaultFrom extends string = string,
-  TComp = 'a',
-> = {
-  [K in keyof TOptions]: ValidateLinkOptions<
-    TRouter,
-    TOptions[K],
-    TDefaultFrom,
-    TComp
-  >
+/**
+ * @private
+ */
+export type InferStructuralSharing<TOptions> = TOptions extends {
+  structuralSharing: infer TStructuralSharing
 }
+  ? TStructuralSharing
+  : unknown
 
 export type ValidateUseSearchOptions<
   TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 > = Constrain<
   TOptions,
   UseSearchOptions<
-    TRouter,
+    TRegister,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
     InferShouldThrow<TOptions>,
-    InferSelected<TOptions>
+    InferSelected<TOptions>,
+    InferStructuralSharing<TOptions>
   >
 >
 
 export type ValidateUseParamsOptions<
   TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 > = Constrain<
   TOptions,
   UseParamsOptions<
-    TRouter,
+    TRegister,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
     InferShouldThrow<TOptions>,
-    InferSelected<TOptions>
+    InferSelected<TOptions>,
+    InferStructuralSharing<TOptions>
   >
 >
+
+export type ValidateLinkOptionsArray<
+  TRegister extends Register = Register,
+  TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
+  TDefaultFrom extends string = string,
+  TComp = 'a',
+> = {
+  [K in keyof TOptions]: ValidateLinkOptions<
+    TRegister,
+    TOptions[K],
+    TDefaultFrom,
+    TComp
+  >
+}

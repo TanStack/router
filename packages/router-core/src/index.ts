@@ -37,6 +37,7 @@ export type {
   MaskOptions,
   ToSubOptionsProps,
   RequiredToOptions,
+  MakeToRequired,
 } from './link'
 
 export { componentTypes } from './load-matches'

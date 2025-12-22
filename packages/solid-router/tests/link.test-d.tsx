@@ -167,20 +167,24 @@ type RouterNeverTrailingSlashes = typeof routerNeverTrailingSlashes
 type RouterPreserveTrailingSlashes = typeof routerPreserveTrailingSlashes
 
 test('when navigating to the root', () => {
-  const DefaultRouterLink = Link<DefaultRouter, string, '/'>
-  const DefaultRouterObjectsLink = Link<DefaultRouterObjects, string, '/'>
+  const DefaultRouterLink = Link<{ router: DefaultRouter }, string, '/'>
+  const DefaultRouterObjectsLink = Link<
+    { router: DefaultRouterObjects },
+    string,
+    '/'
+  >
   const RouterAlwaysTrailingSlashLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/'
   >
   const RouterNeverTrailingSlashLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/'
   >
   const RouterPreserveTrailingSlashLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     '/'
   >
@@ -434,7 +438,7 @@ test('when navigating to the root', () => {
 })
 
 test('when navigating from a route with no params and no search to the root', () => {
-  expectTypeOf(Link<DefaultRouter, '/posts', '/'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -455,7 +459,7 @@ test('when navigating from a route with no params and no search to the root', ()
       | undefined
     >()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts', '/'>)
+  expectTypeOf(Link<{ router: DefaultRouterObjects }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -476,7 +480,7 @@ test('when navigating from a route with no params and no search to the root', ()
       | undefined
     >()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', '/'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts/', '/'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -497,7 +501,7 @@ test('when navigating from a route with no params and no search to the root', ()
       | undefined
     >()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '/'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -518,7 +522,7 @@ test('when navigating from a route with no params and no search to the root', ()
       | undefined
     >()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', '/'>)
+  expectTypeOf(Link<{ router: RouterPreserveTrailingSlashes }, '/posts/', '/'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -552,7 +556,7 @@ test('when navigating from a route with no params and no search to the root', ()
       | undefined
     >()
 
-  expectTypeOf(Link<DefaultRouter, '/posts', '/'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>().toEqualTypeOf<{
@@ -560,7 +564,7 @@ test('when navigating from a route with no params and no search to the root', ()
     rootIndexPage: number
   }>
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts', '/'>)
+  expectTypeOf(Link<{ router: DefaultRouterObjects }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>().toEqualTypeOf<{
@@ -568,7 +572,7 @@ test('when navigating from a route with no params and no search to the root', ()
     rootIndexPage: number
   }>
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', '/'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>().toEqualTypeOf<{
@@ -576,7 +580,7 @@ test('when navigating from a route with no params and no search to the root', ()
     rootIndexPage: number
   }>
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '/'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>().toEqualTypeOf<{
@@ -584,7 +588,9 @@ test('when navigating from a route with no params and no search to the root', ()
     rootIndexPage: number
   }>
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts' | '/posts/', '/'>)
+  expectTypeOf(
+    Link<{ router: RouterPreserveTrailingSlashes }, '/posts' | '/posts/', '/'>,
+  )
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>().toEqualTypeOf<{
@@ -592,7 +598,7 @@ test('when navigating from a route with no params and no search to the root', ()
     rootIndexPage: number
   }>
 
-  expectTypeOf(Link<DefaultRouter, '/posts', '/'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{
@@ -600,7 +606,7 @@ test('when navigating from a route with no params and no search to the root', ()
       rootIndexPage: number
     }>()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts', '/'>)
+  expectTypeOf(Link<{ router: DefaultRouterObjects }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{
@@ -608,7 +614,7 @@ test('when navigating from a route with no params and no search to the root', ()
       rootIndexPage: number
     }>()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', '/'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{
@@ -616,7 +622,7 @@ test('when navigating from a route with no params and no search to the root', ()
       rootIndexPage: number
     }>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '/'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{
@@ -624,7 +630,9 @@ test('when navigating from a route with no params and no search to the root', ()
       rootIndexPage: number
     }>()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts' | '/posts/', '/'>)
+  expectTypeOf(
+    Link<{ router: RouterPreserveTrailingSlashes }, '/posts' | '/posts/', '/'>,
+  )
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{
@@ -632,31 +640,33 @@ test('when navigating from a route with no params and no search to the root', ()
       rootIndexPage: number
     }>()
 
-  expectTypeOf(Link<DefaultRouter, '/posts', '/'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
     .toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts', '/'>)
+  expectTypeOf(Link<{ router: DefaultRouterObjects }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
     .toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', '/'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts/', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
     .toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '/'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts', '/'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
     .toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts' | '/posts/', '/'>)
+  expectTypeOf(
+    Link<{ router: RouterPreserveTrailingSlashes }, '/posts' | '/posts/', '/'>,
+  )
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
@@ -664,111 +674,111 @@ test('when navigating from a route with no params and no search to the root', ()
 })
 
 test('when navigating from a route with no params and no search to the current route', () => {
-  expectTypeOf(Link<DefaultRouter, '/posts', '.'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts', '.'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<'./$postId' | undefined | '.'>()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts', '.'>)
+  expectTypeOf(Link<{ router: DefaultRouterObjects }, '/posts', '.'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<'./$postId' | undefined | '.'>()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<'./$postId/' | undefined | './'>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '.'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts', '.'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<'./$postId' | undefined | '.'>()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterPreserveTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<'./$postId/' | './$postId' | undefined | './' | '.'>()
 
-  expectTypeOf(Link<DefaultRouter, '/posts/', '.'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts/', '.'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>()
     .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts/', '.'>)
+  expectTypeOf(Link<{ router: DefaultRouterObjects }, '/posts/', '.'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>()
     .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>()
     .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', '.'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts/', '.'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>()
     .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterPreserveTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function>()
     .toEqualTypeOf<{ rootPage?: number } | undefined | true>()
 
-  expectTypeOf(Link<DefaultRouter, '/posts/', '.'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts/', '.'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts/', './'>)
+  expectTypeOf(Link<{ router: DefaultRouterObjects }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterPreserveTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .returns.toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<DefaultRouter, '/posts/', './'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
     .toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts/', './'>)
+  expectTypeOf(Link<{ router: DefaultRouterObjects }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
     .toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
     .toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
     .toEqualTypeOf<{ rootPage?: number }>()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
+  expectTypeOf(Link<{ router: RouterPreserveTrailingSlashes }, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
@@ -776,7 +786,7 @@ test('when navigating from a route with no params and no search to the current r
 })
 
 test('when navigating from a route with no params and no search to the parent route', () => {
-  expectTypeOf(Link<DefaultRouter, '/posts', '..'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -794,7 +804,7 @@ test('when navigating from a route with no params and no search to the parent ro
       | undefined
     >()
 
-  expectTypeOf(Link<DefaultRouterObjects, '/posts', '..'>)
+  expectTypeOf(Link<{ router: DefaultRouterObjects }, '/posts', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -812,7 +822,7 @@ test('when navigating from a route with no params and no search to the parent ro
       | undefined
     >()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts', '../'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts', '../'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -830,7 +840,7 @@ test('when navigating from a route with no params and no search to the parent ro
       | undefined
     >()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '..'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -848,7 +858,7 @@ test('when navigating from a route with no params and no search to the parent ro
       | undefined
     >()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts', '..'>)
+  expectTypeOf(Link<{ router: RouterPreserveTrailingSlashes }, '/posts', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -879,26 +889,7 @@ test('when navigating from a route with no params and no search to the parent ro
 })
 
 test('cannot navigate to a branch with an index', () => {
-  expectTypeOf(Link<DefaultRouter, string, '/invoices/$invoiceId'>)
-    .parameter(0)
-    .toHaveProperty('to')
-    .toEqualTypeOf<
-      | '/'
-      | '/posts'
-      | '/posts/$postId'
-      | '/invoices'
-      | '/invoices/$invoiceId'
-      | '/invoices/$invoiceId/edit'
-      | '/invoices/$invoiceId/details'
-      | '/invoices/$invoiceId/details/$detailId'
-      | '/invoices/$invoiceId/details/$detailId/lines'
-      | '/invoices/$invoiceId/details/$detailId/lines/form'
-      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
-      | '.'
-      | '..'
-    >()
-
-  expectTypeOf(Link<DefaultRouterObjects, string, '/invoices/$invoiceId'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, string, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -918,7 +909,32 @@ test('cannot navigate to a branch with an index', () => {
     >()
 
   expectTypeOf(
-    Link<RouterAlwaysTrailingSlashes, string, '/invoices/$invoiceId'>,
+    Link<{ router: DefaultRouterObjects }, string, '/invoices/$invoiceId'>,
+  )
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '/'
+      | '/posts'
+      | '/posts/$postId'
+      | '/invoices'
+      | '/invoices/$invoiceId'
+      | '/invoices/$invoiceId/edit'
+      | '/invoices/$invoiceId/details'
+      | '/invoices/$invoiceId/details/$detailId'
+      | '/invoices/$invoiceId/details/$detailId/lines'
+      | '/invoices/$invoiceId/details/$detailId/lines/form'
+      | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
+      | '.'
+      | '..'
+    >()
+
+  expectTypeOf(
+    Link<
+      { router: RouterAlwaysTrailingSlashes },
+      string,
+      '/invoices/$invoiceId'
+    >,
   )
     .parameter(0)
     .toHaveProperty('to')
@@ -938,7 +954,13 @@ test('cannot navigate to a branch with an index', () => {
       | '../'
     >()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, string, '/invoices/$invoiceId'>)
+  expectTypeOf(
+    Link<
+      { router: RouterNeverTrailingSlashes },
+      string,
+      '/invoices/$invoiceId'
+    >,
+  )
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -958,7 +980,11 @@ test('cannot navigate to a branch with an index', () => {
     >()
 
   expectTypeOf(
-    Link<RouterPreserveTrailingSlashes, string, '/invoices/$invoiceId'>,
+    Link<
+      { router: RouterPreserveTrailingSlashes },
+      string,
+      '/invoices/$invoiceId'
+    >,
   )
     .parameter(0)
     .toHaveProperty('to')
@@ -992,8 +1018,12 @@ test('cannot navigate to a branch with an index', () => {
 })
 
 test('from autocompletes to all absolute routes', () => {
-  const DefaultRouterLink = Link<DefaultRouter, '/', '/'>
-  const DefaultRouterObjectsLink = Link<DefaultRouterObjects, '/', '/'>
+  const DefaultRouterLink = Link<{ router: DefaultRouter }, '/', '/'>
+  const DefaultRouterObjectsLink = Link<
+    { router: DefaultRouterObjects },
+    '/',
+    '/'
+  >
 
   expectTypeOf(DefaultRouterLink)
     .parameter(0)
@@ -1037,8 +1067,12 @@ test('from autocompletes to all absolute routes', () => {
 })
 
 test('from does not allow invalid routes', () => {
-  const DefaultRouterLink = Link<DefaultRouter, '/invalid', '/'>
-  const DefaultRouterObjectsLink = Link<DefaultRouterObjects, '/invalid', '/'>
+  const DefaultRouterLink = Link<{ router: DefaultRouter }, '/invalid', '/'>
+  const DefaultRouterObjectsLink = Link<
+    { router: DefaultRouterObjects },
+    '/invalid',
+    '/'
+  >
 
   expectTypeOf(DefaultRouterLink)
     .parameter(0)
@@ -1082,20 +1116,24 @@ test('from does not allow invalid routes', () => {
 })
 
 test('when navigating to the same route', () => {
-  const DefaultRouterLink = Link<DefaultRouter, string, string>
-  const DefaultRouterObjectsLink = Link<DefaultRouterObjects, string, string>
+  const DefaultRouterLink = Link<{ router: DefaultRouter }, string, string>
+  const DefaultRouterObjectsLink = Link<
+    { router: DefaultRouterObjects },
+    string,
+    string
+  >
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     string
   >
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     string
   >
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     string
   >
@@ -1202,21 +1240,25 @@ test('when navigating to the same route', () => {
 })
 
 test('when navigating to the parent route', () => {
-  const DefaultRouterLink = Link<DefaultRouter, string, '..'>
-  const DefaultRouterObjectsLink = Link<DefaultRouterObjects, string, '..'>
+  const DefaultRouterLink = Link<{ router: DefaultRouter }, string, '..'>
+  const DefaultRouterObjectsLink = Link<
+    { router: DefaultRouterObjects },
+    string,
+    '..'
+  >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '../'
   >
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '..'
   >
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '..'
   >
@@ -1323,27 +1365,31 @@ test('when navigating to the parent route', () => {
 })
 
 test('when navigating from a route with params to the same route', () => {
-  const DefaultRouterLink = Link<DefaultRouter, '/posts/$postId', string>
+  const DefaultRouterLink = Link<
+    { router: DefaultRouter },
+    '/posts/$postId',
+    string
+  >
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     '/posts/$postId',
     string
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     '/posts/$postId',
     string
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/posts/$postId',
     string
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     '/posts/$postId',
     string
   >
@@ -1400,28 +1446,32 @@ test('when navigating from a route with params to the same route', () => {
 })
 
 test('when navigating to a route with params', () => {
-  const DefaultRouterLink = Link<DefaultRouter, string, '/posts/$postId'>
+  const DefaultRouterLink = Link<
+    { router: DefaultRouter },
+    string,
+    '/posts/$postId'
+  >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     string,
     '/posts/$postId'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/posts/$postId/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/posts/$postId'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     '/posts/$postId/' | '/posts/$postId'
   >
@@ -1541,31 +1591,31 @@ test('when navigating to a route with params', () => {
 
 test('when navigating from a route with no params to a route with params', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     '/invoices',
     './$invoiceId/edit'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     '/invoices',
     './$invoiceId/edit'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     '/invoices',
     './$invoiceId/edit/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/invoices',
     './$invoiceId/edit'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/invoices',
     './$invoiceId/edit' | './invoicesId/edit/'
   >
@@ -1665,31 +1715,31 @@ test('when navigating from a route with no params to a route with params', () =>
 
 test('when navigating from a route to a route with the same params', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     '/invoices/$invoiceId',
     './edit'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     '/invoices/$invoiceId',
     './edit'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     '/invoices/$invoiceId',
     './edit/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/invoices/$invoiceId',
     './edit'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/invoices/$invoiceId',
     './edit' | './edit/'
   >
@@ -1801,31 +1851,31 @@ test('when navigating from a route to a route with the same params', () => {
 
 test('when navigating from a route with params to a route with different params', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     '/invoices/$invoiceId',
     '../../posts/$postId'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     '/invoices/$invoiceId',
     '../../posts/$postId'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     '/invoices/$invoiceId',
     '../../posts/$postId/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/invoices/$invoiceId',
     '../../posts/$postId'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     '/invoices/$invoiceId',
     '../../posts/$postId' | '../../posts/$postId/'
   >
@@ -1933,31 +1983,31 @@ test('when navigating from a route with params to a route with different params'
 
 test('when navigating from a route with params to a route with an additional param', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     '/invoices/$invoiceId',
     './details/$detailId'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     '/invoices/$invoiceId',
     './details/$detailId'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     '/invoices/$invoiceId',
     './details/$detailId/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/invoices/$invoiceId',
     './details/$detailId'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     '/invoices/$invoiceId',
     './details/$detailId' | './details/$detailId'
   >
@@ -2056,31 +2106,31 @@ test('when navigating from a route with params to a route with an additional par
 
 test('when navigating to a union of routes with params', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     string,
     '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     string,
     '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/invoices/$invoiceId/edit/' | '/posts/$postId/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     | '/invoices/$invoiceId/edit'
     | '/invoices/$invoiceId/edit/'
@@ -2207,31 +2257,31 @@ test('when navigating to a union of routes with params', () => {
 
 test('when navigating to a union of routes including the root', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     string,
     '/' | '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     string,
     '/' | '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/' | '/invoices/$invoiceId/edit/' | '/posts/$postId/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/' | '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     | '/'
     | '/invoices/$invoiceId/edit'
@@ -2368,28 +2418,32 @@ test('when navigating to a union of routes including the root', () => {
 })
 
 test('when navigating from a route with search params to the same route', () => {
-  const DefaultRouterLink = Link<DefaultRouter, '/invoices/$invoiceId', string>
+  const DefaultRouterLink = Link<
+    { router: DefaultRouter },
+    '/invoices/$invoiceId',
+    string
+  >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     '/invoices/$invoiceId',
     string
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     '/invoices/$invoiceId',
     string
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/invoices/$invoiceId',
     string
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/invoices/$invoiceId',
     string
   >
@@ -2445,31 +2499,31 @@ test('when navigating from a route with search params to the same route', () => 
 
 test('when navigating to a route with search params', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     string,
     '/invoices/$invoiceId/edit'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     string,
     '/invoices/$invoiceId/edit'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/invoices/$invoiceId/edit/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/invoices/$invoiceId/edit'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     '/invoices/$invoiceId/edit' | '/invoices/$invoiceId/edit/'
   >
@@ -2618,31 +2672,31 @@ test('when navigating to a route with search params', () => {
 
 test('when navigating to a route with optional search params', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     string,
     '/invoices/$invoiceId/details/$detailId'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     string,
     '/invoices/$invoiceId/details/$detailId'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/invoices/$invoiceId/details/$detailId/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/invoices/$invoiceId/details/$detailId'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     | '/invoices/$invoiceId/details/$detailId'
     | '/invoices/$invoiceId/details/$detailId/'
@@ -2813,31 +2867,31 @@ test('when navigating to a route with optional search params', () => {
 
 test('when navigating from a route with no search params to a route with search params', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     '/invoices/',
     './$invoiceId/edit'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     '/invoices/',
     './$invoiceId/edit'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     '/invoices/',
     './$invoiceId/edit/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/invoices/',
     './$invoiceId/edit'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     '/invoices/',
     './$invoiceId/edit/' | './$invoiceId/edit'
   >
@@ -2967,31 +3021,31 @@ test('when navigating from a route with no search params to a route with search 
 
 test('when navigating to a union of routes with search params', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     string,
     '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     string,
     '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/invoices/$invoiceId/edit/' | '/posts/$postId/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     | '/invoices/$invoiceId/edit'
     | '/posts/$postId'
@@ -3153,31 +3207,31 @@ test('when navigating to a union of routes with search params', () => {
 
 test('when navigating to a union of routes with search params including the root', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     string,
     '/' | '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     string,
     '/' | '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/' | '/invoices/$invoiceId/edit/' | '/posts/$postId/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/' | '/invoices/$invoiceId/edit' | '/posts/$postId'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     | '/'
     | '/invoices/$invoiceId/edit'
@@ -3354,24 +3408,28 @@ test('when navigating to a union of routes with search params including the root
 })
 
 test('when navigating from the root to /posts', () => {
-  const DefaultRouterLink = Link<DefaultRouter, '/', '/posts'>
+  const DefaultRouterLink = Link<{ router: DefaultRouter }, '/', '/posts'>
 
-  const DefaultRouterObjectsLink = Link<DefaultRouterObjects, '/', '/posts'>
+  const DefaultRouterObjectsLink = Link<
+    { router: DefaultRouterObjects },
+    '/',
+    '/posts'
+  >
 
   const RouterAlwaysTrailingSlashesLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     '/',
     '/posts/'
   >
 
   const RouterNeverTrailingSlashesLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     '/',
     '/posts'
   >
 
   const RouterPreserveTrailingSlashesLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     '/',
     '/posts' | '/posts/'
   >
@@ -3493,7 +3551,7 @@ test('when navigating from the root to /posts', () => {
 test('when navigating to a route with SearchSchemaInput', () => {
   expectTypeOf(
     Link<
-      DefaultRouter,
+      { router: DefaultRouter },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines'
     >,
@@ -3507,7 +3565,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      DefaultRouterObjects,
+      { router: DefaultRouterObjects },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines'
     >,
@@ -3521,7 +3579,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      RouterAlwaysTrailingSlashes,
+      { router: RouterAlwaysTrailingSlashes },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines/'
     >,
@@ -3535,7 +3593,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      RouterNeverTrailingSlashes,
+      { router: RouterNeverTrailingSlashes },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines'
     >,
@@ -3549,7 +3607,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      RouterPreserveTrailingSlashes,
+      { router: RouterPreserveTrailingSlashes },
       '/invoices/$invoiceId/details/$detailId/lines',
       | '/invoices/$invoiceId/details/$detailId/lines/'
       | '/invoices/$invoiceId/details/$detailId/lines'
@@ -3563,7 +3621,11 @@ test('when navigating to a route with SearchSchemaInput', () => {
     >()
 
   expectTypeOf(
-    Link<DefaultRouter, string, '/invoices/$invoiceId/details/$detailId/lines'>,
+    Link<
+      { router: DefaultRouter },
+      string,
+      '/invoices/$invoiceId/details/$detailId/lines'
+    >,
   )
     .parameter(0)
     .toHaveProperty('search')
@@ -3575,7 +3637,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      DefaultRouterObjects,
+      { router: DefaultRouterObjects },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines'
     >,
@@ -3590,7 +3652,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      RouterAlwaysTrailingSlashes,
+      { router: RouterAlwaysTrailingSlashes },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines/'
     >,
@@ -3605,7 +3667,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      RouterNeverTrailingSlashes,
+      { router: RouterNeverTrailingSlashes },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines'
     >,
@@ -3620,7 +3682,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      RouterPreserveTrailingSlashes,
+      { router: RouterPreserveTrailingSlashes },
       '/invoices/$invoiceId/details/$detailId/lines',
       | '/invoices/$invoiceId/details/$detailId/lines/'
       | '/invoices/$invoiceId/details/$detailId/lines'
@@ -3636,7 +3698,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      DefaultRouter,
+      { router: DefaultRouter },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines'
     >,
@@ -3648,7 +3710,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      DefaultRouterObjects,
+      { router: DefaultRouterObjects },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines'
     >,
@@ -3660,7 +3722,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      RouterAlwaysTrailingSlashes,
+      { router: RouterAlwaysTrailingSlashes },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines/'
     >,
@@ -3672,7 +3734,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      RouterNeverTrailingSlashes,
+      { router: RouterNeverTrailingSlashes },
       '/invoices/$invoiceId/details/$detailId/lines',
       '/invoices/$invoiceId/details/$detailId/lines/'
     >,
@@ -3684,7 +3746,7 @@ test('when navigating to a route with SearchSchemaInput', () => {
 
   expectTypeOf(
     Link<
-      RouterPreserveTrailingSlashes,
+      { router: RouterPreserveTrailingSlashes },
       '/invoices/$invoiceId/details/$detailId/lines',
       | '/invoices/$invoiceId/details/$detailId/lines/'
       | '/invoices/$invoiceId/details/$detailId/lines'
@@ -3701,20 +3763,24 @@ test('when passing a component with props to createLink and navigating to the ro
     <Link {...(props as any)} />
   ))
 
-  const DefaultRouterLink = MyLink<DefaultRouter, string, '/'>
-  const DefaultRouterObjectsLink = MyLink<DefaultRouterObjects, string, '/'>
+  const DefaultRouterLink = MyLink<{ router: DefaultRouter }, string, '/'>
+  const DefaultRouterObjectsLink = MyLink<
+    { router: DefaultRouterObjects },
+    string,
+    '/'
+  >
   const RouterAlwaysTrailingSlashLink = MyLink<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/'
   >
   const RouterNeverTrailingSlashLink = MyLink<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/'
   >
   const RouterPreserveTrailingSlashLink = MyLink<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     '/'
   >
@@ -4033,84 +4099,98 @@ test('ResolveRelativePath', () => {
 })
 
 test('navigation edge cases', () => {
-  expectTypeOf(Link<DefaultRouter, '/', '..'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/', '../'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/', '../'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/', '..'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/', '..' | '../'>)
+  expectTypeOf(
+    Link<{ router: RouterPreserveTrailingSlashes }, '/', '..' | '../'>,
+  )
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<DefaultRouter, '', '..'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '', '../'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '', '../'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '', '..'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '', '..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '', '..' | '../'>)
+  expectTypeOf(
+    Link<{ router: RouterPreserveTrailingSlashes }, '', '..' | '../'>,
+  )
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<DefaultRouter, '/posts', '...'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts', '...'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts', '.../'>)
+  expectTypeOf(Link<{ router: RouterAlwaysTrailingSlashes }, '/posts', '.../'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '...'>)
+  expectTypeOf(Link<{ router: RouterNeverTrailingSlashes }, '/posts', '...'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts', '...' | '.../'>)
+  expectTypeOf(
+    Link<{ router: RouterPreserveTrailingSlashes }, '/posts', '...' | '.../'>,
+  )
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<DefaultRouter, '/posts/$postId', '../../..'>)
-    .parameter(0)
-    .toHaveProperty('to')
-    .toEqualTypeOf<undefined>()
-
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/$postId', '../../../'>)
-    .parameter(0)
-    .toHaveProperty('to')
-    .toEqualTypeOf<undefined>()
-
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/$postId', '../../..'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts/$postId', '../../..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
   expectTypeOf(
     Link<
-      RouterPreserveTrailingSlashes,
+      { router: RouterAlwaysTrailingSlashes },
+      '/posts/$postId',
+      '../../../'
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(
+    Link<{ router: RouterNeverTrailingSlashes }, '/posts/$postId', '../../..'>,
+  )
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<undefined>()
+
+  expectTypeOf(
+    Link<
+      { router: RouterPreserveTrailingSlashes },
       '/posts/$postId',
       '../../..' | '../../../'
     >,
@@ -4119,7 +4199,7 @@ test('navigation edge cases', () => {
     .toHaveProperty('to')
     .toEqualTypeOf<undefined>()
 
-  expectTypeOf(Link<DefaultRouter, '/posts/$postId', '../..'>)
+  expectTypeOf(Link<{ router: DefaultRouter }, '/posts/$postId', '../..'>)
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -4137,7 +4217,9 @@ test('navigation edge cases', () => {
       | undefined
     >()
 
-  expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/$postId', '../../'>)
+  expectTypeOf(
+    Link<{ router: RouterAlwaysTrailingSlashes }, '/posts/$postId', '../../'>,
+  )
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -4155,7 +4237,9 @@ test('navigation edge cases', () => {
       | undefined
     >()
 
-  expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts/$postId', '../../'>)
+  expectTypeOf(
+    Link<{ router: RouterNeverTrailingSlashes }, '/posts/$postId', '../../'>,
+  )
     .parameter(0)
     .toHaveProperty('to')
     .toEqualTypeOf<
@@ -4174,7 +4258,11 @@ test('navigation edge cases', () => {
     >()
 
   expectTypeOf(
-    Link<RouterPreserveTrailingSlashes, '/posts/$postId', '../../' | '../..'>,
+    Link<
+      { router: RouterPreserveTrailingSlashes },
+      '/posts/$postId',
+      '../../' | '../..'
+    >,
   )
     .parameter(0)
     .toHaveProperty('to')
@@ -4504,30 +4592,30 @@ test('linkOptions', () => {
 
 test('when navigating to a route with conflicting validateSearch', () => {
   const DefaultRouterLink = Link<
-    DefaultRouter,
+    { router: DefaultRouter },
     string,
     '/invoices/$invoiceId/details/$detailId/lines/form/edit'
   >
 
   const DefaultRouterObjectsLink = Link<
-    DefaultRouterObjects,
+    { router: DefaultRouterObjects },
     string,
     '/invoices/$invoiceId/details/$detailId/lines/form/edit'
   >
 
   const RouterAlwaysTrailingSlashLink = Link<
-    RouterAlwaysTrailingSlashes,
+    { router: RouterAlwaysTrailingSlashes },
     string,
     '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
   >
 
   const RouterNeverTrailingSlashLink = Link<
-    RouterNeverTrailingSlashes,
+    { router: RouterNeverTrailingSlashes },
     string,
     '/invoices/$invoiceId/details/$detailId/lines/form/edit'
   >
   const RouterPreserveTrailingSlashLink = Link<
-    RouterPreserveTrailingSlashes,
+    { router: RouterPreserveTrailingSlashes },
     string,
     | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
     | '/invoices/$invoiceId/details/$detailId/lines/form/edit'

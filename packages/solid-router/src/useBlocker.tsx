@@ -8,8 +8,8 @@ import type {
 import type { SolidNode } from './route'
 import type {
   AnyRoute,
-  AnyRouter,
   ParseRoute,
+  Register,
   RegisteredRouter,
 } from '@tanstack/router-core'
 
@@ -28,8 +28,10 @@ interface ShouldBlockFnLocation<
 
 type AnyShouldBlockFnLocation = ShouldBlockFnLocation<any, any, any, any>
 type MakeShouldBlockFnLocationUnion<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
+  TRegister extends Register = Register,
+  TRoute extends AnyRoute = ParseRoute<
+    RegisteredRouter<TRegister>['routeTree']
+  >,
 > = TRoute extends any
   ? ShouldBlockFnLocation<
       TRoute['id'],
@@ -39,11 +41,11 @@ type MakeShouldBlockFnLocationUnion<
     >
   : never
 
-type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
+type BlockerResolver<TRegister extends Register = Register> =
   | {
       status: 'blocked'
-      current: MakeShouldBlockFnLocationUnion<TRouter>
-      next: MakeShouldBlockFnLocationUnion<TRouter>
+      current: MakeShouldBlockFnLocationUnion<TRegister>
+      next: MakeShouldBlockFnLocationUnion<TRegister>
       action: HistoryAction
       proceed: () => void
       reset: () => void
@@ -57,20 +59,20 @@ type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
       reset: undefined
     }
 
-type ShouldBlockFnArgs<TRouter extends AnyRouter = RegisteredRouter> = {
-  current: MakeShouldBlockFnLocationUnion<TRouter>
-  next: MakeShouldBlockFnLocationUnion<TRouter>
+type ShouldBlockFnArgs<TRegister extends Register = Register> = {
+  current: MakeShouldBlockFnLocationUnion<TRegister>
+  next: MakeShouldBlockFnLocationUnion<TRegister>
   action: HistoryAction
 }
 
-export type ShouldBlockFn<TRouter extends AnyRouter = RegisteredRouter> = (
-  args: ShouldBlockFnArgs<TRouter>,
+export type ShouldBlockFn<TRegister extends Register = Register> = (
+  args: ShouldBlockFnArgs<TRegister>,
 ) => boolean | Promise<boolean>
 export type UseBlockerOpts<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TWithResolver extends boolean = boolean,
 > = {
-  shouldBlockFn: ShouldBlockFn<TRouter>
+  shouldBlockFn: ShouldBlockFn<TRegister>
   enableBeforeUnload?: boolean | (() => boolean)
   disabled?: boolean
   withResolver?: TWithResolver
@@ -135,11 +137,13 @@ function _resolveBlockerOpts(
 }
 
 export function useBlocker<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TWithResolver extends boolean = false,
 >(
-  opts: UseBlockerOpts<TRouter, TWithResolver>,
-): TWithResolver extends true ? Solid.Accessor<BlockerResolver<TRouter>> : void
+  opts: UseBlockerOpts<TRegister, TWithResolver>,
+): TWithResolver extends true
+  ? Solid.Accessor<BlockerResolver<TRegister>>
+  : void
 
 /**
  * @deprecated Use the shouldBlockFn property instead
@@ -293,9 +297,9 @@ const _resolvePromptBlockerArgs = (
 }
 
 export function Block<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TWithResolver extends boolean = boolean,
->(opts: PromptProps<TRouter, TWithResolver>): SolidNode
+>(opts: PromptProps<TRegister, TWithResolver>): SolidNode
 
 /**
  *  @deprecated Use the UseBlockerOpts property instead
@@ -323,9 +327,9 @@ type LegacyPromptProps = {
 }
 
 type PromptProps<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TWithResolver extends boolean = boolean,
-  TParams = TWithResolver extends true ? BlockerResolver<TRouter> : void,
-> = UseBlockerOpts<TRouter, TWithResolver> & {
+  TParams = TWithResolver extends true ? BlockerResolver<TRegister> : void,
+> = UseBlockerOpts<TRegister, TWithResolver> & {
   children?: SolidNode | ((params: TParams) => SolidNode)
 }

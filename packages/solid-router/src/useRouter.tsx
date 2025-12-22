@@ -1,11 +1,11 @@
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
 import { getRouterContext } from './routerContext'
-import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
+import type { Register, RegisteredRouter } from '@tanstack/router-core'
 
-export function useRouter<TRouter extends AnyRouter = RegisteredRouter>(opts?: {
+export function useRouter<TRegister extends Register = Register>(opts?: {
   warn?: boolean
-}): TRouter {
+}): RegisteredRouter<TRegister> {
   const value = Solid.useContext(getRouterContext() as any)
   warning(
     !((opts?.warn ?? true) && !value),
