@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "TanStack Router RN Example",
+    "slug": "tanstack-router-rn-example",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    }
+  }
+}

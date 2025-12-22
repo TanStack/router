@@ -5,6 +5,7 @@ preferWorkspacePackages: true
 packages:
   - 'packages/*'
   - 'examples/react/*'
+  - 'examples/react-native/*'
   - 'examples/solid/*'
   - 'examples/vue/*'
   - 'examples/react/router-monorepo-react-query/packages/*'
