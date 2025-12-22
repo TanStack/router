@@ -409,6 +409,179 @@ const paramsPsWildcardSplatSuffixRoute = createRoute({
   },
 })
 
+// skipRouteOnParseError test routes
+// These routes demonstrate competing routes at the same path level with different validators
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+const skipOnParseErrorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/skip-on-parse-error',
+  component: function SkipOnParseErrorLayout() {
+    return (
+      <div className="p-4">
+        <h1 data-testid="skip-on-parse-error-heading">
+          Skip Route on Parse Error Tests
+        </h1>
+        <p className="text-sm text-gray-600 mb-4">
+          This tests the skipRouteOnParseError feature with multiple competing
+          routes that have different param validators.
+        </p>
+        <Outlet />
+      </div>
+    )
+  },
+})
+
+const skipOnParseErrorIndexRoute = createRoute({
+  getParentRoute: () => skipOnParseErrorRoute,
+  path: '/',
+  component: function SkipOnParseErrorIndex() {
+    const uuidValue = '123e4567-e89b-12d3-a456-426614174000'
+    const numericValue = '12345'
+    const stringValue = 'hello-world'
+
+    return (
+      <div className="space-y-4">
+        <h2 data-testid="index-heading">Test Links</h2>
+
+        <div className="space-y-2">
+          <h3>UUID Route Tests</h3>
+          <div className="flex gap-2">
+            <Link
+              to="/skip-on-parse-error/$uuid"
+              params={{ uuid: uuidValue }}
+              className="border p-2 rounded"
+              data-testid="link-to-uuid"
+            >
+              Navigate to UUID: {uuidValue.slice(0, 8)}...
+            </Link>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h3>Numeric Route Tests</h3>
+          <div className="flex gap-2">
+            <Link
+              to="/skip-on-parse-error/$num"
+              params={{ num: parseInt(numericValue, 10) }}
+              className="border p-2 rounded"
+              data-testid="link-to-numeric"
+            >
+              Navigate to Numeric: {numericValue}
+            </Link>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h3>String Route Tests (Catch-all)</h3>
+          <div className="flex gap-2">
+            <Link
+              to="/skip-on-parse-error/$slug"
+              params={{ slug: stringValue }}
+              className="border p-2 rounded"
+              data-testid="link-to-string"
+            >
+              Navigate to String: {stringValue}
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-4 p-2 bg-gray-100 rounded">
+          <p className="text-sm">
+            <strong>Expected behavior:</strong>
+          </p>
+          <ul className="text-sm list-disc ml-4">
+            <li>UUID values match the UUID route (validates UUID format)</li>
+            <li>Numeric values match the Numeric route (validates number)</li>
+            <li>Other strings match the Catch-all route</li>
+          </ul>
+        </div>
+      </div>
+    )
+  },
+})
+
+// UUID route - has highest priority due to skipRouteOnParseError + specific validation
+const skipOnParseErrorUuidRoute = createRoute({
+  getParentRoute: () => skipOnParseErrorRoute,
+  path: '$uuid',
+  params: {
+    parse: (params: { uuid: string }) => {
+      if (!UUID_REGEX.test(params.uuid)) {
+        throw new Error('Invalid UUID format')
+      }
+      return { uuid: params.uuid }
+    },
+    stringify: (params: { uuid: string }) => ({ uuid: params.uuid }),
+  },
+  skipRouteOnParseError: true,
+  component: function UuidRouteComponent() {
+    const { uuid } = skipOnParseErrorUuidRoute.useParams()
+
+    return (
+      <div className="p-4 bg-blue-100 rounded">
+        <h2 data-testid="route-type">UUID Route</h2>
+        <p data-testid="param-value">{uuid}</p>
+        <p className="text-sm text-gray-600">
+          This route matched because the param is a valid UUID.
+        </p>
+      </div>
+    )
+  },
+})
+
+// Numeric route - has priority over catch-all due to skipRouteOnParseError + validation
+const skipOnParseErrorNumericRoute = createRoute({
+  getParentRoute: () => skipOnParseErrorRoute,
+  path: '$num',
+  params: {
+    parse: (params: { num: string }) => {
+      const num = parseInt(params.num, 10)
+      if (isNaN(num) || num.toString() !== params.num) {
+        throw new Error('Invalid numeric format')
+      }
+      return { num }
+    },
+    stringify: (params: { num: number }) => ({ num: String(params.num) }),
+  },
+  skipRouteOnParseError: true,
+  component: function NumericRouteComponent() {
+    const { num } = skipOnParseErrorNumericRoute.useParams()
+
+    return (
+      <div className="p-4 bg-green-100 rounded">
+        <h2 data-testid="route-type">Numeric Route</h2>
+        <p data-testid="param-value">{num}</p>
+        <p data-testid="param-type">Type: {typeof num}</p>
+        <p className="text-sm text-gray-600">
+          This route matched because the param is a valid number.
+        </p>
+      </div>
+    )
+  },
+})
+
+// Catch-all route - lowest priority, matches any string that doesn't match UUID or Numeric
+const skipOnParseErrorCatchallRoute = createRoute({
+  getParentRoute: () => skipOnParseErrorRoute,
+  path: '$slug',
+  component: function CatchallRouteComponent() {
+    const { slug } = skipOnParseErrorCatchallRoute.useParams()
+
+    return (
+      <div className="p-4 bg-yellow-100 rounded">
+        <h2 data-testid="route-type">Catch-all Route</h2>
+        <p data-testid="param-value">{slug}</p>
+        <p className="text-sm text-gray-600">
+          This route matches any string that doesn't match UUID or Numeric
+          patterns.
+        </p>
+      </div>
+    )
+  },
+})
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   layoutRoute.addChildren([
@@ -428,6 +601,14 @@ const routeTree = rootRoute.addChildren([
       paramsPsWildcardIndexRoute,
     ]),
     paramsPsIndexRoute,
+  ]),
+  // skipRouteOnParseError routes - order matters for priority:
+  // UUID route (most specific validator) -> Numeric route -> Catch-all (no validator)
+  skipOnParseErrorRoute.addChildren([
+    skipOnParseErrorIndexRoute,
+    skipOnParseErrorUuidRoute,
+    skipOnParseErrorNumericRoute,
+    skipOnParseErrorCatchallRoute,
   ]),
   indexRoute,
 ])

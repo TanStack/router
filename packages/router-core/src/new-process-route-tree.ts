@@ -709,6 +709,12 @@ type RouteMatch<T extends Extract<RouteLike, { fullPath: string }>> = {
   route: T
   params: Record<string, string>
   branch: ReadonlyArray<T>
+  /**
+   * For routes with `skipRouteOnParseError`, this contains the already-parsed params
+   * from the parse function that was validated during matching.
+   * This allows `matchRoutesInternal` to avoid re-parsing these params.
+   */
+  parsedParams?: Record<string, unknown>
 }
 
 export function findRouteMatch<
@@ -804,15 +810,45 @@ function findMatch<T extends RouteLike>(
   path: string,
   segmentTree: AnySegmentNode<T>,
   fuzzy = false,
-): { route: T; params: Record<string, string> } | null {
+): {
+  route: T
+  params: Record<string, string>
+  parsedParams?: Record<string, unknown>
+} | null {
   const parts = path.split('/')
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
   if (!leaf) return null
-  const [params] = extractParams(path, parts, leaf)
+  // Check if this was a skipRouteOnParseError route that already ran parse
+  const routeHadSkipParseError =
+    'skipRouteOnParseError' in leaf.node &&
+    leaf.node.skipRouteOnParseError &&
+    'parse' in leaf.node &&
+    leaf.node.parse
+  // If skipRouteOnParseError was used, leaf.params contains the PARSED params.
+  // Otherwise (e.g., fuzzy matching), leaf.params may contain raw string params like '**'.
+  const parsedParams = routeHadSkipParseError
+    ? 'params' in leaf
+      ? leaf.params
+      : undefined
+    : undefined
+  // extractParams needs to run from the beginning to get raw string params.
+  // For fuzzy matches, we need to preserve the '**' param that was computed.
+  const [params] = extractParams(path, parts, {
+    node: leaf.node,
+    skipped: leaf.skipped,
+    // Don't pass extract state - we want to extract from the beginning
+    // For non-skipRouteOnParseError routes, pass through params (e.g., fuzzy '**')
+    params: routeHadSkipParseError
+      ? undefined
+      : 'params' in leaf
+        ? leaf.params
+        : undefined,
+  })
   const route = leaf.node.route!
   return {
     route,
     params,
+    parsedParams,
   }
 }
 
@@ -1011,8 +1047,9 @@ function getNodeMatch<T extends RouteLike>(
       if (node.route && !pathIsIndex && isFrameMoreSpecific(bestMatch, frame)) {
         bestMatch = frame
       }
-      // beyond the length of the path parts, only index segments, or skipped optional segments, or wildcard segments can match
-      if (!node.optional && !node.wildcard && !node.index) continue
+      // beyond the length of the path parts, only index segments, skipped optional segments, wildcard segments, or pathless segments can match
+      if (!node.optional && !node.wildcard && !node.index && !node.pathless)
+        continue
     }
 
     const part = isBeyondPath ? undefined : parts[index]!

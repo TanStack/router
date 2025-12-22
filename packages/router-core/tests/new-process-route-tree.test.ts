@@ -1074,6 +1074,780 @@ describe('findRouteMatch', () => {
       `)
     })
   })
+
+  describe('skipRouteOnParseError', () => {
+    describe('basic matching with parse validation', () => {
+      it('matches route when parse succeeds', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/$id',
+              fullPath: '/$id',
+              path: '$id',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => ({
+                    id: parseInt(params.id!, 10),
+                  }),
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/123', processedTree)
+        expect(result?.route.id).toBe('/$id')
+        // params contains raw string values for interpolatePath
+        expect(result?.params).toEqual({ id: '123' })
+        // parsedParams contains the transformed values from parse
+        expect(result?.parsedParams).toEqual({ id: 123 })
+      })
+
+      it('skips route when parse throws and finds no alternative', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/$id',
+              fullPath: '/$id',
+              path: '$id',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const num = parseInt(params.id!, 10)
+                    if (isNaN(num)) throw new Error('Not a number')
+                    return { id: num }
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/abc', processedTree)
+        expect(result).toBeNull()
+      })
+
+      it('skips route when parse throws and finds alternative match', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/$id',
+              fullPath: '/$id',
+              path: '$id',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const num = parseInt(params.id!, 10)
+                    if (isNaN(num)) throw new Error('Not a number')
+                    return { id: num }
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+            {
+              id: '/$slug',
+              fullPath: '/$slug',
+              path: '$slug',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        // numeric should match the validated route
+        const numericResult = findRouteMatch('/123', processedTree)
+        expect(numericResult?.route.id).toBe('/$id')
+        // params contains raw string values for interpolatePath
+        expect(numericResult?.params).toEqual({ id: '123' })
+        // parsedParams contains the transformed values from parse
+        expect(numericResult?.parsedParams).toEqual({ id: 123 })
+
+        // non-numeric should fall through to the non-validated route
+        const slugResult = findRouteMatch('/hello-world', processedTree)
+        expect(slugResult?.route.id).toBe('/$slug')
+        expect(slugResult?.params).toEqual({ slug: 'hello-world' })
+      })
+    })
+
+    describe('priority: validated routes take precedence', () => {
+      it('validated dynamic route has priority over non-validated dynamic route', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/$slug',
+              fullPath: '/$slug',
+              path: '$slug',
+              options: {},
+            },
+            {
+              id: '/$id',
+              fullPath: '/$id',
+              path: '$id',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const num = parseInt(params.id!, 10)
+                    if (isNaN(num)) throw new Error('Not a number')
+                    return { id: num }
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        // validated route should be tried first
+        const numericResult = findRouteMatch('/123', processedTree)
+        expect(numericResult?.route.id).toBe('/$id')
+      })
+
+      it('static route still has priority over validated dynamic route', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/settings',
+              fullPath: '/settings',
+              path: 'settings',
+              options: {},
+            },
+            {
+              id: '/$id',
+              fullPath: '/$id',
+              path: '$id',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const num = parseInt(params.id!, 10)
+                    if (isNaN(num)) throw new Error('Not a number')
+                    return { id: num }
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/settings', processedTree)
+        expect(result?.route.id).toBe('/settings')
+      })
+    })
+
+    describe('regex-like validation patterns', () => {
+      it('uuid validation pattern', () => {
+        const uuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/$uuid',
+              fullPath: '/$uuid',
+              path: '$uuid',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    if (!uuidRegex.test(params.uuid!))
+                      throw new Error('Not a UUID')
+                    return params
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+            {
+              id: '/$slug',
+              fullPath: '/$slug',
+              path: '$slug',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        const uuidResult = findRouteMatch(
+          '/550e8400-e29b-41d4-a716-446655440000',
+          processedTree,
+        )
+        expect(uuidResult?.route.id).toBe('/$uuid')
+
+        const slugResult = findRouteMatch('/my-blog-post', processedTree)
+        expect(slugResult?.route.id).toBe('/$slug')
+      })
+
+      it('date validation pattern (YYYY-MM-DD)', () => {
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/posts/$date',
+              fullPath: '/posts/$date',
+              path: 'posts/$date',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    if (!dateRegex.test(params.date!))
+                      throw new Error('Not a date')
+                    return { date: new Date(params.date!) }
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+            {
+              id: '/posts/$slug',
+              fullPath: '/posts/$slug',
+              path: 'posts/$slug',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        const dateResult = findRouteMatch('/posts/2024-01-15', processedTree)
+        expect(dateResult?.route.id).toBe('/posts/$date')
+        // params contains raw string values for interpolatePath
+        expect(dateResult?.params.date).toBe('2024-01-15')
+        // parsedParams contains the transformed values from parse
+        expect(dateResult?.parsedParams?.date).toBeInstanceOf(Date)
+
+        const slugResult = findRouteMatch('/posts/my-first-post', processedTree)
+        expect(slugResult?.route.id).toBe('/posts/$slug')
+      })
+    })
+
+    describe('nested routes with skipRouteOnParseError', () => {
+      it('parent validation failure prevents child matching', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/$orgId',
+              fullPath: '/$orgId',
+              path: '$orgId',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const num = parseInt(params.orgId!, 10)
+                    if (isNaN(num)) throw new Error('Not a number')
+                    return { orgId: num }
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+              children: [
+                {
+                  id: '/$orgId/settings',
+                  fullPath: '/$orgId/settings',
+                  path: 'settings',
+                  options: {},
+                },
+              ],
+            },
+            {
+              id: '/$slug/about',
+              fullPath: '/$slug/about',
+              path: '$slug/about',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        // numeric org should match the validated route
+        const numericResult = findRouteMatch('/123/settings', processedTree)
+        expect(numericResult?.route.id).toBe('/$orgId/settings')
+
+        // non-numeric should not match /$orgId/settings, should match /$slug/about
+        const slugResult = findRouteMatch('/my-org/about', processedTree)
+        expect(slugResult?.route.id).toBe('/$slug/about')
+      })
+
+      it('child validation failure falls back to sibling', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/users',
+              fullPath: '/users',
+              path: 'users',
+              options: {},
+              children: [
+                {
+                  id: '/users/$userId',
+                  fullPath: '/users/$userId',
+                  path: '$userId',
+                  options: {
+                    params: {
+                      parse: (params: Record<string, string>) => {
+                        const num = parseInt(params.userId!, 10)
+                        if (isNaN(num)) throw new Error('Not a number')
+                        return { userId: num }
+                      },
+                    },
+                    skipRouteOnParseError: true,
+                  },
+                },
+                {
+                  id: '/users/$username',
+                  fullPath: '/users/$username',
+                  path: '$username',
+                  options: {},
+                },
+              ],
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        const numericResult = findRouteMatch('/users/42', processedTree)
+        expect(numericResult?.route.id).toBe('/users/$userId')
+        // params contains raw string values for interpolatePath
+        expect(numericResult?.params).toEqual({ userId: '42' })
+        // parsedParams contains the transformed values from parse
+        expect(numericResult?.parsedParams).toEqual({ userId: 42 })
+
+        const usernameResult = findRouteMatch('/users/johndoe', processedTree)
+        expect(usernameResult?.route.id).toBe('/users/$username')
+        // Non-validated route: params are raw strings, parsedParams is undefined
+        expect(usernameResult?.params).toEqual({ username: 'johndoe' })
+        expect(usernameResult?.parsedParams).toBeUndefined()
+      })
+    })
+
+    describe('pathless routes with skipRouteOnParseError', () => {
+      // TODO: This test documents expected behavior that is not yet implemented
+      // Pathless layouts with skipRouteOnParseError should gate their children
+      it('pathless layout with validation gates children', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/',
+              fullPath: '/',
+              path: '/',
+              options: {},
+            },
+            {
+              id: '/$foo/_layout',
+              fullPath: '/$foo',
+              path: '$foo',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const num = parseInt(params.foo!, 10)
+                    if (isNaN(num)) throw new Error('Not a number')
+                    return { foo: num }
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+              children: [
+                {
+                  id: '/$foo/_layout/bar',
+                  fullPath: '/$foo/bar',
+                  path: 'bar',
+                  options: {},
+                },
+                {
+                  id: '/$foo/_layout/',
+                  fullPath: '/$foo/',
+                  path: '/',
+                  options: {},
+                },
+              ],
+            },
+            {
+              id: '/$foo/hello',
+              fullPath: '/$foo/hello',
+              path: '$foo/hello',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        // numeric foo should match through the validated layout
+        const numericBarResult = findRouteMatch('/123/bar', processedTree)
+        expect(numericBarResult?.route.id).toBe('/$foo/_layout/bar')
+
+        const numericIndexResult = findRouteMatch('/123', processedTree)
+        expect(numericIndexResult?.route.id).toBe('/$foo/_layout/')
+        expect(numericIndexResult?.params).toEqual({ foo: 123 })
+
+        // non-numeric foo should fall through to the non-validated route
+        const helloResult = findRouteMatch('/abc/hello', processedTree)
+        expect(helloResult?.route.id).toBe('/$foo/hello')
+        expect(helloResult?.params).toEqual({ foo: 'abc' })
+      })
+    })
+
+    describe('optional params with skipRouteOnParseError', () => {
+      it('optional param with static fallback', () => {
+        // Optional param with validation, with a static fallback
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/{-$lang}/home',
+              fullPath: '/{-$lang}/home',
+              path: '{-$lang}/home',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const validLangs = ['en', 'es', 'fr', 'de']
+                    if (params.lang && !validLangs.includes(params.lang)) {
+                      throw new Error('Invalid language')
+                    }
+                    return params
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+            {
+              id: '/home',
+              fullPath: '/home',
+              path: 'home',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        // valid language should match the validated route
+        const enResult = findRouteMatch('/en/home', processedTree)
+        expect(enResult?.route.id).toBe('/{-$lang}/home')
+        expect(enResult?.parsedParams).toEqual({ lang: 'en' })
+
+        // root path + home - both routes can match
+        // The optional route (with skipped param) has greater depth, so it wins
+        // This is the expected behavior per the priority system
+        const rootResult = findRouteMatch('/home', processedTree)
+        expect(rootResult?.route.id).toBe('/{-$lang}/home')
+
+        // invalid language should NOT match the validated optional route
+        // and since there's no dynamic fallback, it should return null
+        const invalidResult = findRouteMatch('/about/home', processedTree)
+        expect(invalidResult).toBeNull()
+      })
+
+      it('optional param at root with validation', () => {
+        // Optional param that validates and allows skipping
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/{-$lang}',
+              fullPath: '/{-$lang}',
+              path: '{-$lang}',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const validLangs = ['en', 'es', 'fr', 'de']
+                    if (params.lang && !validLangs.includes(params.lang)) {
+                      throw new Error('Invalid language')
+                    }
+                    return params
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        // valid language should match
+        const enResult = findRouteMatch('/en', processedTree)
+        expect(enResult?.route.id).toBe('/{-$lang}')
+        expect(enResult?.parsedParams).toEqual({ lang: 'en' })
+
+        // root path should match (optional skipped)
+        const rootResult = findRouteMatch('/', processedTree)
+        expect(rootResult?.route.id).toBe('/{-$lang}')
+        expect(rootResult?.parsedParams).toEqual({})
+
+        // invalid language should NOT match (no fallback route)
+        const invalidResult = findRouteMatch('/about', processedTree)
+        expect(invalidResult).toBeNull()
+      })
+    })
+
+    describe('wildcard routes with skipRouteOnParseError', () => {
+      it('wildcard with validation', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/files/$',
+              fullPath: '/files/$',
+              path: 'files/$',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    if (!params._splat!.endsWith('.txt')) {
+                      throw new Error('Only .txt files allowed')
+                    }
+                    return params
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+            {
+              id: '/files',
+              fullPath: '/files',
+              path: 'files',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        // .txt file should match the validated wildcard route
+        const txtResult = findRouteMatch(
+          '/files/docs/readme.txt',
+          processedTree,
+        )
+        expect(txtResult?.route.id).toBe('/files/$')
+
+        // non-.txt should fall through (fuzzy match to /files)
+        const otherResult = findRouteMatch(
+          '/files/images/photo.jpg',
+          processedTree,
+          true,
+        )
+        expect(otherResult?.route.id).toBe('/files')
+      })
+    })
+
+    describe('multiple validated routes competing', () => {
+      it('first matching validated route wins', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/$uuid',
+              fullPath: '/$uuid',
+              path: '$uuid',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const uuidRegex =
+                      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                    if (!uuidRegex.test(params.uuid!))
+                      throw new Error('Not a UUID')
+                    return params
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+            {
+              id: '/$number',
+              fullPath: '/$number',
+              path: '$number',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    const num = parseInt(params.number!, 10)
+                    if (isNaN(num)) throw new Error('Not a number')
+                    return { number: num }
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+            {
+              id: '/$slug',
+              fullPath: '/$slug',
+              path: '$slug',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        const uuidResult = findRouteMatch(
+          '/550e8400-e29b-41d4-a716-446655440000',
+          processedTree,
+        )
+        expect(uuidResult?.route.id).toBe('/$uuid')
+
+        const numberResult = findRouteMatch('/42', processedTree)
+        expect(numberResult?.route.id).toBe('/$number')
+        // params contains raw string values for interpolatePath
+        expect(numberResult?.params).toEqual({ number: '42' })
+        // parsedParams contains the transformed values from parse
+        expect(numberResult?.parsedParams).toEqual({ number: 42 })
+
+        const slugResult = findRouteMatch('/hello-world', processedTree)
+        expect(slugResult?.route.id).toBe('/$slug')
+      })
+    })
+
+    describe('params.parse without skipRouteOnParseError', () => {
+      it('params.parse is NOT called during matching when skipRouteOnParseError is false', () => {
+        let parseCalled = false
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/$id',
+              fullPath: '/$id',
+              path: '$id',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    parseCalled = true
+                    return { id: parseInt(params.id!, 10) }
+                  },
+                },
+                // skipRouteOnParseError is NOT set
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/123', processedTree)
+        expect(result?.route.id).toBe('/$id')
+        // parse should NOT be called during matching
+        expect(parseCalled).toBe(false)
+        // params should be raw strings
+        expect(result?.params).toEqual({ id: '123' })
+      })
+    })
+
+    describe('edge cases', () => {
+      it('empty param value still goes through validation', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/prefix{$id}suffix',
+              fullPath: '/prefix{$id}suffix',
+              path: 'prefix{$id}suffix',
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    if (params.id === '') throw new Error('Empty not allowed')
+                    return params
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+            {
+              id: '/prefixsuffix',
+              fullPath: '/prefixsuffix',
+              path: 'prefixsuffix',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+
+        // with value should match validated route
+        const withValue = findRouteMatch('/prefixFOOsuffix', processedTree)
+        expect(withValue?.route.id).toBe('/prefix{$id}suffix')
+
+        // empty value should fall through to static route
+        const empty = findRouteMatch('/prefixsuffix', processedTree)
+        expect(empty?.route.id).toBe('/prefixsuffix')
+      })
+
+      it('validation error type does not matter', () => {
+        const tree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: '/$id',
+              fullPath: '/$id',
+              path: '$id',
+              options: {
+                params: {
+                  parse: () => {
+                    throw 'string error' // not an Error object
+                  },
+                },
+                skipRouteOnParseError: true,
+              },
+            },
+            {
+              id: '/$fallback',
+              fullPath: '/$fallback',
+              path: '$fallback',
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/test', processedTree)
+        expect(result?.route.id).toBe('/$fallback')
+      })
+    })
+  })
 })
 
 describe('processRouteMasks', { sequential: true }, () => {

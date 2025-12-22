@@ -701,6 +701,11 @@ export type GetMatchRoutesFn = (pathname: string) => {
   routeParams: Record<string, string>
   foundRoute: AnyRoute | undefined
   parseError?: unknown
+  /**
+   * For routes with `skipRouteOnParseError`, this contains the already-parsed params
+   * from the parse function that was validated during matching.
+   */
+  parsedParams?: Record<string, unknown>
 }
 
 export type EmitFn = (routerEvent: RouterEvent) => void
@@ -1249,7 +1254,7 @@ export class RouterCore<
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
     const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
-    const { foundRoute, routeParams } = matchedRoutesResult
+    const { foundRoute, routeParams, parsedParams } = matchedRoutesResult
     let { matchedRoutes } = matchedRoutesResult
     let isGlobalNotFound = false
 
@@ -1394,22 +1399,32 @@ export class RouterCore<
           route.options.params?.parse ?? route.options.parseParams
 
         if (strictParseParams) {
-          try {
-            Object.assign(
-              strictParams,
-              strictParseParams(strictParams as Record<string, string>),
-            )
-          } catch (err: any) {
-            if (isNotFound(err) || isRedirect(err)) {
-              paramsError = err
-            } else {
-              paramsError = new PathParamError(err.message, {
-                cause: err,
-              })
-            }
+          // If this route used skipRouteOnParseError, the parse was already called
+          // during matching and the result is in parsedParams. Skip re-parsing.
+          const alreadyParsed =
+            route.options.skipRouteOnParseError && parsedParams
 
-            if (opts?.throwOnError) {
-              throw paramsError
+          if (alreadyParsed) {
+            // Use the pre-parsed params from the matching phase
+            Object.assign(strictParams, parsedParams)
+          } else {
+            try {
+              Object.assign(
+                strictParams,
+                strictParseParams(strictParams as Record<string, string>),
+              )
+            } catch (err: any) {
+              if (isNotFound(err) || isRedirect(err)) {
+                paramsError = err
+              } else {
+                paramsError = new PathParamError(err.message, {
+                  cause: err,
+                })
+              }
+
+              if (opts?.throwOnError) {
+                throw paramsError
+              }
             }
           }
         }
@@ -2693,15 +2708,17 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   const trimmedPath = trimPathRight(pathname)
 
   let foundRoute: TRouteLike | undefined = undefined
+  let parsedParams: Record<string, unknown> | undefined = undefined
   const match = findRouteMatch<TRouteLike>(trimmedPath, processedTree, true)
   if (match) {
     foundRoute = match.route
     Object.assign(routeParams, match.params) // Copy params, because they're cached
+    parsedParams = match.parsedParams
   }
 
   const matchedRoutes = match?.branch || [routesById[rootRouteId]!]
 
-  return { matchedRoutes, routeParams, foundRoute }
+  return { matchedRoutes, routeParams, foundRoute, parsedParams }
 }
 
 function applySearchMiddleware({

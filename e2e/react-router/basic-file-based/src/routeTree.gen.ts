@@ -20,16 +20,21 @@ import { Route as ComponentTypesTestRouteImport } from './routes/component-types
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as Char45824Char54620Char48124Char44397RouteRouteImport } from './routes/대한민국/route'
+import { Route as SkipOnParseErrorRouteRouteImport } from './routes/skip-on-parse-error/route'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as PathlessLayoutRouteRouteImport } from './routes/pathless-layout/route'
 import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SkipOnParseErrorIndexRouteImport } from './routes/skip-on-parse-error/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RelativeIndexRouteImport } from './routes/relative/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as ParamsPsIndexRouteImport } from './routes/params-ps/index'
 import { Route as StructuralSharingEnabledRouteImport } from './routes/structural-sharing.$enabled'
+import { Route as SkipOnParseErrorUuidRouteImport } from './routes/skip-on-parse-error/$uuid'
+import { Route as SkipOnParseErrorSlugRouteImport } from './routes/skip-on-parse-error/$slug'
+import { Route as SkipOnParseErrorNumRouteImport } from './routes/skip-on-parse-error/$num'
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
@@ -173,6 +178,11 @@ const Char45824Char54620Char48124Char44397RouteRoute =
     path: '/대한민국',
     getParentRoute: () => rootRouteImport,
   } as any)
+const SkipOnParseErrorRouteRoute = SkipOnParseErrorRouteRouteImport.update({
+  id: '/skip-on-parse-error',
+  path: '/skip-on-parse-error',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
   id: '/search-params',
   path: '/search-params',
@@ -192,6 +202,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SkipOnParseErrorIndexRoute = SkipOnParseErrorIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SkipOnParseErrorRouteRoute,
 } as any)
 const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
   id: '/',
@@ -224,6 +239,21 @@ const StructuralSharingEnabledRoute =
     path: '/structural-sharing/$enabled',
     getParentRoute: () => rootRouteImport,
   } as any)
+const SkipOnParseErrorUuidRoute = SkipOnParseErrorUuidRouteImport.update({
+  id: '/$uuid',
+  path: '/$uuid',
+  getParentRoute: () => SkipOnParseErrorRouteRoute,
+} as any)
+const SkipOnParseErrorSlugRoute = SkipOnParseErrorSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => SkipOnParseErrorRouteRoute,
+} as any)
+const SkipOnParseErrorNumRoute = SkipOnParseErrorNumRouteImport.update({
+  id: '/$num',
+  path: '/$num',
+  getParentRoute: () => SkipOnParseErrorRouteRoute,
+} as any)
 const SearchParamsDefaultRoute = SearchParamsDefaultRouteImport.update({
   id: '/default',
   path: '/default',
@@ -705,6 +735,7 @@ export interface FileRoutesByFullPath {
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/pathless-layout': typeof PathlessLayoutLayoutRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
+  '/skip-on-parse-error': typeof SkipOnParseErrorRouteRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
@@ -729,12 +760,16 @@ export interface FileRoutesByFullPath {
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
+  '/skip-on-parse-error/$num': typeof SkipOnParseErrorNumRoute
+  '/skip-on-parse-error/$slug': typeof SkipOnParseErrorSlugRoute
+  '/skip-on-parse-error/$uuid': typeof SkipOnParseErrorUuidRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/params-ps': typeof ParamsPsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/skip-on-parse-error/': typeof SkipOnParseErrorIndexRoute
   '/non-nested/deep/$baz': typeof NonNestedDeepBazRouteRouteWithChildren
   '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
   '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
@@ -832,12 +867,16 @@ export interface FileRoutesByTo {
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
+  '/skip-on-parse-error/$num': typeof SkipOnParseErrorNumRoute
+  '/skip-on-parse-error/$slug': typeof SkipOnParseErrorSlugRoute
+  '/skip-on-parse-error/$uuid': typeof SkipOnParseErrorUuidRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/params-ps': typeof ParamsPsIndexRoute
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
+  '/skip-on-parse-error': typeof SkipOnParseErrorIndexRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/params-ps/non-nested/$foo': typeof ParamsPsNonNestedFooRouteRouteWithChildren
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
@@ -907,6 +946,7 @@ export interface FileRoutesById {
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/pathless-layout': typeof PathlessLayoutRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
+  '/skip-on-parse-error': typeof SkipOnParseErrorRouteRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
@@ -935,12 +975,16 @@ export interface FileRoutesById {
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
+  '/skip-on-parse-error/$num': typeof SkipOnParseErrorNumRoute
+  '/skip-on-parse-error/$slug': typeof SkipOnParseErrorSlugRoute
+  '/skip-on-parse-error/$uuid': typeof SkipOnParseErrorUuidRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/params-ps/': typeof ParamsPsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
   '/relative/': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/skip-on-parse-error/': typeof SkipOnParseErrorIndexRoute
   '/non-nested/deep/$baz': typeof NonNestedDeepBazRouteRouteWithChildren
   '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
   '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
@@ -1019,6 +1063,7 @@ export interface FileRouteTypes {
     | '/non-nested'
     | '/pathless-layout'
     | '/search-params'
+    | '/skip-on-parse-error'
     | '/대한민국'
     | '/anchor'
     | '/component-types-test'
@@ -1043,12 +1088,16 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
+    | '/skip-on-parse-error/$num'
+    | '/skip-on-parse-error/$slug'
+    | '/skip-on-parse-error/$uuid'
     | '/structural-sharing/$enabled'
     | '/params-ps'
     | '/posts/'
     | '/redirect'
     | '/relative'
     | '/search-params/'
+    | '/skip-on-parse-error/'
     | '/non-nested/deep/$baz'
     | '/non-nested/named/$baz'
     | '/non-nested/path/baz'
@@ -1146,12 +1195,16 @@ export interface FileRouteTypes {
     | '/lazyinside'
     | '/posts/$postId'
     | '/search-params/default'
+    | '/skip-on-parse-error/$num'
+    | '/skip-on-parse-error/$slug'
+    | '/skip-on-parse-error/$uuid'
     | '/structural-sharing/$enabled'
     | '/params-ps'
     | '/posts'
     | '/redirect'
     | '/relative'
     | '/search-params'
+    | '/skip-on-parse-error'
     | '/params-ps/named/$foo'
     | '/params-ps/non-nested/$foo'
     | '/insidelayout'
@@ -1220,6 +1273,7 @@ export interface FileRouteTypes {
     | '/non-nested'
     | '/pathless-layout'
     | '/search-params'
+    | '/skip-on-parse-error'
     | '/대한민국'
     | '/_layout'
     | '/anchor'
@@ -1248,12 +1302,16 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
+    | '/skip-on-parse-error/$num'
+    | '/skip-on-parse-error/$slug'
+    | '/skip-on-parse-error/$uuid'
     | '/structural-sharing/$enabled'
     | '/params-ps/'
     | '/posts/'
     | '/redirect/'
     | '/relative/'
     | '/search-params/'
+    | '/skip-on-parse-error/'
     | '/non-nested/deep/$baz'
     | '/non-nested/named/$baz'
     | '/non-nested/path/baz'
@@ -1331,6 +1389,7 @@ export interface RootRouteChildren {
   NonNestedRouteRoute: typeof NonNestedRouteRouteWithChildren
   PathlessLayoutRouteRoute: typeof PathlessLayoutRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
+  SkipOnParseErrorRouteRoute: typeof SkipOnParseErrorRouteRouteWithChildren
   Char45824Char54620Char48124Char44397RouteRoute: typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
@@ -1451,6 +1510,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/skip-on-parse-error': {
+      id: '/skip-on-parse-error'
+      path: '/skip-on-parse-error'
+      fullPath: '/skip-on-parse-error'
+      preLoaderRoute: typeof SkipOnParseErrorRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search-params': {
       id: '/search-params'
       path: '/search-params'
@@ -1478,6 +1544,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/skip-on-parse-error/': {
+      id: '/skip-on-parse-error/'
+      path: '/'
+      fullPath: '/skip-on-parse-error/'
+      preLoaderRoute: typeof SkipOnParseErrorIndexRouteImport
+      parentRoute: typeof SkipOnParseErrorRouteRoute
     }
     '/search-params/': {
       id: '/search-params/'
@@ -1520,6 +1593,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/structural-sharing/$enabled'
       preLoaderRoute: typeof StructuralSharingEnabledRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/skip-on-parse-error/$uuid': {
+      id: '/skip-on-parse-error/$uuid'
+      path: '/$uuid'
+      fullPath: '/skip-on-parse-error/$uuid'
+      preLoaderRoute: typeof SkipOnParseErrorUuidRouteImport
+      parentRoute: typeof SkipOnParseErrorRouteRoute
+    }
+    '/skip-on-parse-error/$slug': {
+      id: '/skip-on-parse-error/$slug'
+      path: '/$slug'
+      fullPath: '/skip-on-parse-error/$slug'
+      preLoaderRoute: typeof SkipOnParseErrorSlugRouteImport
+      parentRoute: typeof SkipOnParseErrorRouteRoute
+    }
+    '/skip-on-parse-error/$num': {
+      id: '/skip-on-parse-error/$num'
+      path: '/$num'
+      fullPath: '/skip-on-parse-error/$num'
+      preLoaderRoute: typeof SkipOnParseErrorNumRouteImport
+      parentRoute: typeof SkipOnParseErrorRouteRoute
     }
     '/search-params/default': {
       id: '/search-params/default'
@@ -2377,6 +2471,25 @@ const SearchParamsRouteRouteChildren: SearchParamsRouteRouteChildren = {
 const SearchParamsRouteRouteWithChildren =
   SearchParamsRouteRoute._addFileChildren(SearchParamsRouteRouteChildren)
 
+interface SkipOnParseErrorRouteRouteChildren {
+  SkipOnParseErrorNumRoute: typeof SkipOnParseErrorNumRoute
+  SkipOnParseErrorSlugRoute: typeof SkipOnParseErrorSlugRoute
+  SkipOnParseErrorUuidRoute: typeof SkipOnParseErrorUuidRoute
+  SkipOnParseErrorIndexRoute: typeof SkipOnParseErrorIndexRoute
+}
+
+const SkipOnParseErrorRouteRouteChildren: SkipOnParseErrorRouteRouteChildren = {
+  SkipOnParseErrorNumRoute: SkipOnParseErrorNumRoute,
+  SkipOnParseErrorSlugRoute: SkipOnParseErrorSlugRoute,
+  SkipOnParseErrorUuidRoute: SkipOnParseErrorUuidRoute,
+  SkipOnParseErrorIndexRoute: SkipOnParseErrorIndexRoute,
+}
+
+const SkipOnParseErrorRouteRouteWithChildren =
+  SkipOnParseErrorRouteRoute._addFileChildren(
+    SkipOnParseErrorRouteRouteChildren,
+  )
+
 interface Char45824Char54620Char48124Char44397RouteRouteChildren {
   Char45824Char54620Char48124Char44397WildcardSplatRoute: typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
   Char45824Char54620Char48124Char44397Char55357Char56960IdRoute: typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
@@ -2586,6 +2699,7 @@ const rootRouteChildren: RootRouteChildren = {
   NonNestedRouteRoute: NonNestedRouteRouteWithChildren,
   PathlessLayoutRouteRoute: PathlessLayoutRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
+  SkipOnParseErrorRouteRoute: SkipOnParseErrorRouteRouteWithChildren,
   Char45824Char54620Char48124Char44397RouteRoute:
     Char45824Char54620Char48124Char44397RouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
