@@ -804,7 +804,7 @@ function findMatch<T extends RouteLike>(
   path: string,
   segmentTree: AnySegmentNode<T>,
   fuzzy = false,
-): { route: T; params: Record<string, string>; } | null {
+): { route: T; params: Record<string, string> } | null {
   const parts = path.split('/')
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
   if (!leaf) return null
