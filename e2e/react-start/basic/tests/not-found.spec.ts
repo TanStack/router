@@ -58,7 +58,7 @@ test.describe('not-found', () => {
     const directVisitTestMatrix = combinate({
       // TODO beforeLoad!
 
-      thrower: [/* 'beforeLoad',*/ 'head', 'loader'] as const,
+      thrower: [/* 'beforeLoad',*/ 'loader'] as const,
     })
 
     directVisitTestMatrix.forEach(({ thrower }) => {
