@@ -118,6 +118,9 @@ export function createServerFnPlugin(opts: {
         async handler(code, id) {
           let compiler = compilers[this.environment.name]
           if (!compiler) {
+            // Default to 'dev' mode for unknown environments (conservative: no caching)
+            const mode =
+              this.environment.mode === 'build' ? 'build' : ('dev' as const)
             compiler = new ServerFnCompiler({
               env: environment.type,
               directive: opts.directive,
@@ -126,6 +129,7 @@ export function createServerFnPlugin(opts: {
                 environment.type,
                 opts.framework,
               ),
+              mode,
               loadModule: async (id: string) => {
                 if (this.environment.mode === 'build') {
                   const loaded = await this.load({ id })

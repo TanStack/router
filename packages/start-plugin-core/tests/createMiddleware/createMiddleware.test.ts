@@ -97,7 +97,10 @@ describe('createMiddleware compiles correctly', async () => {
     // the fast path uses knownRootImports map for O(1) lookup
     // Note: init() now resolves from project root, not from a specific file
     expect(resolveIdMock).toHaveBeenCalledTimes(1)
-    expect(resolveIdMock).toHaveBeenCalledWith('@tanstack/react-start')
+    expect(resolveIdMock).toHaveBeenCalledWith(
+      '@tanstack/react-start',
+      undefined,
+    )
   })
 
   test('should use slow path for factory pattern (resolveId called for import resolution)', async () => {
@@ -149,7 +152,11 @@ describe('createMiddleware compiles correctly', async () => {
     // Note: The factory module's import from '@tanstack/react-start' ALSO uses
     // the fast path (knownRootImports), so no additional resolveId call is needed there.
     expect(resolveIdMock).toHaveBeenCalledTimes(2)
-    expect(resolveIdMock).toHaveBeenNthCalledWith(1, '@tanstack/react-start')
+    expect(resolveIdMock).toHaveBeenNthCalledWith(
+      1,
+      '@tanstack/react-start',
+      undefined,
+    )
     expect(resolveIdMock).toHaveBeenNthCalledWith(2, './factory', 'test.ts')
   })
 })
