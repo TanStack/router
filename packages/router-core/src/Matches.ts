@@ -148,6 +148,8 @@ export interface RouteMatch<
     displayPendingPromise?: Promise<void>
     minPendingPromise?: ControlledPromise<void>
     dehydrated?: boolean
+    /** @internal */
+    error?: unknown
   }
   loaderData?: TLoaderData
   /** @internal */
@@ -270,6 +272,8 @@ export interface MatchRouteOptions {
    * If `true`, will match against the current location with case sensitivity.
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/MatchRouteOptionsType#casesensitive-property)
+   *
+   * @deprecated Declare case sensitivity in the route definition instead, or globally for all routes using the `caseSensitive` option on the router.
    */
   caseSensitive?: boolean
   /**

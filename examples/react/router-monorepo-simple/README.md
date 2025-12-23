@@ -1,11 +1,20 @@
 # Example of a monorepo with router and feature libraries
 
-To run this example:
+An example demonstrating TanStack Router in a monorepo setup.
 
-- `npm install` or `yarn`
-- `npm dev` or `yarn dev`
+- [TanStack Router Docs](https://tanstack.com/router)
 
-A challenge with TanStack Router in a monorepo setup is that it requires TypeScript type augmentations. However, if you set this up directly in the final app, the links inside the libraries won’t be type-safe. To solve this in a monorepo, you need a separate library just for the router, without any components, and then integrate it with the app.
+## Start a new project based on this example
+
+To start a new project based on this example, run:
+
+```sh
+npx gitpick TanStack/router/tree/main/examples/react/router-monorepo-simple router-monorepo-simple
+```
+
+## Monorepo Setup
+
+A challenge with TanStack Router in a monorepo setup is that it requires TypeScript type augmentations. However, if you set this up directly in the final app, the links inside the libraries won't be type-safe. To solve this in a monorepo, you need a separate library just for the router, without any components, and then integrate it with the app.
 
 This example showcases this approach using the following packages:
 
@@ -18,6 +27,42 @@ With this approach, we can use loaders in the router and the feature library wit
 Since the router library re-exports the router components, importing them in the feature library ensures they remain type-safe, as they’re linked to the TypeScript augmentations.
 
 Finally, in the app, we can create a map of routes to components ([`packages/app/src/main.tsx`](./packages/app/src/main.tsx)), which ties the router to the components. **We could enforce lazy loading here, but it was left out for simplicity.** With this setup, we now have a fully type-safe router!
+
+- **Router library**: Contains route definitions and type augmentations
+- **Feature libraries**: Contain components and business logic
+- **App**: Integrates the router and feature libraries
+
+## Getting Started
+
+Install dependencies:
+
+```sh
+pnpm install
+```
+
+Start the development server:
+
+```sh
+pnpm dev
+```
+
+## Build
+
+Build for production:
+
+```sh
+pnpm build
+```
+
+## About This Example
+
+This example demonstrates:
+
+- Monorepo structure with TanStack Router
+- Shared packages
+- Workspace configuration
+- Code sharing across applications
+- Type-safe routing in a monorepo
 
 Here is what it looks like in the monorepo:
 

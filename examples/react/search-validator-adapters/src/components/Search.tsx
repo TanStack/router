@@ -9,7 +9,7 @@ export const Search = ({ search, onChange }: SearchProps) => {
       <label>Search</label>
       <input
         type="search"
-        className="border p-1 px-2 rounded"
+        className="border p-1 px-2 rounded-sm"
         value={search}
         onChange={(e) => onChange(e.target.value)}
       ></input>

@@ -44,7 +44,6 @@ type RouterEvents = {
   }
   onInjectedHtml: {
     type: 'onInjectedHtml'
-    promise: Promise<string>
   }
   onRendered: {
     type: 'onRendered'
@@ -66,12 +65,12 @@ Once an event is emitted, the following properties will be present on the event 
 
 ### `fromLocation` property
 
-- Type: [`ParsedLocation`](../ParsedLocationType.md)
+- Type: [`ParsedLocation`](./ParsedLocationType.md)
 - The location that the router is transitioning from.
 
 ### `toLocation` property
 
-- Type: [`ParsedLocation`](../ParsedLocationType.md)
+- Type: [`ParsedLocation`](./ParsedLocationType.md)
 - The location that the router is transitioning to.
 
 ### `pathChanged` property

@@ -55,7 +55,7 @@ function AllowServerFnReturnNull() {
       <button
         data-testid="test-allow-server-fn-return-null-btn"
         type="button"
-        className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         onClick={() => {
           $allow_return_null_getFn().then(setGetServerResult)
           $allow_return_null_postFn().then(setPostServerResult)

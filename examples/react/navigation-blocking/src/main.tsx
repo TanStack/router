@@ -93,13 +93,13 @@ function RootComponent() {
             Are you sure you want to leave editor 1 for /foo/123?hello=world ?
           </div>
           <button
-            className="bg-lime-500 text-white rounded p-1 px-2 mr-2"
+            className="bg-lime-500 text-white rounded-sm p-1 px-2 mr-2"
             onClick={proceed}
           >
             YES
           </button>
           <button
-            className="bg-red-500 text-white rounded p-1 px-2"
+            className="bg-red-500 text-white rounded-sm p-1 px-2"
             onClick={reset}
           >
             NO
@@ -170,13 +170,13 @@ function Editor1Component() {
             You are going from {current.pathname} to {next.pathname}
           </div>
           <button
-            className="bg-lime-500 text-white rounded p-1 px-2 mr-2"
+            className="bg-lime-500 text-white rounded-sm p-1 px-2 mr-2"
             onClick={proceed}
           >
             YES
           </button>
           <button
-            className="bg-red-500 text-white rounded p-1 px-2"
+            className="bg-red-500 text-white rounded-sm p-1 px-2"
             onClick={reset}
           >
             NO

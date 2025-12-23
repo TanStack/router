@@ -13,6 +13,6 @@ node_modules
 
 **/test-results
 **/tests/generator/file-modification/routes/(test)/*
-**/tests/generator/no-formatted-route-tree/routeTree.snapshot.ts
+**/tests/generator/**/routeTree*.snapshot.ts
 /.nx/workspace-data
 **/src/routeTree.gen.ts

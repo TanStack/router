@@ -38,14 +38,14 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
   unmaskOnReload?: boolean
   /**
    * @private
-   * @description The public href of the location, including the origin before any rewrites.
+   * @description The public href of the location.
    * If a rewrite is applied, the `href` property will be the rewritten URL.
    */
   publicHref: string
   /**
    * @private
-   * @description The full URL of the location, including the origin.
+   * @description The full URL of the location.
    * @private
    */
-  url: string
+  url: URL
 }

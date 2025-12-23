@@ -1,7 +1,14 @@
 /// <reference types="vite/client" />
-import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
+import {
+  HeadContent,
+  Link,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/solid-router'
 
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
+import { HydrationScript } from 'solid-js/web'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
@@ -60,86 +67,93 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <>
-      <div class="p-2 flex gap-2 text-lg">
-        <Link
-          to="/"
-          activeProps={{
-            class: 'font-bold',
-          }}
-          activeOptions={{ exact: true }}
-        >
-          Home
-        </Link>{' '}
-        <Link
-          to="/posts"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Posts
-        </Link>{' '}
-        <Link
-          to="/users"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Users
-        </Link>{' '}
-        <Link
-          to="/layout-a"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Layout
-        </Link>{' '}
-        <Link
-          to="/scripts"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Scripts
-        </Link>{' '}
-        <Link
-          to="/inline-scripts"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Inline Scripts
-        </Link>{' '}
-        <Link
-          to="/deferred"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Deferred
-        </Link>{' '}
-        <Link
-          to="/redirect"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          redirect
-        </Link>{' '}
-        <Link
-          // @ts-expect-error
-          to="/this-route-does-not-exist"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          This Route Does Not Exist
-        </Link>
-      </div>
-      <Outlet />
-      <div class="inline-div">This is an inline styled div</div>
-      <TanStackRouterDevtoolsInProd />
-    </>
+    <html>
+      <head>
+        <HydrationScript />
+      </head>
+      <body>
+        <HeadContent />
+        <div class="p-2 flex gap-2 text-lg">
+          <Link
+            to="/"
+            activeProps={{
+              class: 'font-bold',
+            }}
+            activeOptions={{ exact: true }}
+          >
+            Home
+          </Link>{' '}
+          <Link
+            to="/posts"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Posts
+          </Link>{' '}
+          <Link
+            to="/users"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Users
+          </Link>{' '}
+          <Link
+            to="/layout-a"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Layout
+          </Link>{' '}
+          <Link
+            to="/scripts"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Scripts
+          </Link>{' '}
+          <Link
+            to="/inline-scripts"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Inline Scripts
+          </Link>{' '}
+          <Link
+            to="/deferred"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Deferred
+          </Link>{' '}
+          <Link
+            to="/redirect"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            redirect
+          </Link>{' '}
+          <Link
+            // @ts-expect-error
+            to="/this-route-does-not-exist"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            This Route Does Not Exist
+          </Link>
+        </div>
+        <Outlet />
+        <div class="inline-div">This is an inline styled div</div>
+        <TanStackRouterDevtoolsInProd />
+        <Scripts />
+      </body>
+    </html>
   )
 }

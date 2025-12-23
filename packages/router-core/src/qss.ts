@@ -53,7 +53,6 @@ function toValue(str: unknown) {
   if (str === 'true') return true
   return +str * 0 === 0 && +str + '' === str ? +str : str
 }
-
 /**
  * Decodes a query string into an object.
  * @param str - The query string to decode.

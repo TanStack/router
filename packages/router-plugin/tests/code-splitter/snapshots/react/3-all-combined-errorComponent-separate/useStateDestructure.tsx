@@ -1,121 +1,163 @@
-console.warn("[tanstack-router] These exports from \"useStateDestructure.tsx\" will not be code-split and will increase your bundle size:\n- VersionIndex\nFor the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.");
-import * as React from 'react';
-import { CgCornerUpLeft, CgSpinner } from 'react-icons/cg';
-import { FaBolt, FaBook, FaCheckCircle, FaCogs, FaDiscord, FaGithub, FaTshirt, FaTwitter } from 'react-icons/fa';
-import { Await, Link, getRouteApi } from '@tanstack/react-router';
-import { Carbon } from '~/components/Carbon';
-import { Footer } from '~/components/Footer';
-import { VscPreview, VscWand } from 'react-icons/vsc';
-import { TbHeartHandshake } from 'react-icons/tb';
-import SponsorPack from '~/components/SponsorPack';
-import { startProject } from '~/projects/start';
-import { createFileRoute } from '@tanstack/react-router';
-import { Framework, getBranch } from '~/projects';
-import { seo } from '~/utils/seo';
-const menu = [{
-  label: <div className="flex items-center gap-2">
+import * as React from 'react'
+
+import { CgCornerUpLeft, CgSpinner } from 'react-icons/cg'
+import {
+  FaBolt,
+  FaBook,
+  FaCheckCircle,
+  FaCogs,
+  FaDiscord,
+  FaGithub,
+  FaTshirt,
+  FaTwitter,
+} from 'react-icons/fa'
+import { Await, Link, getRouteApi } from '@tanstack/react-router'
+import { Carbon } from '~/components/Carbon'
+import { Footer } from '~/components/Footer'
+import { VscPreview, VscWand } from 'react-icons/vsc'
+import { TbHeartHandshake } from 'react-icons/tb'
+import SponsorPack from '~/components/SponsorPack'
+import { startProject } from '~/projects/start'
+import { createFileRoute } from '@tanstack/react-router'
+import { Framework, getBranch } from '~/projects'
+import { seo } from '~/utils/seo'
+
+const menu = [
+  {
+    label: (
+      <div className="flex items-center gap-2">
         <CgCornerUpLeft className="text-lg" /> TanStack
-      </div>,
-  to: '/'
-},
-// {
-//   label: (
-//     <div className="flex items-center gap-1">
-//       <VscPreview className="text-lg" /> Examples
-//     </div>
-//   ),
-//   to: './docs/react/examples/basic',
-// },
-// {
-//   label: (
-//     <div className="flex items-center gap-1">
-//       <FaBook className="text-lg" /> Docs
-//     </div>
-//   ),
-//   to: './docs/',
-// },
-// {
-//   label: (
-//     <div className="flex items-center gap-1">
-//       <FaGithub className="text-lg" /> GitHub
-//     </div>
-//   ),
-//   to: `https://github.com/${startProject.repo}`,
-// },
-{
-  label: <div className="flex items-center gap-1">
+      </div>
+    ),
+    to: '/',
+  },
+  // {
+  //   label: (
+  //     <div className="flex items-center gap-1">
+  //       <VscPreview className="text-lg" /> Examples
+  //     </div>
+  //   ),
+  //   to: './docs/react/examples/basic',
+  // },
+  // {
+  //   label: (
+  //     <div className="flex items-center gap-1">
+  //       <FaBook className="text-lg" /> Docs
+  //     </div>
+  //   ),
+  //   to: './docs/',
+  // },
+  // {
+  //   label: (
+  //     <div className="flex items-center gap-1">
+  //       <FaGithub className="text-lg" /> GitHub
+  //     </div>
+  //   ),
+  //   to: `https://github.com/${startProject.repo}`,
+  // },
+  {
+    label: (
+      <div className="flex items-center gap-1">
         <FaDiscord className="text-lg" /> Discord
-      </div>,
-  to: 'https://tlinz.com/discord'
-}, {
-  label: <div className="flex items-center gap-1">
+      </div>
+    ),
+    to: 'https://tlinz.com/discord',
+  },
+  {
+    label: (
+      <div className="flex items-center gap-1">
         <FaTshirt className="text-lg" /> Merch
-      </div>,
-  to: `https://cottonbureau.com/people/tanstack`
-}];
+      </div>
+    ),
+    to: `https://cottonbureau.com/people/tanstack`,
+  },
+]
+
 export const Route = createFileRoute('/_libraries/start/$version/')({
   component: VersionIndex,
-  meta: () => seo({
-    title: startProject.name,
-    description: startProject.description
-  })
-});
-const librariesRouteApi = getRouteApi('/_libraries');
+  meta: () =>
+    seo({
+      title: startProject.name,
+      description: startProject.description,
+    }),
+})
+
+const librariesRouteApi = getRouteApi('/_libraries')
+
 export default function VersionIndex() {
-  const {
-    sponsorsPromise
-  } = librariesRouteApi.useLoaderData();
-  const {
-    version
-  } = Route.useParams();
-  const branch = getBranch(startProject, version);
-  const [framework, setFramework] = React.useState<Framework>('react');
-  const [isDark, setIsDark] = React.useState(true);
+  const { sponsorsPromise } = librariesRouteApi.useLoaderData()
+  const { version } = Route.useParams()
+  const branch = getBranch(startProject, version)
+  const [framework, setFramework] = React.useState<Framework>('react')
+  const [isDark, setIsDark] = React.useState(true)
+
   React.useEffect(() => {
-    setIsDark(window.matchMedia?.(`(prefers-color-scheme: dark)`).matches);
-  }, []);
-  const gradientText = `inline-block text-transparent bg-clip-text bg-gradient-to-r ${startProject.colorFrom} ${startProject.colorTo}`;
-  return <div className="flex flex-col gap-20 md:gap-32 max-w-full">
-      <div className="flex flex-wrap py-2 px-4 items-center justify-center text-sm max-w-screen-xl mx-auto
-          md:text-base md:self-end">
+    setIsDark(window.matchMedia?.(`(prefers-color-scheme: dark)`).matches)
+  }, [])
+
+  const gradientText = `inline-block text-transparent bg-clip-text bg-gradient-to-r ${startProject.colorFrom} ${startProject.colorTo}`
+
+  return (
+    <div className="flex flex-col gap-20 md:gap-32 max-w-full">
+      <div
+        className="flex flex-wrap py-2 px-4 items-center justify-center text-sm max-w-screen-xl mx-auto
+          md:text-base md:self-end"
+      >
         {menu?.map((item, i) => {
-        const label = <div className="p-2 opacity-90 hover:opacity-100">{item.label}</div>;
-        return <div key={i} className="hover:underline">
-              {item.to.startsWith('http') ? <a href={item.to}>{label}</a> : <Link to={item.to} params>
+          const label = (
+            <div className="p-2 opacity-90 hover:opacity-100">{item.label}</div>
+          )
+
+          return (
+            <div key={i} className="hover:underline">
+              {item.to.startsWith('http') ? (
+                <a href={item.to}>{label}</a>
+              ) : (
+                <Link to={item.to} params>
                   {label}
-                </Link>}
-            </div>;
-      })}
+                </Link>
+              )}
+            </div>
+          )
+        })}
       </div>
       <div className="flex flex-col items-center gap-8 text-center px-4">
         <div className="flex gap-2 lg:gap-4 items-center">
-          <h1 className={`inline-block
+          <h1
+            className={`inline-block
             font-black text-4xl
             md:text-6xl
-            lg:text-7xl relative`}>
+            lg:text-7xl relative`}
+          >
             <span className={gradientText}>TanStack Start</span>
           </h1>
         </div>
         {/* <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[150%]"> */}
-        <div className="text-sm
+        <div
+          className="text-sm
             md:text-base font-black
             lg:text-lg align-super text-white animate-bounce uppercase
               dark:text-black bg-black dark:bg-white shadow-xl shadow-black/30 px-2 py-1 rounded-md
-              leading-none whitespace-nowrap">
+              leading-none whitespace-nowrap"
+        >
           Coming Soon!
           {/* {version === 'latest' ? latestVersion : version} */}
         </div>
         {/* </div> */}
-        <h2 className="font-bold text-2xl max-w-md
+        <h2
+          className="font-bold text-2xl max-w-md
             md:text-3xl
-            lg:text-5xl lg:max-w-2xl">
+            lg:text-5xl lg:max-w-2xl"
+        >
           Full-stack React framework{' '}
           <span className="underline decoration-dashed decoration-yellow-500 decoration-3 underline-offset-2">
             powered by TanStack Router
           </span>{' '}
         </h2>
-        <p className="text opacity-90 max-w-[500px]
-            lg:text-xl lg:max-w-[600px]">
+        <p
+          className="text opacity-90 max-w-[500px]
+            lg:text-xl lg:max-w-[600px]"
+        >
           Full-document SSR, Streaming, Server Functions, bundling and more,
           powered by <strong>TanStack Router</strong>, <strong>Nitro</strong>{' '}
           and <strong>Vite</strong>. Ready to deploy to your favorite hosting
@@ -145,12 +187,21 @@ export default function VersionIndex() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-center">
-          <a href={`https://github.com/tanstack/tanstack.com`} className={`flex items-center gap-2 py-2 px-4 bg-cyan-700 rounded text-white uppercase font-extrabold`}>
+          <a
+            href={`https://github.com/tanstack/tanstack.com`}
+            className={`flex items-center gap-2 py-2 px-4 bg-cyan-700 rounded text-white uppercase font-extrabold`}
+          >
             <FaGithub /> View TanStack.com Source
           </a>
-          <a href={`https://twitter.com/intent/post?text=${encodeURIComponent(`I'm excited for TanStack Start, new full-stack React framework coming soon from team @Tan_Stack!
+          <a
+            href={`https://twitter.com/intent/post?text=${encodeURIComponent(
+              `I'm excited for TanStack Start, new full-stack React framework coming soon from team @Tan_Stack!
               
-Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`flex items-center gap-2 py-2 px-4 bg-cyan-500 rounded text-white uppercase font-extrabold`}>
+Check it out at https://tanstack.com/start/`,
+            )}`}
+            target="_blank"
+            className={`flex items-center gap-2 py-2 px-4 bg-cyan-500 rounded text-white uppercase font-extrabold`}
+          >
             <FaTwitter /> Tweet about it!
           </a>{' '}
         </div>
@@ -158,7 +209,7 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
       {/* <div
         className="text-lg flex flex-col gap-12 p-8 max-w-[1200px] mx-auto
                         md:flex-row"
-       >
+      >
         <div className="flex-1 flex flex-col gap-8 items-center">
           <VscWand className="text-cyan-500 text-6xl" />
           <div className="flex flex-col gap-4">
@@ -217,7 +268,7 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
             </p>
           </div>
         </div>
-       </div> */}
+      </div> */}
 
       {/* <div className="px-4 sm:px-6 lg:px-8 mx-auto">
         <div className=" sm:text-center pb-16">
@@ -263,7 +314,7 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
             )
           })}
         </div>
-       </div> */}
+      </div> */}
 
       {/* <div>
         <div className="uppercase tracking-wider text-sm font-semibold text-center text-gray-400 mb-3">
@@ -306,17 +357,19 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
               ))}
           </div>
         </marquee>
-       </div> */}
+      </div> */}
 
       <div className="px-4 w-[500px] max-w-full mx-auto">
         <h3 className="text-center text-3xl leading-8 font-extrabold tracking-tight sm:text-4xl sm:leading-10 lg:leading-none mt-8">
           Partners
         </h3>
         <div className="h-8" />
-        <div className="flex-1 flex flex-col items-center text-sm text-center
+        <div
+          className="flex-1 flex flex-col items-center text-sm text-center
                       bg-white shadow-xl shadow-gray-500/20 rounded-lg
                         divide-y-2 divide-gray-500 divide-opacity-10 overflow-hidden
-                        dark:bg-gray-800 dark:shadow-none">
+                        dark:bg-gray-800 dark:shadow-none"
+        >
           <span className="flex items-center gap-2 p-12 text-4xl text-rose-500 font-black uppercase">
             Start <TbHeartHandshake /> You?
           </span>
@@ -326,7 +379,10 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
               beyond the call of sponsorship. Are you as invested in TanStack
               Start as we are? Let's push the boundaries of Start together!
             </div>
-            <a href="mailto:partners@tanstack.com?subject=TanStack Start Partnership" className="text-blue-500 uppercase font-black text-sm">
+            <a
+              href="mailto:partners@tanstack.com?subject=TanStack Start Partnership"
+              className="text-blue-500 uppercase font-black text-sm"
+            >
               Let's chat
             </a>
           </div>
@@ -337,15 +393,25 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
         <h3 className="text-center text-3xl leading-8 font-extrabold tracking-tight sm:text-4xl sm:leading-10 lg:leading-none mt-8">
           Sponsors
         </h3>
-        <div className="my-4 flex flex-wrap mx-auto max-w-screen-lg" style={{
-        aspectRatio: '1/1'
-      }}>
-          <Await promise={sponsorsPromise} fallback={<CgSpinner className="text-2xl animate-spin" />} children={sponsors => {
-          return <SponsorPack sponsors={sponsors} />;
-        }} />
+        <div
+          className="my-4 flex flex-wrap mx-auto max-w-screen-lg"
+          style={{
+            aspectRatio: '1/1',
+          }}
+        >
+          <Await
+            promise={sponsorsPromise}
+            fallback={<CgSpinner className="text-2xl animate-spin" />}
+            children={(sponsors) => {
+              return <SponsorPack sponsors={sponsors} />
+            }}
+          />
         </div>
         <div className="text-center">
-          <a href="https://github.com/sponsors/tannerlinsley" className="inline-block bg-green-500 px-4 py-2 text-xl mx-auto leading-tight font-extrabold tracking-tight text-white rounded-full">
+          <a
+            href="https://github.com/sponsors/tannerlinsley"
+            className="inline-block bg-green-500 px-4 py-2 text-xl mx-auto leading-tight font-extrabold tracking-tight text-white rounded-full"
+          >
             Become a Sponsor!
           </a>
         </div>
@@ -355,8 +421,10 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
         <div className="shadow-lg rounded-lg overflow-hidden bg-white dark:bg-gray-800 dark:text-white">
           <Carbon />
         </div>
-        <span className="text-[.7rem] bg-gray-500 bg-opacity-10 py-1 px-2 rounded text-gray-500
-                dark:bg-opacity-20">
+        <span
+          className="text-[.7rem] bg-gray-500 bg-opacity-10 py-1 px-2 rounded text-gray-500
+                dark:bg-opacity-20"
+        >
           This ad helps us be happy about our invested time and not burn out and
           rage-quit OSS. Yay money! 😉
         </span>
@@ -399,7 +467,7 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
             ))}
           </div>
         </div>
-       </div> */}
+      </div> */}
 
       {/* {[''].includes(framework) ? (
         <div className="px-2">
@@ -416,7 +484,7 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
             and let's get to work!
           </div>
         </div>
-       ) : (
+      ) : (
         <div className="bg-white dark:bg-black">
           <iframe
             key={framework}
@@ -434,7 +502,7 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
             }}
           ></iframe>
         </div>
-       )} */}
+      )} */}
 
       {/* <div className="flex flex-col gap-4 items-center">
         <div className="font-extrabold text-xl lg:text-2xl">
@@ -451,7 +519,8 @@ Check it out at https://tanstack.com/start/`)}`} target="_blank" className={`fle
             Read the Docs!
           </Link>
         </div>
-       </div> */}
+      </div> */}
       <Footer />
-    </div>;
+    </div>
+  )
 }

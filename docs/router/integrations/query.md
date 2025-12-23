@@ -4,7 +4,7 @@ title: TanStack Query Integration
 ---
 
 > [!IMPORTANT]
-> This integration automates SSR dehydration/hydration and streaming between TanStack Router and TanStack Query. If you haven't read the standard [External Data Loading](../../framework/react/guide/external-data-loading.md) guide, start there.
+> This integration automates SSR dehydration/hydration and streaming between TanStack Router and TanStack Query. If you haven't read the standard [External Data Loading](../framework/react/guide/external-data-loading.md) guide, start there.
 
 ## What you get
 
@@ -18,13 +18,13 @@ title: TanStack Query Integration
 The TanStack query integration is a separate package that you need to install:
 
 ```sh
-npm install -D @tanstack/react-router-ssr-query
+npm install @tanstack/react-router-ssr-query
 # or
-pnpm add -D @tanstack/react-router-ssr-query
+pnpm add @tanstack/react-router-ssr-query
 # or
-yarn add -D @tanstack/react-router-ssr-query
+yarn add @tanstack/react-router-ssr-query
 # or
-bun add -D @tanstack/react-router-ssr-query
+bun add @tanstack/react-router-ssr-query
 ```
 
 ## Setup
@@ -38,7 +38,7 @@ import { createRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { routeTree } from './routeTree.gen'
 
-export function createAppRouter() {
+export function getRouter() {
   const queryClient = new QueryClient()
   const router = createRouter({
     routeTree,

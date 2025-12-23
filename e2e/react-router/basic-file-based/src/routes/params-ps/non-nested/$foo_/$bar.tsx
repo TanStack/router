@@ -5,7 +5,7 @@ export const Route = createFileRoute('/params-ps/non-nested/$foo_/$bar')({
 })
 
 function RouteComponent() {
-  const fooParams = useParams({ from: '/params-ps/non-nested/$foo_' })
+  const fooParams = useParams({ from: `/params-ps/non-nested/$foo_` })
   const routeParams = Route.useParams()
 
   return (

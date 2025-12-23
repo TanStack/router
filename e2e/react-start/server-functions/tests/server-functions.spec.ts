@@ -6,6 +6,20 @@ import type { Page } from '@playwright/test'
 
 const PORT = await getTestServerPort(packageJson.name)
 
+test('Server function URLs correctly include constant ids', async ({
+  page,
+}) => {
+  for (const currentPage of ['/submit-post-formdata', '/formdata-redirect']) {
+    await page.goto(currentPage)
+    await page.waitForLoadState('networkidle')
+
+    const form = page.locator('form')
+    const actionUrl = await form.getAttribute('action')
+
+    expect(actionUrl).toMatch(/^\/_serverFn\/constant_id/)
+  }
+})
+
 test('invoking a server function with custom response status code', async ({
   page,
 }) => {
@@ -170,6 +184,58 @@ test('Server function can correctly send and receive FormData', async ({
   ).toContainText(expected)
 })
 
+test('server function correctly passes context when using FormData', async ({
+  page,
+}) => {
+  await page.goto('/formdata-context')
+
+  await page.waitForLoadState('networkidle')
+
+  const expectedContextValue =
+    (await page.getByTestId('expected-formdata-context-value').textContent()) ||
+    ''
+  expect(expectedContextValue).toBe('context-from-middleware')
+
+  // Test FormData function
+  await page.getByTestId('test-formdata-context-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  // Wait for the result to appear
+  await page.waitForSelector('[data-testid="formdata-context-result"]')
+
+  const resultText =
+    (await page.getByTestId('formdata-context-result').textContent()) || ''
+  expect(resultText).not.toBe('')
+
+  const result = JSON.parse(resultText)
+
+  // Verify context was passed correctly for FormData function
+  expect(result.success).toBe(true)
+  expect(result.hasContext).toBe(true)
+  expect(result.name).toBe('TestUser')
+  expect(result.testString).toBeDefined()
+  expect(result.testString).toContain('context-from-middleware')
+
+  // Test simple function (no parameters)
+  await page.getByTestId('test-simple-context-btn').click()
+  await page.waitForLoadState('networkidle')
+
+  // Wait for the result to appear
+  await page.waitForSelector('[data-testid="formdata-context-result"]')
+
+  const simpleResultText =
+    (await page.getByTestId('formdata-context-result').textContent()) || ''
+  expect(simpleResultText).not.toBe('')
+
+  const simpleResult = JSON.parse(simpleResultText)
+
+  // Verify context was passed correctly for simple function
+  expect(simpleResult.success).toBe(true)
+  expect(simpleResult.hasContext).toBe(true)
+  expect(simpleResult.testString).toBeDefined()
+  expect(simpleResult.testString).toContain('context-from-middleware')
+})
+
 test('server function can correctly send and receive headers', async ({
   page,
 }) => {
@@ -254,48 +320,50 @@ test.describe('server function sets cookies', () => {
     await runCookieTest(page, expectedCookieValue)
   })
 })
+;['GET', 'POST'].forEach((method) => {
+  test.describe(`aborting a server function call: method ${method}`, () => {
+    test('without aborting', async ({ page }) => {
+      await page.goto('/abort-signal/' + method)
 
-test.describe('aborting a server function call', () => {
-  test('without aborting', async ({ page }) => {
-    await page.goto('/abort-signal')
+      await page.waitForLoadState('networkidle')
 
-    await page.waitForLoadState('networkidle')
+      await page.getByTestId('run-without-abort-btn').click()
+      await page.waitForLoadState('networkidle')
+      await page.waitForSelector(
+        '[data-testid="result"]:has-text("server function result")',
+      )
+      await page.waitForSelector(
+        '[data-testid="errorMessage"]:has-text("$undefined")',
+      )
 
-    await page.getByTestId('run-without-abort-btn').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForSelector(
-      '[data-testid="result"]:has-text("server function result")',
-    )
-    await page.waitForSelector(
-      '[data-testid="errorMessage"]:has-text("$undefined")',
-    )
+      const result = (await page.getByTestId('result').textContent()) || ''
+      expect(result).toBe('server function result')
 
-    const result = (await page.getByTestId('result').textContent()) || ''
-    expect(result).toBe('server function result')
+      const errorMessage =
+        (await page.getByTestId('errorMessage').textContent()) || ''
+      expect(errorMessage).toBe('$undefined')
+    })
 
-    const errorMessage =
-      (await page.getByTestId('errorMessage').textContent()) || ''
-    expect(errorMessage).toBe('$undefined')
-  })
+    test('aborting', async ({ page }) => {
+      await page.goto('/abort-signal/' + method)
+      await page.waitForLoadState('networkidle')
 
-  test('aborting', async ({ page }) => {
-    await page.goto('/abort-signal')
+      await page.getByTestId('run-with-abort-btn').click()
+      await page.waitForLoadState('networkidle')
+      await page.waitForSelector(
+        '[data-testid="result"]:has-text("$undefined")',
+      )
+      await page.waitForSelector(
+        '[data-testid="errorMessage"]:has-text("aborted")',
+      )
 
-    await page.waitForLoadState('networkidle')
+      const result = (await page.getByTestId('result').textContent()) || ''
+      expect(result).toBe('$undefined')
 
-    await page.getByTestId('run-with-abort-btn').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForSelector('[data-testid="result"]:has-text("$undefined")')
-    await page.waitForSelector(
-      '[data-testid="errorMessage"]:has-text("aborted")',
-    )
-
-    const result = (await page.getByTestId('result').textContent()) || ''
-    expect(result).toBe('$undefined')
-
-    const errorMessage =
-      (await page.getByTestId('errorMessage').textContent()) || ''
-    expect(errorMessage).toContain('abort')
+      const errorMessage =
+        (await page.getByTestId('errorMessage').textContent()) || ''
+      expect(errorMessage).toContain('abort')
+    })
   })
 })
 
@@ -368,6 +436,32 @@ test.describe('middleware', () => {
       await runTest(page)
     })
   })
+
+  test('server function in combination with request middleware', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/request-middleware')
+
+    await page.waitForLoadState('networkidle')
+
+    async function checkEqual(prefix: string) {
+      const requestParam = await page
+        .getByTestId(`${prefix}-data-request-param`)
+        .textContent()
+      expect(requestParam).not.toBe('')
+      const requestFunc = await page
+        .getByTestId(`${prefix}-data-request-func`)
+        .textContent()
+      expect(requestParam).toBe(requestFunc)
+    }
+
+    await checkEqual('loader')
+
+    await page.getByTestId('client-call-button').click()
+    await page.waitForLoadState('networkidle')
+
+    await checkEqual('client')
+  })
 })
 
 test('factory', async ({ page }) => {
@@ -402,4 +496,171 @@ test('factory', async ({ page }) => {
       'equal',
     )
   }
+})
+
+test('primitives', async ({ page }) => {
+  await page.goto('/primitives')
+
+  const testCases = await page
+    .locator('[data-testid^="expected-"]')
+    .elementHandles()
+  expect(testCases.length).not.toBe(0)
+
+  for (const testCase of testCases) {
+    const testId = await testCase.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('testcase is missing data-testid')
+    }
+
+    const suffix = testId.replace('expected-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-${suffix}`).textContent()) || ''
+    expect(expected).not.toBe('')
+
+    await expect(page.getByTestId(`result-${suffix}`)).toContainText(expected)
+  }
+})
+
+test('redirect in server function on direct navigation', async ({ page }) => {
+  // Test direct navigation to a route with a server function that redirects
+  await page.goto('/redirect-test')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test/target')
+})
+
+test('redirect in server function called in query during SSR', async ({
+  page,
+}) => {
+  // Test direct navigation to a route with a server function that redirects
+  // when called inside a query with ssr: true
+  await page.goto('/redirect-test-ssr')
+
+  // Should redirect to target page
+  await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
+  expect(page.url()).toContain('/redirect-test-ssr/target')
+})
+
+test('re-exported server function factory middleware executes correctly', async ({
+  page,
+}) => {
+  // This test specifically verifies that when a server function factory is re-exported
+  // using `export { foo } from './module'` syntax, the middleware still executes.
+  // Previously, this syntax caused middleware to be silently skipped.
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  // Click the button for the re-exported factory function
+  await page.getByTestId('btn-fn-reexportedFactoryFn').click()
+
+  // Wait for the result
+  await expect(page.getByTestId('fn-result-reexportedFactoryFn')).toContainText(
+    'reexport-middleware-executed',
+  )
+
+  // Verify the full context was returned (middleware executed)
+  await expect(
+    page.getByTestId('fn-comparison-reexportedFactoryFn'),
+  ).toContainText('equal')
+})
+
+test('star re-exported server function factory middleware executes correctly', async ({
+  page,
+}) => {
+  // This test specifically verifies that when a server function factory is re-exported
+  // using `export * from './module'` syntax, the middleware still executes.
+  // Previously, this syntax caused middleware to be silently skipped.
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  // Click the button for the star re-exported factory function
+  await page.getByTestId('btn-fn-starReexportedFactoryFn').click()
+
+  // Wait for the result
+  await expect(
+    page.getByTestId('fn-result-starReexportedFactoryFn'),
+  ).toContainText('star-reexport-middleware-executed')
+
+  // Verify the full context was returned (middleware executed)
+  await expect(
+    page.getByTestId('fn-comparison-starReexportedFactoryFn'),
+  ).toContainText('equal')
+})
+
+test('nested star re-exported server function factory middleware executes correctly', async ({
+  page,
+}) => {
+  // This test specifically verifies that when a server function factory is re-exported
+  // through a nested chain (A -> B -> C) using `export * from './module'` syntax,
+  // the middleware still executes correctly.
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  // Click the button for the nested re-exported factory function
+  await page.getByTestId('btn-fn-nestedReexportedFactoryFn').click()
+
+  // Wait for the result
+  await expect(
+    page.getByTestId('fn-result-nestedReexportedFactoryFn'),
+  ).toContainText('nested-middleware-executed')
+
+  // Verify the full context was returned (middleware executed)
+  await expect(
+    page.getByTestId('fn-comparison-nestedReexportedFactoryFn'),
+  ).toContainText('equal')
+})
+
+test('server-only imports in middleware.server() are stripped from client build', async ({
+  page,
+}) => {
+  // This test verifies that server-only imports (like getRequestHeaders from @tanstack/react-start/server)
+  // inside createMiddleware().server() are properly stripped from the client build.
+  // If the .server() part is not removed, the build would fail with node:async_hooks externalization errors.
+  // The fact that this page loads at all proves the server code was stripped correctly.
+  await page.goto('/middleware/server-import-middleware')
+
+  await page.waitForLoadState('networkidle')
+
+  // Click the button to call the server function with middleware
+  await page.getByTestId('test-server-import-middleware-btn').click()
+
+  // Wait for the result - should contain our custom test header value
+  await expect(
+    page.getByTestId('server-import-middleware-result'),
+  ).toContainText('test-header-value')
+})
+
+test('middleware factories with server-only imports are stripped from client build', async ({
+  page,
+}) => {
+  // This test verifies that middleware factories (functions returning createMiddleware().server())
+  // with server-only imports are properly stripped from the client build.
+  // If the .server() part inside the factory is not removed, the build would fail with
+  // node:async_hooks externalization errors because getRequestHeaders uses node:async_hooks internally.
+  // The fact that this page loads at all proves the server code was stripped correctly.
+  await page.goto('/middleware/middleware-factory')
+
+  await page.waitForLoadState('networkidle')
+
+  // Click the button to call the server function with factory middlewares
+  await page.getByTestId('test-middleware-factory-btn').click()
+
+  // Wait for the result - should contain our custom header value from the factory middleware
+  await expect(page.getByTestId('header-value')).toContainText(
+    'factory-header-value',
+  )
+
+  // Also verify the prefixed headers were matched correctly
+  await expect(page.getByTestId('matched-headers')).toContainText(
+    'x-factory-one',
+  )
+  await expect(page.getByTestId('matched-headers')).toContainText(
+    'x-factory-two',
+  )
 })

@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { MetaProvider } from '@solidjs/meta'
+import { For } from 'solid-js'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -7,7 +8,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 
 export const useTags = () => {
   const router = useRouter()
-
+  const nonce = router.options.ssr?.nonce
   const routeMeta = useRouterState({
     select: (state) => {
       return state.matches.map((match) => match.meta!).filter(Boolean)
@@ -46,6 +47,7 @@ export const useTags = () => {
             tag: 'meta',
             attrs: {
               ...m,
+              nonce,
             },
           })
         }
@@ -56,6 +58,15 @@ export const useTags = () => {
       resultMeta.push(title)
     }
 
+    if (router.options.ssr?.nonce) {
+      resultMeta.push({
+        tag: 'meta',
+        attrs: {
+          property: 'csp-nonce',
+          content: router.options.ssr.nonce,
+        },
+      })
+    }
     resultMeta.reverse()
 
     return resultMeta
@@ -71,6 +82,7 @@ export const useTags = () => {
           tag: 'link',
           attrs: {
             ...link,
+            nonce,
           },
         })) satisfies Array<RouterManagedTag>
 
@@ -87,7 +99,7 @@ export const useTags = () => {
           (asset) =>
             ({
               tag: 'link',
-              attrs: asset.attrs,
+              attrs: { ...asset.attrs, nonce },
             }) satisfies RouterManagedTag,
         )
 
@@ -95,9 +107,9 @@ export const useTags = () => {
     },
   })
 
-  const preloadMeta = useRouterState({
+  const preloadLinks = useRouterState({
     select: (state) => {
-      const preloadMeta: Array<RouterManagedTag> = []
+      const preloadLinks: Array<RouterManagedTag> = []
 
       state.matches
         .map((match) => router.looseRoutesById[match.routeId]!)
@@ -105,17 +117,18 @@ export const useTags = () => {
           router.ssr?.manifest?.routes[route.id]?.preloads
             ?.filter(Boolean)
             .forEach((preload) => {
-              preloadMeta.push({
+              preloadLinks.push({
                 tag: 'link',
                 attrs: {
                   rel: 'modulepreload',
                   href: preload,
+                  nonce,
                 },
               })
             }),
         )
 
-      return preloadMeta
+      return preloadLinks
     },
   })
 
@@ -130,6 +143,7 @@ export const useTags = () => {
         tag: 'style',
         attrs: {
           ...style,
+          nonce,
         },
         children,
       })),
@@ -146,6 +160,7 @@ export const useTags = () => {
         tag: 'script',
         attrs: {
           ...script,
+          nonce,
         },
         children,
       })),
@@ -155,7 +170,7 @@ export const useTags = () => {
     uniqBy(
       [
         ...meta(),
-        ...preloadMeta(),
+        ...preloadLinks(),
         ...links(),
         ...styles(),
         ...headScripts(),
@@ -168,15 +183,16 @@ export const useTags = () => {
 
 /**
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
- * It should be rendered in the `<head>` of your document.
+ * When using full document hydration (hydrating from `<html>`), this component should be rendered in the `<body>`
+ * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
+ * The component uses portals internally to render content into the `<head>` element.
  */
 export function HeadContent() {
   const tags = useTags()
+
   return (
     <MetaProvider>
-      {tags().map((tag) => (
-        <Asset {...tag} />
-      ))}
+      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
     </MetaProvider>
   )
 }

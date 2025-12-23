@@ -1,6 +1,6 @@
 import { copyFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'pathe'
-import fg from 'fast-glob'
+import { glob } from 'tinyglobby'
 import type { Plugin } from 'vite'
 
 export function copyFilesPlugin({
@@ -15,7 +15,7 @@ export function copyFilesPlugin({
   return {
     name: 'copy-files',
     async writeBundle() {
-      const entries = await fg(pattern, { cwd: fromDir })
+      const entries = await glob(pattern, { cwd: fromDir })
       if (entries.length === 0) {
         throw new Error(
           `No files found matching pattern "${pattern}" in directory "${fromDir}"`,

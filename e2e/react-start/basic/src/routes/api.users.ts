@@ -1,4 +1,4 @@
-import { json } from '@tanstack/react-start'
+import { createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
 
 import type { User } from '~/utils/users'
@@ -9,7 +9,7 @@ if (import.meta.env.VITE_NODE_ENV === 'test') {
   queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
 }
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/api/users')({
   server: {
     handlers: {
       GET: async ({ request }) => {
@@ -18,7 +18,7 @@ export const Route = createFileRoute({
 
         const list = res.data.slice(0, 10)
 
-        return json(
+        return Response.json(
           list.map((u) => ({ id: u.id, name: u.name, email: u.email })),
         )
       },

@@ -1,6 +1,6 @@
 import { createSerializationAdapter } from '@tanstack/router-core'
 import { TSS_SERVER_FUNCTION } from '../constants'
-import { createClientRpc } from './createClientRpc'
+import { createClientRpc } from '../client-rpc/createClientRpc'
 
 export const ServerFunctionSerializationAdapter = createSerializationAdapter({
   key: '$TSS/serverfn',

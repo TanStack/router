@@ -544,6 +544,11 @@ export function createBrowserHistory(opts?: {
   return history
 }
 
+/**
+ * Create a hash-based history implementation.
+ * Useful for static hosts or environments without server URL rewriting.
+ * @link https://tanstack.com/router/latest/docs/framework/react/guide/history-types
+ */
 export function createHashHistory(opts?: { window?: any }): RouterHistory {
   const win =
     opts?.window ??
@@ -565,6 +570,11 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
   })
 }
 
+/**
+ * Create an in-memory history implementation.
+ * Ideal for server rendering, tests, and non-DOM environments.
+ * @link https://tanstack.com/router/latest/docs/framework/react/guide/history-types
+ */
 export function createMemoryHistory(
   opts: {
     initialEntries: Array<string>

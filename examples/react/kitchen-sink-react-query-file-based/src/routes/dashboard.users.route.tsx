@@ -103,7 +103,7 @@ function UsersComponent() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as UsersViewSortBy)}
-            className="flex-1 border p-1 px-2 rounded"
+            className="flex-1 border p-1 px-2 rounded-sm"
           >
             {['name', 'id', 'email'].map((d) => {
               return <option key={d} value={d} children={d} />
@@ -116,7 +116,7 @@ function UsersComponent() {
             value={filterDraft}
             onChange={(e) => setFilterDraft(e.target.value)}
             placeholder="Search Names..."
-            className="min-w-0 flex-1 border p-1 px-2 rounded"
+            className="min-w-0 flex-1 border p-1 px-2 rounded-sm"
           />
         </div>
         {filteredUsers?.map((user) => {

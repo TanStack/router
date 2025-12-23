@@ -128,7 +128,7 @@ function AnchorComponent() {
             <label>
               <span>Target Anchor</span>
               <select
-                class="border border-opacity-50 rounded p-2 w-full"
+                class="border border-opacity-50 rounded-sm p-2 w-full"
                 data-testid="hash-select"
                 value={location().hash || anchors[0].id}
                 name="hash"
@@ -156,7 +156,7 @@ function AnchorComponent() {
                 <label>
                   <span>Behavior</span>
                   <select
-                    class="border border-opacity-50 rounded p-2 w-full"
+                    class="border border-opacity-50 rounded-sm p-2 w-full"
                     data-testid="behavior-select"
                     value="instant"
                     name="scrollBehavior"
@@ -172,7 +172,7 @@ function AnchorComponent() {
                 <label>
                   <span>Block</span>
                   <select
-                    class="border border-opacity-50 rounded p-2 w-full"
+                    class="border border-opacity-50 rounded-sm p-2 w-full"
                     data-testid="block-select"
                     value="start"
                     name="scrollBlock"
@@ -189,7 +189,7 @@ function AnchorComponent() {
                 <label>
                   <span>Inline</span>
                   <select
-                    class="border border-opacity-50 rounded p-2 w-full"
+                    class="border border-opacity-50 rounded-sm p-2 w-full"
                     data-testid="inline-select"
                     value="nearest"
                     name="scrollInline"
@@ -205,7 +205,7 @@ function AnchorComponent() {
           ) : null}
           <div>
             <button
-              class="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+              class="bg-blue-500 rounded-sm p-2 uppercase text-white font-black disabled:opacity-50"
               data-testid="navigate-button"
             >
               Navigate

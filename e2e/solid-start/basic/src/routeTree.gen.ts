@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
@@ -25,6 +26,7 @@ import { Route as SearchParamsIndexRouteImport } from './routes/search-params/in
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as NotFoundIndexRouteImport } from './routes/not-found/index'
+import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-cookie-redirect/index'
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as SearchParamsLoaderThrowsRedirectRouteImport } from './routes/search-params/loader-throws-redirect'
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
@@ -32,9 +34,12 @@ import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
+import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
 import { Route as ApiUsersRouteImport } from './routes/api/users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as TransitionTypingCreateResourceRouteImport } from './routes/transition/typing/create-resource'
+import { Route as TransitionCountCreateResourceRouteImport } from './routes/transition/count/create-resource'
 import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
@@ -46,6 +51,12 @@ import { Route as RedirectTargetServerFnViaUseServerFnRouteImport } from './rout
 import { Route as RedirectTargetServerFnViaLoaderRouteImport } from './routes/redirect/$target/serverFn/via-loader'
 import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
 
+const Char45824Char54620Char48124Char44397Route =
+  Char45824Char54620Char48124Char44397RouteImport.update({
+    id: '/대한민국',
+    path: '/대한민국',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -125,6 +136,12 @@ const NotFoundIndexRoute = NotFoundIndexRouteImport.update({
   path: '/',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
+const MultiCookieRedirectIndexRoute =
+  MultiCookieRedirectIndexRouteImport.update({
+    id: '/multi-cookie-redirect/',
+    path: '/multi-cookie-redirect/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const UsersUserIdRoute = UsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
@@ -161,6 +178,12 @@ const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
   path: '/via-beforeLoad',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
+const MultiCookieRedirectTargetRoute =
+  MultiCookieRedirectTargetRouteImport.update({
+    id: '/multi-cookie-redirect/target',
+    path: '/multi-cookie-redirect/target',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiUsersRoute = ApiUsersRouteImport.update({
   id: '/api/users',
   path: '/api/users',
@@ -175,6 +198,18 @@ const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
+const TransitionTypingCreateResourceRoute =
+  TransitionTypingCreateResourceRouteImport.update({
+    id: '/transition/typing/create-resource',
+    path: '/transition/typing/create-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const TransitionCountCreateResourceRoute =
+  TransitionCountCreateResourceRouteImport.update({
+    id: '/transition/count/create-resource',
+    path: '/transition/count/create-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
@@ -242,7 +277,9 @@ export interface FileRoutesByFullPath {
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -250,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/multi-cookie-redirect': typeof MultiCookieRedirectIndexRoute
   '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
@@ -261,6 +299,8 @@ export interface FileRoutesByFullPath {
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
+  '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -274,13 +314,16 @@ export interface FileRoutesByTo {
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/multi-cookie-redirect': typeof MultiCookieRedirectIndexRoute
   '/not-found': typeof NotFoundIndexRoute
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
@@ -292,6 +335,8 @@ export interface FileRoutesByTo {
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
+  '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -311,8 +356,10 @@ export interface FileRoutesById {
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -320,6 +367,7 @@ export interface FileRoutesById {
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/multi-cookie-redirect/': typeof MultiCookieRedirectIndexRoute
   '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
@@ -331,6 +379,8 @@ export interface FileRoutesById {
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
+  '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -350,7 +400,9 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/stream'
     | '/users'
+    | '/대한민국'
     | '/api/users'
+    | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
@@ -358,6 +410,7 @@ export interface FileRouteTypes {
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/users/$userId'
+    | '/multi-cookie-redirect'
     | '/not-found/'
     | '/posts/'
     | '/redirect'
@@ -369,6 +422,8 @@ export interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/transition/count/create-resource'
+    | '/transition/typing/create-resource'
     | '/redirect/$target/'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -382,13 +437,16 @@ export interface FileRouteTypes {
     | '/links'
     | '/scripts'
     | '/stream'
+    | '/대한민국'
     | '/api/users'
+    | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/users/$userId'
+    | '/multi-cookie-redirect'
     | '/not-found'
     | '/posts'
     | '/redirect'
@@ -400,6 +458,8 @@ export interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/transition/count/create-resource'
+    | '/transition/typing/create-resource'
     | '/redirect/$target'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -418,8 +478,10 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/stream'
     | '/users'
+    | '/대한민국'
     | '/_layout/_layout-2'
     | '/api/users'
+    | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
@@ -427,6 +489,7 @@ export interface FileRouteTypes {
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/users/$userId'
+    | '/multi-cookie-redirect/'
     | '/not-found/'
     | '/posts/'
     | '/redirect/'
@@ -438,6 +501,8 @@ export interface FileRouteTypes {
     | '/posts_/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/transition/count/create-resource'
+    | '/transition/typing/create-resource'
     | '/redirect/$target/'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -457,14 +522,26 @@ export interface RootRouteChildren {
   ScriptsRoute: typeof ScriptsRoute
   StreamRoute: typeof StreamRoute
   UsersRoute: typeof UsersRouteWithChildren
+  Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
+  MultiCookieRedirectTargetRoute: typeof MultiCookieRedirectTargetRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
+  MultiCookieRedirectIndexRoute: typeof MultiCookieRedirectIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
+  TransitionCountCreateResourceRoute: typeof TransitionCountCreateResourceRoute
+  TransitionTypingCreateResourceRoute: typeof TransitionTypingCreateResourceRoute
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/users': {
       id: '/users'
       path: '/users'
@@ -577,6 +654,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof NotFoundIndexRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
+    '/multi-cookie-redirect/': {
+      id: '/multi-cookie-redirect/'
+      path: '/multi-cookie-redirect'
+      fullPath: '/multi-cookie-redirect'
+      preLoaderRoute: typeof MultiCookieRedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/users/$userId': {
       id: '/users/$userId'
       path: '/$userId'
@@ -626,6 +710,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof NotFoundViaBeforeLoadRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
+    '/multi-cookie-redirect/target': {
+      id: '/multi-cookie-redirect/target'
+      path: '/multi-cookie-redirect/target'
+      fullPath: '/multi-cookie-redirect/target'
+      preLoaderRoute: typeof MultiCookieRedirectTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/users': {
       id: '/api/users'
       path: '/api/users'
@@ -646,6 +737,20 @@ declare module '@tanstack/solid-router' {
       fullPath: '/redirect/$target/'
       preLoaderRoute: typeof RedirectTargetIndexRouteImport
       parentRoute: typeof RedirectTargetRoute
+    }
+    '/transition/typing/create-resource': {
+      id: '/transition/typing/create-resource'
+      path: '/transition/typing/create-resource'
+      fullPath: '/transition/typing/create-resource'
+      preLoaderRoute: typeof TransitionTypingCreateResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transition/count/create-resource': {
+      id: '/transition/count/create-resource'
+      path: '/transition/count/create-resource'
+      fullPath: '/transition/count/create-resource'
+      preLoaderRoute: typeof TransitionCountCreateResourceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/redirect/$target/via-loader': {
       id: '/redirect/$target/via-loader'
@@ -850,10 +955,16 @@ const rootRouteChildren: RootRouteChildren = {
   ScriptsRoute: ScriptsRoute,
   StreamRoute: StreamRoute,
   UsersRoute: UsersRouteWithChildren,
+  Char45824Char54620Char48124Char44397Route:
+    Char45824Char54620Char48124Char44397Route,
   ApiUsersRoute: ApiUsersRouteWithChildren,
+  MultiCookieRedirectTargetRoute: MultiCookieRedirectTargetRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
+  MultiCookieRedirectIndexRoute: MultiCookieRedirectIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
+  TransitionCountCreateResourceRoute: TransitionCountCreateResourceRoute,
+  TransitionTypingCreateResourceRoute: TransitionTypingCreateResourceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
@@ -863,6 +974,7 @@ import type { getRouter } from './router.tsx'
 import type { createStart } from '@tanstack/solid-start'
 declare module '@tanstack/solid-start' {
   interface Register {
+    ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
   }
 }

@@ -44,7 +44,7 @@ function setupConfig(
   folder: string,
   inlineConfig: Partial<Omit<Config, 'routesDirectory'>> = {},
 ) {
-  const { generatedRouteTree = '/routeTree.gen.ts', ...rest } = inlineConfig
+  const { generatedRouteTree = `/routeTree.gen.ts`, ...rest } = inlineConfig
   const dir = makeFolderDir(folder)
 
   const config = getConfig({
@@ -72,6 +72,10 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.enableRouteTreeFormatting = false
       break
     case 'custom-tokens':
+      config.indexToken = '_1nd3x'
+      config.routeToken = '_r0ut3_'
+      break
+    case 'escaped-custom-tokens':
       config.indexToken = '_1nd3x'
       config.routeToken = '_r0ut3_'
       break
@@ -103,7 +107,7 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'types-disabled':
       config.disableTypes = true
       config.generatedRouteTree =
-        makeFolderDir(folderName) + '/routeTree.gen.js'
+        makeFolderDir(folderName) + `/routeTree.gen.js`
       break
     case 'custom-scaffolding':
       config.customScaffolding = {
@@ -234,7 +238,7 @@ function shouldThrow(folderName: string) {
 describe('generator works', async () => {
   const folderNames = await readDir()
 
-  it.each(folderNames.map((folder) => [folder]))(
+  it.each(folderNames)(
     'should wire-up the routes for a "%s" tree',
     async (folderName) => {
       const folderRoot = makeFolderDir(folderName)
@@ -258,12 +262,10 @@ describe('generator works', async () => {
 
         const generatedRouteTree = await getRouteTreeFileText(config)
 
+        const snapshotPath = `routeTree.snapshot.${config.disableTypes ? 'js' : 'ts'}`
+
         await expect(generatedRouteTree).toMatchFileSnapshot(
-          join(
-            'generator',
-            folderName,
-            `routeTree.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
-          ),
+          join('generator', folderName, snapshotPath),
         )
       }
 
@@ -271,55 +273,59 @@ describe('generator works', async () => {
     },
   )
 
-  it('should create directory for routeTree if it does not exist', async () => {
-    const folderName = 'only-root'
-    const folderRoot = makeFolderDir(folderName)
-    let pathCreated = false
+  it.each(folderNames)(
+    'should create directory for routeTree if it does not exist',
+    async () => {
+      const folderName = 'only-root'
+      const folderRoot = makeFolderDir(folderName)
+      let pathCreated = false
 
-    const config = await setupConfig(folderName)
+      const config = await setupConfig(folderName)
 
-    rewriteConfigByFolderName(folderName, config)
+      rewriteConfigByFolderName(folderName, config)
 
-    await preprocess(folderName)
-    config.generatedRouteTree = join(
-      folderRoot,
-      'generated',
-      '/routeTree.gen.ts',
-    )
-    const generator = new Generator({ config, root: folderRoot })
-    const error = shouldThrow(folderName)
-    if (error) {
-      try {
+      await preprocess(folderName)
+      config.generatedRouteTree = join(
+        folderRoot,
+        'generated',
+        `/routeTree.gen.ts`,
+      )
+      const generator = new Generator({ config, root: folderRoot })
+
+      const error = shouldThrow(folderName)
+      if (error) {
+        try {
+          await generator.run()
+        } catch (e) {
+          expect(e).toBeInstanceOf(Error)
+          expect((e as Error).message.startsWith(error)).toBeTruthy()
+        }
+      } else {
         await generator.run()
-      } catch (e) {
-        expect(e).toBeInstanceOf(Error)
-        expect((e as Error).message.startsWith(error)).toBeTruthy()
+
+        const generatedRouteTree = await getRouteTreeFileText(config)
+
+        await expect(generatedRouteTree).toMatchFileSnapshot(
+          join(
+            'generator',
+            folderName,
+            `routeTree.generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
+          ),
+        )
+
+        pathCreated = await fs.access(dirname(config.generatedRouteTree)).then(
+          () => true,
+          () => false,
+        )
+
+        await expect(pathCreated).toBe(true)
       }
-    } else {
-      await generator.run()
 
-      const generatedRouteTree = await getRouteTreeFileText(config)
+      await postprocess(folderName)
 
-      await expect(generatedRouteTree).toMatchFileSnapshot(
-        join(
-          'generator',
-          folderName,
-          `routeTree.generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
-        ),
-      )
-
-      pathCreated = await fs.access(dirname(config.generatedRouteTree)).then(
-        () => true,
-        () => false,
-      )
-
-      await expect(pathCreated).toBe(true)
-    }
-
-    await postprocess(folderName)
-
-    if (pathCreated) {
-      await fs.rm(dirname(config.generatedRouteTree), { recursive: true })
-    }
-  })
+      if (pathCreated) {
+        await fs.rm(dirname(config.generatedRouteTree), { recursive: true })
+      }
+    },
+  )
 })

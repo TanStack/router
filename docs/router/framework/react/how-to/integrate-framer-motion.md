@@ -775,4 +775,3 @@ Before deploying your animated TanStack Router app:
 - [Framer Motion Documentation](https://www.framer.com/motion/) - Complete animation library guide
 - [React Transition Group Migration](https://www.framer.com/motion/migrate-from-react-transition-group/) - Migration guide from other animation libraries
 - [Animation Performance](https://web.dev/animations-guide/) - Web performance guide for animations
-- [TanStack Router Route Transitions](../guide/route-transitions) - Official guide for route animations

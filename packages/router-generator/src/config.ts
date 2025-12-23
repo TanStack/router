@@ -5,7 +5,7 @@ import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
 
 export const baseConfigSchema = z.object({
-  target: z.enum(['react', 'solid']).optional().default('react'),
+  target: z.enum(['react', 'solid', 'vue']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),

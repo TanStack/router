@@ -1,0 +1,41 @@
+{
+  "name": "tanstack-vue-start-e2e-basic-auth",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
+    "prisma-generate": "prisma generate",
+    "test:e2e": "rm -rf port*.txt; mkdir -p .tmp; rm -f .tmp/dev.db .tmp/dev.db-journal .tmp/dev.db-wal .tmp/dev.db-shm; export DATABASE_URL=file:./.tmp/dev.db; pnpm run prisma-generate && pnpm exec prisma migrate deploy && playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.15",
+    "@prisma/adapter-libsql": "^7.0.0",
+    "@prisma/client": "^7.0.0",
+    "@tanstack/vue-router": "workspace:^",
+    "@tanstack/vue-router-devtools": "workspace:^",
+    "@tanstack/vue-start": "workspace:^",
+    "redaxios": "^0.5.1",
+    "tailwind-merge": "^2.6.0",
+    "vite": "^7.1.7",
+    "vue": "^3.5.25"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@types/node": "^22.10.2",
+    "dotenv": "^17.2.3",
+    "prisma": "^7.0.0",
+    "srvx": "^0.9.8",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.7.2",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vitejs/plugin-vue-jsx": "^5.1.2",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

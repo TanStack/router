@@ -1,13 +1,15 @@
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
+import { rootRouteId } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
-import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
+import { Match } from './Match'
 import type {
+  AnyRoute,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -38,24 +40,24 @@ declare module '@tanstack/router-core' {
 export function Matches() {
   const router = useRouter()
 
-  // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
     router.isServer || (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : Solid.Suspense
+
+  const rootRoute: () => AnyRoute = () => router.routesById[rootRouteId]
+  const PendingComponent =
+    rootRoute().options.pendingComponent ??
+    router.options.defaultPendingComponent
 
   const OptionalWrapper = router.options.InnerWrap || SafeFragment
 
   return (
     <OptionalWrapper>
       <ResolvedSuspense
-        fallback={
-          router.options.defaultPendingComponent ? (
-            <router.options.defaultPendingComponent />
-          ) : null
-        }
+        fallback={PendingComponent ? <PendingComponent /> : null}
       >
-        {!router.isServer && <Transitioner />}
+        <Transitioner />
         <MatchesInner />
       </ResolvedSuspense>
     </OptionalWrapper>
@@ -75,8 +77,11 @@ function MatchesInner() {
   })
 
   const matchComponent = () => {
-    const id = matchId()
-    return id ? <Match matchId={id} /> : null
+    return (
+      <Solid.Show when={matchId()}>
+        <Match matchId={matchId()!} />
+      </Solid.Show>
+    )
   }
 
   return (
@@ -90,7 +95,8 @@ function MatchesInner() {
           onCatch={(error) => {
             warning(
               false,
-              `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+              `The following error wasn't caught by any route! At the very leas
+    t, consider setting an 'errorComponent' in your RootRoute!`,
             )
             warning(false, error.message || error.toString())
           }}

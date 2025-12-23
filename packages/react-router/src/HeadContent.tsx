@@ -4,9 +4,13 @@ import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+/**
+ * Build the list of head/link/meta/script tags to render for active matches.
+ * Used internally by `HeadContent`.
+ */
 export const useTags = () => {
   const router = useRouter()
-
+  const nonce = router.options.ssr?.nonce
   const routeMeta = useRouterState({
     select: (state) => {
       return state.matches.map((match) => match.meta!).filter(Boolean)
@@ -44,6 +48,7 @@ export const useTags = () => {
             tag: 'meta',
             attrs: {
               ...m,
+              nonce,
             },
           })
         }
@@ -54,10 +59,19 @@ export const useTags = () => {
       resultMeta.push(title)
     }
 
+    if (nonce) {
+      resultMeta.push({
+        tag: 'meta',
+        attrs: {
+          property: 'csp-nonce',
+          content: nonce,
+        },
+      })
+    }
     resultMeta.reverse()
 
     return resultMeta
-  }, [routeMeta])
+  }, [routeMeta, nonce])
 
   const links = useRouterState({
     select: (state) => {
@@ -69,6 +83,7 @@ export const useTags = () => {
           tag: 'link',
           attrs: {
             ...link,
+            nonce,
           },
         })) satisfies Array<RouterManagedTag>
 
@@ -88,6 +103,7 @@ export const useTags = () => {
               attrs: {
                 ...asset.attrs,
                 suppressHydrationWarning: true,
+                nonce,
               },
             }) satisfies RouterManagedTag,
         )
@@ -97,9 +113,9 @@ export const useTags = () => {
     structuralSharing: true as any,
   })
 
-  const preloadMeta = useRouterState({
+  const preloadLinks = useRouterState({
     select: (state) => {
-      const preloadMeta: Array<RouterManagedTag> = []
+      const preloadLinks: Array<RouterManagedTag> = []
 
       state.matches
         .map((match) => router.looseRoutesById[match.routeId]!)
@@ -107,17 +123,18 @@ export const useTags = () => {
           router.ssr?.manifest?.routes[route.id]?.preloads
             ?.filter(Boolean)
             .forEach((preload) => {
-              preloadMeta.push({
+              preloadLinks.push({
                 tag: 'link',
                 attrs: {
                   rel: 'modulepreload',
                   href: preload,
+                  nonce,
                 },
               })
             }),
         )
 
-      return preloadMeta
+      return preloadLinks
     },
     structuralSharing: true as any,
   })
@@ -133,11 +150,12 @@ export const useTags = () => {
         tag: 'style',
         attrs,
         children,
+        nonce,
       })),
     structuralSharing: true as any,
   })
 
-  const headScripts = useRouterState({
+  const headScripts: Array<RouterManagedTag> = useRouterState({
     select: (state) =>
       (
         state.matches
@@ -148,6 +166,7 @@ export const useTags = () => {
         tag: 'script',
         attrs: {
           ...script,
+          nonce,
         },
         children,
       })),
@@ -157,7 +176,7 @@ export const useTags = () => {
   return uniqBy(
     [
       ...meta,
-      ...preloadMeta,
+      ...preloadLinks,
       ...links,
       ...styles,
       ...headScripts,
@@ -169,13 +188,16 @@ export const useTags = () => {
 }
 
 /**
- * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
- * It should be rendered in the `<head>` of your document.
+ * Render route-managed head tags (title, meta, links, styles, head scripts).
+ * Place inside the document head of your app shell.
+ * @link https://tanstack.com/router/latest/docs/framework/react/guide/document-head-management
  */
 export function HeadContent() {
   const tags = useTags()
+  const router = useRouter()
+  const nonce = router.options.ssr?.nonce
   return tags.map((tag) => (
-    <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} />
+    <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} nonce={nonce} />
   ))
 }
 

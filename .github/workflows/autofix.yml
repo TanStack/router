@@ -19,11 +19,11 @@ jobs:
     if: ${{ github.event_name == 'push' || !github.event.pull_request.draft }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v6.0.1
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
       - name: Fix formatting
-        run: pnpm prettier:write
+        run: pnpm format
       - name: Generate labeler config
         run: pnpm labeler-generate
       - name: Apply fixes

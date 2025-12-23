@@ -1,7 +1,7 @@
-import { redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/search-params/loader-throws-redirect')({
   validateSearch: z.object({
     step: z.enum(['a', 'b', 'c']).optional(),
   }),

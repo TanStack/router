@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { json } from '@tanstack/solid-start'
 import type { User } from '~/utils/users'
 
 export const Route = createFileRoute('/api/users/$userId')({
@@ -15,14 +14,14 @@ export const Route = createFileRoute('/api/users/$userId')({
             throw new Error('Failed to fetch user')
           }
           const user = (await res.json()) as User
-          return json({
+          return Response.json({
             id: user.id,
             name: user.name,
             email: user.email,
           })
         } catch (e) {
           console.error(e)
-          return json({ error: 'User not found' }, { status: 404 })
+          return Response.json({ error: 'User not found' }, { status: 404 })
         }
       },
     },

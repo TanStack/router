@@ -25,8 +25,20 @@ await publish({
       packageDir: 'packages/react-router',
     },
     {
+      name: '@tanstack/vue-router',
+      packageDir: 'packages/vue-router',
+    },
+    {
+      name: '@tanstack/solid-router-ssr-query',
+      packageDir: 'packages/solid-router-ssr-query',
+    },
+    {
       name: '@tanstack/react-router-ssr-query',
       packageDir: 'packages/react-router-ssr-query',
+    },
+    {
+      name: '@tanstack/vue-router-ssr-query',
+      packageDir: 'packages/vue-router-ssr-query',
     },
     {
       name: '@tanstack/router-ssr-query-core',
@@ -55,6 +67,10 @@ await publish({
     {
       name: '@tanstack/react-router-devtools',
       packageDir: 'packages/react-router-devtools',
+    },
+    {
+      name: '@tanstack/vue-router-devtools',
+      packageDir: 'packages/vue-router-devtools',
     },
     {
       name: '@tanstack/router-devtools-core',
@@ -105,6 +121,18 @@ await publish({
       packageDir: 'packages/solid-start-server',
     },
     {
+      name: '@tanstack/vue-start',
+      packageDir: 'packages/vue-start',
+    },
+    {
+      name: '@tanstack/vue-start-client',
+      packageDir: 'packages/vue-start-client',
+    },
+    {
+      name: '@tanstack/vue-start-server',
+      packageDir: 'packages/vue-start-server',
+    },
+    {
       name: '@tanstack/start-client-core',
       packageDir: 'packages/start-client-core',
     },
@@ -115,6 +143,10 @@ await publish({
     {
       name: '@tanstack/start-storage-context',
       packageDir: 'packages/start-storage-context',
+    },
+    {
+      name: '@tanstack/start-fn-stubs',
+      packageDir: 'packages/start-fn-stubs',
     },
     {
       name: '@tanstack/react-start',

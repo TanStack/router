@@ -2,8 +2,9 @@ import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
-import { getServerContextAfterGlobalMiddlewares } from './getServerContextAfterGlobalMiddlewares'
 import { getStartOptions } from './getStartOptions'
+import { getStartContextServerOnly } from './getStartContextServerOnly'
+import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
   AnyValidator,
   Constrain,
@@ -13,10 +14,8 @@ import type {
   ResolveValidatorInput,
   ValidateSerializable,
   ValidateSerializableInput,
-  ValidateSerializableInputResult,
   Validator,
 } from '@tanstack/router-core'
-import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -131,8 +130,9 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           // The extracted function on the server-side calls
           // this function
           __executeServer: async (opts: any, signal: AbortSignal) => {
+            const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
-              getServerContextAfterGlobalMiddlewares()
+              startContext.contextAfterGlobalMiddlewares
             const ctx = {
               ...extractedFn,
               ...opts,
@@ -141,6 +141,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
                 ...opts.context,
               },
               signal,
+              request: startContext.request,
             }
 
             return executeMiddleware(resolvedMiddleware, 'server', ctx).then(
@@ -157,13 +158,11 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
     },
   } as ServerFnBuilder<Register, Method>
   const fun = (options?: { method?: Method }) => {
-    return {
-      ...res,
-      options: {
-        ...res.options,
-        ...options,
-      },
+    const newOptions = {
+      ...resolvedOptions,
+      ...options,
     }
+    return createServerFn(undefined, newOptions) as any
   }
   return Object.assign(fun, res) as any
 }
@@ -173,7 +172,7 @@ export async function executeMiddleware(
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
-  const globalMiddlewares = getStartOptions().functionMiddleware || []
+  const globalMiddlewares = getStartOptions()?.functionMiddleware || []
   const flattenedMiddlewares = flattenMiddlewares([
     ...globalMiddlewares,
     ...middlewares,
@@ -200,11 +199,16 @@ export async function executeMiddleware(
       )
     }
 
-    const middlewareFn = (
-      env === 'client' && 'client' in nextMiddleware.options
-        ? nextMiddleware.options.client
-        : nextMiddleware.options.server
-    ) as MiddlewareFn | undefined
+    let middlewareFn: MiddlewareFn | undefined = undefined
+    if (env === 'client') {
+      if ('client' in nextMiddleware.options) {
+        middlewareFn = nextMiddleware.options.client as MiddlewareFn | undefined
+      }
+    }
+    // env === 'server'
+    else if ('server' in nextMiddleware.options) {
+      middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
+    }
 
     if (middlewareFn) {
       // Execute the middleware
@@ -242,12 +246,13 @@ export type CompiledFetcherFnOptions = {
   context?: any
 }
 
-export type Fetcher<TRegister, TMiddlewares, TInputValidator, TResponse> =
+export type Fetcher<TMiddlewares, TInputValidator, TResponse> =
   undefined extends IntersectAllValidatorInputs<TMiddlewares, TInputValidator>
-    ? OptionalFetcher<TRegister, TMiddlewares, TInputValidator, TResponse>
-    : RequiredFetcher<TRegister, TMiddlewares, TInputValidator, TResponse>
+    ? OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
+    : RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
 
 export interface FetcherBase {
+  [TSS_SERVER_FUNCTION]: true
   url: string
   __executeServer: (opts: {
     method: Method
@@ -258,26 +263,18 @@ export interface FetcherBase {
   }) => Promise<unknown>
 }
 
-export interface OptionalFetcher<
-  TRegister,
-  TMiddlewares,
-  TInputValidator,
-  TResponse,
-> extends FetcherBase {
+export interface OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
+  extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<FetcherData<TRegister, TResponse>>
+  ): Promise<Awaited<TResponse>>
 }
 
-export interface RequiredFetcher<
-  TRegister,
-  TMiddlewares,
-  TInputValidator,
-  TResponse,
-> extends FetcherBase {
+export interface RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
+  extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<FetcherData<TRegister, TResponse>>
+  ): Promise<Awaited<TResponse>>
 }
 
 export type FetcherBaseOptions = {
@@ -295,12 +292,6 @@ export interface RequiredFetcherDataOptions<TMiddlewares, TInputValidator>
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
-export type FetcherData<TRegister, TResponse> = TResponse extends Response
-  ? Response
-  : TResponse extends JsonResponse<any>
-    ? ValidateSerializableInputResult<TRegister, ReturnType<TResponse['json']>>
-    : ValidateSerializableInputResult<TRegister, TResponse>
-
 export type RscStream<T> = {
   __cacheState: T
 }
@@ -308,9 +299,11 @@ export type RscStream<T> = {
 export type Method = 'GET' | 'POST'
 
 export type ServerFnReturnType<TRegister, TResponse> =
-  | Response
-  | Promise<ValidateSerializableInput<TRegister, TResponse>>
-  | ValidateSerializableInput<TRegister, TResponse>
+  TResponse extends PromiseLike<infer U>
+    ? Promise<ServerFnReturnType<TRegister, U>>
+    : TResponse extends Response
+      ? TResponse
+      : ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
   TRegister,
@@ -319,16 +312,10 @@ export type ServerFn<
   TInputValidator,
   TResponse,
 > = (
-  ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator>,
+  ctx: ServerFnCtx<TRegister, TMiddlewares, TInputValidator>,
 ) => ServerFnReturnType<TRegister, TResponse>
 
-export interface ServerFnCtx<
-  TRegister,
-  TMethod,
-  TMiddlewares,
-  TInputValidator,
-> {
-  method: TMethod
+export interface ServerFnCtx<TRegister, TMiddlewares, TInputValidator> {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
   signal: AbortSignal
@@ -519,7 +506,7 @@ export interface ServerFnHandler<
       TInputValidator,
       TNewResponse
     >,
-  ) => Fetcher<TRegister, TMiddlewares, TInputValidator, TNewResponse>
+  ) => Fetcher<TMiddlewares, TInputValidator, TNewResponse>
 }
 
 export interface ServerFnBuilder<TRegister, TMethod extends Method = 'GET'>
@@ -549,7 +536,7 @@ export interface ServerFnWithTypes<
   in out TInputValidator,
   in out TResponse,
 > {
-  _types: ServerFnTypes<
+  '~types': ServerFnTypes<
     TRegister,
     TMethod,
     TMiddlewares,
@@ -703,7 +690,7 @@ function serverFnBaseToMiddleware(
   options: ServerFnBaseOptions<any, any, any, any, any>,
 ): AnyFunctionMiddleware {
   return {
-    _types: undefined!,
+    '~types': undefined!,
     options: {
       inputValidator: options.inputValidator,
       client: async ({ next, sendContext, ...ctx }) => {

@@ -13,8 +13,14 @@ export type ViteEnvironmentNames =
 // otherwise it will be aliased to the default entry point in the respective framework plugin
 export const ENTRY_POINTS = {
   client: 'virtual:tanstack-start-client-entry',
-  server: 'virtual:tanstack-start-server-request-entry',
+  server: 'virtual:tanstack-start-server-entry',
   // the start entry point must always be provided by the user
   start: '#tanstack-start-entry',
   router: '#tanstack-router-entry',
 } as const
+
+// matches
+// .ts, .tsx, .cts, .mts, .js, .jsx, .cjs, .mjs
+// with optional query params after
+// but not .json
+export const TRANSFORM_ID_REGEX = [/\.[cm]?[tj]sx?($|\?)/]

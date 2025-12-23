@@ -1,18 +1,16 @@
-export type {
-  DehydratedRouter,
-  JsonResponse,
-} from '@tanstack/router-core/ssr/client'
+export type { JsonResponse } from '@tanstack/router-core/ssr/client'
 
 export { hydrate, json, mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 export {
   createIsomorphicFn,
+  createServerOnlyFn,
+  createClientOnlyFn,
   type IsomorphicFn,
   type ServerOnlyFn,
   type ClientOnlyFn,
   type IsomorphicFnBase,
-} from './createIsomorphicFn'
-export { createServerOnlyFn, createClientOnlyFn } from './envOnly'
+} from '@tanstack/start-fn-stubs'
 export { createServerFn } from './createServerFn'
 export {
   createMiddleware,
@@ -27,6 +25,7 @@ export {
   type FunctionMiddlewareAfterClient,
   type FunctionMiddlewareAfterServer,
   type FunctionMiddleware,
+  type FunctionMiddlewareAfterMiddleware,
   type FunctionMiddlewareClientFnOptions,
   type FunctionMiddlewareClientFnResult,
   type FunctionMiddlewareClientNextFn,
@@ -41,13 +40,24 @@ export {
   type FunctionMiddlewareServerNextFn,
   type FunctionServerResultWithContext,
   type AnyRequestMiddleware,
+  type RequestMiddlewareOptions,
+  type RequestMiddlewareWithTypes,
+  type RequestMiddlewareServer,
+  type RequestMiddlewareAfterServer,
+  type RequestMiddleware,
+  type RequestMiddlewareAfterMiddleware,
+  type RequestServerFn,
+  type RequestMiddlewareServerFnResult,
+  type RequestServerOptions,
+  type RequestServerNextFn,
+  type RequestServerNextFnOptions,
+  type RequestServerResult,
 } from './createMiddleware'
 export type {
   CompiledFetcherFnOptions,
   CompiledFetcherFn,
   Fetcher,
   RscStream,
-  FetcherData,
   FetcherBaseOptions,
   ServerFn,
   ServerFnCtx,
@@ -72,6 +82,7 @@ export {
   TSS_FORMDATA_CONTEXT,
   TSS_SERVER_FUNCTION,
   X_TSS_SERIALIZED,
+  X_TSS_RAW_RESPONSE,
 } from './constants'
 
 export type * from './serverRoute'
@@ -79,7 +90,11 @@ export type * from './serverRoute'
 export type * from './startEntry'
 
 export { createStart } from './createStart'
-export type { AnyStartInstance, AnyStartInstanceOptions } from './createStart'
+export type {
+  AnyStartInstance,
+  AnyStartInstanceOptions,
+  StartInstance,
+} from './createStart'
 export type { Register } from '@tanstack/router-core'
 
 export { getRouterInstance } from './getRouterInstance'

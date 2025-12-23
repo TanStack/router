@@ -3,9 +3,11 @@ title: Comparison | TanStack Router & TanStack Start vs Next.js vs React Router 
 toc: false
 ---
 
-Before you commit to a new tool, it's always nice to know how it stacks up against the competition!
+Choosing a routing solution? This side‑by‑side comparison highlights key features, trade‑offs, and common use cases to help you quickly evaluate how each option fits your project’s needs.
 
-> This comparison table strives to be as accurate and as unbiased as possible. If you use any of these libraries and feel the information could be improved, feel free to suggest changes (with notes or evidence of claims) using the "Edit this page on GitHub" link at the bottom of this page.
+While we aim to provide an accurate and fair comparison, please note that this table may not capture every nuance or recent update of each library. We recommend reviewing the official documentation and trying out each solution to make the most informed decision for your specific use case.
+
+If you find any discrepancies or have suggestions for improvement, please don't hesitate to contribute via the "Edit this page on GitHub" link at the bottom of this page or open an issue in the [TanStack Router GitHub repository](https://github.com/TanStack/router).
 
 Feature/Capability Key:
 
@@ -71,7 +73,7 @@ Feature/Capability Key:
 | React Server Functions                         | ✅                                               | 🛑                                                    | ✅                                                    |
 | React Server Function Middleware               | ✅                                               | 🛑                                                    | 🛑                                                    |
 | API Routes                                     | ✅                                               | ✅                                                    | ✅                                                    |
-| API Middleware                                 | ✅                                               | 🛑                                                    | ✅                                                    |
+| API Middleware                                 | ✅                                               | ✅                                                    | ✅                                                    |
 | React Server Components                        | 🛑                                               | 🟡 (Experimental)                                     | ✅                                                    |
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
 

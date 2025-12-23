@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SsrStreamRouteImport } from './routes/ssr/stream'
+import { Route as SsrNestedRouteImport } from './routes/ssr/nested'
 import { Route as SsrDataOnlyRouteImport } from './routes/ssr/data-only'
+import { Route as ServerFunctionNestedRouteImport } from './routes/server-function/nested'
 import { Route as ServerFunctionCustomErrorRouteImport } from './routes/server-function/custom-error'
 
 const IndexRoute = IndexRouteImport.update({
@@ -24,9 +26,19 @@ const SsrStreamRoute = SsrStreamRouteImport.update({
   path: '/ssr/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SsrNestedRoute = SsrNestedRouteImport.update({
+  id: '/ssr/nested',
+  path: '/ssr/nested',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SsrDataOnlyRoute = SsrDataOnlyRouteImport.update({
   id: '/ssr/data-only',
   path: '/ssr/data-only',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServerFunctionNestedRoute = ServerFunctionNestedRouteImport.update({
+  id: '/server-function/nested',
+  path: '/server-function/nested',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServerFunctionCustomErrorRoute =
@@ -39,20 +51,26 @@ const ServerFunctionCustomErrorRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/server-function/custom-error': typeof ServerFunctionCustomErrorRoute
+  '/server-function/nested': typeof ServerFunctionNestedRoute
   '/ssr/data-only': typeof SsrDataOnlyRoute
+  '/ssr/nested': typeof SsrNestedRoute
   '/ssr/stream': typeof SsrStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/server-function/custom-error': typeof ServerFunctionCustomErrorRoute
+  '/server-function/nested': typeof ServerFunctionNestedRoute
   '/ssr/data-only': typeof SsrDataOnlyRoute
+  '/ssr/nested': typeof SsrNestedRoute
   '/ssr/stream': typeof SsrStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/server-function/custom-error': typeof ServerFunctionCustomErrorRoute
+  '/server-function/nested': typeof ServerFunctionNestedRoute
   '/ssr/data-only': typeof SsrDataOnlyRoute
+  '/ssr/nested': typeof SsrNestedRoute
   '/ssr/stream': typeof SsrStreamRoute
 }
 export interface FileRouteTypes {
@@ -60,22 +78,34 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/server-function/custom-error'
+    | '/server-function/nested'
     | '/ssr/data-only'
+    | '/ssr/nested'
     | '/ssr/stream'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/server-function/custom-error' | '/ssr/data-only' | '/ssr/stream'
+  to:
+    | '/'
+    | '/server-function/custom-error'
+    | '/server-function/nested'
+    | '/ssr/data-only'
+    | '/ssr/nested'
+    | '/ssr/stream'
   id:
     | '__root__'
     | '/'
     | '/server-function/custom-error'
+    | '/server-function/nested'
     | '/ssr/data-only'
+    | '/ssr/nested'
     | '/ssr/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ServerFunctionCustomErrorRoute: typeof ServerFunctionCustomErrorRoute
+  ServerFunctionNestedRoute: typeof ServerFunctionNestedRoute
   SsrDataOnlyRoute: typeof SsrDataOnlyRoute
+  SsrNestedRoute: typeof SsrNestedRoute
   SsrStreamRoute: typeof SsrStreamRoute
 }
 
@@ -95,11 +125,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SsrStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ssr/nested': {
+      id: '/ssr/nested'
+      path: '/ssr/nested'
+      fullPath: '/ssr/nested'
+      preLoaderRoute: typeof SsrNestedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ssr/data-only': {
       id: '/ssr/data-only'
       path: '/ssr/data-only'
       fullPath: '/ssr/data-only'
       preLoaderRoute: typeof SsrDataOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/server-function/nested': {
+      id: '/server-function/nested'
+      path: '/server-function/nested'
+      fullPath: '/server-function/nested'
+      preLoaderRoute: typeof ServerFunctionNestedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/server-function/custom-error': {
@@ -115,7 +159,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ServerFunctionCustomErrorRoute: ServerFunctionCustomErrorRoute,
+  ServerFunctionNestedRoute: ServerFunctionNestedRoute,
   SsrDataOnlyRoute: SsrDataOnlyRoute,
+  SsrNestedRoute: SsrNestedRoute,
   SsrStreamRoute: SsrStreamRoute,
 }
 export const routeTree = rootRouteImport
@@ -126,6 +172,7 @@ import type { getRouter } from './router.tsx'
 import type { startInstance } from './start.tsx'
 declare module '@tanstack/react-start' {
   interface Register {
+    ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
     config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }

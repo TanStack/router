@@ -33,6 +33,9 @@ function getSafeSessionStorage() {
   return undefined
 }
 
+/** SessionStorage key used to persist scroll restoration state. */
+/** SessionStorage key used to store scroll positions across navigations. */
+/** SessionStorage key used to store scroll positions across navigations. */
 export const storageKey = 'tsr-scroll-restoration-v1_3'
 
 const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
@@ -70,6 +73,7 @@ function createScrollRestorationCache(): ScrollRestorationCache | null {
   }
 }
 
+/** In-memory handle to the persisted scroll restoration cache. */
 export const scrollRestorationCache = createScrollRestorationCache()
 
 /**
@@ -79,10 +83,14 @@ export const scrollRestorationCache = createScrollRestorationCache()
  * The `location.href` is used as a fallback to support the use case where the location state is not available like the initial render.
  */
 
+/**
+ * Default scroll restoration cache key: location state key or full href.
+ */
 export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
   return location.state.__TSR_key! || location.href
 }
 
+/** Best-effort nth-child CSS selector for a given element. */
 export function getCssSelector(el: any): string {
   const path = []
   let parent: HTMLElement
@@ -200,6 +208,8 @@ export function restoreScroll({
   ignoreScroll = false
 }
 
+/** Setup global listeners and hooks to support scroll restoration. */
+/** Setup global listeners and hooks to support scroll restoration. */
 export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   if (!scrollRestorationCache && !router.isServer) {
     return
@@ -364,6 +374,11 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
  *
  * Provides hash scrolling for programmatic navigation when default browser handling is prevented.
  * @param router The router instance containing current location and state
+ */
+/**
+ * @private
+ * Handles hash-based scrolling after navigation completes.
+ * To be used in framework-specific Transitioners.
  */
 export function handleHashScroll(router: AnyRouter) {
   if (typeof document !== 'undefined' && (document as any).querySelector) {

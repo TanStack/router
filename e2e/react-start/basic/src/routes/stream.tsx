@@ -1,7 +1,7 @@
-import { Await } from '@tanstack/react-router'
+import { Await, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/stream')({
   component: Home,
   loader() {
     return {

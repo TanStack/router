@@ -26,7 +26,7 @@ const parentRoute = createRoute({
 
 ## Exported Hooks, Components, and Utilities
 
-For the types of your router to work with top-level exports like `Link`, `useNavigate`, `useParams`, etc. they must permeate the type-script module boundary and be registered right into the library. To do this, we use declaration merging on the exported `Register` interface.
+For the types of your router to work with top-level exports like `Link`, `useNavigate`, `useParams`, etc. they must permeate the TypeScript module boundary and be registered right into the library. To do this, we use declaration merging on the exported `Register` interface.
 
 ```ts
 const router = createRouter({
@@ -65,7 +65,7 @@ function PostsComponent() {
 
 Every hook and component that requires a context hint will have a `from` param where you can pass the ID or path of the route you are rendering within.
 
-> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](../code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to pass in the `Route.fullPath` to get access to the typed `useParams()` and `useSearch()` hooks.
+> 🧠 Quick tip: If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to pass in the `Route.fullPath` to get access to the typed `useParams()` and `useSearch()` hooks.
 
 ### What if I don't know the route? What if it's a shared component?
 

@@ -1,4 +1,4 @@
-import { json } from '@tanstack/react-start'
+import { createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
 import type { User } from '~/utils/users'
 
@@ -8,7 +8,7 @@ if (import.meta.env.VITE_NODE_ENV === 'test') {
   queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
 }
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/api/users/$id')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
@@ -16,14 +16,14 @@ export const Route = createFileRoute({
         try {
           const res = await axios.get<User>(`${queryURL}/users/` + params.id)
 
-          return json({
+          return Response.json({
             id: res.data.id,
             name: res.data.name,
             email: res.data.email,
           })
         } catch (e) {
           console.error(e)
-          return json({ error: 'User not found' }, { status: 404 })
+          return Response.json({ error: 'User not found' }, { status: 404 })
         }
       },
     },

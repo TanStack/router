@@ -5,6 +5,7 @@ import {
   deadCodeElimination,
   findReferencedIdentifiers,
 } from 'babel-dead-code-elimination'
+import path from 'pathe'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
@@ -15,6 +16,11 @@ export interface DirectiveFn {
   extractedFilename: string
   filename: string
   chunkName: string
+  /**
+   * True when this function was discovered by the client build.
+   * Used to restrict HTTP access to only client-referenced functions.
+   */
+  isClientReferenced?: boolean
 }
 
 export type SupportedFunctionPath =
@@ -22,45 +28,64 @@ export type SupportedFunctionPath =
   | babel.NodePath<babel.types.FunctionExpression>
   | babel.NodePath<babel.types.ArrowFunctionExpression>
 
+export type GenerateFunctionIdFn = (opts: {
+  filename: string
+  functionName: string
+  extractedFilename: string
+}) => string
+
 export type ReplacerFn = (opts: {
   fn: string
   extractedFilename: string
   filename: string
   functionId: string
+  functionName: string
   isSourceFn: boolean
+  /**
+   * True when this function was already discovered by a previous build (e.g., client).
+   * For SSR callers, this means the function is in the manifest and doesn't need
+   * an importer - the manifest lookup will find it.
+   */
+  isClientReferenced: boolean
 }) => string
 
 // const debug = process.env.TSR_VITE_DEBUG === 'true'
 
 export type CompileDirectivesOpts = ParseAstOptions & {
   directive: string
-  directiveLabel: string
   getRuntimeCode?: (opts: {
     directiveFnsById: Record<string, DirectiveFn>
   }) => string
+  generateFunctionId: GenerateFunctionIdFn
   replacer: ReplacerFn
-  // devSplitImporter: string
   filename: string
   root: string
-}
-
-function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
-  return `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
+  isDirectiveSplitParam: boolean
+  directiveSplitParam: string
+  /**
+   * Previously discovered directive functions from other builds (e.g., client build).
+   * When provided, the compiler will use the canonical extractedFilename from this
+   * registry instead of computing it locally. This ensures SSR callers import from
+   * the same extracted file as the client.
+   */
+  knownDirectiveFns?: Record<string, DirectiveFn>
+  /**
+   * Whether the current environment is a client environment.
+   * Functions discovered in client environments are always client-referenced.
+   */
+  isClientEnvironment?: boolean
 }
 
 export function compileDirectives(opts: CompileDirectivesOpts): {
   compiledResult: GeneratorResult
   directiveFnsById: Record<string, DirectiveFn>
-  isDirectiveSplitParam: boolean
 } {
-  const directiveSplitParam = buildDirectiveSplitParam(opts)
-  const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
-
   const ast = parseAst(opts)
   const refIdents = findReferencedIdentifiers(ast)
   const directiveFnsById = findDirectives(ast, {
     ...opts,
-    directiveSplitParam,
+    directiveSplitParam: opts.directiveSplitParam,
+    isDirectiveSplitParam: opts.isDirectiveSplitParam,
   })
 
   // Add runtime code if there are directives
@@ -76,7 +101,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   // If we are in the source file, we need to remove all exports
   // then make sure that all of our functions are exported under their
   // directive name
-  if (isDirectiveSplitParam) {
+  if (opts.isDirectiveSplitParam) {
     safeRemoveExports(ast)
 
     // Export a single object with all of the functions
@@ -105,13 +130,12 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   return {
     compiledResult,
     directiveFnsById,
-    isDirectiveSplitParam,
   }
 }
 
 function findNearestVariableName(
   path: babel.NodePath,
-  directiveLabel: string,
+  directive: string,
 ): string {
   let currentPath: babel.NodePath | null = path
   const nameParts: Array<string> = []
@@ -181,7 +205,7 @@ function findNearestVariableName(
         babel.types.isObjectMethod(currentPath.node)
       ) {
         throw new Error(
-          `${directiveLabel} in ClassMethod or ObjectMethod not supported`,
+          `"${directive}" in ClassMethod or ObjectMethod not supported`,
         )
       }
 
@@ -198,14 +222,6 @@ function findNearestVariableName(
   return nameParts.length > 0 ? nameParts.join('_') : 'anonymous'
 }
 
-function makeFileLocationUrlSafe(location: string): string {
-  return location
-    .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
-    .replace(/_{2,}/g, '_') // Collapse multiple underscores
-    .replace(/^_|_$/g, '') // Trim leading/trailing underscores
-    .replace(/_--/g, '--') // Clean up the joiner
-}
-
 function makeIdentifierSafe(identifier: string): string {
   return identifier
     .replace(/[^a-zA-Z0-9_$]/g, '_') // Replace unsafe chars with underscore
@@ -219,11 +235,14 @@ export function findDirectives(
   ast: babel.types.File,
   opts: ParseAstOptions & {
     directive: string
-    directiveLabel: string
     replacer?: ReplacerFn
+    generateFunctionId: GenerateFunctionIdFn
     directiveSplitParam: string
     filename: string
     root: string
+    isDirectiveSplitParam: boolean
+    knownDirectiveFns?: Record<string, DirectiveFn>
+    isClientEnvironment?: boolean
   },
 ): Record<string, DirectiveFn> {
   const directiveFnsById: Record<string, DirectiveFn> = {}
@@ -241,6 +260,9 @@ export function findDirectives(
   const hasFileDirective = ast.program.directives.some(
     (directive) => directive.value.value === opts.directive,
   )
+  const compileDirectiveOpts = {
+    isDirectiveSplitParam: opts.isDirectiveSplitParam,
+  }
 
   // If the entire file has a directive, we need to compile all of the functions that are
   // exported by the file.
@@ -250,12 +272,18 @@ export function findDirectives(
     babel.traverse(ast, {
       ExportDefaultDeclaration(path) {
         if (babel.types.isFunctionDeclaration(path.node.declaration)) {
-          compileDirective(path.get('declaration') as SupportedFunctionPath)
+          compileDirective(
+            path.get('declaration') as SupportedFunctionPath,
+            compileDirectiveOpts,
+          )
         }
       },
       ExportNamedDeclaration(path) {
         if (babel.types.isFunctionDeclaration(path.node.declaration)) {
-          compileDirective(path.get('declaration') as SupportedFunctionPath)
+          compileDirective(
+            path.get('declaration') as SupportedFunctionPath,
+            compileDirectiveOpts,
+          )
         }
       },
       ExportDeclaration(path) {
@@ -273,6 +301,7 @@ export function findDirectives(
             path.get(
               'declaration.declarations.0.init',
             ) as SupportedFunctionPath,
+            compileDirectiveOpts,
           )
         }
       },
@@ -308,7 +337,7 @@ export function findDirectives(
             throw codeFrameError(
               opts.code,
               nearestBlock.node.loc,
-              `${opts.directiveLabel}s cannot be nested in other blocks or functions`,
+              `"${opts.directive}" cannot be nested in other blocks or functions`,
             )
           }
 
@@ -323,11 +352,11 @@ export function findDirectives(
             throw codeFrameError(
               opts.code,
               directiveFn.node.loc,
-              `${opts.directiveLabel}s must be function declarations or function expressions`,
+              `"${opts.directive}" must be function declarations or function expressions`,
             )
           }
 
-          compileDirective(directiveFn)
+          compileDirective(directiveFn, compileDirectiveOpts)
         }
       },
     })
@@ -335,7 +364,12 @@ export function findDirectives(
 
   return directiveFnsById
 
-  function compileDirective(directiveFn: SupportedFunctionPath) {
+  function compileDirective(
+    directiveFn: SupportedFunctionPath,
+    compileDirectiveOpts: {
+      isDirectiveSplitParam: boolean
+    },
+  ) {
     // Move the function to program level while preserving its position
     // in the program body
     const programBody = programPath.node.body
@@ -382,7 +416,7 @@ export function findDirectives(
     }
 
     // Find the nearest variable name
-    let functionName = findNearestVariableName(directiveFn, opts.directiveLabel)
+    let functionName = findNearestVariableName(directiveFn, opts.directive)
 
     const incrementFunctionNameVersion = (functionName: string) => {
       const [realReferenceName, count] = functionName.split(/_(\d+)$/)
@@ -403,6 +437,64 @@ export function findDirectives(
     }
 
     functionNameSet.add(functionName)
+
+    // Use functionId to determine if this is a client-referenced function
+    const [baseFilename, ..._searchParams] = opts.filename.split('?') as [
+      string,
+      ...Array<string>,
+    ]
+    const searchParams = new URLSearchParams(_searchParams.join('&'))
+    searchParams.set(opts.directiveSplitParam, '')
+
+    const localExtractedFilename = `${baseFilename}?${searchParams.toString()}`
+
+    // Relative to have constant functionId regardless of the machine
+    // that we are executing
+    const relativeFilename = path.relative(opts.root, baseFilename)
+    const functionId = opts.generateFunctionId({
+      filename: relativeFilename,
+      functionName,
+      extractedFilename: localExtractedFilename,
+    })
+
+    // Use the canonical extracted filename from knownDirectiveFns if available.
+    // This ensures SSR callers import from the same extracted file as the client,
+    // avoiding duplicate chunks with the same server function.
+    const knownFn = opts.knownDirectiveFns?.[functionId]
+    const extractedFilename =
+      knownFn?.extractedFilename ?? localExtractedFilename
+    // A function is client-referenced if:
+    // 1. It was discovered by the client environment (isClientEnvironment), OR
+    // 2. It was already known from a previous (client) build (knownFn exists)
+    const isClientReferenced = opts.isClientEnvironment || !!knownFn
+
+    // For client-referenced functions in SSR caller files (not extracted files),
+    // we remove the second argument of .handler() because:
+    // 1. The RPC stub uses manifest lookup, which provides the implementation
+    // 2. The full implementation shouldn't be in the caller file
+    // We do this BEFORE hoisting/replacing to ensure we can still access the parent structure
+    if (isClientReferenced && !compileDirectiveOpts.isDirectiveSplitParam) {
+      // Find if this directive function is inside a .handler() call expression
+      // The structure is: .handler(directiveFn, originalImpl)
+      // We want to remove originalImpl (the second argument)
+      let currentPath: babel.NodePath | null =
+        directiveFn as babel.NodePath | null
+      while (currentPath && !currentPath.parentPath?.isProgram()) {
+        const parent: babel.NodePath | null = currentPath.parentPath
+        if (
+          parent?.isCallExpression() &&
+          babel.types.isMemberExpression(parent.node.callee) &&
+          babel.types.isIdentifier(parent.node.callee.property) &&
+          parent.node.callee.property.name === 'handler' &&
+          parent.node.arguments.length === 2
+        ) {
+          // Remove the second argument (the original implementation)
+          parent.node.arguments.pop()
+          break
+        }
+        currentPath = parent
+      }
+    }
 
     const topParent =
       directiveFn.findParent((p) => !!p.parentPath?.isProgram()) || directiveFn
@@ -432,7 +524,11 @@ export function findDirectives(
     // If it's an exported named function, we need to swap it with an
     // export const originalFunctionName = functionName
     if (
-      babel.types.isExportNamedDeclaration(directiveFn.parentPath.node) &&
+      (babel.types.isExportNamedDeclaration(directiveFn.parentPath.node) ||
+        (compileDirectiveOpts.isDirectiveSplitParam &&
+          babel.types.isExportDefaultDeclaration(
+            directiveFn.parentPath.node,
+          ))) &&
       (babel.types.isFunctionDeclaration(directiveFn.node) ||
         babel.types.isFunctionExpression(directiveFn.node)) &&
       babel.types.isIdentifier(directiveFn.node.id)
@@ -460,16 +556,6 @@ export function findDirectives(
       `body.${topParentIndex}.declarations.0.init`,
     ) as SupportedFunctionPath
 
-    const [baseFilename, ..._searchParams] = opts.filename.split('?')
-    const searchParams = new URLSearchParams(_searchParams.join('&'))
-    searchParams.set(opts.directiveSplitParam, '')
-
-    const extractedFilename = `${baseFilename}?${searchParams.toString()}`
-
-    const functionId = makeFileLocationUrlSafe(
-      `${baseFilename}--${functionName}`.replace(opts.root, ''),
-    )
-
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {
       const replacer = opts.replacer({
@@ -477,7 +563,9 @@ export function findDirectives(
         extractedFilename,
         filename: opts.filename,
         functionId,
+        functionName,
         isSourceFn: !!opts.directiveSplitParam,
+        isClientReferenced,
       })
 
       const replacement = babel.template.expression(replacer, {
@@ -501,6 +589,7 @@ export function findDirectives(
       extractedFilename,
       filename: opts.filename,
       chunkName: fileNameToChunkName(opts.root, extractedFilename),
+      isClientReferenced,
     }
   }
 }
@@ -536,57 +625,32 @@ function codeFrameError(
 }
 
 const safeRemoveExports = (ast: babel.types.File) => {
-  const programBody = ast.program.body
-
-  const removeExport = (
-    path:
-      | babel.NodePath<babel.types.ExportDefaultDeclaration>
-      | babel.NodePath<babel.types.ExportNamedDeclaration>,
-  ) => {
-    // If the value is a function declaration, class declaration, or variable declaration,
-    // That means it has a name and can remain in the file, just unexported.
+  ast.program.body = ast.program.body.flatMap((node) => {
     if (
-      babel.types.isFunctionDeclaration(path.node.declaration) ||
-      babel.types.isClassDeclaration(path.node.declaration) ||
-      babel.types.isVariableDeclaration(path.node.declaration)
+      babel.types.isExportNamedDeclaration(node) ||
+      babel.types.isExportDefaultDeclaration(node)
     ) {
-      // If the value is a function declaration, class declaration, or variable declaration,
-      // That means it has a name and can remain in the file, just unexported.
       if (
-        babel.types.isFunctionDeclaration(path.node.declaration) ||
-        babel.types.isClassDeclaration(path.node.declaration) ||
-        babel.types.isVariableDeclaration(path.node.declaration)
+        babel.types.isFunctionDeclaration(node.declaration) ||
+        babel.types.isClassDeclaration(node.declaration) ||
+        babel.types.isVariableDeclaration(node.declaration)
       ) {
-        // Move the declaration to the top level at the same index
-        const insertIndex = programBody.findIndex(
-          (node) => node === path.node.declaration,
-        )
         // do not remove export if it is an anonymous function / class, otherwise this would produce a syntax error
         if (
-          babel.types.isFunctionDeclaration(path.node.declaration) ||
-          babel.types.isClassDeclaration(path.node.declaration)
+          babel.types.isFunctionDeclaration(node.declaration) ||
+          babel.types.isClassDeclaration(node.declaration)
         ) {
-          if (!path.node.declaration.id) {
-            return
+          if (!node.declaration.id) {
+            return node
           }
         }
-        programBody.splice(insertIndex, 0, path.node.declaration as any)
+        return node.declaration
+      } else if (node.declaration === null) {
+        // remove e.g. `export { RouteComponent as component }`
+        return []
       }
     }
-
-    // Otherwise, remove the export declaration
-    path.remove()
-  }
-
-  // Before we add our export, remove any other exports.
-  // Don't remove the thing they export, just the export declaration
-  babel.traverse(ast, {
-    ExportDefaultDeclaration(path) {
-      removeExport(path)
-    },
-    ExportNamedDeclaration(path) {
-      removeExport(path)
-    },
+    return node
   })
 }
 

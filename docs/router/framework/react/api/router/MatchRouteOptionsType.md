@@ -8,7 +8,7 @@ The `MatchRouteOptions` type is used to describe the options that can be used wh
 ```tsx
 interface MatchRouteOptions {
   pending?: boolean
-  caseSensitive?: boolean
+  caseSensitive?: boolean /* @deprecated */
   includeSearch?: boolean
   fuzzy?: boolean
 }
@@ -24,11 +24,12 @@ The `MatchRouteOptions` type has the following properties:
 - Optional
 - If `true`, will match against pending location instead of the current location
 
-### `caseSensitive` property
+### ~~`caseSensitive`~~ property (deprecated)
 
 - Type: `boolean`
 - Optional
 - If `true`, will match against the current location with case sensitivity
+- Declare case sensitivity in the route definition instead, or globally for all routes using the `caseSensitive` option on the router
 
 ### `includeSearch` property
 

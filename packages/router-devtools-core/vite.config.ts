@@ -7,10 +7,16 @@ const config = defineConfig({
   plugins: [solid()] as UserConfig['plugins'],
 })
 
-export default mergeConfig(
+const merged = mergeConfig(
   config,
   tanstackViteConfig({
     entry: './src/index.tsx',
     srcDir: './src',
+    bundledDeps: ['solid-js', 'solid-js/web'],
   }),
 )
+
+merged.build.rollupOptions.output.manualChunks = false
+merged.build.rollupOptions.output.preserveModules = false
+
+export default merged

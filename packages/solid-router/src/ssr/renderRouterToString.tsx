@@ -1,6 +1,7 @@
 import * as Solid from 'solid-js/web'
-import type { JSXElement } from 'solid-js'
+import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
+import type { JSXElement } from 'solid-js'
 
 export const renderRouterToString = async ({
   router,
@@ -12,13 +13,25 @@ export const renderRouterToString = async ({
   children: () => JSXElement
 }) => {
   try {
-    let html = Solid.renderToString(children)
+    const serializationAdapters =
+      (router.options as any)?.serializationAdapters ||
+      (router.options.ssr as any)?.serializationAdapters
+    const serovalPlugins = serializationAdapters?.map((adapter: any) => {
+      const plugin = makeSsrSerovalPlugin(adapter, { didRun: false })
+      return plugin
+    })
+
+    let html = Solid.renderToString(children, {
+      nonce: router.options.ssr?.nonce,
+      plugins: serovalPlugins,
+    } as any)
     router.serverSsr!.setRenderFinished()
-    const injectedHtml = await Promise.all(router.serverSsr!.injectedHtml).then(
-      (htmls) => htmls.join(''),
-    )
-    html = html.replace(`</body>`, `${injectedHtml}</body>`)
-    return new Response(html, {
+
+    const injectedHtml = router.serverSsr!.takeBufferedHtml()
+    if (injectedHtml) {
+      html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
+    }
+    return new Response(`<!DOCTYPE html>${html}`, {
       status: router.state.statusCode,
       headers: responseHeaders,
     })
@@ -28,5 +41,7 @@ export const renderRouterToString = async ({
       status: 500,
       headers: responseHeaders,
     })
+  } finally {
+    router.serverSsr?.cleanup()
   }
 }

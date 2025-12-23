@@ -1,4 +1,3 @@
-import { createIsomorphicFn as isomorphicFn } from '@tanstack/react-start';
 const noImpl = () => {};
 const serverOnlyFn = () => 'server';
 const clientOnlyFn = () => {};
@@ -8,9 +7,6 @@ function abstractedServerFn() {
   return 'server';
 }
 const serverOnlyFnAbstracted = abstractedServerFn;
-function abstractedClientFn() {
-  return 'client';
-}
 const clientOnlyFnAbstracted = () => {};
 const serverThenClientFnAbstracted = abstractedServerFn;
 const clientThenServerFnAbstracted = abstractedServerFn;

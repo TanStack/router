@@ -1,4 +1,5 @@
 import { createMiddleware } from './createMiddleware'
+import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -64,6 +65,21 @@ export interface StartInstanceTypes<
   functionMiddleware: TFunctionMiddlewares
 }
 
+function dedupeSerializationAdapters(
+  deduped: Set<AnySerializationAdapter>,
+  serializationAdapters: Array<AnySerializationAdapter>,
+): void {
+  for (let i = 0, len = serializationAdapters.length; i < len; i++) {
+    const current = serializationAdapters[i]!
+    if (!deduped.has(current)) {
+      deduped.add(current)
+      if (current.extends) {
+        dedupeSerializationAdapters(deduped, current.extends)
+      }
+    }
+  }
+}
+
 export const createStart = <
   const TSerializationAdapters extends
     ReadonlyArray<AnySerializationAdapter> = [],
@@ -101,6 +117,14 @@ export const createStart = <
   return {
     getOptions: async () => {
       const options = await getOptions()
+      if (options.serializationAdapters) {
+        const deduped = new Set<AnySerializationAdapter>()
+        dedupeSerializationAdapters(
+          deduped,
+          options.serializationAdapters as unknown as Array<AnySerializationAdapter>,
+        )
+        options.serializationAdapters = Array.from(deduped) as any
+      }
       return options
     },
     createMiddleware: createMiddleware as any,
@@ -116,7 +140,7 @@ export type AnyStartInstance = StartInstance<any, any, any, any>
 export type AnyStartInstanceOptions = StartInstanceOptions<any, any, any, any>
 
 declare module '@tanstack/router-core' {
-  interface Register {
-    ssr: true
+  interface SerializableExtensions {
+    serverFn: { [TSS_SERVER_FUNCTION]: true }
   }
 }

@@ -5,8 +5,8 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
-import type { QueryClient } from '@tanstack/solid-query'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import type { QueryClient } from '@tanstack/solid-query'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient

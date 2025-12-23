@@ -131,11 +131,21 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       targetFramework: userConfig.target,
       filename: id,
       id,
-      deleteNodes: new Set(userConfig.codeSplittingOptions?.deleteNodes),
+      deleteNodes: userConfig.codeSplittingOptions?.deleteNodes
+        ? new Set(userConfig.codeSplittingOptions.deleteNodes)
+        : undefined,
       addHmr:
         (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction,
     })
 
+    if (compiledReferenceRoute === null) {
+      if (debug) {
+        console.info(
+          `No changes made to route "${id}", skipping code-splitting.`,
+        )
+      }
+      return null
+    }
     if (debug) {
       logDiff(code, compiledReferenceRoute.code)
       console.log('Output:\n', compiledReferenceRoute.code + '\n\n')

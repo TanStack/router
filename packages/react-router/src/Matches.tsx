@@ -1,5 +1,6 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
+import { rootRouteId } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -12,6 +13,7 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 import type {
+  AnyRoute,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -39,12 +41,18 @@ declare module '@tanstack/router-core' {
   }
 }
 
+/**
+ * Internal component that renders the router's active match tree with
+ * suspense, error, and not-found boundaries. Rendered by `RouterProvider`.
+ */
 export function Matches() {
   const router = useRouter()
+  const rootRoute: AnyRoute = router.routesById[rootRouteId]
 
-  const pendingElement = router.options.defaultPendingComponent ? (
-    <router.options.defaultPendingComponent />
-  ) : null
+  const PendingComponent =
+    rootRoute.options.pendingComponent ?? router.options.defaultPendingComponent
+
+  const pendingElement = PendingComponent ? <PendingComponent /> : null
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
@@ -115,6 +123,18 @@ export type UseMatchRouteOptions<
   MaskOptions<TRouter, TMaskFrom, TMaskTo> &
   MatchRouteOptions
 
+/**
+ * Create a matcher function for testing locations against route definitions.
+ *
+ * The returned function accepts standard navigation options (`to`, `params`,
+ * `search`, etc.) and returns either `false` (no match) or the matched params
+ * object when the route matches the current or pending location.
+ *
+ * Useful for conditional rendering and active UI states.
+ *
+ * @returns A `matchRoute(options)` function that returns `false` or params.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchRouteHook
+ */
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
@@ -165,6 +185,13 @@ export type MakeMatchRouteOptions<
     | React.ReactNode
 }
 
+/**
+ * Component that conditionally renders its children based on whether a route
+ * matches the provided `from`/`to` options. If `children` is a function, it
+ * receives the matched params object.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/matchRouteComponent
+ */
 export function MatchRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
@@ -216,6 +243,22 @@ export function useMatches<
   } as any) as UseMatchesResult<TRouter, TSelected>
 }
 
+/**
+ * Read the full array of active route matches or select a derived subset.
+ *
+ * Useful for debugging, breadcrumbs, or aggregating metadata across matches.
+ *
+ * @returns The array of matches (or the selected value).
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchesHook
+ */
+
+/**
+ * Read the full array of active route matches or select a derived subset.
+ *
+ * Useful for debugging, breadcrumbs, or aggregating metadata across matches.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchesHook
+ */
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
@@ -238,6 +281,10 @@ export function useParentMatches<
   } as any)
 }
 
+/**
+ * Read the array of active route matches that are children of the current
+ * match (or selected parent) in the match tree.
+ */
 export function useChildMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
