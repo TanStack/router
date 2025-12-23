@@ -1,6 +1,7 @@
 import { useMatch } from './useMatch'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
   ResolveUseLoaderDeps,
   StrictOrFrom,
@@ -8,39 +9,39 @@ import type {
 } from '@tanstack/router-core'
 
 export interface UseLoaderDepsBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TSelected,
 > {
-  select?: (deps: ResolveUseLoaderDeps<TRouter, TFrom>) => TSelected
+  select?: (deps: ResolveUseLoaderDeps<RegisteredRouter<TRegister>, TFrom>) => TSelected
 }
 
 export type UseLoaderDepsOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string | undefined,
   TSelected,
-> = StrictOrFrom<TRouter, TFrom> &
-  UseLoaderDepsBaseOptions<TRouter, TFrom, TSelected>
+> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom> &
+  UseLoaderDepsBaseOptions<TRegister, TFrom, TSelected>
 
 export type UseLoaderDepsRoute<out TId> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseLoaderDepsBaseOptions<TRouter, TId, TSelected>,
-) => UseLoaderDepsResult<TRouter, TId, TSelected>
+  opts?: UseLoaderDepsBaseOptions<TRegister, TId, TSelected>,
+) => UseLoaderDepsResult<RegisteredRouter<TRegister>, TId, TSelected>
 
 export function useLoaderDeps<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TSelected = unknown,
 >(
-  opts: UseLoaderDepsOptions<TRouter, TFrom, TSelected>,
-): UseLoaderDepsResult<TRouter, TFrom, TSelected> {
+  opts: UseLoaderDepsOptions<TRegister, TFrom, TSelected>,
+): UseLoaderDepsResult<RegisteredRouter<TRegister>, TFrom, TSelected> {
   const { select, ...rest } = opts
   return useMatch({
     ...rest,
-    select: (s) => {
+    select: (s: any) => {
       return select ? select(s.loaderDeps) : s.loaderDeps
     },
-  }) as UseLoaderDepsResult<TRouter, TFrom, TSelected>
+  }) as UseLoaderDepsResult<RegisteredRouter<TRegister>, TFrom, TSelected>
 }

@@ -313,9 +313,6 @@ export type {
   ValidateUseSearchOptions,
   ValidateUseParamsOptions,
   ValidateLinkOptionsArray,
-} from './typePrimitives'
-
-export type {
   ValidateFromPath,
   ValidateToPath,
   ValidateSearch,
@@ -334,7 +331,7 @@ export type {
   InferSelected,
   ValidateUseSearchResult,
   ValidateUseParamsResult,
-} from '@tanstack/router-core'
+} from './typePrimitives'
 
 export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'

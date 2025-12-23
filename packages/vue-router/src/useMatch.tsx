@@ -5,6 +5,7 @@ import type {
   AnyRouter,
   MakeRouteMatch,
   MakeRouteMatchUnion,
+  Register,
   RegisteredRouter,
   StrictOrFrom,
   ThrowConstraint,
@@ -12,61 +13,65 @@ import type {
 } from '@tanstack/router-core'
 
 export interface UseMatchBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
 > {
   select?: (
-    match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
+    match: MakeRouteMatch<
+      RegisteredRouter<TRegister>['routeTree'],
+      TFrom,
+      TStrict
+    >,
   ) => TSelected
   shouldThrow?: TThrow
 }
 
 export type UseMatchRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
-) => Vue.Ref<UseMatchResult<TRouter, TFrom, true, TSelected>>
+  opts?: UseMatchBaseOptions<TRegister, TFrom, true, true, TSelected>,
+) => Vue.Ref<UseMatchResult<TRegister, TFrom, true, TSelected>>
 
 export type UseMatchOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string | undefined,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
-> = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseMatchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
+> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom, TStrict> &
+  UseMatchBaseOptions<TRegister, TFrom, TStrict, TThrow, TSelected>
 
 export type UseMatchResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TSelected,
 > = unknown extends TSelected
   ? TStrict extends true
-    ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
-    : MakeRouteMatchUnion<TRouter>
+    ? MakeRouteMatch<RegisteredRouter<TRegister>['routeTree'], TFrom, TStrict>
+    : MakeRouteMatchUnion<RegisteredRouter<TRegister>>
   : TSelected
 
 export function useMatch<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
   TSelected = unknown,
 >(
   opts: UseMatchOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TStrict,
     ThrowConstraint<TStrict, TThrow>,
     TSelected
   >,
 ): Vue.Ref<
-  ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+  ThrowOrOptional<UseMatchResult<TRegister, TFrom, TStrict, TSelected>, TThrow>
 > {
   const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
 

@@ -1,4 +1,5 @@
 import type {
+  AnyRouter,
   Constrain,
   OptionalStructuralSharing,
   Register,
@@ -7,46 +8,55 @@ import type {
 } from '@tanstack/router-core'
 
 export type DefaultStructuralSharingEnabled<
-  TRegister extends Register = Register,
-> =
-  boolean extends RegisteredRouter<TRegister>['options']['defaultStructuralSharing']
+  TRouterOrRegister extends AnyRouter | Register,
+> = (
+  TRouterOrRegister extends Register
+    ? RegisteredRouter<TRouterOrRegister>
+    : TRouterOrRegister
+) extends infer TRouter extends AnyRouter
+  ? boolean extends TRouter['options']['defaultStructuralSharing']
     ? // for now, default to false.
       // TODO in V2: default to true
       false
-    : NonNullable<
-        RegisteredRouter<TRegister>['options']['defaultStructuralSharing']
-      >
+    : NonNullable<TRouter['options']['defaultStructuralSharing']>
+  : never
 
 export interface RequiredStructuralSharing<TStructuralSharing, TConstraint> {
   readonly structuralSharing: Constrain<TStructuralSharing, TConstraint>
 }
 
 export type StructuralSharingOption<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TSelected,
   TStructuralSharing,
 > = unknown extends TSelected
   ? OptionalStructuralSharing<TStructuralSharing, boolean>
-  : unknown extends RegisteredRouter<TRegister>['routeTree']
+  : (
+        TRouterOrRegister extends Register
+          ? RegisteredRouter<TRouterOrRegister>['routeTree']
+          : TRouterOrRegister extends AnyRouter
+            ? TRouterOrRegister['routeTree']
+            : never
+      ) extends unknown
     ? OptionalStructuralSharing<TStructuralSharing, boolean>
     : TSelected extends ValidateJSON<TSelected>
       ? OptionalStructuralSharing<TStructuralSharing, boolean>
-      : DefaultStructuralSharingEnabled<TRegister> extends true
+      : DefaultStructuralSharingEnabled<TRouterOrRegister> extends true
         ? RequiredStructuralSharing<TStructuralSharing, false>
         : OptionalStructuralSharing<TStructuralSharing, false>
 
 export type StructuralSharingEnabled<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TStructuralSharing,
 > = boolean extends TStructuralSharing
-  ? DefaultStructuralSharingEnabled<TRegister>
+  ? DefaultStructuralSharingEnabled<TRouterOrRegister>
   : TStructuralSharing
 
 export type ValidateSelected<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TSelected,
   TStructuralSharing,
 > =
-  StructuralSharingEnabled<TRegister, TStructuralSharing> extends true
+  StructuralSharingEnabled<TRouterOrRegister, TStructuralSharing> extends true
     ? ValidateJSON<TSelected>
     : TSelected

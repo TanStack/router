@@ -114,12 +114,10 @@ export type UseMatchRouteOptions<
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = ToSubOptionsProps<RegisteredRouter<TRegister>, TFrom, TTo> &
-  DeepPartial<
-    MakeOptionalSearchParams<RegisteredRouter<TRegister>, TFrom, TTo>
-  > &
-  DeepPartial<MakeOptionalPathParams<RegisteredRouter<TRegister>, TFrom, TTo>> &
-  MaskOptions<RegisteredRouter<TRegister>, TMaskFrom, TMaskTo> &
+> = ToSubOptionsProps<TRegister, TFrom, TTo> &
+  DeepPartial<MakeOptionalSearchParams<TRegister, TFrom, TTo>> &
+  DeepPartial<MakeOptionalPathParams<TRegister, TFrom, TTo>> &
+  MaskOptions<TRegister, TMaskFrom, TMaskTo> &
   MatchRouteOptions
 
 export function useMatchRoute<TRegister extends Register = Register>() {
@@ -140,7 +138,7 @@ export function useMatchRoute<TRegister extends Register = Register>() {
     | false
     | Expand<
         ResolveRoute<
-          RegisteredRouter<TRegister>,
+          TRegister,
           TFrom,
           TTo
         >['types']['allParams']
@@ -172,9 +170,10 @@ export type MakeMatchRouteOptions<
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
-        params?: RouteByPath<
-          RegisteredRouter<TRegister>['routeTree'],
-          ResolveRelativePath<TFrom, NoInfer<TTo>>
+        params?: ResolveRoute<
+          TRegister,
+          TFrom,
+          TTo
         >['types']['allParams'],
       ) => Solid.JSX.Element)
     | Solid.JSX.Element

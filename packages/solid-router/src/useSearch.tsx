@@ -23,9 +23,9 @@ export interface UseSearchBaseOptions<
   TStructuralSharing,
 > {
   select?: (
-    state: ResolveUseSearch<RegisteredRouter<TRegister>, TFrom, TStrict>,
+    state: ResolveUseSearch<TRegister, TFrom, TStrict>,
   ) => ValidateSelected<
-    RegisteredRouter<TRegister>,
+    TRegister,
     TSelected,
     TStructuralSharing
   >
@@ -39,7 +39,7 @@ export type UseSearchOptions<
   TThrow extends boolean,
   TSelected,
   TStructuralSharing,
-> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom, TStrict> &
+> = StrictOrFrom<TRegister, TFrom, TStrict> &
   UseSearchBaseOptions<
     TRegister,
     TFrom,
@@ -49,7 +49,7 @@ export type UseSearchOptions<
     TStructuralSharing
   > &
   StructuralSharingOption<
-    RegisteredRouter<TRegister>,
+    TRegister,
     TSelected,
     TStructuralSharing
   >
@@ -67,12 +67,12 @@ export type UseSearchRoute<TRegister extends Register, out TFrom> = <
     TStructuralSharing
   > &
     StructuralSharingOption<
-      RegisteredRouter<TRegister>,
+      TRegister,
       TSelected,
       TStructuralSharing
     >,
 ) => Accessor<
-  UseSearchResult<RegisteredRouter<TRegister>, TFrom, true, TSelected>
+  UseSearchResult<TRegister, TFrom, true, TSelected>
 >
 
 export function useSearch<
@@ -93,7 +93,7 @@ export function useSearch<
   > = {} as any,
 ): Accessor<
   ThrowOrOptional<
-    UseSearchResult<RegisteredRouter<TRegister>, TFrom, TStrict, TSelected>,
+    UseSearchResult<TRegister, TFrom, TStrict, TSelected>,
     TThrow
   >
 > {

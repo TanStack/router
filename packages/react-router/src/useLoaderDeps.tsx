@@ -6,52 +6,48 @@ import type {
 import type {
   AnyRouter,
   Register,
-  RegisteredRouter,
   ResolveUseLoaderDeps,
   StrictOrFrom,
   UseLoaderDepsResult,
 } from '@tanstack/router-core'
 
 export interface UseLoaderDepsBaseOptions<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TFrom,
   TSelected,
   TStructuralSharing,
 > {
   select?: (
-    deps: ResolveUseLoaderDeps<RegisteredRouter<TRegister>, TFrom>,
-  ) => ValidateSelected<
-    RegisteredRouter<TRegister>,
-    TSelected,
-    TStructuralSharing
-  >
+    deps: ResolveUseLoaderDeps<TRouterOrRegister, TFrom>,
+  ) => ValidateSelected<TRouterOrRegister, TSelected, TStructuralSharing>
 }
 
 export type UseLoaderDepsOptions<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TFrom extends string | undefined,
   TSelected,
   TStructuralSharing,
-> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom> &
-  UseLoaderDepsBaseOptions<TRegister, TFrom, TSelected, TStructuralSharing> &
-  StructuralSharingOption<
-    RegisteredRouter<TRegister>,
+> = StrictOrFrom<TRouterOrRegister, TFrom> &
+  UseLoaderDepsBaseOptions<
+    TRouterOrRegister,
+    TFrom,
     TSelected,
     TStructuralSharing
-  >
+  > &
+  StructuralSharingOption<TRouterOrRegister, TSelected, TStructuralSharing>
 
-export type UseLoaderDepsRoute<TRegister extends Register, out TId> = <
-  TSelected = unknown,
-  TStructuralSharing extends boolean = boolean,
->(
+export type UseLoaderDepsRoute<
+  TRouterOrRegister extends AnyRouter | Register,
+  out TId,
+> = <TSelected = unknown, TStructuralSharing extends boolean = boolean>(
   opts?: UseLoaderDepsBaseOptions<
-    TRegister,
+    TRouterOrRegister,
     TId,
     TSelected,
     TStructuralSharing
   > &
-    StructuralSharingOption<RegisteredRouter<TRegister>, TSelected, false>,
-) => UseLoaderDepsResult<RegisteredRouter<TRegister>, TId, TSelected>
+    StructuralSharingOption<TRouterOrRegister, TSelected, false>,
+) => UseLoaderDepsResult<TRouterOrRegister, TId, TSelected>
 
 /**
  * Read and select the current route's loader dependencies object.
@@ -65,18 +61,23 @@ export type UseLoaderDepsRoute<TRegister extends Register, out TId> = <
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLoaderDepsHook
  */
 export function useLoaderDeps<
-  TRegister extends Register = Register,
+  TRouterOrRegister extends AnyRouter | Register = Register,
   const TFrom extends string | undefined = undefined,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
-  opts: UseLoaderDepsOptions<TRegister, TFrom, TSelected, TStructuralSharing>,
-): UseLoaderDepsResult<RegisteredRouter<TRegister>, TFrom, TSelected> {
+  opts: UseLoaderDepsOptions<
+    TRouterOrRegister,
+    TFrom,
+    TSelected,
+    TStructuralSharing
+  >,
+): UseLoaderDepsResult<TRouterOrRegister, TFrom, TSelected> {
   const { select, ...rest } = opts
   return useMatch({
     ...rest,
     select: (s) => {
       return select ? select(s.loaderDeps) : s.loaderDeps
     },
-  }) as UseLoaderDepsResult<RegisteredRouter<TRegister>, TFrom, TSelected>
+  }) as UseLoaderDepsResult<TRouterOrRegister, TFrom, TSelected>
 }

@@ -147,7 +147,11 @@ const defaultRouter = createRouter({
 
 type DefaultRouter = typeof defaultRouter
 
-const useDefaultMatchRoute = useMatchRoute<DefaultRouter>
+interface DefaultRegister {
+  router: DefaultRouter
+}
+
+const useDefaultMatchRoute = useMatchRoute<DefaultRegister>
 
 test('when matching a route with params', () => {
   const matchRoute = useDefaultMatchRoute()
@@ -156,7 +160,7 @@ test('when matching a route with params', () => {
     .parameter(0)
     .toHaveProperty('to')
 
-  expectTypeOf(MatchRoute<DefaultRouter, string, '/invoices/$invoiceId'>)
+  expectTypeOf(MatchRoute<DefaultRegister, string, '/invoices/$invoiceId'>)
     .parameter(0)
     .toHaveProperty('to')
 
@@ -176,7 +180,7 @@ test('when matching a route with params underneath a layout route', () => {
 })
 
 test('useMatches returns a union of all matches', () => {
-  expectTypeOf(useMatches<DefaultRouter>().value).toEqualTypeOf<
+  expectTypeOf(useMatches<DefaultRegister>().value).toEqualTypeOf<
     Array<
       | RootMatch
       | IndexMatch
@@ -190,7 +194,7 @@ test('useMatches returns a union of all matches', () => {
 })
 
 test('when filtering useMatches by search', () => {
-  const matches = useMatches<DefaultRouter>().value
+  const matches = useMatches<DefaultRegister>().value
 
   expectTypeOf(isMatch<(typeof matches)[number], ''>)
     .parameter(1)
@@ -205,7 +209,7 @@ test('when filtering useMatches by search', () => {
 })
 
 test('when filtering useMatches by loaderData with an array', () => {
-  const matches = useMatches<DefaultRouter>().value
+  const matches = useMatches<DefaultRegister>().value
 
   expectTypeOf(isMatch<(typeof matches)[number], ''>)
     .parameter(1)

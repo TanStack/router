@@ -2,6 +2,7 @@ import { useMatch } from './useMatch'
 import type * as Vue from 'vue'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
   ResolveUseLoaderData,
   StrictOrFrom,
@@ -9,37 +10,39 @@ import type {
 } from '@tanstack/router-core'
 
 export interface UseLoaderDataBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TSelected,
 > {
-  select?: (match: ResolveUseLoaderData<TRouter, TFrom, TStrict>) => TSelected
+  select?: (
+    match: ResolveUseLoaderData<RegisteredRouter<TRegister>, TFrom, TStrict>,
+  ) => TSelected
 }
 
 export type UseLoaderDataOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string | undefined,
   TStrict extends boolean,
   TSelected,
-> = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseLoaderDataBaseOptions<TRouter, TFrom, TStrict, TSelected>
+> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom, TStrict> &
+  UseLoaderDataBaseOptions<TRegister, TFrom, TStrict, TSelected>
 
 export type UseLoaderDataRoute<out TId> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseLoaderDataBaseOptions<TRouter, TId, true, TSelected>,
-) => Vue.Ref<UseLoaderDataResult<TRouter, TId, true, TSelected>>
+  opts?: UseLoaderDataBaseOptions<TRegister, TId, true, TSelected>,
+) => Vue.Ref<UseLoaderDataResult<RegisteredRouter<TRegister>, TId, true, TSelected>>
 
 export function useLoaderData<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
 >(
-  opts: UseLoaderDataOptions<TRouter, TFrom, TStrict, TSelected>,
-): Vue.Ref<UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>> {
+  opts: UseLoaderDataOptions<TRegister, TFrom, TStrict, TSelected>,
+): Vue.Ref<UseLoaderDataResult<RegisteredRouter<TRegister>, TFrom, TStrict, TSelected>> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,

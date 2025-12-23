@@ -13,27 +13,27 @@ import type { UseSearchResult } from './useSearch'
 import type { Constrain, ConstrainLiteral } from './utils'
 
 export type ValidateFromPath<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom = string,
-> = FromPathOption<TRouter, TFrom>
+> = FromPathOption<TRegister, TFrom>
 
 export type ValidateToPath<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TTo extends string | undefined = undefined,
   TFrom extends string = string,
-> = ToPathOption<TRouter, TFrom, TTo>
+> = ToPathOption<TRegister, TFrom, TTo>
 
 export type ValidateSearch<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TTo extends string | undefined = undefined,
   TFrom extends string = string,
-> = SearchParamOptions<TRouter, TFrom, TTo>
+> = SearchParamOptions<TRegister, TFrom, TTo>
 
 export type ValidateParams<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TTo extends string | undefined = undefined,
   TFrom extends string = string,
-> = PathParamOptions<TRouter, TFrom, TTo>
+> = PathParamOptions<TRegister, TFrom, TTo>
 
 /**
  * @private
@@ -72,13 +72,13 @@ export type InferMaskFrom<TOptions> = TOptions extends {
   : string
 
 export type ValidateNavigateOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TOptions = unknown,
   TDefaultFrom extends string = string,
 > = Constrain<
   TOptions,
   NavigateOptions<
-    TRouter,
+    TRegister,
     InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
     InferMaskFrom<TOptions>,
@@ -87,25 +87,25 @@ export type ValidateNavigateOptions<
 >
 
 export type ValidateNavigateOptionsArray<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
   TDefaultFrom extends string = string,
 > = {
   [K in keyof TOptions]: ValidateNavigateOptions<
-    TRouter,
+    TRegister,
     TOptions[K],
     TDefaultFrom
   >
 }
 
 export type ValidateRedirectOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TOptions = unknown,
   TDefaultFrom extends string = string,
 > = Constrain<
   TOptions,
   RedirectOptions<
-    TRouter,
+    TRegister,
     InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
     InferMaskFrom<TOptions>,
@@ -114,21 +114,21 @@ export type ValidateRedirectOptions<
 >
 
 export type ValidateRedirectOptionsArray<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
   TDefaultFrom extends string = string,
 > = {
   [K in keyof TOptions]: ValidateRedirectOptions<
-    TRouter,
+    TRegister,
     TOptions[K],
     TDefaultFrom
   >
 }
 
 export type ValidateId<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TId extends string = string,
-> = ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>
+> = ConstrainLiteral<TId, RouteIds<RegisteredRouter<TRegister>['routeTree']>>
 
 /**
  * @private
@@ -159,9 +159,9 @@ export type InferSelected<TOptions> = TOptions extends {
 
 export type ValidateUseSearchResult<
   TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
 > = UseSearchResult<
-  TRouter,
+  TRegister,
   InferFrom<TOptions>,
   InferStrict<TOptions>,
   InferSelected<TOptions>

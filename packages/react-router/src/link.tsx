@@ -41,7 +41,7 @@ import type {
 export function useLinkProps<
   TRegister extends Register = Register,
   const TFrom extends string = string,
-  const TTo extends string | undefined = undefined,
+  const TTo extends string | undefined = '.',
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(
@@ -504,7 +504,7 @@ export type LinkComponent<
 > = <
   TRegister extends Register = Register,
   const TFrom extends string = TDefaultFrom,
-  const TTo extends string | undefined = undefined,
+  const TTo extends string | undefined = '.',
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(
@@ -517,7 +517,7 @@ export interface LinkComponentRoute<
   defaultFrom: TDefaultFrom
   <
     TRegister extends Register = Register,
-    const TTo extends string | undefined = undefined,
+    const TTo extends string | undefined = '.',
     const TMaskTo extends string = '',
   >(
     props: LinkComponentProps<

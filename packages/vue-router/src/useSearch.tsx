@@ -2,6 +2,7 @@ import { useMatch } from './useMatch'
 import type * as Vue from 'vue'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
   ResolveUseSearch,
   StrictOrFrom,
@@ -11,54 +12,59 @@ import type {
 } from '@tanstack/router-core'
 
 export interface UseSearchBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
 > {
-  select?: (state: ResolveUseSearch<TRouter, TFrom, TStrict>) => TSelected
+  select?: (
+    state: ResolveUseSearch<RegisteredRouter<TRegister>, TFrom, TStrict>,
+  ) => TSelected
   shouldThrow?: TThrow
 }
 
 export type UseSearchOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
-> = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseSearchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
+> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom, TStrict> &
+  UseSearchBaseOptions<TRegister, TFrom, TStrict, TThrow, TSelected>
 
 export type UseSearchRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
   opts?: UseSearchBaseOptions<
-    TRouter,
+    TRegister,
     TFrom,
     /* TStrict */ true,
     /* TThrow */ true,
     TSelected
   >,
-) => Vue.Ref<UseSearchResult<TRouter, TFrom, true, TSelected>>
+) => Vue.Ref<UseSearchResult<RegisteredRouter<TRegister>, TFrom, true, TSelected>>
 
 export function useSearch<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
   TSelected = unknown,
 >(
   opts: UseSearchOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TStrict,
     ThrowConstraint<TStrict, TThrow>,
     TSelected
   >,
 ): Vue.Ref<
-  ThrowOrOptional<UseSearchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+  ThrowOrOptional<
+    UseSearchResult<RegisteredRouter<TRegister>, TFrom, TStrict, TSelected>,
+    TThrow
+  >
 > {
   return useMatch({
     from: opts.from!,

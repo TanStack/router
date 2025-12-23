@@ -1,52 +1,48 @@
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type {
+  AnyRouter,
   Register,
-  RegisteredRouter,
   ResolveUseLoaderDeps,
   StrictOrFrom,
   UseLoaderDepsResult,
 } from '@tanstack/router-core'
 
 export interface UseLoaderDepsBaseOptions<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TFrom,
   TSelected,
 > {
   select?: (
-    deps: ResolveUseLoaderDeps<RegisteredRouter<TRegister>, TFrom>,
+    deps: ResolveUseLoaderDeps<TRouterOrRegister, TFrom>,
   ) => TSelected
 }
 
 export type UseLoaderDepsOptions<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TFrom extends string | undefined,
   TSelected,
-> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom> &
-  UseLoaderDepsBaseOptions<TRegister, TFrom, TSelected>
+> = StrictOrFrom<TRouterOrRegister, TFrom> &
+  UseLoaderDepsBaseOptions<TRouterOrRegister, TFrom, TSelected>
 
-export type UseLoaderDepsRoute<TRegister extends Register, out TId> = <
+export type UseLoaderDepsRoute<TRouterOrRegister extends AnyRouter | Register, out TId> = <
   TSelected = unknown,
 >(
-  opts?: UseLoaderDepsBaseOptions<TRegister, TId, TSelected>,
-) => Accessor<UseLoaderDepsResult<RegisteredRouter<TRegister>, TId, TSelected>>
+  opts?: UseLoaderDepsBaseOptions<TRouterOrRegister, TId, TSelected>,
+) => Accessor<UseLoaderDepsResult<TRouterOrRegister, TId, TSelected>>
 
 export function useLoaderDeps<
-  TRegister extends Register = Register,
+  TRouterOrRegister extends AnyRouter | Register = Register,
   const TFrom extends string | undefined = undefined,
   TSelected = unknown,
 >(
-  opts: UseLoaderDepsOptions<TRegister, TFrom, TSelected>,
-): Accessor<
-  UseLoaderDepsResult<RegisteredRouter<TRegister>, TFrom, TSelected>
-> {
+  opts: UseLoaderDepsOptions<TRouterOrRegister, TFrom, TSelected>,
+): Accessor<UseLoaderDepsResult<TRouterOrRegister, TFrom, TSelected>> {
   const { select, ...rest } = opts
   return useMatch({
     ...rest,
     select: (s) => {
       return select ? select(s.loaderDeps) : s.loaderDeps
     },
-  }) as Accessor<
-    UseLoaderDepsResult<RegisteredRouter<TRegister>, TFrom, TSelected>
-  >
+  }) as Accessor<UseLoaderDepsResult<TRouterOrRegister, TFrom, TSelected>>
 }

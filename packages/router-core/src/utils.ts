@@ -398,9 +398,12 @@ export type ThrowOrOptional<T, TThrow extends boolean> = TThrow extends true
   : T | undefined
 
 export type StrictOrFrom<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TFrom,
   TStrict extends boolean = true,
+  TRouter extends AnyRouter = TRouterOrRegister extends Register
+    ? RegisteredRouter<TRouterOrRegister>
+    : TRouterOrRegister,
 > = TStrict extends false
   ? {
       from?: never
@@ -410,8 +413,8 @@ export type StrictOrFrom<
       from: ConstrainLiteral<
         TFrom,
         RouteIds<
-          RegisteredRouter<TRegister>['routeTree'] extends AnyRoute
-            ? RegisteredRouter<TRegister>['routeTree']
+          TRouter['routeTree'] extends AnyRoute
+            ? TRouter['routeTree']
             : AnyRoute
         >
       >

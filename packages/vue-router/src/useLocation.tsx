@@ -1,30 +1,36 @@
 import { useRouterState } from './useRouterState'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
 import type * as Vue from 'vue'
 
-export interface UseLocationBaseOptions<TRouter extends AnyRouter, TSelected> {
-  select?: (state: RouterState<TRouter['routeTree']>['location']) => TSelected
+export interface UseLocationBaseOptions<
+  TRegister extends Register,
+  TSelected,
+> {
+  select?: (
+    state: RouterState<RegisteredRouter<TRegister>['routeTree']>['location'],
+  ) => TSelected
 }
 
 export type UseLocationResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
 > = unknown extends TSelected
-  ? RouterState<TRouter['routeTree']>['location']
+  ? RouterState<RegisteredRouter<TRegister>['routeTree']>['location']
   : TSelected
 
 export function useLocation<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseLocationBaseOptions<TRouter, TSelected>,
-): Vue.Ref<UseLocationResult<TRouter, TSelected>> {
+  opts?: UseLocationBaseOptions<TRegister, TSelected>,
+): Vue.Ref<UseLocationResult<TRegister, TSelected>> {
   return useRouterState({
     select: (state: any) =>
       opts?.select ? opts.select(state.location) : state.location,
-  } as any) as Vue.Ref<UseLocationResult<TRouter, TSelected>>
+  } as any) as Vue.Ref<UseLocationResult<TRegister, TSelected>>
 }

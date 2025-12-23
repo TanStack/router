@@ -1,50 +1,47 @@
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type {
+  AnyRouter,
   Register,
-  RegisteredRouter,
   ResolveUseLoaderData,
   StrictOrFrom,
   UseLoaderDataResult,
 } from '@tanstack/router-core'
 
 export interface UseLoaderDataBaseOptions<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TFrom,
   TStrict extends boolean,
   TSelected,
 > {
   select?: (
-    match: ResolveUseLoaderData<RegisteredRouter<TRegister>, TFrom, TStrict>,
+    match: ResolveUseLoaderData<TRouterOrRegister, TFrom, TStrict>,
   ) => TSelected
 }
 
 export type UseLoaderDataOptions<
-  TRegister extends Register,
+  TRouterOrRegister extends AnyRouter | Register,
   TFrom extends string | undefined,
   TStrict extends boolean,
   TSelected,
-> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom, TStrict> &
-  UseLoaderDataBaseOptions<TRegister, TFrom, TStrict, TSelected>
+> = StrictOrFrom<TRouterOrRegister, TFrom, TStrict> &
+  UseLoaderDataBaseOptions<TRouterOrRegister, TFrom, TStrict, TSelected>
 
-export type UseLoaderDataRoute<TRegister extends Register, out TId> = <
-  TSelected = unknown,
->(
-  opts?: UseLoaderDataBaseOptions<TRegister, TId, true, TSelected>,
-) => Accessor<
-  UseLoaderDataResult<RegisteredRouter<TRegister>, TId, true, TSelected>
->
+export type UseLoaderDataRoute<
+  TRouterOrRegister extends AnyRouter | Register,
+  out TId,
+> = <TSelected = unknown>(
+  opts?: UseLoaderDataBaseOptions<TRouterOrRegister, TId, true, TSelected>,
+) => Accessor<UseLoaderDataResult<TRouterOrRegister, TId, true, TSelected>>
 
 export function useLoaderData<
-  TRegister extends Register = Register,
+  TRouterOrRegister extends AnyRouter | Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TSelected = unknown,
 >(
-  opts: UseLoaderDataOptions<TRegister, TFrom, TStrict, TSelected>,
-): Accessor<
-  UseLoaderDataResult<RegisteredRouter<TRegister>, TFrom, TStrict, TSelected>
-> {
+  opts: UseLoaderDataOptions<TRouterOrRegister, TFrom, TStrict, TSelected>,
+): Accessor<UseLoaderDataResult<TRouterOrRegister, TFrom, TStrict, TSelected>> {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,

@@ -1,20 +1,23 @@
 import type { FullSearchSchema, RouteById } from './routeInfo'
-import type { AnyRouter } from './router'
+import type { AnyRouter, Register, RegisteredRouter } from './router'
 import type { Expand } from './utils'
 
 export type UseSearchResult<
-  TRouter extends AnyRouter,
+  TRouterOrRegister extends AnyRouter | Register,
   TFrom,
   TStrict extends boolean,
   TSelected,
 > = unknown extends TSelected
-  ? ResolveUseSearch<TRouter, TFrom, TStrict>
+  ? ResolveUseSearch<TRouterOrRegister, TFrom, TStrict>
   : TSelected
 
 export type ResolveUseSearch<
-  TRouter extends AnyRouter,
+  TRouterOrRegister extends AnyRouter | Register,
   TFrom,
   TStrict extends boolean,
+  TRouter extends AnyRouter = TRouterOrRegister extends Register
+    ? RegisteredRouter<TRouterOrRegister>
+    : TRouterOrRegister,
 > = TStrict extends false
   ? FullSearchSchema<TRouter['routeTree']>
   : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['fullSearchSchema']>

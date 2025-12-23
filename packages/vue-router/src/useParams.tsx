@@ -2,6 +2,7 @@ import { useMatch } from './useMatch'
 import type * as Vue from 'vue'
 import type {
   AnyRouter,
+  Register,
   RegisteredRouter,
   ResolveUseParams,
   StrictOrFrom,
@@ -11,54 +12,59 @@ import type {
 } from '@tanstack/router-core'
 
 export interface UseParamsBaseOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
 > {
-  select?: (params: ResolveUseParams<TRouter, TFrom, TStrict>) => TSelected
+  select?: (
+    params: ResolveUseParams<RegisteredRouter<TRegister>, TFrom, TStrict>,
+  ) => TSelected
   shouldThrow?: TThrow
 }
 
 export type UseParamsOptions<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TFrom extends string | undefined,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
-> = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseParamsBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
+> = StrictOrFrom<RegisteredRouter<TRegister>, TFrom, TStrict> &
+  UseParamsBaseOptions<TRegister, TFrom, TStrict, TThrow, TSelected>
 
 export type UseParamsRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
   opts?: UseParamsBaseOptions<
-    TRouter,
+    TRegister,
     TFrom,
     /* TStrict */ true,
     /* TThrow */ true,
     TSelected
   >,
-) => Vue.Ref<UseParamsResult<TRouter, TFrom, true, TSelected>>
+) => Vue.Ref<UseParamsResult<RegisteredRouter<TRegister>, TFrom, true, TSelected>>
 
 export function useParams<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
   TSelected = unknown,
 >(
   opts: UseParamsOptions<
-    TRouter,
+    TRegister,
     TFrom,
     TStrict,
     ThrowConstraint<TStrict, TThrow>,
     TSelected
   >,
 ): Vue.Ref<
-  ThrowOrOptional<UseParamsResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+  ThrowOrOptional<
+    UseParamsResult<RegisteredRouter<TRegister>, TFrom, TStrict, TSelected>,
+    TThrow
+  >
 > {
   return useMatch({
     from: opts.from!,

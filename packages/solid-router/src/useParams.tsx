@@ -24,11 +24,7 @@ export interface UseParamsBaseOptions<
 > {
   select?: (
     params: ResolveUseParams<TRegister, TFrom, TStrict>,
-  ) => ValidateSelected<
-    RegisteredRouter<TRegister>,
-    TSelected,
-    TStructuralSharing
-  >
+  ) => ValidateSelected<TRegister, TSelected, TStructuralSharing>
   shouldThrow?: TThrow
 }
 
@@ -48,11 +44,7 @@ export type UseParamsOptions<
     TSelected,
     TStructuralSharing
   > &
-  StructuralSharingOption<
-    RegisteredRouter<TRegister>,
-    TSelected,
-    TStructuralSharing
-  >
+  StructuralSharingOption<TRegister, TSelected, TStructuralSharing>
 
 export type UseParamsRoute<TRegister extends Register, out TFrom> = <
   TSelected = unknown,
@@ -66,11 +58,7 @@ export type UseParamsRoute<TRegister extends Register, out TFrom> = <
     TSelected,
     TStructuralSharing
   > &
-    StructuralSharingOption<
-      RegisteredRouter<TRegister>,
-      TSelected,
-      TStructuralSharing
-    >,
+    StructuralSharingOption<TRegister, TSelected, TStructuralSharing>,
 ) => Accessor<UseParamsResult<TRegister, TFrom, true, TSelected>>
 
 export function useParams<

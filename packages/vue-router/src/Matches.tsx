@@ -16,6 +16,7 @@ import type {
   MaskOptions,
   MatchRouteOptions,
   NoInfer,
+  Register,
   RegisteredRouter,
   ResolveRelativePath,
   ResolveRoute,
@@ -146,18 +147,18 @@ const MatchesInner = Vue.defineComponent({
 })
 
 export type UseMatchRouteOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = ToSubOptionsProps<TRouter, TFrom, TTo> &
-  DeepPartial<MakeOptionalSearchParams<TRouter, TFrom, TTo>> &
-  DeepPartial<MakeOptionalPathParams<TRouter, TFrom, TTo>> &
-  MaskOptions<TRouter, TMaskFrom, TMaskTo> &
+> = ToSubOptionsProps<TRegister, TFrom, TTo> &
+  DeepPartial<MakeOptionalSearchParams<TRegister, TFrom, TTo>> &
+  DeepPartial<MakeOptionalPathParams<TRegister, TFrom, TTo>> &
+  MaskOptions<TRegister, TMaskFrom, TMaskTo> &
   MatchRouteOptions
 
-export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
+export function useMatchRoute<TRegister extends Register = Register>() {
   const router = useRouter()
 
   // Track state changes to trigger re-computation
@@ -176,9 +177,9 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     const TMaskFrom extends string = TFrom,
     const TMaskTo extends string = '',
   >(
-    opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+    opts: UseMatchRouteOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo>,
   ): Vue.Ref<
-    false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
+    false | ResolveRoute<TRegister, TFrom, TTo>['types']['allParams']
   > => {
     const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
@@ -199,17 +200,17 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 }
 
 export type MakeMatchRouteOptions<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
+> = UseMatchRouteOptions<TRegister, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | ((
         params?: RouteByPath<
-          TRouter['routeTree'],
+          RegisteredRouter<TRegister>['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
       ) => Vue.VNode)
@@ -219,11 +220,11 @@ export type MakeMatchRouteOptions<
 // Create a type for the MatchRoute component that includes the generics
 export interface MatchRouteComponentType {
   <
-    TRouter extends AnyRouter = RegisteredRouter,
+    TRegister extends Register = Register,
     TFrom extends string = string,
     TTo extends string | undefined = undefined,
   >(
-    props: MakeMatchRouteOptions<TRouter, TFrom, TTo>,
+    props: MakeMatchRouteOptions<TRegister, TFrom, TTo>,
   ): Vue.VNode
   new (): {
     $props: {
@@ -294,43 +295,51 @@ export const MatchRoute = Vue.defineComponent({
   },
 }) as unknown as MatchRouteComponentType
 
-export interface UseMatchesBaseOptions<TRouter extends AnyRouter, TSelected> {
-  select?: (matches: Array<MakeRouteMatchUnion<TRouter>>) => TSelected
+export interface UseMatchesBaseOptions<TRegister extends Register, TSelected> {
+  select?: (
+    matches: Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+  ) => TSelected
 }
 
 export type UseMatchesResult<
-  TRouter extends AnyRouter,
+  TRegister extends Register,
   TSelected,
-> = unknown extends TSelected ? Array<MakeRouteMatchUnion<TRouter>> : TSelected
+> = unknown extends TSelected
+  ? Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>
+  : TSelected
 
 export function useMatches<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
-): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
+  opts?: UseMatchesBaseOptions<TRegister, TSelected>,
+): Vue.Ref<UseMatchesResult<TRegister, TSelected>> {
   return useRouterState({
-    select: (state: RouterState<TRouter['routeTree']>) => {
+    select: (state: RouterState<RegisteredRouter<TRegister>['routeTree']>) => {
       const matches = state?.matches || []
       return opts?.select
-        ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
+        ? opts.select(
+            matches as Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+          )
         : matches
     },
-  } as any) as Vue.Ref<UseMatchesResult<TRouter, TSelected>>
+  } as any) as Vue.Ref<UseMatchesResult<TRegister, TSelected>>
 }
 
 export function useParentMatches<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
-): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
+  opts?: UseMatchesBaseOptions<TRegister, TSelected>,
+): Vue.Ref<UseMatchesResult<TRegister, TSelected>> {
   // Use matchContext with proper type
   const contextMatchId = Vue.inject<Vue.Ref<string | undefined>>(matchContext)
   const safeMatchId = Vue.computed(() => contextMatchId?.value || '')
 
   return useMatches({
-    select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
+    select: (
+      matches: Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+    ) => {
       matches = matches.slice(
         0,
         matches.findIndex((d) => d.id === safeMatchId.value),
@@ -341,17 +350,19 @@ export function useParentMatches<
 }
 
 export function useChildMatches<
-  TRouter extends AnyRouter = RegisteredRouter,
+  TRegister extends Register = Register,
   TSelected = unknown,
 >(
-  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
-): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
+  opts?: UseMatchesBaseOptions<TRegister, TSelected>,
+): Vue.Ref<UseMatchesResult<TRegister, TSelected>> {
   // Use matchContext with proper type
   const contextMatchId = Vue.inject<Vue.Ref<string | undefined>>(matchContext)
   const safeMatchId = Vue.computed(() => contextMatchId?.value || '')
 
   return useMatches({
-    select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
+    select: (
+      matches: Array<MakeRouteMatchUnion<RegisteredRouter<TRegister>>>,
+    ) => {
       matches = matches.slice(
         matches.findIndex((d) => d.id === safeMatchId.value) + 1,
       )
