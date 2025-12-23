@@ -85,7 +85,7 @@ export const KindDetectionPatterns: Record<LookupKind, RegExp> = {
   IsomorphicFn: /createIsomorphicFn/,
   ServerOnlyFn: /createServerOnlyFn/,
   ClientOnlyFn: /createClientOnlyFn/,
-  ClientOnlyJSX: /ClientOnly/,
+  ClientOnlyJSX: /<ClientOnly|import\s*\{[^}]*\bClientOnly\b/,
 }
 
 // Which kinds are valid for each environment
@@ -360,6 +360,17 @@ export class ServerFnCompiler {
           this.knownRootImports.set(config.libName, libExports)
         }
         libExports.set(config.rootExport, config.kind)
+
+        // For JSX lookups (e.g., ClientOnlyJSX), we only need the knownRootImports
+        // fast path to verify imports. Skip module resolution which may fail if
+        // the package isn't a direct dependency (e.g., @tanstack/react-router from
+        // within start-plugin-core).
+        if (config.kind !== 'Root') {
+          const setup = LookupSetup[config.kind]
+          if (setup.type === 'jsx') {
+            return
+          }
+        }
 
         const libId = await this.resolveIdCached(config.libName)
         if (!libId) {
