@@ -1034,8 +1034,9 @@ function getNodeMatch<T extends RouteLike>(
       if (node.route && !pathIsIndex && isFrameMoreSpecific(bestMatch, frame)) {
         bestMatch = frame
       }
-      // beyond the length of the path parts, only index segments, or skipped optional segments, or wildcard segments can match
-      if (!node.optional && !node.wildcard && !node.index) continue
+      // beyond the length of the path parts, only some segment types can match
+      if (!node.optional && !node.wildcard && !node.index && !node.pathless)
+        continue
     }
 
     const part = isBeyondPath ? undefined : parts[index]!
