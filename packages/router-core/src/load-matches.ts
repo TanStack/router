@@ -908,16 +908,19 @@ export async function loadMatches(arg: {
       )
       .map((result) => result.reason)
 
-    // Find the first redirect error and throw it immediately (skip head execution)
+    // Find first redirect (throw immediately) or notFound (throw after head execution)
+    let firstNotFound: unknown
     for (const err of failures) {
       if (isRedirect(err)) {
         throw err
+      }
+      if (!firstNotFound && isNotFound(err)) {
+        firstNotFound = err
       }
     }
 
     // serially execute head functions after all loaders have completed (successfully or not)
     // Each head execution is wrapped in try-catch to ensure all heads run even if one fails
-    // TODO: should we break out of head execution on first failure?
     for (const match of inner.matches) {
       const { id: matchId, routeId } = match
       const route = inner.router.looseRoutesById[routeId]!
@@ -936,11 +939,9 @@ export async function loadMatches(arg: {
       }
     }
 
-    // After head execution, check for notFound errors and throw the first one
-    for (const err of failures) {
-      if (isNotFound(err)) {
-        throw err
-      }
+    // Throw notFound after head execution
+    if (firstNotFound) {
+      throw firstNotFound
     }
 
     const readyPromise = triggerOnReady(inner)
