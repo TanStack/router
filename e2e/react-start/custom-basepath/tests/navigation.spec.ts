@@ -61,14 +61,15 @@ test('server-side redirect', async ({ page, baseURL }) => {
   expect(page.url()).toBe(`${baseURL}/posts/1`)
 
   // do not follow redirects since we want to test the Location header
-  // first go to the route WITHOUT the base path, this will just add the base path
+  // Both requests (with or without basepath) should redirect directly to the final destination.
+  // The router is smart enough to skip the intermediate "add basepath" redirect and go
+  // straight to where the route's beforeLoad redirect points to.
   await page.request
     .get('/redirect/throw-it', { maxRedirects: 0 })
     .then((res) => {
       const headers = new Headers(res.headers())
-      expect(headers.get('location')).toBe('/custom/basepath/redirect/throw-it')
+      expect(headers.get('location')).toBe('/custom/basepath/posts/1')
     })
-  // now go to the route WITH the base path, this will redirect to the final destination
   await page.request
     .get('/custom/basepath/redirect/throw-it', { maxRedirects: 0 })
     .then((res) => {
