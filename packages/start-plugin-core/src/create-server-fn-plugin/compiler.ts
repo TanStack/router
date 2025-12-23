@@ -10,6 +10,7 @@ import { handleCreateServerFn } from './handleCreateServerFn'
 import { handleCreateMiddleware } from './handleCreateMiddleware'
 import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
+import { handleClientOnlyJSX } from './handleClientOnlyJSX'
 import type { MethodChainPaths, RewriteCandidate } from './types'
 
 type Binding =
@@ -38,6 +39,7 @@ export type LookupKind =
   | 'IsomorphicFn'
   | 'ServerOnlyFn'
   | 'ClientOnlyFn'
+  | 'ClientOnlyJSX'
 
 // Detection strategy for each kind
 type MethodChainSetup = {
@@ -49,8 +51,12 @@ type MethodChainSetup = {
   allowRootAsCandidate?: boolean
 }
 type DirectCallSetup = { type: 'directCall' }
+type JSXSetup = { type: 'jsx'; componentName: string }
 
-const LookupSetup: Record<LookupKind, MethodChainSetup | DirectCallSetup> = {
+const LookupSetup: Record<
+  LookupKind,
+  MethodChainSetup | DirectCallSetup | JSXSetup
+> = {
   ServerFn: {
     type: 'methodChain',
     candidateCallIdentifier: new Set(['handler']),
@@ -66,6 +72,7 @@ const LookupSetup: Record<LookupKind, MethodChainSetup | DirectCallSetup> = {
   },
   ServerOnlyFn: { type: 'directCall' },
   ClientOnlyFn: { type: 'directCall' },
+  ClientOnlyJSX: { type: 'jsx', componentName: 'ClientOnly' },
 }
 
 // Single source of truth for detecting which kinds are present in code
@@ -78,6 +85,7 @@ export const KindDetectionPatterns: Record<LookupKind, RegExp> = {
   IsomorphicFn: /createIsomorphicFn/,
   ServerOnlyFn: /createServerOnlyFn/,
   ClientOnlyFn: /createClientOnlyFn/,
+  ClientOnlyJSX: /ClientOnly/,
 }
 
 // Which kinds are valid for each environment
@@ -94,6 +102,7 @@ export const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
     'IsomorphicFn',
     'ServerOnlyFn',
     'ClientOnlyFn',
+    'ClientOnlyJSX', // Only transform on server to remove children
   ] as const),
 }
 
@@ -169,7 +178,10 @@ interface ModuleInfo {
 function needsDirectCallDetection(kinds: Set<LookupKind>): boolean {
   for (const kind of kinds) {
     const setup = LookupSetup[kind]
-    if (setup.type === 'directCall' || setup.allowRootAsCandidate) {
+    if (
+      setup.type === 'directCall' ||
+      (setup.type === 'methodChain' && setup.allowRootAsCandidate)
+    ) {
       return true
     }
   }
@@ -184,6 +196,33 @@ function needsDirectCallDetection(kinds: Set<LookupKind>): boolean {
  */
 function areAllKindsTopLevelOnly(kinds: Set<LookupKind>): boolean {
   return kinds.size === 1 && kinds.has('ServerFn')
+}
+
+/**
+ * Checks if we need to detect JSX elements (e.g., <ClientOnly>).
+ */
+function needsJSXDetection(kinds: Set<LookupKind>): boolean {
+  for (const kind of kinds) {
+    const setup = LookupSetup[kind]
+    if (setup.type === 'jsx') {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Gets the set of JSX component names to detect.
+ */
+function getJSXComponentNames(kinds: Set<LookupKind>): Set<string> {
+  const names = new Set<string>()
+  for (const kind of kinds) {
+    const setup = LookupSetup[kind]
+    if (setup.type === 'jsx') {
+      names.add(setup.componentName)
+    }
+  }
+  return names
 }
 
 /**
@@ -530,6 +569,16 @@ export class ServerFnCompiler {
       babel.NodePath<t.CallExpression>
     >()
 
+    // JSX candidates (e.g., <ClientOnly>)
+    const jsxCandidatePaths: Array<babel.NodePath<t.JSXElement>> = []
+    const checkJSX = needsJSXDetection(fileKinds)
+    // Get target component names from JSX setup (e.g., 'ClientOnly')
+    const jsxTargetComponentNames = checkJSX
+      ? getJSXComponentNames(fileKinds)
+      : null
+    // Get module info that was just cached by ingestModule
+    const moduleInfo = this.moduleCache.get(id)!
+
     if (canUseFastPath) {
       // Fast path: only visit top-level statements that have potential candidates
 
@@ -632,10 +681,33 @@ export class ServerFnCompiler {
             }
           }
         },
+        // Pattern 3: JSX element pattern (e.g., <ClientOnly>)
+        // Collect JSX elements where the component name matches a known import
+        // that resolves to a target component (e.g., ClientOnly from @tanstack/react-router)
+        JSXElement: (path) => {
+          if (!checkJSX || !jsxTargetComponentNames) return
+
+          const openingElement = path.node.openingElement
+          const nameNode = openingElement.name
+
+          // Only handle simple identifier names (not namespaced or member expressions)
+          if (!t.isJSXIdentifier(nameNode)) return
+
+          const componentName = nameNode.name
+          const binding = moduleInfo.bindings.get(componentName)
+
+          // Must be an import binding
+          if (!binding || binding.type !== 'import') return
+
+          // Check if the original import name matches a target component
+          if (jsxTargetComponentNames.has(binding.importedName)) {
+            jsxCandidatePaths.push(path)
+          }
+        },
       })
     }
 
-    if (candidatePaths.length === 0) {
+    if (candidatePaths.length === 0 && jsxCandidatePaths.length === 0) {
       return null
     }
 
@@ -652,7 +724,7 @@ export class ServerFnCompiler {
       this.validLookupKinds.has(kind as LookupKind),
     ) as Array<{ path: babel.NodePath<t.CallExpression>; kind: LookupKind }>
 
-    if (validCandidates.length === 0) {
+    if (validCandidates.length === 0 && jsxCandidatePaths.length === 0) {
       return null
     }
 
@@ -743,6 +815,29 @@ export class ServerFnCompiler {
           kind,
         })
       }
+    }
+
+    // Handle JSX candidates (e.g., <ClientOnly>)
+    // Note: We only reach here on the server (ClientOnlyJSX is only in LookupKindsPerEnv.server)
+    // Verify import source using knownRootImports (same as function call resolution)
+    for (const jsxPath of jsxCandidatePaths) {
+      const openingElement = jsxPath.node.openingElement
+      const nameNode = openingElement.name
+      if (!t.isJSXIdentifier(nameNode)) continue
+
+      const componentName = nameNode.name
+      const binding = moduleInfo.bindings.get(componentName)
+      if (!binding || binding.type !== 'import') continue
+
+      // Verify the import source is a known TanStack router package
+      const knownExports = this.knownRootImports.get(binding.source)
+      if (!knownExports) continue
+
+      // Verify the imported name resolves to ClientOnlyJSX kind
+      const kind = knownExports.get(binding.importedName)
+      if (kind !== 'ClientOnlyJSX') continue
+
+      handleClientOnlyJSX(jsxPath, { env: 'server' })
     }
 
     deadCodeElimination(ast, refIdents)
