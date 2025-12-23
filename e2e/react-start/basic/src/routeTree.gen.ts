@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexport'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as PostsRouteImport } from './routes/posts'
@@ -61,6 +62,11 @@ const Char45824Char54620Char48124Char44397Route =
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TypeOnlyReexportRoute = TypeOnlyReexportRouteImport.update({
+  id: '/type-only-reexport',
+  path: '/type-only-reexport',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StreamRoute = StreamRouteImport.update({
@@ -281,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/api/users': typeof ApiUsersRouteWithChildren
@@ -320,6 +327,7 @@ export interface FileRoutesByTo {
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
@@ -361,6 +369,7 @@ export interface FileRoutesById {
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/scripts'
     | '/stream'
+    | '/type-only-reexport'
     | '/users'
     | '/대한민국'
     | '/api/users'
@@ -445,6 +455,7 @@ export interface FileRouteTypes {
     | '/links'
     | '/scripts'
     | '/stream'
+    | '/type-only-reexport'
     | '/대한민국'
     | '/api/users'
     | '/multi-cookie-redirect/target'
@@ -485,6 +496,7 @@ export interface FileRouteTypes {
     | '/posts'
     | '/scripts'
     | '/stream'
+    | '/type-only-reexport'
     | '/users'
     | '/대한민국'
     | '/_layout/_layout-2'
@@ -530,6 +542,7 @@ export interface RootRouteChildren {
   PostsRoute: typeof PostsRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
   StreamRoute: typeof StreamRoute
+  TypeOnlyReexportRoute: typeof TypeOnlyReexportRoute
   UsersRoute: typeof UsersRouteWithChildren
   Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
@@ -555,6 +568,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/type-only-reexport': {
+      id: '/type-only-reexport'
+      path: '/type-only-reexport'
+      fullPath: '/type-only-reexport'
+      preLoaderRoute: typeof TypeOnlyReexportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stream': {
@@ -982,6 +1002,7 @@ const rootRouteChildren: RootRouteChildren = {
   PostsRoute: PostsRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
   StreamRoute: StreamRoute,
+  TypeOnlyReexportRoute: TypeOnlyReexportRoute,
   UsersRoute: UsersRouteWithChildren,
   Char45824Char54620Char48124Char44397Route:
     Char45824Char54620Char48124Char44397Route,
@@ -996,12 +1017,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

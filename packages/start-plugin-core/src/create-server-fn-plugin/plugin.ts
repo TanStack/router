@@ -141,10 +141,11 @@ export function createServerFnPlugin(opts: {
               loadModule: async (id: string) => {
                 if (this.environment.mode === 'build') {
                   const loaded = await this.load({ id })
-                  if (!loaded.code) {
-                    throw new Error(`could not load module ${id}`)
-                  }
-                  compiler!.ingestModule({ code: loaded.code, id })
+                  // Handle modules with no runtime code (e.g., type-only exports).
+                  // After TypeScript compilation, these become empty modules.
+                  // Create an empty module info instead of throwing.
+                  const code = loaded.code ?? ''
+                  compiler!.ingestModule({ code, id })
                 } else if (this.environment.mode === 'dev') {
                   /**
                    * in dev, vite does not return code from `ctx.load()`
