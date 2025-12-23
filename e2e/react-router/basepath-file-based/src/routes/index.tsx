@@ -28,7 +28,7 @@ function App() {
           })
         }
       >
-        Navigate to /redirect without document reload
+        Navigate to /redirect
       </button>{' '}
       <button
         data-testid="to-redirect-reload-btn"
@@ -38,7 +38,7 @@ function App() {
           })
         }
       >
-        Navigate to /about with document reload
+        Navigate to /redirectReload
       </button>
     </div>
   )

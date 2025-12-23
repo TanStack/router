@@ -27,7 +27,7 @@ test('redirect respects basepath', async ({ page }) => {
   await expect(page.getByTestId(`about-component`)).toBeInViewport()
 })
 
-test('redirect respects basepath with reload document = true', async ({
+test('redirect respects basepath with reloadDocument = true on redirect', async ({
   page,
 }) => {
   await page.goto(`/app/`)
