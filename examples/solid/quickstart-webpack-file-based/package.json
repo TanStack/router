@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
-    "@babel/preset-typescript": "^7.27.1",
+    "@babel/preset-typescript": "^7.28.5",
     "@tanstack/router-plugin": "^1.142.11",
     "babel-loader": "^10.0.0",
     "babel-preset-solid": "^1.9.10",

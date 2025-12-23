@@ -65,10 +65,10 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@babel/code-frame": "7.27.1",
-    "@babel/core": "^7.27.7",
-    "@babel/traverse": "^7.27.7",
-    "@babel/types": "^7.27.7",
+    "@babel/code-frame": "^7.27.1",
+    "@babel/core": "^7.28.5",
+    "@babel/traverse": "^7.28.5",
+    "@babel/types": "^7.28.5",
     "@tanstack/router-utils": "workspace:*",
     "babel-dead-code-elimination": "^1.0.11",
     "pathe": "^2.0.3",
