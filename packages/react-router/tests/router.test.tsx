@@ -1583,7 +1583,9 @@ describe('invalidate', () => {
     render(<RouterProvider router={router} />)
     await act(() => router.load())
 
-    expect(await screen.findByTestId('test-component')).toHaveTextContent('Version 1')
+    expect(await screen.findByTestId('test-component')).toHaveTextContent(
+      'Version 1',
+    )
     const initialCallCount = renderTracker.mock.calls.length
 
     // Simulate HMR: swap component (keep using same tracker)
@@ -1594,7 +1596,9 @@ describe('invalidate', () => {
 
     await act(() => router.invalidate())
 
-    expect(await screen.findByTestId('test-component')).toHaveTextContent('Version 2')
+    expect(await screen.findByTestId('test-component')).toHaveTextContent(
+      'Version 2',
+    )
 
     // Count renders after invalidate
     const totalCalls = renderTracker.mock.calls.length
@@ -1633,9 +1637,7 @@ describe('invalidate', () => {
         const loaderData = testRoute.useLoaderData()
         renderTracker('v1', loaderData)
         return (
-          <div data-testid="test-component">
-            Version 1 - {loaderData.data}
-          </div>
+          <div data-testid="test-component">Version 1 - {loaderData.data}</div>
         )
       },
     })
@@ -1659,9 +1661,7 @@ describe('invalidate', () => {
       const loaderData = testRoute.useLoaderData()
       renderTracker('v2', loaderData)
       return (
-        <div data-testid="test-component">
-          Version 2 - {loaderData.data}
-        </div>
+        <div data-testid="test-component">Version 2 - {loaderData.data}</div>
       )
     }
 
@@ -1676,7 +1676,8 @@ describe('invalidate', () => {
 
     const rendersAfterInvalidate =
       renderTracker.mock.calls.length - initialCallCount
-    const loaderCallsAfterInvalidate = loader.mock.calls.length - initialLoaderCalls
+    const loaderCallsAfterInvalidate =
+      loader.mock.calls.length - initialLoaderCalls
 
     // Loader should be called once
     expect(loaderCallsAfterInvalidate).toBe(1)
