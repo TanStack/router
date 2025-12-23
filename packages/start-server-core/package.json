@@ -62,8 +62,8 @@
     "./package.json": "./package.json"
   },
   "imports": {
-    "#tanstack-start-server-fn-manifest": {
-      "default": "./dist/esm/fake-start-server-fn-manifest.js"
+    "#tanstack-start-server-fn-resolver": {
+      "default": "./dist/esm/fake-start-server-fn-resolver.js"
     }
   },
   "sideEffects": false,

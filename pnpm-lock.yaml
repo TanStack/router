@@ -52,8 +52,6 @@ overrides:
   '@tanstack/vue-router': workspace:*
   '@tanstack/vue-router-devtools': workspace:*
   '@tanstack/eslint-plugin-router': workspace:*
-  '@tanstack/server-functions-plugin': workspace:*
-  '@tanstack/directive-functions-plugin': workspace:*
   '@tanstack/router-utils': workspace:*
   '@tanstack/start-static-server-functions': workspace:*
   '@tanstack/nitro-v2-vite-plugin': workspace:*
@@ -11112,49 +11110,6 @@ importers:
         specifier: ^19.2.0
         version: 19.2.0(react@19.2.0)
 
-  packages/directive-functions-plugin:
-    dependencies:
-      '@babel/code-frame':
-        specifier: 7.27.1
-        version: 7.27.1
-      '@babel/core':
-        specifier: ^7.27.7
-        version: 7.27.7
-      '@babel/traverse':
-        specifier: ^7.27.7
-        version: 7.27.7
-      '@babel/types':
-        specifier: ^7.27.7
-        version: 7.27.7
-      '@tanstack/router-utils':
-        specifier: workspace:*
-        version: link:../router-utils
-      babel-dead-code-elimination:
-        specifier: ^1.0.10
-        version: 1.0.10
-      pathe:
-        specifier: ^2.0.3
-        version: 2.0.3
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-    devDependencies:
-      '@types/babel__code-frame':
-        specifier: ^7.0.6
-        version: 7.0.6
-      '@types/babel__core':
-        specifier: ^7.20.5
-        version: 7.20.5
-      '@types/babel__traverse':
-        specifier: ^7.20.7
-        version: 7.20.7
-      dedent:
-        specifier: ^1.6.0
-        version: 1.7.0(babel-plugin-macros@3.1.0)
-      vite:
-        specifier: ^7.1.7
-        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-
   packages/eslint-plugin-router:
     dependencies:
       '@typescript-eslint/utils':
@@ -11638,52 +11593,6 @@ importers:
         specifier: workspace:*
         version: link:../router-plugin
 
-  packages/server-functions-plugin:
-    dependencies:
-      '@babel/code-frame':
-        specifier: 7.27.1
-        version: 7.27.1
-      '@babel/core':
-        specifier: ^7.27.7
-        version: 7.27.7
-      '@babel/plugin-syntax-jsx':
-        specifier: ^7.27.1
-        version: 7.27.1(@babel/core@7.27.7)
-      '@babel/plugin-syntax-typescript':
-        specifier: ^7.27.1
-        version: 7.27.1(@babel/core@7.27.7)
-      '@babel/template':
-        specifier: ^7.27.2
-        version: 7.27.2
-      '@babel/traverse':
-        specifier: ^7.27.7
-        version: 7.27.7
-      '@babel/types':
-        specifier: ^7.27.7
-        version: 7.27.7
-      '@tanstack/directive-functions-plugin':
-        specifier: workspace:*
-        version: link:../directive-functions-plugin
-      babel-dead-code-elimination:
-        specifier: ^1.0.9
-        version: 1.0.10
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-    devDependencies:
-      '@types/babel__code-frame':
-        specifier: ^7.0.6
-        version: 7.0.6
-      '@types/babel__core':
-        specifier: ^7.20.5
-        version: 7.20.5
-      '@types/babel__template':
-        specifier: ^7.4.4
-        version: 7.4.4
-      '@types/babel__traverse':
-        specifier: ^7.20.7
-        version: 7.20.7
-
   packages/solid-router:
     dependencies:
       '@solid-devtools/logger':
@@ -11928,9 +11837,6 @@ importers:
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
-      '@tanstack/server-functions-plugin':
-        specifier: workspace:*
-        version: link:../server-functions-plugin
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
