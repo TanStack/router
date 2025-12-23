@@ -9,7 +9,6 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
-    "@babel/plugin-syntax-typescript": "^7.25.9",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/react-start": "workspace:^",
