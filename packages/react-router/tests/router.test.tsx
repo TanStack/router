@@ -1606,6 +1606,7 @@ describe('invalidate', () => {
 
   /**
    * Test to verify render count after invalidate WITH async loader.
+   * Component consumes loader data and loader returns different data on each call.
    */
   it('renders minimal times after invalidate with async loader (render count verification)', async () => {
     const history = createMemoryHistory({
@@ -1613,9 +1614,11 @@ describe('invalidate', () => {
     })
 
     const renderTracker = vi.fn()
+    let loaderCallCount = 0
     const loader = vi.fn(async () => {
       await new Promise((r) => setTimeout(r, 10))
-      return { data: 'loaded' }
+      loaderCallCount++
+      return { data: `loaded-${loaderCallCount}` }
     })
 
     const rootRoute = createRootRoute({
@@ -1627,8 +1630,13 @@ describe('invalidate', () => {
       path: '/render-count-loader-test',
       loader,
       component: () => {
-        renderTracker('v1')
-        return <div data-testid="test-component">Version 1</div>
+        const loaderData = testRoute.useLoaderData()
+        renderTracker('v1', loaderData)
+        return (
+          <div data-testid="test-component">
+            Version 1 - {loaderData.data}
+          </div>
+        )
       },
     })
 
@@ -1640,28 +1648,42 @@ describe('invalidate', () => {
     render(<RouterProvider router={router} />)
     await act(() => router.load())
 
-    expect(await screen.findByTestId('test-component')).toHaveTextContent('Version 1')
+    expect(await screen.findByTestId('test-component')).toHaveTextContent(
+      'Version 1 - loaded-1',
+    )
     const initialCallCount = renderTracker.mock.calls.length
     const initialLoaderCalls = loader.mock.calls.length
 
-    // Simulate HMR: swap component
+    // Simulate HMR: swap component to new version that also consumes loader data
     testRoute.options.component = () => {
-      renderTracker('v2')
-      return <div data-testid="test-component">Version 2</div>
+      const loaderData = testRoute.useLoaderData()
+      renderTracker('v2', loaderData)
+      return (
+        <div data-testid="test-component">
+          Version 2 - {loaderData.data}
+        </div>
+      )
     }
 
     await act(() => router.invalidate())
 
-    expect(await screen.findByTestId('test-component')).toHaveTextContent('Version 2')
+    // Wait for new component with new loader data
+    await waitFor(() => {
+      expect(screen.getByTestId('test-component')).toHaveTextContent(
+        'Version 2 - loaded-2',
+      )
+    })
 
-    const rendersAfterInvalidate = renderTracker.mock.calls.length - initialCallCount
+    const rendersAfterInvalidate =
+      renderTracker.mock.calls.length - initialCallCount
     const loaderCallsAfterInvalidate = loader.mock.calls.length - initialLoaderCalls
 
     // Loader should be called once
     expect(loaderCallsAfterInvalidate).toBe(1)
-    // Component should render at most 2 times (once for invalidation, possibly once for load complete)
-    expect(rendersAfterInvalidate).toBeGreaterThanOrEqual(1)
-    expect(rendersAfterInvalidate).toBeLessThanOrEqual(2)
+    // Component renders twice when consuming loader data that changes:
+    // 1. Once for invalidation (new component picks up)
+    // 2. Once when new loader data arrives
+    expect(rendersAfterInvalidate).toBe(2)
   })
 })
 
