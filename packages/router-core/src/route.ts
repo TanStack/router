@@ -1188,11 +1188,48 @@ export interface UpdatableRouteOptions<
   in out TBeforeLoadFn,
 > extends UpdatableStaticRouteOption,
     UpdatableRouteOptionsExtensions {
-  /** If true, this route will be skipped during matching if a parse error occurs, and we'll look for another match */
-  skipRouteOnParseError?: boolean
-  // If true, this route will be matched as case-sensitive
+  /**
+   * Options to control route matching behavior with runtime code.
+   */
+  skipRouteOnParseError?: {
+    /**
+     * @default false
+     *
+     * If `true`, skip this route during matching if `params.parse` fails.
+     *
+     * Without this option, a `/$param` route could match *any* value for `param`,
+     * and only later during the route lifecycle would `params.parse` run and potentially
+     * show the `errorComponent` if validation failed.
+     *
+     * With this option enabled, the route will only match if `params.parse` succeeds.
+     * If it fails, the router will continue trying to match other routes, potentially
+     * finding a different route that works, or ultimately showing the `notFoundComponent`.
+     */
+    params?: boolean
+    /**
+     * @default false
+     *
+     * If `true`, skip this route during matching if `validateSearch` fails.
+     */
+    search?: boolean // future option for search params
+    /**
+     * @default 0
+     *
+     * In cases where multiple routes would need to run `params.parse` during matching
+     * to determine which route to pick, this priority number can be used as a tie-breaker
+     * for which route to try first. Higher number = higher priority.
+     */
+    priority?: number
+  }
+  /**
+   * If true, this route will be matched as case-sensitive
+   *
+   * @default false
+   */
   caseSensitive?: boolean
-  // If true, this route will be forcefully wrapped in a suspense boundary
+  /**
+   * If true, this route will be forcefully wrapped in a suspense boundary
+   */
   wrapInSuspense?: boolean
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
 

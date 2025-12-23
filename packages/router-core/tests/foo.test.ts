@@ -34,7 +34,9 @@ describe('params extract viz', () => {
     params: {
       parse: parseB,
     },
-    skipRouteOnParseError: true,
+    skipRouteOnParseError: {
+      params: true,
+    },
   })
   a.addChildren([b])
 

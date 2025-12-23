@@ -886,7 +886,9 @@ describe('findRouteMatch', () => {
             fullPath: '/$foo',
             options: {
               params: { parse: () => {} },
-              skipRouteOnParseError: true,
+              skipRouteOnParseError: {
+                params: true,
+              },
             },
             children: [
               {

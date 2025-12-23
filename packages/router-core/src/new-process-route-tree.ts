@@ -187,8 +187,10 @@ function parseSegments<TRouteLike extends RouteLike>(
     const path = route.fullPath ?? route.from
     const length = path.length
     const caseSensitive = route.options?.caseSensitive ?? defaultCaseSensitive
-    const parse = route.options?.params?.parse ?? null
-    const skipRouteOnParseError = !!route.options?.skipRouteOnParseError
+    const skipOnParamError = !!(
+      route.options?.params?.parse &&
+      route.options?.skipRouteOnParseError?.params
+    )
     while (cursor < length) {
       const segment = parseSegment(path, cursor, data)
       let nextNode: AnySegmentNode<TRouteLike>
@@ -248,10 +250,10 @@ function parseSegments<TRouteLike extends RouteLike>(
               ? suffix_raw
               : suffix_raw.toLowerCase()
           const existingNode =
-            (!parse || !skipRouteOnParseError) &&
+            !skipOnParamError &&
             node.dynamic?.find(
               (s) =>
-                (!s.parse || !s.skipRouteOnParseError) &&
+                !s.skipOnParamError &&
                 s.caseSensitive === actuallyCaseSensitive &&
                 s.prefix === prefix &&
                 s.suffix === suffix,
@@ -290,10 +292,10 @@ function parseSegments<TRouteLike extends RouteLike>(
               ? suffix_raw
               : suffix_raw.toLowerCase()
           const existingNode =
-            (!parse || !skipRouteOnParseError) &&
+            !skipOnParamError &&
             node.optional?.find(
               (s) =>
-                (!s.parse || !s.skipRouteOnParseError) &&
+                !s.skipOnParamError &&
                 s.caseSensitive === actuallyCaseSensitive &&
                 s.prefix === prefix &&
                 s.suffix === suffix,
@@ -350,8 +352,7 @@ function parseSegments<TRouteLike extends RouteLike>(
 
     // create pathless node
     if (
-      parse &&
-      skipRouteOnParseError &&
+      skipOnParamError &&
       route.children &&
       !route.isRoot &&
       route.id &&
@@ -383,8 +384,9 @@ function parseSegments<TRouteLike extends RouteLike>(
       node = indexNode
     }
 
-    node.parse = parse
-    node.skipRouteOnParseError = skipRouteOnParseError
+    node.parse = route.options?.params?.parse ?? null
+    node.skipOnParamError = skipOnParamError
+    node.parsingPriority = route.options?.skipRouteOnParseError?.priority ?? 0
 
     // make node "matchable"
     if (isLeaf && !node.route) {
@@ -411,29 +413,26 @@ function sortDynamic(
     prefix?: string
     suffix?: string
     caseSensitive: boolean
-    parse: null | ((params: Record<string, string>) => any)
-    skipRouteOnParseError: boolean
+    skipOnParamError: boolean
+    parsingPriority: number
   },
   b: {
     prefix?: string
     suffix?: string
     caseSensitive: boolean
-    parse: null | ((params: Record<string, string>) => any)
-    skipRouteOnParseError: boolean
+    skipOnParamError: boolean
+    parsingPriority: number
   },
 ) {
+  if (a.skipOnParamError && !b.skipOnParamError) return -1
+  if (!a.skipOnParamError && b.skipOnParamError) return 1
   if (
-    a.parse &&
-    a.skipRouteOnParseError &&
-    (!b.parse || !b.skipRouteOnParseError)
+    a.skipOnParamError &&
+    b.skipOnParamError &&
+    a.parsingPriority &&
+    b.parsingPriority
   )
-    return -1
-  if (
-    (!a.parse || !a.skipRouteOnParseError) &&
-    b.parse &&
-    b.skipRouteOnParseError
-  )
-    return 1
+    return b.parsingPriority - a.parsingPriority
   if (a.prefix && b.prefix && a.prefix !== b.prefix) {
     if (a.prefix.startsWith(b.prefix)) return -1
     if (b.prefix.startsWith(a.prefix)) return 1
@@ -507,7 +506,8 @@ function createStaticNode<T extends RouteLike>(
     fullPath,
     parent: null,
     parse: null,
-    skipRouteOnParseError: false,
+    skipOnParamError: false,
+    parsingPriority: 0,
   }
 }
 
@@ -539,7 +539,8 @@ function createDynamicNode<T extends RouteLike>(
     fullPath,
     parent: null,
     parse: null,
-    skipRouteOnParseError: false,
+    skipOnParamError: false,
+    parsingPriority: 0,
     caseSensitive,
     prefix,
     suffix,
@@ -603,8 +604,11 @@ type SegmentNode<T extends RouteLike> = {
   /** route.options.params.parse function, set on the last node of the route */
   parse: null | ((params: Record<string, string>) => any)
 
-  /** If true, errors thrown during parsing will cause this route to be ignored as a match candidate */
-  skipRouteOnParseError: boolean
+  /** options.skipRouteOnParseError.params ?? false */
+  skipOnParamError: boolean
+
+  /** options.skipRouteOnParseError.priority ?? 0 */
+  parsingPriority: number
 }
 
 type RouteLike = {
@@ -614,7 +618,10 @@ type RouteLike = {
   parentRoute?: RouteLike // parent route,
   isRoot?: boolean
   options?: {
-    skipRouteOnParseError?: boolean
+    skipRouteOnParseError?: {
+      params?: boolean
+      priority?: number
+    }
     caseSensitive?: boolean
     params?: {
       parse?: (params: Record<string, string>) => any
@@ -1004,7 +1011,7 @@ function getNodeMatch<T extends RouteLike>(
     const { node, index, skipped, depth, statics, dynamics, optionals } = frame
     let { extract, rawParams, parsedParams } = frame
 
-    if (node.skipRouteOnParseError && node.parse) {
+    if (node.skipOnParamError) {
       const result = validateMatchParams(path, parts, frame)
       if (!result) continue
       rawParams = frame.rawParams
@@ -1048,7 +1055,7 @@ function getNodeMatch<T extends RouteLike>(
         rawParams,
         parsedParams,
       }
-      if (node.index.skipRouteOnParseError && node.index.parse) {
+      if (node.index.skipOnParamError) {
         const result = validateMatchParams(path, parts, indexFrame)
         if (!result) continue
       }
@@ -1094,7 +1101,7 @@ function getNodeMatch<T extends RouteLike>(
           rawParams,
           parsedParams,
         }
-        if (segment.skipRouteOnParseError && segment.parse) {
+        if (segment.skipOnParamError) {
           const result = validateMatchParams(path, parts, frame)
           if (!result) continue
         }
@@ -1268,10 +1275,10 @@ function validateMatchParams<T extends RouteLike>(
   frame: MatchStackFrame<T>,
 ) {
   try {
-    const result = extractParams(path, parts, frame)
-    frame.rawParams = result[0]
-    frame.extract = result[1]
-    const parsed = frame.node.parse!(result[0])
+    const [rawParams, state] = extractParams(path, parts, frame)
+    frame.rawParams = rawParams
+    frame.extract = state
+    const parsed = frame.node.parse!(rawParams)
     frame.parsedParams = Object.assign({}, frame.parsedParams, parsed)
     return true
   } catch {
