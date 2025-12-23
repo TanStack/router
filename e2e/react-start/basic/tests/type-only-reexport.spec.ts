@@ -37,24 +37,3 @@ test('page using middleware from barrel with type-only re-exports builds and ren
     'Hello from server with type-only module re-exports!',
   )
 })
-
-test('server function with middleware from type-only barrel works via client-side navigation', async ({
-  page,
-}) => {
-  // Start from home
-  await page.goto('/')
-  await page.waitForURL('/')
-
-  // Navigate via client-side routing
-  // First, navigate to the type-only-reexport page using the URL directly
-  // since we don't have a nav link for it
-  await page.evaluate(() => {
-    window.location.href = '/type-only-reexport'
-  })
-  await page.waitForURL('/type-only-reexport')
-
-  // Verify the page works
-  await expect(page.getByTestId('message')).toContainText(
-    'Hello from server with type-only module re-exports!',
-  )
-})
