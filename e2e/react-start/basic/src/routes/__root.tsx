@@ -166,6 +166,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             redirect
           </Link>{' '}
           <Link
+            to="/client-only"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Client Only
+          </Link>{' '}
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{

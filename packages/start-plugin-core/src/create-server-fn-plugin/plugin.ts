@@ -75,7 +75,15 @@ const getLookupConfigurationsForEnv = (
       ...commonConfigs,
     ]
   } else {
-    return commonConfigs
+    // Server-only: add ClientOnly JSX component lookup
+    return [
+      ...commonConfigs,
+      {
+        libName: `@tanstack/${framework}-router`,
+        rootExport: 'ClientOnly',
+        kind: 'ClientOnlyJSX',
+      },
+    ]
   }
 }
 const SERVER_FN_LOOKUP = 'server-fn-module-lookup'

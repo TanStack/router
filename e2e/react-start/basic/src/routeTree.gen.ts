@@ -17,6 +17,7 @@ import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as DeferredRouteImport } from './routes/deferred'
+import { Route as ClientOnlyRouteImport } from './routes/client-only'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
@@ -90,6 +91,11 @@ const InlineScriptsRoute = InlineScriptsRouteImport.update({
 const DeferredRoute = DeferredRouteImport.update({
   id: '/deferred',
   path: '/deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientOnlyRoute = ClientOnlyRouteImport.update({
+  id: '/client-only',
+  path: '/client-only',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutRoute = LayoutRouteImport.update({
@@ -268,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
+  '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
@@ -307,6 +314,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
@@ -346,6 +354,7 @@ export interface FileRoutesById {
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
+  '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
@@ -390,6 +399,7 @@ export interface FileRouteTypes {
     | '/'
     | '/not-found'
     | '/search-params'
+    | '/client-only'
     | '/deferred'
     | '/inline-scripts'
     | '/links'
@@ -429,6 +439,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/client-only'
     | '/deferred'
     | '/inline-scripts'
     | '/links'
@@ -467,6 +478,7 @@ export interface FileRouteTypes {
     | '/not-found'
     | '/search-params'
     | '/_layout'
+    | '/client-only'
     | '/deferred'
     | '/inline-scripts'
     | '/links'
@@ -511,6 +523,7 @@ export interface RootRouteChildren {
   NotFoundRouteRoute: typeof NotFoundRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
+  ClientOnlyRoute: typeof ClientOnlyRoute
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
@@ -584,6 +597,13 @@ declare module '@tanstack/react-router' {
       path: '/deferred'
       fullPath: '/deferred'
       preLoaderRoute: typeof DeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-only': {
+      id: '/client-only'
+      path: '/client-only'
+      fullPath: '/client-only'
+      preLoaderRoute: typeof ClientOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -955,6 +975,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotFoundRouteRoute: NotFoundRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
+  ClientOnlyRoute: ClientOnlyRoute,
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
