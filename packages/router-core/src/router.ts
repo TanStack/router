@@ -2029,19 +2029,34 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType
    */
-  navigate: NavigateFn = async ({ to, reloadDocument, href, ...rest }) => {
-    if (!reloadDocument && href) {
+  navigate: NavigateFn = async ({
+    to,
+    reloadDocument,
+    href,
+    publicHref,
+    ...rest
+  }) => {
+    let hrefIsUrl = false
+
+    if (href) {
       try {
         new URL(`${href}`)
-        reloadDocument = true
+        hrefIsUrl = true
       } catch {}
     }
 
+    if (hrefIsUrl && !reloadDocument) {
+      reloadDocument = true
+    }
+
     if (reloadDocument) {
-      if (!href) {
+      if (!href || (!publicHref && !hrefIsUrl)) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = location.url.href
+        href = href ?? location.url.href
+        publicHref = publicHref ?? location.url.href
       }
+
+      const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
 
       // Check blockers for external URLs unless ignoreBlocker is true
       if (!rest.ignoreBlocker) {
@@ -2063,9 +2078,9 @@ export class RouterCore<
       }
 
       if (rest.replace) {
-        window.location.replace(href)
+        window.location.replace(reloadHref)
       } else {
-        window.location.href = href
+        window.location.href = reloadHref
       }
       return Promise.resolve()
     }

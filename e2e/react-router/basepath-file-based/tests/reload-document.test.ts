@@ -16,3 +16,25 @@ test('navigate() respects basepath for when reloadDocument=true', async ({
   await page.waitForURL('/app/')
   await expect(page.getByTestId(`home-component`)).toBeInViewport()
 })
+
+test('redirect respects basepath', async ({ page }) => {
+  await page.goto(`/app/`)
+  await expect(page.getByTestId(`home-component`)).toBeInViewport()
+
+  const redirectBtn = page.getByTestId(`to-redirect-btn`)
+  await redirectBtn.click()
+  await page.waitForURL('/app/about')
+  await expect(page.getByTestId(`about-component`)).toBeInViewport()
+})
+
+test('redirect respects basepath with reloadDocument = true on redirect', async ({
+  page,
+}) => {
+  await page.goto(`/app/`)
+  await expect(page.getByTestId(`home-component`)).toBeInViewport()
+
+  const redirectBtn = page.getByTestId(`to-redirect-reload-btn`)
+  await redirectBtn.click()
+  await page.waitForURL('/app/about')
+  await expect(page.getByTestId(`about-component`)).toBeInViewport()
+})
