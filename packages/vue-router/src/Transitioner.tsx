@@ -123,9 +123,12 @@ export function useTransitionerSetup() {
       _includeValidateSearch: true,
     })
 
+    // Check if the current URL matches the canonical form.
+    // Compare publicHref (browser-facing URL) for consistency with
+    // the server-side redirect check in router.beforeLoad.
     if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
+      trimPathRight(router.latestLocation.publicHref) !==
+      trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
