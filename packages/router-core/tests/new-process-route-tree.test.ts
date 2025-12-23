@@ -928,6 +928,7 @@ describe('findRouteMatch', () => {
               "optional": null,
               "parent": [Circular],
               "parse": null,
+              "parsingPriority": 0,
               "pathless": [
                 {
                   "depth": 2,
@@ -942,6 +943,7 @@ describe('findRouteMatch', () => {
                     "optional": null,
                     "parent": [Circular],
                     "parse": null,
+                    "parsingPriority": 0,
                     "pathless": null,
                     "route": {
                       "fullPath": "/$foo/",
@@ -949,7 +951,7 @@ describe('findRouteMatch', () => {
                       "options": {},
                       "path": "/",
                     },
-                    "skipRouteOnParseError": false,
+                    "skipOnParamError": false,
                     "static": null,
                     "staticInsensitive": null,
                     "wildcard": null,
@@ -958,6 +960,7 @@ describe('findRouteMatch', () => {
                   "optional": null,
                   "parent": [Circular],
                   "parse": [Function],
+                  "parsingPriority": 0,
                   "pathless": null,
                   "route": {
                     "children": [
@@ -980,11 +983,13 @@ describe('findRouteMatch', () => {
                       "params": {
                         "parse": [Function],
                       },
-                      "skipRouteOnParseError": true,
+                      "skipRouteOnParseError": {
+                        "params": true,
+                      },
                     },
                     "path": "$foo",
                   },
-                  "skipRouteOnParseError": true,
+                  "skipOnParamError": true,
                   "static": null,
                   "staticInsensitive": Map {
                     "bar" => {
@@ -996,6 +1001,7 @@ describe('findRouteMatch', () => {
                       "optional": null,
                       "parent": [Circular],
                       "parse": null,
+                      "parsingPriority": 0,
                       "pathless": null,
                       "route": {
                         "fullPath": "/$foo/bar",
@@ -1003,7 +1009,7 @@ describe('findRouteMatch', () => {
                         "options": {},
                         "path": "bar",
                       },
-                      "skipRouteOnParseError": false,
+                      "skipOnParamError": false,
                       "static": null,
                       "staticInsensitive": null,
                       "wildcard": null,
@@ -1014,7 +1020,7 @@ describe('findRouteMatch', () => {
               ],
               "prefix": undefined,
               "route": null,
-              "skipRouteOnParseError": false,
+              "skipOnParamError": false,
               "static": null,
               "staticInsensitive": Map {
                 "hello" => {
@@ -1026,6 +1032,7 @@ describe('findRouteMatch', () => {
                   "optional": null,
                   "parent": [Circular],
                   "parse": null,
+                  "parsingPriority": 0,
                   "pathless": null,
                   "route": {
                     "fullPath": "/$foo/hello",
@@ -1033,7 +1040,7 @@ describe('findRouteMatch', () => {
                     "options": {},
                     "path": "$foo/hello",
                   },
-                  "skipRouteOnParseError": false,
+                  "skipOnParamError": false,
                   "static": null,
                   "staticInsensitive": null,
                   "wildcard": null,
@@ -1053,6 +1060,7 @@ describe('findRouteMatch', () => {
             "optional": null,
             "parent": [Circular],
             "parse": null,
+            "parsingPriority": 0,
             "pathless": null,
             "route": {
               "fullPath": "/",
@@ -1060,7 +1068,7 @@ describe('findRouteMatch', () => {
               "options": {},
               "path": "/",
             },
-            "skipRouteOnParseError": false,
+            "skipOnParamError": false,
             "static": null,
             "staticInsensitive": null,
             "wildcard": null,
@@ -1069,9 +1077,10 @@ describe('findRouteMatch', () => {
           "optional": null,
           "parent": null,
           "parse": null,
+          "parsingPriority": 0,
           "pathless": null,
           "route": null,
-          "skipRouteOnParseError": false,
+          "skipOnParamError": false,
           "static": null,
           "staticInsensitive": null,
           "wildcard": null,
