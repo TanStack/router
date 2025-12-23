@@ -6,6 +6,13 @@ interface ErrorComponentProps {
   reset: () => void
 }
 
+type CatchBoundaryProps = {
+  getResetKey: () => number | string
+  children: Vue.VNode
+  errorComponent?: ErrorRouteComponent | Vue.Component
+  onCatch?: (error: Error) => void
+}
+
 const VueErrorBoundary = Vue.defineComponent({
   name: 'VueErrorBoundary',
   props: {
@@ -67,40 +74,36 @@ const VueErrorBoundary = Vue.defineComponent({
   },
 })
 
-export function CatchBoundary(props: {
-  getResetKey: () => number | string
-  children: Vue.VNode
-  errorComponent?: ErrorRouteComponent | Vue.Component
-  onCatch?: (error: Error) => void
-}) {
-  const CatchBoundaryWrapper = Vue.defineComponent({
-    name: 'CatchBoundaryWrapper',
-    inheritAttrs: false,
-    setup() {
-      const resetKey = Vue.computed(() => props.getResetKey())
+const CatchBoundaryWrapper = Vue.defineComponent({
+  name: 'CatchBoundary',
+  inheritAttrs: false,
+  props: ['getResetKey', 'children', 'errorComponent', 'onCatch'] as any,
+  setup(props: CatchBoundaryProps) {
+    const resetKey = Vue.computed(() => props.getResetKey())
 
-      return () => {
-        return Vue.h(
-          VueErrorBoundary,
-          {
-            resetKey: resetKey.value,
-            onError: props.onCatch,
+    return () => {
+      return Vue.h(
+        VueErrorBoundary,
+        {
+          resetKey: resetKey.value,
+          onError: props.onCatch,
+        },
+        {
+          default: () => props.children,
+          fallback: ({ error, reset }: ErrorComponentProps) => {
+            if (props.errorComponent) {
+              return Vue.h(props.errorComponent, { error, reset })
+            }
+            return Vue.h(ErrorComponent, { error, reset })
           },
-          {
-            default: () => props.children,
-            fallback: ({ error, reset }: ErrorComponentProps) => {
-              if (props.errorComponent) {
-                return Vue.h(props.errorComponent, { error, reset })
-              }
-              return Vue.h(ErrorComponent, { error, reset })
-            },
-          },
-        )
-      }
-    },
-  })
+        },
+      )
+    }
+  },
+})
 
-  return Vue.h(CatchBoundaryWrapper)
+export function CatchBoundary(props: CatchBoundaryProps) {
+  return Vue.h(CatchBoundaryWrapper, props as any)
 }
 
 export const ErrorComponent = Vue.defineComponent({

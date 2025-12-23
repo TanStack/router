@@ -221,7 +221,8 @@ testCases.forEach(({ description, testId }) => {
 
 test('navigating to an unnested route', async ({ page }) => {
   const postId = 'hello-world'
-  page.goto(`/posts/${postId}/edit`)
+  await page.goto(`/posts/${postId}/edit`)
+  await page.waitForURL(`/posts/${postId}/edit`)
   await expect(page.getByTestId('params-via-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-hook')).toContainText(postId)
   await expect(page.getByTestId('params-via-route-api')).toContainText(postId)
@@ -324,5 +325,72 @@ test.describe('Unicode route rendering', () => {
     await expect(page.locator('body')).toContainText('Hello "/대한민국"!')
 
     expect(page.url()).toBe(`${baseURL}/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD`)
+  })
+})
+
+test.describe('Pathless layout routes', () => {
+  test('direct navigation to pathless layout route renders correctly', async ({
+    page,
+  }) => {
+    await page.goto('/pathless-layout')
+    await expect(page.getByTestId('pathless-layout-header')).toContainText(
+      'Pathless Layout Section',
+    )
+    await expect(page.getByTestId('pathless-layout-wrapper')).toContainText(
+      'Pathless Layout Wrapper',
+    )
+    await expect(page.getByTestId('pathless-layout-index')).toContainText(
+      'Pathless Layout Index',
+    )
+  })
+
+  test('client-side navigation to pathless layout route', async ({ page }) => {
+    await page.goto('/')
+    await page.getByTestId('link-to-pathless-layout').click()
+    await expect(page.getByTestId('pathless-layout-header')).toContainText(
+      'Pathless Layout Section',
+    )
+    await expect(page.getByTestId('pathless-layout-wrapper')).toContainText(
+      'Pathless Layout Wrapper',
+    )
+  })
+
+  test('navigation within pathless layout preserves layout', async ({
+    page,
+  }) => {
+    await page.goto('/pathless-layout')
+    await page.getByTestId('link-to-child').click()
+    await expect(page.getByTestId('pathless-layout-header')).toContainText(
+      'Pathless Layout Section',
+    )
+    await expect(page.getByTestId('pathless-layout-wrapper')).toContainText(
+      'Pathless Layout Wrapper',
+    )
+    await expect(page.getByTestId('pathless-layout-child')).toContainText(
+      'Pathless Layout Child Route',
+    )
+  })
+
+  test('direct navigation to child of pathless layout', async ({ page }) => {
+    await page.goto('/pathless-layout/child')
+    await expect(page.getByTestId('pathless-layout-header')).toContainText(
+      'Pathless Layout Section',
+    )
+    await expect(page.getByTestId('pathless-layout-wrapper')).toContainText(
+      'Pathless Layout Wrapper',
+    )
+    await expect(page.getByTestId('pathless-layout-child')).toContainText(
+      'Pathless Layout Child Route',
+    )
+  })
+
+  test('navigating to non-existent route under pathless layout shows not found', async ({
+    page,
+  }) => {
+    await page.goto('/pathless-layout/does-not-exist')
+    await expect(page.getByTestId('pathless-layout-not-found')).toContainText(
+      'Not Found in Pathless Layout',
+    )
+    await expect(page.locator('body')).toContainText('Not Found')
   })
 })

@@ -16,6 +16,11 @@ export interface DirectiveFn {
   extractedFilename: string
   filename: string
   chunkName: string
+  /**
+   * True when this function was discovered by the client build.
+   * Used to restrict HTTP access to only client-referenced functions.
+   */
+  isClientReferenced?: boolean
 }
 
 export type SupportedFunctionPath =
@@ -34,7 +39,14 @@ export type ReplacerFn = (opts: {
   extractedFilename: string
   filename: string
   functionId: string
+  functionName: string
   isSourceFn: boolean
+  /**
+   * True when this function was already discovered by a previous build (e.g., client).
+   * For SSR callers, this means the function is in the manifest and doesn't need
+   * an importer - the manifest lookup will find it.
+   */
+  isClientReferenced: boolean
 }) => string
 
 // const debug = process.env.TSR_VITE_DEBUG === 'true'
@@ -50,6 +62,18 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   root: string
   isDirectiveSplitParam: boolean
   directiveSplitParam: string
+  /**
+   * Previously discovered directive functions from other builds (e.g., client build).
+   * When provided, the compiler will use the canonical extractedFilename from this
+   * registry instead of computing it locally. This ensures SSR callers import from
+   * the same extracted file as the client.
+   */
+  knownDirectiveFns?: Record<string, DirectiveFn>
+  /**
+   * Whether the current environment is a client environment.
+   * Functions discovered in client environments are always client-referenced.
+   */
+  isClientEnvironment?: boolean
 }
 
 export function compileDirectives(opts: CompileDirectivesOpts): {
@@ -217,6 +241,8 @@ export function findDirectives(
     filename: string
     root: string
     isDirectiveSplitParam: boolean
+    knownDirectiveFns?: Record<string, DirectiveFn>
+    isClientEnvironment?: boolean
   },
 ): Record<string, DirectiveFn> {
   const directiveFnsById: Record<string, DirectiveFn> = {}
@@ -340,7 +366,9 @@ export function findDirectives(
 
   function compileDirective(
     directiveFn: SupportedFunctionPath,
-    compileDirectiveOpts: { isDirectiveSplitParam: boolean },
+    compileDirectiveOpts: {
+      isDirectiveSplitParam: boolean
+    },
   ) {
     // Move the function to program level while preserving its position
     // in the program body
@@ -410,6 +438,64 @@ export function findDirectives(
 
     functionNameSet.add(functionName)
 
+    // Use functionId to determine if this is a client-referenced function
+    const [baseFilename, ..._searchParams] = opts.filename.split('?') as [
+      string,
+      ...Array<string>,
+    ]
+    const searchParams = new URLSearchParams(_searchParams.join('&'))
+    searchParams.set(opts.directiveSplitParam, '')
+
+    const localExtractedFilename = `${baseFilename}?${searchParams.toString()}`
+
+    // Relative to have constant functionId regardless of the machine
+    // that we are executing
+    const relativeFilename = path.relative(opts.root, baseFilename)
+    const functionId = opts.generateFunctionId({
+      filename: relativeFilename,
+      functionName,
+      extractedFilename: localExtractedFilename,
+    })
+
+    // Use the canonical extracted filename from knownDirectiveFns if available.
+    // This ensures SSR callers import from the same extracted file as the client,
+    // avoiding duplicate chunks with the same server function.
+    const knownFn = opts.knownDirectiveFns?.[functionId]
+    const extractedFilename =
+      knownFn?.extractedFilename ?? localExtractedFilename
+    // A function is client-referenced if:
+    // 1. It was discovered by the client environment (isClientEnvironment), OR
+    // 2. It was already known from a previous (client) build (knownFn exists)
+    const isClientReferenced = opts.isClientEnvironment || !!knownFn
+
+    // For client-referenced functions in SSR caller files (not extracted files),
+    // we remove the second argument of .handler() because:
+    // 1. The RPC stub uses manifest lookup, which provides the implementation
+    // 2. The full implementation shouldn't be in the caller file
+    // We do this BEFORE hoisting/replacing to ensure we can still access the parent structure
+    if (isClientReferenced && !compileDirectiveOpts.isDirectiveSplitParam) {
+      // Find if this directive function is inside a .handler() call expression
+      // The structure is: .handler(directiveFn, originalImpl)
+      // We want to remove originalImpl (the second argument)
+      let currentPath: babel.NodePath | null =
+        directiveFn as babel.NodePath | null
+      while (currentPath && !currentPath.parentPath?.isProgram()) {
+        const parent: babel.NodePath | null = currentPath.parentPath
+        if (
+          parent?.isCallExpression() &&
+          babel.types.isMemberExpression(parent.node.callee) &&
+          babel.types.isIdentifier(parent.node.callee.property) &&
+          parent.node.callee.property.name === 'handler' &&
+          parent.node.arguments.length === 2
+        ) {
+          // Remove the second argument (the original implementation)
+          parent.node.arguments.pop()
+          break
+        }
+        currentPath = parent
+      }
+    }
+
     const topParent =
       directiveFn.findParent((p) => !!p.parentPath?.isProgram()) || directiveFn
 
@@ -470,23 +556,6 @@ export function findDirectives(
       `body.${topParentIndex}.declarations.0.init`,
     ) as SupportedFunctionPath
 
-    const [baseFilename, ..._searchParams] = opts.filename.split('?') as [
-      string,
-      ...Array<string>,
-    ]
-    const searchParams = new URLSearchParams(_searchParams.join('&'))
-    searchParams.set(opts.directiveSplitParam, '')
-
-    const extractedFilename = `${baseFilename}?${searchParams.toString()}`
-
-    // Relative to have constant functionId regardless of the machine
-    // that we are executing
-    const relativeFilename = path.relative(opts.root, baseFilename)
-    const functionId = opts.generateFunctionId({
-      filename: relativeFilename,
-      functionName,
-      extractedFilename,
-    })
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {
       const replacer = opts.replacer({
@@ -494,7 +563,9 @@ export function findDirectives(
         extractedFilename,
         filename: opts.filename,
         functionId,
+        functionName,
         isSourceFn: !!opts.directiveSplitParam,
+        isClientReferenced,
       })
 
       const replacement = babel.template.expression(replacer, {
@@ -518,6 +589,7 @@ export function findDirectives(
       extractedFilename,
       filename: opts.filename,
       chunkName: fileNameToChunkName(opts.root, extractedFilename),
+      isClientReferenced,
     }
   }
 }

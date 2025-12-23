@@ -88,18 +88,23 @@ export function useTransitionerSetup() {
     endTransition()
   }
 
-  // For Vue, we need to completely override startViewTransition because Vue's
-  // async rendering doesn't work well with the View Transitions API's requirement
-  // for synchronous DOM updates. The browser expects the DOM to be updated
-  // when the callback promise resolves, but Vue updates asynchronously.
-  //
-  // Our approach: Skip the actual view transition animation but still update state.
-  // This ensures navigation works correctly even without the visual transition.
-  // In the future, we could explore using viewTransition.captured like vue-view-transitions does.
+  // Vue updates DOM asynchronously (next tick). The View Transitions API expects the
+  // update callback promise to resolve only after the DOM has been updated.
+  // Wrap the router-core implementation to await a Vue flush before resolving.
+  const originalStartViewTransition:
+    | undefined
+    | ((fn: () => Promise<void>) => void) =
+    (router as any).__tsrOriginalStartViewTransition ??
+    router.startViewTransition
+
+  ;(router as any).__tsrOriginalStartViewTransition =
+    originalStartViewTransition
+
   router.startViewTransition = (fn: () => Promise<void>) => {
-    // Just run the callback directly without wrapping in document.startViewTransition
-    // This ensures the state updates happen and Vue can render them normally
-    fn()
+    return originalStartViewTransition?.(async () => {
+      await fn()
+      await Vue.nextTick()
+    })
   }
 
   // Subscribe to location changes
@@ -118,9 +123,12 @@ export function useTransitionerSetup() {
       _includeValidateSearch: true,
     })
 
+    // Check if the current URL matches the canonical form.
+    // Compare publicHref (browser-facing URL) for consistency with
+    // the server-side redirect check in router.beforeLoad.
     if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
+      trimPathRight(router.latestLocation.publicHref) !==
+      trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
@@ -131,6 +139,13 @@ export function useTransitionerSetup() {
 
   Vue.onMounted(() => {
     isMounted.value = true
+    if (!isAnyPending.value) {
+      router.__store.setState((s) =>
+        s.status === 'pending'
+          ? { ...s, status: 'idle', resolvedLocation: s.location }
+          : s,
+      )
+    }
   })
 
   Vue.onUnmounted(() => {
@@ -196,6 +211,14 @@ export function useTransitionerSetup() {
   Vue.watch(isAnyPending, (newValue) => {
     if (!isMounted.value) return
     try {
+      if (!newValue && router.__store.state.status === 'pending') {
+        router.__store.setState((s) => ({
+          ...s,
+          status: 'idle',
+          resolvedLocation: s.location,
+        }))
+      }
+
       // The router was pending and now it's not
       if (previousIsAnyPending.value.previous && !newValue) {
         const changeInfo = getLocationChangeInfo(router.state)
@@ -203,12 +226,6 @@ export function useTransitionerSetup() {
           type: 'onResolved',
           ...changeInfo,
         })
-
-        router.__store.setState((s) => ({
-          ...s,
-          status: 'idle',
-          resolvedLocation: s.location,
-        }))
 
         if (changeInfo.hrefChanged) {
           handleHashScroll(router)

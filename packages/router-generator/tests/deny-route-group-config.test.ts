@@ -10,22 +10,15 @@ function makeFolderDir(folder: string) {
 
 function setupConfig(
   folder: string,
-  nonNested: boolean,
   inlineConfig: Partial<Omit<Config, 'routesDirectory'>> = {},
 ) {
-  const {
-    generatedRouteTree = `/routeTree.${nonNested ? 'nonnested.' : ''}gen.ts`,
-    ...rest
-  } = inlineConfig
+  const { generatedRouteTree = `/routeTree.gen.ts`, ...rest } = inlineConfig
   const dir = makeFolderDir(folder)
 
   const config = getConfig({
     disableLogging: true,
     routesDirectory: dir,
     generatedRouteTree: dir + generatedRouteTree,
-    experimental: {
-      nonNestedRoutes: nonNested,
-    },
     ...rest,
   })
   return config
@@ -34,7 +27,6 @@ function setupConfig(
 type TestCases = Array<{
   folder: string
   expectedError: string
-  nonNested: boolean
 }>
 
 describe('deny-route-group-config throws', () => {
@@ -59,16 +51,12 @@ describe('deny-route-group-config throws', () => {
       expectedError:
         'A route configuration for a route group was found at `nested/(group).tsx`. This is not supported. Did you mean to use a layout/pathless route instead?',
     },
-  ].reduce((accum: TestCases, curr) => {
-    accum.push({ ...curr, nonNested: true })
-    accum.push({ ...curr, nonNested: false })
-    return accum
-  }, [])
+  ]
 
   it.each(testCases)(
     'should throw an error for the folder: $folder',
-    async ({ folder, expectedError, nonNested }) => {
-      const config = setupConfig(folder, nonNested)
+    async ({ folder, expectedError }) => {
+      const config = setupConfig(folder)
       const folderRoot = makeFolderDir(folder)
 
       const generator = new Generator({ config, root: folderRoot })

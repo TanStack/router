@@ -1,9 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import {
-  flattenMiddlewares,
-  json,
-  mergeHeaders,
-} from '@tanstack/start-client-core'
+import { flattenMiddlewares, mergeHeaders } from '@tanstack/start-client-core'
 import {
   executeRewriteInput,
   isRedirect,
@@ -178,7 +174,7 @@ export function createStartHandler<TRegister = Register>(
                   )
 
                   if (!isRouterAcceptSupported) {
-                    return json(
+                    return Response.json(
                       {
                         error: 'Only HTML requests are supported here',
                       },
@@ -259,7 +255,7 @@ export function createStartHandler<TRegister = Register>(
       if (isRedirect(response)) {
         if (isResolvedRedirect(response)) {
           if (request.headers.get('x-tsr-redirect') === 'manual') {
-            return json(
+            return Response.json(
               {
                 ...response.options,
                 isSerializedRedirect: true,
@@ -300,7 +296,7 @@ export function createStartHandler<TRegister = Register>(
         const redirect = router.resolveRedirect(response)
 
         if (request.headers.get('x-tsr-redirect') === 'manual') {
-          return json(
+          return Response.json(
             {
               ...response.options,
               isSerializedRedirect: true,

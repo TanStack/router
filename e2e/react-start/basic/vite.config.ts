@@ -4,6 +4,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { isSpaMode } from './tests/utils/isSpaMode'
 import { isPrerender } from './tests/utils/isPrerender'
+import tailwindcss from '@tailwindcss/vite'
 
 const spaModeConfiguration = {
   enabled: true,
@@ -20,7 +21,6 @@ const prerenderConfiguration = {
       '/redirect',
       '/i-do-not-exist',
       '/not-found/via-beforeLoad',
-      '/not-found/via-head',
       '/not-found/via-loader',
       '/users',
     ].some((p) => page.path.includes(p)),
@@ -32,6 +32,7 @@ export default defineConfig({
     port: 3000,
   },
   plugins: [
+    tailwindcss(),
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),

@@ -13,15 +13,15 @@
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.17",
+    "@tailwindcss/vite": "^4.1.18",
     "@tanstack/solid-devtools": "^0.7.0",
-    "@tanstack/solid-router": "^1.141.2",
-    "@tanstack/solid-router-devtools": "^1.141.2",
-    "@tanstack/solid-router-ssr-query": "^1.141.2",
-    "@tanstack/solid-start": "^1.141.3",
-    "@tanstack/router-plugin": "^1.141.2",
+    "@tanstack/solid-router": "^1.143.3",
+    "@tanstack/solid-router-devtools": "^1.143.3",
+    "@tanstack/solid-router-ssr-query": "^1.143.3",
+    "@tanstack/solid-start": "^1.143.3",
+    "@tanstack/router-plugin": "^1.143.3",
     "solid-js": "^1.9.10",
-    "tailwindcss": "^4.1.13",
+    "tailwindcss": "^4.1.18",
     "vite-tsconfig-paths": "^5.1.4"
   },
   "devDependencies": {

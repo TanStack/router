@@ -219,6 +219,7 @@ export type {
   ActiveLinkOptions,
   LinkProps,
   LinkComponent,
+  LinkComponentRoute,
   LinkComponentProps,
   CreateLinkProps,
 } from './link'
@@ -346,3 +347,4 @@ export type {
   LocationRewrite,
   LocationRewriteFunction,
 } from '@tanstack/router-core'
+export { ClientOnly } from './ClientOnly'

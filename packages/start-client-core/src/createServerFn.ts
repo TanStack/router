@@ -536,7 +536,7 @@ export interface ServerFnWithTypes<
   in out TInputValidator,
   in out TResponse,
 > {
-  _types: ServerFnTypes<
+  '~types': ServerFnTypes<
     TRegister,
     TMethod,
     TMiddlewares,
@@ -690,7 +690,7 @@ function serverFnBaseToMiddleware(
   options: ServerFnBaseOptions<any, any, any, any, any>,
 ): AnyFunctionMiddleware {
   return {
-    _types: undefined!,
+    '~types': undefined!,
     options: {
       inputValidator: options.inputValidator,
       client: async ({ next, sendContext, ...ctx }) => {

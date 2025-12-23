@@ -12,7 +12,10 @@ declare module 'tanstack-start-route-tree:v' {
 
 declare module '#tanstack-start-server-fn-manifest' {
   type ServerFn = (...args: Array<any>) => Promise<any>
-  export function getServerFnById(id: string): Promise<ServerFn>
+  export function getServerFnById(
+    id: string,
+    opts?: { fromClient?: boolean },
+  ): Promise<ServerFn>
 }
 
 declare module 'tanstack-start-injected-head-scripts:v' {

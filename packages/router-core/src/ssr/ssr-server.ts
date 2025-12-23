@@ -1,15 +1,12 @@
 import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
 import invariant from 'tiny-invariant'
-import { createControlledPromise } from '../utils'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
-import { GLOBAL_TSR } from './constants'
+import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
-import { TSR_SCRIPT_BARRIER_ID } from './transformStreamWithRouter'
+import type { DehydratedMatch, DehydratedRouter } from './types'
 import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter } from '../router'
-import type { DehydratedMatch } from './ssr-client'
-import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
 import type { Manifest, RouterManagedTag } from '../manifest'
 
@@ -21,7 +18,9 @@ declare module '../router' {
   interface RouterEvents {
     onInjectedHtml: {
       type: 'onInjectedHtml'
-      promise: Promise<string>
+    }
+    onSerializationFinished: {
+      type: 'onSerializationFinished'
     }
   }
 }
@@ -57,31 +56,56 @@ const INITIAL_SCRIPTS = [
 
 class ScriptBuffer {
   private router: AnyRouter | undefined
-  private _queue: Array<string> = [...INITIAL_SCRIPTS]
+  private _queue: Array<string>
   private _scriptBarrierLifted = false
   private _cleanedUp = false
+  private _pendingMicrotask = false
 
   constructor(router: AnyRouter) {
     this.router = router
+    // Copy INITIAL_SCRIPTS to avoid mutating the shared array
+    this._queue = INITIAL_SCRIPTS.slice()
   }
 
   enqueue(script: string) {
     if (this._cleanedUp) return
-    if (this._scriptBarrierLifted && this._queue.length === 0) {
+    this._queue.push(script)
+    // If barrier is lifted, schedule injection (if not already scheduled)
+    if (this._scriptBarrierLifted && !this._pendingMicrotask) {
+      this._pendingMicrotask = true
       queueMicrotask(() => {
+        this._pendingMicrotask = false
         this.injectBufferedScripts()
       })
     }
-    this._queue.push(script)
   }
 
   liftBarrier() {
     if (this._scriptBarrierLifted || this._cleanedUp) return
     this._scriptBarrierLifted = true
-    if (this._queue.length > 0) {
+    if (this._queue.length > 0 && !this._pendingMicrotask) {
+      this._pendingMicrotask = true
       queueMicrotask(() => {
+        this._pendingMicrotask = false
         this.injectBufferedScripts()
       })
+    }
+  }
+
+  /**
+   * Flushes any pending scripts synchronously.
+   * Call this before emitting onSerializationFinished to ensure all scripts are injected.
+   *
+   * IMPORTANT: Only injects if the barrier has been lifted. Before the barrier is lifted,
+   * scripts should remain in the queue so takeBufferedScripts() can retrieve them
+   */
+  flush() {
+    if (!this._scriptBarrierLifted) return
+    if (this._cleanedUp) return
+    this._pendingMicrotask = false
+    const scriptsToInject = this.takeAll()
+    if (scriptsToInject && this.router?.serverSsr) {
+      this.router.serverSsr.injectScript(scriptsToInject)
     }
   }
 
@@ -91,16 +115,17 @@ class ScriptBuffer {
     if (bufferedScripts.length === 0) {
       return undefined
     }
-    bufferedScripts.push(`${GLOBAL_TSR}.c()`)
-    const joinedScripts = bufferedScripts.join(';')
-    return joinedScripts
+    // Append cleanup script and join - avoid push() to not mutate then iterate
+    return bufferedScripts.join(';') + ';document.currentScript.remove()'
   }
 
   injectBufferedScripts() {
     if (this._cleanedUp) return
+    // Early return if queue is empty (avoids unnecessary takeAll() call)
+    if (this._queue.length === 0) return
     const scriptsToInject = this.takeAll()
     if (scriptsToInject && this.router?.serverSsr) {
-      this.router.serverSsr.injectScript(() => scriptsToInject)
+      this.router.serverSsr.injectScript(scriptsToInject)
     }
   }
 
@@ -122,29 +147,26 @@ export function attachRouterServerSsrUtils({
     manifest,
   }
   let _dehydrated = false
-  const listeners: Array<() => void> = []
+  let _serializationFinished = false
+  const renderFinishedListeners: Array<() => void> = []
+  const serializationFinishedListeners: Array<() => void> = []
   const scriptBuffer = new ScriptBuffer(router)
+  let injectedHtmlBuffer: Array<string> = []
 
   router.serverSsr = {
-    injectedHtml: [],
-    injectHtml: (getHtml) => {
-      const promise = Promise.resolve().then(getHtml)
-      router.serverSsr!.injectedHtml.push(promise)
+    injectHtml: (html: string) => {
+      if (!html) return
+      // Buffer the HTML so it can be retrieved via takeBufferedHtml()
+      injectedHtmlBuffer.push(html)
+      // Emit event to notify subscribers that new HTML is available
       router.emit({
         type: 'onInjectedHtml',
-        promise,
       })
-
-      return promise.then(() => {})
     },
-    injectScript: (getScript) => {
-      return router.serverSsr!.injectHtml(async () => {
-        const script = await getScript()
-        if (!script) {
-          return ''
-        }
-        return `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''} class='$tsr'>${script}</script>`
-      })
+    injectScript: (script: string) => {
+      if (!script) return
+      const html = `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''}>${script}</script>`
+      router.serverSsr!.injectHtml(html)
     },
     dehydrate: async () => {
       invariant(!_dehydrated, 'router is already dehydrated!')
@@ -202,18 +224,32 @@ export function attachRouterServerSsrUtils({
       }
       _dehydrated = true
 
-      const p = createControlledPromise<string>()
       const trackPlugins = { didRun: false }
-      const plugins =
-        (
-          router.options.serializationAdapters as
-            | Array<AnySerializationAdapter>
-            | undefined
-        )?.map((t) => makeSsrSerovalPlugin(t, trackPlugins)) ?? []
+      const serializationAdapters = router.options.serializationAdapters as
+        | Array<AnySerializationAdapter>
+        | undefined
+      const plugins = serializationAdapters
+        ? serializationAdapters
+            .map((t) => makeSsrSerovalPlugin(t, trackPlugins))
+            .concat(defaultSerovalPlugins)
+        : defaultSerovalPlugins
+
+      const signalSerializationComplete = () => {
+        _serializationFinished = true
+        try {
+          serializationFinishedListeners.forEach((l) => l())
+          router.emit({ type: 'onSerializationFinished' })
+        } catch (err) {
+          console.error('Serialization listener error:', err)
+        } finally {
+          serializationFinishedListeners.length = 0
+          renderFinishedListeners.length = 0
+        }
+      }
 
       crossSerializeStream(dehydratedRouter, {
         refs: new Map(),
-        plugins: [...plugins, ...defaultSerovalPlugins],
+        plugins,
         onSerialize: (data, initial) => {
           let serialized = initial ? GLOBAL_TSR + '.router=' + data : data
           if (trackPlugins.didRun) {
@@ -223,22 +259,37 @@ export function attachRouterServerSsrUtils({
         },
         scopeId: SCOPE_ID,
         onDone: () => {
-          scriptBuffer.enqueue(GLOBAL_TSR + '.streamEnd=true')
-          p.resolve('')
+          scriptBuffer.enqueue(GLOBAL_TSR + '.e()')
+          // Flush all pending scripts synchronously before signaling completion
+          // This ensures all scripts are injected before onSerializationFinished is emitted
+          scriptBuffer.flush()
+          signalSerializationComplete()
         },
-        onError: (err) => p.reject(err),
+        onError: (err) => {
+          console.error('Serialization error:', err)
+          signalSerializationComplete()
+        },
       })
-      // make sure the stream is kept open until the promise is resolved
-      router.serverSsr!.injectHtml(() => p)
     },
     isDehydrated() {
       return _dehydrated
     },
-    onRenderFinished: (listener) => listeners.push(listener),
+    isSerializationFinished() {
+      return _serializationFinished
+    },
+    onRenderFinished: (listener) => renderFinishedListeners.push(listener),
+    onSerializationFinished: (listener) =>
+      serializationFinishedListeners.push(listener),
     setRenderFinished: () => {
-      listeners.forEach((l) => l())
-      // Clear listeners after calling them to prevent memory leaks
-      listeners.length = 0
+      // Wrap in try-catch to ensure scriptBuffer.liftBarrier() is always called
+      try {
+        renderFinishedListeners.forEach((l) => l())
+      } catch (err) {
+        console.error('Error in render finished listener:', err)
+      } finally {
+        // Clear listeners after calling them to prevent memory leaks
+        renderFinishedListeners.length = 0
+      }
       scriptBuffer.liftBarrier()
     },
     takeBufferedScripts() {
@@ -257,12 +308,21 @@ export function attachRouterServerSsrUtils({
     liftScriptBarrier() {
       scriptBuffer.liftBarrier()
     },
+    takeBufferedHtml() {
+      if (injectedHtmlBuffer.length === 0) {
+        return undefined
+      }
+      const buffered = injectedHtmlBuffer.join('')
+      injectedHtmlBuffer = []
+      return buffered
+    },
     cleanup() {
       // Guard against multiple cleanup calls
       if (!router.serverSsr) return
-      listeners.length = 0
+      renderFinishedListeners.length = 0
+      serializationFinishedListeners.length = 0
+      injectedHtmlBuffer = []
       scriptBuffer.cleanup()
-      router.serverSsr.injectedHtml = []
       router.serverSsr = undefined
     },
   }

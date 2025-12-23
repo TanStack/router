@@ -718,7 +718,7 @@ describe('findRouteMatch', () => {
             path: 'dashboard/',
           },
           {
-            id: '/dashboard',
+            id: '/dashboard/invoices',
             fullPath: '/dashboard/invoices',
             path: 'invoices',
           },

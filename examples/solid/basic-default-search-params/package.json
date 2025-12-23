@@ -9,14 +9,13 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.15",
+    "@tailwindcss/vite": "^4.1.18",
     "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-router": "^1.141.2",
-    "@tanstack/solid-router-devtools": "^1.141.2",
-    "postcss": "^8.5.1",
+    "@tanstack/solid-router": "^1.143.3",
+    "@tanstack/solid-router-devtools": "^1.143.3",
     "solid-js": "^1.9.10",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^4.1.18",
     "zod": "^3.24.2"
   },
   "devDependencies": {

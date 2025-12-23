@@ -8,17 +8,17 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexport'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as DeferredRouteImport } from './routes/deferred'
+import { Route as ClientOnlyRouteImport } from './routes/client-only'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
@@ -35,7 +35,6 @@ import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
-import { Route as NotFoundViaHeadRouteImport } from './routes/not-found/via-head'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
@@ -54,8 +53,6 @@ import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './route
 import { Route as FooBarQuxHereRouteImport } from './routes/foo/$bar/$qux/_here'
 import { Route as FooBarQuxHereIndexRouteImport } from './routes/foo/$bar/$qux/_here/index'
 
-const FooBarQuxRouteImport = createFileRoute('/foo/$bar/$qux')()
-
 const Char45824Char54620Char48124Char44397Route =
   Char45824Char54620Char48124Char44397RouteImport.update({
     id: '/대한민국',
@@ -65,6 +62,11 @@ const Char45824Char54620Char48124Char44397Route =
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TypeOnlyReexportRoute = TypeOnlyReexportRouteImport.update({
+  id: '/type-only-reexport',
+  path: '/type-only-reexport',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StreamRoute = StreamRouteImport.update({
@@ -95,6 +97,11 @@ const InlineScriptsRoute = InlineScriptsRouteImport.update({
 const DeferredRoute = DeferredRouteImport.update({
   id: '/deferred',
   path: '/deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientOnlyRoute = ClientOnlyRouteImport.update({
+  id: '/client-only',
+  path: '/client-only',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutRoute = LayoutRouteImport.update({
@@ -178,11 +185,6 @@ const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
   path: '/via-loader',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
-const NotFoundViaHeadRoute = NotFoundViaHeadRouteImport.update({
-  id: '/via-head',
-  path: '/via-head',
-  getParentRoute: () => NotFoundRouteRoute,
-} as any)
 const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
   id: '/via-beforeLoad',
   path: '/via-beforeLoad',
@@ -202,11 +204,6 @@ const ApiUsersRoute = ApiUsersRouteImport.update({
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
-} as any)
-const FooBarQuxRoute = FooBarQuxRouteImport.update({
-  id: '/foo/$bar/$qux',
-  path: '/foo/$bar/$qux',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
@@ -269,8 +266,9 @@ const RedirectTargetServerFnViaBeforeLoadRoute =
     getParentRoute: () => RedirectTargetRoute,
   } as any)
 const FooBarQuxHereRoute = FooBarQuxHereRouteImport.update({
-  id: '/_here',
-  getParentRoute: () => FooBarQuxRoute,
+  id: '/foo/$bar/$qux/_here',
+  path: '/foo/$bar/$qux',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const FooBarQuxHereIndexRoute = FooBarQuxHereIndexRouteImport.update({
   id: '/',
@@ -282,18 +280,19 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
+  '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
-  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
@@ -322,16 +321,17 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
-  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -350,11 +350,11 @@ export interface FileRoutesByTo {
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
-  '/foo/$bar/$qux': typeof FooBarQuxHereIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
   '/redirect/$target/serverFn': typeof RedirectTargetServerFnIndexRoute
+  '/foo/$bar/$qux': typeof FooBarQuxHereIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -362,19 +362,20 @@ export interface FileRoutesById {
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
+  '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
-  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
@@ -394,7 +395,6 @@ export interface FileRoutesById {
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
-  '/foo/$bar/$qux': typeof FooBarQuxRouteWithChildren
   '/foo/$bar/$qux/_here': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -408,18 +408,19 @@ export interface FileRouteTypes {
     | '/'
     | '/not-found'
     | '/search-params'
+    | '/client-only'
     | '/deferred'
     | '/inline-scripts'
     | '/links'
     | '/posts'
     | '/scripts'
     | '/stream'
+    | '/type-only-reexport'
     | '/users'
     | '/대한민국'
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
-    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
@@ -448,16 +449,17 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/client-only'
     | '/deferred'
     | '/inline-scripts'
     | '/links'
     | '/scripts'
     | '/stream'
+    | '/type-only-reexport'
     | '/대한민국'
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
-    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/search-params/default'
@@ -476,30 +478,31 @@ export interface FileRouteTypes {
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/redirect/$target'
-    | '/foo/$bar/$qux'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
     | '/redirect/$target/serverFn'
+    | '/foo/$bar/$qux'
   id:
     | '__root__'
     | '/'
     | '/not-found'
     | '/search-params'
     | '/_layout'
+    | '/client-only'
     | '/deferred'
     | '/inline-scripts'
     | '/links'
     | '/posts'
     | '/scripts'
     | '/stream'
+    | '/type-only-reexport'
     | '/users'
     | '/대한민국'
     | '/_layout/_layout-2'
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
-    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
@@ -519,7 +522,6 @@ export interface FileRouteTypes {
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/redirect/$target/'
-    | '/foo/$bar/$qux'
     | '/foo/$bar/$qux/_here'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -533,12 +535,14 @@ export interface RootRouteChildren {
   NotFoundRouteRoute: typeof NotFoundRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
+  ClientOnlyRoute: typeof ClientOnlyRoute
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
   StreamRoute: typeof StreamRoute
+  TypeOnlyReexportRoute: typeof TypeOnlyReexportRoute
   UsersRoute: typeof UsersRouteWithChildren
   Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
@@ -547,7 +551,7 @@ export interface RootRouteChildren {
   MultiCookieRedirectIndexRoute: typeof MultiCookieRedirectIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
-  FooBarQuxRoute: typeof FooBarQuxRouteWithChildren
+  FooBarQuxHereRoute: typeof FooBarQuxHereRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -564,6 +568,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/type-only-reexport': {
+      id: '/type-only-reexport'
+      path: '/type-only-reexport'
+      fullPath: '/type-only-reexport'
+      preLoaderRoute: typeof TypeOnlyReexportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stream': {
@@ -606,6 +617,13 @@ declare module '@tanstack/react-router' {
       path: '/deferred'
       fullPath: '/deferred'
       preLoaderRoute: typeof DeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-only': {
+      id: '/client-only'
+      path: '/client-only'
+      fullPath: '/client-only'
+      preLoaderRoute: typeof ClientOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -720,13 +738,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotFoundViaLoaderRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
-    '/not-found/via-head': {
-      id: '/not-found/via-head'
-      path: '/via-head'
-      fullPath: '/not-found/via-head'
-      preLoaderRoute: typeof NotFoundViaHeadRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
     '/not-found/via-beforeLoad': {
       id: '/not-found/via-beforeLoad'
       path: '/via-beforeLoad'
@@ -754,13 +765,6 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
-    }
-    '/foo/$bar/$qux': {
-      id: '/foo/$bar/$qux'
-      path: '/foo/$bar/$qux'
-      fullPath: '/foo/$bar/$qux'
-      preLoaderRoute: typeof FooBarQuxRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/redirect/$target/': {
       id: '/redirect/$target/'
@@ -844,7 +848,7 @@ declare module '@tanstack/react-router' {
       path: '/foo/$bar/$qux'
       fullPath: '/foo/$bar/$qux'
       preLoaderRoute: typeof FooBarQuxHereRouteImport
-      parentRoute: typeof FooBarQuxRoute
+      parentRoute: typeof rootRouteImport
     }
     '/foo/$bar/$qux/_here/': {
       id: '/foo/$bar/$qux/_here/'
@@ -858,14 +862,12 @@ declare module '@tanstack/react-router' {
 
 interface NotFoundRouteRouteChildren {
   NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
-  NotFoundViaHeadRoute: typeof NotFoundViaHeadRoute
   NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
   NotFoundIndexRoute: typeof NotFoundIndexRoute
 }
 
 const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
   NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
-  NotFoundViaHeadRoute: NotFoundViaHeadRoute,
   NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
   NotFoundIndexRoute: NotFoundIndexRoute,
 }
@@ -988,29 +990,19 @@ const FooBarQuxHereRouteWithChildren = FooBarQuxHereRoute._addFileChildren(
   FooBarQuxHereRouteChildren,
 )
 
-interface FooBarQuxRouteChildren {
-  FooBarQuxHereRoute: typeof FooBarQuxHereRouteWithChildren
-}
-
-const FooBarQuxRouteChildren: FooBarQuxRouteChildren = {
-  FooBarQuxHereRoute: FooBarQuxHereRouteWithChildren,
-}
-
-const FooBarQuxRouteWithChildren = FooBarQuxRoute._addFileChildren(
-  FooBarQuxRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NotFoundRouteRoute: NotFoundRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
+  ClientOnlyRoute: ClientOnlyRoute,
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
   StreamRoute: StreamRoute,
+  TypeOnlyReexportRoute: TypeOnlyReexportRoute,
   UsersRoute: UsersRouteWithChildren,
   Char45824Char54620Char48124Char44397Route:
     Char45824Char54620Char48124Char44397Route,
@@ -1020,17 +1012,8 @@ const rootRouteChildren: RootRouteChildren = {
   MultiCookieRedirectIndexRoute: MultiCookieRedirectIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
-  FooBarQuxRoute: FooBarQuxRouteWithChildren,
+  FooBarQuxHereRoute: FooBarQuxHereRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

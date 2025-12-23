@@ -1,5 +1,6 @@
 import * as Vue from 'vue'
 import { Outlet } from './Match'
+import { ClientOnly } from './ClientOnly'
 import type { AsyncRouteComponent } from './route'
 
 // If the load fails due to module not found, it may mean a new version of
@@ -17,34 +18,6 @@ function isModuleNotFoundError(error: any): boolean {
     error.message.startsWith('error loading dynamically imported module') ||
     error.message.startsWith('Importing a module script failed')
   )
-}
-
-export function ClientOnly(props: { children?: any; fallback?: Vue.VNode }) {
-  const hydrated = useHydrated()
-
-  return () => {
-    if (hydrated.value) {
-      return props.children
-    }
-    return props.fallback || null
-  }
-}
-
-export function useHydrated() {
-  // Only hydrate on client-side, never on server
-  const hydrated = Vue.ref(false)
-
-  // If on server, return false
-  if (typeof window === 'undefined') {
-    return Vue.computed(() => false)
-  }
-
-  // On client, set to true once mounted
-  Vue.onMounted(() => {
-    hydrated.value = true
-  })
-
-  return hydrated
 }
 
 export function lazyRouteComponent<
@@ -156,10 +129,15 @@ export function lazyRouteComponent<
 
         // If SSR is disabled for this component
         if (ssr?.() === false) {
-          return Vue.h(ClientOnly, {
-            fallback: Vue.h(Outlet),
-            children: Vue.h(component.value, props),
-          })
+          return Vue.h(
+            ClientOnly,
+            {
+              fallback: Vue.h(Outlet),
+            },
+            {
+              default: () => Vue.h(component.value, props),
+            },
+          )
         }
 
         // Regular render with the loaded component

@@ -1,49 +1,26 @@
 import * as t from '@babel/types'
-import { getRootCallExpression } from '../start-compiler-plugin/utils'
-import type * as babel from '@babel/core'
+import type { RewriteCandidate } from './types'
 
+/**
+ * Handles createMiddleware transformations.
+ *
+ * @param candidate - The rewrite candidate containing path and method chain
+ * @param opts - Options including the environment
+ */
 export function handleCreateMiddleware(
-  path: babel.NodePath<t.CallExpression>,
+  candidate: RewriteCandidate,
   opts: {
     env: 'client' | 'server'
   },
 ) {
-  const rootCallExpression = getRootCallExpression(path)
-
-  // if (debug)
-  //   console.info(
-  //     'Handling createMiddleware call expression:',
-  //     rootCallExpression.toString(),
-  //   )
-
-  const callExpressionPaths = {
-    middleware: null as babel.NodePath<t.CallExpression> | null,
-    inputValidator: null as babel.NodePath<t.CallExpression> | null,
-    client: null as babel.NodePath<t.CallExpression> | null,
-    server: null as babel.NodePath<t.CallExpression> | null,
+  if (opts.env === 'server') {
+    throw new Error('handleCreateMiddleware should not be called on the server')
   }
 
-  const validMethods = Object.keys(callExpressionPaths)
+  const { inputValidator, server } = candidate.methodChain
 
-  rootCallExpression.traverse({
-    MemberExpression(memberExpressionPath) {
-      if (t.isIdentifier(memberExpressionPath.node.property)) {
-        const name = memberExpressionPath.node.property
-          .name as keyof typeof callExpressionPaths
-
-        if (
-          validMethods.includes(name) &&
-          memberExpressionPath.parentPath.isCallExpression()
-        ) {
-          callExpressionPaths[name] = memberExpressionPath.parentPath
-        }
-      }
-    },
-  })
-
-  if (callExpressionPaths.inputValidator) {
-    const innerInputExpression =
-      callExpressionPaths.inputValidator.node.arguments[0]
+  if (inputValidator) {
+    const innerInputExpression = inputValidator.callPath.node.arguments[0]
 
     if (!innerInputExpression) {
       throw new Error(
@@ -51,32 +28,18 @@ export function handleCreateMiddleware(
       )
     }
 
-    // If we're on the client, remove the validator call expression
-    if (opts.env === 'client') {
-      if (
-        t.isMemberExpression(callExpressionPaths.inputValidator.node.callee)
-      ) {
-        callExpressionPaths.inputValidator.replaceWith(
-          callExpressionPaths.inputValidator.node.callee.object,
-        )
-      }
+    // remove the validator call expression
+    if (t.isMemberExpression(inputValidator.callPath.node.callee)) {
+      inputValidator.callPath.replaceWith(
+        inputValidator.callPath.node.callee.object,
+      )
     }
   }
 
-  const serverFnPath = callExpressionPaths.server?.get(
-    'arguments.0',
-  ) as babel.NodePath<any>
-
-  if (
-    callExpressionPaths.server &&
-    serverFnPath.node &&
-    opts.env === 'client'
-  ) {
-    // If we're on the client, remove the server call expression
-    if (t.isMemberExpression(callExpressionPaths.server.node.callee)) {
-      callExpressionPaths.server.replaceWith(
-        callExpressionPaths.server.node.callee.object,
-      )
+  if (server) {
+    // remove the server call expression
+    if (t.isMemberExpression(server.callPath.node.callee)) {
+      server.callPath.replaceWith(server.callPath.node.callee.object)
     }
   }
 }

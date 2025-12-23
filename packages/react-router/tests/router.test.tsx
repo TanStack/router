@@ -1486,6 +1486,206 @@ describe('invalidate', () => {
     ).toBeInTheDocument()
     expect(screen.queryByTestId('loader-route')).not.toBeInTheDocument()
   })
+
+  /**
+   * Regression test for HMR with inline arrow function components:
+   * - When a route uses an inline arrow function for `component` (common in file-based routing),
+   *   React Refresh cannot register the component for HMR updates.
+   * - The router's HMR handler calls `router.invalidate()` to trigger updates.
+   * - The Match component must include `invalid` in its useRouterState selector so that
+   *   React detects the state change and re-renders the component.
+   * - Without this, HMR updates are sent but the UI doesn't update because React
+   *   doesn't see any state change to trigger a re-render.
+   *
+   * This test simulates HMR by:
+   * 1. Rendering a route with component v1
+   * 2. Swapping to component v2 (simulating what HMR does to route.options.component)
+   * 3. Calling router.invalidate()
+   * 4. Verifying that the NEW component v2 is now rendered
+   */
+  it('picks up new component after invalidate simulating HMR (HMR regression)', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/hmr-test'],
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const hmrRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hmr-test',
+      // Using inline arrow function - this is what React Refresh cannot track
+      component: () => {
+        return <div data-testid="hmr-component">Version 1</div>
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([hmrRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.load())
+
+    // Verify initial component renders
+    expect(await screen.findByTestId('hmr-component')).toHaveTextContent(
+      'Version 1',
+    )
+
+    // Simulate HMR: swap the component (this is what happens when Vite hot-reloads a module)
+    hmrRoute.options.component = () => {
+      return <div data-testid="hmr-component">Version 2</div>
+    }
+
+    // Simulate HMR invalidation - this is what the router's HMR handler does
+    await act(() => router.invalidate())
+
+    // The NEW component should now be rendered
+    // Without the fix (invalid not in selector), this would still show "Version 1"
+    expect(await screen.findByTestId('hmr-component')).toHaveTextContent(
+      'Version 2',
+    )
+  })
+
+  /**
+   * Test to verify render count after invalidate (no loader).
+   * The fix should cause minimal re-renders - ideally just enough to pick up the new component.
+   */
+  it('renders minimal times after invalidate without loader (render count verification)', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/render-count-test'],
+    })
+
+    // Use a mock to track renders across component swaps
+    const renderTracker = vi.fn()
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const testRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/render-count-test',
+      component: () => {
+        renderTracker('v1')
+        return <div data-testid="test-component">Version 1</div>
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([testRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+    await act(() => router.load())
+
+    expect(await screen.findByTestId('test-component')).toHaveTextContent(
+      'Version 1',
+    )
+    const initialCallCount = renderTracker.mock.calls.length
+
+    // Simulate HMR: swap component (keep using same tracker)
+    testRoute.options.component = () => {
+      renderTracker('v2')
+      return <div data-testid="test-component">Version 2</div>
+    }
+
+    await act(() => router.invalidate())
+
+    expect(await screen.findByTestId('test-component')).toHaveTextContent(
+      'Version 2',
+    )
+
+    // Count renders after invalidate
+    const totalCalls = renderTracker.mock.calls.length
+    const rendersAfterInvalidate = totalCalls - initialCallCount
+
+    // We expect exactly 1 render to pick up new component
+    expect(rendersAfterInvalidate).toBe(1)
+  })
+
+  /**
+   * Test to verify render count after invalidate WITH async loader.
+   * Component consumes loader data and loader returns different data on each call.
+   */
+  it('renders minimal times after invalidate with async loader (render count verification)', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/render-count-loader-test'],
+    })
+
+    const renderTracker = vi.fn()
+    let loaderCallCount = 0
+    const loader = vi.fn(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+      loaderCallCount++
+      return { data: `loaded-${loaderCallCount}` }
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const testRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/render-count-loader-test',
+      loader,
+      component: () => {
+        const loaderData = testRoute.useLoaderData()
+        renderTracker('v1', loaderData)
+        return (
+          <div data-testid="test-component">Version 1 - {loaderData.data}</div>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([testRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+    await act(() => router.load())
+
+    expect(await screen.findByTestId('test-component')).toHaveTextContent(
+      'Version 1 - loaded-1',
+    )
+    const initialCallCount = renderTracker.mock.calls.length
+    const initialLoaderCalls = loader.mock.calls.length
+
+    // Simulate HMR: swap component to new version that also consumes loader data
+    testRoute.options.component = () => {
+      const loaderData = testRoute.useLoaderData()
+      renderTracker('v2', loaderData)
+      return (
+        <div data-testid="test-component">Version 2 - {loaderData.data}</div>
+      )
+    }
+
+    await act(() => router.invalidate())
+
+    // Wait for new component with new loader data
+    await waitFor(() => {
+      expect(screen.getByTestId('test-component')).toHaveTextContent(
+        'Version 2 - loaded-2',
+      )
+    })
+
+    const rendersAfterInvalidate =
+      renderTracker.mock.calls.length - initialCallCount
+    const loaderCallsAfterInvalidate =
+      loader.mock.calls.length - initialLoaderCalls
+
+    // Loader should be called once
+    expect(loaderCallsAfterInvalidate).toBe(1)
+    // Component renders twice when consuming loader data that changes:
+    // 1. Once for invalidation (new component picks up)
+    // 2. Once when new loader data arrives
+    expect(rendersAfterInvalidate).toBe(2)
+  })
 })
 
 describe('search params in URL', () => {
@@ -2923,6 +3123,247 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/profile')
 
     expect(history.location.pathname).toBe('/user')
+  })
+
+  it('should not cause redirect loops with i18n locale prefix rewriting', async () => {
+    // This test simulates an i18n middleware that:
+    // - Input: strips locale prefix (e.g., /en/home -> /home)
+    // - Output: adds locale prefix back (e.g., /home -> /en/home)
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/home',
+      component: () => <div data-testid="home">Home</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([homeRoute])
+
+    // The history starts at the public-facing locale-prefixed URL.
+    // The input rewrite strips the locale prefix for internal routing.
+    const history = createMemoryHistory({ initialEntries: ['/en/home'] })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        input: ({ url }) => {
+          // Strip locale prefix: /en/home -> /home
+          if (url.pathname.startsWith('/en')) {
+            url.pathname = url.pathname.replace(/^\/en/, '')
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home')).toBeInTheDocument()
+    })
+
+    // The internal pathname should be /home (after input rewrite strips /en)
+    expect(router.state.location.pathname).toBe('/home')
+
+    // The publicHref should include the locale prefix (via output rewrite)
+    // Since we only have input rewrite here, publicHref equals the internal href
+    expect(router.state.location.publicHref).toBe('/home')
+  })
+
+  it('should handle i18n rewriting with navigation between localized routes', async () => {
+    // Tests navigation between routes with i18n locale prefix rewriting
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <div data-testid="home">
+          Home
+          <Link to="/about" data-testid="about-link">
+            About
+          </Link>
+        </div>
+      ),
+    })
+
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <div data-testid="about">About</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([homeRoute, aboutRoute])
+
+    // Start at the public-facing locale-prefixed URL
+    const history = createMemoryHistory({ initialEntries: ['/en'] })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        input: ({ url }) => {
+          // Strip locale prefix
+          if (url.pathname.startsWith('/en')) {
+            url.pathname = url.pathname.replace(/^\/en/, '') || '/'
+            return url
+          }
+          return url
+        },
+        output: ({ url }) => {
+          // Add locale prefix
+          if (!url.pathname.startsWith('/en')) {
+            url.pathname = `/en${url.pathname === '/' ? '' : url.pathname}`
+            return url
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home')).toBeInTheDocument()
+    })
+
+    // Click the about link
+    const aboutLink = screen.getByTestId('about-link')
+    fireEvent.click(aboutLink)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('about')).toBeInTheDocument()
+    })
+
+    // Internal pathname should be /about
+    expect(router.state.location.pathname).toBe('/about')
+
+    // Public href should be /en/about
+    expect(router.state.location.publicHref).toBe('/en/about')
+
+    // History should show the public-facing path
+    expect(history.location.pathname).toBe('/en/about')
+  })
+
+  it('should handle i18n rewriting with direct navigation to localized URL', async () => {
+    // Tests that navigating directly to a locale-prefixed URL works correctly
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <div data-testid="about">About</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([aboutRoute])
+
+    // Start at German locale-prefixed URL
+    const history = createMemoryHistory({ initialEntries: ['/de/about'] })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        input: ({ url }) => {
+          // Strip any locale prefix
+          const match = url.pathname.match(/^\/(en|de)(.*)$/)
+          if (match) {
+            url.pathname = match[2] || '/'
+            return url
+          }
+          return url
+        },
+        output: ({ url }) => {
+          // Default to German locale
+          if (!url.pathname.match(/^\/(en|de)/)) {
+            url.pathname = `/de${url.pathname === '/' ? '' : url.pathname}`
+            return url
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('about')).toBeInTheDocument()
+    })
+
+    // Internal pathname should be /about (de-localized)
+    expect(router.state.location.pathname).toBe('/about')
+
+    // Public href should include locale
+    expect(router.state.location.publicHref).toBe('/de/about')
+  })
+
+  it('should maintain consistent publicHref between parseLocation and buildLocation', async () => {
+    // This test specifically verifies the fix for the redirect loop bug:
+    // parseLocation and buildLocation must compute the same publicHref
+    // for the same logical location.
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home">Home</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([homeRoute])
+
+    // Start at the locale-prefixed URL
+    const history = createMemoryHistory({ initialEntries: ['/fr'] })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        input: ({ url }) => {
+          // De-localize: /fr -> /
+          if (url.pathname.startsWith('/fr')) {
+            url.pathname = url.pathname.replace(/^\/fr/, '') || '/'
+          }
+          return url
+        },
+        output: ({ url }) => {
+          // Re-localize: / -> /fr
+          if (!url.pathname.startsWith('/fr')) {
+            url.pathname = `/fr${url.pathname === '/' ? '' : url.pathname}`
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home')).toBeInTheDocument()
+    })
+
+    // Get the current location's publicHref (computed by parseLocation)
+    const parsedPublicHref = router.state.location.publicHref
+
+    // Build a location to the same path and check its publicHref
+    const builtLocation = router.buildLocation({ to: '/' })
+
+    // These must match - if they don't, the router will think it needs
+    // to redirect, causing an infinite loop
+    expect(parsedPublicHref).toBe(builtLocation.publicHref)
+    expect(parsedPublicHref).toBe('/fr')
   })
 })
 

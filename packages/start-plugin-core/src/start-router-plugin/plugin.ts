@@ -10,6 +10,7 @@ import { routesManifestPlugin } from './generator-plugins/routes-manifest-plugin
 import { prerenderRoutesPlugin } from './generator-plugins/prerender-routes-plugin'
 import { pruneServerOnlySubtrees } from './pruneServerOnlySubtrees'
 import { SERVER_PROP } from './constants'
+import type { GetConfigFn, TanStackStartVitePluginCoreOptions } from '../types'
 import type {
   Generator,
   GeneratorPlugin,
@@ -17,7 +18,6 @@ import type {
 } from '@tanstack/router-generator'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
 import type { TanStackStartInputConfig } from '../schema'
-import type { GetConfigFn, TanStackStartVitePluginCoreOptions } from '../plugin'
 
 function isServerOnlyNode(node: RouteNode | undefined) {
   if (!node?.createFileRouteProps) {

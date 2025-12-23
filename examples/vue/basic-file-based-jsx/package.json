@@ -9,14 +9,13 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/router-plugin": "^1.141.2",
-    "@tanstack/vue-router": "^1.141.2",
-    "@tanstack/vue-router-devtools": "^1.141.2",
-    "@tanstack/zod-adapter": "^1.141.2",
-    "postcss": "^8.5.1",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/router-plugin": "^1.143.3",
+    "@tanstack/vue-router": "^1.143.3",
+    "@tanstack/vue-router-devtools": "^1.143.3",
+    "@tanstack/zod-adapter": "^1.143.3",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^4.1.18",
     "vue": "^3.5.16",
     "zod": "^3.24.2"
   },

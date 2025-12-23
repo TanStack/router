@@ -8,13 +8,11 @@ export type RouteNode = {
   cleanedPath?: string
   path?: string
   isNonPath?: boolean
-  isVirtualParentRequired?: boolean
   isVirtualParentRoute?: boolean
   isVirtual?: boolean
   children?: Array<RouteNode>
   parent?: RouteNode
   createFileRouteProps?: Set<string>
-  _isExperimentalNonNestedRoute?: boolean
 }
 
 export interface GetRouteNodesResult {
@@ -58,6 +56,8 @@ export type HandleNodeAccumulator = {
   routeTree: Array<RouteNode>
   routePiecesByPath: Record<string, RouteSubNode>
   routeNodes: Array<RouteNode>
+  /** O(1) lookup by routePath - avoids O(n) .find() on every node */
+  routeNodesByPath: Map<string, RouteNode>
 }
 
 export type GetRoutesByFileMapResultValue = { routePath: string }

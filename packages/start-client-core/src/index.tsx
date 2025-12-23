@@ -1,18 +1,16 @@
-export type {
-  DehydratedRouter,
-  JsonResponse,
-} from '@tanstack/router-core/ssr/client'
+export type { JsonResponse } from '@tanstack/router-core/ssr/client'
 
 export { hydrate, json, mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 export {
   createIsomorphicFn,
+  createServerOnlyFn,
+  createClientOnlyFn,
   type IsomorphicFn,
   type ServerOnlyFn,
   type ClientOnlyFn,
   type IsomorphicFnBase,
-} from './createIsomorphicFn'
-export { createServerOnlyFn, createClientOnlyFn } from './envOnly'
+} from '@tanstack/start-fn-stubs'
 export { createServerFn } from './createServerFn'
 export {
   createMiddleware,

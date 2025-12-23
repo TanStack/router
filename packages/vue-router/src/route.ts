@@ -4,6 +4,8 @@ import {
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
+import * as Vue from 'vue'
+import { Link } from './link'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
@@ -42,8 +44,8 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
-import type * as Vue from 'vue'
 import type { UseRouteContextRoute } from './useRouteContext'
+import type { LinkComponentRoute } from './link'
 
 // Structural type for Vue SFC components (.vue files)
 // Uses structural matching to accept Vue components without breaking
@@ -73,6 +75,7 @@ declare module '@tanstack/router-core' {
     useLoaderDeps: UseLoaderDepsRoute<TId>
     useLoaderData: UseLoaderDataRoute<TId>
     useNavigate: () => UseNavigateResult<TFullPath>
+    Link: LinkComponentRoute<TFullPath>
   }
 }
 
@@ -140,6 +143,19 @@ export class RouteApi<
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
   }
+
+  Link: LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']> = ((
+    props,
+    ctx?: Vue.SetupContext,
+  ) => {
+    const router = useRouter()
+    const fullPath = router.routesById[this.id as string].fullPath
+    return Vue.h(
+      Link as any,
+      { from: fullPath as never, ...(props as any) },
+      ctx?.slots,
+    )
+  }) as LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']>
 }
 
 export class Route<
@@ -277,6 +293,14 @@ export class Route<
   useNavigate = (): UseNavigateResult<TFullPath> => {
     return useNavigate({ from: this.fullPath })
   }
+
+  Link: LinkComponentRoute<TFullPath> = ((props, ctx?: Vue.SetupContext) => {
+    return Vue.h(
+      Link as any,
+      { from: this.fullPath as never, ...(props as any) },
+      ctx?.slots,
+    )
+  }) as LinkComponentRoute<TFullPath>
 }
 
 export function createRoute<
@@ -515,6 +539,14 @@ export class RootRoute<
   useNavigate = (): UseNavigateResult<'/'> => {
     return useNavigate({ from: this.fullPath })
   }
+
+  Link: LinkComponentRoute<'/'> = ((props, ctx?: Vue.SetupContext) => {
+    return Vue.h(
+      Link as any,
+      { from: this.fullPath as never, ...(props as any) },
+      ctx?.slots,
+    )
+  }) as LinkComponentRoute<'/'>
 }
 
 export function createRouteMask<

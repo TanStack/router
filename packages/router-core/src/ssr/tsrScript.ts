@@ -1,25 +1,15 @@
 self.$_TSR = {
-  c() {
-    // If Vue has set the defer flag, don't remove scripts yet - wait for Vue to call cleanup()
-    if (self.$_TSR_DEFER) {
-      return
-    }
-    document.querySelectorAll('.\\$tsr').forEach((o) => {
-      o.remove()
-    })
-    if (this.hydrated && this.streamEnd) {
-      delete self.$_TSR
-      delete self.$R['tsr']
-    }
+  h() {
+    this.hydrated = true
+    this.c()
   },
-  // Called by Vue after hydration is complete to perform deferred cleanup
-  cleanup() {
-    document.querySelectorAll('.\\$tsr').forEach((o) => {
-      o.remove()
-    })
-    if (this.hydrated && this.streamEnd) {
+  e() {
+    this.streamEnded = true
+    this.c()
+  },
+  c() {
+    if (this.hydrated && this.streamEnded) {
       delete self.$_TSR
-      delete self.$_TSR_DEFER
       delete self.$R['tsr']
     }
   },
