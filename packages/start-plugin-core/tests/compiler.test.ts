@@ -392,23 +392,23 @@ describe('edge cases for detectedKinds', () => {
   })
 })
 
-  test('ingestModule handles empty code gracefully', () => {
-    const compiler = new ServerFnCompiler({
-      env: 'client',
-      directive: 'use server',
-      lookupKinds: new Set(['ServerFn']),
-      lookupConfigurations: [],
-      loadModule: async () => {},
-      resolveId: async (id) => id,
-    })
-
-    // Should not throw when ingesting empty module
-    expect(() => {
-      compiler.ingestModule({ code: '', id: 'empty-types.ts' })
-    }).not.toThrow()
-
-    // Should also handle whitespace-only modules
-    expect(() => {
-      compiler.ingestModule({ code: '   \n\t  ', id: 'whitespace.ts' })
-    }).not.toThrow()
+test('ingestModule handles empty code gracefully', () => {
+  const compiler = new ServerFnCompiler({
+    env: 'client',
+    directive: 'use server',
+    lookupKinds: new Set(['ServerFn']),
+    lookupConfigurations: [],
+    loadModule: async () => {},
+    resolveId: async (id) => id,
   })
+
+  // Should not throw when ingesting empty module
+  expect(() => {
+    compiler.ingestModule({ code: '', id: 'empty-types.ts' })
+  }).not.toThrow()
+
+  // Should also handle whitespace-only modules
+  expect(() => {
+    compiler.ingestModule({ code: '   \n\t  ', id: 'whitespace.ts' })
+  }).not.toThrow()
+})
