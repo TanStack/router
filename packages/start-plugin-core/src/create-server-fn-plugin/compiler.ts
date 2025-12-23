@@ -177,6 +177,16 @@ function needsDirectCallDetection(kinds: Set<LookupKind>): boolean {
 }
 
 /**
+ * Checks if all kinds in the set are guaranteed to be top-level only.
+ * Only ServerFn is always declared at module level (must be assigned to a variable).
+ * Middleware, IsomorphicFn, ServerOnlyFn, ClientOnlyFn can be nested inside functions.
+ * When all kinds are top-level-only, we can use a fast scan instead of full traversal.
+ */
+function areAllKindsTopLevelOnly(kinds: Set<LookupKind>): boolean {
+  return kinds.size === 1 && kinds.has('ServerFn')
+}
+
+/**
  * Checks if a CallExpression is a direct-call candidate for NESTED detection.
  * Returns true if the callee is a known factory function name.
  * This is stricter than top-level detection because we need to filter out
@@ -349,9 +359,14 @@ export class ServerFnCompiler {
     this.initialized = true
   }
 
-  public ingestModule({ code, id }: { code: string; id: string }) {
-    const ast = parseAst({ code })
-
+  /**
+   * Extracts bindings and exports from an already-parsed AST.
+   * This is the core logic shared by ingestModule and ingestModuleFromAst.
+   */
+  private extractModuleInfo(
+    ast: ReturnType<typeof parseAst>,
+    id: string,
+  ): ModuleInfo {
     const bindings = new Map<string, Binding>()
     const exports = new Map<string, ExportEntry>()
     const reExportAllSources: Array<string> = []
@@ -452,6 +467,12 @@ export class ServerFnCompiler {
       reExportAllSources,
     }
     this.moduleCache.set(id, info)
+    return info
+  }
+
+  public ingestModule({ code, id }: { code: string; id: string }) {
+    const ast = parseAst({ code })
+    const info = this.extractModuleInfo(ast, id)
     return { info, ast }
   }
 
@@ -489,7 +510,13 @@ export class ServerFnCompiler {
     }
 
     const checkDirectCalls = needsDirectCallDetection(fileKinds)
+    // Optimization: ServerFn is always a top-level declaration (must be assigned to a variable).
+    // If the file only has ServerFn, we can skip full AST traversal and only visit
+    // the specific top-level declarations that have candidates.
+    const canUseFastPath = areAllKindsTopLevelOnly(fileKinds)
 
+    // Always parse and extract module info upfront.
+    // This ensures the module is cached for import resolution even if no candidates are found.
     const { ast } = this.ingestModule({ code, id })
 
     // Single-pass traversal to:
@@ -503,38 +530,110 @@ export class ServerFnCompiler {
       babel.NodePath<t.CallExpression>
     >()
 
-    babel.traverse(ast, {
-      CallExpression: (path) => {
-        const node = path.node
-        const parent = path.parent
+    if (canUseFastPath) {
+      // Fast path: only visit top-level statements that have potential candidates
 
-        // Check if this call is part of a larger chain (inner call)
-        // If so, store it for method chain lookup but don't treat as candidate
-        if (
-          t.isMemberExpression(parent) &&
-          t.isCallExpression(path.parentPath.parent)
-        ) {
-          // This is an inner call in a chain - store for later lookup
-          chainCallPaths.set(node, path)
-          return
-        }
+      // Collect indices of top-level statements that contain candidates
+      const candidateIndices: Array<number> = []
+      for (let i = 0; i < ast.program.body.length; i++) {
+        const node = ast.program.body[i]!
+        let declarations: Array<t.VariableDeclarator> | undefined
 
-        // Pattern 1: Method chain pattern (.handler(), .server(), .client(), etc.)
-        if (isMethodChainCandidate(node, fileKinds)) {
-          candidatePaths.push(path)
-          return
-        }
-
-        // Pattern 2: Direct call pattern
-        if (checkDirectCalls) {
-          if (isTopLevelDirectCallCandidate(path)) {
-            candidatePaths.push(path)
-          } else if (isNestedDirectCallCandidate(node)) {
-            candidatePaths.push(path)
+        if (t.isVariableDeclaration(node)) {
+          declarations = node.declarations
+        } else if (t.isExportNamedDeclaration(node) && node.declaration) {
+          if (t.isVariableDeclaration(node.declaration)) {
+            declarations = node.declaration.declarations
           }
         }
-      },
-    })
+
+        if (declarations) {
+          for (const decl of declarations) {
+            if (decl.init && t.isCallExpression(decl.init)) {
+              if (isMethodChainCandidate(decl.init, fileKinds)) {
+                candidateIndices.push(i)
+                break // Only need to mark this statement once
+              }
+            }
+          }
+        }
+      }
+
+      // Early exit: no potential candidates found at top level
+      if (candidateIndices.length === 0) {
+        return null
+      }
+
+      // Targeted traversal: only visit the specific statements that have candidates
+      // This is much faster than traversing the entire AST
+      babel.traverse(ast, {
+        Program(programPath) {
+          const bodyPaths = programPath.get('body')
+          for (const idx of candidateIndices) {
+            const stmtPath = bodyPaths[idx]
+            if (!stmtPath) continue
+
+            // Traverse only this statement's subtree
+            stmtPath.traverse({
+              CallExpression(path) {
+                const node = path.node
+                const parent = path.parent
+
+                // Check if this call is part of a larger chain (inner call)
+                if (
+                  t.isMemberExpression(parent) &&
+                  t.isCallExpression(path.parentPath.parent)
+                ) {
+                  chainCallPaths.set(node, path)
+                  return
+                }
+
+                // Method chain pattern
+                if (isMethodChainCandidate(node, fileKinds)) {
+                  candidatePaths.push(path)
+                }
+              },
+            })
+          }
+          // Stop traversal after processing Program
+          programPath.stop()
+        },
+      })
+    } else {
+      // Normal path: full traversal for non-fast-path kinds
+      babel.traverse(ast, {
+        CallExpression: (path) => {
+          const node = path.node
+          const parent = path.parent
+
+          // Check if this call is part of a larger chain (inner call)
+          // If so, store it for method chain lookup but don't treat as candidate
+          if (
+            t.isMemberExpression(parent) &&
+            t.isCallExpression(path.parentPath.parent)
+          ) {
+            // This is an inner call in a chain - store for later lookup
+            chainCallPaths.set(node, path)
+            return
+          }
+
+          // Pattern 1: Method chain pattern (.handler(), .server(), .client(), etc.)
+          if (isMethodChainCandidate(node, fileKinds)) {
+            candidatePaths.push(path)
+            return
+          }
+
+          // Pattern 2: Direct call pattern
+          if (checkDirectCalls) {
+            if (isTopLevelDirectCallCandidate(path)) {
+              candidatePaths.push(path)
+            } else if (isNestedDirectCallCandidate(node)) {
+              candidatePaths.push(path)
+            }
+          }
+        },
+      })
+    }
 
     if (candidatePaths.length === 0) {
       return null
