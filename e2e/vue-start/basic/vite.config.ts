@@ -21,7 +21,6 @@ const prerenderConfiguration = {
       '/redirect',
       '/i-do-not-exist',
       '/not-found/via-beforeLoad',
-      '/not-found/via-head',
       '/not-found/via-loader',
       '/search-params', // search-param routes have dynamic content based on query params
       '/transition',
