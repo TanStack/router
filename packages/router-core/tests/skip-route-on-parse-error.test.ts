@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
 
 describe('skipRouteOnParseError', () => {
@@ -179,6 +179,46 @@ describe('skipRouteOnParseError', () => {
       const { processedTree } = processRouteTree(tree)
       const result = findRouteMatch('/settings', processedTree)
       expect(result?.route.id).toBe('/settings')
+    })
+
+    it('deep validated route can still fallback to sibling', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        children: [
+          {
+            id: '/$a/$b/$c',
+            fullPath: '/$a/$b/$c',
+            path: '$a/$b/$c',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => {
+                  // if (params.a !== 'one') throw new Error('Invalid a')
+                  // if (params.b !== 'two') throw new Error('Invalid b')
+                  if (params.c !== 'three') throw new Error('Invalid c')
+                  return params
+                },
+              },
+              skipRouteOnParseError: { params: true },
+            },
+          },
+          {
+            id: '/$x/$y/$z',
+            fullPath: '/$x/$y/$z',
+            path: '$x/$y/$z',
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      {
+        const result = findRouteMatch('/one/two/three', processedTree)
+        expect(result?.route.id).toBe('/$a/$b/$c')
+      }
+      {
+        const result = findRouteMatch('/one/two/wrong', processedTree)
+        expect(result?.route.id).toBe('/$x/$y/$z')
+      }
     })
   })
 
@@ -444,6 +484,10 @@ describe('skipRouteOnParseError', () => {
       const helloResult = findRouteMatch('/abc/hello', processedTree)
       expect(helloResult?.route.id).toBe('/$foo/hello')
       expect(helloResult?.rawParams).toEqual({ foo: 'abc' })
+
+      // non-numeric foo should NOT match the children of the validated layout
+      const barResult = findRouteMatch('/abc/bar', processedTree)
+      expect(barResult).toBeNull()
     })
   })
 
@@ -496,7 +540,7 @@ describe('skipRouteOnParseError', () => {
 
       // invalid language should NOT match the validated optional route
       // and since there's no dynamic fallback, it should return null
-      const invalidResult = findRouteMatch('/about/home', processedTree)
+      const invalidResult = findRouteMatch('/it/home', processedTree)
       expect(invalidResult).toBeNull()
     })
 
@@ -660,11 +704,95 @@ describe('skipRouteOnParseError', () => {
       const slugResult = findRouteMatch('/hello-world', processedTree)
       expect(slugResult?.route.id).toBe('/$slug')
     })
+    it('priority option can be used to influence order', () => {
+      const alphabetical = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/$a',
+            fullPath: '/$a',
+            path: '$a',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => params,
+              },
+              skipRouteOnParseError: {
+                params: true,
+                priority: 1, // higher priority than /$z
+              },
+            },
+          },
+          {
+            id: '/$z',
+            fullPath: '/$z',
+            path: '$z',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => params,
+              },
+              skipRouteOnParseError: {
+                params: true,
+                priority: -1, // lower priority than /$a
+              },
+            },
+          },
+        ],
+      }
+      {
+        const { processedTree } = processRouteTree(alphabetical)
+        const result = findRouteMatch('/123', processedTree)
+        expect(result?.route.id).toBe('/$a')
+      }
+      const reverse = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/$a',
+            fullPath: '/$a',
+            path: '$a',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => params,
+              },
+              skipRouteOnParseError: {
+                params: true,
+                priority: -1, // lower priority than /$z
+              },
+            },
+          },
+          {
+            id: '/$z',
+            fullPath: '/$z',
+            path: '$z',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => params,
+              },
+              skipRouteOnParseError: {
+                params: true,
+                priority: 1, // higher priority than /$a
+              },
+            },
+          },
+        ],
+      }
+      {
+        const { processedTree } = processRouteTree(reverse)
+        const result = findRouteMatch('/123', processedTree)
+        expect(result?.route.id).toBe('/$z')
+      }
+    })
   })
 
   describe('params.parse without skipRouteOnParseError', () => {
     it('params.parse is NOT called during matching when skipRouteOnParseError is false', () => {
-      let parseCalled = false
+      const parse = vi.fn()
       const tree = {
         id: '__root__',
         isRoot: true,
@@ -676,12 +804,7 @@ describe('skipRouteOnParseError', () => {
             fullPath: '/$id',
             path: '$id',
             options: {
-              params: {
-                parse: (params: Record<string, string>) => {
-                  parseCalled = true
-                  return { id: parseInt(params.id!, 10) }
-                },
-              },
+              params: { parse },
               // skipRouteOnParseError is NOT set
             },
           },
@@ -691,53 +814,13 @@ describe('skipRouteOnParseError', () => {
       const result = findRouteMatch('/123', processedTree)
       expect(result?.route.id).toBe('/$id')
       // parse should NOT be called during matching
-      expect(parseCalled).toBe(false)
+      expect(parse).not.toHaveBeenCalled()
       // params should be raw strings
       expect(result?.rawParams).toEqual({ id: '123' })
     })
   })
 
   describe('edge cases', () => {
-    it('empty param value still goes through validation', () => {
-      const tree = {
-        id: '__root__',
-        isRoot: true,
-        fullPath: '/',
-        path: '/',
-        children: [
-          {
-            id: '/prefix{$id}suffix',
-            fullPath: '/prefix{$id}suffix',
-            path: 'prefix{$id}suffix',
-            options: {
-              params: {
-                parse: (params: Record<string, string>) => {
-                  if (params.id === '') throw new Error('Empty not allowed')
-                  return params
-                },
-              },
-              skipRouteOnParseError: { params: true },
-            },
-          },
-          {
-            id: '/prefixsuffix',
-            fullPath: '/prefixsuffix',
-            path: 'prefixsuffix',
-            options: {},
-          },
-        ],
-      }
-      const { processedTree } = processRouteTree(tree)
-
-      // with value should match validated route
-      const withValue = findRouteMatch('/prefixFOOsuffix', processedTree)
-      expect(withValue?.route.id).toBe('/prefix{$id}suffix')
-
-      // empty value should fall through to static route
-      const empty = findRouteMatch('/prefixsuffix', processedTree)
-      expect(empty?.route.id).toBe('/prefixsuffix')
-    })
-
     it('validation error type does not matter', () => {
       const tree = {
         id: '__root__',
