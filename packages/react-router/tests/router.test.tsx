@@ -3124,6 +3124,247 @@ describe('Router rewrite functionality', () => {
 
     expect(history.location.pathname).toBe('/user')
   })
+
+  it('should not cause redirect loops with i18n locale prefix rewriting', async () => {
+    // This test simulates an i18n middleware that:
+    // - Input: strips locale prefix (e.g., /en/home -> /home)
+    // - Output: adds locale prefix back (e.g., /home -> /en/home)
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/home',
+      component: () => <div data-testid="home">Home</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([homeRoute])
+
+    // The history starts at the public-facing locale-prefixed URL.
+    // The input rewrite strips the locale prefix for internal routing.
+    const history = createMemoryHistory({ initialEntries: ['/en/home'] })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        input: ({ url }) => {
+          // Strip locale prefix: /en/home -> /home
+          if (url.pathname.startsWith('/en')) {
+            url.pathname = url.pathname.replace(/^\/en/, '')
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home')).toBeInTheDocument()
+    })
+
+    // The internal pathname should be /home (after input rewrite strips /en)
+    expect(router.state.location.pathname).toBe('/home')
+
+    // The publicHref should include the locale prefix (via output rewrite)
+    // Since we only have input rewrite here, publicHref equals the internal href
+    expect(router.state.location.publicHref).toBe('/home')
+  })
+
+  it('should handle i18n rewriting with navigation between localized routes', async () => {
+    // Tests navigation between routes with i18n locale prefix rewriting
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <div data-testid="home">
+          Home
+          <Link to="/about" data-testid="about-link">
+            About
+          </Link>
+        </div>
+      ),
+    })
+
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <div data-testid="about">About</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([homeRoute, aboutRoute])
+
+    // Start at the public-facing locale-prefixed URL
+    const history = createMemoryHistory({ initialEntries: ['/en'] })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        input: ({ url }) => {
+          // Strip locale prefix
+          if (url.pathname.startsWith('/en')) {
+            url.pathname = url.pathname.replace(/^\/en/, '') || '/'
+            return url
+          }
+          return url
+        },
+        output: ({ url }) => {
+          // Add locale prefix
+          if (!url.pathname.startsWith('/en')) {
+            url.pathname = `/en${url.pathname === '/' ? '' : url.pathname}`
+            return url
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home')).toBeInTheDocument()
+    })
+
+    // Click the about link
+    const aboutLink = screen.getByTestId('about-link')
+    fireEvent.click(aboutLink)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('about')).toBeInTheDocument()
+    })
+
+    // Internal pathname should be /about
+    expect(router.state.location.pathname).toBe('/about')
+
+    // Public href should be /en/about
+    expect(router.state.location.publicHref).toBe('/en/about')
+
+    // History should show the public-facing path
+    expect(history.location.pathname).toBe('/en/about')
+  })
+
+  it('should handle i18n rewriting with direct navigation to localized URL', async () => {
+    // Tests that navigating directly to a locale-prefixed URL works correctly
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <div data-testid="about">About</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([aboutRoute])
+
+    // Start at German locale-prefixed URL
+    const history = createMemoryHistory({ initialEntries: ['/de/about'] })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        input: ({ url }) => {
+          // Strip any locale prefix
+          const match = url.pathname.match(/^\/(en|de)(.*)$/)
+          if (match) {
+            url.pathname = match[2] || '/'
+            return url
+          }
+          return url
+        },
+        output: ({ url }) => {
+          // Default to German locale
+          if (!url.pathname.match(/^\/(en|de)/)) {
+            url.pathname = `/de${url.pathname === '/' ? '' : url.pathname}`
+            return url
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('about')).toBeInTheDocument()
+    })
+
+    // Internal pathname should be /about (de-localized)
+    expect(router.state.location.pathname).toBe('/about')
+
+    // Public href should include locale
+    expect(router.state.location.publicHref).toBe('/de/about')
+  })
+
+  it('should maintain consistent publicHref between parseLocation and buildLocation', async () => {
+    // This test specifically verifies the fix for the redirect loop bug:
+    // parseLocation and buildLocation must compute the same publicHref
+    // for the same logical location.
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home">Home</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([homeRoute])
+
+    // Start at the locale-prefixed URL
+    const history = createMemoryHistory({ initialEntries: ['/fr'] })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        input: ({ url }) => {
+          // De-localize: /fr -> /
+          if (url.pathname.startsWith('/fr')) {
+            url.pathname = url.pathname.replace(/^\/fr/, '') || '/'
+          }
+          return url
+        },
+        output: ({ url }) => {
+          // Re-localize: / -> /fr
+          if (!url.pathname.startsWith('/fr')) {
+            url.pathname = `/fr${url.pathname === '/' ? '' : url.pathname}`
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home')).toBeInTheDocument()
+    })
+
+    // Get the current location's publicHref (computed by parseLocation)
+    const parsedPublicHref = router.state.location.publicHref
+
+    // Build a location to the same path and check its publicHref
+    const builtLocation = router.buildLocation({ to: '/' })
+
+    // These must match - if they don't, the router will think it needs
+    // to redirect, causing an infinite loop
+    expect(parsedPublicHref).toBe(builtLocation.publicHref)
+    expect(parsedPublicHref).toBe('/fr')
+  })
 })
 
 describe('basepath', () => {

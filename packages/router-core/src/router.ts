@@ -1177,6 +1177,7 @@ export class RouterCore<
       // Before we do any processing, we need to allow rewrites to modify the URL
       // build up the full URL by combining the href from history with the router's origin
       const fullUrl = new URL(href, this.origin)
+
       const url = executeRewriteInput(this.rewrite, fullUrl)
 
       const parsedSearch = this.options.parseSearch(url.search)
@@ -1187,11 +1188,33 @@ export class RouterCore<
 
       const fullPath = url.href.replace(url.origin, '')
 
+      // Save the internal pathname for route matching (before output rewrite)
+      const internalPathname = url.pathname
+
+      // Compute publicHref by applying the output rewrite.
+      //
+      // The publicHref represents the URL as it should appear in the browser.
+      // This must match what buildLocation computes for the same logical route,
+      // otherwise the server-side redirect check will see a mismatch and trigger
+      // an infinite redirect loop.
+      //
+      // We always apply the output rewrite (not conditionally) because the
+      // incoming URL may have already been transformed by external middleware
+      // before reaching the router. In that case, the input rewrite has nothing
+      // to do, but we still need the output rewrite to reconstruct the correct
+      // public-facing URL.
+      //
+      // Clone the URL to avoid mutating the one used for route matching.
+      const urlForOutput = new URL(url.href)
+      const rewrittenUrl = executeRewriteOutput(this.rewrite, urlForOutput)
+      const publicHref =
+        rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash
+
       return {
         href: fullPath,
-        publicHref: href,
+        publicHref,
         url: url,
-        pathname: decodePath(url.pathname),
+        pathname: decodePath(internalPathname),
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: url.hash.split('#').reverse()[0] ?? '',
