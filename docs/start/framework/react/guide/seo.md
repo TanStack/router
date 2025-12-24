@@ -197,12 +197,40 @@ export default defineConfig({
 
 Prerendered pages load faster and are easily crawlable. See the [Static Prerendering guide](./static-prerendering) for configuration options.
 
-## Sitemaps and robots.txt
+## Sitemaps
 
-You can create sitemaps and robots.txt files using [server routes](./server-routes):
+### Built-in Sitemap Generation
+
+TanStack Start can automatically generate a sitemap when you enable prerendering with link crawling:
 
 ```ts
-// src/routes/sitemap.xml.ts
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      prerender: {
+        enabled: true,
+        crawlLinks: true, // Discovers all linkable pages
+      },
+      sitemap: {
+        enabled: true,
+        host: 'https://myapp.com',
+      },
+    }),
+  ],
+})
+```
+
+The sitemap is generated at build time by crawling all discoverable pages from your routes. This is the recommended approach for static or mostly-static sites.
+
+### Dynamic Sitemap
+
+For sites with dynamic content that can't be discovered at build time, you can create a dynamic sitemap using a [server route](./server-routes). Consider caching this at your CDN for performance:
+
+```ts
+// src/routes/sitemap[.]xml.ts
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/sitemap.xml')({
@@ -241,8 +269,12 @@ export const Route = createFileRoute('/sitemap.xml')({
 })
 ```
 
+## robots.txt
+
+You can create a robots.txt file using a [server route](./server-routes):
+
 ```ts
-// src/routes/robots.txt.ts
+// src/routes/robots[.]txt.ts
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/robots.txt')({

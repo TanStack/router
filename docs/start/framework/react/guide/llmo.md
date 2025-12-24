@@ -317,7 +317,7 @@ export const Route = createFileRoute('/posts/$postId')({
 Some sites are adopting a `llms.txt` file (similar to `robots.txt`) to provide guidance to AI systems:
 
 ```ts
-// src/routes/llms.txt.ts
+// src/routes/llms[.]txt.ts
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/llms.txt')({
