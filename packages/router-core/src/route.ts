@@ -1193,8 +1193,6 @@ export interface UpdatableRouteOptions<
    */
   skipRouteOnParseError?: {
     /**
-     * @default false
-     *
      * If `true`, skip this route during matching if `params.parse` fails.
      *
      * Without this option, a `/$param` route could match *any* value for `param`,
@@ -1204,20 +1202,16 @@ export interface UpdatableRouteOptions<
      * With this option enabled, the route will only match if `params.parse` succeeds.
      * If it fails, the router will continue trying to match other routes, potentially
      * finding a different route that works, or ultimately showing the `notFoundComponent`.
+     *
+     * @default false
      */
     params?: boolean
     /**
-     * @default false
-     *
-     * If `true`, skip this route during matching if `validateSearch` fails.
-     */
-    search?: boolean // future option for search params
-    /**
-     * @default 0
-     *
      * In cases where multiple routes would need to run `params.parse` during matching
      * to determine which route to pick, this priority number can be used as a tie-breaker
      * for which route to try first. Higher number = higher priority.
+     *
+     * @default 0
      */
     priority?: number
   }
