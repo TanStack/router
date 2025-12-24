@@ -14,12 +14,12 @@ While traditional SEO focuses on ranking in search engine results pages, LLMO fo
 
 ## How LLMO Differs from SEO
 
-| Aspect | SEO | LLMO |
-|--------|-----|------|
-| **Goal** | Rank in search results | Be cited/recommended by AI |
-| **Audience** | Search engine crawlers | LLM training & retrieval systems |
-| **Key signals** | Links, keywords, page speed | Structured data, clarity, authority |
-| **Content format** | Optimized for snippets | Optimized for extraction & synthesis |
+| Aspect             | SEO                         | LLMO                                 |
+| ------------------ | --------------------------- | ------------------------------------ |
+| **Goal**           | Rank in search results      | Be cited/recommended by AI           |
+| **Audience**       | Search engine crawlers      | LLM training & retrieval systems     |
+| **Key signals**    | Links, keywords, page speed | Structured data, clarity, authority  |
+| **Content format** | Optimized for snippets      | Optimized for extraction & synthesis |
 
 The good news: many LLMO best practices overlap with SEO. Clear structure, authoritative content, and good metadata help both.
 
@@ -249,8 +249,8 @@ function ProductDetails({ product }) {
     <article>
       <h1>{product.name}</h1>
       <p>
-        {product.name} is a {product.category} made by {product.brand}.
-        It costs ${product.price} and is available in {product.colors.join(', ')}.
+        {product.name} is a {product.category} made by {product.brand}. It costs
+        ${product.price} and is available in {product.colors.join(', ')}.
       </p>
     </article>
   )
