@@ -205,31 +205,35 @@ export const Route = createFileRoute('/faq')({
 
 Create API endpoints that AI systems and developers can consume directly:
 
-```tsx
+```ts
 // src/routes/api/products.ts
-import { createServerFileRoute } from '@tanstack/react-start/server'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const ServerRoute = createServerFileRoute('/api/products')({
-  GET: async ({ request }) => {
-    const url = new URL(request.url)
-    const category = url.searchParams.get('category')
+export const Route = createFileRoute('/api/products')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        const url = new URL(request.url)
+        const category = url.searchParams.get('category')
 
-    const products = await fetchProducts({ category })
+        const products = await fetchProducts({ category })
 
-    return Response.json({
-      '@context': 'https://schema.org',
-      '@type': 'ItemList',
-      itemListElement: products.map((product, index) => ({
-        '@type': 'ListItem',
-        position: index + 1,
-        item: {
-          '@type': 'Product',
-          name: product.name,
-          description: product.description,
-          url: `https://myapp.com/products/${product.id}`,
-        },
-      })),
-    })
+        return Response.json({
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          itemListElement: products.map((product, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            item: {
+              '@type': 'Product',
+              name: product.name,
+              description: product.description,
+              url: `https://myapp.com/products/${product.id}`,
+            },
+          })),
+        })
+      },
+    },
   },
 })
 ```
@@ -312,13 +316,15 @@ export const Route = createFileRoute('/posts/$postId')({
 
 Some sites are adopting a `llms.txt` file (similar to `robots.txt`) to provide guidance to AI systems:
 
-```tsx
+```ts
 // src/routes/llms.txt.ts
-import { createServerFileRoute } from '@tanstack/react-start/server'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const ServerRoute = createServerFileRoute('/llms.txt')({
-  GET: async () => {
-    const content = `# My App
+export const Route = createFileRoute('/llms.txt')({
+  server: {
+    handlers: {
+      GET: async () => {
+        const content = `# My App
 
 > My App is a platform for building modern web applications.
 
@@ -336,11 +342,13 @@ export const ServerRoute = createServerFileRoute('/llms.txt')({
 - GitHub: https://github.com/mycompany/myapp
 `
 
-    return new Response(content, {
-      headers: {
-        'Content-Type': 'text/plain',
+        return new Response(content, {
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+        })
       },
-    })
+    },
   },
 })
 ```

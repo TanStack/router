@@ -201,15 +201,17 @@ Prerendered pages load faster and are easily crawlable. See the [Static Prerende
 
 You can create sitemaps and robots.txt files using [server routes](./server-routes):
 
-```tsx
+```ts
 // src/routes/sitemap.xml.ts
-import { createServerFileRoute } from '@tanstack/react-start/server'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const ServerRoute = createServerFileRoute('/sitemap.xml')({
-  GET: async () => {
-    const posts = await fetchAllPosts()
+export const Route = createFileRoute('/sitemap.xml')({
+  server: {
+    handlers: {
+      GET: async () => {
+        const posts = await fetchAllPosts()
 
-    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+        const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://myapp.com/</loc>
@@ -228,31 +230,37 @@ export const ServerRoute = createServerFileRoute('/sitemap.xml')({
     .join('')}
 </urlset>`
 
-    return new Response(sitemap, {
-      headers: {
-        'Content-Type': 'application/xml',
+        return new Response(sitemap, {
+          headers: {
+            'Content-Type': 'application/xml',
+          },
+        })
       },
-    })
+    },
   },
 })
 ```
 
-```tsx
+```ts
 // src/routes/robots.txt.ts
-import { createServerFileRoute } from '@tanstack/react-start/server'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const ServerRoute = createServerFileRoute('/robots.txt')({
-  GET: async () => {
-    const robots = `User-agent: *
+export const Route = createFileRoute('/robots.txt')({
+  server: {
+    handlers: {
+      GET: async () => {
+        const robots = `User-agent: *
 Allow: /
 
 Sitemap: https://myapp.com/sitemap.xml`
 
-    return new Response(robots, {
-      headers: {
-        'Content-Type': 'text/plain',
+        return new Response(robots, {
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+        })
       },
-    })
+    },
   },
 })
 ```
