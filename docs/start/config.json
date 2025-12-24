@@ -74,6 +74,10 @@
               "to": "framework/react/guide/routing"
             },
             {
+              "label": "SEO",
+              "to": "framework/react/guide/seo"
+            },
+            {
               "label": "Execution Model",
               "to": "framework/react/guide/execution-model"
             },
@@ -177,6 +181,10 @@
             {
               "label": "Routing",
               "to": "framework/solid/guide/routing"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/solid/guide/seo"
             },
             {
               "label": "Execution Model",
