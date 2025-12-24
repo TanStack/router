@@ -1,6 +1,6 @@
 import { TSS_SERVER_FUNCTION } from '@tanstack/start-client-core'
 import { getServerFnById } from './getServerFnById'
-import type { ServerFn } from '#tanstack-start-server-fn-manifest'
+import type { ServerFn } from '#tanstack-start-server-fn-resolver'
 
 export type SsrRpcImporter = () => Promise<ServerFn>
 

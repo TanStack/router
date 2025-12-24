@@ -10,7 +10,6 @@ export interface TanStackStartVitePluginCoreOptions {
     start: string
   }
   serverFn?: {
-    directive?: string
     ssr?: {
       getServerFnById?: string
     }

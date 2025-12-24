@@ -1,7 +1,18 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
-import { ServerFnCompiler } from '../../src/create-server-fn-plugin/compiler'
+import { StartCompiler } from '../../src/start-compiler-plugin/compiler'
+
+// Default test options for StartCompiler
+function getDefaultTestOptions(env: 'client' | 'server') {
+  const envName = env === 'client' ? 'client' : 'ssr'
+  return {
+    envName,
+    root: '/test',
+    framework: 'react' as const,
+    providerEnvName: 'ssr',
+  }
+}
 
 async function getFilenames() {
   return await readdir(path.resolve(import.meta.dirname, './test-files'))
@@ -12,8 +23,9 @@ async function compile(opts: {
   code: string
   id: string
 }) {
-  const compiler = new ServerFnCompiler({
+  const compiler = new StartCompiler({
     ...opts,
+    ...getDefaultTestOptions(opts.env),
     loadModule: async () => {
       // do nothing in test
     },
@@ -33,12 +45,10 @@ async function compile(opts: {
     resolveId: async (id) => {
       return id
     },
-    directive: 'use server',
   })
   const result = await compiler.compile({
     code: opts.code,
     id: opts.id,
-    isProviderFile: false,
   })
   return result
 }
@@ -71,8 +81,9 @@ describe('createMiddleware compiles correctly', async () => {
 
     const resolveIdMock = vi.fn(async (id: string) => id)
 
-    const compiler = new ServerFnCompiler({
+    const compiler = new StartCompiler({
       env: 'client',
+      ...getDefaultTestOptions('client'),
       loadModule: async () => {},
       lookupKinds: new Set(['Middleware']),
       lookupConfigurations: [
@@ -83,13 +94,11 @@ describe('createMiddleware compiles correctly', async () => {
         },
       ],
       resolveId: resolveIdMock,
-      directive: 'use server',
     })
 
     await compiler.compile({
       code,
       id: 'test.ts',
-      isProviderFile: false,
     })
 
     // resolveId should only be called once during init() for the library itself
@@ -113,8 +122,9 @@ describe('createMiddleware compiles correctly', async () => {
 
     const resolveIdMock = vi.fn(async (id: string) => id)
 
-    const compiler = new ServerFnCompiler({
+    const compiler = new StartCompiler({
       env: 'client',
+      ...getDefaultTestOptions('client'),
       loadModule: async (id) => {
         // Simulate the factory module being loaded
         if (id === './factory') {
@@ -136,13 +146,11 @@ describe('createMiddleware compiles correctly', async () => {
         },
       ],
       resolveId: resolveIdMock,
-      directive: 'use server',
     })
 
     await compiler.compile({
       code: factoryCode,
       id: 'test.ts',
-      isProviderFile: false,
     })
 
     // resolveId should be called exactly twice:

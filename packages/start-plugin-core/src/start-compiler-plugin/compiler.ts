@@ -1,4 +1,5 @@
 /* eslint-disable import/no-commonjs */
+import crypto from 'node:crypto'
 import * as t from '@babel/types'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import babel from '@babel/core'
@@ -11,7 +12,13 @@ import { handleCreateMiddleware } from './handleCreateMiddleware'
 import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
-import type { MethodChainPaths, RewriteCandidate } from './types'
+import type {
+  CompilationContext,
+  MethodChainPaths,
+  RewriteCandidate,
+  ServerFn,
+} from './types'
+import type { CompileStartFrameworkOptions } from '../types'
 
 type Binding =
   | {
@@ -104,6 +111,32 @@ export const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
     'ClientOnlyFn',
     'ClientOnlyJSX', // Only transform on server to remove children
   ] as const),
+}
+
+/**
+ * Handler type for processing candidates of a specific kind.
+ * The kind is passed as the third argument to allow shared handlers (like handleEnvOnlyFn).
+ */
+type KindHandler = (
+  candidates: Array<RewriteCandidate>,
+  context: CompilationContext,
+  kind: LookupKind,
+) => void
+
+/**
+ * Registry mapping each LookupKind to its handler function.
+ * When adding a new kind, add its handler here.
+ */
+const KindHandlers: Record<
+  Exclude<LookupKind, 'ClientOnlyJSX'>,
+  KindHandler
+> = {
+  ServerFn: handleCreateServerFn,
+  Middleware: handleCreateMiddleware,
+  IsomorphicFn: handleCreateIsomorphicFn,
+  ServerOnlyFn: handleEnvOnlyFn,
+  ClientOnlyFn: handleEnvOnlyFn,
+  // ClientOnlyJSX is handled separately via JSX traversal, not here
 }
 
 /**
@@ -279,7 +312,7 @@ function isTopLevelDirectCallCandidate(
   return t.isProgram(path.parentPath.parentPath?.parent)
 }
 
-export class ServerFnCompiler {
+export class StartCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
   private validLookupKinds: Set<LookupKind>
@@ -292,10 +325,16 @@ export class ServerFnCompiler {
   // Maps: libName → (exportName → Kind)
   // This allows O(1) resolution for the common case without async resolveId calls
   private knownRootImports = new Map<string, Map<string, Kind>>()
+
+  // For generating unique function IDs in production builds
+  private entryIdToFunctionId = new Map<string, string>()
+  private functionIds = new Set<string>()
+
   constructor(
     private options: {
       env: 'client' | 'server'
-      directive: string
+      envName: string
+      root: string
       lookupConfigurations: Array<LookupConfig>
       lookupKinds: Set<LookupKind>
       loadModule: (id: string) => Promise<void>
@@ -305,9 +344,90 @@ export class ServerFnCompiler {
        * In 'dev' mode (default), caching is disabled to avoid invalidation complexity with HMR.
        */
       mode?: 'dev' | 'build'
+      /**
+       * The framework being used (e.g., 'react', 'solid').
+       */
+      framework: CompileStartFrameworkOptions
+      /**
+       * The Vite environment name for the server function provider.
+       */
+      providerEnvName: string
+      /**
+       * Custom function ID generator (optional, defaults to hash-based).
+       */
+      generateFunctionId?: (opts: {
+        filename: string
+        functionName: string
+      }) => string | undefined
+      /**
+       * Callback when server functions are discovered.
+       * Called after each file is compiled with its new functions.
+       */
+      onServerFnsById?: (d: Record<string, ServerFn>) => void
+      /**
+       * Returns the currently known server functions from previous builds.
+       * Used by server callers to look up canonical extracted filenames.
+       */
+      getKnownServerFns?: () => Record<string, ServerFn>
     },
   ) {
     this.validLookupKinds = options.lookupKinds
+  }
+
+  /**
+   * Generates a unique function ID for a server function.
+   * In dev mode, uses a base64-encoded JSON with file path and export name.
+   * In build mode, uses SHA256 hash or custom generator.
+   */
+  private generateFunctionId(opts: {
+    filename: string
+    functionName: string
+    extractedFilename: string
+  }): string {
+    if (this.mode === 'dev') {
+      // In dev, encode the file path and export name for direct lookup
+      const rootWithTrailingSlash = this.options.root.endsWith('/')
+        ? this.options.root
+        : `${this.options.root}/`
+      let file = opts.extractedFilename
+      if (opts.extractedFilename.startsWith(rootWithTrailingSlash)) {
+        file = opts.extractedFilename.slice(rootWithTrailingSlash.length)
+      }
+      file = `/@id/${file}`
+
+      const serverFn = {
+        file,
+        export: opts.functionName,
+      }
+      return Buffer.from(JSON.stringify(serverFn), 'utf8').toString('base64url')
+    }
+
+    // Production build: use custom generator or hash
+    const entryId = `${opts.filename}--${opts.functionName}`
+    let functionId = this.entryIdToFunctionId.get(entryId)
+    if (functionId === undefined) {
+      if (this.options.generateFunctionId) {
+        functionId = this.options.generateFunctionId({
+          filename: opts.filename,
+          functionName: opts.functionName,
+        })
+      }
+      if (!functionId) {
+        functionId = crypto.createHash('sha256').update(entryId).digest('hex')
+      }
+      // Deduplicate in case the generated id conflicts with an existing id
+      if (this.functionIds.has(functionId)) {
+        let deduplicatedId
+        let iteration = 0
+        do {
+          deduplicatedId = `${functionId}_${++iteration}`
+        } while (this.functionIds.has(deduplicatedId))
+        functionId = deduplicatedId
+      }
+      this.entryIdToFunctionId.set(entryId, functionId)
+      this.functionIds.add(functionId)
+    }
+    return functionId
   }
 
   private get mode(): 'dev' | 'build' {
@@ -536,12 +656,10 @@ export class ServerFnCompiler {
   public async compile({
     code,
     id,
-    isProviderFile,
     detectedKinds,
   }: {
     code: string
     id: string
-    isProviderFile: boolean
     /** Pre-detected kinds present in this file. If not provided, all valid kinds are checked. */
     detectedKinds?: Set<LookupKind>
   }) {
@@ -732,8 +850,11 @@ export class ServerFnCompiler {
 
     // Filter to valid candidates
     const validCandidates = resolvedCandidates.filter(({ kind }) =>
-      this.validLookupKinds.has(kind as LookupKind),
-    ) as Array<{ path: babel.NodePath<t.CallExpression>; kind: LookupKind }>
+      this.validLookupKinds.has(kind as Exclude<LookupKind, 'ClientOnlyJSX'>),
+    ) as Array<{
+      path: babel.NodePath<t.CallExpression>
+      kind: Exclude<LookupKind, 'ClientOnlyJSX'>
+    }>
 
     if (validCandidates.length === 0 && jsxCandidatePaths.length === 0) {
       return null
@@ -742,7 +863,7 @@ export class ServerFnCompiler {
     // Process valid candidates to collect method chains
     const pathsToRewrite: Array<{
       path: babel.NodePath<t.CallExpression>
-      kind: LookupKind
+      kind: Exclude<LookupKind, 'ClientOnlyJSX'>
       methodChain: MethodChainPaths
     }> = []
 
@@ -802,30 +923,41 @@ export class ServerFnCompiler {
 
     const refIdents = findReferencedIdentifiers(ast)
 
-    for (const { path, kind, methodChain } of pathsToRewrite) {
-      const candidate: RewriteCandidate = { path, methodChain }
-      if (kind === 'ServerFn') {
-        handleCreateServerFn(candidate, {
-          env: this.options.env,
-          code,
-          directive: this.options.directive,
-          isProviderFile,
-        })
-      } else if (kind === 'Middleware') {
-        handleCreateMiddleware(candidate, {
-          env: this.options.env,
-        })
-      } else if (kind === 'IsomorphicFn') {
-        handleCreateIsomorphicFn(candidate, {
-          env: this.options.env,
-        })
+    const context: CompilationContext = {
+      ast,
+      id,
+      code,
+      env: this.options.env,
+      envName: this.options.envName,
+      root: this.options.root,
+      framework: this.options.framework,
+      providerEnvName: this.options.providerEnvName,
+
+      generateFunctionId: (opts) => this.generateFunctionId(opts),
+      getKnownServerFns: () => this.options.getKnownServerFns?.() ?? {},
+      onServerFnsById: this.options.onServerFnsById,
+    }
+
+    // Group candidates by kind for batch processing
+    const candidatesByKind = new Map<
+      Exclude<LookupKind, 'ClientOnlyJSX'>,
+      Array<RewriteCandidate>
+    >()
+
+    for (const { path: candidatePath, kind, methodChain } of pathsToRewrite) {
+      const candidate: RewriteCandidate = { path: candidatePath, methodChain }
+      const existing = candidatesByKind.get(kind)
+      if (existing) {
+        existing.push(candidate)
       } else {
-        // ServerOnlyFn or ClientOnlyFn
-        handleEnvOnlyFn(candidate, {
-          env: this.options.env,
-          kind,
-        })
+        candidatesByKind.set(kind, [candidate])
       }
+    }
+
+    // Process each kind using its registered handler
+    for (const [kind, candidates] of candidatesByKind) {
+      const handler = KindHandlers[kind]
+      handler(candidates, context, kind)
     }
 
     // Handle JSX candidates (e.g., <ClientOnly>)
