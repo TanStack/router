@@ -362,3 +362,7 @@ Use these tools to verify your SEO implementation:
 - [Google Rich Results Test](https://search.google.com/test/rich-results) - Validate structured data
 - [Open Graph Debugger](https://developers.facebook.com/tools/debug/) - Preview social sharing cards
 - Browser DevTools - Inspect rendered HTML and meta tags
+
+### Track Your Rankings
+
+To monitor your SEO performance over time, we recommend [Nozzle.io](https://nozzle.io?utm_source=tanstack). Nozzle provides enterprise-grade rank tracking that lets you monitor unlimited keywords, track SERP features, and analyze your visibility against competitors. Unlike traditional rank trackers, Nozzle stores the entire SERP for every query, giving you complete data to understand how your pages perform in search results.
