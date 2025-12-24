@@ -225,6 +225,28 @@ export default defineConfig({
 
 The sitemap is generated at build time by crawling all discoverable pages from your routes. This is the recommended approach for static or mostly-static sites.
 
+### Static Sitemap
+
+For simple sites, you can also place a static `sitemap.xml` file in your `public` directory:
+
+```xml
+<!-- public/sitemap.xml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://myapp.com/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://myapp.com/about</loc>
+    <changefreq>monthly</changefreq>
+  </url>
+</urlset>
+```
+
+This approach works well when your site structure is known and doesn't change often.
+
 ### Dynamic Sitemap
 
 For sites with dynamic content that can't be discovered at build time, you can create a dynamic sitemap using a [server route](./server-routes). Consider caching this at your CDN for performance:
@@ -271,7 +293,23 @@ export const Route = createFileRoute('/sitemap.xml')({
 
 ## robots.txt
 
-You can create a robots.txt file using a [server route](./server-routes):
+### Static robots.txt
+
+The simplest approach is to place a static `robots.txt` file in your `public` directory:
+
+```txt
+// public/robots.txt
+User-agent: *
+Allow: /
+
+Sitemap: https://myapp.com/sitemap.xml
+```
+
+This file will be served automatically at `/robots.txt`. This is the most common approach for most sites.
+
+### Dynamic robots.txt
+
+For more complex scenarios (e.g., different rules per environment), you can create a robots.txt file using a [server route](./server-routes):
 
 ```ts
 // src/routes/robots[.]txt.ts
@@ -324,3 +362,7 @@ Use these tools to verify your SEO implementation:
 - [Google Rich Results Test](https://search.google.com/test/rich-results) - Validate structured data
 - [Open Graph Debugger](https://developers.facebook.com/tools/debug/) - Preview social sharing cards
 - Browser DevTools - Inspect rendered HTML and meta tags
+
+### Track Your Rankings
+
+To monitor your SEO performance over time, we recommend [Nozzle.io](https://nozzle.io?utm_source=tanstack). Nozzle provides enterprise-grade rank tracking that lets you monitor unlimited keywords, track SERP features, and analyze your visibility against competitors. Unlike traditional rank trackers, Nozzle stores the entire SERP for every query, giving you complete data to understand how your pages perform in search results.
