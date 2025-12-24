@@ -78,6 +78,10 @@
               "to": "framework/react/guide/seo"
             },
             {
+              "label": "LLM Optimization (LLMO)",
+              "to": "framework/react/guide/llmo"
+            },
+            {
               "label": "Execution Model",
               "to": "framework/react/guide/execution-model"
             },
@@ -185,6 +189,10 @@
             {
               "label": "SEO",
               "to": "framework/solid/guide/seo"
+            },
+            {
+              "label": "LLM Optimization (LLMO)",
+              "to": "framework/solid/guide/llmo"
             },
             {
               "label": "Execution Model",

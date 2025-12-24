@@ -3,6 +3,9 @@ id: seo
 title: SEO
 ---
 
+> [!NOTE]
+> Looking to optimize for AI assistants and LLMs? See the [LLM Optimization (LLMO) guide](./llmo).
+
 ## What is SEO, really?
 
 SEO (Search Engine Optimization) is often misunderstood as simply "showing up on Google" or a checkbox that a library can magically provide. In reality, SEO is a broad discipline focused on delivering valuable content that people need and making it easy for them to find.
