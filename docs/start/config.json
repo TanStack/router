@@ -74,14 +74,6 @@
               "to": "framework/react/guide/routing"
             },
             {
-              "label": "SEO",
-              "to": "framework/react/guide/seo"
-            },
-            {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/react/guide/llmo"
-            },
-            {
               "label": "Execution Model",
               "to": "framework/react/guide/execution-model"
             },
@@ -176,6 +168,14 @@
             {
               "label": "Rendering Markdown",
               "to": "framework/react/guide/rendering-markdown"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/react/guide/seo"
+            },
+            {
+              "label": "LLM Optimization (LLMO)",
+              "to": "framework/react/guide/llmo"
             }
           ]
         },
@@ -185,14 +185,6 @@
             {
               "label": "Routing",
               "to": "framework/solid/guide/routing"
-            },
-            {
-              "label": "SEO",
-              "to": "framework/solid/guide/seo"
-            },
-            {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/solid/guide/llmo"
             },
             {
               "label": "Execution Model",
@@ -281,6 +273,14 @@
             {
               "label": "Tailwind CSS Integration",
               "to": "framework/solid/guide/tailwind-integration"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/solid/guide/seo"
+            },
+            {
+              "label": "LLM Optimization (LLMO)",
+              "to": "framework/solid/guide/llmo"
             }
           ]
         }
