@@ -203,7 +203,6 @@ Set the `<html lang>` attribute from Paraglide:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
-
 ;<html lang={getLocale()} />
 ```
 
@@ -211,7 +210,6 @@ Set the `<html lang>` attribute from Paraglide:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
-
 ;<html lang={getLocale()} />
 ```
 
@@ -255,7 +253,6 @@ This guarantees:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
-
 ;<html lang={getLocale()} />
 ```
 
