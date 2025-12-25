@@ -5,14 +5,14 @@ import { getServerFnById } from '../getServerFnById'
 
 export const ServerFunctionSerializationAdapter = createSerializationAdapter({
   key: '$TSS/serverfn',
-  test: (v): v is { functionId: string } => {
+  test: (v): v is { serverFnMeta: {id: string} } => {
     if (typeof v !== 'function') return false
 
     if (!(TSS_SERVER_FUNCTION in v)) return false
 
     return !!v[TSS_SERVER_FUNCTION]
   },
-  toSerializable: ({ functionId }) => ({ functionId }),
+  toSerializable: ({ serverFnMeta }) => ({ functionId: serverFnMeta.id }),
   fromSerializable: ({ functionId }) => {
     const fn = async (opts: any, signal: any): Promise<any> => {
       // When a function ID is received through serialization (e.g., as a parameter
@@ -22,6 +22,6 @@ export const ServerFunctionSerializationAdapter = createSerializationAdapter({
       const result = await serverFn(opts ?? {}, signal)
       return result.result
     }
-    return createServerRpc(functionId, fn)
+    return fn as never
   },
 })

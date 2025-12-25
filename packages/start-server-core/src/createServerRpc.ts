@@ -1,11 +1,17 @@
-import { TSS_SERVER_FUNCTION } from '@tanstack/start-client-core'
+import {
+  TSS_SERVER_FUNCTION,
+  type ServerFnMeta,
+} from '@tanstack/start-client-core'
 
 export const createServerRpc = (
-  functionId: string,
+  serverFnMeta: ServerFnMeta,
   splitImportFn: (...args: any) => any,
 ) => {
+  const url = process.env.TSS_SERVER_FN_BASE + serverFnMeta.id
+
   return Object.assign(splitImportFn, {
-    functionId,
+    url,
+    serverFnMeta,
     [TSS_SERVER_FUNCTION]: true,
   })
 }
