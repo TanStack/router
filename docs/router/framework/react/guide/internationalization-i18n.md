@@ -26,7 +26,7 @@ This pattern relies exclusively on TanStack Router features. It is suitable when
 Optional path parameters are ideal for implementing locale-aware routing without duplicating routes.
 
 ```ts
-;/{-$locale}/abotu
+/{-$locale}/about
 ```
 
 This single route matches:
@@ -178,23 +178,11 @@ import { paraglideMiddleware } from './paraglide/server'
 
 export default {
   fetch(req: Request) {
-    return paraglideMiddleware(req, ({ request }) =>
-      handler.fetch(request),
+    return paraglideMiddleware(req, () =>
+      handler.fetch(req),
     )
   },
 }
-
-```ts
-import { paraglideMiddleware } from './paraglide/server'
-
-export default {
-  fetch(req: Request) {
-    return paraglideMiddleware(req, ({ request }) =>
-      handler.fetch(request),
-    )
-  },
-}
-```
 
 Set the `<html lang>` attribute from Paraglide:
 
