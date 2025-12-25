@@ -900,16 +900,6 @@ export async function loadMatches(arg: {
     // Use allSettled to ensure all loaders complete regardless of success/failure
     const results = await Promise.allSettled(inner.matchPromises)
 
-    // Wait for async loaders to complete before executing head functions
-    // loadRouteMatch may return immediately while loaders run asynchronously in the background
-    // We need to wait for the actual loaderPromise, not just the loadRouteMatch promise
-    await Promise.all(
-      inner.matches.map((match) => {
-        const currentMatch = inner.router.getMatch(match.id)
-        return currentMatch?._nonReactive.loaderPromise || Promise.resolve()
-      }),
-    )
-
     const failures = results
       // TODO when we drop support for TS 5.4, we can use the built-in type guard for PromiseRejectedResult
       .filter(
@@ -947,6 +937,41 @@ export async function loadMatches(arg: {
         // Log error but continue executing other head functions
         console.error(`Error executing head for route ${routeId}:`, err)
       }
+    }
+
+    // Detect if any async loaders are running and schedule re-execution of all head() functions
+    // This ensures head() functions get fresh loaderData after async loaders complete
+    const asyncLoaderPromises = inner.matches
+      .map((match) => {
+        const currentMatch = inner.router.getMatch(match.id)
+        return currentMatch?._nonReactive.loaderPromise
+      })
+      .filter(Boolean)
+
+    if (asyncLoaderPromises.length > 0) {
+      // Schedule re-execution after all async loaders complete (non-blocking)
+      Promise.all(asyncLoaderPromises).then(async () => {
+        // Serially re-run all head() functions with fresh loader data
+        for (const match of inner.matches) {
+          const { id: matchId, routeId } = match
+          const route = inner.router.looseRoutesById[routeId]!
+          try {
+            const headResult = executeHead(inner, matchId, route)
+            if (headResult) {
+              const head = await headResult
+              inner.updateMatch(matchId, (prev) => ({
+                ...prev,
+                ...head,
+              }))
+            }
+          } catch (err) {
+            console.error(
+              `Error re-executing head for route ${routeId} after async loaders:`,
+              err,
+            )
+          }
+        }
+      })
     }
 
     // Throw notFound after head execution
