@@ -222,10 +222,12 @@ describe('detectKindsInCode', () => {
     })
 
     test('does not false positive on similar function names', () => {
-      // createServerFnExample() should NOT match - only exact createServerFn( should
+      // Only exact createServerFn( should match, not variations
       const code = `
         const fn = createServerFnExample()
         const fn2 = createServerFnLike()
+        const fn3 = mycreateServerFn()
+        const fn4 = _createServerFn()
       `
       expect(detectKindsInCode(code, 'client')).toEqual(new Set())
     })
