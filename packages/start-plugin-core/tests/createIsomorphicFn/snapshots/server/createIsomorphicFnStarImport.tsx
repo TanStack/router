@@ -1,4 +1,5 @@
-const noImpl = () => {};
+import * as TanStackStart from '@tanstack/react-start';
+const noImpl = TanStackStart.createIsomorphicFn();
 const serverOnlyFn = () => 'server';
 const clientOnlyFn = () => {};
 const serverThenClientFn = () => 'server';

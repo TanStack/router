@@ -52,10 +52,6 @@ export type LookupKind =
 type MethodChainSetup = {
   type: 'methodChain'
   candidateCallIdentifier: Set<string>
-  // If true, a call to the root function (e.g., createIsomorphicFn()) is also a candidate
-  // even without chained method calls. This is used for IsomorphicFn which can be
-  // called without .client() or .server() (resulting in a no-op function).
-  allowRootAsCandidate?: boolean
 }
 type DirectCallSetup = { type: 'directCall' }
 type JSXSetup = { type: 'jsx'; componentName: string }
@@ -75,7 +71,6 @@ const LookupSetup: Record<
   IsomorphicFn: {
     type: 'methodChain',
     candidateCallIdentifier: new Set(['server', 'client']),
-    allowRootAsCandidate: true, // createIsomorphicFn() alone is valid (returns no-op)
   },
   ServerOnlyFn: { type: 'directCall' },
   ClientOnlyFn: { type: 'directCall' },
@@ -179,14 +174,13 @@ for (const [kind, setup] of Object.entries(LookupSetup) as Array<
   }
 }
 
-// Known factory function names for direct call and root-as-candidate patterns
+// Known factory function names for direct call patterns
 // These are the names that, when called directly, create a new function.
 // Used to filter nested candidates - we only want to include actual factory calls,
 // not invocations of already-created functions (e.g., `myServerFn()` should NOT be a candidate)
 const DirectCallFactoryNames = new Set([
   'createServerOnlyFn',
   'createClientOnlyFn',
-  'createIsomorphicFn',
 ])
 
 export type LookupConfig = {
@@ -205,16 +199,12 @@ interface ModuleInfo {
 
 /**
  * Computes whether any file kinds need direct-call candidate detection.
- * This includes both directCall types (ServerOnlyFn, ClientOnlyFn) and
- * allowRootAsCandidate types (IsomorphicFn).
+ * This applies to directCall types (ServerOnlyFn, ClientOnlyFn).
  */
 function needsDirectCallDetection(kinds: Set<LookupKind>): boolean {
   for (const kind of kinds) {
     const setup = LookupSetup[kind]
-    if (
-      setup.type === 'directCall' ||
-      (setup.type === 'methodChain' && setup.allowRootAsCandidate)
-    ) {
+    if (setup.type === 'directCall') {
       return true
     }
   }
@@ -1165,6 +1155,28 @@ export class StartCompiler {
     return resolvedKind
   }
 
+  /**
+   * Checks if an identifier is a direct import from a known factory library.
+   * Returns true for imports like `import { createServerOnlyFn } from '@tanstack/react-start'`
+   * or renamed imports like `import { createServerOnlyFn as myFn } from '...'`.
+   * Returns false for local variables that hold the result of calling a factory.
+   */
+  private async isKnownFactoryImport(
+    identName: string,
+    fileId: string,
+  ): Promise<boolean> {
+    const info = await this.getModuleInfo(fileId)
+    const binding = info.bindings.get(identName)
+
+    if (!binding || binding.type !== 'import') {
+      return false
+    }
+
+    // Check if it's imported from a known library
+    const knownExports = this.knownRootImports.get(binding.source)
+    return knownExports !== undefined && knownExports.has(binding.importedName)
+  }
+
   private async resolveExprKind(
     expr: t.Expression | null,
     fileId: string,
@@ -1197,9 +1209,28 @@ export class StartCompiler {
       if (calleeKind === 'Root' || calleeKind === 'Builder') {
         return 'Builder'
       }
-      // Use direct Set.has() instead of iterating
-      if (this.validLookupKinds.has(calleeKind as LookupKind)) {
-        return calleeKind
+      // For method chain patterns (callee is MemberExpression like .server() or .client()),
+      // return the resolved kind if valid
+      if (t.isMemberExpression(expr.callee)) {
+        if (this.validLookupKinds.has(calleeKind as LookupKind)) {
+          return calleeKind
+        }
+      }
+      // For direct calls (callee is Identifier), only return the kind if the
+      // callee is a direct import from a known library (e.g., createServerOnlyFn).
+      // Calling a local variable that holds an already-built function (e.g., myServerOnlyFn())
+      // should NOT be treated as a transformation candidate.
+      if (t.isIdentifier(expr.callee)) {
+        const isFactoryImport = await this.isKnownFactoryImport(
+          expr.callee.name,
+          fileId,
+        )
+        if (
+          isFactoryImport &&
+          this.validLookupKinds.has(calleeKind as LookupKind)
+        ) {
+          return calleeKind
+        }
       }
     } else if (t.isMemberExpression(expr) && t.isIdentifier(expr.property)) {
       result = await this.resolveCalleeKind(expr.object, fileId, visited)
