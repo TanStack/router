@@ -284,3 +284,4 @@ export const prerenderRoutes = ['/', '/about'].map((path) => ({
 [https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)\*\*
 
 - **TanStack Start i18n (blog)** — [https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)## Additional i18n Integration Patterns
+````
