@@ -1,5 +1,5 @@
 const getEnvironment = () => {
-  console.log("[CLIENT] getEnvironment called");
-  return "client";
+  console.log('[CLIENT] getEnvironment called');
+  return 'client';
 };
 const moduleLevel = getEnvironment();
