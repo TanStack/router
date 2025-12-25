@@ -9,8 +9,18 @@ import {
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
+import type { Plugin as SerovalPlugin } from 'seroval'
 
 let regex: RegExp | undefined = undefined
+
+// Cache serovalPlugins at module level to avoid repeated calls
+let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined = undefined
+
+// Known FormData 'Content-Type' header values - module-level constant
+const FORM_DATA_CONTENT_TYPES = [
+  'multipart/form-data',
+  'application/x-www-form-urlencoded',
+]
 
 export const handleServerAction = async ({
   request,
@@ -29,6 +39,7 @@ export const handleServerAction = async ({
   }
 
   const method = request.method
+  const methodLower = method.toLowerCase()
   const url = new URL(request.url, 'http://localhost:3000')
   // extract the serverFnId from the url as host/_serverFn/:serverFnId
   // Define a regex to match the path and extract the :thing part
@@ -36,12 +47,6 @@ export const handleServerAction = async ({
   // Execute the regex
   const match = url.pathname.match(regex)
   const serverFnId = match ? match[1] : null
-  const search = Object.fromEntries(url.searchParams.entries()) as {
-    payload?: any
-    createServerFn?: boolean
-  }
-
-  const isCreateServerFn = 'createServerFn' in search
 
   if (typeof serverFnId !== 'string') {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
@@ -49,14 +54,12 @@ export const handleServerAction = async ({
 
   const action = await getServerFnById(serverFnId, { fromClient: true })
 
-  // Known FormData 'Content-Type' header values
-  const formDataContentTypes = [
-    'multipart/form-data',
-    'application/x-www-form-urlencoded',
-  ]
+  // Initialize serovalPlugins lazily (cached at module level)
+  if (!serovalPlugins) {
+    serovalPlugins = getDefaultSerovalPlugins()
+  }
 
   const contentType = request.headers.get('Content-Type')
-  const serovalPlugins = getDefaultSerovalPlugins()
 
   function parsePayload(payload: any) {
     const parsedPayload = fromJSON(payload, { plugins: serovalPlugins })
@@ -65,16 +68,16 @@ export const handleServerAction = async ({
 
   const response = await (async () => {
     try {
-      let result = await (async () => {
+      const result = await (async () => {
         // FormData
         if (
-          formDataContentTypes.some(
+          FORM_DATA_CONTENT_TYPES.some(
             (type) => contentType && contentType.includes(type),
           )
         ) {
           // We don't support GET requests with FormData payloads... that seems impossible
           invariant(
-            method.toLowerCase() !== 'get',
+            methodLower !== 'get',
             'GET requests with FormData payloads are not supported',
           )
           const formData = await request.formData()
@@ -104,21 +107,19 @@ export const handleServerAction = async ({
         }
 
         // Get requests use the query string
-        if (method.toLowerCase() === 'get') {
-          invariant(
-            isCreateServerFn,
-            'expected GET request to originate from createServerFn',
-          )
-          // By default the payload is the search params
-          let payload: any = search.payload
+        if (methodLower === 'get') {
+          // Get payload directly from searchParams
+          const payloadParam = url.searchParams.get('payload')
           // If there's a payload, we should try to parse it
-          payload = payload ? parsePayload(JSON.parse(payload)) : {}
+          const payload: any = payloadParam
+            ? parsePayload(JSON.parse(payloadParam))
+            : {}
           payload.context = { ...context, ...payload.context }
           // Send it through!
           return await action(payload, signal)
         }
 
-        if (method.toLowerCase() !== 'post') {
+        if (methodLower !== 'post') {
           throw new Error('expected POST method')
         }
 
@@ -127,18 +128,9 @@ export const handleServerAction = async ({
           jsonPayload = await request.json()
         }
 
-        // If this POST request was created by createServerFn,
-        // its payload  will be the only argument
-        if (isCreateServerFn) {
-          const payload = jsonPayload ? parsePayload(jsonPayload) : {}
-          payload.context = { ...payload.context, ...context }
-          return await action(payload, signal)
-        }
-
-        // Otherwise, we'll spread the payload. Need to
-        // support `use server` functions that take multiple
-        // arguments.
-        return await action(...jsonPayload)
+        const payload = jsonPayload ? parsePayload(jsonPayload) : {}
+        payload.context = { ...payload.context, ...context }
+        return await action(payload, signal)
       })()
 
       // Any time we get a Response back, we should just
@@ -147,37 +139,6 @@ export const handleServerAction = async ({
         result.result.headers.set(X_TSS_RAW_RESPONSE, 'true')
         return result.result
       }
-
-      // If this is a non createServerFn request, we need to
-      // pull out the result from the result object
-      if (!isCreateServerFn) {
-        result = result.result
-
-        // The result might again be a response,
-        // and if it is, return it.
-        if (result instanceof Response) {
-          return result
-        }
-      }
-
-      // TODO: RSCs Where are we getting this package?
-      // if (isValidElement(result)) {
-      //   const { renderToPipeableStream } = await import(
-      //     // @ts-expect-error
-      //     'react-server-dom/server'
-      //   )
-
-      //   const pipeableStream = renderToPipeableStream(result)
-
-      //   setHeaders(event, {
-      //     'Content-Type': 'text/x-component',
-      //   } as any)
-
-      //   sendStream(event, response)
-      //   event._handled = true
-
-      //   return new Response(null, { status: 200 })
-      // }
 
       if (isNotFound(result)) {
         return isNotFoundResponse(result)
