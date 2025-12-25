@@ -839,14 +839,18 @@ const loadRouteMatch = async (
           try {
             await runLoader(inner, matchId, index, route)
             commitContext()
-            const match = inner.router.getMatch(matchId)!
-            match._nonReactive.loaderPromise?.resolve()
-            match._nonReactive.loadPromise?.resolve()
-            match._nonReactive.loaderPromise = undefined
           } catch (err) {
             if (isRedirect(err)) {
               await inner.router.navigate(err.options)
             }
+            // Errors are already stored in match by runLoader
+            // Continue to resolve promises so head() can execute
+          } finally {
+            // Always resolve promises (success or error) to allow head() execution
+            const match = inner.router.getMatch(matchId)!
+            match._nonReactive.loaderPromise?.resolve()
+            match._nonReactive.loadPromise?.resolve()
+            match._nonReactive.loaderPromise = undefined
           }
         })()
       } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
@@ -954,7 +958,8 @@ export async function loadMatches(arg: {
 
     if (asyncLoaderPromises.length > 0) {
       // Schedule re-execution after all async loaders complete (non-blocking)
-      Promise.all(asyncLoaderPromises).then(() => executeAllHeadFns(inner))
+      // Use allSettled to handle both successful and failed loaders
+      Promise.allSettled(asyncLoaderPromises).then(() => executeAllHeadFns(inner))
     }
 
     // Throw notFound after head execution
