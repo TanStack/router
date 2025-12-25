@@ -26,15 +26,15 @@ This pattern relies exclusively on TanStack Router features. It is suitable when
 Optional path parameters are ideal for implementing locale-aware routing without duplicating routes.
 
 ```ts
-;/{-$locale}/abotu
-```
+/{-$locale}/about
+````
 
 This single route matches:
 
-- `/about` (default locale)
-- `/en/about`
-- `/fr/about`
-- `/es/about`
+* `/about` (default locale)
+* `/en/about`
+* `/fr/about`
+* `/es/about`
 
 ### Prefix-based i18n
 
@@ -102,8 +102,6 @@ function isLocale(value?: string): value is Locale {
 
 ---
 
----
-
 ## i18n Library Integration Patterns
 
 TanStack Router is **library-agnostic**. You can integrate any i18n solution by mapping locale state to routing behavior.
@@ -116,9 +114,9 @@ Below is a recommended pattern using **Paraglide**.
 
 This pattern combines TanStack Router with a client-side i18n library. It is suitable when:
 
-- You want type-safe translations
-- You want localized URLs
-- You do not need server-side rendering
+* You want type-safe translations
+* You want localized URLs
+* You do not need server-side rendering
 
 ### TanStack Router + Paraglide (Client-only)
 
@@ -162,9 +160,9 @@ const router = createRouter({
 
 This pattern integrates i18n at the routing and server layers. It is suitable when:
 
-- You use TanStack Start
-- You need SSR or streaming
-- You want locale-aware redirects and metadata
+* You use TanStack Start
+* You need SSR or streaming
+* You want locale-aware redirects and metadata
 
 ### TanStack Start + Paraglide
 
@@ -173,7 +171,7 @@ This pattern integrates i18n at the routing and server layers. It is suitable wh
 
 ### Server Middleware (SSR)
 
-````ts
+```ts
 import { paraglideMiddleware } from './paraglide/server'
 
 export default {
@@ -183,15 +181,15 @@ export default {
     )
   },
 }
+```
 
-Set the `<html lang>` attribute from Paraglide:
+### HTML Language Attribute
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
 
 <html lang={getLocale()} />
 ```
-
 
 ---
 
@@ -223,34 +221,13 @@ import { Locale } from '@/paraglide/runtime'
 
 This guarantees:
 
-- No missing translations
-- Full type safety
-- Compiler feedback for routing mistakes
+* No missing translations
+* Full type safety
+* Compiler feedback for routing mistakes
 
 ---
 
-### HTML Language Attribute
-
-```tsx
-import { getLocale } from '../paraglide/runtime'
-
-<html lang={getLocale()} />
-```
-
-### Offline-safe Redirects
-
-```ts
-import { shouldRedirect } from '../paraglide/runtime'
-
-beforeLoad: async () => {
-  const decision = await shouldRedirect({ url: window.location.href })
-  if (decision.redirectUrl) {
-    throw redirect({ href: decision.redirectUrl.href })
-  }
-}
-```
-
-### Prerendering Localized Routes
+## Prerendering Localized Routes
 
 ```ts
 import { localizeHref } from './paraglide/runtime'
@@ -261,6 +238,8 @@ export const prerenderRoutes = ['/', '/about'].map((path) => ({
 }))
 ```
 
+---
+
 ## Additional i18n Integration Patterns
 
 ### Intlayer (TanStack Start integration)
@@ -270,4 +249,3 @@ export const prerenderRoutes = ['/', '/about'].map((path) => ({
 ### use-intl (TanStack Start integration)
 
 [https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)
-````
