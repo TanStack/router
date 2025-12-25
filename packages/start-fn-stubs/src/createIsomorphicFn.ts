@@ -21,7 +21,7 @@ export interface ClientOnlyFn<TArgs extends Array<any>, TClient>
   ) => IsomorphicFn<TArgs, TServer, TClient>
 }
 
-export interface IsomorphicFnBase extends IsomorphicFn {
+export interface IsomorphicFnBase {
   server: <TArgs extends Array<any>, TServer>(
     serverImpl: (...args: TArgs) => TServer,
   ) => ServerOnlyFn<TArgs, TServer>
@@ -34,8 +34,9 @@ export interface IsomorphicFnBase extends IsomorphicFn {
 // if we use `createIsomorphicFn` in this library itself, vite tries to execute it before the transformer runs
 // therefore we must return a dummy function that allows calling `server` and `client` method chains.
 export function createIsomorphicFn(): IsomorphicFnBase {
-  return {
+  const fn = () => undefined
+  return Object.assign(fn, {
     server: () => ({ client: () => () => {} }),
     client: () => ({ server: () => () => {} }),
-  } as any
+  }) as any
 }

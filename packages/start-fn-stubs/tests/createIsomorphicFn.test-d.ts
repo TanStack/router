@@ -4,9 +4,6 @@ import { createIsomorphicFn } from '../src/createIsomorphicFn'
 test('createIsomorphicFn with no implementations', () => {
   const fn = createIsomorphicFn()
 
-  expectTypeOf(fn).toBeCallableWith()
-  expectTypeOf(fn).returns.toBeUndefined()
-
   expectTypeOf(fn).toHaveProperty('server')
   expectTypeOf(fn).toHaveProperty('client')
 })
