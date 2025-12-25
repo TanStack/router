@@ -27,9 +27,6 @@ export async function serverFnFetcher(
   }
   const _first = args[0]
 
-  // If createServerFn was used to wrap the fetcher,
-  // We need to handle the arguments differently
-  if (isPlainObject(_first) && _first.method) {
     const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
       headers: HeadersInit
     }
@@ -86,21 +83,6 @@ export async function serverFnFetcher(
         headers,
         signal: first.signal,
         body,
-      }),
-    )
-  }
-
-  // If not a custom fetcher, it was probably
-  // a `use server` function, so just proxy the arguments
-  // through as a POST request
-  return await getResponse(() =>
-    handler(url, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(args),
     }),
   )
 }

@@ -38,10 +38,7 @@ export const handleServerAction = async ({
   const serverFnId = match ? match[1] : null
   const search = Object.fromEntries(url.searchParams.entries()) as {
     payload?: any
-    createServerFn?: boolean
   }
-
-  const isCreateServerFn = 'createServerFn' in search
 
   if (typeof serverFnId !== 'string') {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
@@ -105,10 +102,6 @@ export const handleServerAction = async ({
 
         // Get requests use the query string
         if (method.toLowerCase() === 'get') {
-          invariant(
-            isCreateServerFn,
-            'expected GET request to originate from createServerFn',
-          )
           // By default the payload is the search params
           let payload: any = search.payload
           // If there's a payload, we should try to parse it
@@ -127,18 +120,9 @@ export const handleServerAction = async ({
           jsonPayload = await request.json()
         }
 
-        // If this POST request was created by createServerFn,
-        // its payload  will be the only argument
-        if (isCreateServerFn) {
           const payload = jsonPayload ? parsePayload(jsonPayload) : {}
           payload.context = { ...payload.context, ...context }
           return await action(payload, signal)
-        }
-
-        // Otherwise, we'll spread the payload. Need to
-        // support `use server` functions that take multiple
-        // arguments.
-        return await action(...jsonPayload)
       })()
 
       // Any time we get a Response back, we should just
@@ -147,37 +131,6 @@ export const handleServerAction = async ({
         result.result.headers.set(X_TSS_RAW_RESPONSE, 'true')
         return result.result
       }
-
-      // If this is a non createServerFn request, we need to
-      // pull out the result from the result object
-      if (!isCreateServerFn) {
-        result = result.result
-
-        // The result might again be a response,
-        // and if it is, return it.
-        if (result instanceof Response) {
-          return result
-        }
-      }
-
-      // TODO: RSCs Where are we getting this package?
-      // if (isValidElement(result)) {
-      //   const { renderToPipeableStream } = await import(
-      //     // @ts-expect-error
-      //     'react-server-dom/server'
-      //   )
-
-      //   const pipeableStream = renderToPipeableStream(result)
-
-      //   setHeaders(event, {
-      //     'Content-Type': 'text/x-component',
-      //   } as any)
-
-      //   sendStream(event, response)
-      //   event._handled = true
-
-      //   return new Response(null, { status: 200 })
-      // }
 
       if (isNotFound(result)) {
         return isNotFoundResponse(result)
