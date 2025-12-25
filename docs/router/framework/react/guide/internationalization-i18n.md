@@ -158,10 +158,6 @@ const router = createRouter({
 
 ---
 
----
-
----
-
 ## Server-side i18n (TanStack Start)
 
 This pattern integrates i18n at the routing and server layers. It is suitable when:
@@ -187,6 +183,7 @@ export default {
     )
   },
 }
+
 ```ts
 import { paraglideMiddleware } from './paraglide/server'
 
@@ -197,21 +194,16 @@ export default {
     )
   },
 }
-````
-
-Set the `<html lang>` attribute from Paraglide:
-
-```tsx
-import { getLocale } from '../paraglide/runtime'
-;<html lang={getLocale()} />
 ```
 
 Set the `<html lang>` attribute from Paraglide:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
-;<html lang={getLocale()} />
+
+<html lang={getLocale()} />
 ```
+
 
 ---
 
@@ -253,7 +245,8 @@ This guarantees:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
-;<html lang={getLocale()} />
+
+<html lang={getLocale()} />
 ```
 
 ### Offline-safe Redirects
