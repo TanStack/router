@@ -263,7 +263,7 @@ async function processServerFnResponse({
   }
 
   // process rest of the stream asynchronously
-  ; (async () => {
+  ;(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
