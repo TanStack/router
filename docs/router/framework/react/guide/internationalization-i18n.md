@@ -185,7 +185,6 @@ export default {
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
-
 ;<html lang={getLocale()} />
 ```
 
