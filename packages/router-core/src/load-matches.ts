@@ -900,6 +900,16 @@ export async function loadMatches(arg: {
     // Use allSettled to ensure all loaders complete regardless of success/failure
     const results = await Promise.allSettled(inner.matchPromises)
 
+    // Wait for async loaders to complete before executing head functions
+    // loadRouteMatch may return immediately while loaders run asynchronously in the background
+    // We need to wait for the actual loaderPromise, not just the loadRouteMatch promise
+    await Promise.all(
+      inner.matches.map((match) => {
+        const currentMatch = inner.router.getMatch(match.id)
+        return currentMatch?._nonReactive.loaderPromise || Promise.resolve()
+      }),
+    )
+
     const failures = results
       // TODO when we drop support for TS 5.4, we can use the built-in type guard for PromiseRejectedResult
       .filter(
