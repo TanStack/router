@@ -87,7 +87,7 @@ const LookupSetup: Record<
 // 1. Pre-scanning code to determine which kinds to look for (before AST parsing)
 // 2. Deriving the plugin's transform code filter
 export const KindDetectionPatterns: Record<LookupKind, RegExp> = {
-  ServerFn: /\.handler\s*\(/,
+  ServerFn: /\bcreateServerFn\b|\.\s*handler\s*\(/,
   Middleware: /createMiddleware/,
   IsomorphicFn: /createIsomorphicFn/,
   ServerOnlyFn: /createServerOnlyFn/,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
-  detectKindsInCode,
   StartCompiler,
+  detectKindsInCode,
 } from '../src/start-compiler-plugin/compiler'
 import type {
   LookupConfig,
@@ -199,6 +199,37 @@ describe('detectKindsInCode', () => {
       expect(detectKindsInCode(code2, 'client')).toEqual(new Set(['ServerFn']))
       expect(detectKindsInCode(code3, 'client')).toEqual(new Set(['ServerFn']))
       expect(detectKindsInCode(code4, 'client')).toEqual(new Set(['ServerFn']))
+    })
+
+    test('handles whitespace between . and handler (reformatted code)', () => {
+      // When Vite/Babel reformats code, the dot can end up on a previous line
+      const code1 = `fn.\nhandler(() => {})`
+      const code2 = `fn.\n  handler(() => {})`
+      const code3 = `fn.  \n  handler(() => {})`
+
+      expect(detectKindsInCode(code1, 'client')).toEqual(new Set(['ServerFn']))
+      expect(detectKindsInCode(code2, 'client')).toEqual(new Set(['ServerFn']))
+      expect(detectKindsInCode(code3, 'client')).toEqual(new Set(['ServerFn']))
+    })
+
+    test('detects createServerFn() call directly', () => {
+      // The pattern should match createServerFn() calls, not just .handler()
+      const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const fn = createServerFn()
+      `
+      expect(detectKindsInCode(code, 'client')).toEqual(new Set(['ServerFn']))
+    })
+
+    test('does not false positive on similar function names', () => {
+      // Only exact createServerFn( should match, not variations
+      const code = `
+        const fn = createServerFnExample()
+        const fn2 = createServerFnLike()
+        const fn3 = mycreateServerFn()
+        const fn4 = _createServerFn()
+      `
+      expect(detectKindsInCode(code, 'client')).toEqual(new Set())
     })
 
     test('does not false positive on similar names', () => {
