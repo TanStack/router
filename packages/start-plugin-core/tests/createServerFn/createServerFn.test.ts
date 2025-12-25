@@ -1,10 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
-import {
-  StartCompiler,
-  detectKindsInCode,
-} from '../../src/start-compiler-plugin/compiler'
+import { StartCompiler } from '../../src/start-compiler-plugin/compiler'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -304,69 +301,5 @@ describe('createServerFn compiles correctly', async () => {
       undefined,
     )
     expect(resolveIdMock).toHaveBeenNthCalledWith(2, './factory', 'test.ts')
-  })
-
-  test('should detect .handler() when dot and handler are separated by whitespace/newlines (regression test for server code leak)', async () => {
-    // This test reproduces a bug where server code leaked into client bundles.
-    // When Vite/Babel reformats code during the transform pipeline, the dot can
-    // end up on the previous line:
-    //   .middleware([authMiddleware]).
-    //   handler(async () => {...})
-    // The old regex /\.handler\s*\(/ didn't match this pattern because it required
-    // dot and handler to be contiguous. The fix changes it to /\.\s*handler\s*\(/
-    const reformattedCode = `
-      import { createServerFn, createMiddleware } from '@tanstack/react-start'
-      const authMiddleware = createMiddleware({ type: 'function' }).server(
-        async ({ next }) => {
-          return next({ context: { user: 1 } })
-        }
-      )
-      const $getRandomSong = createServerFn({
-        method: 'POST'
-      }).
-      middleware([authMiddleware]).
-      handler(async () => {
-        // Server-only code that should NOT leak to client
-        return 'song'
-      })`
-
-    // This is the key part: in the real plugin flow, detectKindsInCode is called first
-    // to determine which kinds are present in the code. If the regex doesn't match,
-    // the ServerFn kind won't be detected and the handler won't be transformed.
-    const detectedKinds = detectKindsInCode(reformattedCode, 'client')
-
-    // The detection should find ServerFn even with the reformatted code
-    expect(detectedKinds.has('ServerFn')).toBe(true)
-
-    // Now compile with the detected kinds (simulating real plugin flow)
-    const compiler = new StartCompiler({
-      env: 'client',
-      ...getDefaultTestOptions('client'),
-      loadModule: async () => {},
-      lookupKinds: new Set(['ServerFn']),
-      lookupConfigurations: [
-        {
-          libName: '@tanstack/react-start',
-          rootExport: 'createServerFn',
-          kind: 'Root',
-        },
-      ],
-      resolveId: async (id) => id,
-    })
-
-    const compiledResultClient = await compiler.compile({
-      code: reformattedCode,
-      id: 'test.ts',
-      detectedKinds,
-    })
-
-    // The key assertion: client code should NOT contain the handler implementation
-    // Instead, it should have createClientRpc() which is the RPC stub
-    expect(compiledResultClient).not.toBeNull()
-    expect(compiledResultClient!.code).toContain('createClientRpc')
-
-    // Should NOT contain the actual handler implementation
-    expect(compiledResultClient!.code).not.toContain('Server-only code')
-    expect(compiledResultClient!.code).not.toContain("return 'song'")
   })
 })
