@@ -26,7 +26,7 @@ This pattern relies exclusively on TanStack Router features. It is suitable when
 Optional path parameters are ideal for implementing locale-aware routing without duplicating routes.
 
 ```ts
-/{-$locale}/about
+;/{-$locale}/abotu
 ```
 
 This single route matches:
@@ -270,3 +270,4 @@ export const prerenderRoutes = ['/', '/about'].map((path) => ({
 ### use-intl (TanStack Start integration)
 
 [https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)
+````
