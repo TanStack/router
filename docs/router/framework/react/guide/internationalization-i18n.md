@@ -6,12 +6,12 @@ TanStack Router provides flexible and highly customizable primitives that can be
 
 This guide covers:
 
-* Prefix-based and optional-locale routing
-* Advanced routing patterns for i18n
-* Language navigation and switching
-* SEO considerations
-* Type safety
-* Integration patterns with i18n libraries (Paraglide)
+- Prefix-based and optional-locale routing
+- Advanced routing patterns for i18n
+- Language navigation and switching
+- SEO considerations
+- Type safety
+- Integration patterns with i18n libraries (Paraglide)
 
 ---
 
@@ -19,22 +19,22 @@ This guide covers:
 
 This pattern relies exclusively on TanStack Router features. It is suitable when:
 
-* You want full control over translations
-* You already manage translations manually
-* You do not need automatic locale detection
+- You want full control over translations
+- You already manage translations manually
+- You do not need automatic locale detection
 
 Optional path parameters are ideal for implementing locale-aware routing without duplicating routes.
 
 ```ts
-/{-$locale}/about
+;/{-$locale}/abotu
 ```
 
 This single route matches:
 
-* `/about` (default locale)
-* `/en/about`
-* `/fr/about`
-* `/es/about`
+- `/about` (default locale)
+- `/en/about`
+- `/fr/about`
+- `/es/about`
 
 ### Prefix-based i18n
 
@@ -116,9 +116,9 @@ Below is a recommended pattern using **Paraglide**.
 
 This pattern combines TanStack Router with a client-side i18n library. It is suitable when:
 
-* You want type-safe translations
-* You want localized URLs
-* You do not need server-side rendering
+- You want type-safe translations
+- You want localized URLs
+- You do not need server-side rendering
 
 ### TanStack Router + Paraglide (Client-only)
 
@@ -166,9 +166,9 @@ const router = createRouter({
 
 This pattern integrates i18n at the routing and server layers. It is suitable when:
 
-* You use TanStack Start
-* You need SSR or streaming
-* You want locale-aware redirects and metadata
+- You use TanStack Start
+- You need SSR or streaming
+- You want locale-aware redirects and metadata
 
 ### TanStack Start + Paraglide
 
@@ -204,7 +204,7 @@ Set the `<html lang>` attribute from Paraglide:
 ```tsx
 import { getLocale } from '../paraglide/runtime'
 
-<html lang={getLocale()} />
+;<html lang={getLocale()} />
 ```
 
 Set the `<html lang>` attribute from Paraglide:
@@ -212,7 +212,7 @@ Set the `<html lang>` attribute from Paraglide:
 ```tsx
 import { getLocale } from '../paraglide/runtime'
 
-<html lang={getLocale()} />
+;<html lang={getLocale()} />
 ```
 
 ---
@@ -245,9 +245,9 @@ import { Locale } from '@/paraglide/runtime'
 
 This guarantees:
 
-* No missing translations
-* Full type safety
-* Compiler feedback for routing mistakes
+- No missing translations
+- Full type safety
+- Compiler feedback for routing mistakes
 
 ---
 
@@ -256,7 +256,7 @@ This guarantees:
 ```tsx
 import { getLocale } from '../paraglide/runtime'
 
-<html lang={getLocale()} />
+;<html lang={getLocale()} />
 ```
 
 ### Offline-safe Redirects
@@ -291,6 +291,6 @@ export const prerenderRoutes = ['/', '/about'].map((path) => ({
 
 ### use-intl (TanStack Start integration)
 
-[https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)**
+[https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)\*\*
 
-* **TanStack Start i18n (blog)** — [https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)## Additional i18n Integration Patterns
+- **TanStack Start i18n (blog)** — [https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)## Additional i18n Integration Patterns
