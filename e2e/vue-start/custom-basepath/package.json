@@ -6,14 +6,14 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx express-server.ts",
     "build": "vite build && tsc --noEmit",
-    "build:prerender": "MODE=prerender vite build && tsc --noEmit",
-    "build:prerender:trailing": "MODE=prerender TRAILING_SLASH=true vite build && tsc --noEmit",
+    "build:prerender": "cross-env MODE=prerender vite build && tsc --noEmit",
+    "build:prerender:trailing": "cross-env MODE=prerender TRAILING_SLASH=true vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "tsx express-server.ts",
     "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' &",
     "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
-    "test:e2e:prerender": "rm -rf port*.txt; MODE=prerender playwright test --project=chromium",
-    "test:e2e:prerender:trailing": "rm -rf port*.txt; MODE=prerender TRAILING_SLASH=true playwright test --project=chromium",
+    "test:e2e:prerender": "rm -rf port*.txt; cross-env MODE=prerender playwright test --project=chromium",
+    "test:e2e:prerender:trailing": "rm -rf port*.txt; cross-env MODE=prerender TRAILING_SLASH=true playwright test --project=chromium",
     "test:e2e:ssrMode": "rm -rf port*.txt; playwright test --project=chromium",
     "test:e2e": "pnpm run test:e2e:ssrMode && pnpm run test:e2e:prerender && pnpm run test:e2e:prerender:trailing"
   },
