@@ -2,6 +2,7 @@ import { promises as fsp } from 'node:fs'
 import os from 'node:os'
 import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
+import { removeTrailingSlash } from '@tanstack/router-generator'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { createLogger } from './utils'
 import { Queue } from './queue'
@@ -270,6 +271,7 @@ async function startPreviewServer(
   try {
     return await vite.preview({
       configFile: viteConfig.configFile,
+      base: removeTrailingSlash(viteConfig.base),
       preview: {
         port: 0,
         open: false,
