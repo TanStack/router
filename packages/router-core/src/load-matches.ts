@@ -583,6 +583,27 @@ const executeHead = (
   })
 }
 
+const executeAllHeadFns = async (inner: InnerLoadContext) => {
+  // Serially execute head functions for all matches
+  // Each execution is wrapped in try-catch to ensure all heads run even if one fails
+  for (const match of inner.matches) {
+    const { id: matchId, routeId } = match
+    const route = inner.router.looseRoutesById[routeId]!
+    try {
+      const headResult = executeHead(inner, matchId, route)
+      if (headResult) {
+        const head = await headResult
+        inner.updateMatch(matchId, (prev) => ({
+          ...prev,
+          ...head,
+        }))
+      }
+    } catch (err) {
+      console.error(`Error executing head for route ${routeId}:`, err)
+    }
+  }
+}
+
 const getLoaderContext = (
   inner: InnerLoadContext,
   matchId: string,
@@ -919,25 +940,8 @@ export async function loadMatches(arg: {
       }
     }
 
-    // serially execute head functions after all loaders have completed (successfully or not)
-    // Each head execution is wrapped in try-catch to ensure all heads run even if one fails
-    for (const match of inner.matches) {
-      const { id: matchId, routeId } = match
-      const route = inner.router.looseRoutesById[routeId]!
-      try {
-        const headResult = executeHead(inner, matchId, route)
-        if (headResult) {
-          const head = await headResult
-          inner.updateMatch(matchId, (prev) => ({
-            ...prev,
-            ...head,
-          }))
-        }
-      } catch (err) {
-        // Log error but continue executing other head functions
-        console.error(`Error executing head for route ${routeId}:`, err)
-      }
-    }
+    // Execute head functions after all loaders have completed (successfully or not)
+    await executeAllHeadFns(inner)
 
     // Detect if any async loaders are running and schedule re-execution of all head() functions
     // This ensures head() functions get fresh loaderData after async loaders complete
@@ -950,28 +954,7 @@ export async function loadMatches(arg: {
 
     if (asyncLoaderPromises.length > 0) {
       // Schedule re-execution after all async loaders complete (non-blocking)
-      Promise.all(asyncLoaderPromises).then(async () => {
-        // Serially re-run all head() functions with fresh loader data
-        for (const match of inner.matches) {
-          const { id: matchId, routeId } = match
-          const route = inner.router.looseRoutesById[routeId]!
-          try {
-            const headResult = executeHead(inner, matchId, route)
-            if (headResult) {
-              const head = await headResult
-              inner.updateMatch(matchId, (prev) => ({
-                ...prev,
-                ...head,
-              }))
-            }
-          } catch (err) {
-            console.error(
-              `Error re-executing head for route ${routeId} after async loaders:`,
-              err,
-            )
-          }
-        }
-      })
+      Promise.all(asyncLoaderPromises).then(() => executeAllHeadFns(inner))
     }
 
     // Throw notFound after head execution
