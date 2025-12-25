@@ -1,9 +1,4 @@
-import {
-  encode,
-  isNotFound,
-  isPlainObject,
-  parseRedirect,
-} from '@tanstack/router-core'
+import { encode, isNotFound, parseRedirect } from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
@@ -17,6 +12,20 @@ import type { Plugin as SerovalPlugin } from 'seroval'
 
 let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
 
+/**
+ * Checks if an object has at least one own enumerable property.
+ * More efficient than Object.keys(obj).length > 0 as it short-circuits on first property.
+ */
+const hop = Object.prototype.hasOwnProperty
+function hasOwnProperties(obj: object): boolean {
+  for (const _ in obj) {
+    if (hop.call(obj, _)) {
+      return true
+    }
+  }
+  return false
+}
+
 export async function serverFnFetcher(
   url: string,
   args: Array<any>,
@@ -27,62 +36,52 @@ export async function serverFnFetcher(
   }
   const _first = args[0]
 
-    const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
-      headers: HeadersInit
+  const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
+    headers?: HeadersInit
+  }
+  const type = first.data instanceof FormData ? 'formData' : 'payload'
+
+  // Arrange the headers
+  const headers = first.headers ? new Headers(first.headers) : new Headers()
+  headers.set('x-tsr-redirect', 'manual')
+
+  if (type === 'payload') {
+    headers.set('accept', 'application/x-ndjson, application/json')
+  }
+
+  // If the method is GET, we need to move the payload to the query string
+  if (first.method === 'GET') {
+    if (type === 'formData') {
+      throw new Error('FormData is not supported with GET requests')
     }
-    const type = first.data instanceof FormData ? 'formData' : 'payload'
-
-    // Arrange the headers
-    const headers = new Headers({
-      'x-tsr-redirect': 'manual',
-      ...(first.headers instanceof Headers
-        ? Object.fromEntries(first.headers.entries())
-        : first.headers),
-    })
-
-    if (type === 'payload') {
-      headers.set('accept', 'application/x-ndjson, application/json')
-    }
-
-    // If the method is GET, we need to move the payload to the query string
-    if (first.method === 'GET') {
-      if (type === 'formData') {
-        throw new Error('FormData is not supported with GET requests')
-      }
-      const serializedPayload = await serializePayload(first)
-      if (serializedPayload !== undefined) {
-        const encodedPayload = encode({
-          payload: await serializePayload(first),
-        })
-        if (url.includes('?')) {
-          url += `&${encodedPayload}`
-        } else {
-          url += `?${encodedPayload}`
-        }
+    const serializedPayload = await serializePayload(first)
+    if (serializedPayload !== undefined) {
+      const encodedPayload = encode({
+        payload: serializedPayload,
+      })
+      if (url.includes('?')) {
+        url += `&${encodedPayload}`
+      } else {
+        url += `?${encodedPayload}`
       }
     }
+  }
 
-    if (url.includes('?')) {
-      url += `&createServerFn`
-    } else {
-      url += `?createServerFn`
+  let body = undefined
+  if (first.method === 'POST') {
+    const fetchBody = await getFetchBody(first)
+    if (fetchBody?.contentType) {
+      headers.set('content-type', fetchBody.contentType)
     }
+    body = fetchBody?.body
+  }
 
-    let body = undefined
-    if (first.method === 'POST') {
-      const fetchBody = await getFetchBody(first)
-      if (fetchBody?.contentType) {
-        headers.set('content-type', fetchBody.contentType)
-      }
-      body = fetchBody?.body
-    }
-
-    return await getResponse(async () =>
-      handler(url, {
-        method: first.method,
-        headers,
-        signal: first.signal,
-        body,
+  return await getResponse(async () =>
+    handler(url, {
+      method: first.method,
+      headers,
+      signal: first.signal,
+      body,
     }),
   )
 }
@@ -98,7 +97,7 @@ async function serializePayload(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (opts.context && Object.keys(opts.context).length > 0) {
+  if (opts.context && hasOwnProperties(opts.context)) {
     payloadAvailable = true
     payloadToSerialize['context'] = opts.context
   }
@@ -121,7 +120,7 @@ async function getFetchBody(
   if (opts.data instanceof FormData) {
     let serializedContext = undefined
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (opts.context && Object.keys(opts.context).length > 0) {
+    if (opts.context && hasOwnProperties(opts.context)) {
       serializedContext = await serialize(opts.context)
     }
     if (serializedContext !== undefined) {
@@ -145,17 +144,17 @@ async function getFetchBody(
  * @throws If the response is invalid or an error occurs during processing.
  */
 async function getResponse(fn: () => Promise<Response>) {
-  const response = await (async () => {
-    try {
-      return await fn()
-    } catch (error) {
-      if (error instanceof Response) {
-        return error
-      }
+  let response: Response
+  try {
+    response = await fn()
+  } catch (error) {
+    if (error instanceof Response) {
+      response = error
+    } else {
       console.log(error)
       throw error
     }
-  })()
+  }
 
   if (response.headers.get(X_TSS_RAW_RESPONSE) === 'true') {
     return response
@@ -264,7 +263,7 @@ async function processServerFnResponse({
   }
 
   // process rest of the stream asynchronously
-  ;(async () => {
+  ; (async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
