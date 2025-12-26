@@ -839,20 +839,16 @@ const loadRouteMatch = async (
           try {
             await runLoader(inner, matchId, index, route)
             commitContext()
-          } catch (err) {
-            if (isRedirect(err)) {
-              await inner.router.navigate(err.options)
-            }
-            // Errors are already stored in match by runLoader
-            // Continue to resolve promises so head() can execute
-          } finally {
-            // Always resolve promises (success or error) to allow head() execution
             // Match might be undefined if navigation changed while async loader was running
             const match = inner.router.getMatch(matchId)
             if (match) {
               match._nonReactive.loaderPromise?.resolve()
               match._nonReactive.loadPromise?.resolve()
               match._nonReactive.loaderPromise = undefined
+            }
+          } catch (err) {
+            if (isRedirect(err)) {
+              await inner.router.navigate(err.options)
             }
           }
         })()
