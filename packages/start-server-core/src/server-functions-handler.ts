@@ -1,11 +1,10 @@
-import { isNotFound, isPlainObject, isRedirect } from '@tanstack/router-core'
+import { isNotFound, isRedirect } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import {
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
   getDefaultSerovalPlugins,
-  json,
 } from '@tanstack/start-client-core'
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
@@ -56,8 +55,6 @@ export const handleServerAction = async ({
   const action = await getServerFnById(serverFnId, { fromClient: true })
 
   const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
-  const isCreateServerFn =
-    request.headers.get('x-tsr-createServerFn') === 'true'
 
   // Initialize serovalPlugins lazily (cached at module level)
   if (!serovalPlugins) {
@@ -138,46 +135,14 @@ export const handleServerAction = async ({
         return await action(payload, signal)
       })()
 
-      const isCtxResult =
-        isPlainObject(res) &&
-        'context' in res &&
-        ('result' in res || 'error' in res)
-
-      console.log(
-        {
-          isServerFn,
-          isCreateServerFn,
-          isCtxResult,
-        },
-        res,
-      )
-
-      function unwrapResultOrError(result: any) {
-        if (
-          isPlainObject(result) &&
-          ('result' in result || 'error' in result)
-        ) {
-          console.log('tanner')
-          return result.result || result.error
-        }
-        return result
-      }
-
-      const unwrapped = unwrapResultOrError(res)
-      if (!isCtxResult) {
-        if (unwrapped instanceof Response) {
-          res = unwrapped
-        } else {
-          res = json(unwrapped)
-        }
-      }
+      const unwrapped = res.result || res.error
 
       if (isNotFound(res)) {
         res = isNotFoundResponse(res)
       }
 
       if (!isServerFn) {
-        return res
+        return unwrapped
       }
 
       if (unwrapped instanceof Response) {
@@ -187,25 +152,6 @@ export const handleServerAction = async ({
         unwrapped.headers.set(X_TSS_RAW_RESPONSE, 'true')
         return unwrapped
       }
-
-      // TODO: RSCs Where are we getting this package?
-      // if (isValidElement(result)) {
-      //   const { renderToPipeableStream } = await import(
-      //     // @ts-expect-error
-      //     'react-server-dom/server'
-      //   )
-
-      //   const pipeableStream = renderToPipeableStream(result)
-
-      //   setHeaders(event, {
-      //     'Content-Type': 'text/x-component',
-      //   } as any)
-
-      //   sendStream(event, response)
-      //   event._handled = true
-
-      //   return new Response(null, { status: 200 })
-      // }
 
       return serializeResult(res)
 

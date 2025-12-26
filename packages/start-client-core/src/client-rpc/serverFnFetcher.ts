@@ -53,7 +53,6 @@ export async function serverFnFetcher(
   // Arrange the headers
   const headers = first.headers ? new Headers(first.headers) : new Headers()
   headers.set('x-tsr-serverFn', 'true')
-  headers.set('x-tsr-createServerFn', 'true')
 
   if (type === 'payload') {
     headers.set('accept', 'application/x-ndjson, application/json')

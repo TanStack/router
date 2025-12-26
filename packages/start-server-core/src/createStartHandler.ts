@@ -253,7 +253,7 @@ export function createStartHandler<TRegister = Register>(
 
       if (isRedirect(response)) {
         if (isResolvedRedirect(response)) {
-          if (request.headers.get('x-tsr-createServerFn') === 'true') {
+          if (request.headers.get('x-tsr-serverFn') === 'true') {
             return Response.json(
               {
                 ...response.options,
@@ -294,7 +294,7 @@ export function createStartHandler<TRegister = Register>(
         const router = await getRouter()
         const redirect = router.resolveRedirect(response)
 
-        if (request.headers.get('x-tsr-createServerFn') === 'true') {
+        if (request.headers.get('x-tsr-serverFn') === 'true') {
           return Response.json(
             {
               ...response.options,
