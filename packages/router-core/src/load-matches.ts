@@ -847,10 +847,13 @@ const loadRouteMatch = async (
             // Continue to resolve promises so head() can execute
           } finally {
             // Always resolve promises (success or error) to allow head() execution
-            const match = inner.router.getMatch(matchId)!
-            match._nonReactive.loaderPromise?.resolve()
-            match._nonReactive.loadPromise?.resolve()
-            match._nonReactive.loaderPromise = undefined
+            // Match might be undefined if navigation changed while async loader was running
+            const match = inner.router.getMatch(matchId)
+            if (match) {
+              match._nonReactive.loaderPromise?.resolve()
+              match._nonReactive.loadPromise?.resolve()
+              match._nonReactive.loaderPromise = undefined
+            }
           }
         })()
       } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
