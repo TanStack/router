@@ -1,12 +1,20 @@
-import { encode, isNotFound, parseRedirect } from '@tanstack/router-core'
+import {
+  createRawStreamDeserializePlugin,
+  encode,
+  isNotFound,
+  parseRedirect,
+} from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
+  TSS_CONTENT_TYPE_FRAMED,
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
+  validateFramedProtocolVersion,
 } from '../constants'
+import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
@@ -55,7 +63,10 @@ export async function serverFnFetcher(
   headers.set('x-tsr-serverFn', 'true')
 
   if (type === 'payload') {
-    headers.set('accept', 'application/x-ndjson, application/json')
+    headers.set(
+      'accept',
+      `${TSS_CONTENT_TYPE_FRAMED}, application/x-ndjson, application/json`,
+    )
   }
 
   // If the method is GET, we need to move the payload to the query string
@@ -177,8 +188,36 @@ async function getResponse(fn: () => Promise<Response>) {
   // differently than a normal response.
   if (serializedByStart) {
     let result
+
+    // If it's a framed response (contains RawStream), use frame decoder
+    if (contentType.includes(TSS_CONTENT_TYPE_FRAMED)) {
+      // Validate protocol version compatibility
+      validateFramedProtocolVersion(contentType)
+
+      if (!response.body) {
+        throw new Error('No response body for framed response')
+      }
+
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(
+        response.body,
+      )
+
+      // Create deserialize plugin that wires up the raw streams
+      const rawStreamPlugin =
+        createRawStreamDeserializePlugin(getOrCreateStream)
+      const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+
+      const refs = new Map()
+      result = await processFramedResponse({
+        jsonStream: jsonChunks,
+        onMessage: (msg: any) => fromCrossJSON(msg, { refs, plugins }),
+        onError(msg, error) {
+          console.error(msg, error)
+        },
+      })
+    }
     // If it's a stream from the start serializer, process it as such
-    if (contentType.includes('application/x-ndjson')) {
+    else if (contentType.includes('application/x-ndjson')) {
       const refs = new Map()
       result = await processServerFnResponse({
         response,
@@ -191,7 +230,7 @@ async function getResponse(fn: () => Promise<Response>) {
       })
     }
     // If it's a JSON response, it can be simpler
-    if (contentType.includes('application/json')) {
+    else if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
       result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
     }
@@ -245,6 +284,90 @@ async function processServerFnResponse({
   let buffer = ''
   let firstRead = false
   let firstObject
+
+  while (!firstRead) {
+    const { value, done } = await reader.read()
+    if (value) buffer += value
+
+    if (buffer.length === 0 && done) {
+      throw new Error('Stream ended before first object')
+    }
+
+    // common case: buffer ends with newline
+    if (buffer.endsWith('\n')) {
+      const lines = buffer.split('\n').filter(Boolean)
+      const firstLine = lines[0]
+      if (!firstLine) throw new Error('No JSON line in the first chunk')
+      firstObject = JSON.parse(firstLine)
+      firstRead = true
+      buffer = lines.slice(1).join('\n')
+    } else {
+      // fallback: wait for a newline to parse first object safely
+      const newlineIndex = buffer.indexOf('\n')
+      if (newlineIndex >= 0) {
+        const line = buffer.slice(0, newlineIndex).trim()
+        buffer = buffer.slice(newlineIndex + 1)
+        if (line.length > 0) {
+          firstObject = JSON.parse(line)
+          firstRead = true
+        }
+      }
+    }
+  }
+
+  // process rest of the stream asynchronously
+  ;(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const { value, done } = await reader.read()
+        if (value) buffer += value
+
+        const lastNewline = buffer.lastIndexOf('\n')
+        if (lastNewline >= 0) {
+          const chunk = buffer.slice(0, lastNewline)
+          buffer = buffer.slice(lastNewline + 1)
+          const lines = chunk.split('\n').filter(Boolean)
+
+          for (const line of lines) {
+            try {
+              onMessage(JSON.parse(line))
+            } catch (e) {
+              onError?.(`Invalid JSON line: ${line}`, e)
+            }
+          }
+        }
+
+        if (done) {
+          break
+        }
+      }
+    } catch (err) {
+      onError?.('Stream processing error:', err)
+    }
+  })()
+
+  return onMessage(firstObject)
+}
+
+/**
+ * Processes a framed response where JSON chunks come as a string stream
+ * (decoded from binary frames by the frame decoder).
+ */
+async function processFramedResponse({
+  jsonStream,
+  onMessage,
+  onError,
+}: {
+  jsonStream: ReadableStream<string>
+  onMessage: (msg: any) => any
+  onError?: (msg: string, error?: any) => void
+}) {
+  const reader = jsonStream.getReader()
+
+  let buffer = ''
+  let firstRead = false
+  let firstObject: any
 
   while (!firstRead) {
     const { value, done } = await reader.read()

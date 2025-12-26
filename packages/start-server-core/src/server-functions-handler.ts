@@ -1,4 +1,8 @@
-import { isNotFound, isRedirect } from '@tanstack/router-core'
+import {
+  createRawStreamRPCPlugin,
+  isNotFound,
+  isRedirect,
+} from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import {
   TSS_FORMDATA_CONTEXT,
@@ -10,6 +14,10 @@ import {
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
+import {
+  TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+  createMultiplexedStream,
+} from './frame-protocol'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
 // Cache serovalPlugins at module level to avoid repeated calls
@@ -162,6 +170,17 @@ export const handleServerAction = async ({
 
         const alsResponse = getResponse()
         if (res !== undefined) {
+          // Collect raw streams encountered during serialization
+          const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
+          const rawStreamPlugin = createRawStreamRPCPlugin(
+            (id: number, stream: ReadableStream<Uint8Array>) => {
+              rawStreams.set(id, stream)
+            },
+          )
+
+          // Build plugins with RawStreamRPCPlugin first (before default SSR plugin)
+          const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+
           // first run without the stream in case `result` does not need streaming
           let done = false as boolean
           const callbacks: {
@@ -181,7 +200,7 @@ export const handleServerAction = async ({
           }
           toCrossJSONStream(res, {
             refs: new Map(),
-            plugins: serovalPlugins,
+            plugins,
             onParse(value) {
               callbacks.onParse(value)
             },
@@ -192,7 +211,9 @@ export const handleServerAction = async ({
               callbacks.onError(error)
             },
           })
-          if (done) {
+
+          // If no raw streams and done synchronously, return simple JSON
+          if (done && rawStreams.size === 0) {
             return new Response(
               nonStreamingBody ? JSON.stringify(nonStreamingBody) : undefined,
               {
@@ -206,7 +227,46 @@ export const handleServerAction = async ({
             )
           }
 
-          // not done yet, we need to stream
+          // If we have raw streams, use framed protocol
+          if (rawStreams.size > 0) {
+            // Create a stream of JSON chunks (NDJSON style)
+            const jsonStream = new ReadableStream<string>({
+              start(controller) {
+                callbacks.onParse = (value) => {
+                  controller.enqueue(JSON.stringify(value) + '\n')
+                }
+                callbacks.onDone = () => {
+                  try {
+                    controller.close()
+                  } catch {
+                    // Already closed
+                  }
+                }
+                callbacks.onError = (error) => controller.error(error)
+                // Emit initial body if we have one
+                if (nonStreamingBody !== undefined) {
+                  callbacks.onParse(nonStreamingBody)
+                }
+              },
+            })
+
+            // Create multiplexed stream with JSON and raw streams
+            const multiplexedStream = createMultiplexedStream(
+              jsonStream,
+              rawStreams,
+            )
+
+            return new Response(multiplexedStream, {
+              status: alsResponse.status,
+              statusText: alsResponse.statusText,
+              headers: {
+                'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+                [X_TSS_SERIALIZED]: 'true',
+              },
+            })
+          }
+
+          // No raw streams but not done yet - use standard NDJSON streaming
           const encoder = new TextEncoder()
           const stream = new ReadableStream({
             start(controller) {
