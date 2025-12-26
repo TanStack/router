@@ -148,10 +148,23 @@ export function createStartHandler<TRegister = Register>(
             async () => {
               try {
                 // First, let's attempt to handle server functions
-                if (href.startsWith(process.env.TSS_SERVER_FN_BASE)) {
+                // Extract the serverFnId once here and pass it through.
+                if (url.pathname.startsWith(process.env.TSS_SERVER_FN_BASE)) {
+                  const base = process.env.TSS_SERVER_FN_BASE
+                  const serverFnId = url.pathname
+                    .slice(base.length)
+                    .split('/')[0]
+
+                  if (!serverFnId) {
+                    throw new Error(
+                      'Invalid server action param for serverFnId',
+                    )
+                  }
+
                   return await handleServerAction({
                     request,
                     context: requestOpts?.context,
+                    serverFnId,
                   })
                 }
 

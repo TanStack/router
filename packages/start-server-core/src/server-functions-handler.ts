@@ -11,8 +11,6 @@ import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
-let regex: RegExp | undefined = undefined
-
 // Cache serovalPlugins at module level to avoid repeated calls
 let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined = undefined
 
@@ -25,32 +23,20 @@ const FORM_DATA_CONTENT_TYPES = [
 export const handleServerAction = async ({
   request,
   context,
+  serverFnId,
 }: {
   request: Request
   context: any
+  serverFnId: string
 }) => {
   const controller = new AbortController()
   const signal = controller.signal
   const abort = () => controller.abort()
   request.signal.addEventListener('abort', abort)
 
-  if (regex === undefined) {
-    regex = new RegExp(`${process.env.TSS_SERVER_FN_BASE}([^/?#]+)`)
-  }
-
   const method = request.method
   const methodLower = method.toLowerCase()
-  const url = new URL(request.url, 'http://localhost:3000')
-  // extract the serverFnId from the url as host/_serverFn/:serverFnId
-  // Define a regex to match the path and extract the :thing part
-
-  // Execute the regex
-  const match = url.pathname.match(regex)
-  const serverFnId = match ? match[1] : null
-
-  if (typeof serverFnId !== 'string') {
-    throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
-  }
+  const url = new URL(request.url)
 
   const action = await getServerFnById(serverFnId, { fromClient: true })
 
