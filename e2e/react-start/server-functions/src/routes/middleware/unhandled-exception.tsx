@@ -1,33 +1,39 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 
-export const authMiddleware = createMiddleware({ type: 'function' }).server(
-  async ({ next, context }) => {
-    throw new Error('Unauthorized')
+// Middleware that throws an unhandled exception
+// Issue #5266: Server crashes when unhandled exception in server function or middleware
+const throwingMiddleware = createMiddleware({ type: 'function' }).server(
+  async () => {
+    throw new Error('Unhandled middleware exception')
   },
 )
 
-const personServerFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
-  .inputValidator((d: string) => d)
-  .handler(({ data: name }) => {
-    return { name, randomNumber: Math.floor(Math.random() * 100) }
+const serverFnWithThrowingMiddleware = createServerFn({ method: 'GET' })
+  .middleware([throwingMiddleware])
+  .handler(() => {
+    return { success: true }
   })
 
 export const Route = createFileRoute('/middleware/unhandled-exception')({
   loader: async () => {
     return {
-      person: await personServerFn({ data: 'John Doe' }),
+      result: await serverFnWithThrowingMiddleware(),
     }
+  },
+  errorComponent: ({ error }) => {
+    return (
+      <div data-testid="unhandled-exception-error">
+        <h1>Error Caught</h1>
+        <p data-testid="error-message">
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </p>
+      </div>
+    )
   },
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const { person } = Route.useLoaderData()
-  return (
-    <div data-testid="regular-person">
-      {person.name} - {person.randomNumber}
-    </div>
-  )
+  return <div data-testid="route-success">Should not render</div>
 }
