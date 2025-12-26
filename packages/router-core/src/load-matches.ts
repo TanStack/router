@@ -836,6 +836,8 @@ const loadRouteMatch = async (
       } else if (loaderShouldRunAsync && !inner.sync) {
         loaderIsRunningAsync = true
         ;(async () => {
+          // Capture match reference before try block, because redirect navigation removes it
+          const matchForCleanup = inner.router.getMatch(matchId)!
           try {
             await runLoader(inner, matchId, index, route)
             commitContext()
@@ -845,13 +847,10 @@ const loadRouteMatch = async (
             }
           } finally {
             // Always resolve promises to allow Promise.allSettled to complete
-            // Match might be undefined if navigation changed while async loader was running
-            const match = inner.router.getMatch(matchId)
-            if (match) {
-              match._nonReactive.loaderPromise?.resolve()
-              match._nonReactive.loadPromise?.resolve()
-              match._nonReactive.loaderPromise = undefined
-            }
+            // Use captured reference since navigation might have removed the match
+            matchForCleanup._nonReactive.loaderPromise?.resolve()
+            matchForCleanup._nonReactive.loadPromise?.resolve()
+            matchForCleanup._nonReactive.loaderPromise = undefined
           }
         })()
       } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
