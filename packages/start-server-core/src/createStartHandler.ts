@@ -136,6 +136,15 @@ export function createStartHandler<TRegister = Register>(
         return router
       }
 
+      const flattenedRequestMiddlewares = startOptions.requestMiddleware
+        ? flattenMiddlewares(startOptions.requestMiddleware)
+        : []
+      // Track which middlewares were executed in the request phase
+      // to prevent duplicate execution in server functions (issue #5239)
+      const executedRequestMiddlewares = new Set<any>(
+        flattenedRequestMiddlewares,
+      )
+
       const requestHandlerMiddleware = handlerToMiddleware(
         async ({ context }) => {
           const response = await runWithStartContext(
@@ -144,6 +153,7 @@ export function createStartHandler<TRegister = Register>(
               startOptions: requestStartOptions,
               contextAfterGlobalMiddlewares: context,
               request,
+              executedRequestMiddlewares,
             },
             async () => {
               try {
@@ -250,10 +260,9 @@ export function createStartHandler<TRegister = Register>(
         },
       )
 
-      const flattenedMiddlewares = startOptions.requestMiddleware
-        ? flattenMiddlewares(startOptions.requestMiddleware)
-        : []
-      const middlewares = flattenedMiddlewares.map((d) => d.options.server)
+      const middlewares = flattenedRequestMiddlewares.map(
+        (d) => d.options.server,
+      )
       const ctx = await executeMiddleware(
         [...middlewares, requestHandlerMiddleware],
         {

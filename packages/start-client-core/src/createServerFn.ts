@@ -182,10 +182,21 @@ export async function executeMiddleware(
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
   const globalMiddlewares = getStartOptions()?.functionMiddleware || []
-  const flattenedMiddlewares = flattenMiddlewares([
+  let flattenedMiddlewares = flattenMiddlewares([
     ...globalMiddlewares,
     ...middlewares,
   ])
+
+  // On server, filter out middlewares that already executed in the request phase
+  // to prevent duplicate execution (issue #5239)
+  if (env === 'server') {
+    const startContext = getStartContextServerOnly({ throwIfNotFound: false })
+    if (startContext?.executedRequestMiddlewares) {
+      flattenedMiddlewares = flattenedMiddlewares.filter(
+        (m) => !startContext.executedRequestMiddlewares.has(m),
+      )
+    }
+  }
 
   const callNextMiddleware: NextFn = async (ctx) => {
     // Get the next middleware
