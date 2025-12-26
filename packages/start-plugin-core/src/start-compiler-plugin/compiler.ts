@@ -1,4 +1,5 @@
 /* eslint-disable import/no-commonjs */
+import crypto from 'node:crypto'
 import * as t from '@babel/types'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import babel from '@babel/core'
@@ -11,7 +12,13 @@ import { handleCreateMiddleware } from './handleCreateMiddleware'
 import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'
 import { handleEnvOnlyFn } from './handleEnvOnly'
 import { handleClientOnlyJSX } from './handleClientOnlyJSX'
-import type { MethodChainPaths, RewriteCandidate } from './types'
+import type {
+  CompilationContext,
+  MethodChainPaths,
+  RewriteCandidate,
+  ServerFn,
+} from './types'
+import type { CompileStartFrameworkOptions } from '../types'
 
 type Binding =
   | {
@@ -25,11 +32,6 @@ type Binding =
       init: t.Expression | null
       resolvedKind?: Kind
     }
-
-type ExportEntry =
-  | { tag: 'Normal'; name: string }
-  | { tag: 'Default'; name: string }
-  | { tag: 'Namespace'; name: string; targetId: string } // for `export * as ns from './x'`
 
 type Kind = 'None' | `Root` | `Builder` | LookupKind
 
@@ -45,12 +47,12 @@ export type LookupKind =
 type MethodChainSetup = {
   type: 'methodChain'
   candidateCallIdentifier: Set<string>
-  // If true, a call to the root function (e.g., createIsomorphicFn()) is also a candidate
-  // even without chained method calls. This is used for IsomorphicFn which can be
-  // called without .client() or .server() (resulting in a no-op function).
-  allowRootAsCandidate?: boolean
 }
-type DirectCallSetup = { type: 'directCall' }
+type DirectCallSetup = {
+  type: 'directCall'
+  // The factory function name used to create this kind (e.g., 'createServerOnlyFn')
+  factoryName: string
+}
 type JSXSetup = { type: 'jsx'; componentName: string }
 
 const LookupSetup: Record<
@@ -68,10 +70,9 @@ const LookupSetup: Record<
   IsomorphicFn: {
     type: 'methodChain',
     candidateCallIdentifier: new Set(['server', 'client']),
-    allowRootAsCandidate: true, // createIsomorphicFn() alone is valid (returns no-op)
   },
-  ServerOnlyFn: { type: 'directCall' },
-  ClientOnlyFn: { type: 'directCall' },
+  ServerOnlyFn: { type: 'directCall', factoryName: 'createServerOnlyFn' },
+  ClientOnlyFn: { type: 'directCall', factoryName: 'createClientOnlyFn' },
   ClientOnlyJSX: { type: 'jsx', componentName: 'ClientOnly' },
 }
 
@@ -80,7 +81,7 @@ const LookupSetup: Record<
 // 1. Pre-scanning code to determine which kinds to look for (before AST parsing)
 // 2. Deriving the plugin's transform code filter
 export const KindDetectionPatterns: Record<LookupKind, RegExp> = {
-  ServerFn: /\.handler\s*\(/,
+  ServerFn: /\bcreateServerFn\b|\.\s*handler\s*\(/,
   Middleware: /createMiddleware/,
   IsomorphicFn: /createIsomorphicFn/,
   ServerOnlyFn: /createServerOnlyFn/,
@@ -107,6 +108,35 @@ export const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
 }
 
 /**
+ * Handler type for processing candidates of a specific kind.
+ * The kind is passed as the third argument to allow shared handlers (like handleEnvOnlyFn).
+ */
+type KindHandler = (
+  candidates: Array<RewriteCandidate>,
+  context: CompilationContext,
+  kind: LookupKind,
+) => void
+
+/**
+ * Registry mapping each LookupKind to its handler function.
+ * When adding a new kind, add its handler here.
+ */
+const KindHandlers: Record<
+  Exclude<LookupKind, 'ClientOnlyJSX'>,
+  KindHandler
+> = {
+  ServerFn: handleCreateServerFn,
+  Middleware: handleCreateMiddleware,
+  IsomorphicFn: handleCreateIsomorphicFn,
+  ServerOnlyFn: handleEnvOnlyFn,
+  ClientOnlyFn: handleEnvOnlyFn,
+  // ClientOnlyJSX is handled separately via JSX traversal, not here
+}
+
+// All lookup kinds as an array for iteration with proper typing
+const AllLookupKinds = Object.keys(LookupSetup) as Array<LookupKind>
+
+/**
  * Detects which LookupKinds are present in the code using string matching.
  * This is a fast pre-scan before AST parsing to limit the work done during compilation.
  */
@@ -117,10 +147,8 @@ export function detectKindsInCode(
   const detected = new Set<LookupKind>()
   const validForEnv = LookupKindsPerEnv[env]
 
-  for (const [kind, pattern] of Object.entries(KindDetectionPatterns) as Array<
-    [LookupKind, RegExp]
-  >) {
-    if (validForEnv.has(kind) && pattern.test(code)) {
+  for (const kind of AllLookupKinds) {
+    if (validForEnv.has(kind) && KindDetectionPatterns[kind].test(code)) {
       detected.add(kind)
     }
   }
@@ -131,9 +159,8 @@ export function detectKindsInCode(
 // Pre-computed map: identifier name -> Set<LookupKind> for fast candidate detection (method chain only)
 // Multiple kinds can share the same identifier (e.g., 'server' and 'client' are used by both Middleware and IsomorphicFn)
 const IdentifierToKinds = new Map<string, Set<LookupKind>>()
-for (const [kind, setup] of Object.entries(LookupSetup) as Array<
-  [LookupKind, MethodChainSetup | DirectCallSetup]
->) {
+for (const kind of AllLookupKinds) {
+  const setup = LookupSetup[kind]
   if (setup.type === 'methodChain') {
     for (const id of setup.candidateCallIdentifier) {
       let kinds = IdentifierToKinds.get(id)
@@ -146,15 +173,16 @@ for (const [kind, setup] of Object.entries(LookupSetup) as Array<
   }
 }
 
-// Known factory function names for direct call and root-as-candidate patterns
-// These are the names that, when called directly, create a new function.
+// Factory function names for direct call patterns.
 // Used to filter nested candidates - we only want to include actual factory calls,
 // not invocations of already-created functions (e.g., `myServerFn()` should NOT be a candidate)
-const DirectCallFactoryNames = new Set([
-  'createServerOnlyFn',
-  'createClientOnlyFn',
-  'createIsomorphicFn',
-])
+const DirectCallFactoryNames = new Set<string>()
+for (const kind of AllLookupKinds) {
+  const setup = LookupSetup[kind]
+  if (setup.type === 'directCall') {
+    DirectCallFactoryNames.add(setup.factoryName)
+  }
+}
 
 export type LookupConfig = {
   libName: string
@@ -165,23 +193,19 @@ export type LookupConfig = {
 interface ModuleInfo {
   id: string
   bindings: Map<string, Binding>
-  exports: Map<string, ExportEntry>
+  // Maps exported name → local binding name
+  exports: Map<string, string>
   // Track `export * from './module'` declarations for re-export resolution
   reExportAllSources: Array<string>
 }
 
 /**
  * Computes whether any file kinds need direct-call candidate detection.
- * This includes both directCall types (ServerOnlyFn, ClientOnlyFn) and
- * allowRootAsCandidate types (IsomorphicFn).
+ * This applies to directCall types (ServerOnlyFn, ClientOnlyFn).
  */
 function needsDirectCallDetection(kinds: Set<LookupKind>): boolean {
   for (const kind of kinds) {
-    const setup = LookupSetup[kind]
-    if (
-      setup.type === 'directCall' ||
-      (setup.type === 'methodChain' && setup.allowRootAsCandidate)
-    ) {
+    if (LookupSetup[kind].type === 'directCall') {
       return true
     }
   }
@@ -203,26 +227,11 @@ function areAllKindsTopLevelOnly(kinds: Set<LookupKind>): boolean {
  */
 function needsJSXDetection(kinds: Set<LookupKind>): boolean {
   for (const kind of kinds) {
-    const setup = LookupSetup[kind]
-    if (setup.type === 'jsx') {
+    if (LookupSetup[kind].type === 'jsx') {
       return true
     }
   }
   return false
-}
-
-/**
- * Gets the set of JSX component names to detect.
- */
-function getJSXComponentNames(kinds: Set<LookupKind>): Set<string> {
-  const names = new Set<string>()
-  for (const kind of kinds) {
-    const setup = LookupSetup[kind]
-    if (setup.type === 'jsx') {
-      names.add(setup.componentName)
-    }
-  }
-  return names
 }
 
 /**
@@ -248,7 +257,7 @@ function isNestedDirectCallCandidate(node: t.CallExpression): boolean {
  * Checks if a CallExpression path is a top-level direct-call candidate.
  * Top-level means the call is the init of a VariableDeclarator at program level.
  * We accept any simple identifier call or namespace call at top level
- * (e.g., `isomorphicFn()`, `TanStackStart.createServerOnlyFn()`) and let
+ * (e.g., `createServerOnlyFn()`, `TanStackStart.createServerOnlyFn()`) and let
  * resolution verify it. This handles renamed imports.
  */
 function isTopLevelDirectCallCandidate(
@@ -279,7 +288,7 @@ function isTopLevelDirectCallCandidate(
   return t.isProgram(path.parentPath.parentPath?.parent)
 }
 
-export class ServerFnCompiler {
+export class StartCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
   private validLookupKinds: Set<LookupKind>
@@ -292,10 +301,19 @@ export class ServerFnCompiler {
   // Maps: libName → (exportName → Kind)
   // This allows O(1) resolution for the common case without async resolveId calls
   private knownRootImports = new Map<string, Map<string, Kind>>()
+
+  // For generating unique function IDs in production builds
+  private entryIdToFunctionId = new Map<string, string>()
+  private functionIds = new Set<string>()
+
+  // Cached root path with trailing slash for dev mode function ID generation
+  private _rootWithTrailingSlash: string | undefined
+
   constructor(
     private options: {
       env: 'client' | 'server'
-      directive: string
+      envName: string
+      root: string
       lookupConfigurations: Array<LookupConfig>
       lookupKinds: Set<LookupKind>
       loadModule: (id: string) => Promise<void>
@@ -305,13 +323,100 @@ export class ServerFnCompiler {
        * In 'dev' mode (default), caching is disabled to avoid invalidation complexity with HMR.
        */
       mode?: 'dev' | 'build'
+      /**
+       * The framework being used (e.g., 'react', 'solid').
+       */
+      framework: CompileStartFrameworkOptions
+      /**
+       * The Vite environment name for the server function provider.
+       */
+      providerEnvName: string
+      /**
+       * Custom function ID generator (optional, defaults to hash-based).
+       */
+      generateFunctionId?: (opts: {
+        filename: string
+        functionName: string
+      }) => string | undefined
+      /**
+       * Callback when server functions are discovered.
+       * Called after each file is compiled with its new functions.
+       */
+      onServerFnsById?: (d: Record<string, ServerFn>) => void
+      /**
+       * Returns the currently known server functions from previous builds.
+       * Used by server callers to look up canonical extracted filenames.
+       */
+      getKnownServerFns?: () => Record<string, ServerFn>
     },
   ) {
     this.validLookupKinds = options.lookupKinds
   }
 
+  /**
+   * Generates a unique function ID for a server function.
+   * In dev mode, uses a base64-encoded JSON with file path and export name.
+   * In build mode, uses SHA256 hash or custom generator.
+   */
+  private generateFunctionId(opts: {
+    filename: string
+    functionName: string
+    extractedFilename: string
+  }): string {
+    if (this.mode === 'dev') {
+      // In dev, encode the file path and export name for direct lookup
+      let file = opts.extractedFilename
+      if (opts.extractedFilename.startsWith(this.rootWithTrailingSlash)) {
+        file = opts.extractedFilename.slice(this.rootWithTrailingSlash.length)
+      }
+      file = `/@id/${file}`
+
+      const serverFn = {
+        file,
+        export: opts.functionName,
+      }
+      return Buffer.from(JSON.stringify(serverFn), 'utf8').toString('base64url')
+    }
+
+    // Production build: use custom generator or hash
+    const entryId = `${opts.filename}--${opts.functionName}`
+    let functionId = this.entryIdToFunctionId.get(entryId)
+    if (functionId === undefined) {
+      if (this.options.generateFunctionId) {
+        functionId = this.options.generateFunctionId({
+          filename: opts.filename,
+          functionName: opts.functionName,
+        })
+      }
+      if (!functionId) {
+        functionId = crypto.createHash('sha256').update(entryId).digest('hex')
+      }
+      // Deduplicate in case the generated id conflicts with an existing id
+      if (this.functionIds.has(functionId)) {
+        let deduplicatedId
+        let iteration = 0
+        do {
+          deduplicatedId = `${functionId}_${++iteration}`
+        } while (this.functionIds.has(deduplicatedId))
+        functionId = deduplicatedId
+      }
+      this.entryIdToFunctionId.set(entryId, functionId)
+      this.functionIds.add(functionId)
+    }
+    return functionId
+  }
+
   private get mode(): 'dev' | 'build' {
     return this.options.mode ?? 'dev'
+  }
+
+  private get rootWithTrailingSlash(): string {
+    if (this._rootWithTrailingSlash === undefined) {
+      this._rootWithTrailingSlash = this.options.root.endsWith('/')
+        ? this.options.root
+        : `${this.options.root}/`
+    }
+    return this._rootWithTrailingSlash
   }
 
   private async resolveIdCached(id: string, importer?: string) {
@@ -388,15 +493,8 @@ export class ServerFnCompiler {
           this.moduleCache.set(libId, rootModule)
         }
 
-        rootModule.exports.set(config.rootExport, {
-          tag: 'Normal',
-          name: config.rootExport,
-        })
-        rootModule.exports.set('*', {
-          tag: 'Namespace',
-          name: config.rootExport,
-          targetId: libId,
-        })
+        rootModule.exports.set(config.rootExport, config.rootExport)
+        rootModule.exports.set('*', config.rootExport)
         rootModule.bindings.set(config.rootExport, {
           type: 'var',
           init: null, // Not needed since resolvedKind is set
@@ -418,7 +516,7 @@ export class ServerFnCompiler {
     id: string,
   ): ModuleInfo {
     const bindings = new Map<string, Binding>()
-    const exports = new Map<string, ExportEntry>()
+    const exports = new Map<string, string>()
     const reExportAllSources: Array<string> = []
 
     // we are only interested in top-level bindings, hence we don't traverse the AST
@@ -461,7 +559,7 @@ export class ServerFnCompiler {
           if (t.isVariableDeclaration(node.declaration)) {
             for (const d of node.declaration.declarations) {
               if (t.isIdentifier(d.id)) {
-                exports.set(d.id.name, { tag: 'Normal', name: d.id.name })
+                exports.set(d.id.name, d.id.name)
                 bindings.set(d.id.name, { type: 'var', init: d.init ?? null })
               }
             }
@@ -469,11 +567,7 @@ export class ServerFnCompiler {
         }
         for (const sp of node.specifiers) {
           if (t.isExportNamespaceSpecifier(sp)) {
-            exports.set(sp.exported.name, {
-              tag: 'Namespace',
-              name: sp.exported.name,
-              targetId: node.source?.value || '',
-            })
+            exports.set(sp.exported.name, sp.exported.name)
           }
           // export { local as exported }
           else if (t.isExportSpecifier(sp)) {
@@ -481,7 +575,7 @@ export class ServerFnCompiler {
             const exported = t.isIdentifier(sp.exported)
               ? sp.exported.name
               : sp.exported.value
-            exports.set(exported, { tag: 'Normal', name: local })
+            exports.set(exported, local)
 
             // When re-exporting from another module (export { foo } from './module'),
             // create an import binding so the server function can be resolved
@@ -497,11 +591,11 @@ export class ServerFnCompiler {
       } else if (t.isExportDefaultDeclaration(node)) {
         const d = node.declaration
         if (t.isIdentifier(d)) {
-          exports.set('default', { tag: 'Default', name: d.name })
+          exports.set('default', d.name)
         } else {
           const synth = '__default_export__'
           bindings.set(synth, { type: 'var', init: d as t.Expression })
-          exports.set('default', { tag: 'Default', name: synth })
+          exports.set('default', synth)
         }
       } else if (t.isExportAllDeclaration(node)) {
         // Handle `export * from './module'` syntax
@@ -536,12 +630,10 @@ export class ServerFnCompiler {
   public async compile({
     code,
     id,
-    isProviderFile,
     detectedKinds,
   }: {
     code: string
     id: string
-    isProviderFile: boolean
     /** Pre-detected kinds present in this file. If not provided, all valid kinds are checked. */
     detectedKinds?: Set<LookupKind>
   }) {
@@ -583,10 +675,6 @@ export class ServerFnCompiler {
     // JSX candidates (e.g., <ClientOnly>)
     const jsxCandidatePaths: Array<babel.NodePath<t.JSXElement>> = []
     const checkJSX = needsJSXDetection(fileKinds)
-    // Get target component names from JSX setup (e.g., 'ClientOnly')
-    const jsxTargetComponentNames = checkJSX
-      ? getJSXComponentNames(fileKinds)
-      : null
     // Get module info that was just cached by ingestModule
     const moduleInfo = this.moduleCache.get(id)!
 
@@ -693,10 +781,10 @@ export class ServerFnCompiler {
           }
         },
         // Pattern 3: JSX element pattern (e.g., <ClientOnly>)
-        // Collect JSX elements where the component name matches a known import
-        // that resolves to a target component (e.g., ClientOnly from @tanstack/react-router)
+        // Collect JSX elements where the component is imported from a known package
+        // and resolves to a JSX kind (e.g., ClientOnly from @tanstack/react-router)
         JSXElement: (path) => {
-          if (!checkJSX || !jsxTargetComponentNames) return
+          if (!checkJSX) return
 
           const openingElement = path.node.openingElement
           const nameNode = openingElement.name
@@ -707,13 +795,18 @@ export class ServerFnCompiler {
           const componentName = nameNode.name
           const binding = moduleInfo.bindings.get(componentName)
 
-          // Must be an import binding
+          // Must be an import binding from a known package
           if (!binding || binding.type !== 'import') return
 
-          // Check if the original import name matches a target component
-          if (jsxTargetComponentNames.has(binding.importedName)) {
-            jsxCandidatePaths.push(path)
-          }
+          // Verify the import source is a known TanStack router package
+          const knownExports = this.knownRootImports.get(binding.source)
+          if (!knownExports) return
+
+          // Verify the imported name resolves to a JSX kind (e.g., ClientOnlyJSX)
+          const kind = knownExports.get(binding.importedName)
+          if (kind !== 'ClientOnlyJSX') return
+
+          jsxCandidatePaths.push(path)
         },
       })
     }
@@ -732,8 +825,11 @@ export class ServerFnCompiler {
 
     // Filter to valid candidates
     const validCandidates = resolvedCandidates.filter(({ kind }) =>
-      this.validLookupKinds.has(kind as LookupKind),
-    ) as Array<{ path: babel.NodePath<t.CallExpression>; kind: LookupKind }>
+      this.validLookupKinds.has(kind as Exclude<LookupKind, 'ClientOnlyJSX'>),
+    ) as Array<{
+      path: babel.NodePath<t.CallExpression>
+      kind: Exclude<LookupKind, 'ClientOnlyJSX'>
+    }>
 
     if (validCandidates.length === 0 && jsxCandidatePaths.length === 0) {
       return null
@@ -742,7 +838,7 @@ export class ServerFnCompiler {
     // Process valid candidates to collect method chains
     const pathsToRewrite: Array<{
       path: babel.NodePath<t.CallExpression>
-      kind: LookupKind
+      kind: Exclude<LookupKind, 'ClientOnlyJSX'>
       methodChain: MethodChainPaths
     }> = []
 
@@ -802,52 +898,46 @@ export class ServerFnCompiler {
 
     const refIdents = findReferencedIdentifiers(ast)
 
-    for (const { path, kind, methodChain } of pathsToRewrite) {
-      const candidate: RewriteCandidate = { path, methodChain }
-      if (kind === 'ServerFn') {
-        handleCreateServerFn(candidate, {
-          env: this.options.env,
-          code,
-          directive: this.options.directive,
-          isProviderFile,
-        })
-      } else if (kind === 'Middleware') {
-        handleCreateMiddleware(candidate, {
-          env: this.options.env,
-        })
-      } else if (kind === 'IsomorphicFn') {
-        handleCreateIsomorphicFn(candidate, {
-          env: this.options.env,
-        })
+    const context: CompilationContext = {
+      ast,
+      id,
+      code,
+      env: this.options.env,
+      envName: this.options.envName,
+      root: this.options.root,
+      framework: this.options.framework,
+      providerEnvName: this.options.providerEnvName,
+
+      generateFunctionId: (opts) => this.generateFunctionId(opts),
+      getKnownServerFns: () => this.options.getKnownServerFns?.() ?? {},
+      onServerFnsById: this.options.onServerFnsById,
+    }
+
+    // Group candidates by kind for batch processing
+    const candidatesByKind = new Map<
+      Exclude<LookupKind, 'ClientOnlyJSX'>,
+      Array<RewriteCandidate>
+    >()
+
+    for (const { path: candidatePath, kind, methodChain } of pathsToRewrite) {
+      const candidate: RewriteCandidate = { path: candidatePath, methodChain }
+      const existing = candidatesByKind.get(kind)
+      if (existing) {
+        existing.push(candidate)
       } else {
-        // ServerOnlyFn or ClientOnlyFn
-        handleEnvOnlyFn(candidate, {
-          env: this.options.env,
-          kind,
-        })
+        candidatesByKind.set(kind, [candidate])
       }
     }
 
+    // Process each kind using its registered handler
+    for (const [kind, candidates] of candidatesByKind) {
+      const handler = KindHandlers[kind]
+      handler(candidates, context, kind)
+    }
+
     // Handle JSX candidates (e.g., <ClientOnly>)
-    // Note: We only reach here on the server (ClientOnlyJSX is only in LookupKindsPerEnv.server)
-    // Verify import source using knownRootImports (same as function call resolution)
+    // Validation was already done during traversal - just call the handler
     for (const jsxPath of jsxCandidatePaths) {
-      const openingElement = jsxPath.node.openingElement
-      const nameNode = openingElement.name
-      if (!t.isJSXIdentifier(nameNode)) continue
-
-      const componentName = nameNode.name
-      const binding = moduleInfo.bindings.get(componentName)
-      if (!binding || binding.type !== 'import') continue
-
-      // Verify the import source is a known TanStack router package
-      const knownExports = this.knownRootImports.get(binding.source)
-      if (!knownExports) continue
-
-      // Verify the imported name resolves to ClientOnlyJSX kind
-      const kind = knownExports.get(binding.importedName)
-      if (kind !== 'ClientOnlyJSX') continue
-
       handleClientOnlyJSX(jsxPath, { env: 'server' })
     }
 
@@ -917,9 +1007,9 @@ export class ServerFnCompiler {
     visitedModules.add(moduleInfo.id)
 
     // First check direct exports
-    const directExport = moduleInfo.exports.get(exportName)
-    if (directExport) {
-      const binding = moduleInfo.bindings.get(directExport.name)
+    const localBindingName = moduleInfo.exports.get(exportName)
+    if (localBindingName) {
+      const binding = moduleInfo.bindings.get(localBindingName)
       if (binding) {
         const result = { moduleInfo, binding }
         // Cache the result (build mode only)
@@ -1033,6 +1123,28 @@ export class ServerFnCompiler {
     return resolvedKind
   }
 
+  /**
+   * Checks if an identifier is a direct import from a known factory library.
+   * Returns true for imports like `import { createServerOnlyFn } from '@tanstack/react-start'`
+   * or renamed imports like `import { createServerOnlyFn as myFn } from '...'`.
+   * Returns false for local variables that hold the result of calling a factory.
+   */
+  private async isKnownFactoryImport(
+    identName: string,
+    fileId: string,
+  ): Promise<boolean> {
+    const info = await this.getModuleInfo(fileId)
+    const binding = info.bindings.get(identName)
+
+    if (!binding || binding.type !== 'import') {
+      return false
+    }
+
+    // Check if it's imported from a known library
+    const knownExports = this.knownRootImports.get(binding.source)
+    return knownExports !== undefined && knownExports.has(binding.importedName)
+  }
+
   private async resolveExprKind(
     expr: t.Expression | null,
     fileId: string,
@@ -1065,9 +1177,28 @@ export class ServerFnCompiler {
       if (calleeKind === 'Root' || calleeKind === 'Builder') {
         return 'Builder'
       }
-      // Use direct Set.has() instead of iterating
-      if (this.validLookupKinds.has(calleeKind as LookupKind)) {
-        return calleeKind
+      // For method chain patterns (callee is MemberExpression like .server() or .client()),
+      // return the resolved kind if valid
+      if (t.isMemberExpression(expr.callee)) {
+        if (this.validLookupKinds.has(calleeKind as LookupKind)) {
+          return calleeKind
+        }
+      }
+      // For direct calls (callee is Identifier), only return the kind if the
+      // callee is a direct import from a known library (e.g., createServerOnlyFn).
+      // Calling a local variable that holds an already-built function (e.g., myServerOnlyFn())
+      // should NOT be treated as a transformation candidate.
+      if (t.isIdentifier(expr.callee)) {
+        const isFactoryImport = await this.isKnownFactoryImport(
+          expr.callee.name,
+          fileId,
+        )
+        if (
+          isFactoryImport &&
+          this.validLookupKinds.has(calleeKind as LookupKind)
+        ) {
+          return calleeKind
+        }
       }
     } else if (t.isMemberExpression(expr) && t.isIdentifier(expr.property)) {
       result = await this.resolveCalleeKind(expr.object, fileId, visited)
@@ -1142,11 +1273,12 @@ export class ServerFnCompiler {
           )
           if (targetModuleId) {
             const targetModule = await this.getModuleInfo(targetModuleId)
-            const exportEntry = targetModule.exports.get(callee.property.name)
-            if (exportEntry) {
-              const exportedBinding = targetModule.bindings.get(
-                exportEntry.name,
-              )
+            const localBindingName = targetModule.exports.get(
+              callee.property.name,
+            )
+            if (localBindingName) {
+              const exportedBinding =
+                targetModule.bindings.get(localBindingName)
               if (exportedBinding) {
                 return await this.resolveBindingKind(
                   exportedBinding,

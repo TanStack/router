@@ -1,4 +1,5 @@
-const noImpl = () => {};
+import { createIsomorphicFn as isomorphicFn } from '@tanstack/react-start';
+const noImpl = isomorphicFn();
 const serverOnlyFn = () => 'server';
 const clientOnlyFn = () => {};
 const serverThenClientFn = () => 'server';

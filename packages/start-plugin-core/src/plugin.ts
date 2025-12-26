@@ -1,6 +1,4 @@
 import { joinPaths } from '@tanstack/router-core'
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
-import { TanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
 import { join } from 'pathe'
@@ -18,7 +16,7 @@ import {
   getServerOutputDirectory,
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
-import { createServerFnPlugin } from './create-server-fn-plugin/plugin'
+import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import type {
   GetConfigFn,
   ResolvedStartConfig,
@@ -58,8 +56,6 @@ export function TanStackStartVitePluginCore(
     viteAppBase: '',
     serverFnProviderEnv,
   }
-
-  const directive = corePluginOpts.serverFn?.directive ?? 'use server'
 
   let startConfig: TanStackStartOutputConfig | null
   const getConfig: GetConfigFn = () => {
@@ -356,55 +352,19 @@ export function TanStackStartVitePluginCore(
         },
       },
     },
-    tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
-    // N.B. Server function plugins must run BEFORE startCompilerPlugin because:
-    // 1. createServerFnPlugin transforms createServerFn().handler() to inject 'use server' directive
-    // 2. TanStackServerFnPlugin extracts 'use server' functions and registers them in the manifest
-    // 3. startCompilerPlugin handles createClientOnlyFn/createServerOnlyFn and runs DCE
-    // If startCompilerPlugin runs first, DCE may remove server function code before it can be registered
-    // (e.g., when a server function is only referenced inside a createClientOnlyFn callback)
-    createServerFnPlugin({
+    // Server function plugin handles:
+    // 1. Identifying createServerFn().handler() calls
+    // 2. Extracting server functions to separate modules
+    // 3. Replacing call sites with RPC stubs
+    // 4. Generating the server function manifest
+    // Also handles createIsomorphicFn, createServerOnlyFn, createClientOnlyFn, createMiddleware
+    startCompilerPlugin({
       framework: corePluginOpts.framework,
-      directive,
       environments,
-    }),
-    TanStackServerFnPlugin({
-      // This is the ID that will be available to look up and import
-      // our server function manifest and resolve its module
-      manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
-      directive,
       generateFunctionId: startPluginOpts?.serverFns?.generateFunctionId,
-      callers: [
-        {
-          envConsumer: 'client',
-          getRuntimeCode: () =>
-            `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/client-rpc'`,
-          replacer: (d) => `createClientRpc('${d.functionId}')`,
-          envName: VITE_ENVIRONMENT_NAMES.client,
-        },
-        {
-          envConsumer: 'server' as const,
-          getRuntimeCode: () =>
-            `import { createSsrRpc } from '@tanstack/${corePluginOpts.framework}-start/ssr-rpc'`,
-          envName: VITE_ENVIRONMENT_NAMES.server,
-          replacer: (d: any) =>
-            // When the function is client-referenced, it's in the manifest - use manifest lookup
-            // When SSR is NOT the provider, always use manifest lookup (no import() for different env)
-            // Otherwise, use the importer for functions only referenced on the server when SSR is the provider
-            d.isClientReferenced || !ssrIsProvider
-              ? `createSsrRpc('${d.functionId}')`
-              : `createSsrRpc('${d.functionId}', () => import(${JSON.stringify(d.extractedFilename)}).then(m => m['${d.functionName}']))`,
-        },
-      ],
-      provider: {
-        getRuntimeCode: () =>
-          `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-rpc'`,
-        replacer: (d) => `createServerRpc('${d.functionId}', ${d.fn})`,
-        envName: serverFnProviderEnv,
-      },
+      providerEnvName: serverFnProviderEnv,
     }),
-    // Note: startCompilerPlugin functionality (createIsomorphicFn, createServerOnlyFn, createClientOnlyFn)
-    // is now merged into createServerFnPlugin above
+    tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
     loadEnvPlugin(),
     startManifestPlugin({
       getClientBundle: () => getBundle(VITE_ENVIRONMENT_NAMES.client),

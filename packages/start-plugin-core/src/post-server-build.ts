@@ -59,7 +59,7 @@ export async function postServerBuild({
   }
 
   // Run the sitemap build process
-  if (startConfig.pages.length) {
+  if (startConfig.sitemap?.enabled) {
     buildSitemap({
       startConfig,
       publicDir:

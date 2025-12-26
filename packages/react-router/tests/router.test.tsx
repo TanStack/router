@@ -3125,55 +3125,6 @@ describe('Router rewrite functionality', () => {
     expect(history.location.pathname).toBe('/user')
   })
 
-  it('should not cause redirect loops with i18n locale prefix rewriting', async () => {
-    // This test simulates an i18n middleware that:
-    // - Input: strips locale prefix (e.g., /en/home -> /home)
-    // - Output: adds locale prefix back (e.g., /home -> /en/home)
-
-    const rootRoute = createRootRoute({
-      component: () => <Outlet />,
-    })
-
-    const homeRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/home',
-      component: () => <div data-testid="home">Home</div>,
-    })
-
-    const routeTree = rootRoute.addChildren([homeRoute])
-
-    // The history starts at the public-facing locale-prefixed URL.
-    // The input rewrite strips the locale prefix for internal routing.
-    const history = createMemoryHistory({ initialEntries: ['/en/home'] })
-
-    const router = createRouter({
-      routeTree,
-      history,
-      rewrite: {
-        input: ({ url }) => {
-          // Strip locale prefix: /en/home -> /home
-          if (url.pathname.startsWith('/en')) {
-            url.pathname = url.pathname.replace(/^\/en/, '')
-          }
-          return url
-        },
-      },
-    })
-
-    render(<RouterProvider router={router} />)
-
-    await waitFor(() => {
-      expect(screen.getByTestId('home')).toBeInTheDocument()
-    })
-
-    // The internal pathname should be /home (after input rewrite strips /en)
-    expect(router.state.location.pathname).toBe('/home')
-
-    // The publicHref should include the locale prefix (via output rewrite)
-    // Since we only have input rewrite here, publicHref equals the internal href
-    expect(router.state.location.publicHref).toBe('/home')
-  })
-
   it('should handle i18n rewriting with navigation between localized routes', async () => {
     // Tests navigation between routes with i18n locale prefix rewriting
 

@@ -97,14 +97,6 @@ await publish({
       packageDir: 'packages/router-vite-plugin',
     },
     {
-      name: '@tanstack/directive-functions-plugin',
-      packageDir: 'packages/directive-functions-plugin',
-    },
-    {
-      name: '@tanstack/server-functions-plugin',
-      packageDir: 'packages/server-functions-plugin',
-    },
-    {
       name: '@tanstack/eslint-plugin-router',
       packageDir: 'packages/eslint-plugin-router',
     },

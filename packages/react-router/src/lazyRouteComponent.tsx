@@ -79,7 +79,12 @@ export function lazyRouteComponent<
     }
 
     if (!comp) {
-      throw load()
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (React.use) {
+        React.use(load())
+      } else {
+        throw load()
+      }
     }
 
     return React.createElement(comp, props)

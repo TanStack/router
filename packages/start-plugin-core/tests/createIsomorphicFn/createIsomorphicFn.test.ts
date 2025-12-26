@@ -1,16 +1,28 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
-import { afterAll, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 
-import { ServerFnCompiler } from '../../src/create-server-fn-plugin/compiler'
+import { StartCompiler } from '../../src/start-compiler-plugin/compiler'
+
+// Default test options for StartCompiler
+function getDefaultTestOptions(env: 'client' | 'server') {
+  const envName = env === 'client' ? 'client' : 'ssr'
+  return {
+    envName,
+    root: '/test',
+    framework: 'react' as const,
+    providerEnvName: 'ssr',
+  }
+}
 
 async function compile(opts: {
   env: 'client' | 'server'
   code: string
   id: string
 }) {
-  const compiler = new ServerFnCompiler({
+  const compiler = new StartCompiler({
     ...opts,
+    ...getDefaultTestOptions(opts.env),
     loadModule: async () => {
       // do nothing in test
     },
@@ -25,12 +37,10 @@ async function compile(opts: {
     resolveId: async (id) => {
       return id
     },
-    directive: 'use server',
   })
   const result = await compiler.compile({
     code: opts.code,
     id: opts.id,
-    isProviderFile: false,
   })
   return result
 }
@@ -40,22 +50,6 @@ async function getFilenames() {
 }
 
 describe('createIsomorphicFn compiles correctly', async () => {
-  const noImplWarning =
-    'createIsomorphicFn called without a client or server implementation!'
-
-  const originalConsoleWarn = console.warn
-  const consoleSpy = vi.spyOn(console, 'warn').mockImplementation((...args) => {
-    // we want to avoid sending this warning to the console, we know about it
-    if (args[0] === noImplWarning) {
-      return
-    }
-    originalConsoleWarn(...args)
-  })
-
-  afterAll(() => {
-    consoleSpy.mockRestore()
-  })
-
   const filenames = await getFilenames()
 
   describe.each(filenames)('should handle "%s"', async (filename) => {
@@ -100,21 +94,5 @@ describe('createIsomorphicFn compiles correctly', async () => {
         id: 'no-fn.ts',
       }),
     ).rejects.toThrowError()
-  })
-
-  test('should warn to console if no implementations provided', async () => {
-    await compile({
-      env: 'client',
-      code: `
-      import { createIsomorphicFn } from '@tanstack/react-start'
-      const noImpl = createIsomorphicFn()`,
-      id: 'no-fn.ts',
-    })
-    expect(consoleSpy).toHaveBeenCalledWith(
-      noImplWarning,
-      'This will result in a no-op function.',
-      'Variable name:',
-      'noImpl',
-    )
   })
 })

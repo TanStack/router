@@ -1,18 +1,11 @@
+import { createClientRpc } from '@tanstack/react-start/client-rpc';
 import { createFileRoute } from '@tanstack/react-router';
 import { createIsomorphicFn, createServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
 const getEnv = createIsomorphicFn().server(() => 'server').client(() => 'client');
-const getServerEnv = createServerFn().handler((opts, signal) => {
-  "use server";
-
-  return getServerEnv.__executeServer(opts, signal);
-});
+const getServerEnv = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImdldFNlcnZlckVudl9jcmVhdGVTZXJ2ZXJGbl9oYW5kbGVyIn0"));
 const getEcho = createIsomorphicFn().server((input: string) => 'server received ' + input).client(input => 'client received ' + input);
-const getServerEcho = createServerFn().handler((opts, signal) => {
-  "use server";
-
-  return getServerEcho.__executeServer(opts, signal);
-});
+const getServerEcho = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImdldFNlcnZlckVjaG9fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));
 export const Route = createFileRoute('/isomorphic-fns')({
   component: RouteComponent,
   loader() {

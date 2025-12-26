@@ -1,3 +1,5 @@
+import { createIsomorphicFn } from '@tanstack/react-start';
+
 // Isomorphic function factory - returns a createIsomorphicFn with .client() and .server() calls
 export function createPlatformFn(platform: string) {
   return () => `server-${platform}`;
@@ -18,7 +20,7 @@ export const createClientImplFn = (name: string) => {
 
 // Factory returning no-implementation isomorphic fn
 export function createNoImplFn() {
-  return () => {};
+  return createIsomorphicFn();
 }
 
 // Top-level isomorphic fn for comparison

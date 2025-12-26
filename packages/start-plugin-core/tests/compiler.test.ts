@@ -1,12 +1,23 @@
 import { describe, expect, test } from 'vitest'
 import {
+  StartCompiler,
   detectKindsInCode,
-  ServerFnCompiler,
-} from '../src/create-server-fn-plugin/compiler'
+} from '../src/start-compiler-plugin/compiler'
 import type {
   LookupConfig,
   LookupKind,
-} from '../src/create-server-fn-plugin/compiler'
+} from '../src/start-compiler-plugin/compiler'
+
+// Default test options for StartCompiler
+function getDefaultTestOptions(env: 'client' | 'server') {
+  const envName = env === 'client' ? 'client' : 'ssr'
+  return {
+    envName,
+    root: '/test',
+    framework: 'react' as const,
+    providerEnvName: 'ssr',
+  }
+}
 
 // Helper to create a compiler with all kinds enabled
 function createFullCompiler(env: 'client' | 'server') {
@@ -49,9 +60,9 @@ function createFullCompiler(env: 'client' | 'server') {
     },
   ]
 
-  return new ServerFnCompiler({
+  return new StartCompiler({
     env,
-    directive: 'use server',
+    ...getDefaultTestOptions(env),
     lookupKinds,
     lookupConfigurations,
     loadModule: async () => {},
@@ -190,6 +201,37 @@ describe('detectKindsInCode', () => {
       expect(detectKindsInCode(code4, 'client')).toEqual(new Set(['ServerFn']))
     })
 
+    test('handles whitespace between . and handler (reformatted code)', () => {
+      // When Vite/Babel reformats code, the dot can end up on a previous line
+      const code1 = `fn.\nhandler(() => {})`
+      const code2 = `fn.\n  handler(() => {})`
+      const code3 = `fn.  \n  handler(() => {})`
+
+      expect(detectKindsInCode(code1, 'client')).toEqual(new Set(['ServerFn']))
+      expect(detectKindsInCode(code2, 'client')).toEqual(new Set(['ServerFn']))
+      expect(detectKindsInCode(code3, 'client')).toEqual(new Set(['ServerFn']))
+    })
+
+    test('detects createServerFn() call directly', () => {
+      // The pattern should match createServerFn() calls, not just .handler()
+      const code = `
+        import { createServerFn } from '@tanstack/react-start'
+        const fn = createServerFn()
+      `
+      expect(detectKindsInCode(code, 'client')).toEqual(new Set(['ServerFn']))
+    })
+
+    test('does not false positive on similar function names', () => {
+      // Only exact createServerFn( should match, not variations
+      const code = `
+        const fn = createServerFnExample()
+        const fn2 = createServerFnLike()
+        const fn3 = mycreateServerFn()
+        const fn4 = _createServerFn()
+      `
+      expect(detectKindsInCode(code, 'client')).toEqual(new Set())
+    })
+
     test('does not false positive on similar names', () => {
       const code = `
         const myCreateServerFn = () => {}
@@ -214,11 +256,11 @@ describe('compiler handles multiple files with different kinds', () => {
         export const fn = createServerFn().handler(() => 'hello')
       `,
       id: 'file1.ts',
-      isProviderFile: false,
+
       detectedKinds: new Set(['ServerFn']),
     })
     expect(result1).not.toBeNull()
-    expect(result1!.code).toContain('__executeServer') // Client should have RPC stub
+    expect(result1!.code).toContain('createClientRpc') // Client should have RPC stub
     expect(result1!.code).not.toContain('createMiddleware')
     expect(result1!.code).not.toContain('createIsomorphicFn')
 
@@ -232,7 +274,7 @@ describe('compiler handles multiple files with different kinds', () => {
         })
       `,
       id: 'file2.ts',
-      isProviderFile: false,
+
       detectedKinds: new Set(['Middleware']),
     })
     expect(result2).not.toBeNull()
@@ -249,7 +291,7 @@ describe('compiler handles multiple files with different kinds', () => {
           .server(() => 'server-value')
       `,
       id: 'file3.ts',
-      isProviderFile: false,
+
       detectedKinds: new Set(['IsomorphicFn']),
     })
     expect(result3).not.toBeNull()
@@ -264,7 +306,7 @@ describe('compiler handles multiple files with different kinds', () => {
         export const fn = createServerOnlyFn(() => 'server only value')
       `,
       id: 'file4.ts',
-      isProviderFile: false,
+
       detectedKinds: new Set(['ServerOnlyFn']),
     })
     expect(result4).not.toBeNull()
@@ -280,11 +322,11 @@ describe('compiler handles multiple files with different kinds', () => {
         export const isoFn = createIsomorphicFn().client(() => 'client-iso')
       `,
       id: 'file5.ts',
-      isProviderFile: false,
+
       detectedKinds: new Set(['ServerFn', 'IsomorphicFn']),
     })
     expect(result5).not.toBeNull()
-    expect(result5!.code).toContain('__executeServer') // ServerFn RPC
+    expect(result5!.code).toContain('createClientRpc') // ServerFn RPC
     expect(result5!.code).toContain('client-iso') // IsomorphicFn client impl
   })
 
@@ -298,7 +340,7 @@ describe('compiler handles multiple files with different kinds', () => {
         export const fn1 = createIsomorphicFn().client(() => 'first')
       `,
       id: 'first.ts',
-      isProviderFile: false,
+
       detectedKinds: new Set(['IsomorphicFn']),
     })
     expect(result1!.code).toContain('first')
@@ -310,7 +352,7 @@ describe('compiler handles multiple files with different kinds', () => {
         export const fn2 = createIsomorphicFn().client(() => 'second')
       `,
       id: 'second.ts',
-      isProviderFile: false,
+
       detectedKinds: new Set(['IsomorphicFn']),
     })
     expect(result2!.code).toContain('second')
@@ -327,7 +369,7 @@ describe('compiler handles multiple files with different kinds', () => {
         export const mw = createMiddleware().server(({ next }) => next())
       `,
       id: 'middleware.ts',
-      isProviderFile: false,
+
       // Intentionally including Middleware even though it's server env
       detectedKinds: new Set(['Middleware']),
     })
@@ -348,7 +390,7 @@ describe('edge cases for detectedKinds', () => {
         // .handler( in string
       `,
       id: 'empty.ts',
-      isProviderFile: false,
+
       detectedKinds: new Set(), // Empty set
     })
 
@@ -365,7 +407,7 @@ describe('edge cases for detectedKinds', () => {
         export const fn = createIsomorphicFn().client(() => 'works')
       `,
       id: 'no-detected.ts',
-      isProviderFile: false,
+
       // No detectedKinds provided
     })
 
@@ -383,7 +425,7 @@ describe('edge cases for detectedKinds', () => {
         export const fn = createIsomorphicFn().server(() => 'server-impl')
       `,
       id: 'filtered.ts',
-      isProviderFile: false,
+
       detectedKinds: new Set(['Middleware', 'IsomorphicFn']), // Middleware should be filtered
     })
 
@@ -393,9 +435,9 @@ describe('edge cases for detectedKinds', () => {
 })
 
 test('ingestModule handles empty code gracefully', () => {
-  const compiler = new ServerFnCompiler({
+  const compiler = new StartCompiler({
     env: 'client',
-    directive: 'use server',
+    ...getDefaultTestOptions('client'),
     lookupKinds: new Set(['ServerFn']),
     lookupConfigurations: [],
     loadModule: async () => {},
