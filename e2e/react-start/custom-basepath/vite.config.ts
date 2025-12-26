@@ -10,8 +10,9 @@ const prerenderConfiguration = {
   filter: (page: { path: string }) => {
     return ![
       '/i-do-not-exist',
-      '/this-route-does-not-exist',
+      '/posts',
       '/redirect',
+      '/this-route-does-not-exist',
       '/users',
     ].some((p) => page.path.includes(p))
   },
