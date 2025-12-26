@@ -839,16 +839,18 @@ const loadRouteMatch = async (
           try {
             await runLoader(inner, matchId, index, route)
             commitContext()
+          } catch (err) {
+            if (isRedirect(err)) {
+              await inner.router.navigate(err.options)
+            }
+          } finally {
+            // Always resolve promises to allow Promise.allSettled to complete
             // Match might be undefined if navigation changed while async loader was running
             const match = inner.router.getMatch(matchId)
             if (match) {
               match._nonReactive.loaderPromise?.resolve()
               match._nonReactive.loadPromise?.resolve()
               match._nonReactive.loaderPromise = undefined
-            }
-          } catch (err) {
-            if (isRedirect(err)) {
-              await inner.router.navigate(err.options)
             }
           }
         })()
@@ -857,16 +859,18 @@ const loadRouteMatch = async (
       }
     }
   }
-  const match = inner.router.getMatch(matchId)!
-  if (!loaderIsRunningAsync) {
-    match._nonReactive.loaderPromise?.resolve()
-    match._nonReactive.loadPromise?.resolve()
-  }
+  const match = inner.router.getMatch(matchId)
+  if (match) {
+    if (!loaderIsRunningAsync) {
+      match._nonReactive.loaderPromise?.resolve()
+      match._nonReactive.loadPromise?.resolve()
+    }
 
-  clearTimeout(match._nonReactive.pendingTimeout)
-  match._nonReactive.pendingTimeout = undefined
-  if (!loaderIsRunningAsync) match._nonReactive.loaderPromise = undefined
-  match._nonReactive.dehydrated = undefined
+    clearTimeout(match._nonReactive.pendingTimeout)
+    match._nonReactive.pendingTimeout = undefined
+    if (!loaderIsRunningAsync) match._nonReactive.loaderPromise = undefined
+    match._nonReactive.dehydrated = undefined
+  }
 
   // Commit context now that loader has completed (or was skipped)
   // For async loaders, this was already done in the async callback
