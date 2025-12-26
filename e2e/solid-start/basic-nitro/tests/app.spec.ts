@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
@@ -11,7 +11,11 @@ test('returns correct runtime info', async ({ page }) => {
 
 test('prerender with Nitro', async ({ page }) => {
   const distDir = join(process.cwd(), '.output', 'public')
-  expect(existsSync(join(distDir, 'static', 'index.html'))).toBe(true)
+  const staticHtmlPath = join(distDir, 'static', 'index.html')
+  expect(existsSync(staticHtmlPath)).toBe(true)
+  const staticHtml = readFileSync(staticHtmlPath, 'utf8')
+  const normalizedHtml = staticHtml.replace(/<!--.*?-->/g, '')
+  expect(normalizedHtml).toContain('This page was prerendered with Nitro')
 
   await page.goto('/static')
   await expect(page.getByTestId('static-heading')).toHaveText('Static Page')

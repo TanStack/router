@@ -13,8 +13,8 @@
     "preview:v2": "vite preview -c vite.config.v2.ts",
     "preview:v3": "vite preview -c vite.config.v3.ts",
     "test:e2e:shared": "rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e:v2": "NITRO_VARIANT=v2 pnpm run test:e2e:shared",
-    "test:e2e:v3": "NITRO_VARIANT=v3 pnpm run test:e2e:shared",
+    "test:e2e:v2": "rm -rf .output dist .nitro && NITRO_VARIANT=v2 pnpm run test:e2e:shared",
+    "test:e2e:v3": "rm -rf .output dist .nitro && NITRO_VARIANT=v3 pnpm run test:e2e:shared",
     "test:e2e": "pnpm run test:e2e:v2 && pnpm run test:e2e:v3"
   },
   "dependencies": {
