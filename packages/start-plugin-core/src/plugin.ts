@@ -15,7 +15,7 @@ import {
   getClientOutputDirectory,
   getServerOutputDirectory,
 } from './output-directory'
-import { postServerBuild } from './post-server-build'
+import { postServerBuild, postServerBuildForNitro } from './post-server-build'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import type {
   GetConfigFn,
@@ -36,6 +36,37 @@ function isFullUrl(str: string): boolean {
   } catch {
     return false
   }
+}
+
+type NitroPluginKind = 'v3' | 'v2' | null
+
+function getNitroPluginKind(
+  plugins: ReadonlyArray<PluginOption>,
+): NitroPluginKind {
+  let hasV3 = false
+  let hasV2 = false
+  const queue = [...plugins]
+
+  while (queue.length) {
+    const plugin = queue.shift()
+    if (!plugin) continue
+    if (Array.isArray(plugin)) {
+      queue.push(...plugin)
+      continue
+    }
+    if (typeof plugin === 'object' && 'name' in plugin) {
+      const name = typeof plugin.name === 'string' ? plugin.name : ''
+      if (name.startsWith('nitro:')) {
+        hasV3 = true
+      } else if (name === 'tanstack-nitro-v2-vite-plugin') {
+        hasV2 = true
+      }
+    }
+  }
+
+  if (hasV3) return 'v3'
+  if (hasV2) return 'v2'
+  return null
 }
 
 export function TanStackStartVitePluginCore(
@@ -357,18 +388,39 @@ export function TanStackStartVitePluginCore(
       buildApp: {
         order: 'post',
         async handler(builder) {
-          const { startConfig } = getConfig()
-          const hasNitro = builder.config.plugins.some(
-            (p): p is { name: string } =>
-              typeof p === 'object' &&
-              'name' in p &&
-              typeof p.name === 'string' &&
-              p.name.startsWith('nitro:'),
+          const { startConfig, resolvedStartConfig } = getConfig()
+          const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
+          const nitroKindFromPlugins = getNitroPluginKind(
+            builder.config.plugins,
           )
+          const nitroKind =
+            nitroKindFromPlugins ??
+            (serverEnv?.config.build?.write === false ? 'v2' : null)
+
+          if (nitroKind === 'v3') {
+            return
+          }
+
+          if (nitroKind === 'v2') {
+            await postServerBuildForNitro({
+              startConfig,
+              mode: 'nitro-server',
+              nitro: {
+                options: {
+                  rootDir: builder.config.root ?? resolvedStartConfig.root,
+                  output: {
+                    dir: '.output',
+                    publicDir: '.output/public',
+                  },
+                },
+              },
+            })
+            return
+          }
+
           await postServerBuild({
             builder,
             startConfig,
-            skipPrerender: hasNitro,
           })
         },
       },
@@ -385,20 +437,10 @@ export function TanStackStartVitePluginCore(
               return
             }
 
-            // Write nitro.json before calling vite.preview() since Nitro's
-            // configurePreviewServer hook requires it to exist. The 'compiled'
-            // hook runs before Nitro writes the build info, so we need to
-            // write a minimal version ourselves.
-            const { writeNitroBuildInfo, postServerBuildForNitro } =
-              await import('./post-server-build')
-            await writeNitroBuildInfo({
-              outputDir: nitro.options.output.dir,
-              preset: nitro.options.preset,
-            })
-
             await postServerBuildForNitro({
               startConfig,
-              outputDir: nitro.options.output.publicDir,
+              nitro,
+              mode: 'vite-preview',
               configFile: resolvedStartConfig.viteConfigFile,
             })
           })
