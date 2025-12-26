@@ -1,4 +1,4 @@
-import { isNotFound, isPlainObject } from '@tanstack/router-core'
+import { isNotFound, isPlainObject, isRedirect } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import {
   TSS_FORMDATA_CONTEXT,
@@ -163,9 +163,8 @@ export const handleServerAction = async ({
         return result
       }
 
-      // This was not called by the serverFnFetcher, so it's likely a no-JS POST request)
-      if (isCtxResult) {
-        const unwrapped = unwrapResultOrError(res)
+      const unwrapped = unwrapResultOrError(res)
+      if (!isCtxResult) {
         if (unwrapped instanceof Response) {
           res = unwrapped
         } else {
@@ -181,9 +180,12 @@ export const handleServerAction = async ({
         return res
       }
 
-      if (res instanceof Response) {
-        res.headers.set(X_TSS_RAW_RESPONSE, 'true')
-        return res
+      if (unwrapped instanceof Response) {
+        if (isRedirect(unwrapped)) {
+          return unwrapped
+        }
+        unwrapped.headers.set(X_TSS_RAW_RESPONSE, 'true')
+        return unwrapped
       }
 
       // TODO: RSCs Where are we getting this package?
