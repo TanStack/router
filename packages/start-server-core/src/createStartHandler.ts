@@ -244,6 +244,7 @@ export function createStartHandler<TRegister = Register>(
                   request,
                   executeRouter,
                   context,
+                  executedRequestMiddlewares,
                 })
 
                 return response
@@ -352,6 +353,7 @@ async function handleServerRoutes({
   request,
   executeRouter,
   context,
+  executedRequestMiddlewares,
 }: {
   getRouter: () => Awaitable<AnyRouter>
   request: Request
@@ -361,6 +363,7 @@ async function handleServerRoutes({
     serverContext: any
   }) => Promise<Response>
   context: any
+  executedRequestMiddlewares: Set<any>
 }) {
   const router = await getRouter()
   let url = new URL(request.url)
@@ -376,9 +379,13 @@ async function handleServerRoutes({
 
   // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
 
+  // Collect middleware from matched routes, filtering out those already executed
+  // in the request phase (issue #5239 - prevent duplicate execution)
   const middlewares = flattenMiddlewares(
     matchedRoutes.flatMap((r) => r.options.server?.middleware).filter(Boolean),
-  ).map((d) => d.options.server)
+  )
+    .filter((middleware) => !executedRequestMiddlewares.has(middleware))
+    .map((d) => d.options.server)
 
   const server = foundRoute?.options.server
   if (server && isExactMatch) {
