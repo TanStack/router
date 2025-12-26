@@ -859,18 +859,16 @@ const loadRouteMatch = async (
       }
     }
   }
-  const match = inner.router.getMatch(matchId)
-  if (match) {
-    if (!loaderIsRunningAsync) {
-      match._nonReactive.loaderPromise?.resolve()
-      match._nonReactive.loadPromise?.resolve()
-    }
-
-    clearTimeout(match._nonReactive.pendingTimeout)
-    match._nonReactive.pendingTimeout = undefined
-    if (!loaderIsRunningAsync) match._nonReactive.loaderPromise = undefined
-    match._nonReactive.dehydrated = undefined
+  const match = inner.router.getMatch(matchId)!
+  if (!loaderIsRunningAsync) {
+    match._nonReactive.loaderPromise?.resolve()
+    match._nonReactive.loadPromise?.resolve()
   }
+
+  clearTimeout(match._nonReactive.pendingTimeout)
+  match._nonReactive.pendingTimeout = undefined
+  if (!loaderIsRunningAsync) match._nonReactive.loaderPromise = undefined
+  match._nonReactive.dehydrated = undefined
 
   // Commit context now that loader has completed (or was skipped)
   // For async loaders, this was already done in the async callback
