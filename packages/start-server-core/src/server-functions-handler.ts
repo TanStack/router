@@ -5,6 +5,7 @@ import {
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
   getDefaultSerovalPlugins,
+  safeObjectMerge,
 } from '@tanstack/start-client-core'
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
@@ -19,6 +20,9 @@ const FORM_DATA_CONTENT_TYPES = [
   'multipart/form-data',
   'application/x-www-form-urlencoded',
 ]
+
+// Maximum payload size for GET requests (1MB)
+const MAX_PAYLOAD_SIZE = 1_000_000
 
 export const handleServerAction = async ({
   request,
@@ -86,9 +90,17 @@ export const handleServerAction = async ({
                 typeof deserializedContext === 'object' &&
                 deserializedContext
               ) {
-                params.context = { ...context, ...deserializedContext }
+                params.context = safeObjectMerge(
+                  context,
+                  deserializedContext as Record<string, unknown>,
+                )
               }
-            } catch {}
+            } catch (e) {
+              // Log warning for debugging but don't expose to client
+              if (process.env.NODE_ENV === 'development') {
+                console.warn('Failed to parse FormData context:', e)
+              }
+            }
           }
 
           return await action(params, signal)
@@ -98,11 +110,15 @@ export const handleServerAction = async ({
         if (methodLower === 'get') {
           // Get payload directly from searchParams
           const payloadParam = url.searchParams.get('payload')
+          // Reject oversized payloads to prevent DoS
+          if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
+            throw new Error('Payload too large')
+          }
           // If there's a payload, we should try to parse it
           const payload: any = payloadParam
             ? parsePayload(JSON.parse(payloadParam))
             : {}
-          payload.context = { ...context, ...payload.context }
+          payload.context = safeObjectMerge(context, payload.context)
           // Send it through!
           return await action(payload, signal)
         }
@@ -117,7 +133,7 @@ export const handleServerAction = async ({
         }
 
         const payload = jsonPayload ? parsePayload(jsonPayload) : {}
-        payload.context = { ...payload.context, ...context }
+        payload.context = safeObjectMerge(payload.context, context)
         return await action(payload, signal)
       })()
 

@@ -4,6 +4,7 @@ import { isRedirect, parseRedirect } from '@tanstack/router-core'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
+import { createNullProtoObject, safeObjectMerge } from './safeObjectMerge'
 import type {
   AnyValidator,
   Constrain,
@@ -118,7 +119,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             data: opts?.data as any,
             headers: opts?.headers,
             signal: opts?.signal,
-            context: {},
+            context: createNullProtoObject(),
           })
 
           const redirect = parseRedirect(result.error)
@@ -138,13 +139,14 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
               startContext.contextAfterGlobalMiddlewares
+            // Use safeObjectMerge for opts.context which comes from client
             const ctx = {
               ...extractedFn,
               ...opts,
-              context: {
-                ...serverContextAfterGlobalMiddlewares,
-                ...opts.context,
-              },
+              context: safeObjectMerge(
+                serverContextAfterGlobalMiddlewares,
+                opts.context,
+              ),
               signal,
               request: startContext.request,
             }
@@ -239,17 +241,12 @@ export async function executeMiddleware(
           userCtx: ServerFnMiddlewareResult | undefined = {} as any,
         ) => {
           // Return the next middleware
+          // Use safeObjectMerge for context objects to prevent prototype pollution
           const nextCtx = {
             ...ctx,
             ...userCtx,
-            context: {
-              ...ctx.context,
-              ...userCtx.context,
-            },
-            sendContext: {
-              ...ctx.sendContext,
-              ...(userCtx.sendContext ?? {}),
-            },
+            context: safeObjectMerge(ctx.context, userCtx.context),
+            sendContext: safeObjectMerge(ctx.sendContext, userCtx.sendContext),
             headers: mergeHeaders(ctx.headers, userCtx.headers),
             result:
               userCtx.result !== undefined
@@ -315,7 +312,7 @@ export async function executeMiddleware(
     ...opts,
     headers: opts.headers || {},
     sendContext: opts.sendContext || {},
-    context: opts.context || {},
+    context: opts.context || createNullProtoObject(),
   })
 }
 
@@ -652,18 +649,21 @@ export interface ServerFnTypes<
   allOutput: IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>
 }
 
-export function flattenMiddlewares(
-  middlewares: Array<AnyFunctionMiddleware | AnyRequestMiddleware>,
-): Array<AnyFunctionMiddleware | AnyRequestMiddleware> {
-  const seen = new Set<AnyFunctionMiddleware | AnyRequestMiddleware>()
-  const flattened: Array<AnyFunctionMiddleware | AnyRequestMiddleware> = []
+export function flattenMiddlewares<
+  T extends AnyFunctionMiddleware | AnyRequestMiddleware,
+>(middlewares: Array<T>, maxDepth: number = 100): Array<T> {
+  const seen = new Set<T>()
+  const flattened: Array<T> = []
 
-  const recurse = (
-    middleware: Array<AnyFunctionMiddleware | AnyRequestMiddleware>,
-  ) => {
+  const recurse = (middleware: Array<T>, depth: number) => {
+    if (depth > maxDepth) {
+      throw new Error(
+        `Middleware nesting depth exceeded maximum of ${maxDepth}. Check for circular references.`,
+      )
+    }
     middleware.forEach((m) => {
       if (m.options.middleware) {
-        recurse(m.options.middleware)
+        recurse(m.options.middleware as Array<T>, depth + 1)
       }
 
       if (!seen.has(m)) {
@@ -673,7 +673,7 @@ export function flattenMiddlewares(
     })
   }
 
-  recurse(middlewares)
+  recurse(middlewares, 0)
 
   return flattened
 }
