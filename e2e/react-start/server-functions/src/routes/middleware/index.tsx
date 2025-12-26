@@ -50,6 +50,14 @@ function RouteComponent() {
             build
           </Route.Link>
         </li>
+        <li>
+          <Route.Link
+            to="./function-metadata"
+            data-testid="function-metadata-link"
+          >
+            Function middleware receives functionId and filename
+          </Route.Link>
+        </li>
       </ul>
     </div>
   )

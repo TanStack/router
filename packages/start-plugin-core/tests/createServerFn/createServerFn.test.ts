@@ -25,7 +25,8 @@ async function compile(opts: {
   code: string
   isProviderFile: boolean
 }) {
-  let id = 'test.ts'
+  // Use an absolute path inside the test root to ensure consistent filename output
+  let id = '/test/src/test.ts'
 
   if (opts.isProviderFile) {
     id += `?${TSS_SERVERFN_SPLIT_PARAM}`
@@ -121,14 +122,14 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResultClient!.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from '@tanstack/react-start/client-rpc';
       import { createServerFn } from '@tanstack/react-start';
-      const myServerFn = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15U2VydmVyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));"
+      const myServerFn = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJteVNlcnZlckZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));"
     `)
 
     // Server caller: no second argument (implementation from extracted chunk)
     expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
       import { createServerFn } from '@tanstack/react-start';
-      const myServerFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15U2VydmVyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", () => import("test.ts?tss-serverfn-split").then(m => m["myServerFn_createServerFn_handler"])));"
+      const myServerFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJteVNlcnZlckZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["myServerFn_createServerFn_handler"])));"
     `)
 
     // Server provider: has second argument (this is the implementation file)
@@ -138,7 +139,11 @@ describe('createServerFn compiles correctly', async () => {
       const myFunc = () => {
         return 'hello from the server';
       };
-      const myServerFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15U2VydmVyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => myServerFn.__executeServer(opts, signal));
+      const myServerFn_createServerFn_handler = createServerRpc({
+        id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJteVNlcnZlckZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+        name: "myServerFn",
+        filename: "src/test.ts"
+      }, (opts, signal) => myServerFn.__executeServer(opts, signal));
       const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler, myFunc);
       export { myServerFn_createServerFn_handler };"
     `)
@@ -166,8 +171,8 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResult!.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from '@tanstack/react-start/client-rpc';
       import { createServerFn } from '@tanstack/react-start';
-      export const exportedFn = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));
-      const nonExportedFn = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im5vbkV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));"
+      export const exportedFn = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJleHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));
+      const nonExportedFn = createServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJub25FeHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));"
     `)
 
     // Server caller (route file) - no second argument
@@ -180,8 +185,8 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
       import { createServerFn } from '@tanstack/react-start';
-      export const exportedFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", () => import("test.ts?tss-serverfn-split").then(m => m["exportedFn_createServerFn_handler"])));
-      const nonExportedFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im5vbkV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", () => import("test.ts?tss-serverfn-split").then(m => m["nonExportedFn_createServerFn_handler"])));"
+      export const exportedFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJleHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["exportedFn_createServerFn_handler"])));
+      const nonExportedFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJub25FeHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["nonExportedFn_createServerFn_handler"])));"
     `)
 
     // Server provider (extracted file) - has second argument
@@ -195,12 +200,20 @@ describe('createServerFn compiles correctly', async () => {
       "import { createServerRpc } from '@tanstack/react-start/server-rpc';
       import { createServerFn } from '@tanstack/react-start';
       const exportedVar = 'exported';
-      const exportedFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => exportedFn.__executeServer(opts, signal));
+      const exportedFn_createServerFn_handler = createServerRpc({
+        id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJleHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+        name: "exportedFn",
+        filename: "src/test.ts"
+      }, (opts, signal) => exportedFn.__executeServer(opts, signal));
       const exportedFn = createServerFn().handler(exportedFn_createServerFn_handler, async () => {
         return exportedVar;
       });
       const nonExportedVar = 'non-exported';
-      const nonExportedFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im5vbkV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => nonExportedFn.__executeServer(opts, signal));
+      const nonExportedFn_createServerFn_handler = createServerRpc({
+        id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJub25FeHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+        name: "nonExportedFn",
+        filename: "src/test.ts"
+      }, (opts, signal) => nonExportedFn.__executeServer(opts, signal));
       const nonExportedFn = createServerFn().handler(nonExportedFn_createServerFn_handler, async () => {
         return nonExportedVar;
       });
@@ -234,7 +247,7 @@ describe('createServerFn compiles correctly', async () => {
 
     await compiler.compile({
       code,
-      id: 'test.ts',
+      id: '/test/src/test.ts',
     })
 
     // resolveId should only be called once during init() for the library itself
@@ -285,7 +298,7 @@ describe('createServerFn compiles correctly', async () => {
 
     await compiler.compile({
       code: factoryCode,
-      id: 'test.ts',
+      id: '/test/src/test.ts',
     })
 
     // resolveId should be called exactly twice:
@@ -300,6 +313,10 @@ describe('createServerFn compiles correctly', async () => {
       '@tanstack/react-start',
       undefined,
     )
-    expect(resolveIdMock).toHaveBeenNthCalledWith(2, './factory', 'test.ts')
+    expect(resolveIdMock).toHaveBeenNthCalledWith(
+      2,
+      './factory',
+      '/test/src/test.ts',
+    )
   })
 })

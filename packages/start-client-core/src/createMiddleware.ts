@@ -1,5 +1,6 @@
 import type { StartInstanceOptions } from './createStart'
 import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
+import type { ClientFnMeta, ServerFnMeta } from './constants'
 import type {
   AnyContext,
   Assign,
@@ -511,8 +512,7 @@ export interface FunctionMiddlewareServerFnOptions<
     TServerSendContext
   >
   method: Method
-  filename: string
-  functionId: string
+  serverFnMeta: ServerFnMeta
   signal: AbortSignal
 }
 
@@ -608,9 +608,8 @@ export interface FunctionMiddlewareClientFnOptions<
   sendContext: Expand<AssignAllServerSendContext<TMiddlewares>>
   method: Method
   signal: AbortSignal
+  serverFnMeta: ClientFnMeta
   next: FunctionMiddlewareClientNextFn<TRegister, TMiddlewares>
-  filename: string
-  functionId: string
 }
 
 export type FunctionMiddlewareClientFnResult<

@@ -24,11 +24,19 @@ const adminMiddleware = createMiddleware({
 });
 const createAuthServerFn = createServerFn().middleware([authMiddleware]);
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware]);
-const myAuthedFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15QXV0aGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => myAuthedFn.__executeServer(opts, signal));
+const myAuthedFn_createServerFn_handler = createServerRpc({
+  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJteUF1dGhlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+  name: "myAuthedFn",
+  filename: "src/test.ts"
+}, (opts, signal) => myAuthedFn.__executeServer(opts, signal));
 const myAuthedFn = createAuthServerFn().handler(myAuthedFn_createServerFn_handler, () => {
   return 'myAuthedFn';
 });
-const deleteUserFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImRlbGV0ZVVzZXJGbl9jcmVhdGVTZXJ2ZXJGbl9oYW5kbGVyIn0", (opts, signal) => deleteUserFn.__executeServer(opts, signal));
+const deleteUserFn_createServerFn_handler = createServerRpc({
+  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJkZWxldGVVc2VyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9",
+  name: "deleteUserFn",
+  filename: "src/test.ts"
+}, (opts, signal) => deleteUserFn.__executeServer(opts, signal));
 const deleteUserFn = createAdminServerFn().handler(deleteUserFn_createServerFn_handler, () => {
   return 'deleteUserFn';
 });

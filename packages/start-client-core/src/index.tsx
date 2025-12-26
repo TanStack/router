@@ -84,6 +84,7 @@ export {
   X_TSS_SERIALIZED,
   X_TSS_RAW_RESPONSE,
 } from './constants'
+export type { ClientFnMeta, ServerFnMeta } from './constants'
 
 export type * from './serverRoute'
 

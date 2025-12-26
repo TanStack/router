@@ -664,3 +664,86 @@ test('middleware factories with server-only imports are stripped from client bui
     'x-factory-two',
   )
 })
+
+test('function middleware receives serverFnMeta in options', async ({
+  page,
+}) => {
+  // This test verifies that:
+  // 1. Client middleware receives serverFnMeta with just { id } - NOT name or filename
+  // 2. Server middleware receives serverFnMeta with full { id, name, filename }
+  // 3. Client middleware can send the function metadata to the server via sendContext
+  await page.goto('/middleware/function-metadata')
+
+  await page.waitForLoadState('networkidle')
+
+  // Verify SSR data - server captured metadata should have full properties
+  const loaderFunctionId = await page
+    .getByTestId('loader-function-id')
+    .textContent()
+  const loaderFunctionName = await page
+    .getByTestId('loader-function-name')
+    .textContent()
+  const loaderFilename = await page.getByTestId('loader-filename').textContent()
+  const loaderClientCapturedId = await page
+    .getByTestId('loader-client-captured-id')
+    .textContent()
+  const loaderClientCapturedName = await page
+    .getByTestId('loader-client-captured-name')
+    .textContent()
+  const loaderClientCapturedFilename = await page
+    .getByTestId('loader-client-captured-filename')
+    .textContent()
+
+  // id should be a non-empty string
+  expect(loaderFunctionId).toBeTruthy()
+  expect(loaderFunctionId!.length).toBeGreaterThan(0)
+
+  // name should be the variable name of the server function
+  expect(loaderFunctionName).toBeTruthy()
+  expect(loaderFunctionName).toBe('getMetadataFn')
+
+  // filename should be the exact route file path
+  expect(loaderFilename).toBe('src/routes/middleware/function-metadata.tsx')
+
+  // Client captured ID should match the server function id
+  // (sent via client middleware's sendContext)
+  expect(loaderClientCapturedId).toBe(loaderFunctionId)
+
+  // Client middleware should NOT have access to name or filename
+  // These should be "undefined" (the fallback value we display in the UI)
+  expect(loaderClientCapturedName).toBe('undefined')
+  expect(loaderClientCapturedFilename).toBe('undefined')
+
+  // Now test client-side call
+  await page.getByTestId('call-server-fn-btn').click()
+  await page.waitForSelector('[data-testid="client-data"]')
+
+  const clientFunctionId = await page
+    .getByTestId('client-function-id')
+    .textContent()
+  const clientFunctionName = await page
+    .getByTestId('client-function-name')
+    .textContent()
+  const clientFilename = await page.getByTestId('client-filename').textContent()
+  const clientClientCapturedId = await page
+    .getByTestId('client-client-captured-id')
+    .textContent()
+  const clientClientCapturedName = await page
+    .getByTestId('client-client-captured-name')
+    .textContent()
+  const clientClientCapturedFilename = await page
+    .getByTestId('client-client-captured-filename')
+    .textContent()
+
+  // Client call should get the same server metadata
+  expect(clientFunctionId).toBe(loaderFunctionId)
+  expect(clientFunctionName).toBe(loaderFunctionName)
+  expect(clientFilename).toBe(loaderFilename)
+
+  // Client captured ID from client middleware should also match
+  expect(clientClientCapturedId).toBe(loaderFunctionId)
+
+  // Client middleware should NOT have access to name or filename
+  expect(clientClientCapturedName).toBe('undefined')
+  expect(clientClientCapturedFilename).toBe('undefined')
+})
