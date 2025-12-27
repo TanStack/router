@@ -48,13 +48,10 @@ type BinaryMatch = {
 
 function SSRTextHintTest() {
   const loaderData = Route.useLoaderData()
-  const [pureTextMatch, setPureTextMatch] = createSignal<TextMatch | null>(
-    null,
-  )
+  const [pureTextMatch, setPureTextMatch] = createSignal<TextMatch | null>(null)
   const [mixedMatch, setMixedMatch] = createSignal<BinaryMatch | null>(null)
-  const [pureBinaryMatch, setPureBinaryMatch] = createSignal<
-    BinaryMatch | null
-  >(null)
+  const [pureBinaryMatch, setPureBinaryMatch] =
+    createSignal<BinaryMatch | null>(null)
   const [isLoading, setIsLoading] = createSignal(true)
   const [error, setError] = createSignal<string | null>(null)
 
@@ -85,7 +82,10 @@ function SSRTextHintTest() {
           actualLength: mixedBytes.length,
           expectedLength: MIXED_EXPECTED.length,
         })
-        const pureBinaryComp = compareBytes(pureBinaryBytes, PURE_BINARY_EXPECTED)
+        const pureBinaryComp = compareBytes(
+          pureBinaryBytes,
+          PURE_BINARY_EXPECTED,
+        )
         setPureBinaryMatch({
           ...pureBinaryComp,
           actualLength: pureBinaryBytes.length,
@@ -112,7 +112,7 @@ function SSRTextHintTest() {
           Message: {loaderData().message}
         </div>
         <div data-testid="ssr-text-hint-pure-text">
-          Pure Text: 
+          Pure Text:
           {error()
             ? `Error: ${error()}`
             : isLoading()
@@ -120,15 +120,19 @@ function SSRTextHintTest() {
               : pureTextMatch()?.asText}
         </div>
         <div data-testid="ssr-text-hint-pure-match">
-          Pure Text Bytes Match: 
-          {isLoading() ? 'Loading...' : pureTextMatch()?.match ? 'true' : 'false'}
+          Pure Text Bytes Match:
+          {isLoading()
+            ? 'Loading...'
+            : pureTextMatch()?.match
+              ? 'true'
+              : 'false'}
         </div>
         <div data-testid="ssr-text-hint-mixed-match">
-          Mixed Content Bytes Match: 
+          Mixed Content Bytes Match:
           {isLoading() ? 'Loading...' : mixedMatch()?.match ? 'true' : 'false'}
         </div>
         <div data-testid="ssr-text-hint-pure-binary-match">
-          Pure Binary Bytes Match: 
+          Pure Binary Bytes Match:
           {isLoading()
             ? 'Loading...'
             : pureBinaryMatch()?.match

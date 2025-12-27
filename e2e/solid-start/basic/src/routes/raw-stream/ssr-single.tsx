@@ -45,10 +45,11 @@ function SSRSingleTest() {
           Message: {loaderData().message}
         </div>
         <div data-testid="ssr-single-timestamp">
-          Has Timestamp: {typeof loaderData().timestamp === 'number' ? 'true' : 'false'}
+          Has Timestamp:{' '}
+          {typeof loaderData().timestamp === 'number' ? 'true' : 'false'}
         </div>
         <div data-testid="ssr-single-stream">
-          Stream Content: 
+          Stream Content:
           {error()
             ? `Error: ${error()}`
             : isConsuming()
@@ -56,7 +57,7 @@ function SSRSingleTest() {
               : streamContent()}
         </div>
         <div data-testid="ssr-single-rawdata-type">
-          RawData Type: {typeof loaderData().rawData} | hasStream: 
+          RawData Type: {typeof loaderData().rawData} | hasStream:
           {loaderData().rawData && 'getReader' in loaderData().rawData
             ? 'true'
             : 'false'}

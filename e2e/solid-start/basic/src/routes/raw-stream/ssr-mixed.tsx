@@ -45,7 +45,7 @@ function SSRMixedTest() {
           Immediate: {loaderData().immediate}
         </div>
         <div data-testid="ssr-mixed-deferred">
-          Deferred: 
+          Deferred:
           <Suspense fallback={<span>Loading deferred...</span>}>
             <Await
               promise={loaderData().deferred}
@@ -54,7 +54,7 @@ function SSRMixedTest() {
           </Suspense>
         </div>
         <div data-testid="ssr-mixed-stream">
-          Stream Content: 
+          Stream Content:
           {error()
             ? `Error: ${error()}`
             : isConsuming()

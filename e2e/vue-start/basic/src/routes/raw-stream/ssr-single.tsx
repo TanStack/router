@@ -49,10 +49,11 @@ const SSRSingleTest = defineComponent({
             Message: {loaderData.value.message}
           </div>
           <div data-testid="ssr-single-timestamp">
-            Has Timestamp: {typeof loaderData.value.timestamp === 'number' ? 'true' : 'false'}
+            Has Timestamp:{' '}
+            {typeof loaderData.value.timestamp === 'number' ? 'true' : 'false'}
           </div>
           <div data-testid="ssr-single-stream">
-            Stream Content: 
+            Stream Content:
             {error.value
               ? `Error: ${error.value}`
               : isConsuming.value
@@ -60,9 +61,8 @@ const SSRSingleTest = defineComponent({
                 : streamContent.value}
           </div>
           <div data-testid="ssr-single-rawdata-type">
-            RawData Type: {typeof loaderData.value.rawData} | hasStream: 
-            {loaderData.value.rawData &&
-            'getReader' in loaderData.value.rawData
+            RawData Type: {typeof loaderData.value.rawData} | hasStream:
+            {loaderData.value.rawData && 'getReader' in loaderData.value.rawData
               ? 'true'
               : 'false'}
           </div>

@@ -43,7 +43,10 @@ function RawStreamIndex() {
           >
             SSR Mixed
           </Link>
-          <span> - Test RawStream mixed with deferred data from loader (SSR)</span>
+          <span>
+            {' '}
+            - Test RawStream mixed with deferred data from loader (SSR)
+          </span>
         </li>
         <li>
           <Link

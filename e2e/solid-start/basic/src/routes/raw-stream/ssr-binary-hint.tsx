@@ -85,7 +85,7 @@ function SSRBinaryHintTest() {
           Message: {loaderData().message}
         </div>
         <div data-testid="ssr-binary-hint-text">
-          Text Data: 
+          Text Data:
           {error()
             ? `Error: ${error()}`
             : isLoading()
@@ -93,16 +93,12 @@ function SSRBinaryHintTest() {
               : textMatch()?.asText}
         </div>
         <div data-testid="ssr-binary-hint-text-match">
-          Text Bytes Match: 
+          Text Bytes Match:
           {isLoading() ? 'Loading...' : textMatch()?.match ? 'true' : 'false'}
         </div>
         <div data-testid="ssr-binary-hint-binary-match">
-          Binary Bytes Match: 
-          {isLoading()
-            ? 'Loading...'
-            : binaryMatch()?.match
-              ? 'true'
-              : 'false'}
+          Binary Bytes Match:
+          {isLoading() ? 'Loading...' : binaryMatch()?.match ? 'true' : 'false'}
         </div>
         <pre data-testid="ssr-binary-hint-result">
           {JSON.stringify({

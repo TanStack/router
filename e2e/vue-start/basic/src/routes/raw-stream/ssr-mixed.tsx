@@ -49,7 +49,7 @@ const SSRMixedTest = defineComponent({
             Immediate: {loaderData.value.immediate}
           </div>
           <div data-testid="ssr-mixed-deferred">
-            Deferred: 
+            Deferred:
             <Suspense>
               {{
                 default: () => (
@@ -63,7 +63,7 @@ const SSRMixedTest = defineComponent({
             </Suspense>
           </div>
           <div data-testid="ssr-mixed-stream">
-            Stream Content: 
+            Stream Content:
             {error.value
               ? `Error: ${error.value}`
               : isConsuming.value

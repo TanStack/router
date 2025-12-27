@@ -84,9 +84,7 @@ function ClientCallTests() {
         >
           {loading().test1 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test1-result">
-          {JSON.stringify(results().test1)}
-        </pre>
+        <pre data-testid="test1-result">{JSON.stringify(results().test1)}</pre>
       </div>
 
       {/* Test 2: Multiple Raw Streams */}
@@ -106,9 +104,7 @@ function ClientCallTests() {
         >
           {loading().test2 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test2-result">
-          {JSON.stringify(results().test2)}
-        </pre>
+        <pre data-testid="test2-result">{JSON.stringify(results().test2)}</pre>
       </div>
 
       {/* Test 3: JSON Ends First */}
@@ -128,9 +124,7 @@ function ClientCallTests() {
         >
           {loading().test3 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test3-result">
-          {JSON.stringify(results().test3)}
-        </pre>
+        <pre data-testid="test3-result">{JSON.stringify(results().test3)}</pre>
       </div>
 
       {/* Test 4: Raw Ends First */}
@@ -150,9 +144,7 @@ function ClientCallTests() {
         >
           {loading().test4 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test4-result">
-          {JSON.stringify(results().test4)}
-        </pre>
+        <pre data-testid="test4-result">{JSON.stringify(results().test4)}</pre>
       </div>
 
       {/* Test 5: Large Binary */}
@@ -176,9 +168,7 @@ function ClientCallTests() {
         >
           {loading().test5 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test5-result">
-          {JSON.stringify(results().test5)}
-        </pre>
+        <pre data-testid="test5-result">{JSON.stringify(results().test5)}</pre>
       </div>
 
       {/* Test 6: Mixed Streaming */}
@@ -198,9 +188,7 @@ function ClientCallTests() {
         >
           {loading().test6 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test6-result">
-          {JSON.stringify(results().test6)}
-        </pre>
+        <pre data-testid="test6-result">{JSON.stringify(results().test6)}</pre>
       </div>
 
       {/* Hint Tests Section */}
@@ -232,9 +220,7 @@ function ClientCallTests() {
         >
           {loading().test7 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test7-result">
-          {JSON.stringify(results().test7)}
-        </pre>
+        <pre data-testid="test7-result">{JSON.stringify(results().test7)}</pre>
       </div>
 
       {/* Test 8: Text Hint with Pure Binary */}
@@ -257,9 +243,7 @@ function ClientCallTests() {
         >
           {loading().test8 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test8-result">
-          {JSON.stringify(results().test8)}
-        </pre>
+        <pre data-testid="test8-result">{JSON.stringify(results().test8)}</pre>
       </div>
 
       {/* Test 9: Text Hint with Mixed Content */}
@@ -282,9 +266,7 @@ function ClientCallTests() {
         >
           {loading().test9 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test9-result">
-          {JSON.stringify(results().test9)}
-        </pre>
+        <pre data-testid="test9-result">{JSON.stringify(results().test9)}</pre>
       </div>
 
       {/* Test 10: Binary Hint with Text Data */}

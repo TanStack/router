@@ -80,8 +80,8 @@ const SSRBinaryHintTest = defineComponent({
       <div class="space-y-4">
         <h2>SSR Binary Hint Test</h2>
         <p class="text-gray-600">
-          This route tests RawStream with hint: 'binary' from loader. Binary hint
-          always uses base64 encoding (default behavior).
+          This route tests RawStream with hint: 'binary' from loader. Binary
+          hint always uses base64 encoding (default behavior).
         </p>
 
         <div class="border p-4 rounded">
@@ -89,7 +89,7 @@ const SSRBinaryHintTest = defineComponent({
             Message: {loaderData.value.message}
           </div>
           <div data-testid="ssr-binary-hint-text">
-            Text Data: 
+            Text Data:
             {error.value
               ? `Error: ${error.value}`
               : isLoading.value
@@ -97,7 +97,7 @@ const SSRBinaryHintTest = defineComponent({
                 : textMatch.value?.asText}
           </div>
           <div data-testid="ssr-binary-hint-text-match">
-            Text Bytes Match: 
+            Text Bytes Match:
             {isLoading.value
               ? 'Loading...'
               : textMatch.value?.match
@@ -105,7 +105,7 @@ const SSRBinaryHintTest = defineComponent({
                 : 'false'}
           </div>
           <div data-testid="ssr-binary-hint-binary-match">
-            Binary Bytes Match: 
+            Binary Bytes Match:
             {isLoading.value
               ? 'Loading...'
               : binaryMatch.value?.match

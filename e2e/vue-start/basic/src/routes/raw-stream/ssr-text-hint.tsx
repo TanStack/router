@@ -111,7 +111,8 @@ const SSRTextHintTest = defineComponent({
         <h2>SSR Text Hint Test</h2>
         <p class="text-gray-600">
           This route tests RawStream with hint: 'text' from loader. Text hint
-          optimizes for UTF-8 content but falls back to base64 for invalid UTF-8.
+          optimizes for UTF-8 content but falls back to base64 for invalid
+          UTF-8.
         </p>
 
         <div class="border p-4 rounded">
@@ -119,7 +120,7 @@ const SSRTextHintTest = defineComponent({
             Message: {loaderData.value.message}
           </div>
           <div data-testid="ssr-text-hint-pure-text">
-            Pure Text: 
+            Pure Text:
             {error.value
               ? `Error: ${error.value}`
               : isLoading.value
@@ -127,7 +128,7 @@ const SSRTextHintTest = defineComponent({
                 : pureTextMatch.value?.asText}
           </div>
           <div data-testid="ssr-text-hint-pure-match">
-            Pure Text Bytes Match: 
+            Pure Text Bytes Match:
             {isLoading.value
               ? 'Loading...'
               : pureTextMatch.value?.match
@@ -135,7 +136,7 @@ const SSRTextHintTest = defineComponent({
                 : 'false'}
           </div>
           <div data-testid="ssr-text-hint-mixed-match">
-            Mixed Content Bytes Match: 
+            Mixed Content Bytes Match:
             {isLoading.value
               ? 'Loading...'
               : mixedMatch.value?.match
@@ -143,7 +144,7 @@ const SSRTextHintTest = defineComponent({
                 : 'false'}
           </div>
           <div data-testid="ssr-text-hint-pure-binary-match">
-            Pure Binary Bytes Match: 
+            Pure Binary Bytes Match:
             {isLoading.value
               ? 'Loading...'
               : pureBinaryMatch.value?.match

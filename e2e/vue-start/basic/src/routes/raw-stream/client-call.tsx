@@ -358,8 +358,14 @@ const ClientCallTests = defineComponent({
                   collectBytes(result.streamA),
                   collectBytes(result.streamB),
                 ])
-                const comparisonA = compareBytes(bytesA, TEST12_STREAM_A_EXPECTED)
-                const comparisonB = compareBytes(bytesB, TEST12_STREAM_B_EXPECTED)
+                const comparisonA = compareBytes(
+                  bytesA,
+                  TEST12_STREAM_A_EXPECTED,
+                )
+                const comparisonB = compareBytes(
+                  bytesB,
+                  TEST12_STREAM_B_EXPECTED,
+                )
                 return {
                   message: result.message,
                   streamA: comparisonA,
@@ -414,9 +420,18 @@ const ClientCallTests = defineComponent({
                   collectBytes(result.slow),
                   collectBytes(result.burst),
                 ])
-                const comparisonA = compareBytes(bytesA, TEST14_STREAM_A_EXPECTED)
-                const comparisonB = compareBytes(bytesB, TEST14_STREAM_B_EXPECTED)
-                const comparisonC = compareBytes(bytesC, TEST14_STREAM_C_EXPECTED)
+                const comparisonA = compareBytes(
+                  bytesA,
+                  TEST14_STREAM_A_EXPECTED,
+                )
+                const comparisonB = compareBytes(
+                  bytesB,
+                  TEST14_STREAM_B_EXPECTED,
+                )
+                const comparisonC = compareBytes(
+                  bytesC,
+                  TEST14_STREAM_C_EXPECTED,
+                )
                 return {
                   message: result.message,
                   fast: comparisonA,

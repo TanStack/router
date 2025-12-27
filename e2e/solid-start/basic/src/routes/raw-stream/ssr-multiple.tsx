@@ -48,7 +48,7 @@ function SSRMultipleTest() {
           Message: {loaderData().message}
         </div>
         <div data-testid="ssr-multiple-first">
-          First Stream: 
+          First Stream:
           {error()
             ? `Error: ${error()}`
             : isConsuming()
@@ -56,7 +56,7 @@ function SSRMultipleTest() {
               : firstContent()}
         </div>
         <div data-testid="ssr-multiple-second">
-          Second Stream: 
+          Second Stream:
           {error()
             ? `Error: ${error()}`
             : isConsuming()
