@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-start-client",
-  "version": "1.144.0",
+  "version": "1.145.0",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
