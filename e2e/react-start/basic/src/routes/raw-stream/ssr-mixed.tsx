@@ -1,14 +1,14 @@
-import { createFileRoute, Await } from '@tanstack/react-router'
+import { Await, createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { RawStream } from '@tanstack/react-start'
 import {
-  encode,
   createDelayedStream,
   createStreamConsumer,
+  encode,
 } from '../../raw-stream-fns'
 
 export const Route = createFileRoute('/raw-stream/ssr-mixed')({
-  loader: async () => {
+  loader: () => {
     const rawStream = createDelayedStream(
       [encode('mixed-ssr-1'), encode('mixed-ssr-2')],
       50,
@@ -32,13 +32,24 @@ function SSRMixedTest() {
   const { immediate, deferred, rawData } = Route.useLoaderData()
   const [streamContent, setStreamContent] = React.useState<string>('')
   const [isConsuming, setIsConsuming] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const consumedRef = React.useRef(false)
 
   React.useEffect(() => {
+    // Guard against double consumption - streams can only be read once
+    if (consumedRef.current) return
+    consumedRef.current = true
+
     const consumeStream = createStreamConsumer()
-    consumeStream(rawData).then((content) => {
-      setStreamContent(content)
-      setIsConsuming(false)
-    })
+    consumeStream(rawData)
+      .then((content) => {
+        setStreamContent(content)
+        setIsConsuming(false)
+      })
+      .catch((err) => {
+        setError(String(err))
+        setIsConsuming(false)
+      })
   }, [rawData])
 
   return (
@@ -58,10 +69,15 @@ function SSRMixedTest() {
           </React.Suspense>
         </div>
         <div data-testid="ssr-mixed-stream">
-          Stream Content: {isConsuming ? 'Loading...' : streamContent}
+          Stream Content:{' '}
+          {error
+            ? `Error: ${error}`
+            : isConsuming
+              ? 'Loading...'
+              : streamContent}
         </div>
         <pre data-testid="ssr-mixed-result">
-          {JSON.stringify({ immediate, streamContent, isConsuming })}
+          {JSON.stringify({ immediate, streamContent, isConsuming, error })}
         </pre>
       </div>
     </div>
