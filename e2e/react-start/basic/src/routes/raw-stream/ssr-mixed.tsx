@@ -33,18 +33,40 @@ function SSRMixedTest() {
   const [streamContent, setStreamContent] = React.useState<string>('')
   const [isConsuming, setIsConsuming] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = React.useState<string>('')
 
   React.useEffect(() => {
-    const consumeStream = createStreamConsumer()
-    consumeStream(rawData)
-      .then((content) => {
-        setStreamContent(content)
-        setIsConsuming(false)
-      })
-      .catch((err) => {
-        setError(String(err))
-        setIsConsuming(false)
-      })
+    // Debug: log rawData type
+    const rawDataType = typeof rawData
+    const hasGetReader =
+      rawData && typeof rawData === 'object' && 'getReader' in rawData
+    const isRawStream =
+      rawData &&
+      typeof rawData === 'object' &&
+      'stream' in rawData &&
+      'hint' in rawData
+    setDebugInfo(
+      `type=${rawDataType}, hasGetReader=${hasGetReader}, isRawStream=${isRawStream}`,
+    )
+
+    // When deferred data is present, the stream reconstruction during hydration
+    // may not be immediately ready. This delay allows the hydration to complete
+    // before we start consuming the stream. This is especially important in
+    // slower CI environments where hydration takes longer.
+    const timeoutId = setTimeout(() => {
+      const consumeStream = createStreamConsumer()
+      consumeStream(rawData)
+        .then((content) => {
+          setStreamContent(content)
+          setIsConsuming(false)
+        })
+        .catch((err) => {
+          setError(String(err))
+          setIsConsuming(false)
+        })
+    }, 100)
+
+    return () => clearTimeout(timeoutId)
   }, [rawData])
 
   return (
@@ -71,8 +93,15 @@ function SSRMixedTest() {
               ? 'Loading...'
               : streamContent}
         </div>
+        <div data-testid="ssr-mixed-debug">Debug: {debugInfo}</div>
         <pre data-testid="ssr-mixed-result">
-          {JSON.stringify({ immediate, streamContent, isConsuming, error })}
+          {JSON.stringify({
+            immediate,
+            streamContent,
+            isConsuming,
+            error,
+            debugInfo,
+          })}
         </pre>
       </div>
     </div>
