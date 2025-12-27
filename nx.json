@@ -43,6 +43,32 @@
     },
     "test:e2e": {
       "cache": true,
+      "dependsOn": [
+        "^build",
+        "test:e2e:spaMode",
+        "test:e2e:ssrMode",
+        "test:e2e:prerender",
+        "test:e2e:preview"
+      ],
+      "inputs": ["default", "^production"]
+    },
+    "test:e2e:spaMode": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"]
+    },
+    "test:e2e:ssrMode": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"]
+    },
+    "test:e2e:prerender": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"]
+    },
+    "test:e2e:preview": {
+      "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
     },
