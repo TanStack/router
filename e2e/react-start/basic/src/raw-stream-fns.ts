@@ -37,8 +37,8 @@ function encode(text: string): Uint8Array {
   return new TextEncoder().encode(text)
 }
 
-// Export encode for use in components
-export { encode }
+// Export helpers for use in components and SSR routes
+export { encode, createDelayedStream, concatBytes }
 
 // Expected data for hint tests - defined here for both server and client verification
 // Test 7: Text hint with pure text

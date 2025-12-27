@@ -1,27 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { RawStream } from '@tanstack/react-start'
-
-// Helper to encode text to Uint8Array
-function encode(text: string): Uint8Array {
-  return new TextEncoder().encode(text)
-}
-
-// Helper to create a delayed stream
-function createDelayedStream(
-  chunks: Array<Uint8Array>,
-  delayMs: number,
-): ReadableStream<Uint8Array> {
-  return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      for (const chunk of chunks) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs))
-        controller.enqueue(chunk)
-      }
-      controller.close()
-    },
-  })
-}
+import {
+  encode,
+  createDelayedStream,
+  concatBytes,
+  collectBytes,
+  compareBytes,
+} from '../../raw-stream-fns'
 
 // Expected data - defined at module level for client-side verification
 const PURE_TEXT_CHUNKS = [
@@ -29,87 +15,21 @@ const PURE_TEXT_CHUNKS = [
   encode('World '),
   encode('from SSR!'),
 ]
-const PURE_TEXT_EXPECTED = new Uint8Array(
-  PURE_TEXT_CHUNKS.reduce((acc, c) => acc + c.length, 0),
-)
-let offset = 0
-for (const chunk of PURE_TEXT_CHUNKS) {
-  PURE_TEXT_EXPECTED.set(chunk, offset)
-  offset += chunk.length
-}
+const PURE_TEXT_EXPECTED = concatBytes(PURE_TEXT_CHUNKS)
 
 const MIXED_CHUNKS = [
   encode('Valid text'),
   new Uint8Array([0xff, 0xfe, 0x80, 0x90]), // Invalid UTF-8
   encode(' more text'),
 ]
-const MIXED_EXPECTED = new Uint8Array(
-  MIXED_CHUNKS.reduce((acc, c) => acc + c.length, 0),
-)
-offset = 0
-for (const chunk of MIXED_CHUNKS) {
-  MIXED_EXPECTED.set(chunk, offset)
-  offset += chunk.length
-}
+const MIXED_EXPECTED = concatBytes(MIXED_CHUNKS)
 
 // Pure binary data (invalid UTF-8) - must use base64 fallback
 const PURE_BINARY_CHUNKS = [
   new Uint8Array([0xff, 0xfe, 0x00, 0x01, 0x80, 0x90]),
   new Uint8Array([0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0]),
 ]
-const PURE_BINARY_EXPECTED = new Uint8Array(
-  PURE_BINARY_CHUNKS.reduce((acc, c) => acc + c.length, 0),
-)
-offset = 0
-for (const chunk of PURE_BINARY_CHUNKS) {
-  PURE_BINARY_EXPECTED.set(chunk, offset)
-  offset += chunk.length
-}
-
-// Helper to collect stream bytes
-async function collectBytes(
-  stream: ReadableStream<Uint8Array> | RawStream,
-): Promise<Uint8Array> {
-  const actualStream =
-    stream instanceof RawStream
-      ? stream.stream
-      : (stream as ReadableStream<Uint8Array>)
-  const reader = actualStream.getReader()
-  const chunks: Array<Uint8Array> = []
-  let totalLength = 0
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    chunks.push(value)
-    totalLength += value.length
-  }
-
-  const result = new Uint8Array(totalLength)
-  let pos = 0
-  for (const chunk of chunks) {
-    result.set(chunk, pos)
-    pos += chunk.length
-  }
-  return result
-}
-
-// Compare two Uint8Arrays byte-by-byte
-function compareBytes(
-  a: Uint8Array,
-  b: Uint8Array,
-): { match: boolean; mismatchIndex: number | null } {
-  if (a.length !== b.length) {
-    return { match: false, mismatchIndex: -1 } // -1 indicates length mismatch
-  }
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) {
-      return { match: false, mismatchIndex: i }
-    }
-  }
-  return { match: true, mismatchIndex: null }
-}
+const PURE_BINARY_EXPECTED = concatBytes(PURE_BINARY_CHUNKS)
 
 export const Route = createFileRoute('/raw-stream/ssr-text-hint')({
   loader: async () => {

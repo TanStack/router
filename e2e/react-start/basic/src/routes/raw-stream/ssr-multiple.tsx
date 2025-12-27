@@ -1,28 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { RawStream } from '@tanstack/react-start'
-import { createStreamConsumer } from '../../raw-stream-fns'
-
-// Helper to encode text to Uint8Array
-function encode(text: string): Uint8Array {
-  return new TextEncoder().encode(text)
-}
-
-// Helper to create a delayed stream
-function createDelayedStream(
-  chunks: Array<Uint8Array>,
-  delayMs: number,
-): ReadableStream<Uint8Array> {
-  return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      for (const chunk of chunks) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs))
-        controller.enqueue(chunk)
-      }
-      controller.close()
-    },
-  })
-}
+import {
+  encode,
+  createDelayedStream,
+  createStreamConsumer,
+} from '../../raw-stream-fns'
 
 export const Route = createFileRoute('/raw-stream/ssr-multiple')({
   loader: async () => {
