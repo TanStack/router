@@ -95,7 +95,7 @@ test.describe('RawStream - Client RPC Tests', () => {
       timeout: 10000,
     })
     await expect(page.getByTestId('test4-result')).toContainText(
-      'async-json-data',
+      'deferred-json-data',
     )
     await expect(page.getByTestId('test4-result')).toContainText(
       'Raw ends first test',

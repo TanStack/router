@@ -134,14 +134,14 @@ export const rawEndsFirstFn = createServerFn().handler(async () => {
   // Fast raw stream (completes quickly)
   const fastStream = createDelayedStream([encode('fast-done')], 10)
 
-  // Simulate async JSON data
-  const asyncData = await new Promise<string>((resolve) =>
-    setTimeout(() => resolve('async-json-data'), 200),
+  // Deferred promise - NOT awaited, so it streams as deferred JSON
+  const deferredData = new Promise<string>((resolve) =>
+    setTimeout(() => resolve('deferred-json-data'), 200),
   )
 
   return {
     message: 'Raw ends first test',
-    asyncData,
+    deferredData,
     fastData: new RawStream(fastStream),
   }
 })

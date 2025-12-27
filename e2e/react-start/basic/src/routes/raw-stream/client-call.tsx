@@ -137,7 +137,7 @@ function ClientCallTests() {
           onClick={() =>
             runTest('test4', rawEndsFirstFn, async (result) => ({
               message: result.message,
-              asyncData: result.asyncData,
+              deferredData: await result.deferredData,
               fastContent: await consumeStream(result.fastData),
             }))
           }
