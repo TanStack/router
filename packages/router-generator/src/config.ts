@@ -21,6 +21,7 @@ export const baseConfigSchema = z.object({
       '/* eslint-disable */',
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols',
+      '// biome-ignore-all lint: generated file',
     ]),
   indexToken: z.string().optional().default('index'),
   routeToken: z.string().optional().default('route'),
