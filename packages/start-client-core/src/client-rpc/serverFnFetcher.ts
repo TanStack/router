@@ -351,8 +351,8 @@ async function processServerFnResponse({
 }
 
 /**
- * Processes a framed response where JSON chunks come as a string stream
- * (decoded from binary frames by the frame decoder).
+ * Processes a framed response where each JSON chunk is a complete JSON string
+ * (one seroval NDJSON line per frame, already decoded by frame decoder).
  */
 async function processFramedResponse({
   jsonStream,
@@ -365,65 +365,28 @@ async function processFramedResponse({
 }) {
   const reader = jsonStream.getReader()
 
-  let buffer = ''
-  let firstRead = false
-  let firstObject: any
-
-  while (!firstRead) {
-    const { value, done } = await reader.read()
-    if (value) buffer += value
-
-    if (buffer.length === 0 && done) {
-      throw new Error('Stream ended before first object')
-    }
-
-    // common case: buffer ends with newline
-    if (buffer.endsWith('\n')) {
-      const lines = buffer.split('\n').filter(Boolean)
-      const firstLine = lines[0]
-      if (!firstLine) throw new Error('No JSON line in the first chunk')
-      firstObject = JSON.parse(firstLine)
-      firstRead = true
-      buffer = lines.slice(1).join('\n')
-    } else {
-      // fallback: wait for a newline to parse first object safely
-      const newlineIndex = buffer.indexOf('\n')
-      if (newlineIndex >= 0) {
-        const line = buffer.slice(0, newlineIndex).trim()
-        buffer = buffer.slice(newlineIndex + 1)
-        if (line.length > 0) {
-          firstObject = JSON.parse(line)
-          firstRead = true
-        }
-      }
-    }
+  // Read first JSON frame - this is the main result
+  const { value: firstValue, done: firstDone } = await reader.read()
+  if (firstDone || !firstValue) {
+    throw new Error('Stream ended before first object')
   }
 
-  // process rest of the stream asynchronously
+  // Each frame is a complete JSON string (one NDJSON line without the newline)
+  const firstObject = JSON.parse(firstValue)
+
+  // Process remaining frames asynchronously (for streaming refs like RawStream)
   ;(async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const { value, done } = await reader.read()
-        if (value) buffer += value
-
-        const lastNewline = buffer.lastIndexOf('\n')
-        if (lastNewline >= 0) {
-          const chunk = buffer.slice(0, lastNewline)
-          buffer = buffer.slice(lastNewline + 1)
-          const lines = chunk.split('\n').filter(Boolean)
-
-          for (const line of lines) {
-            try {
-              onMessage(JSON.parse(line))
-            } catch (e) {
-              onError?.(`Invalid JSON line: ${line}`, e)
-            }
+        if (done) break
+        if (value) {
+          try {
+            onMessage(JSON.parse(value))
+          } catch (e) {
+            onError?.(`Invalid JSON: ${value}`, e)
           }
-        }
-
-        if (done) {
-          break
         }
       }
     } catch (err) {
