@@ -367,6 +367,54 @@ test.describe('server function sets cookies', () => {
   })
 })
 
+test.describe('server functions with async validation', () => {
+  test.use({
+    whitelistErrors: [
+      /Failed to load resource: the server responded with a status of 500/,
+    ],
+  })
+
+  test('with valid input', async ({ page }) => {
+    await page.goto('/async-validation')
+
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('run-with-valid-btn').click()
+    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('[data-testid="result"]:has-text("valid")')
+    await page.waitForSelector(
+      '[data-testid="errorMessage"]:has-text("$undefined")',
+    )
+
+    const result = (await page.getByTestId('result').textContent()) || ''
+    expect(result).toBe('valid')
+
+    const errorMessage =
+      (await page.getByTestId('errorMessage').textContent()) || ''
+    expect(errorMessage).toBe('$undefined')
+  })
+
+  test('with invalid input', async ({ page }) => {
+    await page.goto('/async-validation')
+
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('run-with-invalid-btn').click()
+    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('[data-testid="result"]:has-text("$undefined")')
+    await page.waitForSelector(
+      '[data-testid="errorMessage"]:has-text("invalid")',
+    )
+
+    const result = (await page.getByTestId('result').textContent()) || ''
+    expect(result).toBe('$undefined')
+
+    const errorMessage =
+      (await page.getByTestId('errorMessage').textContent()) || ''
+    expect(errorMessage).toContain('Invalid input')
+  })
+})
+
 test('raw response', async ({ page }) => {
   await page.goto('/raw-response')
 
