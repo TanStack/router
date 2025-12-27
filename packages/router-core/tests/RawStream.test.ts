@@ -198,12 +198,9 @@ describe('RawStream', () => {
         plugins: [rpcPlugin],
       })
 
-      console.log('Serialized CrossJSON:', JSON.stringify(serialized, null, 2))
-
       // Verify we collected the stream
       expect(collectedStreams.size).toBe(1)
       const streamId = Array.from(collectedStreams.keys())[0]!
-      console.log('Collected stream ID:', streamId)
 
       // Create getOrCreateStream function
       const getOrCreateStream = (id: number) => {
@@ -223,13 +220,6 @@ describe('RawStream', () => {
         refs: new Map(),
         plugins: [deserializePlugin],
       }) as any
-
-      console.log('Deserialized result:', deserialized)
-      console.log('rawData type:', typeof deserialized.rawData)
-      console.log(
-        'rawData is ReadableStream:',
-        deserialized.rawData instanceof ReadableStream,
-      )
 
       expect(deserialized.message).toBe('test')
       expect(deserialized.rawData).toBe(testStream)

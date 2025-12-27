@@ -188,11 +188,17 @@ describe('frame-protocol', () => {
 
     it('should handle cancel without errors', async () => {
       // Create slow streams that won't complete before cancel
+      let jsonCancelled = false
+      let rawCancelled = false
+
       const jsonStream = new ReadableStream<string>({
         async start(controller) {
           await new Promise((r) => setTimeout(r, 100))
           controller.enqueue('{}\n')
           controller.close()
+        },
+        cancel() {
+          jsonCancelled = true
         },
       })
 
@@ -201,6 +207,9 @@ describe('frame-protocol', () => {
           await new Promise((r) => setTimeout(r, 100))
           controller.enqueue(new Uint8Array([1, 2, 3]))
           controller.close()
+        },
+        cancel() {
+          rawCancelled = true
         },
       })
 
@@ -213,6 +222,10 @@ describe('frame-protocol', () => {
       // Cancel immediately before streams complete
       // Should not throw ERR_INVALID_STATE
       await reader.cancel()
+
+      // Underlying reader.cancel should propagate to sources
+      expect(jsonCancelled).toBe(true)
+      expect(rawCancelled).toBe(true)
     })
 
     it('should interleave multiple raw streams correctly', async () => {

@@ -41,6 +41,157 @@ function encodeErrorFrame(streamId: number, message: string): Uint8Array {
 
 describe('frame-decoder', () => {
   describe('createFrameDecoder', () => {
+    it('should reject unknown frame type', async () => {
+      const badFrame = encodeFrame(99, 0, new Uint8Array(0))
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(badFrame)
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+
+      await expect(reader.read()).rejects.toThrow('Unknown frame type')
+    })
+
+    it('should reject raw frames with streamId 0', async () => {
+      const badChunk = encodeFrame(FrameType.CHUNK, 0, new Uint8Array([1]))
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(badChunk)
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+
+      await expect(reader.read()).rejects.toThrow('Invalid raw frame streamId')
+    })
+
+    it('should reject JSON frames with non-zero streamId', async () => {
+      const badJson = encodeFrame(
+        FrameType.JSON,
+        1,
+        new TextEncoder().encode('{}\n'),
+      )
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(badJson)
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+
+      await expect(reader.read()).rejects.toThrow('Invalid JSON frame streamId')
+    })
+
+    it('should reject oversized frame payloads', async () => {
+      // Declare a payload length > MAX_FRAME_PAYLOAD_SIZE with no payload.
+      const headerOnly = new Uint8Array(FRAME_HEADER_SIZE)
+      const view = new DataView(headerOnly.buffer)
+      view.setUint8(0, FrameType.JSON)
+      view.setUint32(1, 0, false)
+      view.setUint32(5, 16 * 1024 * 1024 + 1, false)
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(headerOnly)
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+
+      await expect(reader.read()).rejects.toThrow('Frame payload too large')
+    })
+
+    it('should reject incomplete frames at end-of-stream', async () => {
+      const headerOnly = new Uint8Array(FRAME_HEADER_SIZE)
+      const view = new DataView(headerOnly.buffer)
+      view.setUint8(0, FrameType.JSON)
+      view.setUint32(1, 0, false)
+      view.setUint32(5, 3, false)
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(headerOnly)
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+
+      await expect(reader.read()).rejects.toThrow('Incomplete frame')
+    })
+
+    it('should cancel input when jsonChunks cancelled', async () => {
+      let cancelled = false
+      const input = new ReadableStream<Uint8Array>({
+        pull() {},
+        cancel() {
+          cancelled = true
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+
+      await reader.cancel()
+      expect(cancelled).toBe(true)
+    })
+
+    it('should reject too many raw streams', async () => {
+      // END frames create streams via ensureController, even with no CHUNKs.
+      const frames: Array<Uint8Array> = []
+      for (let i = 1; i <= 1025; i++) {
+        frames.push(encodeEndFrame(i))
+      }
+
+      const totalLen = frames.reduce((acc, f) => acc + f.length, 0)
+      const combined = new Uint8Array(totalLen)
+      let offset = 0
+      for (const frame of frames) {
+        combined.set(frame, offset)
+        offset += frame.length
+      }
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(combined)
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+
+      await expect(reader.read()).rejects.toThrow('Too many raw streams')
+    })
+
+    it('should reject when buffered bytes exceed limit', async () => {
+      // No valid frame can be parsed from this; we just want to exceed MAX_BUFFERED_BYTES.
+      const tooLarge = new Uint8Array(32 * 1024 * 1024 + 1)
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(tooLarge)
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+
+      await expect(reader.read()).rejects.toThrow('buffer exceeded')
+    })
+
     it('should decode JSON frames', async () => {
       const frame1 = encodeJSONFrame('{"line":1}\n')
       const frame2 = encodeJSONFrame('{"line":2}\n')

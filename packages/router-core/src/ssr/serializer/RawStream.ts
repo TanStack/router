@@ -52,24 +52,36 @@ export type OnRawStreamCallback = (
   stream: ReadableStream<Uint8Array>,
 ) => void
 
-// Helper to convert Uint8Array to base64 string
-// Uses chunked String.fromCharCode to avoid stack overflow and O(n²) concatenation
+// Base64 helpers used in both Node and browser.
+// In Node-like runtimes, prefer Buffer for speed and compatibility.
+const BufferCtor: any = (globalThis as any).Buffer
+const hasNodeBuffer = !!BufferCtor && typeof BufferCtor.from === 'function'
+
 function uint8ArrayToBase64(bytes: Uint8Array): string {
+  if (bytes.length === 0) return ''
+
+  if (hasNodeBuffer) {
+    return BufferCtor.from(bytes).toString('base64')
+  }
+
+  // Browser fallback: chunked String.fromCharCode + btoa
   const CHUNK_SIZE = 0x8000 // 32KB chunks to avoid stack overflow
-  const numChunks = Math.ceil(bytes.length / CHUNK_SIZE) || 1
-  const chunks: Array<string> = new Array(numChunks)
-  for (let i = 0, j = 0; i < bytes.length; i += CHUNK_SIZE, j++) {
+  const chunks: Array<string> = []
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
     const chunk = bytes.subarray(i, i + CHUNK_SIZE)
-    chunks[j] = String.fromCharCode.apply(
-      null,
-      chunk as unknown as Array<number>,
-    )
+    chunks.push(String.fromCharCode.apply(null, chunk as any))
   }
   return btoa(chunks.join(''))
 }
 
-// Helper to convert base64 string to Uint8Array (used at runtime in deserialize)
 function base64ToUint8Array(base64: string): Uint8Array {
+  if (base64.length === 0) return new Uint8Array(0)
+
+  if (hasNodeBuffer) {
+    const buf = BufferCtor.from(base64, 'base64')
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
+  }
+
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) {
@@ -78,9 +90,9 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes
 }
 
-// Factory sentinels - using empty objects like seroval-plugins does
-const RAW_STREAM_FACTORY_BINARY: Record<string, never> = {}
-const RAW_STREAM_FACTORY_TEXT: Record<string, never> = {}
+// Factory sentinels - use null-proto objects to avoid prototype surprises
+const RAW_STREAM_FACTORY_BINARY: Record<string, never> = Object.create(null)
+const RAW_STREAM_FACTORY_TEXT: Record<string, never> = Object.create(null)
 
 // Factory constructor for binary mode - converts seroval stream to ReadableStream<Uint8Array>
 // All chunks are base64 encoded strings

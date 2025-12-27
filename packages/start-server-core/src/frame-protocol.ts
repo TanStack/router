@@ -99,25 +99,57 @@ export function createMultiplexedStream(
   let activePumps = 1 + rawStreams.size // 1 for JSON + raw streams
   let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null
   let cancelled = false as boolean
+  const cancelReaders: Array<() => void> = []
+
+  const safeEnqueue = (chunk: Uint8Array) => {
+    if (cancelled || !controllerRef) return
+    try {
+      controllerRef.enqueue(chunk)
+    } catch {
+      // Ignore enqueue after close/cancel
+    }
+  }
+
+  const safeError = (err: unknown) => {
+    if (cancelled || !controllerRef) return
+    try {
+      controllerRef.error(err)
+    } catch {
+      // Ignore
+    }
+  }
+
+  const safeClose = () => {
+    if (cancelled || !controllerRef) return
+    try {
+      controllerRef.close()
+    } catch {
+      // Ignore
+    }
+  }
 
   const checkComplete = () => {
     activePumps--
-    if (activePumps === 0 && controllerRef) {
-      try {
-        controllerRef.close()
-      } catch {
-        // Already closed
-      }
+    if (activePumps === 0) {
+      safeClose()
     }
   }
 
   return new ReadableStream<Uint8Array>({
     start(controller) {
       controllerRef = controller
+      cancelReaders.length = 0
 
       // Pump JSON stream (streamId 0)
       const pumpJSON = async () => {
         const reader = jsonStream.getReader()
+        cancelReaders.push(() => {
+          try {
+            void reader.cancel()
+          } catch {
+            // Reader may already be released
+          }
+        })
         try {
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           while (true) {
@@ -125,13 +157,11 @@ export function createMultiplexedStream(
             // Check cancelled after await - flag may have changed while waiting
             if (cancelled) break
             if (done) break
-            controller.enqueue(encodeJSONFrame(value))
+            safeEnqueue(encodeJSONFrame(value))
           }
         } catch (error) {
           // JSON stream error - fatal, error the whole response
-          if (!cancelled) {
-            controller.error(error)
-          }
+          safeError(error)
         } finally {
           reader.releaseLock()
           checkComplete()
@@ -144,6 +174,13 @@ export function createMultiplexedStream(
         stream: ReadableStream<Uint8Array>,
       ) => {
         const reader = stream.getReader()
+        cancelReaders.push(() => {
+          try {
+            void reader.cancel()
+          } catch {
+            // Reader may already be released
+          }
+        })
         try {
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           while (true) {
@@ -151,16 +188,14 @@ export function createMultiplexedStream(
             // Check cancelled after await - flag may have changed while waiting
             if (cancelled) break
             if (done) {
-              controller.enqueue(encodeEndFrame(streamId))
+              safeEnqueue(encodeEndFrame(streamId))
               break
             }
-            controller.enqueue(encodeChunkFrame(streamId, value))
+            safeEnqueue(encodeChunkFrame(streamId, value))
           }
         } catch (error) {
           // Stream error - send ERROR frame (non-fatal, other streams continue)
-          if (!cancelled) {
-            controller.enqueue(encodeErrorFrame(streamId, error))
-          }
+          safeEnqueue(encodeErrorFrame(streamId, error))
         } finally {
           reader.releaseLock()
           checkComplete()
@@ -175,12 +210,13 @@ export function createMultiplexedStream(
     },
 
     cancel() {
-      // Signal pumps to stop - readers will exit their loops and release locks
       cancelled = true
       controllerRef = null
-      // Note: We don't call reader.cancel() here because readers check `cancelled`
-      // flag and exit gracefully, calling releaseLock() in their finally blocks.
-      // Calling cancel() on a released reader throws ERR_INVALID_STATE.
+      // Proactively cancel all underlying readers to stop work quickly.
+      for (const cancelReader of cancelReaders) {
+        cancelReader()
+      }
+      cancelReaders.length = 0
     },
   })
 }

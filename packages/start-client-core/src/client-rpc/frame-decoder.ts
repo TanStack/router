@@ -14,6 +14,11 @@ const textDecoder = new TextDecoder()
 /** Shared empty buffer for empty buffer case - avoids allocation */
 const EMPTY_BUFFER = new Uint8Array(0)
 
+/** Hardening limits to prevent memory/CPU DoS */
+const MAX_FRAME_PAYLOAD_SIZE = 16 * 1024 * 1024 // 16MiB
+const MAX_BUFFERED_BYTES = 32 * 1024 * 1024 // 32MiB
+const MAX_STREAMS = 1024
+
 /**
  * Result of frame decoding.
  */
@@ -38,11 +43,34 @@ export function createFrameDecoder(
     ReadableStreamDefaultController<Uint8Array>
   >()
   const streams = new Map<number, ReadableStream<Uint8Array>>()
+  const cancelledStreamIds = new Set<number>()
+
+  let cancelled = false as boolean
+  let inputReader: ReadableStreamReader<Uint8Array> | null = null
 
   let jsonController!: ReadableStreamDefaultController<string>
   const jsonChunks = new ReadableStream<string>({
     start(controller) {
       jsonController = controller
+    },
+    cancel() {
+      cancelled = true
+      try {
+        inputReader?.cancel()
+      } catch {
+        // Ignore
+      }
+
+      streamControllers.forEach((ctrl) => {
+        try {
+          ctrl.error(new Error('Framed response cancelled'))
+        } catch {
+          // Ignore
+        }
+      })
+      streamControllers.clear()
+      streams.clear()
+      cancelledStreamIds.clear()
     },
   })
 
@@ -51,25 +79,39 @@ export function createFrameDecoder(
    * Called by deserialize plugin when it encounters a RawStream reference.
    */
   function getOrCreateStream(id: number): ReadableStream<Uint8Array> {
-    let stream = streams.get(id)
-    if (!stream) {
-      stream = new ReadableStream<Uint8Array>({
-        start(ctrl) {
-          streamControllers.set(id, ctrl)
+    const existing = streams.get(id)
+    if (existing) {
+      return existing
+    }
+
+    // If we already received an END/ERROR for this streamId, returning a fresh stream
+    // would hang consumers. Return an already-closed stream instead.
+    if (cancelledStreamIds.has(id)) {
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close()
         },
       })
-      streams.set(id, stream)
     }
-    return stream
-  }
 
-  /**
-   * Gets controller for an existing stream (for frame processing).
-   */
-  function getController(
-    id: number,
-  ): ReadableStreamDefaultController<Uint8Array> | undefined {
-    return streamControllers.get(id)
+    if (streams.size >= MAX_STREAMS) {
+      throw new Error(
+        `Too many raw streams in framed response (max ${MAX_STREAMS})`,
+      )
+    }
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(ctrl) {
+        streamControllers.set(id, ctrl)
+      },
+      cancel() {
+        cancelledStreamIds.add(id)
+        streamControllers.delete(id)
+        streams.delete(id)
+      },
+    })
+    streams.set(id, stream)
+    return stream
   }
 
   /**
@@ -86,6 +128,8 @@ export function createFrameDecoder(
   // Process frames asynchronously
   ;(async () => {
     const reader = input.getReader()
+    inputReader = reader
+
     // Use buffer list to avoid O(n²) concatenation - only flatten when needed
     const bufferList: Array<Uint8Array> = []
     let totalLength = 0
@@ -120,9 +164,18 @@ export function createFrameDecoder(
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const { done, value } = await reader.read()
+        if (cancelled) break
         if (done) break
 
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!value) continue
+
         // Append incoming chunk to buffer list
+        if (totalLength + value.length > MAX_BUFFERED_BYTES) {
+          throw new Error(
+            `Framed response buffer exceeded ${MAX_BUFFERED_BYTES} bytes`,
+          )
+        }
         bufferList.push(value)
         totalLength += value.length
 
@@ -147,6 +200,32 @@ export function createFrameDecoder(
               buffer[8]!) >>>
             0
 
+          if (
+            type !== FrameType.JSON &&
+            type !== FrameType.CHUNK &&
+            type !== FrameType.END &&
+            type !== FrameType.ERROR
+          ) {
+            throw new Error(`Unknown frame type: ${type}`)
+          }
+
+          // Enforce stream id conventions: JSON uses streamId 0, raw streams use non-zero ids
+          if (type === FrameType.JSON) {
+            if (streamId !== 0) {
+              throw new Error('Invalid JSON frame streamId (expected 0)')
+            }
+          } else {
+            if (streamId === 0) {
+              throw new Error('Invalid raw frame streamId (expected non-zero)')
+            }
+          }
+
+          if (length > MAX_FRAME_PAYLOAD_SIZE) {
+            throw new Error(
+              `Frame payload too large: ${length} bytes (max ${MAX_FRAME_PAYLOAD_SIZE})`,
+            )
+          }
+
           const frameSize = FRAME_HEADER_SIZE + length
           // Check if we have the complete frame
           if (totalLength < frameSize) {
@@ -159,9 +238,14 @@ export function createFrameDecoder(
 
           // Process frame by type
           switch (type) {
-            case FrameType.JSON:
-              jsonController.enqueue(textDecoder.decode(payload))
+            case FrameType.JSON: {
+              try {
+                jsonController.enqueue(textDecoder.decode(payload))
+              } catch {
+                // JSON stream may be cancelled/closed
+              }
               break
+            }
 
             case FrameType.CHUNK: {
               // Ensure stream exists and get controller to enqueue data
@@ -176,6 +260,7 @@ export function createFrameDecoder(
               // Use ensureController for empty streams: END may arrive before
               // deserialization calls getOrCreateStream (zero CHUNK frames sent)
               const ctrl = ensureController(streamId)
+              cancelledStreamIds.add(streamId)
               if (ctrl) {
                 try {
                   ctrl.close()
@@ -183,7 +268,6 @@ export function createFrameDecoder(
                   // Already closed
                 }
                 streamControllers.delete(streamId)
-                // Note: Do NOT delete from streams map - the app still needs to consume it
               }
               break
             }
@@ -192,11 +276,11 @@ export function createFrameDecoder(
               // Use ensureController: ERROR may arrive before deserialization
               // calls getOrCreateStream (error before any CHUNK frames)
               const ctrl = ensureController(streamId)
+              cancelledStreamIds.add(streamId)
               if (ctrl) {
                 const message = textDecoder.decode(payload)
                 ctrl.error(new Error(message))
                 streamControllers.delete(streamId)
-                // Note: Do NOT delete from streams map - the app still needs to consume it
               }
               break
             }
@@ -204,8 +288,16 @@ export function createFrameDecoder(
         }
       }
 
+      if (totalLength !== 0) {
+        throw new Error('Incomplete frame at end of framed response')
+      }
+
       // Close JSON stream when done
-      jsonController.close()
+      try {
+        jsonController.close()
+      } catch {
+        // JSON stream may be cancelled/closed
+      }
 
       // Close any remaining streams (shouldn't happen in normal operation)
       // Note: We don't clear streams map - app may still need to consume them
@@ -233,7 +325,12 @@ export function createFrameDecoder(
       })
       streamControllers.clear()
     } finally {
-      reader.releaseLock()
+      try {
+        reader.releaseLock()
+      } catch {
+        // Ignore
+      }
+      inputReader = null
     }
   })()
 
