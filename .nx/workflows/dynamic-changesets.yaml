@@ -7,11 +7,11 @@ assignment-rules:
   - targets:
       - build
     run-on:
-      - agent: linux-large
+      - agent: linux-medium-js
         parallelism: 5
 
   - targets:
       - lint
     run-on:
-      - agent: linux-large
+      - agent: linux-medium-js
         parallelism: 4
