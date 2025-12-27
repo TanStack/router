@@ -10,10 +10,7 @@ function RawStreamIndex() {
       <p>Select a test category above to begin testing.</p>
       <ul class="list-disc pl-6 mt-4 space-y-2">
         <li>
-          <Link
-            to="/raw-stream/client-call"
-            class="text-blue-500 underline"
-          >
+          <Link to="/raw-stream/client-call" class="text-blue-500 underline">
             Client Calls
           </Link>{' '}
           - Test RawStream via direct server function calls (RPC)

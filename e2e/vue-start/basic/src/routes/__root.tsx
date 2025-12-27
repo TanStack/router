@@ -139,7 +139,7 @@ function RootComponent() {
           >
             redirect
           </Link>{' '}
-					<Link
+          <Link
             to="/raw-stream"
             activeProps={{
               class: 'font-bold',
