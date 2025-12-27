@@ -136,6 +136,6 @@ describe('curly params smoke tests', () => {
     }
     const processed = processRouteTree(tree)
     const res = findRouteMatch(nav, processed.processedTree)
-    expect(res?.params).toEqual(params)
+    expect(res?.rawParams).toEqual(params)
   })
 })

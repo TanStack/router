@@ -88,6 +88,27 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(params: TParams) => Record<string, string>`
 - A function that will be called when this route's parsed params are being used to build a location. This function should return a valid object of `Record<string, string>` mapping.
 
+### `skipRouteOnParseError` property (⚠️ experimental)
+
+> [!WARNING]
+> The `skipRouteOnParseError` option is currently **experimental** and may change in future releases.
+
+- Type:
+
+```tsx
+type skipRouteOnParseError = {
+  params?: boolean
+  priority?: number
+}
+```
+
+- Optional
+- By default, when a route's `params.parse` function throws an error, the route will match and then show an error state during render. With `skipRouteOnParseError.params` enabled, the router will skip routes whose `params.parse` function throws and continue searching for alternative matching routes.
+- See [Guides > Path Params > Validating path parameters during matching](../../guide/path-params#validating-path-parameters-during-matching) for detailed usage examples.
+
+> [!IMPORTANT]
+> **Performance impact**: This option has a **non-negligible performance cost** and should not be used indiscriminately. Routes with `skipRouteOnParseError` are placed on separate branches in the route matching tree instead of sharing nodes with other dynamic routes. This reduces the tree's ability to efficiently narrow down matches and requires testing more route, even for routes that wouldn't match the path structure alone.
+
 ### `beforeLoad` method
 
 - Type:
