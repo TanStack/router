@@ -352,7 +352,7 @@ async function processServerFnResponse({
 
 /**
  * Processes a framed response where each JSON chunk is a complete JSON string
- * (one seroval NDJSON line per frame, already decoded by frame decoder).
+ * (already decoded by frame decoder).
  */
 async function processFramedResponse({
   jsonStream,
@@ -371,7 +371,7 @@ async function processFramedResponse({
     throw new Error('Stream ended before first object')
   }
 
-  // Each frame is a complete JSON string (one NDJSON line without the newline)
+  // Each frame is a complete JSON string
   const firstObject = JSON.parse(firstValue)
 
   // Process remaining frames asynchronously (for streaming refs like RawStream)

@@ -193,8 +193,8 @@ describe('frame-decoder', () => {
     })
 
     it('should decode JSON frames', async () => {
-      const frame1 = encodeJSONFrame('{"line":1}\n')
-      const frame2 = encodeJSONFrame('{"line":2}\n')
+      const frame1 = encodeJSONFrame('{"line":1}')
+      const frame2 = encodeJSONFrame('{"line":2}')
 
       const combinedFrames = new Uint8Array(frame1.length + frame2.length)
       combinedFrames.set(frame1, 0)
@@ -218,11 +218,11 @@ describe('frame-decoder', () => {
         chunks.push(value)
       }
 
-      expect(chunks).toEqual(['{"line":1}\n', '{"line":2}\n'])
+      expect(chunks).toEqual(['{"line":1}', '{"line":2}'])
     })
 
     it('should decode raw stream chunks', async () => {
-      const jsonFrame = encodeJSONFrame('{}\n')
+      const jsonFrame = encodeJSONFrame('{}')
       const chunkFrame = encodeChunkFrame(5, new Uint8Array([1, 2, 3]))
       const endFrame = encodeEndFrame(5)
 
@@ -248,7 +248,7 @@ describe('frame-decoder', () => {
       // Consume JSON first
       const jsonReader = jsonChunks.getReader()
       const { value: jsonValue } = await jsonReader.read()
-      expect(jsonValue).toBe('{}\n')
+      expect(jsonValue).toBe('{}')
 
       // Read the raw stream
       const rawReader = stream5.getReader()
@@ -262,7 +262,7 @@ describe('frame-decoder', () => {
     })
 
     it('should handle partial frames across chunks', async () => {
-      const frame = encodeJSONFrame('{"test":"data"}\n')
+      const frame = encodeJSONFrame('{"test":"data"}')
 
       // Split frame in the middle
       const part1 = frame.slice(0, 5)
@@ -287,11 +287,81 @@ describe('frame-decoder', () => {
         chunks.push(value)
       }
 
-      expect(chunks).toEqual(['{"test":"data"}\n'])
+      expect(chunks).toEqual(['{"test":"data"}'])
+    })
+
+    it('should use fast path when header fits in first chunk', async () => {
+      // Single chunk contains entire frame - exercises fast path
+      const frame = encodeJSONFrame('{"fast":"path"}')
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(frame)
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+      const { value } = await reader.read()
+
+      expect(value).toBe('{"fast":"path"}')
+    })
+
+    it('should use slow path when header spans multiple chunks', async () => {
+      // Split header itself across multiple chunks - exercises slow path
+      const frame = encodeJSONFrame('{"slow":"path"}')
+
+      // Split at byte 3, then byte 6, then rest - header is 9 bytes
+      const part1 = frame.slice(0, 3) // first 3 bytes of header
+      const part2 = frame.slice(3, 6) // next 3 bytes of header
+      const part3 = frame.slice(6) // last 3 bytes of header + payload
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(part1)
+          controller.enqueue(part2)
+          controller.enqueue(part3)
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+      const { value } = await reader.read()
+
+      expect(value).toBe('{"slow":"path"}')
+    })
+
+    it('should handle header split at every byte boundary', async () => {
+      // Extreme case: each header byte in separate chunk
+      const frame = encodeJSONFrame('{"byte":"split"}')
+
+      // Split into 9 single-byte chunks for header, then payload
+      const chunks: Array<Uint8Array> = []
+      for (let i = 0; i < FRAME_HEADER_SIZE; i++) {
+        chunks.push(frame.slice(i, i + 1))
+      }
+      chunks.push(frame.slice(FRAME_HEADER_SIZE)) // payload
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(chunk)
+          }
+          controller.close()
+        },
+      })
+
+      const { jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+      const { value } = await reader.read()
+
+      expect(value).toBe('{"byte":"split"}')
     })
 
     it('should handle multiple raw streams', async () => {
-      const jsonFrame = encodeJSONFrame('{}\n')
+      const jsonFrame = encodeJSONFrame('{}')
       const chunk1 = encodeChunkFrame(1, new Uint8Array([10]))
       const chunk2 = encodeChunkFrame(2, new Uint8Array([20]))
       const end1 = encodeEndFrame(1)
@@ -339,7 +409,7 @@ describe('frame-decoder', () => {
     })
 
     it('should handle error frames for existing streams', async () => {
-      const jsonFrame = encodeJSONFrame('{}\n')
+      const jsonFrame = encodeJSONFrame('{}')
       // Create a stream, then error it immediately
       const chunkFrame = encodeChunkFrame(3, new Uint8Array([1]))
       const errorFrame = encodeErrorFrame(3, 'Stream failed')
@@ -390,9 +460,9 @@ describe('frame-decoder', () => {
     })
 
     it('should preserve stream after END frame for late consumers', async () => {
-      // This tests the race condition fix: stream should still be available
+      // This tests a race condition fix: stream should still be available
       // even if END frame is processed before getOrCreateStream is called
-      const jsonFrame = encodeJSONFrame('{"streamRef":7}\n')
+      const jsonFrame = encodeJSONFrame('{"streamRef":7}')
       const chunkFrame = encodeChunkFrame(7, new Uint8Array([42, 43, 44]))
       const endFrame = encodeEndFrame(7)
 
@@ -420,7 +490,7 @@ describe('frame-decoder', () => {
         if (done) break
         chunks.push(value)
       }
-      expect(chunks).toEqual(['{"streamRef":7}\n'])
+      expect(chunks).toEqual(['{"streamRef":7}'])
 
       // Now call getOrCreateStream AFTER all frames processed (including END)
       // This simulates deserializer calling getOrCreateStream late
@@ -444,7 +514,7 @@ describe('frame-decoder', () => {
       const chunkFrame1 = encodeChunkFrame(9, new Uint8Array([1, 2]))
       const chunkFrame2 = encodeChunkFrame(9, new Uint8Array([3, 4]))
       const endFrame = encodeEndFrame(9)
-      const jsonFrame = encodeJSONFrame('{"ref":9}\n')
+      const jsonFrame = encodeJSONFrame('{"ref":9}')
 
       // Order: CHUNK, CHUNK, END, then JSON (unusual but valid)
       const combined = new Uint8Array(

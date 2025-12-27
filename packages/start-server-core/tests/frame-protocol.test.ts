@@ -115,8 +115,8 @@ describe('frame-protocol', () => {
     it('should multiplex JSON stream only', async () => {
       const jsonStream = new ReadableStream<string>({
         start(controller) {
-          controller.enqueue('{"data":1}\n')
-          controller.enqueue('{"data":2}\n')
+          controller.enqueue('{"data":1}')
+          controller.enqueue('{"data":2}')
           controller.close()
         },
       })
@@ -147,7 +147,7 @@ describe('frame-protocol', () => {
     it('should multiplex JSON and raw streams', async () => {
       const jsonStream = new ReadableStream<string>({
         start(controller) {
-          controller.enqueue('{"result":"ok"}\n')
+          controller.enqueue('{"result":"ok"}')
           controller.close()
         },
       })
@@ -237,7 +237,7 @@ describe('frame-protocol', () => {
 
       const jsonStream = new ReadableStream<string>({
         start(controller) {
-          controller.enqueue('{"streams":[1,2]}\n')
+          controller.enqueue('{"streams":[1,2]}')
           controller.close()
         },
       })
@@ -303,7 +303,7 @@ describe('frame-protocol', () => {
     it('should handle raw stream error', async () => {
       const jsonStream = new ReadableStream<string>({
         start(controller) {
-          controller.enqueue('{}\n')
+          controller.enqueue('{}')
           controller.close()
         },
       })

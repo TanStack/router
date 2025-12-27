@@ -1,7 +1,7 @@
 /**
  * Client-side frame decoder for multiplexed responses.
  *
- * Decodes the binary frame protocol and reconstructs:
+ * Decodes binary frame protocol and reconstructs:
  * - JSON stream (NDJSON lines for seroval)
  * - Raw streams (binary data as ReadableStream<Uint8Array>)
  */
@@ -18,6 +18,7 @@ const EMPTY_BUFFER = new Uint8Array(0)
 const MAX_FRAME_PAYLOAD_SIZE = 16 * 1024 * 1024 // 16MiB
 const MAX_BUFFERED_BYTES = 32 * 1024 * 1024 // 32MiB
 const MAX_STREAMS = 1024
+const MAX_FRAMES = 100_000 // Limit total frames to prevent CPU DoS
 
 /**
  * Result of frame decoding.
@@ -47,6 +48,7 @@ export function createFrameDecoder(
 
   let cancelled = false as boolean
   let inputReader: ReadableStreamReader<Uint8Array> | null = null
+  let frameCount = 0
 
   let jsonController!: ReadableStreamDefaultController<string>
   const jsonChunks = new ReadableStream<string>({
@@ -130,34 +132,97 @@ export function createFrameDecoder(
     const reader = input.getReader()
     inputReader = reader
 
-    // Use buffer list to avoid O(n²) concatenation - only flatten when needed
     const bufferList: Array<Uint8Array> = []
     let totalLength = 0
 
-    // Flattens buffer list into single Uint8Array when we need to parse
-    function flattenBuffer(): Uint8Array {
-      if (bufferList.length === 0) return EMPTY_BUFFER
-      if (bufferList.length === 1) return bufferList[0]!
-      const result = new Uint8Array(totalLength)
-      let offset = 0
-      for (const chunk of bufferList) {
-        result.set(chunk, offset)
-        offset += chunk.length
+    /**
+     * Reads header bytes from buffer chunks without flattening.
+     * Returns header data or null if not enough bytes available.
+     */
+    function readHeader(): {
+      type: number
+      streamId: number
+      length: number
+    } | null {
+      if (totalLength < FRAME_HEADER_SIZE) return null
+
+      const first = bufferList[0]!
+
+      // Fast path: header fits entirely in first chunk (common case)
+      if (first.length >= FRAME_HEADER_SIZE) {
+        const type = first[0]!
+        const streamId =
+          ((first[1]! << 24) |
+            (first[2]! << 16) |
+            (first[3]! << 8) |
+            first[4]!) >>>
+          0
+        const length =
+          ((first[5]! << 24) |
+            (first[6]! << 16) |
+            (first[7]! << 8) |
+            first[8]!) >>>
+          0
+        return { type, streamId, length }
       }
-      bufferList.length = 0
-      bufferList.push(result)
-      return result
+
+      // Slow path: header spans multiple chunks - flatten header bytes only
+      const headerBytes = new Uint8Array(FRAME_HEADER_SIZE)
+      let offset = 0
+      let remaining = FRAME_HEADER_SIZE
+      for (let i = 0; i < bufferList.length && remaining > 0; i++) {
+        const chunk = bufferList[i]!
+        const toCopy = Math.min(chunk.length, remaining)
+        headerBytes.set(chunk.subarray(0, toCopy), offset)
+        offset += toCopy
+        remaining -= toCopy
+      }
+
+      const type = headerBytes[0]!
+      const streamId =
+        ((headerBytes[1]! << 24) |
+          (headerBytes[2]! << 16) |
+          (headerBytes[3]! << 8) |
+          headerBytes[4]!) >>>
+        0
+      const length =
+        ((headerBytes[5]! << 24) |
+          (headerBytes[6]! << 16) |
+          (headerBytes[7]! << 8) |
+          headerBytes[8]!) >>>
+        0
+
+      return { type, streamId, length }
     }
 
-    // Consumes bytes from the front of the buffer (buffer must already be flattened)
-    function consumeBytes(buffer: Uint8Array, count: number): void {
-      // Use slice (not subarray) to release memory of consumed portion
-      const remaining = buffer.slice(count)
-      bufferList.length = 0
-      if (remaining.length > 0) {
-        bufferList.push(remaining)
+    /**
+     * Flattens buffer list into single Uint8Array and removes from list.
+     */
+    function extractFlattened(count: number): Uint8Array {
+      if (count === 0) return EMPTY_BUFFER
+
+      const result = new Uint8Array(count)
+      let offset = 0
+      let remaining = count
+
+      while (remaining > 0 && bufferList.length > 0) {
+        const chunk = bufferList[0]
+        if (!chunk) break
+        const toCopy = Math.min(chunk.length, remaining)
+        result.set(chunk.subarray(0, toCopy), offset)
+
+        offset += toCopy
+        remaining -= toCopy
+
+        if (toCopy === chunk.length) {
+          bufferList.shift()
+        } else {
+          bufferList[0] = chunk.subarray(toCopy)
+        }
       }
+
       totalLength -= count
+      return result
     }
 
     try {
@@ -180,25 +245,11 @@ export function createFrameDecoder(
         totalLength += value.length
 
         // Parse complete frames from buffer
-        while (totalLength >= FRAME_HEADER_SIZE) {
-          // Flatten once per iteration, reuse for header read and consume
-          const buffer = flattenBuffer()
-          // Read header bytes directly to avoid DataView allocation per frame
-          // Frame format: [type:1][streamId:4 BE][length:4 BE]
-          const type = buffer[0]!
-          // Use >>> 0 to ensure unsigned 32-bit result (avoids negative for high bit set)
-          const streamId =
-            ((buffer[1]! << 24) |
-              (buffer[2]! << 16) |
-              (buffer[3]! << 8) |
-              buffer[4]!) >>>
-            0
-          const length =
-            ((buffer[5]! << 24) |
-              (buffer[6]! << 16) |
-              (buffer[7]! << 8) |
-              buffer[8]!) >>>
-            0
+        while (true) {
+          const header = readHeader()
+          if (!header) break // Not enough bytes for header
+
+          const { type, streamId, length } = header
 
           if (
             type !== FrameType.JSON &&
@@ -227,14 +278,19 @@ export function createFrameDecoder(
           }
 
           const frameSize = FRAME_HEADER_SIZE + length
-          // Check if we have the complete frame
-          if (totalLength < frameSize) {
-            break // Wait for more data
+          if (totalLength < frameSize) break // Wait for more data
+
+          if (++frameCount > MAX_FRAMES) {
+            throw new Error(
+              `Too many frames in framed response (max ${MAX_FRAMES})`,
+            )
           }
 
+          // Extract and consume header bytes
+          extractFlattened(FRAME_HEADER_SIZE)
+
           // Extract payload
-          const payload = buffer.slice(FRAME_HEADER_SIZE, frameSize)
-          consumeBytes(buffer, frameSize)
+          const payload = extractFlattened(length)
 
           // Process frame by type
           switch (type) {
@@ -248,7 +304,6 @@ export function createFrameDecoder(
             }
 
             case FrameType.CHUNK: {
-              // Ensure stream exists and get controller to enqueue data
               const ctrl = ensureController(streamId)
               if (ctrl) {
                 ctrl.enqueue(payload)
@@ -257,8 +312,6 @@ export function createFrameDecoder(
             }
 
             case FrameType.END: {
-              // Use ensureController for empty streams: END may arrive before
-              // deserialization calls getOrCreateStream (zero CHUNK frames sent)
               const ctrl = ensureController(streamId)
               cancelledStreamIds.add(streamId)
               if (ctrl) {
@@ -273,8 +326,6 @@ export function createFrameDecoder(
             }
 
             case FrameType.ERROR: {
-              // Use ensureController: ERROR may arrive before deserialization
-              // calls getOrCreateStream (error before any CHUNK frames)
               const ctrl = ensureController(streamId)
               cancelledStreamIds.add(streamId)
               if (ctrl) {
@@ -300,7 +351,6 @@ export function createFrameDecoder(
       }
 
       // Close any remaining streams (shouldn't happen in normal operation)
-      // Note: We don't clear streams map - app may still need to consume them
       streamControllers.forEach((ctrl) => {
         try {
           ctrl.close()

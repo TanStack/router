@@ -23,6 +23,9 @@ import type { Plugin as SerovalPlugin } from 'seroval'
 // Cache serovalPlugins at module level to avoid repeated calls
 let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined = undefined
 
+// Cache TextEncoder for NDJSON serialization
+const textEncoder = new TextEncoder()
+
 // Known FormData 'Content-Type' header values - module-level constant
 const FORM_DATA_CONTENT_TYPES = [
   'multipart/form-data',
@@ -267,11 +270,12 @@ export const handleServerAction = async ({
           }
 
           // No raw streams but not done yet - use standard NDJSON streaming
-          const encoder = new TextEncoder()
           const stream = new ReadableStream({
             start(controller) {
               callbacks.onParse = (value) =>
-                controller.enqueue(encoder.encode(JSON.stringify(value) + '\n'))
+                controller.enqueue(
+                  textEncoder.encode(JSON.stringify(value) + '\n'),
+                )
               callbacks.onDone = () => {
                 try {
                   controller.close()
@@ -280,7 +284,7 @@ export const handleServerAction = async ({
                 }
               }
               callbacks.onError = (error) => controller.error(error)
-              // stream the initial body
+              // stream initial body
               if (nonStreamingBody !== undefined) {
                 callbacks.onParse(nonStreamingBody)
               }
