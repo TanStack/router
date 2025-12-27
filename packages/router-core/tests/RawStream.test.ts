@@ -67,7 +67,7 @@ describe('RawStream', () => {
       })
 
       expect(collectedStreams.size).toBe(1)
-      // Stream ID is assigned by seroval based on ref tracking
+      // Stream ID is assigned by our internal counter (sequential starting at 1)
       const streamEntry = Array.from(collectedStreams.entries())[0]
       expect(streamEntry).toBeDefined()
       expect(streamEntry![1]).toBe(testStream)

@@ -394,6 +394,9 @@ interface RawStreamRPCNode {
 export function createRawStreamRPCPlugin(
   onRawStream: OnRawStreamCallback,
 ): Plugin<any, any> {
+  // Own stream counter - sequential IDs starting at 1, independent of seroval internals
+  let nextStreamId = 1
+
   return createPlugin({
     tag: 'tss/RawStream',
 
@@ -402,27 +405,28 @@ export function createRawStreamRPCPlugin(
     },
 
     parse: {
-      sync(_value: RawStream, _ctx, data) {
-        // Sync not supported, but return structure anyway
-        return { streamId: data.id }
+      async(value: RawStream) {
+        const streamId = nextStreamId++
+        onRawStream(streamId, value.stream)
+        return Promise.resolve({ streamId })
       },
-      async(value: RawStream, _ctx, data) {
-        onRawStream(data.id, value.stream)
-        return Promise.resolve({ streamId: data.id })
-      },
-      stream(value: RawStream, _ctx, data) {
-        onRawStream(data.id, value.stream)
-        return { streamId: data.id }
+      stream(value: RawStream) {
+        const streamId = nextStreamId++
+        onRawStream(streamId, value.stream)
+        return { streamId }
       },
     },
 
-    serialize(node: RawStreamRPCNode) {
-      // Output placeholder that will be recognized during deserialization
-      return JSON.stringify({ $rawStream: node.streamId })
+    serialize(): never {
+      // RPC uses toCrossJSONStream which produces JSON nodes, not JS code.
+      // This method is only called by crossSerialize* which we don't use.
+      throw new Error(
+        'RawStreamRPCPlugin.serialize should not be called. RPC uses JSON serialization, not JS code generation.',
+      )
     },
 
-    deserialize(_node: RawStreamRPCNode): never {
-      // This should never be called - client uses createRawStreamDeserializePlugin
+    deserialize(): never {
+      // Client uses createRawStreamDeserializePlugin instead
       throw new Error(
         'RawStreamRPCPlugin.deserialize should not be called. Use createRawStreamDeserializePlugin on client.',
       )
@@ -442,16 +446,15 @@ export function createRawStreamDeserializePlugin(
   return createPlugin({
     tag: 'tss/RawStream',
 
-    test() {
-      // Never matches on client - we don't serialize RawStream from client
-      return false
-    },
+    test: () => false, // Client never serializes RawStream
 
-    parse: {},
+    parse: {}, // Client only deserializes, never parses
 
-    serialize() {
-      // Never called on client
-      return ''
+    serialize(): never {
+      // Client never serializes RawStream back to server
+      throw new Error(
+        'RawStreamDeserializePlugin.serialize should not be called. Client only deserializes.',
+      )
     },
 
     deserialize(node: RawStreamRPCNode) {
