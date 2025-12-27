@@ -53,21 +53,25 @@
       "inputs": ["default", "^production"]
     },
     "test:e2e:spaMode": {
+      "parallelism": false,
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
     },
     "test:e2e:ssrMode": {
+      "parallelism": false,
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
     },
     "test:e2e:prerender": {
+      "parallelism": false,
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
     },
     "test:e2e:preview": {
+      "parallelism": false,
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
