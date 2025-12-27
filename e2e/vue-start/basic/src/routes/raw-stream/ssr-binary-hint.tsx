@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import * as React from 'react'
 import { RawStream } from '@tanstack/vue-start'
+import { defineComponent, ref, watch } from 'vue'
 import {
-  encode,
-  createDelayedStream,
-  concatBytes,
   collectBytes,
   compareBytes,
+  concatBytes,
+  createDelayedStream,
+  encode,
 } from '../../raw-stream-fns'
 
 // Expected data - defined at module level for client-side verification
@@ -18,6 +18,114 @@ const BINARY_CHUNKS = [
   new Uint8Array([0xff, 0xfe, 0xfd, 0xfc]),
 ]
 const BINARY_EXPECTED = concatBytes(BINARY_CHUNKS)
+
+type TextMatch = {
+  match: boolean
+  mismatchIndex: number | null
+  actualLength: number
+  expectedLength: number
+  asText: string
+}
+
+type BinaryMatch = {
+  match: boolean
+  mismatchIndex: number | null
+  actualLength: number
+  expectedLength: number
+}
+
+const SSRBinaryHintTest = defineComponent({
+  setup() {
+    const loaderData = Route.useLoaderData()
+    const textMatch = ref<TextMatch | null>(null)
+    const binaryMatch = ref<BinaryMatch | null>(null)
+    const isLoading = ref(true)
+    const error = ref<string | null>(null)
+
+    watch(
+      () => [loaderData.value.textData, loaderData.value.binaryData],
+      ([textData, binaryData]) => {
+        if (!textData || !binaryData) {
+          return
+        }
+        isLoading.value = true
+        error.value = null
+        Promise.all([collectBytes(textData), collectBytes(binaryData)])
+          .then(([textBytes, binaryBytes]) => {
+            const textComp = compareBytes(textBytes, TEXT_EXPECTED)
+            const decoder = new TextDecoder()
+            textMatch.value = {
+              ...textComp,
+              actualLength: textBytes.length,
+              expectedLength: TEXT_EXPECTED.length,
+              asText: decoder.decode(textBytes),
+            }
+            const binaryComp = compareBytes(binaryBytes, BINARY_EXPECTED)
+            binaryMatch.value = {
+              ...binaryComp,
+              actualLength: binaryBytes.length,
+              expectedLength: BINARY_EXPECTED.length,
+            }
+            isLoading.value = false
+          })
+          .catch((err) => {
+            error.value = String(err)
+            isLoading.value = false
+          })
+      },
+      { immediate: true },
+    )
+
+    return () => (
+      <div class="space-y-4">
+        <h2>SSR Binary Hint Test</h2>
+        <p class="text-gray-600">
+          This route tests RawStream with hint: 'binary' from loader. Binary hint
+          always uses base64 encoding (default behavior).
+        </p>
+
+        <div class="border p-4 rounded">
+          <div data-testid="ssr-binary-hint-message">
+            Message: {loaderData.value.message}
+          </div>
+          <div data-testid="ssr-binary-hint-text">
+            Text Data:{' '}
+            {error.value
+              ? `Error: ${error.value}`
+              : isLoading.value
+                ? 'Loading...'
+                : textMatch.value?.asText}
+          </div>
+          <div data-testid="ssr-binary-hint-text-match">
+            Text Bytes Match:{' '}
+            {isLoading.value
+              ? 'Loading...'
+              : textMatch.value?.match
+                ? 'true'
+                : 'false'}
+          </div>
+          <div data-testid="ssr-binary-hint-binary-match">
+            Binary Bytes Match:{' '}
+            {isLoading.value
+              ? 'Loading...'
+              : binaryMatch.value?.match
+                ? 'true'
+                : 'false'}
+          </div>
+          <pre data-testid="ssr-binary-hint-result">
+            {JSON.stringify({
+              message: loaderData.value.message,
+              textMatch: textMatch.value,
+              binaryMatch: binaryMatch.value,
+              isLoading: isLoading.value,
+              error: error.value,
+            })}
+          </pre>
+        </div>
+      </div>
+    )
+  },
+})
 
 export const Route = createFileRoute('/raw-stream/ssr-binary-hint')({
   loader: async () => {
@@ -44,86 +152,3 @@ export const Route = createFileRoute('/raw-stream/ssr-binary-hint')({
   },
   component: SSRBinaryHintTest,
 })
-
-function SSRBinaryHintTest() {
-  const { message, textData, binaryData } = Route.useLoaderData()
-  const [textMatch, setTextMatch] = React.useState<{
-    match: boolean
-    mismatchIndex: number | null
-    actualLength: number
-    expectedLength: number
-    asText: string
-  } | null>(null)
-  const [binaryMatch, setBinaryMatch] = React.useState<{
-    match: boolean
-    mismatchIndex: number | null
-    actualLength: number
-    expectedLength: number
-  } | null>(null)
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    Promise.all([collectBytes(textData), collectBytes(binaryData)])
-      .then(([textBytes, binaryBytes]) => {
-        const textComp = compareBytes(textBytes, TEXT_EXPECTED)
-        const decoder = new TextDecoder()
-        setTextMatch({
-          ...textComp,
-          actualLength: textBytes.length,
-          expectedLength: TEXT_EXPECTED.length,
-          asText: decoder.decode(textBytes),
-        })
-        const binaryComp = compareBytes(binaryBytes, BINARY_EXPECTED)
-        setBinaryMatch({
-          ...binaryComp,
-          actualLength: binaryBytes.length,
-          expectedLength: BINARY_EXPECTED.length,
-        })
-        setIsLoading(false)
-      })
-      .catch((err) => {
-        setError(String(err))
-        setIsLoading(false)
-      })
-  }, [textData, binaryData])
-
-  return (
-    <div class="space-y-4">
-      <h2>SSR Binary Hint Test</h2>
-      <p class="text-gray-600">
-        This route tests RawStream with hint: 'binary' from loader. Binary hint
-        always uses base64 encoding (default behavior).
-      </p>
-
-      <div class="border p-4 rounded">
-        <div data-testid="ssr-binary-hint-message">Message: {message}</div>
-        <div data-testid="ssr-binary-hint-text">
-          Text Data:{' '}
-          {error
-            ? `Error: ${error}`
-            : isLoading
-              ? 'Loading...'
-              : textMatch?.asText}
-        </div>
-        <div data-testid="ssr-binary-hint-text-match">
-          Text Bytes Match:{' '}
-          {isLoading ? 'Loading...' : textMatch?.match ? 'true' : 'false'}
-        </div>
-        <div data-testid="ssr-binary-hint-binary-match">
-          Binary Bytes Match:{' '}
-          {isLoading ? 'Loading...' : binaryMatch?.match ? 'true' : 'false'}
-        </div>
-        <pre data-testid="ssr-binary-hint-result">
-          {JSON.stringify({
-            message,
-            textMatch,
-            binaryMatch,
-            isLoading,
-            error,
-          })}
-        </pre>
-      </div>
-    </div>
-  )
-}

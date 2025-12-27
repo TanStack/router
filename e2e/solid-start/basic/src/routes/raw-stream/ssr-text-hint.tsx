@@ -2,11 +2,11 @@ import { createFileRoute } from '@tanstack/solid-router'
 import * as React from 'react'
 import { RawStream } from '@tanstack/solid-start'
 import {
-  encode,
-  createDelayedStream,
-  concatBytes,
   collectBytes,
   compareBytes,
+  concatBytes,
+  createDelayedStream,
+  encode,
 } from '../../raw-stream-fns'
 
 // Expected data - defined at module level for client-side verification
@@ -69,7 +69,7 @@ export const Route = createFileRoute('/raw-stream/ssr-text-hint')({
 })
 
 function SSRTextHintTest() {
-  const { message, pureText, mixedContent, pureBinary } = Route.useLoaderData()
+  const loaderData = Route.useLoaderData()
   const [pureTextMatch, setPureTextMatch] = React.useState<{
     match: boolean
     mismatchIndex: number | null
@@ -94,9 +94,9 @@ function SSRTextHintTest() {
 
   React.useEffect(() => {
     Promise.all([
-      collectBytes(pureText),
-      collectBytes(mixedContent),
-      collectBytes(pureBinary),
+      collectBytes(loaderData().pureText),
+      collectBytes(loaderData().mixedContent),
+      collectBytes(loaderData().pureBinary),
     ])
       .then(([pureBytes, mixedBytes, pureBinaryBytes]) => {
         const pureComp = compareBytes(pureBytes, PURE_TEXT_EXPECTED)
@@ -128,7 +128,7 @@ function SSRTextHintTest() {
         setError(String(err))
         setIsLoading(false)
       })
-  }, [pureText, mixedContent, pureBinary])
+  }, [loaderData().pureText, loaderData().mixedContent, loaderData().pureBinary])
 
   return (
     <div class="space-y-4">
@@ -139,7 +139,7 @@ function SSRTextHintTest() {
       </p>
 
       <div class="border p-4 rounded">
-        <div data-testid="ssr-text-hint-message">Message: {message}</div>
+        <div data-testid="ssr-text-hint-message">Message: {loaderData().message}</div>
         <div data-testid="ssr-text-hint-pure-text">
           Pure Text:{' '}
           {error
@@ -162,7 +162,7 @@ function SSRTextHintTest() {
         </div>
         <pre data-testid="ssr-text-hint-result">
           {JSON.stringify({
-            message,
+            message: loaderData().message,
             pureTextMatch,
             mixedMatch,
             pureBinaryMatch,

@@ -2,11 +2,11 @@ import { createFileRoute } from '@tanstack/solid-router'
 import * as React from 'react'
 import { RawStream } from '@tanstack/solid-start'
 import {
-  encode,
-  createDelayedStream,
-  concatBytes,
   collectBytes,
   compareBytes,
+  concatBytes,
+  createDelayedStream,
+  encode,
 } from '../../raw-stream-fns'
 
 // Expected data - defined at module level for client-side verification
@@ -46,7 +46,7 @@ export const Route = createFileRoute('/raw-stream/ssr-binary-hint')({
 })
 
 function SSRBinaryHintTest() {
-  const { message, textData, binaryData } = Route.useLoaderData()
+  const loaderData = Route.useLoaderData()
   const [textMatch, setTextMatch] = React.useState<{
     match: boolean
     mismatchIndex: number | null
@@ -64,7 +64,7 @@ function SSRBinaryHintTest() {
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
-    Promise.all([collectBytes(textData), collectBytes(binaryData)])
+    Promise.all([collectBytes(loaderData().textData), collectBytes(loaderData().binaryData)])
       .then(([textBytes, binaryBytes]) => {
         const textComp = compareBytes(textBytes, TEXT_EXPECTED)
         const decoder = new TextDecoder()
@@ -86,7 +86,7 @@ function SSRBinaryHintTest() {
         setError(String(err))
         setIsLoading(false)
       })
-  }, [textData, binaryData])
+  }, [loaderData().textData, loaderData().binaryData])
 
   return (
     <div class="space-y-4">
@@ -97,7 +97,7 @@ function SSRBinaryHintTest() {
       </p>
 
       <div class="border p-4 rounded">
-        <div data-testid="ssr-binary-hint-message">Message: {message}</div>
+        <div data-testid="ssr-binary-hint-message">Message: {loaderData().message}</div>
         <div data-testid="ssr-binary-hint-text">
           Text Data:{' '}
           {error
@@ -116,7 +116,7 @@ function SSRBinaryHintTest() {
         </div>
         <pre data-testid="ssr-binary-hint-result">
           {JSON.stringify({
-            message,
+            message: loaderData().message,
             textMatch,
             binaryMatch,
             isLoading,

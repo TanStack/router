@@ -1,4 +1,4 @@
-import { createServerFn, RawStream } from '@tanstack/vue-start'
+import { RawStream, createServerFn } from '@tanstack/vue-start'
 
 // Helper to create a delayed Uint8Array stream
 function createDelayedStream(

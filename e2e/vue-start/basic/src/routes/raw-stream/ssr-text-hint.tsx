@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import * as React from 'react'
 import { RawStream } from '@tanstack/vue-start'
+import { defineComponent, ref, watch } from 'vue'
 import {
-  encode,
-  createDelayedStream,
-  concatBytes,
   collectBytes,
   compareBytes,
+  concatBytes,
+  createDelayedStream,
+  encode,
 } from '../../raw-stream-fns'
 
 // Expected data - defined at module level for client-side verification
@@ -30,6 +30,141 @@ const PURE_BINARY_CHUNKS = [
   new Uint8Array([0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0]),
 ]
 const PURE_BINARY_EXPECTED = concatBytes(PURE_BINARY_CHUNKS)
+
+type TextMatch = {
+  match: boolean
+  mismatchIndex: number | null
+  actualLength: number
+  expectedLength: number
+  asText: string
+}
+
+type BinaryMatch = {
+  match: boolean
+  mismatchIndex: number | null
+  actualLength: number
+  expectedLength: number
+}
+
+const SSRTextHintTest = defineComponent({
+  setup() {
+    const loaderData = Route.useLoaderData()
+    const pureTextMatch = ref<TextMatch | null>(null)
+    const mixedMatch = ref<BinaryMatch | null>(null)
+    const pureBinaryMatch = ref<BinaryMatch | null>(null)
+    const isLoading = ref(true)
+    const error = ref<string | null>(null)
+
+    watch(
+      () => [
+        loaderData.value.pureText,
+        loaderData.value.mixedContent,
+        loaderData.value.pureBinary,
+      ],
+      ([pureText, mixedContent, pureBinary]) => {
+        if (!pureText || !mixedContent || !pureBinary) {
+          return
+        }
+        isLoading.value = true
+        error.value = null
+        Promise.all([
+          collectBytes(pureText),
+          collectBytes(mixedContent),
+          collectBytes(pureBinary),
+        ])
+          .then(([pureBytes, mixedBytes, pureBinaryBytes]) => {
+            const pureComp = compareBytes(pureBytes, PURE_TEXT_EXPECTED)
+            const decoder = new TextDecoder()
+            pureTextMatch.value = {
+              ...pureComp,
+              actualLength: pureBytes.length,
+              expectedLength: PURE_TEXT_EXPECTED.length,
+              asText: decoder.decode(pureBytes),
+            }
+            const mixedComp = compareBytes(mixedBytes, MIXED_EXPECTED)
+            mixedMatch.value = {
+              ...mixedComp,
+              actualLength: mixedBytes.length,
+              expectedLength: MIXED_EXPECTED.length,
+            }
+            const pureBinaryComp = compareBytes(
+              pureBinaryBytes,
+              PURE_BINARY_EXPECTED,
+            )
+            pureBinaryMatch.value = {
+              ...pureBinaryComp,
+              actualLength: pureBinaryBytes.length,
+              expectedLength: PURE_BINARY_EXPECTED.length,
+            }
+            isLoading.value = false
+          })
+          .catch((err) => {
+            error.value = String(err)
+            isLoading.value = false
+          })
+      },
+      { immediate: true },
+    )
+
+    return () => (
+      <div class="space-y-4">
+        <h2>SSR Text Hint Test</h2>
+        <p class="text-gray-600">
+          This route tests RawStream with hint: 'text' from loader. Text hint
+          optimizes for UTF-8 content but falls back to base64 for invalid UTF-8.
+        </p>
+
+        <div class="border p-4 rounded">
+          <div data-testid="ssr-text-hint-message">
+            Message: {loaderData.value.message}
+          </div>
+          <div data-testid="ssr-text-hint-pure-text">
+            Pure Text:{' '}
+            {error.value
+              ? `Error: ${error.value}`
+              : isLoading.value
+                ? 'Loading...'
+                : pureTextMatch.value?.asText}
+          </div>
+          <div data-testid="ssr-text-hint-pure-match">
+            Pure Text Bytes Match:{' '}
+            {isLoading.value
+              ? 'Loading...'
+              : pureTextMatch.value?.match
+                ? 'true'
+                : 'false'}
+          </div>
+          <div data-testid="ssr-text-hint-mixed-match">
+            Mixed Content Bytes Match:{' '}
+            {isLoading.value
+              ? 'Loading...'
+              : mixedMatch.value?.match
+                ? 'true'
+                : 'false'}
+          </div>
+          <div data-testid="ssr-text-hint-pure-binary-match">
+            Pure Binary Bytes Match:{' '}
+            {isLoading.value
+              ? 'Loading...'
+              : pureBinaryMatch.value?.match
+                ? 'true'
+                : 'false'}
+          </div>
+          <pre data-testid="ssr-text-hint-result">
+            {JSON.stringify({
+              message: loaderData.value.message,
+              pureTextMatch: pureTextMatch.value,
+              mixedMatch: mixedMatch.value,
+              pureBinaryMatch: pureBinaryMatch.value,
+              isLoading: isLoading.value,
+              error: error.value,
+            })}
+          </pre>
+        </div>
+      </div>
+    )
+  },
+})
 
 export const Route = createFileRoute('/raw-stream/ssr-text-hint')({
   loader: async () => {
@@ -67,110 +202,3 @@ export const Route = createFileRoute('/raw-stream/ssr-text-hint')({
   },
   component: SSRTextHintTest,
 })
-
-function SSRTextHintTest() {
-  const { message, pureText, mixedContent, pureBinary } = Route.useLoaderData()
-  const [pureTextMatch, setPureTextMatch] = React.useState<{
-    match: boolean
-    mismatchIndex: number | null
-    actualLength: number
-    expectedLength: number
-    asText: string
-  } | null>(null)
-  const [mixedMatch, setMixedMatch] = React.useState<{
-    match: boolean
-    mismatchIndex: number | null
-    actualLength: number
-    expectedLength: number
-  } | null>(null)
-  const [pureBinaryMatch, setPureBinaryMatch] = React.useState<{
-    match: boolean
-    mismatchIndex: number | null
-    actualLength: number
-    expectedLength: number
-  } | null>(null)
-  const [isLoading, setIsLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    Promise.all([
-      collectBytes(pureText),
-      collectBytes(mixedContent),
-      collectBytes(pureBinary),
-    ])
-      .then(([pureBytes, mixedBytes, pureBinaryBytes]) => {
-        const pureComp = compareBytes(pureBytes, PURE_TEXT_EXPECTED)
-        const decoder = new TextDecoder()
-        setPureTextMatch({
-          ...pureComp,
-          actualLength: pureBytes.length,
-          expectedLength: PURE_TEXT_EXPECTED.length,
-          asText: decoder.decode(pureBytes),
-        })
-        const mixedComp = compareBytes(mixedBytes, MIXED_EXPECTED)
-        setMixedMatch({
-          ...mixedComp,
-          actualLength: mixedBytes.length,
-          expectedLength: MIXED_EXPECTED.length,
-        })
-        const pureBinaryComp = compareBytes(
-          pureBinaryBytes,
-          PURE_BINARY_EXPECTED,
-        )
-        setPureBinaryMatch({
-          ...pureBinaryComp,
-          actualLength: pureBinaryBytes.length,
-          expectedLength: PURE_BINARY_EXPECTED.length,
-        })
-        setIsLoading(false)
-      })
-      .catch((err) => {
-        setError(String(err))
-        setIsLoading(false)
-      })
-  }, [pureText, mixedContent, pureBinary])
-
-  return (
-    <div class="space-y-4">
-      <h2>SSR Text Hint Test</h2>
-      <p class="text-gray-600">
-        This route tests RawStream with hint: 'text' from loader. Text hint
-        optimizes for UTF-8 content but falls back to base64 for invalid UTF-8.
-      </p>
-
-      <div class="border p-4 rounded">
-        <div data-testid="ssr-text-hint-message">Message: {message}</div>
-        <div data-testid="ssr-text-hint-pure-text">
-          Pure Text:{' '}
-          {error
-            ? `Error: ${error}`
-            : isLoading
-              ? 'Loading...'
-              : pureTextMatch?.asText}
-        </div>
-        <div data-testid="ssr-text-hint-pure-match">
-          Pure Text Bytes Match:{' '}
-          {isLoading ? 'Loading...' : pureTextMatch?.match ? 'true' : 'false'}
-        </div>
-        <div data-testid="ssr-text-hint-mixed-match">
-          Mixed Content Bytes Match:{' '}
-          {isLoading ? 'Loading...' : mixedMatch?.match ? 'true' : 'false'}
-        </div>
-        <div data-testid="ssr-text-hint-pure-binary-match">
-          Pure Binary Bytes Match:{' '}
-          {isLoading ? 'Loading...' : pureBinaryMatch?.match ? 'true' : 'false'}
-        </div>
-        <pre data-testid="ssr-text-hint-result">
-          {JSON.stringify({
-            message,
-            pureTextMatch,
-            mixedMatch,
-            pureBinaryMatch,
-            isLoading,
-            error,
-          })}
-        </pre>
-      </div>
-    </div>
-  )
-}

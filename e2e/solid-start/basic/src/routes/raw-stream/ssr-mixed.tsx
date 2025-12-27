@@ -29,14 +29,14 @@ export const Route = createFileRoute('/raw-stream/ssr-mixed')({
 })
 
 function SSRMixedTest() {
-  const { immediate, deferred, rawData } = Route.useLoaderData()
+  const loaderData = Route.useLoaderData()
   const [streamContent, setStreamContent] = React.useState<string>('')
   const [isConsuming, setIsConsuming] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const consumeStream = createStreamConsumer()
-    consumeStream(rawData)
+    consumeStream(loaderData().rawData)
       .then((content) => {
         setStreamContent(content)
         setIsConsuming(false)
@@ -45,8 +45,7 @@ function SSRMixedTest() {
         setError(String(err))
         setIsConsuming(false)
       })
-  }, [rawData])
-
+  }, [loaderData().rawData])
   return (
     <div class="space-y-4">
       <h2>SSR Mixed Streaming Test</h2>
@@ -56,11 +55,11 @@ function SSRMixedTest() {
       </p>
 
       <div class="border p-4 rounded">
-        <div data-testid="ssr-mixed-immediate">Immediate: {immediate}</div>
+        <div data-testid="ssr-mixed-immediate">Immediate: {loaderData().immediate}</div>
         <div data-testid="ssr-mixed-deferred">
           Deferred:{' '}
           <React.Suspense fallback="Loading deferred...">
-            <Await promise={deferred}>{(value) => <span>{value}</span>}</Await>
+            <Await promise={loaderData().deferred}>{(value) => <span>{value}</span>}</Await>
           </React.Suspense>
         </div>
         <div data-testid="ssr-mixed-stream">
@@ -72,7 +71,7 @@ function SSRMixedTest() {
               : streamContent}
         </div>
         <pre data-testid="ssr-mixed-result">
-          {JSON.stringify({ immediate, streamContent, isConsuming, error })}
+          {JSON.stringify({ immediate: loaderData().immediate, streamContent, isConsuming, error })}
         </pre>
       </div>
     </div>

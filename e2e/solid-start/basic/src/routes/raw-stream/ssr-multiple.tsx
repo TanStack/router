@@ -2,9 +2,9 @@ import { createFileRoute } from '@tanstack/solid-router'
 import * as React from 'react'
 import { RawStream } from '@tanstack/solid-start'
 import {
-  encode,
   createDelayedStream,
   createStreamConsumer,
+  encode,
 } from '../../raw-stream-fns'
 
 export const Route = createFileRoute('/raw-stream/ssr-multiple')({
@@ -27,7 +27,7 @@ export const Route = createFileRoute('/raw-stream/ssr-multiple')({
 })
 
 function SSRMultipleTest() {
-  const { message, first, second } = Route.useLoaderData()
+  const loaderData = Route.useLoaderData()
   const [firstContent, setFirstContent] = React.useState<string>('')
   const [secondContent, setSecondContent] = React.useState<string>('')
   const [isConsuming, setIsConsuming] = React.useState(true)
@@ -35,7 +35,7 @@ function SSRMultipleTest() {
 
   React.useEffect(() => {
     const consumeStream = createStreamConsumer()
-    Promise.all([consumeStream(first), consumeStream(second)])
+    Promise.all([consumeStream(loaderData().first), consumeStream(loaderData().second)])
       .then(([content1, content2]) => {
         setFirstContent(content1)
         setSecondContent(content2)
@@ -45,7 +45,7 @@ function SSRMultipleTest() {
         setError(String(err))
         setIsConsuming(false)
       })
-  }, [first, second])
+  }, [loaderData().first, loaderData().second])
 
   return (
     <div class="space-y-4">
@@ -56,7 +56,7 @@ function SSRMultipleTest() {
       </p>
 
       <div class="border p-4 rounded">
-        <div data-testid="ssr-multiple-message">Message: {message}</div>
+        <div data-testid="ssr-multiple-message">Message: {loaderData().message}</div>
         <div data-testid="ssr-multiple-first">
           First Stream:{' '}
           {error
@@ -75,7 +75,7 @@ function SSRMultipleTest() {
         </div>
         <pre data-testid="ssr-multiple-result">
           {JSON.stringify({
-            message,
+            message: loaderData().message,
             firstContent,
             secondContent,
             isConsuming,

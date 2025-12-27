@@ -1,11 +1,85 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import * as React from 'react'
 import { RawStream } from '@tanstack/vue-start'
+import { defineComponent, ref, watch } from 'vue'
 import {
-  encode,
   createDelayedStream,
   createStreamConsumer,
+  encode,
 } from '../../raw-stream-fns'
+
+const SSRMultipleTest = defineComponent({
+  setup() {
+    const loaderData = Route.useLoaderData()
+    const firstContent = ref('')
+    const secondContent = ref('')
+    const isConsuming = ref(true)
+    const error = ref<string | null>(null)
+
+    watch(
+      () => [loaderData.value.first, loaderData.value.second],
+      ([first, second]) => {
+        if (!first || !second) {
+          return
+        }
+        const consumeStream = createStreamConsumer()
+        isConsuming.value = true
+        error.value = null
+        Promise.all([consumeStream(first), consumeStream(second)])
+          .then(([content1, content2]) => {
+            firstContent.value = content1
+            secondContent.value = content2
+            isConsuming.value = false
+          })
+          .catch((err) => {
+            error.value = String(err)
+            isConsuming.value = false
+          })
+      },
+      { immediate: true },
+    )
+
+    return () => (
+      <div class="space-y-4">
+        <h2>SSR Multiple RawStreams Test</h2>
+        <p class="text-gray-600">
+          This route returns multiple RawStreams from its loader. Each stream is
+          independently serialized during SSR.
+        </p>
+
+        <div class="border p-4 rounded">
+          <div data-testid="ssr-multiple-message">
+            Message: {loaderData.value.message}
+          </div>
+          <div data-testid="ssr-multiple-first">
+            First Stream:{' '}
+            {error.value
+              ? `Error: ${error.value}`
+              : isConsuming.value
+                ? 'Loading...'
+                : firstContent.value}
+          </div>
+          <div data-testid="ssr-multiple-second">
+            Second Stream:{' '}
+            {error.value
+              ? `Error: ${error.value}`
+              : isConsuming.value
+                ? 'Loading...'
+                : secondContent.value}
+          </div>
+          <pre data-testid="ssr-multiple-result">
+            {JSON.stringify({
+              message: loaderData.value.message,
+              firstContent: firstContent.value,
+              secondContent: secondContent.value,
+              isConsuming: isConsuming.value,
+              error: error.value,
+            })}
+          </pre>
+        </div>
+      </div>
+    )
+  },
+})
 
 export const Route = createFileRoute('/raw-stream/ssr-multiple')({
   loader: async () => {
@@ -25,64 +99,3 @@ export const Route = createFileRoute('/raw-stream/ssr-multiple')({
   },
   component: SSRMultipleTest,
 })
-
-function SSRMultipleTest() {
-  const { message, first, second } = Route.useLoaderData()
-  const [firstContent, setFirstContent] = React.useState<string>('')
-  const [secondContent, setSecondContent] = React.useState<string>('')
-  const [isConsuming, setIsConsuming] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    const consumeStream = createStreamConsumer()
-    Promise.all([consumeStream(first), consumeStream(second)])
-      .then(([content1, content2]) => {
-        setFirstContent(content1)
-        setSecondContent(content2)
-        setIsConsuming(false)
-      })
-      .catch((err) => {
-        setError(String(err))
-        setIsConsuming(false)
-      })
-  }, [first, second])
-
-  return (
-    <div class="space-y-4">
-      <h2>SSR Multiple RawStreams Test</h2>
-      <p class="text-gray-600">
-        This route returns multiple RawStreams from its loader. Each stream is
-        independently serialized during SSR.
-      </p>
-
-      <div class="border p-4 rounded">
-        <div data-testid="ssr-multiple-message">Message: {message}</div>
-        <div data-testid="ssr-multiple-first">
-          First Stream:{' '}
-          {error
-            ? `Error: ${error}`
-            : isConsuming
-              ? 'Loading...'
-              : firstContent}
-        </div>
-        <div data-testid="ssr-multiple-second">
-          Second Stream:{' '}
-          {error
-            ? `Error: ${error}`
-            : isConsuming
-              ? 'Loading...'
-              : secondContent}
-        </div>
-        <pre data-testid="ssr-multiple-result">
-          {JSON.stringify({
-            message,
-            firstContent,
-            secondContent,
-            isConsuming,
-            error,
-          })}
-        </pre>
-      </div>
-    </div>
-  )
-}
