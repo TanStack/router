@@ -62,10 +62,17 @@ function SSRBinaryHintTest() {
   } | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const consumedRef = React.useRef(false)
 
   React.useEffect(() => {
+    // Guard against double consumption - streams can only be read once
+    if (consumedRef.current) return
+    consumedRef.current = true
+
+    let mounted = true
     Promise.all([collectBytes(textData), collectBytes(binaryData)])
       .then(([textBytes, binaryBytes]) => {
+        if (!mounted) return
         const textComp = compareBytes(textBytes, TEXT_EXPECTED)
         const decoder = new TextDecoder()
         setTextMatch({
@@ -83,9 +90,14 @@ function SSRBinaryHintTest() {
         setIsLoading(false)
       })
       .catch((err) => {
+        if (!mounted) return
         setError(String(err))
         setIsLoading(false)
       })
+
+    return () => {
+      mounted = false
+    }
   }, [textData, binaryData])
 
   return (

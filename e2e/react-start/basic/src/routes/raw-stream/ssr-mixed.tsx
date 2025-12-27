@@ -40,16 +40,23 @@ function SSRMixedTest() {
     if (consumedRef.current) return
     consumedRef.current = true
 
+    let mounted = true
     const consumeStream = createStreamConsumer()
     consumeStream(rawData)
       .then((content) => {
+        if (!mounted) return
         setStreamContent(content)
         setIsConsuming(false)
       })
       .catch((err) => {
+        if (!mounted) return
         setError(String(err))
         setIsConsuming(false)
       })
+
+    return () => {
+      mounted = false
+    }
   }, [rawData])
 
   return (

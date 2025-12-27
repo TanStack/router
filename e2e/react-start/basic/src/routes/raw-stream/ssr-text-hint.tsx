@@ -91,14 +91,21 @@ function SSRTextHintTest() {
   } | null>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const consumedRef = React.useRef(false)
 
   React.useEffect(() => {
+    // Guard against double consumption - streams can only be read once
+    if (consumedRef.current) return
+    consumedRef.current = true
+
+    let mounted = true
     Promise.all([
       collectBytes(pureText),
       collectBytes(mixedContent),
       collectBytes(pureBinary),
     ])
       .then(([pureBytes, mixedBytes, pureBinaryBytes]) => {
+        if (!mounted) return
         const pureComp = compareBytes(pureBytes, PURE_TEXT_EXPECTED)
         const decoder = new TextDecoder()
         setPureTextMatch({
@@ -125,9 +132,14 @@ function SSRTextHintTest() {
         setIsLoading(false)
       })
       .catch((err) => {
+        if (!mounted) return
         setError(String(err))
         setIsLoading(false)
       })
+
+    return () => {
+      mounted = false
+    }
   }, [pureText, mixedContent, pureBinary])
 
   return (
