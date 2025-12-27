@@ -388,14 +388,14 @@ export function TanStackStartVitePluginCore(
       buildApp: {
         order: 'post',
         async handler(builder) {
-          const { startConfig, resolvedStartConfig } = getConfig()
+          const { startConfig } = getConfig()
           const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
           const nitroKindFromPlugins = getNitroPluginKind(
             builder.config.plugins,
           )
           const nitroKind =
             nitroKindFromPlugins ??
-            (serverEnv?.config.build?.write === false ? 'v2' : null)
+            (serverEnv.config.build.write === false ? 'v2' : null)
 
           if (nitroKind === 'v3') {
             return
@@ -407,7 +407,7 @@ export function TanStackStartVitePluginCore(
               mode: 'nitro-server',
               nitro: {
                 options: {
-                  rootDir: builder.config.root ?? resolvedStartConfig.root,
+                  rootDir: builder.config.root,
                   output: {
                     dir: '.output',
                     publicDir: '.output/public',
