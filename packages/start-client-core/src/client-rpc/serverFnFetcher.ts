@@ -1,12 +1,20 @@
-import { encode, isNotFound, parseRedirect } from '@tanstack/router-core'
+import {
+  createRawStreamDeserializePlugin,
+  encode,
+  isNotFound,
+  parseRedirect,
+} from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
+  TSS_CONTENT_TYPE_FRAMED,
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
+  validateFramedProtocolVersion,
 } from '../constants'
+import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
@@ -55,7 +63,10 @@ export async function serverFnFetcher(
   headers.set('x-tsr-serverFn', 'true')
 
   if (type === 'payload') {
-    headers.set('accept', 'application/x-ndjson, application/json')
+    headers.set(
+      'accept',
+      `${TSS_CONTENT_TYPE_FRAMED}, application/x-ndjson, application/json`,
+    )
   }
 
   // If the method is GET, we need to move the payload to the query string
@@ -177,8 +188,36 @@ async function getResponse(fn: () => Promise<Response>) {
   // differently than a normal response.
   if (serializedByStart) {
     let result
+
+    // If it's a framed response (contains RawStream), use frame decoder
+    if (contentType.includes(TSS_CONTENT_TYPE_FRAMED)) {
+      // Validate protocol version compatibility
+      validateFramedProtocolVersion(contentType)
+
+      if (!response.body) {
+        throw new Error('No response body for framed response')
+      }
+
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(
+        response.body,
+      )
+
+      // Create deserialize plugin that wires up the raw streams
+      const rawStreamPlugin =
+        createRawStreamDeserializePlugin(getOrCreateStream)
+      const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+
+      const refs = new Map()
+      result = await processFramedResponse({
+        jsonStream: jsonChunks,
+        onMessage: (msg: any) => fromCrossJSON(msg, { refs, plugins }),
+        onError(msg, error) {
+          console.error(msg, error)
+        },
+      })
+    }
     // If it's a stream from the start serializer, process it as such
-    if (contentType.includes('application/x-ndjson')) {
+    else if (contentType.includes('application/x-ndjson')) {
       const refs = new Map()
       result = await processServerFnResponse({
         response,
@@ -191,7 +230,7 @@ async function getResponse(fn: () => Promise<Response>) {
       })
     }
     // If it's a JSON response, it can be simpler
-    if (contentType.includes('application/json')) {
+    else if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
       result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
     }
@@ -301,6 +340,53 @@ async function processServerFnResponse({
 
         if (done) {
           break
+        }
+      }
+    } catch (err) {
+      onError?.('Stream processing error:', err)
+    }
+  })()
+
+  return onMessage(firstObject)
+}
+
+/**
+ * Processes a framed response where each JSON chunk is a complete JSON string
+ * (already decoded by frame decoder).
+ */
+async function processFramedResponse({
+  jsonStream,
+  onMessage,
+  onError,
+}: {
+  jsonStream: ReadableStream<string>
+  onMessage: (msg: any) => any
+  onError?: (msg: string, error?: any) => void
+}) {
+  const reader = jsonStream.getReader()
+
+  // Read first JSON frame - this is the main result
+  const { value: firstValue, done: firstDone } = await reader.read()
+  if (firstDone || !firstValue) {
+    throw new Error('Stream ended before first object')
+  }
+
+  // Each frame is a complete JSON string
+  const firstObject = JSON.parse(firstValue)
+
+  // Process remaining frames asynchronously (for streaming refs like RawStream)
+  ;(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        if (value) {
+          try {
+            onMessage(JSON.parse(value))
+          } catch (e) {
+            onError?.(`Invalid JSON: ${value}`, e)
+          }
         }
       }
     } catch (err) {
