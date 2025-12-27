@@ -613,3 +613,49 @@ test.describe('RawStream - Cross Navigation', () => {
     )
   })
 })
+
+test.describe('RawStream - Edge Cases (RPC)', () => {
+  test('Empty stream - handles zero-byte stream correctly', async ({
+    page,
+  }) => {
+    await page.goto('/raw-stream/client-call')
+    await page.waitForURL('/raw-stream/client-call')
+
+    await page.getByTestId('test15-btn').waitFor({ state: 'visible' })
+    await page.waitForTimeout(HYDRATION_WAIT)
+
+    await page.getByTestId('test15-btn').click()
+
+    await expect(page.getByTestId('test15-result')).toContainText(
+      '"isEmpty":true',
+      { timeout: 10000 },
+    )
+    await expect(page.getByTestId('test15-result')).toContainText(
+      '"byteCount":0',
+    )
+    await expect(page.getByTestId('test15-result')).toContainText(
+      'Empty stream test',
+    )
+  })
+
+  test('Stream error - propagates error to client', async ({ page }) => {
+    await page.goto('/raw-stream/client-call')
+    await page.waitForURL('/raw-stream/client-call')
+
+    await page.getByTestId('test16-btn').waitFor({ state: 'visible' })
+    await page.waitForTimeout(HYDRATION_WAIT)
+
+    await page.getByTestId('test16-btn').click()
+
+    await expect(page.getByTestId('test16-result')).toContainText(
+      '"errorCaught":true',
+      { timeout: 10000 },
+    )
+    await expect(page.getByTestId('test16-result')).toContainText(
+      'Intentional stream error',
+    )
+    await expect(page.getByTestId('test16-result')).toContainText(
+      'Error stream test',
+    )
+  })
+})

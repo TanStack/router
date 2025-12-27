@@ -173,7 +173,9 @@ export function createFrameDecoder(
             }
 
             case FrameType.END: {
-              const ctrl = getController(streamId)
+              // Use ensureController for empty streams: END may arrive before
+              // deserialization calls getOrCreateStream (zero CHUNK frames sent)
+              const ctrl = ensureController(streamId)
               if (ctrl) {
                 try {
                   ctrl.close()
@@ -187,7 +189,9 @@ export function createFrameDecoder(
             }
 
             case FrameType.ERROR: {
-              const ctrl = getController(streamId)
+              // Use ensureController: ERROR may arrive before deserialization
+              // calls getOrCreateStream (error before any CHUNK frames)
+              const ctrl = ensureController(streamId)
               if (ctrl) {
                 const message = textDecoder.decode(payload)
                 ctrl.error(new Error(message))

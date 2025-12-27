@@ -15,6 +15,8 @@ import {
   interleavedStreamsFn,
   burstPauseBurstFn,
   threeStreamsFn,
+  emptyStreamFn,
+  errorStreamFn,
   createStreamConsumer,
   consumeBinaryStream,
   collectBytes,
@@ -405,6 +407,67 @@ function ClientCallTests() {
           {loading.test14 ? 'Loading...' : 'Run Test'}
         </button>
         <pre data-testid="test14-result">{JSON.stringify(results.test14)}</pre>
+      </div>
+
+      {/* Edge Case Tests Section */}
+      <h2 className="mt-8">Edge Case Tests (RPC)</h2>
+      <p className="text-gray-600">
+        These tests verify edge cases like empty streams and error handling.
+      </p>
+
+      {/* Test 15: Empty Stream */}
+      <div className="border p-4 rounded">
+        <h3 data-testid="test15-title">Test 15: Empty Stream</h3>
+        <button
+          data-testid="test15-btn"
+          onClick={() =>
+            runTest('test15', emptyStreamFn, async (result) => {
+              const bytes = await collectBytes(result.data)
+              return {
+                message: result.message,
+                byteCount: bytes.length,
+                isEmpty: bytes.length === 0,
+              }
+            })
+          }
+          disabled={loading.test15}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {loading.test15 ? 'Loading...' : 'Run Test'}
+        </button>
+        <pre data-testid="test15-result">{JSON.stringify(results.test15)}</pre>
+      </div>
+
+      {/* Test 16: Stream Error */}
+      <div className="border p-4 rounded">
+        <h3 data-testid="test16-title">Test 16: Stream Error</h3>
+        <button
+          data-testid="test16-btn"
+          onClick={() =>
+            runTest('test16', errorStreamFn, async (result) => {
+              try {
+                // Try to consume the stream - should error
+                const content = await consumeStream(result.data)
+                return {
+                  message: result.message,
+                  streamContent: content,
+                  errorCaught: false,
+                }
+              } catch (err) {
+                return {
+                  message: result.message,
+                  errorCaught: true,
+                  errorMessage: String(err),
+                }
+              }
+            })
+          }
+          disabled={loading.test16}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {loading.test16 ? 'Loading...' : 'Run Test'}
+        </button>
+        <pre data-testid="test16-result">{JSON.stringify(results.test16)}</pre>
       </div>
     </div>
   )

@@ -328,6 +328,42 @@ export const threeStreamsFn = createServerFn().handler(async () => {
   }
 })
 
+// ============================================================================
+// EDGE CASE TESTS
+// ============================================================================
+
+// Test 15: Empty stream (zero bytes)
+export const emptyStreamFn = createServerFn().handler(async () => {
+  // Stream that immediately closes with no data
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.close()
+    },
+  })
+
+  return {
+    message: 'Empty stream test',
+    data: new RawStream(stream),
+  }
+})
+
+// Test 16: Stream that errors mid-flight
+export const errorStreamFn = createServerFn().handler(async () => {
+  // Stream that sends some data then errors
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      controller.enqueue(encode('chunk-before-error'))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      controller.error(new Error('Intentional stream error'))
+    },
+  })
+
+  return {
+    message: 'Error stream test',
+    data: new RawStream(stream),
+  }
+})
+
 // Helpers for consuming streams (exported for use in components)
 // Note: RawStream is the marker class used in loaders/server functions,
 // but after SSR deserialization it becomes ReadableStream<Uint8Array>.
