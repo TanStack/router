@@ -33,30 +33,18 @@ function SSRMixedTest() {
   const [streamContent, setStreamContent] = React.useState<string>('')
   const [isConsuming, setIsConsuming] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const consumedRef = React.useRef(false)
 
   React.useEffect(() => {
-    // Guard against double consumption - streams can only be read once
-    if (consumedRef.current) return
-    consumedRef.current = true
-
-    let mounted = true
     const consumeStream = createStreamConsumer()
     consumeStream(rawData)
       .then((content) => {
-        if (!mounted) return
         setStreamContent(content)
         setIsConsuming(false)
       })
       .catch((err) => {
-        if (!mounted) return
         setError(String(err))
         setIsConsuming(false)
       })
-
-    return () => {
-      mounted = false
-    }
   }, [rawData])
 
   return (

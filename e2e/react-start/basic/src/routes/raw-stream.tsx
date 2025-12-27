@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/raw-stream')({
   component: RawStreamLayout,
@@ -21,6 +21,7 @@ function RawStreamLayout() {
           to="/raw-stream/ssr-single"
           className="text-blue-500 underline"
           activeProps={{ className: 'font-bold' }}
+          reloadDocument={true}
         >
           SSR Single
         </Link>
@@ -28,6 +29,7 @@ function RawStreamLayout() {
           to="/raw-stream/ssr-multiple"
           className="text-blue-500 underline"
           activeProps={{ className: 'font-bold' }}
+          reloadDocument={true}
         >
           SSR Multiple
         </Link>
@@ -35,6 +37,7 @@ function RawStreamLayout() {
           to="/raw-stream/ssr-mixed"
           className="text-blue-500 underline"
           activeProps={{ className: 'font-bold' }}
+          reloadDocument={true}
         >
           SSR Mixed
         </Link>
@@ -42,6 +45,7 @@ function RawStreamLayout() {
           to="/raw-stream/ssr-text-hint"
           className="text-blue-500 underline"
           activeProps={{ className: 'font-bold' }}
+          reloadDocument={true}
         >
           SSR Text Hint
         </Link>
@@ -49,6 +53,7 @@ function RawStreamLayout() {
           to="/raw-stream/ssr-binary-hint"
           className="text-blue-500 underline"
           activeProps={{ className: 'font-bold' }}
+          reloadDocument={true}
         >
           SSR Binary Hint
         </Link>

@@ -32,31 +32,19 @@ function SSRMultipleTest() {
   const [secondContent, setSecondContent] = React.useState<string>('')
   const [isConsuming, setIsConsuming] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const consumedRef = React.useRef(false)
 
   React.useEffect(() => {
-    // Guard against double consumption - streams can only be read once
-    if (consumedRef.current) return
-    consumedRef.current = true
-
-    let mounted = true
     const consumeStream = createStreamConsumer()
     Promise.all([consumeStream(first), consumeStream(second)])
       .then(([content1, content2]) => {
-        if (!mounted) return
         setFirstContent(content1)
         setSecondContent(content2)
         setIsConsuming(false)
       })
       .catch((err) => {
-        if (!mounted) return
         setError(String(err))
         setIsConsuming(false)
       })
-
-    return () => {
-      mounted = false
-    }
   }, [first, second])
 
   return (
