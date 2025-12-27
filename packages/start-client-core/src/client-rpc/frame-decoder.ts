@@ -245,6 +245,7 @@ export function createFrameDecoder(
         totalLength += value.length
 
         // Parse complete frames from buffer
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         while (true) {
           const header = readHeader()
           if (!header) break // Not enough bytes for header
