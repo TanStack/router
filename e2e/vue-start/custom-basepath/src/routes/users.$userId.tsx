@@ -1,15 +1,17 @@
 import { createFileRoute } from '@tanstack/vue-router'
+import { getRouterInstance } from '@tanstack/vue-start'
 import axios from 'redaxios'
-
 import type { User } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
 import { UserErrorComponent } from '~/components/UserErrorComponent'
-import { basepath } from '~/utils/basepath'
 
 export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
+    const router = await getRouterInstance()
     return await axios
-      .get<User>(basepath + '/api/users/' + userId)
+      .get<User>('/api/users/' + userId, {
+        baseURL: router.options.origin,
+      })
       .then((r) => r.data)
       .catch(() => {
         throw new Error('Failed to fetch user')

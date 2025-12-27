@@ -1,12 +1,15 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import axios from 'redaxios'
+import { getRouterInstance } from '@tanstack/solid-start'
 import type { User } from '~/utils/users'
-import { basepath } from '~/utils/basepath'
 
 export const Route = createFileRoute('/users')({
   loader: async () => {
+    const router = await getRouterInstance()
     return await axios
-      .get<Array<User>>(basepath + '/api/users')
+      .get<Array<User>>('/api/users', {
+        baseURL: router.options.origin,
+      })
       .then((r) => r.data)
       .catch(() => {
         throw new Error('Failed to fetch users')
