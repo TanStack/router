@@ -139,6 +139,14 @@ function RootComponent() {
           >
             redirect
           </Link>{' '}
+					<Link
+            to="/raw-stream"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Raw Stream
+          </Link>{' '}
           <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
