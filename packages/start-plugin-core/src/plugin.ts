@@ -390,6 +390,9 @@ export function TanStackStartVitePluginCore(
         async handler(builder) {
           const { startConfig } = getConfig()
           const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
+          if (!serverEnv) {
+            throw new Error('SSR environment not found')
+          }
           const nitroKindFromPlugins = getNitroPluginKind(
             builder.config.plugins,
           )
