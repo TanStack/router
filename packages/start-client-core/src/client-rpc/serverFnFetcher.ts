@@ -25,6 +25,15 @@ function hasOwnProperties(obj: object): boolean {
   }
   return false
 }
+// caller =>
+//   serverFnFetcher =>
+//     client =>
+//       server =>
+//         fn =>
+//       seroval =>
+//     client middleware =>
+//   serverFnFetcher =>
+// caller
 
 export async function serverFnFetcher(
   url: string,
@@ -43,7 +52,7 @@ export async function serverFnFetcher(
 
   // Arrange the headers
   const headers = first.headers ? new Headers(first.headers) : new Headers()
-  headers.set('x-tsr-redirect', 'manual')
+  headers.set('x-tsr-serverFn', 'true')
 
   if (type === 'payload') {
     headers.set('accept', 'application/x-ndjson, application/json')
@@ -146,7 +155,7 @@ async function getFetchBody(
 async function getResponse(fn: () => Promise<Response>) {
   let response: Response
   try {
-    response = await fn()
+    response = await fn() // client => server => fn => server => client
   } catch (error) {
     if (error instanceof Response) {
       response = error
@@ -159,22 +168,16 @@ async function getResponse(fn: () => Promise<Response>) {
   if (response.headers.get(X_TSS_RAW_RESPONSE) === 'true') {
     return response
   }
+
   const contentType = response.headers.get('content-type')
   invariant(contentType, 'expected content-type header to be set')
   const serializedByStart = !!response.headers.get(X_TSS_SERIALIZED)
-  // If the response is not ok, throw an error
-  if (!response.ok) {
-    if (serializedByStart && contentType.includes('application/json')) {
-      const jsonPayload = await response.json()
-      const result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
-      throw result
-    }
 
-    throw new Error(await response.text())
-  }
-
+  // If the response is serialized by the start server, we need to process it
+  // differently than a normal response.
   if (serializedByStart) {
     let result
+    // If it's a stream from the start serializer, process it as such
     if (contentType.includes('application/x-ndjson')) {
       const refs = new Map()
       result = await processServerFnResponse({
@@ -187,17 +190,22 @@ async function getResponse(fn: () => Promise<Response>) {
         },
       })
     }
+    // If it's a JSON response, it can be simpler
     if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
       result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
     }
+
     invariant(result, 'expected result to be resolved')
     if (result instanceof Error) {
       throw result
     }
+
     return result
   }
 
+  // If it wasn't processed by the start serializer, check
+  // if it's JSON
   if (contentType.includes('application/json')) {
     const jsonPayload = await response.json()
     const redirect = parseRedirect(jsonPayload)
@@ -210,6 +218,12 @@ async function getResponse(fn: () => Promise<Response>) {
     return jsonPayload
   }
 
+  // Otherwise, if it's not OK, throw the content
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+
+  // Or return the response itself
   return response
 }
 

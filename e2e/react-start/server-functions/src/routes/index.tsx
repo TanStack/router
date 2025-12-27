@@ -94,6 +94,11 @@ function Home() {
             server build
           </Link>
         </li>
+        <li>
+          <Link to="/middleware/unhandled-exception">
+            Server Functions Middleware Unhandled Exception E2E tests
+          </Link>
+        </li>
       </ul>
     </div>
   )

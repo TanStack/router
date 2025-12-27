@@ -664,3 +664,48 @@ test('middleware factories with server-only imports are stripped from client bui
     'x-factory-two',
   )
 })
+
+test('redirect via server function with middleware does not cause serialization error (issue #5372)', async ({
+  page,
+}) => {
+  // This test verifies that throwing a redirect from a server function
+  // that has middleware attached does not cause a SerovalUnsupportedTypeError.
+  // Issue #5372: Middleware causes serialization error when throwing redirects via server function
+  await page.goto('/middleware/redirect-with-middleware')
+
+  await page.waitForLoadState('networkidle')
+
+  // Verify we're on the source page
+  await expect(page.getByTestId('middleware-redirect-source')).toBeVisible()
+
+  // Click the button to trigger the redirect via server function with middleware
+  await page.getByTestId('trigger-redirect-btn').click()
+
+  // Should redirect to target page without serialization error
+  await expect(page.getByTestId('middleware-redirect-target')).toBeVisible()
+  expect(page.url()).toContain('/middleware/redirect-with-middleware/target')
+
+  // Verify no error was shown (would indicate serialization failure)
+  await expect(page.getByTestId('error-message')).not.toBeVisible()
+})
+
+test.describe('unhandled exception in middleware (issue #5266)', () => {
+  // Whitelist the expected 500 error since this test verifies error handling
+  test.use({ whitelistErrors: [/500/] })
+
+  test('does not crash server and shows error component', async ({ page }) => {
+    // This test verifies that when a middleware throws an unhandled exception,
+    // the server does not crash and the error is properly caught and displayed.
+    // Issue #5266: Server crashes when unhandled exception in server function or middleware
+    await page.goto('/middleware/unhandled-exception')
+
+    // The error should be caught and displayed via errorComponent
+    await expect(page.getByTestId('unhandled-exception-error')).toBeVisible()
+
+    // Verify the error message is shown
+    await expect(page.getByTestId('error-message')).toBeVisible()
+
+    // The route component should NOT render since error was thrown
+    await expect(page.getByTestId('route-success')).not.toBeVisible()
+  })
+})
