@@ -51,7 +51,7 @@ const SSRMultipleTest = defineComponent({
             Message: {loaderData.value.message}
           </div>
           <div data-testid="ssr-multiple-first">
-            First Stream:{' '}
+            First Stream: 
             {error.value
               ? `Error: ${error.value}`
               : isConsuming.value
@@ -59,7 +59,7 @@ const SSRMultipleTest = defineComponent({
                 : firstContent.value}
           </div>
           <div data-testid="ssr-multiple-second">
-            Second Stream:{' '}
+            Second Stream: 
             {error.value
               ? `Error: ${error.value}`
               : isConsuming.value

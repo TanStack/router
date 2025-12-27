@@ -89,7 +89,7 @@ const SSRBinaryHintTest = defineComponent({
             Message: {loaderData.value.message}
           </div>
           <div data-testid="ssr-binary-hint-text">
-            Text Data:{' '}
+            Text Data: 
             {error.value
               ? `Error: ${error.value}`
               : isLoading.value
@@ -97,7 +97,7 @@ const SSRBinaryHintTest = defineComponent({
                 : textMatch.value?.asText}
           </div>
           <div data-testid="ssr-binary-hint-text-match">
-            Text Bytes Match:{' '}
+            Text Bytes Match: 
             {isLoading.value
               ? 'Loading...'
               : textMatch.value?.match
@@ -105,7 +105,7 @@ const SSRBinaryHintTest = defineComponent({
                 : 'false'}
           </div>
           <div data-testid="ssr-binary-hint-binary-match">
-            Binary Bytes Match:{' '}
+            Binary Bytes Match: 
             {isLoading.value
               ? 'Loading...'
               : binaryMatch.value?.match

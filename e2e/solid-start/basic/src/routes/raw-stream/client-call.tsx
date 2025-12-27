@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import * as React from 'react'
+import { createSignal } from 'solid-js'
 import {
   TEST10_EXPECTED,
   TEST11_EXPECTED,
@@ -34,21 +34,17 @@ import {
   threeStreamsFn,
 } from '../../raw-stream-fns'
 
-export const Route = createFileRoute('/raw-stream/client-call')({
-  component: ClientCallTests,
-})
-
 function ClientCallTests() {
-  const [results, setResults] = React.useState<Record<string, any>>({})
-  const [loading, setLoading] = React.useState<Record<string, boolean>>({})
+  const [results, setResults] = createSignal<Record<string, any>>({})
+  const [loading, setLoading] = createSignal<Record<string, boolean>>({})
 
   const consumeStream = createStreamConsumer()
 
-  async function runTest(
+  const runTest = async (
     testName: string,
     fn: () => Promise<any>,
     processor: (result: any) => Promise<any>,
-  ) {
+  ) => {
     setLoading((prev) => ({ ...prev, [testName]: true }))
     try {
       const result = await fn()
@@ -83,12 +79,14 @@ function ClientCallTests() {
               streamContent: await consumeStream(result.data),
             }))
           }
-          disabled={loading.test1}
+          disabled={loading().test1}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test1 ? 'Loading...' : 'Run Test'}
+          {loading().test1 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test1-result">{JSON.stringify(results.test1)}</pre>
+        <pre data-testid="test1-result">
+          {JSON.stringify(results().test1)}
+        </pre>
       </div>
 
       {/* Test 2: Multiple Raw Streams */}
@@ -103,12 +101,14 @@ function ClientCallTests() {
               secondContent: await consumeStream(result.second),
             }))
           }
-          disabled={loading.test2}
+          disabled={loading().test2}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test2 ? 'Loading...' : 'Run Test'}
+          {loading().test2 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test2-result">{JSON.stringify(results.test2)}</pre>
+        <pre data-testid="test2-result">
+          {JSON.stringify(results().test2)}
+        </pre>
       </div>
 
       {/* Test 3: JSON Ends First */}
@@ -123,12 +123,14 @@ function ClientCallTests() {
               slowContent: await consumeStream(result.slowData),
             }))
           }
-          disabled={loading.test3}
+          disabled={loading().test3}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test3 ? 'Loading...' : 'Run Test'}
+          {loading().test3 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test3-result">{JSON.stringify(results.test3)}</pre>
+        <pre data-testid="test3-result">
+          {JSON.stringify(results().test3)}
+        </pre>
       </div>
 
       {/* Test 4: Raw Ends First */}
@@ -143,12 +145,14 @@ function ClientCallTests() {
               fastContent: await consumeStream(result.fastData),
             }))
           }
-          disabled={loading.test4}
+          disabled={loading().test4}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test4 ? 'Loading...' : 'Run Test'}
+          {loading().test4 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test4-result">{JSON.stringify(results.test4)}</pre>
+        <pre data-testid="test4-result">
+          {JSON.stringify(results().test4)}
+        </pre>
       </div>
 
       {/* Test 5: Large Binary */}
@@ -167,12 +171,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test5}
+          disabled={loading().test5}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test5 ? 'Loading...' : 'Run Test'}
+          {loading().test5 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test5-result">{JSON.stringify(results.test5)}</pre>
+        <pre data-testid="test5-result">
+          {JSON.stringify(results().test5)}
+        </pre>
       </div>
 
       {/* Test 6: Mixed Streaming */}
@@ -187,12 +193,14 @@ function ClientCallTests() {
               rawContent: await consumeStream(result.raw),
             }))
           }
-          disabled={loading.test6}
+          disabled={loading().test6}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test6 ? 'Loading...' : 'Run Test'}
+          {loading().test6 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test6-result">{JSON.stringify(results.test6)}</pre>
+        <pre data-testid="test6-result">
+          {JSON.stringify(results().test6)}
+        </pre>
       </div>
 
       {/* Hint Tests Section */}
@@ -219,12 +227,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test7}
+          disabled={loading().test7}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test7 ? 'Loading...' : 'Run Test'}
+          {loading().test7 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test7-result">{JSON.stringify(results.test7)}</pre>
+        <pre data-testid="test7-result">
+          {JSON.stringify(results().test7)}
+        </pre>
       </div>
 
       {/* Test 8: Text Hint with Pure Binary */}
@@ -242,12 +252,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test8}
+          disabled={loading().test8}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test8 ? 'Loading...' : 'Run Test'}
+          {loading().test8 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test8-result">{JSON.stringify(results.test8)}</pre>
+        <pre data-testid="test8-result">
+          {JSON.stringify(results().test8)}
+        </pre>
       </div>
 
       {/* Test 9: Text Hint with Mixed Content */}
@@ -265,12 +277,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test9}
+          disabled={loading().test9}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test9 ? 'Loading...' : 'Run Test'}
+          {loading().test9 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test9-result">{JSON.stringify(results.test9)}</pre>
+        <pre data-testid="test9-result">
+          {JSON.stringify(results().test9)}
+        </pre>
       </div>
 
       {/* Test 10: Binary Hint with Text Data */}
@@ -290,12 +304,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test10}
+          disabled={loading().test10}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test10 ? 'Loading...' : 'Run Test'}
+          {loading().test10 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test10-result">{JSON.stringify(results.test10)}</pre>
+        <pre data-testid="test10-result">
+          {JSON.stringify(results().test10)}
+        </pre>
       </div>
 
       {/* Test 11: Binary Hint with Binary Data */}
@@ -313,12 +329,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test11}
+          disabled={loading().test11}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test11 ? 'Loading...' : 'Run Test'}
+          {loading().test11 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test11-result">{JSON.stringify(results.test11)}</pre>
+        <pre data-testid="test11-result">
+          {JSON.stringify(results().test11)}
+        </pre>
       </div>
 
       {/* Multiplexing Tests Section */}
@@ -347,12 +365,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test12}
+          disabled={loading().test12}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test12 ? 'Loading...' : 'Run Test'}
+          {loading().test12 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test12-result">{JSON.stringify(results.test12)}</pre>
+        <pre data-testid="test12-result">
+          {JSON.stringify(results().test12)}
+        </pre>
       </div>
 
       {/* Test 13: Burst-Pause-Burst */}
@@ -370,12 +390,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test13}
+          disabled={loading().test13}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test13 ? 'Loading...' : 'Run Test'}
+          {loading().test13 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test13-result">{JSON.stringify(results.test13)}</pre>
+        <pre data-testid="test13-result">
+          {JSON.stringify(results().test13)}
+        </pre>
       </div>
 
       {/* Test 14: Three Concurrent Streams */}
@@ -401,12 +423,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test14}
+          disabled={loading().test14}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test14 ? 'Loading...' : 'Run Test'}
+          {loading().test14 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test14-result">{JSON.stringify(results.test14)}</pre>
+        <pre data-testid="test14-result">
+          {JSON.stringify(results().test14)}
+        </pre>
       </div>
 
       {/* Edge Case Tests Section */}
@@ -430,12 +454,14 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test15}
+          disabled={loading().test15}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test15 ? 'Loading...' : 'Run Test'}
+          {loading().test15 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test15-result">{JSON.stringify(results.test15)}</pre>
+        <pre data-testid="test15-result">
+          {JSON.stringify(results().test15)}
+        </pre>
       </div>
 
       {/* Test 16: Stream Error */}
@@ -462,13 +488,19 @@ function ClientCallTests() {
               }
             })
           }
-          disabled={loading.test16}
+          disabled={loading().test16}
           class="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {loading.test16 ? 'Loading...' : 'Run Test'}
+          {loading().test16 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test16-result">{JSON.stringify(results.test16)}</pre>
+        <pre data-testid="test16-result">
+          {JSON.stringify(results().test16)}
+        </pre>
       </div>
     </div>
   )
 }
+
+export const Route = createFileRoute('/raw-stream/client-call')({
+  component: ClientCallTests,
+})

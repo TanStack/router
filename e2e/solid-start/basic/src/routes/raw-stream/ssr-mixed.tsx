@@ -1,11 +1,78 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import * as React from 'react'
 import { RawStream } from '@tanstack/solid-start'
+import { Suspense, createEffect, createSignal } from 'solid-js'
 import {
   createDelayedStream,
   createStreamConsumer,
   encode,
 } from '../../raw-stream-fns'
+
+function SSRMixedTest() {
+  const loaderData = Route.useLoaderData()
+  const [streamContent, setStreamContent] = createSignal('')
+  const [isConsuming, setIsConsuming] = createSignal(true)
+  const [error, setError] = createSignal<string | null>(null)
+
+  createEffect(() => {
+    const rawData = loaderData().rawData
+    if (!rawData) {
+      return
+    }
+    const consumeStream = createStreamConsumer()
+    setIsConsuming(true)
+    setError(null)
+    consumeStream(rawData)
+      .then((content) => {
+        setStreamContent(content)
+        setIsConsuming(false)
+      })
+      .catch((err) => {
+        setError(String(err))
+        setIsConsuming(false)
+      })
+  })
+
+  return (
+    <div class="space-y-4">
+      <h2>SSR Mixed Streaming Test</h2>
+      <p class="text-gray-600">
+        This route returns a mix of immediate data, deferred promises, and
+        RawStream from its loader.
+      </p>
+
+      <div class="border p-4 rounded">
+        <div data-testid="ssr-mixed-immediate">
+          Immediate: {loaderData().immediate}
+        </div>
+        <div data-testid="ssr-mixed-deferred">
+          Deferred: 
+          <Suspense fallback={<span>Loading deferred...</span>}>
+            <Await
+              promise={loaderData().deferred}
+              children={(value: string) => <span>{value}</span>}
+            />
+          </Suspense>
+        </div>
+        <div data-testid="ssr-mixed-stream">
+          Stream Content: 
+          {error()
+            ? `Error: ${error()}`
+            : isConsuming()
+              ? 'Loading...'
+              : streamContent()}
+        </div>
+        <pre data-testid="ssr-mixed-result">
+          {JSON.stringify({
+            immediate: loaderData().immediate,
+            streamContent: streamContent(),
+            isConsuming: isConsuming(),
+            error: error(),
+          })}
+        </pre>
+      </div>
+    </div>
+  )
+}
 
 export const Route = createFileRoute('/raw-stream/ssr-mixed')({
   loader: () => {
@@ -27,53 +94,3 @@ export const Route = createFileRoute('/raw-stream/ssr-mixed')({
   },
   component: SSRMixedTest,
 })
-
-function SSRMixedTest() {
-  const loaderData = Route.useLoaderData()
-  const [streamContent, setStreamContent] = React.useState<string>('')
-  const [isConsuming, setIsConsuming] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    const consumeStream = createStreamConsumer()
-    consumeStream(loaderData().rawData)
-      .then((content) => {
-        setStreamContent(content)
-        setIsConsuming(false)
-      })
-      .catch((err) => {
-        setError(String(err))
-        setIsConsuming(false)
-      })
-  }, [loaderData().rawData])
-  return (
-    <div class="space-y-4">
-      <h2>SSR Mixed Streaming Test</h2>
-      <p class="text-gray-600">
-        This route returns a mix of immediate data, deferred promises, and
-        RawStream from its loader.
-      </p>
-
-      <div class="border p-4 rounded">
-        <div data-testid="ssr-mixed-immediate">Immediate: {loaderData().immediate}</div>
-        <div data-testid="ssr-mixed-deferred">
-          Deferred:{' '}
-          <React.Suspense fallback="Loading deferred...">
-            <Await promise={loaderData().deferred}>{(value) => <span>{value}</span>}</Await>
-          </React.Suspense>
-        </div>
-        <div data-testid="ssr-mixed-stream">
-          Stream Content:{' '}
-          {error
-            ? `Error: ${error}`
-            : isConsuming
-              ? 'Loading...'
-              : streamContent}
-        </div>
-        <pre data-testid="ssr-mixed-result">
-          {JSON.stringify({ immediate: loaderData().immediate, streamContent, isConsuming, error })}
-        </pre>
-      </div>
-    </div>
-  )
-}

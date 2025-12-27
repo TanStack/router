@@ -119,7 +119,7 @@ const SSRTextHintTest = defineComponent({
             Message: {loaderData.value.message}
           </div>
           <div data-testid="ssr-text-hint-pure-text">
-            Pure Text:{' '}
+            Pure Text: 
             {error.value
               ? `Error: ${error.value}`
               : isLoading.value
@@ -127,7 +127,7 @@ const SSRTextHintTest = defineComponent({
                 : pureTextMatch.value?.asText}
           </div>
           <div data-testid="ssr-text-hint-pure-match">
-            Pure Text Bytes Match:{' '}
+            Pure Text Bytes Match: 
             {isLoading.value
               ? 'Loading...'
               : pureTextMatch.value?.match
@@ -135,7 +135,7 @@ const SSRTextHintTest = defineComponent({
                 : 'false'}
           </div>
           <div data-testid="ssr-text-hint-mixed-match">
-            Mixed Content Bytes Match:{' '}
+            Mixed Content Bytes Match: 
             {isLoading.value
               ? 'Loading...'
               : mixedMatch.value?.match
@@ -143,7 +143,7 @@ const SSRTextHintTest = defineComponent({
                 : 'false'}
           </div>
           <div data-testid="ssr-text-hint-pure-binary-match">
-            Pure Binary Bytes Match:{' '}
+            Pure Binary Bytes Match: 
             {isLoading.value
               ? 'Loading...'
               : pureBinaryMatch.value?.match

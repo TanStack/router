@@ -12,8 +12,8 @@ function RawStreamIndex() {
         <li>
           <Link to="/raw-stream/client-call" class="text-blue-500 underline">
             Client Calls
-          </Link>{' '}
-          - Test RawStream via direct server function calls (RPC)
+          </Link>
+          <span> - Test RawStream via direct server function calls (RPC)</span>
         </li>
         <li>
           <Link
@@ -22,8 +22,8 @@ function RawStreamIndex() {
             reloadDocument={true}
           >
             SSR Single
-          </Link>{' '}
-          - Test single RawStream from route loader (SSR)
+          </Link>
+          <span> - Test single RawStream from route loader (SSR)</span>
         </li>
         <li>
           <Link
@@ -32,8 +32,8 @@ function RawStreamIndex() {
             reloadDocument={true}
           >
             SSR Multiple
-          </Link>{' '}
-          - Test multiple RawStreams from route loader (SSR)
+          </Link>
+          <span> - Test multiple RawStreams from route loader (SSR)</span>
         </li>
         <li>
           <Link
@@ -42,8 +42,8 @@ function RawStreamIndex() {
             reloadDocument={true}
           >
             SSR Mixed
-          </Link>{' '}
-          - Test RawStream mixed with deferred data from loader (SSR)
+          </Link>
+          <span> - Test RawStream mixed with deferred data from loader (SSR)</span>
         </li>
         <li>
           <Link
@@ -52,8 +52,8 @@ function RawStreamIndex() {
             reloadDocument={true}
           >
             SSR Text Hint
-          </Link>{' '}
-          - Test RawStream with hint: 'text' from loader (SSR)
+          </Link>
+          <span> - Test RawStream with hint: 'text' from loader (SSR)</span>
         </li>
         <li>
           <Link
@@ -62,8 +62,8 @@ function RawStreamIndex() {
             reloadDocument={true}
           >
             SSR Binary Hint
-          </Link>{' '}
-          - Test RawStream with hint: 'binary' from loader (SSR)
+          </Link>
+          <span> - Test RawStream with hint: 'binary' from loader (SSR)</span>
         </li>
       </ul>
     </div>
