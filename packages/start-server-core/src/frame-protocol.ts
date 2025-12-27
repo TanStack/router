@@ -144,11 +144,8 @@ export function createMultiplexedStream(
       const pumpJSON = async () => {
         const reader = jsonStream.getReader()
         cancelReaders.push(() => {
-          try {
-            void reader.cancel()
-          } catch {
-            // Reader may already be released
-          }
+          // Catch async rejection - reader may already be released
+          reader.cancel().catch(() => {})
         })
         try {
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -175,11 +172,8 @@ export function createMultiplexedStream(
       ) => {
         const reader = stream.getReader()
         cancelReaders.push(() => {
-          try {
-            void reader.cancel()
-          } catch {
-            // Reader may already be released
-          }
+          // Catch async rejection - reader may already be released
+          reader.cancel().catch(() => {})
         })
         try {
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
