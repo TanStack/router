@@ -23,6 +23,7 @@ import { Route as FormdataContextRouteImport } from './routes/formdata-context'
 import { Route as EnvOnlyRouteImport } from './routes/env-only'
 import { Route as DeadCodePreserveRouteImport } from './routes/dead-code-preserve'
 import { Route as ConsistentRouteImport } from './routes/consistent'
+import { Route as AsyncValidationRouteImport } from './routes/async-validation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RedirectTestIndexRouteImport } from './routes/redirect-test/index'
 import { Route as RedirectTestSsrIndexRouteImport } from './routes/redirect-test-ssr/index'
@@ -114,6 +115,11 @@ const DeadCodePreserveRoute = DeadCodePreserveRouteImport.update({
 const ConsistentRoute = ConsistentRouteImport.update({
   id: '/consistent',
   path: '/consistent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AsyncValidationRoute = AsyncValidationRouteImport.update({
+  id: '/async-validation',
+  path: '/async-validation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -237,6 +243,7 @@ const FormdataRedirectTargetNameRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -275,6 +282,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -314,6 +322,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -354,6 +363,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/async-validation'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -392,6 +402,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/async-validation'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -430,6 +441,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/async-validation'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -469,6 +481,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AsyncValidationRoute: typeof AsyncValidationRoute
   ConsistentRoute: typeof ConsistentRoute
   DeadCodePreserveRoute: typeof DeadCodePreserveRoute
   EnvOnlyRoute: typeof EnvOnlyRoute
@@ -604,6 +617,13 @@ declare module '@tanstack/react-router' {
       path: '/consistent'
       fullPath: '/consistent'
       preLoaderRoute: typeof ConsistentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/async-validation': {
+      id: '/async-validation'
+      path: '/async-validation'
+      fullPath: '/async-validation'
+      preLoaderRoute: typeof AsyncValidationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -765,6 +785,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AsyncValidationRoute: AsyncValidationRoute,
   ConsistentRoute: ConsistentRoute,
   DeadCodePreserveRoute: DeadCodePreserveRoute,
   EnvOnlyRoute: EnvOnlyRoute,
