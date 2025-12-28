@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { isPrerender } from './utils/isPrerender'
 
 test('Navigating to post', async ({ page }) => {
   await page.goto('/')
@@ -59,12 +58,7 @@ test('server-side redirect', async ({ page, baseURL }) => {
   await page.waitForLoadState('networkidle')
 
   expect(await page.getByTestId('post-view').isVisible()).toBe(true)
-
-  if (isPrerender) {
-    expect(page.url()).toBe(`${baseURL}/posts/1/`)
-  } else {
-    expect(page.url()).toBe(`${baseURL}/posts/1`)
-  }
+  expect(page.url()).toBe(`${baseURL}/posts/1`)
 
   // do not follow redirects since we want to test the Location header
   // first go to the route WITHOUT the base path, this will just add the base path
@@ -72,7 +66,7 @@ test('server-side redirect', async ({ page, baseURL }) => {
     .get('/redirect/throw-it', { maxRedirects: 0 })
     .then((res) => {
       const headers = new Headers(res.headers())
-      expect(headers.get('location')).toBe('/custom/basepath/redirect/throw-it')
+      expect(headers.get('location')).toBe('/custom/basepath/posts/1')
     })
   await page.request
     .get('/custom/basepath/redirect/throw-it', { maxRedirects: 0 })
