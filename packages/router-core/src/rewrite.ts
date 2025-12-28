@@ -26,19 +26,21 @@ export function rewriteBasepath(opts: {
   basepath: string
   caseSensitive?: boolean
 }) {
-  const normalizePathCase = (path: string) => {
-    return opts.caseSensitive ? path : path.toLowerCase()
-  }
-
   const trimmedBasepath = trimPath(opts.basepath)
   const normalizedBasepath = `/${trimmedBasepath}`
   const normalizedBasepathWithSlash = `${normalizedBasepath}/`
-  const checkBasepath = normalizePathCase(normalizedBasepath)
-  const checkBasepathWithSlash = normalizePathCase(normalizedBasepathWithSlash)
+  const checkBasepath = opts.caseSensitive
+    ? normalizedBasepath
+    : normalizedBasepath.toLowerCase()
+  const checkBasepathWithSlash = opts.caseSensitive
+    ? normalizedBasepathWithSlash
+    : normalizedBasepathWithSlash.toLowerCase()
 
   return {
     input: ({ url }) => {
-      const pathname = normalizePathCase(url.pathname)
+      const pathname = opts.caseSensitive
+        ? url.pathname
+        : url.pathname.toLowerCase()
 
       // Handle exact basepath match (e.g., /my-app -> /)
       if (pathname === checkBasepath) {
@@ -50,12 +52,7 @@ export function rewriteBasepath(opts: {
       return url
     },
     output: ({ url }) => {
-      const pathname = normalizePathCase(url.pathname)
-      const base = pathname.startsWith(checkBasepathWithSlash)
-        ? ''
-        : trimmedBasepath
-
-      url.pathname = joinPaths(['/', base, url.pathname])
+      url.pathname = joinPaths(['/', trimmedBasepath, url.pathname])
       return url
     },
   } satisfies LocationRewrite
