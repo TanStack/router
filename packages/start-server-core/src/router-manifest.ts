@@ -16,22 +16,33 @@ export async function getStartManifest() {
 
   rootRoute.assets = rootRoute.assets || []
 
-  let script = `import('${startManifest.clientEntry}')`
+  // In dev mode, add React Refresh separately so it can be kept for hydrate: false
   if (process.env.TSS_DEV_SERVER === 'true') {
     const { injectedHeadScripts } = await import(
       'tanstack-start-injected-head-scripts:v'
     )
     if (injectedHeadScripts) {
-      script = `${injectedHeadScripts + ';'}${script}`
+      // Add React Refresh script (keep for HMR even when hydrate: false)
+      rootRoute.assets.push({
+        tag: 'script',
+        attrs: {
+          type: 'module',
+          async: true,
+        },
+        children: injectedHeadScripts,
+      })
     }
   }
+
+  // Add client entry (will be filtered when hydrate: false)
   rootRoute.assets.push({
     tag: 'script',
     attrs: {
       type: 'module',
       async: true,
+      'data-tsr-client-entry': 'true',
     },
-    children: script,
+    children: `import('${startManifest.clientEntry}')`,
   })
 
   const manifest = {
