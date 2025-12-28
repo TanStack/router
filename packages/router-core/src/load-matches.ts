@@ -959,14 +959,16 @@ export async function loadMatches(arg: {
     if (asyncLoaderPromises.length > 0) {
       // Schedule re-execution after all async loaders complete (non-blocking)
       // Use allSettled to handle both successful and failed loaders
-      const thisNavigationLocation = inner.location
-      Promise.allSettled(asyncLoaderPromises).then(() => {
-        // Only execute if this navigation is still current (not superseded by new navigation)
-        const latestLocation = inner.router.state.location
-        if (latestLocation === thisNavigationLocation) {
-          executeAllHeadFns(inner)
-        }
-      })
+      //
+      // TODO! temporarily disabled to make sure solid-start/basic example can reproduce the bug
+      // const thisNavigationLocation = inner.location
+      // Promise.allSettled(asyncLoaderPromises).then(() => {
+      //   // Only execute if this navigation is still current (not superseded by new navigation)
+      //   const latestLocation = inner.router.state.location
+      //   if (latestLocation === thisNavigationLocation) {
+      //     executeAllHeadFns(inner)
+      //   }
+      // })
     }
 
     // Throw notFound after head execution
