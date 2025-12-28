@@ -9,6 +9,7 @@ import {
   executeRewriteInput,
   isRedirect,
   isResolvedRedirect,
+  joinPaths,
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
@@ -210,6 +211,12 @@ export function createStartHandler<TRegister = Register>(
 
     try {
       const url = new URL(request.url)
+
+      if (!url.pathname.startsWith(joinPaths(['/', ROUTER_BASEPATH]))) {
+        url.pathname = joinPaths(['/', ROUTER_BASEPATH, url.pathname])
+        request = new Request(url, request)
+      }
+
       const href = url.href.replace(url.origin, '')
       const origin = getOrigin(request)
 
