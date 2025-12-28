@@ -5,6 +5,11 @@ title: useLocation hook
 
 The `useLocation` method is a hook that returns the current [`location`](./ParsedLocationType.md) object. This hook is useful for when you want to perform some side effect whenever the current location changes.
 
+> [!WARNING]
+> When you are navigating to another route, this hook will be re-rendered with the next route's new `location` object because the current route's component does **not** unmount until the `pendingComponent` shows up.
+> 
+> Be careful if you are using some values from the `location` object to perform side effects or render conditional UI.
+
 ## useLocation options
 
 The `useLocation` hook accepts an optional `options` object.
