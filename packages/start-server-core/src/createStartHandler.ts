@@ -2,6 +2,7 @@ import { createMemoryHistory } from '@tanstack/history'
 import { flattenMiddlewares, mergeHeaders } from '@tanstack/start-client-core'
 import {
   executeRewriteInput,
+  executeRewriteOutput,
   isRedirect,
   isResolvedRedirect,
 } from '@tanstack/router-core'
@@ -138,19 +139,32 @@ export function createStartHandler<TRegister = Register>(
 
       const requestHandlerMiddleware = handlerToMiddleware(
         async ({ context }) => {
+          const router = await getRouter()
+
+          let req = request
+          let publicHref = href
+
+          if (router.isServer) {
+            const rewrittenUrl = executeRewriteOutput(router.rewrite, url)
+            publicHref = rewrittenUrl.href.replace(rewrittenUrl.origin, '')
+            if (publicHref !== href) {
+              req = new Request(rewrittenUrl, request)
+            }
+          }
+
           const response = await runWithStartContext(
             {
               getRouter,
               startOptions: requestStartOptions,
               contextAfterGlobalMiddlewares: context,
-              request,
+              request: req,
             },
             async () => {
               try {
                 // First, let's attempt to handle server functions
-                if (href.startsWith(process.env.TSS_SERVER_FN_BASE)) {
+                if (publicHref.startsWith(process.env.TSS_SERVER_FN_BASE)) {
                   return await handleServerAction({
-                    request,
+                    request: req,
                     context: requestOpts?.context,
                   })
                 }
@@ -160,8 +174,7 @@ export function createStartHandler<TRegister = Register>(
                 }: {
                   serverContext: any
                 }) => {
-                  const requestAcceptHeader =
-                    request.headers.get('Accept') || '*/*'
+                  const requestAcceptHeader = req.headers.get('Accept') || '*/*'
                   const splitRequestAcceptHeader =
                     requestAcceptHeader.split(',')
 
@@ -188,7 +201,7 @@ export function createStartHandler<TRegister = Register>(
                   if (startRoutesManifest === null) {
                     startRoutesManifest = await getStartManifest()
                   }
-                  const router = await getRouter()
+
                   attachRouterServerSsrUtils({
                     router,
                     manifest: startRoutesManifest,
@@ -208,7 +221,7 @@ export function createStartHandler<TRegister = Register>(
                   // Mark that the callback will handle cleanup
                   cbWillCleanup = true
                   const response = await cb({
-                    request,
+                    request: req,
                     router,
                     responseHeaders,
                   })
@@ -218,7 +231,7 @@ export function createStartHandler<TRegister = Register>(
 
                 const response = await handleServerRoutes({
                   getRouter,
-                  request,
+                  request: req,
                   executeRouter,
                   context,
                 })
