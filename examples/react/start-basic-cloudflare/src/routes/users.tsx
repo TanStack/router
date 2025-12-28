@@ -1,5 +1,5 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
-import type { User } from '../utils/users'
+import type { User } from '~/utils/users'
 
 export const Route = createFileRoute('/users')({
   loader: async () => {

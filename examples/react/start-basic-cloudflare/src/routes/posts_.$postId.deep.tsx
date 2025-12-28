@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { fetchPost } from '../utils/posts'
+import { fetchPost } from '~/utils/posts'
 import { PostErrorComponent } from '~/components/PostError'
 
 export const Route = createFileRoute('/posts_/$postId/deep')({
