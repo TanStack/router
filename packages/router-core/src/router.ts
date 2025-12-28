@@ -1187,17 +1187,10 @@ export class RouterCore<
       url.search = searchStr
 
       const fullPath = url.href.replace(url.origin, '')
-      let publicHref = href
-
-      if (this.isServer) {
-        const urlForOutput = new URL(url.href)
-        const rewrittenUrl = executeRewriteOutput(this.rewrite, urlForOutput)
-        publicHref = rewrittenUrl.href.replace(rewrittenUrl.origin, '')
-      }
 
       return {
         href: fullPath,
-        publicHref: publicHref,
+        publicHref: href,
         url: url,
         pathname: decodePath(url.pathname),
         searchStr,

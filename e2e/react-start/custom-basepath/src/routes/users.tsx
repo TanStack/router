@@ -7,7 +7,9 @@ export const Route = createFileRoute('/users')({
   loader: async () => {
     const router = await getRouterInstance()
     return await axios
-      .get<Array<User>>(`/${router.options.basepath}/api/users`)
+      .get<Array<User>>(`/${router.options.basepath}/api/users`, {
+        baseURL: router.origin,
+      })
       .then((r) => r.data)
       .catch(() => {
         throw new Error('Failed to fetch users')

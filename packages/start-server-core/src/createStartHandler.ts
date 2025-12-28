@@ -211,9 +211,10 @@ export function createStartHandler<TRegister = Register>(
 
     try {
       const url = new URL(request.url)
+      const basePath = joinPaths(['/', ROUTER_BASEPATH])
 
-      if (!url.pathname.startsWith(joinPaths(['/', ROUTER_BASEPATH]))) {
-        url.pathname = joinPaths(['/', ROUTER_BASEPATH, url.pathname])
+      if (!url.pathname.startsWith(basePath)) {
+        url.pathname = joinPaths([basePath, url.pathname])
         request = new Request(url, request)
       }
 

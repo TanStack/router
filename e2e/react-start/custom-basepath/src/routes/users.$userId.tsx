@@ -9,7 +9,9 @@ export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
     const router = await getRouterInstance()
     return await axios
-      .get<User>(`/${router.options.basepath}/api/users/${userId}`)
+      .get<User>(`/${router.options.basepath}/api/users/${userId}`, {
+        baseURL: router.origin,
+      })
       .then((r) => r.data)
       .catch(() => {
         throw new Error('Failed to fetch user')
