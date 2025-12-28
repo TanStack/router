@@ -1967,6 +1967,58 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
+  e2e/react-start/server-functions-global-middleware:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.0(react@19.2.0)
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.56.1
+        version: 1.56.1
+      '@tailwindcss/vite':
+        specifier: ^4.1.18
+        version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 22.10.2
+        version: 22.10.2
+      '@types/react':
+        specifier: ^19.2.2
+        version: 19.2.2
+      '@types/react-dom':
+        specifier: ^19.2.2
+        version: 19.2.2(@types/react@19.2.2)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      srvx:
+        specifier: ^0.9.8
+        version: 0.9.8
+      tailwindcss:
+        specifier: ^4.1.18
+        version: 4.1.18
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
   e2e/react-start/server-routes:
     dependencies:
       '@tanstack/react-query':
@@ -2045,6 +2097,58 @@ importers:
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.3)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
+  e2e/react-start/server-routes-global-middleware:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.2.0
+        version: 19.2.0
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.2.0(react@19.2.0)
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.56.1
+        version: 1.56.1
+      '@tailwindcss/vite':
+        specifier: ^4.1.18
+        version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 22.10.2
+        version: 22.10.2
+      '@types/react':
+        specifier: ^19.2.2
+        version: 19.2.2
+      '@types/react-dom':
+        specifier: ^19.2.2
+        version: 19.2.2(@types/react@19.2.2)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      srvx:
+        specifier: ^0.9.8
+        version: 0.9.8
+      tailwindcss:
+        specifier: ^4.1.18
+        version: 4.1.18
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/react-start/spa-mode:
     dependencies:
@@ -8828,7 +8932,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8865,7 +8969,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8905,7 +9009,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8945,7 +9049,7 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -8979,7 +9083,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9010,7 +9114,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9047,7 +9151,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9090,7 +9194,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9130,7 +9234,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9167,7 +9271,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       compression:
         specifier: ^1.8.0
@@ -9207,7 +9311,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9262,7 +9366,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9302,7 +9406,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9339,7 +9443,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9376,7 +9480,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       solid-js:
         specifier: 1.9.10
@@ -9407,7 +9511,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9444,7 +9548,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9490,7 +9594,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9536,7 +9640,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9579,7 +9683,7 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9616,7 +9720,7 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9650,7 +9754,7 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9681,7 +9785,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9709,7 +9813,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9740,7 +9844,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9777,7 +9881,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9811,7 +9915,7 @@ importers:
   examples/solid/quickstart-webpack-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9872,7 +9976,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9906,7 +10010,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9946,7 +10050,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -9980,7 +10084,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10020,7 +10124,7 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10066,7 +10170,7 @@ importers:
   examples/solid/start-basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10118,7 +10222,7 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(prisma@7.0.0(@types/react@19.2.2)(magicast@0.3.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2))(typescript@5.9.2)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10170,7 +10274,7 @@ importers:
         specifier: ^0.41.1
         version: 0.41.1
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10213,7 +10317,7 @@ importers:
   examples/solid/start-basic-cloudflare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10256,7 +10360,7 @@ importers:
   examples/solid/start-basic-netlify:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10296,7 +10400,7 @@ importers:
   examples/solid/start-basic-nitro:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10342,7 +10446,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.90.9(solid-js@1.9.10))(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10388,7 +10492,7 @@ importers:
   examples/solid/start-basic-static:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10443,7 +10547,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.1.3)(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10510,7 +10614,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10568,7 +10672,7 @@ importers:
   examples/solid/start-counter:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10614,7 +10718,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.1.3)(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10657,7 +10761,7 @@ importers:
         specifier: ^5.90.9
         version: 5.90.9(solid-js@1.9.10)
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10703,7 +10807,7 @@ importers:
   examples/solid/start-streaming-data-from-server-functions:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10743,7 +10847,7 @@ importers:
         specifier: ^2.48.1
         version: 2.48.1
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10783,7 +10887,7 @@ importers:
   examples/solid/start-tailwind-v4:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10832,7 +10936,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10866,7 +10970,7 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -10906,7 +11010,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.143.6
+        specifier: ^1.144.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^

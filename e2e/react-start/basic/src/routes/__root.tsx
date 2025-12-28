@@ -174,6 +174,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Client Only
           </Link>{' '}
           <Link
+            to="/raw-stream"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Raw Stream
+          </Link>{' '}
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{

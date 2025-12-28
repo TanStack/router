@@ -433,6 +433,18 @@ export {
 export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
 
 export {
+  RawStream,
+  RawStreamSSRPlugin,
+  createRawStreamRPCPlugin,
+  createRawStreamDeserializePlugin,
+} from './ssr/serializer/RawStream'
+export type {
+  OnRawStreamCallback,
+  RawStreamHint,
+  RawStreamOptions,
+} from './ssr/serializer/RawStream'
+
+export {
   composeRewrites,
   executeRewriteInput,
   executeRewriteOutput,

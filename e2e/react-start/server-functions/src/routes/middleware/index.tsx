@@ -50,6 +50,14 @@ function RouteComponent() {
             build
           </Route.Link>
         </li>
+        <li>
+          <Route.Link
+            to="./redirect-with-middleware"
+            data-testid="redirect-with-middleware-link"
+          >
+            Redirect via server function with middleware
+          </Route.Link>
+        </li>
       </ul>
     </div>
   )

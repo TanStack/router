@@ -1,12 +1,20 @@
-import { encode, isNotFound, parseRedirect } from '@tanstack/router-core'
+import {
+  createRawStreamDeserializePlugin,
+  encode,
+  isNotFound,
+  parseRedirect,
+} from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
+  TSS_CONTENT_TYPE_FRAMED,
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
+  validateFramedProtocolVersion,
 } from '../constants'
+import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
@@ -25,6 +33,15 @@ function hasOwnProperties(obj: object): boolean {
   }
   return false
 }
+// caller =>
+//   serverFnFetcher =>
+//     client =>
+//       server =>
+//         fn =>
+//       seroval =>
+//     client middleware =>
+//   serverFnFetcher =>
+// caller
 
 export async function serverFnFetcher(
   url: string,
@@ -43,10 +60,13 @@ export async function serverFnFetcher(
 
   // Arrange the headers
   const headers = first.headers ? new Headers(first.headers) : new Headers()
-  headers.set('x-tsr-redirect', 'manual')
+  headers.set('x-tsr-serverFn', 'true')
 
   if (type === 'payload') {
-    headers.set('accept', 'application/x-ndjson, application/json')
+    headers.set(
+      'accept',
+      `${TSS_CONTENT_TYPE_FRAMED}, application/x-ndjson, application/json`,
+    )
   }
 
   // If the method is GET, we need to move the payload to the query string
@@ -146,7 +166,7 @@ async function getFetchBody(
 async function getResponse(fn: () => Promise<Response>) {
   let response: Response
   try {
-    response = await fn()
+    response = await fn() // client => server => fn => server => client
   } catch (error) {
     if (error instanceof Response) {
       response = error
@@ -159,23 +179,45 @@ async function getResponse(fn: () => Promise<Response>) {
   if (response.headers.get(X_TSS_RAW_RESPONSE) === 'true') {
     return response
   }
+
   const contentType = response.headers.get('content-type')
   invariant(contentType, 'expected content-type header to be set')
   const serializedByStart = !!response.headers.get(X_TSS_SERIALIZED)
-  // If the response is not ok, throw an error
-  if (!response.ok) {
-    if (serializedByStart && contentType.includes('application/json')) {
-      const jsonPayload = await response.json()
-      const result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
-      throw result
-    }
 
-    throw new Error(await response.text())
-  }
-
+  // If the response is serialized by the start server, we need to process it
+  // differently than a normal response.
   if (serializedByStart) {
     let result
-    if (contentType.includes('application/x-ndjson')) {
+
+    // If it's a framed response (contains RawStream), use frame decoder
+    if (contentType.includes(TSS_CONTENT_TYPE_FRAMED)) {
+      // Validate protocol version compatibility
+      validateFramedProtocolVersion(contentType)
+
+      if (!response.body) {
+        throw new Error('No response body for framed response')
+      }
+
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(
+        response.body,
+      )
+
+      // Create deserialize plugin that wires up the raw streams
+      const rawStreamPlugin =
+        createRawStreamDeserializePlugin(getOrCreateStream)
+      const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+
+      const refs = new Map()
+      result = await processFramedResponse({
+        jsonStream: jsonChunks,
+        onMessage: (msg: any) => fromCrossJSON(msg, { refs, plugins }),
+        onError(msg, error) {
+          console.error(msg, error)
+        },
+      })
+    }
+    // If it's a stream from the start serializer, process it as such
+    else if (contentType.includes('application/x-ndjson')) {
       const refs = new Map()
       result = await processServerFnResponse({
         response,
@@ -187,17 +229,22 @@ async function getResponse(fn: () => Promise<Response>) {
         },
       })
     }
-    if (contentType.includes('application/json')) {
+    // If it's a JSON response, it can be simpler
+    else if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
       result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
     }
+
     invariant(result, 'expected result to be resolved')
     if (result instanceof Error) {
       throw result
     }
+
     return result
   }
 
+  // If it wasn't processed by the start serializer, check
+  // if it's JSON
   if (contentType.includes('application/json')) {
     const jsonPayload = await response.json()
     const redirect = parseRedirect(jsonPayload)
@@ -210,6 +257,12 @@ async function getResponse(fn: () => Promise<Response>) {
     return jsonPayload
   }
 
+  // Otherwise, if it's not OK, throw the content
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+
+  // Or return the response itself
   return response
 }
 
@@ -287,6 +340,53 @@ async function processServerFnResponse({
 
         if (done) {
           break
+        }
+      }
+    } catch (err) {
+      onError?.('Stream processing error:', err)
+    }
+  })()
+
+  return onMessage(firstObject)
+}
+
+/**
+ * Processes a framed response where each JSON chunk is a complete JSON string
+ * (already decoded by frame decoder).
+ */
+async function processFramedResponse({
+  jsonStream,
+  onMessage,
+  onError,
+}: {
+  jsonStream: ReadableStream<string>
+  onMessage: (msg: any) => any
+  onError?: (msg: string, error?: any) => void
+}) {
+  const reader = jsonStream.getReader()
+
+  // Read first JSON frame - this is the main result
+  const { value: firstValue, done: firstDone } = await reader.read()
+  if (firstDone || !firstValue) {
+    throw new Error('Stream ended before first object')
+  }
+
+  // Each frame is a complete JSON string
+  const firstObject = JSON.parse(firstValue)
+
+  // Process remaining frames asynchronously (for streaming refs like RawStream)
+  ;(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        if (value) {
+          try {
+            onMessage(JSON.parse(value))
+          } catch (e) {
+            onError?.(`Invalid JSON: ${value}`, e)
+          }
         }
       }
     } catch (err) {
