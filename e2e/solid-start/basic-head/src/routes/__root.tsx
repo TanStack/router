@@ -26,9 +26,7 @@ export const Route = createRootRoute({
         content: 'Testing head() function behavior with async loaders',
       },
     ],
-    links: [
-      { rel: 'icon', href: '/favicon.ico' },
-    ],
+    links: [{ rel: 'icon', href: '/favicon.ico' }],
   }),
   errorComponent: (props) => <p>{props.error.stack}</p>,
   notFoundComponent: () => <NotFound />,

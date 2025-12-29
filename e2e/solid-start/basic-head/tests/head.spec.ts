@@ -4,7 +4,10 @@ import { isSpaMode } from './utils/isSpaMode'
 import { isPreview } from './utils/isPreview'
 
 // Skip SPA and preview modes - routes with ssr:false don't execute head() in these modes
-test.skip(isSpaMode || isPreview, 'Head function tests require SSR (ssr:false routes don\'t execute head() in SPA/preview)')
+test.skip(
+  isSpaMode || isPreview,
+  "Head function tests require SSR (ssr:false routes don't execute head() in SPA/preview)",
+)
 
 test.describe('head() function with async loaders', () => {
   test.beforeEach(async ({ page }) => {
