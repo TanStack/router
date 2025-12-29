@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
-import { defineComponent, ref, watch } from 'vue'
+import { defineComponent, onMounted, ref } from 'vue'
 import {
   collectBytes,
   compareBytes,
@@ -42,39 +42,37 @@ const SSRBinaryHintTest = defineComponent({
     const isLoading = ref(true)
     const error = ref<string | null>(null)
 
-    watch(
-      () => [loaderData.value.textData, loaderData.value.binaryData],
-      ([textData, binaryData]) => {
-        if (!textData || !binaryData) {
-          return
-        }
-        isLoading.value = true
-        error.value = null
-        Promise.all([collectBytes(textData), collectBytes(binaryData)])
-          .then(([textBytes, binaryBytes]) => {
-            const textComp = compareBytes(textBytes, TEXT_EXPECTED)
-            const decoder = new TextDecoder()
-            textMatch.value = {
-              ...textComp,
-              actualLength: textBytes.length,
-              expectedLength: TEXT_EXPECTED.length,
-              asText: decoder.decode(textBytes),
-            }
-            const binaryComp = compareBytes(binaryBytes, BINARY_EXPECTED)
-            binaryMatch.value = {
-              ...binaryComp,
-              actualLength: binaryBytes.length,
-              expectedLength: BINARY_EXPECTED.length,
-            }
-            isLoading.value = false
-          })
-          .catch((err) => {
-            error.value = String(err)
-            isLoading.value = false
-          })
-      },
-      { immediate: true },
-    )
+    onMounted(() => {
+      const textData = loaderData.value.textData
+      const binaryData = loaderData.value.binaryData
+      if (!textData || !binaryData) {
+        return
+      }
+      isLoading.value = true
+      error.value = null
+      Promise.all([collectBytes(textData), collectBytes(binaryData)])
+        .then(([textBytes, binaryBytes]) => {
+          const textComp = compareBytes(textBytes, TEXT_EXPECTED)
+          const decoder = new TextDecoder()
+          textMatch.value = {
+            ...textComp,
+            actualLength: textBytes.length,
+            expectedLength: TEXT_EXPECTED.length,
+            asText: decoder.decode(textBytes),
+          }
+          const binaryComp = compareBytes(binaryBytes, BINARY_EXPECTED)
+          binaryMatch.value = {
+            ...binaryComp,
+            actualLength: binaryBytes.length,
+            expectedLength: BINARY_EXPECTED.length,
+          }
+          isLoading.value = false
+        })
+        .catch((err) => {
+          error.value = String(err)
+          isLoading.value = false
+        })
+    })
 
     return () => (
       <div class="space-y-4">

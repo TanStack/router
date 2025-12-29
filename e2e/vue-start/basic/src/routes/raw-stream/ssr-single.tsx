@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
-import { defineComponent, ref, watch } from 'vue'
+import { defineComponent, onMounted, ref } from 'vue'
 import {
   createDelayedStream,
   createStreamConsumer,
@@ -14,27 +14,24 @@ const SSRSingleTest = defineComponent({
     const isConsuming = ref(true)
     const error = ref<string | null>(null)
 
-    watch(
-      () => loaderData.value.rawData,
-      (rawData) => {
-        if (!rawData) {
-          return
-        }
-        const consumeStream = createStreamConsumer()
-        isConsuming.value = true
-        error.value = null
-        consumeStream(rawData)
-          .then((content) => {
-            streamContent.value = content
-            isConsuming.value = false
-          })
-          .catch((err) => {
-            error.value = String(err)
-            isConsuming.value = false
-          })
-      },
-      { immediate: true },
-    )
+    onMounted(() => {
+      const rawData = loaderData.value.rawData
+      if (!rawData) {
+        return
+      }
+      const consumeStream = createStreamConsumer()
+      isConsuming.value = true
+      error.value = null
+      consumeStream(rawData)
+        .then((content) => {
+          streamContent.value = content
+          isConsuming.value = false
+        })
+        .catch((err) => {
+          error.value = String(err)
+          isConsuming.value = false
+        })
+    })
 
     return () => (
       <div class="space-y-4">

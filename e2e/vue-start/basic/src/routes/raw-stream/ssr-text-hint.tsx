@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
-import { defineComponent, ref, watch } from 'vue'
+import { defineComponent, onMounted, ref } from 'vue'
 import {
   collectBytes,
   compareBytes,
@@ -55,56 +55,51 @@ const SSRTextHintTest = defineComponent({
     const isLoading = ref(true)
     const error = ref<string | null>(null)
 
-    watch(
-      () => [
-        loaderData.value.pureText,
-        loaderData.value.mixedContent,
-        loaderData.value.pureBinary,
-      ],
-      ([pureText, mixedContent, pureBinary]) => {
-        if (!pureText || !mixedContent || !pureBinary) {
-          return
-        }
-        isLoading.value = true
-        error.value = null
-        Promise.all([
-          collectBytes(pureText),
-          collectBytes(mixedContent),
-          collectBytes(pureBinary),
-        ])
-          .then(([pureBytes, mixedBytes, pureBinaryBytes]) => {
-            const pureComp = compareBytes(pureBytes, PURE_TEXT_EXPECTED)
-            const decoder = new TextDecoder()
-            pureTextMatch.value = {
-              ...pureComp,
-              actualLength: pureBytes.length,
-              expectedLength: PURE_TEXT_EXPECTED.length,
-              asText: decoder.decode(pureBytes),
-            }
-            const mixedComp = compareBytes(mixedBytes, MIXED_EXPECTED)
-            mixedMatch.value = {
-              ...mixedComp,
-              actualLength: mixedBytes.length,
-              expectedLength: MIXED_EXPECTED.length,
-            }
-            const pureBinaryComp = compareBytes(
-              pureBinaryBytes,
-              PURE_BINARY_EXPECTED,
-            )
-            pureBinaryMatch.value = {
-              ...pureBinaryComp,
-              actualLength: pureBinaryBytes.length,
-              expectedLength: PURE_BINARY_EXPECTED.length,
-            }
-            isLoading.value = false
-          })
-          .catch((err) => {
-            error.value = String(err)
-            isLoading.value = false
-          })
-      },
-      { immediate: true },
-    )
+    onMounted(() => {
+      const pureText = loaderData.value.pureText
+      const mixedContent = loaderData.value.mixedContent
+      const pureBinary = loaderData.value.pureBinary
+      if (!pureText || !mixedContent || !pureBinary) {
+        return
+      }
+      isLoading.value = true
+      error.value = null
+      Promise.all([
+        collectBytes(pureText),
+        collectBytes(mixedContent),
+        collectBytes(pureBinary),
+      ])
+        .then(([pureBytes, mixedBytes, pureBinaryBytes]) => {
+          const pureComp = compareBytes(pureBytes, PURE_TEXT_EXPECTED)
+          const decoder = new TextDecoder()
+          pureTextMatch.value = {
+            ...pureComp,
+            actualLength: pureBytes.length,
+            expectedLength: PURE_TEXT_EXPECTED.length,
+            asText: decoder.decode(pureBytes),
+          }
+          const mixedComp = compareBytes(mixedBytes, MIXED_EXPECTED)
+          mixedMatch.value = {
+            ...mixedComp,
+            actualLength: mixedBytes.length,
+            expectedLength: MIXED_EXPECTED.length,
+          }
+          const pureBinaryComp = compareBytes(
+            pureBinaryBytes,
+            PURE_BINARY_EXPECTED,
+          )
+          pureBinaryMatch.value = {
+            ...pureBinaryComp,
+            actualLength: pureBinaryBytes.length,
+            expectedLength: PURE_BINARY_EXPECTED.length,
+          }
+          isLoading.value = false
+        })
+        .catch((err) => {
+          error.value = String(err)
+          isLoading.value = false
+        })
+    })
 
     return () => (
       <div class="space-y-4">
