@@ -21,6 +21,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
       <ErrorComponent error={error} />
       <div class="flex gap-2 items-center flex-wrap">
         <button
+          type="button"
           onClick={() => {
             router.invalidate()
           }}
@@ -36,16 +37,13 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
             Home
           </Link>
         ) : (
-          <Link
-            to="/"
+          <button
+            type="button"
+            onClick={() => window.history.back()}
             class={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded-sm text-white uppercase font-extrabold`}
-            onClick={(e) => {
-              e.preventDefault()
-              window.history.back()
-            }}
           >
             Go Back
-          </Link>
+          </button>
         )}
       </div>
     </div>
