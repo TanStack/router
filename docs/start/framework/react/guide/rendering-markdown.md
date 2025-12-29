@@ -428,7 +428,9 @@ type GitHubContent = {
 }
 
 export const fetchRepoContents = createServerFn({ method: 'GET' })
-  .inputValidator((params: { repo: string; branch: string; path: string }) => params)
+  .inputValidator(
+    (params: { repo: string; branch: string; path: string }) => params,
+  )
   .handler(async ({ data: { repo, branch, path } }) => {
     const url = `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`
 
