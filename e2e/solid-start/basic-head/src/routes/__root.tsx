@@ -10,6 +10,7 @@ import {
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
 import { HydrationScript } from 'solid-js/web'
 import { NotFound } from '~/components/NotFound'
+import tailwindCssUrl from '~/tailwind.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -26,7 +27,10 @@ export const Route = createRootRoute({
         content: 'Testing head() function behavior with async loaders',
       },
     ],
-    links: [{ rel: 'icon', href: '/favicon.ico' }],
+    links: [
+      { rel: 'icon', href: '/favicon.ico' },
+      { rel: 'stylesheet', href: tailwindCssUrl },
+    ],
   }),
   errorComponent: (props) => <p>{props.error.stack}</p>,
   notFoundComponent: () => <NotFound />,
@@ -35,7 +39,7 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <html>
+    <html lang="en">
       <head>
         <HydrationScript />
       </head>

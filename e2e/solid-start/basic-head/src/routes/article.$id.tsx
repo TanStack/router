@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from '@tanstack/solid-router'
-import { Show } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 import { fakeLogin, fakeLogout, isAuthed } from '~/utils/fake-auth'
 
 const fetchArticle = async (id: string) => {
@@ -29,42 +29,59 @@ export const Route = createFileRoute('/article/$id')({
 })
 
 function RouteComponent() {
-  const router = useRouter()
   const data = Route.useLoaderData()
+
   return (
-    <Show when={data()} fallback={<NotAccessible />}>
-      {(article) => (
-        <div>
+    <>
+      <AuthStatus />
+      <Show when={data()} fallback={<div>Article Not Accessible.</div>}>
+        {(article) => (
           <div>{article().content}</div>
-          <button
-            type="button"
-            onClick={() => {
-              fakeLogout()
-              router.invalidate()
-            }}
-          >
-            Log out
-          </button>
-        </div>
-      )}
-    </Show>
+        )}
+      </Show>
+    </>
   )
 }
 
-function NotAccessible() {
+function AuthStatus() {
   const router = useRouter()
+
+  const [auth, setAuth] = createSignal(isAuthed())
+
   return (
-    <div>
-      <div>Article Not Accessible.</div>
-      <button
-        type="button"
-        onClick={() => {
-          fakeLogin()
-          router.invalidate()
-        }}
-      >
-        Log in
-      </button>
-    </div>
+    <Show
+      when={auth()}
+      fallback={
+        <div class="bg-red-200">
+          <div class="text-red-600">Not authenticated</div>
+          <button
+            type="button"
+            class="bg-green-200"
+            onClick={() => {
+              fakeLogin()
+              setAuth(true)
+              router.invalidate()
+            }}
+          >
+            Log in
+          </button>
+        </div>
+      }
+    >
+      <div class="bg-green-200">
+        <div class="text-green-600">You're authenticated!</div>
+        <button
+          type="button"
+          class="bg-red-200"
+          onClick={() => {
+            fakeLogout()
+            setAuth(false)
+            router.invalidate()
+          }}
+        >
+          Log out
+        </button>
+      </div>
+    </Show>
   )
 }
