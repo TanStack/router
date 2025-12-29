@@ -894,6 +894,21 @@ export class RouterCore<
   viewTransitionPromise?: ControlledPromise<true>
   isScrollRestoring = false
   isScrollRestorationSetup = false
+  /**
+   * Internal: Generation counter for tracking load operations (excludes preloads).
+   * Incremented each time loadMatches() is called with preload=false.
+   *
+   * Purpose: Detects stale async operations (like detached head re-runs) when a new
+   * load starts. Handles both navigation to different locations AND invalidation on
+   * the same location.
+   *
+   * Example: If async loaders complete and schedule a head re-run, but a new navigation
+   * or invalidation has started (incrementing this counter), the old head re-run will
+   * detect staleness and abort before updating state.
+   *
+   * Why a counter: Simple, no circular references, standard pattern in reactive systems.
+   */
+  _loadGeneration: number = 0
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>

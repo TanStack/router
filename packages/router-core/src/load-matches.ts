@@ -35,6 +35,32 @@ type InnerLoadContext = {
   sync?: boolean
   /** mutable state, scoped to a `loadMatches` call */
   matchPromises: Array<Promise<AnyRouteMatch>>
+  /**
+   * Generation number for this load operation (only set for non-preload loads).
+   * Used to detect when this load has been superseded by a newer one.
+   * Compared against router._loadGeneration to abort stale async operations.
+   */
+  loadGeneration?: number
+}
+
+/**
+ * Checks if this load operation has been superseded by a newer one.
+ * This prevents stale async operations from updating router state.
+ *
+ * Returns true if the operation should be aborted in these cases:
+ * 1. Navigation to a different location
+ * 2. Route invalidation on the same location (new loader dispatch)
+ * 3. Any other scenario that triggers a new loadMatches() call with preload=false
+ *
+ * For preload operations (inner.loadGeneration undefined), never abort.
+ */
+const shouldAbortLoad = (inner: InnerLoadContext): boolean => {
+  // Preloads don't have a generation number and should never be aborted by this check
+  if (inner.loadGeneration === undefined) {
+    return false
+  }
+  // Check if a newer load operation has started (higher generation number)
+  return inner.loadGeneration !== inner.router._loadGeneration
 }
 
 const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
@@ -584,15 +610,25 @@ const executeHead = (
 }
 
 const executeAllHeadFns = async (inner: InnerLoadContext) => {
+  // Check if this load operation has been superseded before starting
+  if (shouldAbortLoad(inner)) return
+
   // Serially execute head functions for all matches
   // Each execution is wrapped in try-catch to ensure all heads run even if one fails
   for (const match of inner.matches) {
+    // Check before each match in case we get aborted during iteration
+    if (shouldAbortLoad(inner)) return
+
     const { id: matchId, routeId } = match
     const route = inner.router.looseRoutesById[routeId]!
     try {
       const headResult = executeHead(inner, matchId, route)
       if (headResult) {
         const head = await headResult
+
+        // Check again after async operation completes
+        if (shouldAbortLoad(inner)) return
+
         inner.updateMatch(matchId, (prev) => ({
           ...prev,
           ...head,
@@ -901,6 +937,12 @@ export async function loadMatches(arg: {
     matchPromises: [],
   })
 
+  // For non-preload operations, assign a generation number to detect stale operations later
+  // This handles both navigation (different location) and invalidation (same location)
+  if (!inner.preload) {
+    inner.loadGeneration = ++inner.router._loadGeneration
+  }
+
   // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
   // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
   if (
@@ -959,13 +1001,12 @@ export async function loadMatches(arg: {
     if (asyncLoaderPromises.length > 0) {
       // Schedule re-execution after all async loaders complete (non-blocking)
       // Use allSettled to handle both successful and failed loaders
-      //
-      // TODO! temporarily disabled to make sure solid-start/basic example can reproduce the bug
-      const thisNavigationLocation = inner.location
       Promise.allSettled(asyncLoaderPromises).then(() => {
-        // Only execute if this navigation is still current (not superseded by new navigation)
-        const latestLocation = inner.router.state.location
-        if (latestLocation === thisNavigationLocation) {
+        // Only execute if this load operation hasn't been superseded
+        // This handles both:
+        // 1. Navigation to a different location
+        // 2. Route invalidation on the same location (new loader dispatch)
+        if (!shouldAbortLoad(inner)) {
           executeAllHeadFns(inner)
         }
       })
