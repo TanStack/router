@@ -65,33 +65,49 @@ test.describe('head() function with async loaders', () => {
   test('stale head re-run aborts when route invalidation happens', async ({
     page,
   }) => {
-    // Login and navigate to article 1
+    // Capture head() execution logs to verify abort behavior
+    const headLogs: string[] = []
+    page.on('console', (msg) => {
+      const text = msg.text()
+      if (text.includes('[head] Setting title:')) {
+        headLogs.push(text)
+      }
+    })
+
+    // Setup: Login and navigate to article 1
     await page.goto('/')
     await page.evaluate(() => localStorage.setItem('auth', 'good'))
     await page.goto('/article/1')
-
-    // Wait for initial load to complete
     await page.waitForTimeout(1500)
     await expect(page).toHaveTitle('Article Title for 1')
 
-    // Logout (triggers invalidation)
+    // Clear logs from initial navigation
+    headLogs.length = 0
+
+    // Trigger first invalidation: logout (loader returns null after 1s)
     await page.click('button:has-text("Log out")')
 
-    // Small delay
+    // Trigger second invalidation immediately: login (before logout loader completes)
+    // This should abort the logout's head re-run via generation counter
     await page.waitForTimeout(100)
-
-    // Login again immediately (triggers another invalidation before first completes)
     await page.click('button:has-text("Log in")')
 
-    // Wait for loaders to complete
+    // Wait for both loaders to complete
     await page.waitForTimeout(1500)
 
-    // Should show logged-in state with correct title (not "title n/a" from logout state)
+    // Verify final state
     await expect(page).toHaveTitle('Article Title for 1')
     await expect(page.locator('text=Article content for 1')).toBeVisible()
 
-    // Should not show "not accessible" state
-    await expect(page.locator('text=Article Not Accessible')).not.toBeVisible()
+    // Critical assertion: If abort worked, "title n/a" should NEVER appear in logs
+    // Expected logs (if abort works):
+    //   1. "Article Title for 1" - logout's 1st head (stale data)
+    //   2. "Article Title for 1" - login's 1st head (stale data)
+    //   3. "Article Title for 1" - login's 2nd head (fresh data)
+    // If abort FAILED, logout's 2nd head would execute with null data:
+    //   4. "title n/a" - logout's 2nd head (SHOULD BE ABORTED)
+    expect(headLogs.join('\n')).not.toContain('title n/a')
+    expect(headLogs).toHaveLength(3)
   })
 
   test('head() shows fallback title when not authenticated', async ({

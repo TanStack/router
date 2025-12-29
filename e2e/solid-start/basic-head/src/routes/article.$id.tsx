@@ -35,9 +35,7 @@ function RouteComponent() {
     <>
       <AuthStatus />
       <Show when={data()} fallback={<div>Article Not Accessible.</div>}>
-        {(article) => (
-          <div>{article().content}</div>
-        )}
+        {(article) => <div>{article().content}</div>}
       </Show>
     </>
   )
