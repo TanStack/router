@@ -1,6 +1,12 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
-import { defineComponent, onMounted, ref } from 'vue'
+import {
+  defineComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import {
   createDelayedStream,
   createStreamConsumer,
@@ -14,15 +20,14 @@ const SSRSingleTest = defineComponent({
     const isConsuming = ref(true)
     const error = ref<string | null>(null)
 
-    onMounted(() => {
-      const rawData = loaderData.value.rawData
+    const consumeRawStream = (rawData: ReadableStream<Uint8Array> | RawStream | undefined) => {
       if (!rawData) {
-        return
+        return Promise.resolve()
       }
       const consumeStream = createStreamConsumer()
       isConsuming.value = true
       error.value = null
-      consumeStream(rawData)
+      return consumeStream(rawData)
         .then((content) => {
           streamContent.value = content
           isConsuming.value = false
@@ -31,6 +36,27 @@ const SSRSingleTest = defineComponent({
           error.value = String(err)
           isConsuming.value = false
         })
+    }
+
+    let stopWatcher: (() => void) | undefined
+    let hasStarted = false
+
+    onMounted(() => {
+      stopWatcher = watch(
+        () => loaderData.value.rawData,
+        (rawData) => {
+          if (hasStarted || streamContent.value || error.value || !rawData) {
+            return
+          }
+          hasStarted = true
+          void consumeRawStream(rawData)
+        },
+        { immediate: true },
+      )
+    })
+
+    onBeforeUnmount(() => {
+      stopWatcher?.()
     })
 
     return () => (

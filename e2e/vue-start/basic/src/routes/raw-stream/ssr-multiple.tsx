@@ -1,6 +1,12 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
-import { defineComponent, onMounted, ref } from 'vue'
+import {
+  defineComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import {
   createDelayedStream,
   createStreamConsumer,
@@ -15,16 +21,17 @@ const SSRMultipleTest = defineComponent({
     const isConsuming = ref(true)
     const error = ref<string | null>(null)
 
-    onMounted(() => {
-      const first = loaderData.value.first
-      const second = loaderData.value.second
+    const consumeRawStreams = (
+      first: ReadableStream<Uint8Array> | RawStream | undefined,
+      second: ReadableStream<Uint8Array> | RawStream | undefined,
+    ) => {
       if (!first || !second) {
-        return
+        return Promise.resolve()
       }
       const consumeStream = createStreamConsumer()
       isConsuming.value = true
       error.value = null
-      Promise.all([consumeStream(first), consumeStream(second)])
+      return Promise.all([consumeStream(first), consumeStream(second)])
         .then(([content1, content2]) => {
           firstContent.value = content1
           secondContent.value = content2
@@ -34,6 +41,34 @@ const SSRMultipleTest = defineComponent({
           error.value = String(err)
           isConsuming.value = false
         })
+    }
+
+    let stopWatcher: (() => void) | undefined
+    let hasStarted = false
+
+    onMounted(() => {
+      stopWatcher = watch(
+        () => [loaderData.value.first, loaderData.value.second],
+        ([first, second]) => {
+          if (
+            hasStarted ||
+            firstContent.value ||
+            secondContent.value ||
+            error.value ||
+            !first ||
+            !second
+          ) {
+            return
+          }
+          hasStarted = true
+          void consumeRawStreams(first, second)
+        },
+        { immediate: true },
+      )
+    })
+
+    onBeforeUnmount(() => {
+      stopWatcher?.()
     })
 
     return () => (

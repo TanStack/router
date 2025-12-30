@@ -368,79 +368,128 @@ export const errorStreamFn = createServerFn().handler(async () => {
 // Note: RawStream is the marker class used in loaders/server functions,
 // but after SSR deserialization it becomes ReadableStream<Uint8Array>.
 // We accept both types to handle the TypeScript mismatch.
+function getActualStream(
+  stream: ReadableStream<Uint8Array> | RawStream,
+): ReadableStream<Uint8Array> {
+  return stream instanceof RawStream
+    ? stream.stream
+    : (stream as ReadableStream<Uint8Array>)
+}
+
+const streamTextCache = new WeakMap<ReadableStream<Uint8Array>, Promise<string>>()
+const streamBytesCache = new WeakMap<
+  ReadableStream<Uint8Array>,
+  Promise<Uint8Array>
+>()
+const streamByteCountCache = new WeakMap<
+  ReadableStream<Uint8Array>,
+  Promise<number>
+>()
+
 export function createStreamConsumer() {
   const decoder = new TextDecoder()
 
   return async function consumeStream(
     stream: ReadableStream<Uint8Array> | RawStream,
   ): Promise<string> {
-    // Handle both RawStream (from type system) and ReadableStream (runtime)
-    const actualStream =
-      stream instanceof RawStream
-        ? stream.stream
-        : (stream as ReadableStream<Uint8Array>)
-    const reader = actualStream.getReader()
-    const chunks: Array<string> = []
-
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      chunks.push(decoder.decode(value, { stream: true }))
+    const actualStream = getActualStream(stream)
+    const cached = streamTextCache.get(actualStream)
+    if (cached) {
+      return cached
     }
 
-    return chunks.join('')
+    const promise = (async () => {
+      const reader = actualStream.getReader()
+      const chunks: Array<string> = []
+
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          chunks.push(decoder.decode(value, { stream: true }))
+        }
+      } finally {
+        reader.releaseLock()
+      }
+
+      return chunks.join('')
+    })()
+
+    streamTextCache.set(actualStream, promise)
+    return promise
   }
 }
 
 export async function consumeBinaryStream(
   stream: ReadableStream<Uint8Array> | RawStream,
 ): Promise<number> {
-  // Handle both RawStream (from type system) and ReadableStream (runtime)
-  const actualStream =
-    stream instanceof RawStream
-      ? stream.stream
-      : (stream as ReadableStream<Uint8Array>)
-  const reader = actualStream.getReader()
-  let totalBytes = 0
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    totalBytes += value.length
+  const actualStream = getActualStream(stream)
+  const cached = streamByteCountCache.get(actualStream)
+  if (cached) {
+    return cached
   }
 
-  return totalBytes
+  const promise = (async () => {
+    const reader = actualStream.getReader()
+    let totalBytes = 0
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        totalBytes += value.length
+      }
+    } finally {
+      reader.releaseLock()
+    }
+
+    return totalBytes
+  })()
+
+  streamByteCountCache.set(actualStream, promise)
+  return promise
 }
 
 // Helper to collect all bytes from a stream
 export async function collectBytes(
   stream: ReadableStream<Uint8Array> | RawStream,
 ): Promise<Uint8Array> {
-  const actualStream =
-    stream instanceof RawStream
-      ? stream.stream
-      : (stream as ReadableStream<Uint8Array>)
-  const reader = actualStream.getReader()
-  const chunks: Array<Uint8Array> = []
-  let totalLength = 0
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    chunks.push(value)
-    totalLength += value.length
+  const actualStream = getActualStream(stream)
+  const cached = streamBytesCache.get(actualStream)
+  if (cached) {
+    return cached
   }
 
-  const result = new Uint8Array(totalLength)
-  let pos = 0
-  for (const chunk of chunks) {
-    result.set(chunk, pos)
-    pos += chunk.length
-  }
-  return result
+  const promise = (async () => {
+    const reader = actualStream.getReader()
+    const chunks: Array<Uint8Array> = []
+    let totalLength = 0
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        totalLength += value.length
+      }
+    } finally {
+      reader.releaseLock()
+    }
+
+    const result = new Uint8Array(totalLength)
+    let pos = 0
+    for (const chunk of chunks) {
+      result.set(chunk, pos)
+      pos += chunk.length
+    }
+    return result
+  })()
+
+  streamBytesCache.set(actualStream, promise)
+  return promise
 }
 
 // Compare two Uint8Arrays byte-by-byte

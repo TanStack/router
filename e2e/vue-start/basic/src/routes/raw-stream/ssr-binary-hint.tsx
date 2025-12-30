@@ -1,6 +1,12 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
-import { defineComponent, onMounted, ref } from 'vue'
+import {
+  defineComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import {
   collectBytes,
   compareBytes,
@@ -42,15 +48,16 @@ const SSRBinaryHintTest = defineComponent({
     const isLoading = ref(true)
     const error = ref<string | null>(null)
 
-    onMounted(() => {
-      const textData = loaderData.value.textData
-      const binaryData = loaderData.value.binaryData
+    const consumeHintStreams = (
+      textData: ReadableStream<Uint8Array> | RawStream | undefined,
+      binaryData: ReadableStream<Uint8Array> | RawStream | undefined,
+    ) => {
       if (!textData || !binaryData) {
-        return
+        return Promise.resolve()
       }
       isLoading.value = true
       error.value = null
-      Promise.all([collectBytes(textData), collectBytes(binaryData)])
+      return Promise.all([collectBytes(textData), collectBytes(binaryData)])
         .then(([textBytes, binaryBytes]) => {
           const textComp = compareBytes(textBytes, TEXT_EXPECTED)
           const decoder = new TextDecoder()
@@ -72,6 +79,30 @@ const SSRBinaryHintTest = defineComponent({
           error.value = String(err)
           isLoading.value = false
         })
+    }
+
+    let stopWatcher: (() => void) | undefined
+    let hasStarted = false
+
+    onMounted(() => {
+      stopWatcher = watch(
+        () => [loaderData.value.textData, loaderData.value.binaryData],
+        ([textData, binaryData]) => {
+          if (hasStarted || textMatch.value || binaryMatch.value || error.value) {
+            return
+          }
+          if (!textData || !binaryData) {
+            return
+          }
+          hasStarted = true
+          void consumeHintStreams(textData, binaryData)
+        },
+        { immediate: true },
+      )
+    })
+
+    onBeforeUnmount(() => {
+      stopWatcher?.()
     })
 
     return () => (

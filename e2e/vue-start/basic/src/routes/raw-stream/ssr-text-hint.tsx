@@ -1,6 +1,12 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
-import { defineComponent, onMounted, ref } from 'vue'
+import {
+  defineComponent,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import {
   collectBytes,
   compareBytes,
@@ -55,16 +61,17 @@ const SSRTextHintTest = defineComponent({
     const isLoading = ref(true)
     const error = ref<string | null>(null)
 
-    onMounted(() => {
-      const pureText = loaderData.value.pureText
-      const mixedContent = loaderData.value.mixedContent
-      const pureBinary = loaderData.value.pureBinary
+    const consumeHintStreams = (
+      pureText: ReadableStream<Uint8Array> | RawStream | undefined,
+      mixedContent: ReadableStream<Uint8Array> | RawStream | undefined,
+      pureBinary: ReadableStream<Uint8Array> | RawStream | undefined,
+    ) => {
       if (!pureText || !mixedContent || !pureBinary) {
-        return
+        return Promise.resolve()
       }
       isLoading.value = true
       error.value = null
-      Promise.all([
+      return Promise.all([
         collectBytes(pureText),
         collectBytes(mixedContent),
         collectBytes(pureBinary),
@@ -99,6 +106,40 @@ const SSRTextHintTest = defineComponent({
           error.value = String(err)
           isLoading.value = false
         })
+    }
+
+    let stopWatcher: (() => void) | undefined
+    let hasStarted = false
+
+    onMounted(() => {
+      stopWatcher = watch(
+        () => [
+          loaderData.value.pureText,
+          loaderData.value.mixedContent,
+          loaderData.value.pureBinary,
+        ],
+        ([pureText, mixedContent, pureBinary]) => {
+          if (
+            hasStarted ||
+            pureTextMatch.value ||
+            mixedMatch.value ||
+            pureBinaryMatch.value ||
+            error.value ||
+            !pureText ||
+            !mixedContent ||
+            !pureBinary
+          ) {
+            return
+          }
+          hasStarted = true
+          void consumeHintStreams(pureText, mixedContent, pureBinary)
+        },
+        { immediate: true },
+      )
+    })
+
+    onBeforeUnmount(() => {
+      stopWatcher?.()
     })
 
     return () => (
