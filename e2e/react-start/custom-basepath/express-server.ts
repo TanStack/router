@@ -1,4 +1,5 @@
 import express from 'express'
+import type { NodeHttp1Handler } from 'srvx'
 import { toNodeHandler } from 'srvx/node'
 
 const DEVELOPMENT = process.env.NODE_ENV === 'development'
@@ -17,7 +18,7 @@ if (DEVELOPMENT) {
     try {
       const { default: serverEntry } =
         await viteDevServer.ssrLoadModule('./src/server.ts')
-      const handler = toNodeHandler(serverEntry.fetch)
+      const handler = toNodeHandler(serverEntry.fetch) as NodeHttp1Handler
       await handler(req, res)
     } catch (error) {
       if (typeof error === 'object' && error instanceof Error) {
@@ -28,7 +29,7 @@ if (DEVELOPMENT) {
   })
 } else {
   const { default: handler } = await import('./dist/server/server.js')
-  const nodeHandler = toNodeHandler(handler.fetch)
+  const nodeHandler = toNodeHandler(handler.fetch) as NodeHttp1Handler
   app.use('/custom/basepath', express.static('dist/client'))
   app.use(async (req, res, next) => {
     try {
