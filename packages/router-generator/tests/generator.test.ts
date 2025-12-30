@@ -104,6 +104,17 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'virtual-config-file-default-export':
       config.virtualRouteConfig = './routes.ts'
       break
+    case 'virtual-with-escaped-underscore':
+      {
+        // Test case for escaped underscores in physical routes mounted via virtual config
+        // This ensures originalRoutePath is correctly prefixed when paths are updated
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          index('index.tsx'),
+          physical('/api', 'physical-routes'),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
     case 'types-disabled':
       config.disableTypes = true
       config.generatedRouteTree =
