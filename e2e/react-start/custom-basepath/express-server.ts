@@ -1,6 +1,6 @@
 import express from 'express'
-import type { NodeHttp1Handler } from 'srvx'
 import { toNodeHandler } from 'srvx/node'
+import type { NodeHttp1Handler } from 'srvx'
 
 const DEVELOPMENT = process.env.NODE_ENV === 'development'
 const PORT = Number.parseInt(process.env.PORT || '3000')
