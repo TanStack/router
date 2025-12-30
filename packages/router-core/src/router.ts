@@ -908,7 +908,7 @@ export class RouterCore<
    *
    * Why a counter: Simple, no circular references, standard pattern in reactive systems.
    */
-  _loadGeneration: number = 0
+  _loadGeneration = 0
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -2173,7 +2173,7 @@ export class RouterCore<
             onReady: async () => {
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
-                this.startViewTransition(async () => {
+                this.startViewTransition(() => {
                   // this.viewTransitionPromise = createControlledPromise<true>()
 
                   // Commit the pending matches. If a previous match was
