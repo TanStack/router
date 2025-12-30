@@ -1357,7 +1357,24 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     prefixMap: RoutePrefixMap,
     config?: Config,
   ) {
-    const parentRoute = hasParentRoute(prefixMap, node, node.routePath)
+    let parentRoute = hasParentRoute(prefixMap, node, node.routePath)
+
+    // Fallback: check acc.routeNodesByPath for parents not in prefixMap
+    // This handles virtual routes created from lazy-only files that weren't
+    // in the initial prefixMap build
+    if (!parentRoute && node.routePath) {
+      let searchPath = node.routePath
+      while (searchPath.length > 0) {
+        const lastSlash = searchPath.lastIndexOf('/')
+        if (lastSlash <= 0) break
+        searchPath = searchPath.substring(0, lastSlash)
+        const candidate = acc.routeNodesByPath.get(searchPath)
+        if (candidate && candidate.routePath !== node.routePath) {
+          parentRoute = candidate
+          break
+        }
+      }
+    }
 
     if (parentRoute) node.parent = parentRoute
 
@@ -1489,7 +1506,11 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     }
 
     acc.routeNodes.push(node)
-    if (node.routePath && !node.isVirtual) {
+    if (node.routePath) {
+      // Always register routes by path so child routes can find parents.
+      // Virtual routes (created from lazy-only files) also need to be registered
+      // so that index routes like path.index.lazy.tsx can find their parent path.lazy.tsx.
+      // If a non-virtual route is later processed for the same path, it will overwrite.
       acc.routeNodesByPath.set(node.routePath, node)
     }
   }
