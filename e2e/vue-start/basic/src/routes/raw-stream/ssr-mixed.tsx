@@ -21,7 +21,9 @@ const SSRMixedTest = defineComponent({
     const isConsuming = ref(true)
     const error = ref<string | null>(null)
 
-    const consumeRawStream = (rawData: ReadableStream<Uint8Array> | RawStream | undefined) => {
+    const consumeRawStream = (
+      rawData: ReadableStream<Uint8Array> | RawStream | undefined,
+    ) => {
       if (!rawData) {
         return Promise.resolve()
       }

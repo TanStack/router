@@ -1,12 +1,6 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
-import {
-  defineComponent,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-} from 'vue'
+import { defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   collectBytes,
   compareBytes,
@@ -88,7 +82,12 @@ const SSRBinaryHintTest = defineComponent({
       stopWatcher = watch(
         () => [loaderData.value.textData, loaderData.value.binaryData],
         ([textData, binaryData]) => {
-          if (hasStarted || textMatch.value || binaryMatch.value || error.value) {
+          if (
+            hasStarted ||
+            textMatch.value ||
+            binaryMatch.value ||
+            error.value
+          ) {
             return
           }
           if (!textData || !binaryData) {

@@ -376,7 +376,10 @@ function getActualStream(
     : (stream as ReadableStream<Uint8Array>)
 }
 
-const streamTextCache = new WeakMap<ReadableStream<Uint8Array>, Promise<string>>()
+const streamTextCache = new WeakMap<
+  ReadableStream<Uint8Array>,
+  Promise<string>
+>()
 const streamBytesCache = new WeakMap<
   ReadableStream<Uint8Array>,
   Promise<Uint8Array>

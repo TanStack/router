@@ -357,10 +357,7 @@ test.describe('RawStream - Hint Parameter (RPC)', () => {
 })
 
 test.describe('RawStream - SSR Hint Parameter Tests', () => {
-  test.skip(
-    isPrerender,
-    'RawStream SSR hint tests are skipped in prerender',
-  )
+  test.skip(isPrerender, 'RawStream SSR hint tests are skipped in prerender')
 
   test('SSR text hint with pure text - direct navigation', async ({ page }) => {
     await page.goto('/raw-stream/ssr-text-hint')
