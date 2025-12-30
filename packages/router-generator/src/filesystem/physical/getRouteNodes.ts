@@ -248,15 +248,20 @@ export async function getRouteNodes(
               originalRoutePath = '/'
             }
 
+            // For layout routes, don't use '/' fallback - an empty path means
+            // "layout for the parent path" which is important for physical() mounts
+            // where route.tsx at root should have empty path, not '/'
+            const isLayoutRoute = routeType === 'layout'
+
             routePath =
               routePath.replace(new RegExp(`/${config.indexToken}$`), '/') ||
-              '/'
+              (isLayoutRoute ? '' : '/')
 
             originalRoutePath =
               originalRoutePath.replace(
                 new RegExp(`/${config.indexToken}$`),
                 '/',
-              ) || '/'
+              ) || (isLayoutRoute ? '' : '/')
           }
 
           routeNodes.push({
