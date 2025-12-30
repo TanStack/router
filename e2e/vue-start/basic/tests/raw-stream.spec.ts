@@ -149,8 +149,6 @@ test.describe('RawStream - Client RPC Tests', () => {
 })
 
 test.describe('RawStream - SSR Loader Tests', () => {
-  test.skip(isPrerender, 'RawStream SSR loader tests are skipped in prerender')
-
   test('SSR single stream - direct navigation', async ({ page }) => {
     // Direct navigation = full SSR with base64 encoding
     await page.goto('/raw-stream/ssr-single')
@@ -357,8 +355,6 @@ test.describe('RawStream - Hint Parameter (RPC)', () => {
 })
 
 test.describe('RawStream - SSR Hint Parameter Tests', () => {
-  test.skip(isPrerender, 'RawStream SSR hint tests are skipped in prerender')
-
   test('SSR text hint with pure text - direct navigation', async ({ page }) => {
     await page.goto('/raw-stream/ssr-text-hint')
     await page.waitForURL('/raw-stream/ssr-text-hint')
@@ -553,11 +549,6 @@ test.describe('RawStream - Multiplexing Tests (RPC)', () => {
 })
 
 test.describe('RawStream - Cross Navigation', () => {
-  test.skip(
-    isPrerender,
-    'RawStream cross-navigation tests are skipped in prerender',
-  )
-
   test('Client RPC works after navigating from SSR route', async ({ page }) => {
     // Start with SSR route
     await page.goto('/raw-stream/ssr-single')

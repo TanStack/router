@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/vue-router'
+import { createFileRoute, useRouter } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
 import { defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
@@ -37,11 +37,13 @@ type BinaryMatch = {
 const SSRBinaryHintTest = defineComponent({
   setup() {
     const loaderData = Route.useLoaderData()
+    const router = useRouter()
     const textMatch = ref<TextMatch | null>(null)
     const binaryMatch = ref<BinaryMatch | null>(null)
     const isLoading = ref(true)
     const error = ref<string | null>(null)
 
+    let consumeRunId = 0
     const consumeHintStreams = (
       textData: ReadableStream<Uint8Array> | RawStream | undefined,
       binaryData: ReadableStream<Uint8Array> | RawStream | undefined,
@@ -49,10 +51,14 @@ const SSRBinaryHintTest = defineComponent({
       if (!textData || !binaryData) {
         return Promise.resolve()
       }
+      const currentRun = ++consumeRunId
       isLoading.value = true
       error.value = null
       return Promise.all([collectBytes(textData), collectBytes(binaryData)])
         .then(([textBytes, binaryBytes]) => {
+          if (currentRun !== consumeRunId) {
+            return
+          }
           const textComp = compareBytes(textBytes, TEXT_EXPECTED)
           const decoder = new TextDecoder()
           textMatch.value = {
@@ -70,34 +76,46 @@ const SSRBinaryHintTest = defineComponent({
           isLoading.value = false
         })
         .catch((err) => {
+          if (currentRun !== consumeRunId) {
+            return
+          }
           error.value = String(err)
           isLoading.value = false
         })
     }
 
     let stopWatcher: (() => void) | undefined
-    let hasStarted = false
+    let lastStreams:
+      | [ReadableStream<Uint8Array> | RawStream, ReadableStream<Uint8Array> | RawStream]
+      | undefined
+    let didInvalidate = false
 
     onMounted(() => {
       stopWatcher = watch(
         () => [loaderData.value.textData, loaderData.value.binaryData],
         ([textData, binaryData]) => {
-          if (
-            hasStarted ||
-            textMatch.value ||
-            binaryMatch.value ||
-            error.value
-          ) {
-            return
-          }
           if (!textData || !binaryData) {
             return
           }
-          hasStarted = true
+          if (
+            lastStreams &&
+            lastStreams[0] === textData &&
+            lastStreams[1] === binaryData
+          ) {
+            return
+          }
+          lastStreams = [textData, binaryData]
           void consumeHintStreams(textData, binaryData)
         },
         { immediate: true },
       )
+
+      if (__TSR_PRERENDER__ && !didInvalidate) {
+        didInvalidate = true
+        void router.invalidate({
+          filter: (match) => match.routeId === Route.id,
+        })
+      }
     })
 
     onBeforeUnmount(() => {
@@ -178,5 +196,6 @@ export const Route = createFileRoute('/raw-stream/ssr-binary-hint')({
       binaryData: new RawStream(binaryStream, { hint: 'binary' }),
     }
   },
+  shouldReload: __TSR_PRERENDER__,
   component: SSRBinaryHintTest,
 })

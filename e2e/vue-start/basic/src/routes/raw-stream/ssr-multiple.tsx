@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/vue-router'
+import { createFileRoute, useRouter } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
 import { defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
@@ -10,11 +10,13 @@ import {
 const SSRMultipleTest = defineComponent({
   setup() {
     const loaderData = Route.useLoaderData()
+    const router = useRouter()
     const firstContent = ref('')
     const secondContent = ref('')
     const isConsuming = ref(true)
     const error = ref<string | null>(null)
 
+    let consumeRunId = 0
     const consumeRawStreams = (
       first: ReadableStream<Uint8Array> | RawStream | undefined,
       second: ReadableStream<Uint8Array> | RawStream | undefined,
@@ -23,42 +25,55 @@ const SSRMultipleTest = defineComponent({
         return Promise.resolve()
       }
       const consumeStream = createStreamConsumer()
+      const currentRun = ++consumeRunId
       isConsuming.value = true
       error.value = null
       return Promise.all([consumeStream(first), consumeStream(second)])
         .then(([content1, content2]) => {
+          if (currentRun !== consumeRunId) {
+            return
+          }
           firstContent.value = content1
           secondContent.value = content2
           isConsuming.value = false
         })
         .catch((err) => {
+          if (currentRun !== consumeRunId) {
+            return
+          }
           error.value = String(err)
           isConsuming.value = false
         })
     }
 
     let stopWatcher: (() => void) | undefined
-    let hasStarted = false
+    let lastStreams:
+      | [ReadableStream<Uint8Array> | RawStream, ReadableStream<Uint8Array> | RawStream]
+      | undefined
+    let didInvalidate = false
 
     onMounted(() => {
       stopWatcher = watch(
         () => [loaderData.value.first, loaderData.value.second],
         ([first, second]) => {
-          if (
-            hasStarted ||
-            firstContent.value ||
-            secondContent.value ||
-            error.value ||
-            !first ||
-            !second
-          ) {
+          if (!first || !second) {
             return
           }
-          hasStarted = true
+          if (lastStreams && lastStreams[0] === first && lastStreams[1] === second) {
+            return
+          }
+          lastStreams = [first, second]
           void consumeRawStreams(first, second)
         },
         { immediate: true },
       )
+
+      if (__TSR_PRERENDER__ && !didInvalidate) {
+        didInvalidate = true
+        void router.invalidate({
+          filter: (match) => match.routeId === Route.id,
+        })
+      }
     })
 
     onBeforeUnmount(() => {
@@ -124,5 +139,6 @@ export const Route = createFileRoute('/raw-stream/ssr-multiple')({
       second: new RawStream(stream2),
     }
   },
+  shouldReload: __TSR_PRERENDER__,
   component: SSRMultipleTest,
 })

@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/vue-router'
+import { createFileRoute, useRouter } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
 import { defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
@@ -49,12 +49,14 @@ type BinaryMatch = {
 const SSRTextHintTest = defineComponent({
   setup() {
     const loaderData = Route.useLoaderData()
+    const router = useRouter()
     const pureTextMatch = ref<TextMatch | null>(null)
     const mixedMatch = ref<BinaryMatch | null>(null)
     const pureBinaryMatch = ref<BinaryMatch | null>(null)
     const isLoading = ref(true)
     const error = ref<string | null>(null)
 
+    let consumeRunId = 0
     const consumeHintStreams = (
       pureText: ReadableStream<Uint8Array> | RawStream | undefined,
       mixedContent: ReadableStream<Uint8Array> | RawStream | undefined,
@@ -63,6 +65,7 @@ const SSRTextHintTest = defineComponent({
       if (!pureText || !mixedContent || !pureBinary) {
         return Promise.resolve()
       }
+      const currentRun = ++consumeRunId
       isLoading.value = true
       error.value = null
       return Promise.all([
@@ -71,6 +74,9 @@ const SSRTextHintTest = defineComponent({
         collectBytes(pureBinary),
       ])
         .then(([pureBytes, mixedBytes, pureBinaryBytes]) => {
+          if (currentRun !== consumeRunId) {
+            return
+          }
           const pureComp = compareBytes(pureBytes, PURE_TEXT_EXPECTED)
           const decoder = new TextDecoder()
           pureTextMatch.value = {
@@ -97,13 +103,23 @@ const SSRTextHintTest = defineComponent({
           isLoading.value = false
         })
         .catch((err) => {
+          if (currentRun !== consumeRunId) {
+            return
+          }
           error.value = String(err)
           isLoading.value = false
         })
     }
 
     let stopWatcher: (() => void) | undefined
-    let hasStarted = false
+    let lastStreams:
+      | [
+          ReadableStream<Uint8Array> | RawStream,
+          ReadableStream<Uint8Array> | RawStream,
+          ReadableStream<Uint8Array> | RawStream,
+        ]
+      | undefined
+    let didInvalidate = false
 
     onMounted(() => {
       stopWatcher = watch(
@@ -114,22 +130,32 @@ const SSRTextHintTest = defineComponent({
         ],
         ([pureText, mixedContent, pureBinary]) => {
           if (
-            hasStarted ||
-            pureTextMatch.value ||
-            mixedMatch.value ||
-            pureBinaryMatch.value ||
-            error.value ||
             !pureText ||
             !mixedContent ||
             !pureBinary
           ) {
             return
           }
-          hasStarted = true
+          if (
+            lastStreams &&
+            lastStreams[0] === pureText &&
+            lastStreams[1] === mixedContent &&
+            lastStreams[2] === pureBinary
+          ) {
+            return
+          }
+          lastStreams = [pureText, mixedContent, pureBinary]
           void consumeHintStreams(pureText, mixedContent, pureBinary)
         },
         { immediate: true },
       )
+
+      if (__TSR_PRERENDER__ && !didInvalidate) {
+        didInvalidate = true
+        void router.invalidate({
+          filter: (match) => match.routeId === Route.id,
+        })
+      }
     })
 
     onBeforeUnmount(() => {
@@ -231,5 +257,6 @@ export const Route = createFileRoute('/raw-stream/ssr-text-hint')({
       pureBinary: new RawStream(pureBinaryStream, { hint: 'text' }),
     }
   },
+  shouldReload: __TSR_PRERENDER__,
   component: SSRTextHintTest,
 })

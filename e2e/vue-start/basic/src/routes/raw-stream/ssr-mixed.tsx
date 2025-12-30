@@ -1,4 +1,4 @@
-import { Await, createFileRoute } from '@tanstack/vue-router'
+import { Await, createFileRoute, useRouter } from '@tanstack/vue-router'
 import { RawStream } from '@tanstack/vue-start'
 import {
   Suspense,
@@ -17,10 +17,12 @@ import {
 const SSRMixedTest = defineComponent({
   setup() {
     const loaderData = Route.useLoaderData()
+    const router = useRouter()
     const streamContent = ref('')
     const isConsuming = ref(true)
     const error = ref<string | null>(null)
 
+    let consumeRunId = 0
     const consumeRawStream = (
       rawData: ReadableStream<Uint8Array> | RawStream | undefined,
     ) => {
@@ -28,34 +30,49 @@ const SSRMixedTest = defineComponent({
         return Promise.resolve()
       }
       const consumeStream = createStreamConsumer()
+      const currentRun = ++consumeRunId
       isConsuming.value = true
       error.value = null
       return consumeStream(rawData)
         .then((content) => {
+          if (currentRun !== consumeRunId) {
+            return
+          }
           streamContent.value = content
           isConsuming.value = false
         })
         .catch((err) => {
+          if (currentRun !== consumeRunId) {
+            return
+          }
           error.value = String(err)
           isConsuming.value = false
         })
     }
 
     let stopWatcher: (() => void) | undefined
-    let hasStarted = false
+    let lastRawData: ReadableStream<Uint8Array> | RawStream | undefined
+    let didInvalidate = false
 
     onMounted(() => {
       stopWatcher = watch(
         () => loaderData.value.rawData,
         (rawData) => {
-          if (hasStarted || streamContent.value || error.value || !rawData) {
+          if (!rawData || rawData === lastRawData) {
             return
           }
-          hasStarted = true
+          lastRawData = rawData
           void consumeRawStream(rawData)
         },
         { immediate: true },
       )
+
+      if (__TSR_PRERENDER__ && !didInvalidate) {
+        didInvalidate = true
+        void router.invalidate({
+          filter: (match) => match.routeId === Route.id,
+        })
+      }
     })
 
     onBeforeUnmount(() => {
@@ -128,5 +145,6 @@ export const Route = createFileRoute('/raw-stream/ssr-mixed')({
       rawData: new RawStream(rawStream),
     }
   },
+  shouldReload: __TSR_PRERENDER__,
   component: SSRMixedTest,
 })
