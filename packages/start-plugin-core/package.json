@@ -79,7 +79,7 @@
     "tinyglobby": "^0.2.15",
     "ufo": "^1.5.4",
     "vitefu": "^1.1.1",
-    "xmlbuilder2": "^4.0.0",
+    "xmlbuilder2": "^4.0.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
