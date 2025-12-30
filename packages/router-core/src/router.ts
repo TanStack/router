@@ -2167,7 +2167,8 @@ export class RouterCore<
             onReady: async () => {
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
-                this.startViewTransition(() => {
+                // eslint-disable-next-line @typescript-eslint/require-await
+                this.startViewTransition(async () => {
                   // this.viewTransitionPromise = createControlledPromise<true>()
 
                   // Commit the pending matches. If a previous match was
