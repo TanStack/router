@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
-import { isSpaMode } from './utils/isSpaMode'
 import { isPreview } from './utils/isPreview'
+import { isSpaMode } from './utils/isSpaMode'
 
 // Skip SPA and preview modes - routes with ssr:false don't execute head() in these modes
 test.skip(
@@ -37,19 +37,35 @@ test.describe('head() function with async loaders', () => {
   test('stale head re-run aborts when navigation to different article happens', async ({
     page,
   }) => {
-    // Login first
+    // Capture head() execution logs to verify abort behavior
+    const headLogs: Array<string> = []
+    page.on('console', (msg) => {
+      const text = msg.text()
+      if (text.includes('[head] Setting title:')) {
+        headLogs.push(text)
+      }
+    })
+
+    // Setup: Login first
     await page.goto('/')
     await page.evaluate(() => localStorage.setItem('auth', 'good'))
 
-    // Navigate to article 1 (async loader starts)
-    const nav1 = page.goto('/article/1')
+    // CRITICAL: Wait for network idle before proceeding
+    // Without this wait, clicking links immediately causes a race condition where
+    // Article 2's loader runs without auth, creating stale null data that triggers
+    // stale-while-revalidate, resulting in "title n/a" appearing in logs
+    await page.waitForLoadState('networkidle')
 
-    // Immediately navigate to article 2 before article 1 loader completes
-    await page.waitForTimeout(100) // Small delay to ensure first nav started
-    await page.goto('/article/2')
+    // Clear logs from initial page load
+    headLogs.length = 0
 
-    // Wait for navigation to complete
-    await nav1.catch(() => {}) // First navigation might be cancelled
+    // Use client-side navigation via Link clicks (not page.goto which causes full page reload)
+    // Click Article 1 link (async loader starts)
+    await page.click('a:has-text("Article 1")')
+
+    // Immediately click Article 2 link before Article 1 loader completes
+    await page.waitForTimeout(100) // Small delay to ensure first navigation started
+    await page.click('a:has-text("Article 2")')
 
     // Wait for article 2 loader to complete
     await page.waitForTimeout(1500)
@@ -60,13 +76,21 @@ test.describe('head() function with async loaders', () => {
 
     // Ensure article 1 content is not present
     await expect(page.locator('text=Article content for 1')).not.toBeVisible()
+
+    // Critical assertion: If abort worked, "Article Title for 1" should NEVER appear in logs
+    // Expected logs (if abort works):
+    //   1. "Article Title for 2" - article 2's head (fresh data after loader completes)
+    // If abort FAILED, article 1's head would execute when its loader completes:
+    //   2. "Article Title for 1" - article 1's head (SHOULD BE ABORTED)
+    expect(headLogs.join('\n')).not.toContain('Article Title for 1')
+    expect(headLogs).toHaveLength(1)
   })
 
   test('stale head re-run aborts when route invalidation happens', async ({
     page,
   }) => {
     // Capture head() execution logs to verify abort behavior
-    const headLogs: string[] = []
+    const headLogs: Array<string> = []
     page.on('console', (msg) => {
       const text = msg.text()
       if (text.includes('[head] Setting title:')) {
