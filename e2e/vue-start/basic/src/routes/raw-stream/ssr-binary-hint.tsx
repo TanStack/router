@@ -86,7 +86,10 @@ const SSRBinaryHintTest = defineComponent({
 
     let stopWatcher: (() => void) | undefined
     let lastStreams:
-      | [ReadableStream<Uint8Array> | RawStream, ReadableStream<Uint8Array> | RawStream]
+      | [
+          ReadableStream<Uint8Array> | RawStream,
+          ReadableStream<Uint8Array> | RawStream,
+        ]
       | undefined
     let didInvalidate = false
 

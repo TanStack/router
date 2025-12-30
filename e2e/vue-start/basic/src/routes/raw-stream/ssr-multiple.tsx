@@ -48,7 +48,10 @@ const SSRMultipleTest = defineComponent({
 
     let stopWatcher: (() => void) | undefined
     let lastStreams:
-      | [ReadableStream<Uint8Array> | RawStream, ReadableStream<Uint8Array> | RawStream]
+      | [
+          ReadableStream<Uint8Array> | RawStream,
+          ReadableStream<Uint8Array> | RawStream,
+        ]
       | undefined
     let didInvalidate = false
 
@@ -59,7 +62,11 @@ const SSRMultipleTest = defineComponent({
           if (!first || !second) {
             return
           }
-          if (lastStreams && lastStreams[0] === first && lastStreams[1] === second) {
+          if (
+            lastStreams &&
+            lastStreams[0] === first &&
+            lastStreams[1] === second
+          ) {
             return
           }
           lastStreams = [first, second]

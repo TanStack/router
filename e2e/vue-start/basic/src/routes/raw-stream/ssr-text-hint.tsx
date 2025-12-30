@@ -129,11 +129,7 @@ const SSRTextHintTest = defineComponent({
           loaderData.value.pureBinary,
         ],
         ([pureText, mixedContent, pureBinary]) => {
-          if (
-            !pureText ||
-            !mixedContent ||
-            !pureBinary
-          ) {
+          if (!pureText || !mixedContent || !pureBinary) {
             return
           }
           if (
