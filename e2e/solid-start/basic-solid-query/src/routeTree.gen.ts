@@ -12,19 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as SuspenseTransitionRouteImport } from './routes/suspense-transition'
 import { Route as PostsRouteImport } from './routes/posts'
-import { Route as FakeLoginRouteImport } from './routes/fake-login'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
-import { Route as TestHeadDashboardRouteImport } from './routes/test-head/dashboard'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as TransitionCountQueryRouteImport } from './routes/transition/count/query'
-import { Route as TestHeadArticleIdRouteImport } from './routes/test-head/article.$id'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
 import { Route as ApiUsersIdRouteImport } from './routes/api/users.$id'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
@@ -43,11 +40,6 @@ const SuspenseTransitionRoute = SuspenseTransitionRouteImport.update({
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FakeLoginRoute = FakeLoginRouteImport.update({
-  id: '/fake-login',
-  path: '/fake-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeferredRoute = DeferredRouteImport.update({
@@ -79,11 +71,6 @@ const UsersUserIdRoute = UsersUserIdRouteImport.update({
   path: '/$userId',
   getParentRoute: () => UsersRoute,
 } as any)
-const TestHeadDashboardRoute = TestHeadDashboardRouteImport.update({
-  id: '/test-head/dashboard',
-  path: '/test-head/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
@@ -101,11 +88,6 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
 const TransitionCountQueryRoute = TransitionCountQueryRouteImport.update({
   id: '/transition/count/query',
   path: '/transition/count/query',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TestHeadArticleIdRoute = TestHeadArticleIdRouteImport.update({
-  id: '/test-head/article/$id',
-  path: '/test-head/article/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
@@ -132,13 +114,11 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
-  '/fake-login': typeof FakeLoginRoute
   '/posts': typeof PostsRouteWithChildren
   '/suspense-transition': typeof SuspenseTransitionRoute
   '/users': typeof UsersRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
-  '/test-head/dashboard': typeof TestHeadDashboardRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -146,17 +126,14 @@ export interface FileRoutesByFullPath {
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
-  '/test-head/article/$id': typeof TestHeadArticleIdRoute
   '/transition/count/query': typeof TransitionCountQueryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
-  '/fake-login': typeof FakeLoginRoute
   '/suspense-transition': typeof SuspenseTransitionRoute
   '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
-  '/test-head/dashboard': typeof TestHeadDashboardRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts': typeof PostsIndexRoute
   '/users': typeof UsersIndexRoute
@@ -164,7 +141,6 @@ export interface FileRoutesByTo {
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
-  '/test-head/article/$id': typeof TestHeadArticleIdRoute
   '/transition/count/query': typeof TransitionCountQueryRoute
 }
 export interface FileRoutesById {
@@ -172,14 +148,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
-  '/fake-login': typeof FakeLoginRoute
   '/posts': typeof PostsRouteWithChildren
   '/suspense-transition': typeof SuspenseTransitionRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
-  '/test-head/dashboard': typeof TestHeadDashboardRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -187,7 +161,6 @@ export interface FileRoutesById {
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
-  '/test-head/article/$id': typeof TestHeadArticleIdRoute
   '/transition/count/query': typeof TransitionCountQueryRoute
 }
 export interface FileRouteTypes {
@@ -195,13 +168,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/deferred'
-    | '/fake-login'
     | '/posts'
     | '/suspense-transition'
     | '/users'
     | '/api/users'
     | '/posts/$postId'
-    | '/test-head/dashboard'
     | '/users/$userId'
     | '/posts/'
     | '/users/'
@@ -209,17 +180,14 @@ export interface FileRouteTypes {
     | '/layout-b'
     | '/api/users/$id'
     | '/posts/$postId/deep'
-    | '/test-head/article/$id'
     | '/transition/count/query'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/deferred'
-    | '/fake-login'
     | '/suspense-transition'
     | '/api/users'
     | '/posts/$postId'
-    | '/test-head/dashboard'
     | '/users/$userId'
     | '/posts'
     | '/users'
@@ -227,21 +195,18 @@ export interface FileRouteTypes {
     | '/layout-b'
     | '/api/users/$id'
     | '/posts/$postId/deep'
-    | '/test-head/article/$id'
     | '/transition/count/query'
   id:
     | '__root__'
     | '/'
     | '/_layout'
     | '/deferred'
-    | '/fake-login'
     | '/posts'
     | '/suspense-transition'
     | '/users'
     | '/_layout/_layout-2'
     | '/api/users'
     | '/posts/$postId'
-    | '/test-head/dashboard'
     | '/users/$userId'
     | '/posts/'
     | '/users/'
@@ -249,7 +214,6 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2/layout-b'
     | '/api/users/$id'
     | '/posts_/$postId/deep'
-    | '/test-head/article/$id'
     | '/transition/count/query'
   fileRoutesById: FileRoutesById
 }
@@ -257,14 +221,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
-  FakeLoginRoute: typeof FakeLoginRoute
   PostsRoute: typeof PostsRouteWithChildren
   SuspenseTransitionRoute: typeof SuspenseTransitionRoute
   UsersRoute: typeof UsersRouteWithChildren
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
-  TestHeadDashboardRoute: typeof TestHeadDashboardRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
-  TestHeadArticleIdRoute: typeof TestHeadArticleIdRoute
   TransitionCountQueryRoute: typeof TransitionCountQueryRoute
 }
 
@@ -289,13 +250,6 @@ declare module '@tanstack/solid-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fake-login': {
-      id: '/fake-login'
-      path: '/fake-login'
-      fullPath: '/fake-login'
-      preLoaderRoute: typeof FakeLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/deferred': {
@@ -340,13 +294,6 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof UsersUserIdRouteImport
       parentRoute: typeof UsersRoute
     }
-    '/test-head/dashboard': {
-      id: '/test-head/dashboard'
-      path: '/test-head/dashboard'
-      fullPath: '/test-head/dashboard'
-      preLoaderRoute: typeof TestHeadDashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
@@ -373,13 +320,6 @@ declare module '@tanstack/solid-router' {
       path: '/transition/count/query'
       fullPath: '/transition/count/query'
       preLoaderRoute: typeof TransitionCountQueryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/test-head/article/$id': {
-      id: '/test-head/article/$id'
-      path: '/test-head/article/$id'
-      fullPath: '/test-head/article/$id'
-      preLoaderRoute: typeof TestHeadArticleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts_/$postId/deep': {
@@ -478,14 +418,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
-  FakeLoginRoute: FakeLoginRoute,
   PostsRoute: PostsRouteWithChildren,
   SuspenseTransitionRoute: SuspenseTransitionRoute,
   UsersRoute: UsersRouteWithChildren,
   ApiUsersRoute: ApiUsersRouteWithChildren,
-  TestHeadDashboardRoute: TestHeadDashboardRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
-  TestHeadArticleIdRoute: TestHeadArticleIdRoute,
   TransitionCountQueryRoute: TransitionCountQueryRoute,
 }
 export const routeTree = rootRouteImport

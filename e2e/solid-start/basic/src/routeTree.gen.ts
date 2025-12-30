@@ -40,7 +40,6 @@ import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
 import { Route as TransitionTypingCreateResourceRouteImport } from './routes/transition/typing/create-resource'
 import { Route as TransitionCountCreateResourceRouteImport } from './routes/transition/count/create-resource'
-import { Route as TestHeadArticleIdRouteImport } from './routes/test-head/article.$id'
 import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
@@ -211,11 +210,6 @@ const TransitionCountCreateResourceRoute =
     path: '/transition/count/create-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
-const TestHeadArticleIdRoute = TestHeadArticleIdRouteImport.update({
-  id: '/test-head/article/$id',
-  path: '/test-head/article/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
@@ -305,7 +299,6 @@ export interface FileRoutesByFullPath {
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
-  '/test-head/article/$id': typeof TestHeadArticleIdRoute
   '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
   '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
@@ -342,7 +335,6 @@ export interface FileRoutesByTo {
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
-  '/test-head/article/$id': typeof TestHeadArticleIdRoute
   '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
   '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
@@ -387,7 +379,6 @@ export interface FileRoutesById {
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
-  '/test-head/article/$id': typeof TestHeadArticleIdRoute
   '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
   '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
@@ -431,7 +422,6 @@ export interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
-    | '/test-head/article/$id'
     | '/transition/count/create-resource'
     | '/transition/typing/create-resource'
     | '/redirect/$target/'
@@ -468,7 +458,6 @@ export interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
-    | '/test-head/article/$id'
     | '/transition/count/create-resource'
     | '/transition/typing/create-resource'
     | '/redirect/$target'
@@ -512,7 +501,6 @@ export interface FileRouteTypes {
     | '/posts_/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
-    | '/test-head/article/$id'
     | '/transition/count/create-resource'
     | '/transition/typing/create-resource'
     | '/redirect/$target/'
@@ -541,7 +529,6 @@ export interface RootRouteChildren {
   MultiCookieRedirectIndexRoute: typeof MultiCookieRedirectIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
-  TestHeadArticleIdRoute: typeof TestHeadArticleIdRoute
   TransitionCountCreateResourceRoute: typeof TransitionCountCreateResourceRoute
   TransitionTypingCreateResourceRoute: typeof TransitionTypingCreateResourceRoute
 }
@@ -765,13 +752,6 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof TransitionCountCreateResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/test-head/article/$id': {
-      id: '/test-head/article/$id'
-      path: '/test-head/article/$id'
-      fullPath: '/test-head/article/$id'
-      preLoaderRoute: typeof TestHeadArticleIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/redirect/$target/via-loader': {
       id: '/redirect/$target/via-loader'
       path: '/via-loader'
@@ -983,7 +963,6 @@ const rootRouteChildren: RootRouteChildren = {
   MultiCookieRedirectIndexRoute: MultiCookieRedirectIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
-  TestHeadArticleIdRoute: TestHeadArticleIdRoute,
   TransitionCountCreateResourceRoute: TransitionCountCreateResourceRoute,
   TransitionTypingCreateResourceRoute: TransitionTypingCreateResourceRoute,
 }
