@@ -114,6 +114,10 @@ export async function getRouteNodes(
           `${dir}/${removeExt(node.filePath)}`,
         )
         node.routePath = routePath
+        // Keep originalRoutePath aligned with routePath for escape detection
+        if (node.originalRoutePath) {
+          node.originalRoutePath = `/${dir}${node.originalRoutePath}`
+        }
         node.filePath = filePath
       })
 
