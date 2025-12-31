@@ -112,12 +112,14 @@ For API routes, you can use middleware to set cache headers:
 // routes/api/products/$productId.ts
 import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware } from '@tanstack/react-start'
+import { getResponseHeaders } from '@tanstack/react-start/server'
 
 const cacheMiddleware = createMiddleware().server(async ({ next }) => {
   const result = await next()
 
   // Add cache headers to the response
-  result.response.headers.set(
+  const headers = getResponseHeaders()
+  headers.set(
     'Cache-Control',
     'public, max-age=3600, stale-while-revalidate=86400',
   )
