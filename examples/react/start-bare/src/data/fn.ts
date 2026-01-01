@@ -5,8 +5,8 @@ import { getResponseHeaders } from '@tanstack/react-start/server'
 export const cacheMiddleware = createMiddleware().server(async ({ next }) => {
   const result = await next()
 
-  // @ts-expect-error - headers is not typed, but they are present.
-  result.headers.set('Cache-Control', 'b')
+  console.log({result, response: result.response})
+  result.response.headers.set('Cache-Control', 'b')
 
   return result
 })
