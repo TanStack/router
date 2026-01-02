@@ -66,7 +66,7 @@ export async function postServerBuildForNitro({
     })
   }
 
-  if (startConfig.pages.length) {
+  if (startConfig.sitemap?.enabled && startConfig.pages.length) {
     const { publicDir } = resolveNitroOutputPaths(nitro)
     buildSitemap({
       startConfig,
