@@ -351,96 +351,40 @@ export type {
   LocationRewriteFunction,
 } from '@tanstack/router-core'
 
-// Meta utilities
+// Meta utilities - re-exported from @tanstack/meta via router-core
 export {
-  // Core meta builders
+  // Primary API
+  createMeta,
+  // Builder namespace
+  meta,
+  // Individual builders
   title,
   description,
   charset,
   viewport,
-  // SEO meta builders
   robots,
   canonical,
   alternate,
   openGraph,
   twitter,
-  verification,
   themeColor,
-  appMeta,
-  // JSON-LD builders
-  jsonLd,
-  jsonLdWebsite,
-  jsonLdOrganization,
-  jsonLdArticle,
-  jsonLdProduct,
-  jsonLdBreadcrumbs,
-  jsonLdFaq,
-  jsonLdEvent,
-  jsonLdLocalBusiness,
-  jsonLdSoftwareApp,
-  jsonLdVideo,
-  jsonLdRecipe,
-  jsonLdCourse,
+  verification,
   // Merge utilities
   mergeMeta,
-  mergeMetaWithOptions,
-  // Convenience functions
-  baseMeta,
+  mergeMetaWith,
   excludeMeta,
   pickMeta,
 } from '@tanstack/router-core'
 
 export type {
-  // Meta options types
-  TitleOptions,
-  RobotsOptions,
-  OpenGraphOptions,
-  OpenGraphImage,
-  OpenGraphVideo,
-  OpenGraphAudio,
-  TwitterOptions,
-  MergeMetaOptions,
-  // JSON-LD schema types
-  JsonLdSchema,
-  JsonLdDocument,
-  ThingSchema,
-  ImageObjectSchema,
-  OrganizationSchema,
-  ContactPointSchema,
-  PostalAddressSchema,
-  QuantitativeValueSchema,
-  PersonSchema,
-  WebSiteSchema,
-  SearchActionSchema,
-  WebPageSchema,
-  ArticleSchema,
-  BreadcrumbListSchema,
-  ListItemSchema,
-  ProductSchema,
-  OfferSchema,
-  AggregateRatingSchema,
-  ReviewSchema,
-  RatingSchema,
-  FAQPageSchema,
-  QuestionSchema,
-  AnswerSchema,
-  HowToSchema,
-  HowToStepSchema,
-  HowToSupplySchema,
-  HowToToolSchema,
-  MonetaryAmountSchema,
-  EventSchema,
-  PlaceSchema,
-  GeoCoordinatesSchema,
-  VirtualLocationSchema,
-  LocalBusinessSchema,
-  OpeningHoursSpecificationSchema,
-  SoftwareApplicationSchema,
-  VideoObjectSchema,
-  ClipSchema,
-  BroadcastEventSchema,
-  CourseSchema,
-  CourseInstanceSchema,
-  RecipeSchema,
-  NutritionInformationSchema,
+  CreateMetaConfig,
+  MetaImage,
+  RobotsConfig,
+  OpenGraphConfig,
+  TwitterConfig,
+  MergeStrategy,
+  MergeOptions,
 } from '@tanstack/router-core'
+
+// JSON-LD is available via @tanstack/meta/json-ld
+// import { jsonLd } from '@tanstack/meta/json-ld'

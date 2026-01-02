@@ -451,95 +451,44 @@ export {
 } from './rewrite'
 export type { LocationRewrite, LocationRewriteFunction } from './router'
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Meta utilities - re-exported from @tanstack/meta
+// ─────────────────────────────────────────────────────────────────────────────
+
 export {
-  // Core meta builders
+  // Primary API
+  createMeta,
+  // Builder namespace
+  meta,
+  // Individual builders (for tree-shaking)
   title,
   description,
   charset,
   viewport,
-  // SEO meta builders
   robots,
   canonical,
   alternate,
   openGraph,
   twitter,
-  verification,
   themeColor,
-  appMeta,
-  // JSON-LD builders
-  jsonLd,
-  jsonLdWebsite,
-  jsonLdOrganization,
-  jsonLdArticle,
-  jsonLdProduct,
-  jsonLdBreadcrumbs,
-  jsonLdFaq,
-  jsonLdEvent,
-  jsonLdLocalBusiness,
-  jsonLdSoftwareApp,
-  jsonLdVideo,
-  jsonLdRecipe,
-  jsonLdCourse,
+  verification,
   // Merge utilities
   mergeMeta,
-  mergeMetaWithOptions,
-  // Convenience functions
-  baseMeta,
+  mergeMetaWith,
   excludeMeta,
   pickMeta,
-} from './meta'
+} from '@tanstack/meta'
 
 export type {
-  // Meta options types
-  TitleOptions,
-  RobotsOptions,
-  OpenGraphOptions,
-  OpenGraphImage,
-  OpenGraphVideo,
-  OpenGraphAudio,
-  TwitterOptions,
-  MergeMetaOptions,
-  // JSON-LD schema types
-  JsonLdSchema,
-  JsonLdDocument,
-  ThingSchema,
-  ImageObjectSchema,
-  OrganizationSchema,
-  ContactPointSchema,
-  PostalAddressSchema,
-  QuantitativeValueSchema,
-  PersonSchema,
-  WebSiteSchema,
-  SearchActionSchema,
-  WebPageSchema,
-  ArticleSchema,
-  BreadcrumbListSchema,
-  ListItemSchema,
-  ProductSchema,
-  OfferSchema,
-  AggregateRatingSchema,
-  ReviewSchema,
-  RatingSchema,
-  FAQPageSchema,
-  QuestionSchema,
-  AnswerSchema,
-  HowToSchema,
-  HowToStepSchema,
-  HowToSupplySchema,
-  HowToToolSchema,
-  MonetaryAmountSchema,
-  EventSchema,
-  PlaceSchema,
-  GeoCoordinatesSchema,
-  VirtualLocationSchema,
-  LocalBusinessSchema,
-  OpeningHoursSpecificationSchema,
-  SoftwareApplicationSchema,
-  VideoObjectSchema,
-  ClipSchema,
-  BroadcastEventSchema,
-  CourseSchema,
-  CourseInstanceSchema,
-  RecipeSchema,
-  NutritionInformationSchema,
-} from './meta'
+  CreateMetaConfig,
+  MetaDescriptor,
+  MetaImage,
+  RobotsConfig,
+  OpenGraphConfig,
+  TwitterConfig,
+  MergeStrategy,
+  MergeOptions,
+} from '@tanstack/meta'
+
+// JSON-LD is available via @tanstack/meta/json-ld
+// Users should import directly: import { jsonLd } from '@tanstack/meta/json-ld'
