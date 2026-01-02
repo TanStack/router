@@ -208,7 +208,7 @@ export function setResponseHeaders(
   headers: TypedHeaders<ResponseHeaderMap>,
 ): void {
   const event = getH3Event()
-  for (const [name, value] of Object.entries(headers)) {
+  for (const [name, value] of headers.entries()) {
     event.res.headers.set(name, value)
   }
 }
