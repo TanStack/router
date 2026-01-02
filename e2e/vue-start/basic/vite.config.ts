@@ -33,6 +33,9 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  define: {
+    __TSR_PRERENDER__: JSON.stringify(isPrerender),
+  },
   plugins: [
     tailwindcss(),
     tsConfigPaths({

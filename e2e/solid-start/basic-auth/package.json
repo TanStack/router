@@ -31,7 +31,7 @@
     "@types/node": "^22.10.2",
     "dotenv": "^17.2.3",
     "prisma": "^7.0.0",
-    "srvx": "^0.9.8",
+    "srvx": "^0.10.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.10",

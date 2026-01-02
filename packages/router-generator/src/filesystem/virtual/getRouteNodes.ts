@@ -1,5 +1,6 @@
 import path, { join, resolve } from 'node:path'
 import {
+  determineInitialRoutePath,
   removeExt,
   removeLeadingSlash,
   removeTrailingSlash,
@@ -156,6 +157,10 @@ export async function getRouteNodesRecursive(
             `${node.pathPrefix}/${removeExt(subtreeNode.filePath)}`,
           )
           subtreeNode.routePath = `${parent?.routePath ?? ''}${node.pathPrefix}${subtreeNode.routePath}`
+          // Keep originalRoutePath aligned with routePath for escape detection
+          if (subtreeNode.originalRoutePath) {
+            subtreeNode.originalRoutePath = `${parent?.routePath ?? ''}${node.pathPrefix}${subtreeNode.originalRoutePath}`
+          }
           subtreeNode.filePath = `${node.directory}/${subtreeNode.filePath}`
         })
         return routeNodes
@@ -186,7 +191,15 @@ export async function getRouteNodesRecursive(
           const lastSegment = node.path
           let routeNode: RouteNode
 
-          const routePath = `${parentRoutePath}/${removeLeadingSlash(lastSegment)}`
+          // Process the segment to handle escape sequences like [_]
+          const {
+            routePath: escapedSegment,
+            originalRoutePath: originalSegment,
+          } = determineInitialRoutePath(removeLeadingSlash(lastSegment))
+          const routePath = `${parentRoutePath}${escapedSegment}`
+          // Store the original path with brackets for escape detection
+          const originalRoutePath = `${parentRoutePath}${originalSegment}`
+
           if (node.file) {
             const { filePath, variableName, fullPath } = getFile(node.file)
             routeNode = {
@@ -194,6 +207,7 @@ export async function getRouteNodesRecursive(
               fullPath,
               variableName,
               routePath,
+              originalRoutePath,
               _fsRouteType: 'static',
             }
           } else {
@@ -202,6 +216,7 @@ export async function getRouteNodesRecursive(
               fullPath: '',
               variableName: routePathToVariable(routePath),
               routePath,
+              originalRoutePath,
               isVirtual: true,
               _fsRouteType: 'static',
             }
@@ -235,13 +250,21 @@ export async function getRouteNodesRecursive(
             node.id = ensureLeadingUnderScore(fileNameWithoutExt)
           }
           const lastSegment = node.id
-          const routePath = `${parentRoutePath}/${removeLeadingSlash(lastSegment)}`
+          // Process the segment to handle escape sequences like [_]
+          const {
+            routePath: escapedSegment,
+            originalRoutePath: originalSegment,
+          } = determineInitialRoutePath(removeLeadingSlash(lastSegment))
+          const routePath = `${parentRoutePath}${escapedSegment}`
+          // Store the original path with brackets for escape detection
+          const originalRoutePath = `${parentRoutePath}${originalSegment}`
 
           const routeNode: RouteNode = {
             fullPath,
             filePath,
             variableName,
             routePath,
+            originalRoutePath,
             _fsRouteType: 'pathless_layout',
           }
 

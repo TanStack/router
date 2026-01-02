@@ -11,14 +11,14 @@
   },
   "dependencies": {
     "@clerk/tanstack-react-start": "^0.26.3",
-    "@tanstack/react-router": "^1.143.6",
-    "@tanstack/react-router-devtools": "^1.143.6",
-    "@tanstack/react-start": "^1.143.8",
+    "@tanstack/react-router": "^1.144.0",
+    "@tanstack/react-router-devtools": "^1.144.0",
+    "@tanstack/react-start": "^1.145.3",
     "@vitejs/plugin-react": "^4.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "srvx": "^0.9.8",
+    "srvx": "^0.10.0",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {

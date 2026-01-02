@@ -8,6 +8,9 @@ export interface StartStorageContext {
   startOptions: /* AnyStartInstanceOptions*/ any
 
   contextAfterGlobalMiddlewares: any
+  // Track middlewares that have already executed in the request phase
+  // to prevent duplicate execution
+  executedRequestMiddlewares: Set<any>
 }
 
 // Use a global symbol to ensure the same AsyncLocalStorage instance is shared
