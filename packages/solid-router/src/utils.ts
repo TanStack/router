@@ -52,6 +52,7 @@ export function useIntersectionObserver<T extends Element>(
   ref: Solid.Accessor<T | null>,
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
+  // Should accept signals!!!
   options: { disabled?: boolean } = {},
 ): Solid.Accessor<IntersectionObserver | null> {
   const isIntersectionObserverAvailable =

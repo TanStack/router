@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../tanstack-angular-router"
+		},
+		{
+			"path": "../angular"
+		}
+	],
+	"settings": {}
+}

@@ -222,38 +222,41 @@ export function useLinkProps<
     },
   })
 
+  const [ref, setRef] = Solid.createSignal<Element | null>(null)
+
   const doPreload = () =>
     router.preloadRoute(_options() as any).catch((err: any) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
 
-  const preloadViewportIoCallback = (
-    entry: IntersectionObserverEntry | undefined,
-  ) => {
-    if (entry?.isIntersecting) {
-      doPreload()
+  // Only set up preloaders for internal links
+  if (!externalLink()) {
+    const preloadViewportIoCallback = (
+      entry: IntersectionObserverEntry | undefined,
+    ) => {
+      if (entry?.isIntersecting) {
+        doPreload()
+      }
     }
+
+    useIntersectionObserver(
+      ref,
+      preloadViewportIoCallback,
+      { rootMargin: '100px' },
+      { disabled: !!local.disabled || !(preload() === 'viewport') },
+    )
+
+    Solid.createEffect(() => {
+      if (hasRenderFetched) {
+        return
+      }
+      if (!local.disabled && preload() === 'render') {
+        doPreload()
+        hasRenderFetched = true
+      }
+    })
   }
-
-  const [ref, setRef] = Solid.createSignal<Element | null>(null)
-
-  useIntersectionObserver(
-    ref,
-    preloadViewportIoCallback,
-    { rootMargin: '100px' },
-    { disabled: !!local.disabled || !(preload() === 'viewport') },
-  )
-
-  Solid.createEffect(() => {
-    if (hasRenderFetched) {
-      return
-    }
-    if (!local.disabled && preload() === 'render') {
-      doPreload()
-      hasRenderFetched = true
-    }
-  })
 
   if (externalLink()) {
     return Solid.mergeProps(

@@ -82,12 +82,8 @@ export const Match = (props: { matchId: string }) => {
     },
   })
 
-  const ShellComponent = route().isRoot
-    ? ((route().options as RootRouteOptions).shellComponent ?? SafeFragment)
-    : SafeFragment
-
   return (
-    <ShellComponent>
+    <>
       <matchContext.Provider value={() => props.matchId}>
         <Dynamic
           component={ResolvedSuspenseBoundary()}
@@ -150,7 +146,7 @@ export const Match = (props: { matchId: string }) => {
           <ScrollRestoration />
         </>
       ) : null}
-    </ShellComponent>
+    </>
   )
 }
 
