@@ -3,7 +3,12 @@ import {
   createMiddleware,
   createServerOnlyFn,
 } from '@tanstack/react-start'
-import { getRequest } from '@tanstack/react-start/server'
+import {
+  getRequest,
+  getResponseHeaders,
+  setResponseHeader,
+  setResponseHeaders,
+} from '@tanstack/react-start/server'
 
 // Use a WeakMap keyed by Request object for request-scoped tracking
 // This is cleaner than global state and automatically garbage collects
@@ -49,6 +54,14 @@ export const loggingMiddleware = createMiddleware().server(async ({ next }) => {
   })
 })
 
+// This is the middleware for issue #5407
+export const headerMiddleware = createMiddleware().server(async ({ next }) => {
+  const headers = new Headers()
+  headers.set('X-Header-Middleware', 'Executed')
+  setResponseHeaders(headers)
+  return next()
+})
+
 // Global function middleware that should be deduped across server functions
 export const globalFunctionMiddleware = createMiddleware({
   type: 'function',
@@ -79,5 +92,5 @@ export const startInstance = createStart(() => ({
   functionMiddleware: [globalFunctionMiddleware, globalFunctionMiddleware2],
   // Request middleware - includes loggingMiddleware (issue #5239 scenario)
   // AND the same loggingMiddleware is also attached to server functions
-  requestMiddleware: [loggingMiddleware],
+  requestMiddleware: [loggingMiddleware, headerMiddleware],
 }))

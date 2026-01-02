@@ -129,3 +129,11 @@ test.describe('Global middleware deduplication (issue #5239)', () => {
     })
   })
 })
+
+test.describe('Setting response headers in middleware', () => {
+  test('header is set', async ({ page }) => {
+    const response = await page.request.get('/')
+    const headers = response.headers()
+    expect(headers['x-header-middleware']).toBe('Executed')
+  })
+})
