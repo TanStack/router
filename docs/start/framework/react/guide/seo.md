@@ -22,6 +22,7 @@ TanStack Start gives you the building blocks for technical SEO:
 - **Static Prerendering** - Pre-generates pages for optimal performance and crawlability
 - **Document Head Management** - Full control over meta tags, titles, and structured data
 - **Performance** - Fast load times through code-splitting, streaming, and optimal bundling
+- **[@tanstack/meta](#using-tanstackmeta)** - Composable, type-safe utilities for meta tags and JSON-LD
 
 ## Document Head Management
 
@@ -118,9 +119,135 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 ```
 
+## Using @tanstack/meta
+
+For a more streamlined approach to meta tag management, you can use the `@tanstack/meta` package. It provides composable, type-safe utilities that handle the 90% use case with a single function call.
+
+### Installation
+
+```bash
+npm install @tanstack/meta
+```
+
+### The createMeta Function
+
+The `createMeta` function generates a complete set of meta tags from a simple configuration:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { createMeta } from '@tanstack/meta'
+
+export const Route = createFileRoute('/')({
+  head: () => ({
+    meta: createMeta({
+      title: 'My App - Home',
+      description: 'Welcome to My App, a platform for...',
+    }),
+  }),
+  component: HomePage,
+})
+```
+
+This single call generates:
+
+- `<meta charset="utf-8">`
+- `<meta name="viewport" content="width=device-width, initial-scale=1">`
+- `<title>My App - Home</title>`
+- `<meta name="description" content="...">`
+- Open Graph tags (`og:title`, `og:description`, `og:type`)
+- Twitter Card tags (`twitter:card`, `twitter:title`, `twitter:description`)
+
+### Full Example with Social Sharing
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { createMeta } from '@tanstack/meta'
+
+export const Route = createFileRoute('/posts/$postId')({
+  loader: async ({ params }) => {
+    const post = await fetchPost(params.postId)
+    return { post }
+  },
+  head: ({ loaderData }) => ({
+    meta: createMeta({
+      title: loaderData.post.title,
+      description: loaderData.post.excerpt,
+      url: `https://myapp.com/posts/${loaderData.post.id}`,
+      image: loaderData.post.coverImage,
+      type: 'article',
+      siteName: 'My App',
+      twitterSite: '@myapp',
+    }),
+  }),
+  component: PostPage,
+})
+```
+
+### Extending with Custom Meta
+
+You can extend the generated meta with custom tags:
+
+```tsx
+import { createMeta } from '@tanstack/meta'
+
+head: () => ({
+  meta: createMeta({
+    title: 'My Page',
+    description: 'Page description',
+    extend: [
+      { name: 'author', content: 'John Doe' },
+      { name: 'keywords', content: 'react, tanstack, router' },
+    ],
+  }),
+})
+```
+
+### Using Individual Builders
+
+For more control, use the individual builder functions through the `meta` namespace:
+
+```tsx
+import { meta } from '@tanstack/meta'
+
+head: () => ({
+  meta: [
+    ...meta.title('My Page', '%s | My App'), // With template
+    ...meta.description('Page description'),
+    ...meta.robots({ index: true, follow: true }),
+    ...meta.openGraph({
+      title: 'My Page',
+      type: 'website',
+      image: 'https://myapp.com/og.jpg',
+    }),
+    ...meta.twitter({
+      card: 'summary_large_image',
+      site: '@myapp',
+    }),
+  ],
+})
+```
+
+### Available Builders
+
+| Builder | Description |
+|---------|-------------|
+| `meta.title(value, template?)` | Page title with optional template |
+| `meta.description(content)` | Meta description |
+| `meta.charset()` | UTF-8 charset |
+| `meta.viewport(content?)` | Viewport configuration |
+| `meta.robots(config)` | Robot directives (index, follow, etc.) |
+| `meta.canonical(href)` | Canonical URL link |
+| `meta.alternate(links)` | Alternate language links |
+| `meta.openGraph(config)` | Open Graph meta tags |
+| `meta.twitter(config)` | Twitter Card meta tags |
+| `meta.themeColor(color)` | Theme color (supports light/dark) |
+| `meta.verification(config)` | Search engine verification codes |
+
 ## Structured Data (JSON-LD)
 
-Structured data helps search engines understand your content and can enable rich results in search:
+Structured data helps search engines understand your content and can enable rich results in search.
+
+### Manual Approach
 
 ```tsx
 export const Route = createFileRoute('/posts/$postId')({
@@ -149,6 +276,106 @@ export const Route = createFileRoute('/posts/$postId')({
     ],
   }),
   component: PostPage,
+})
+```
+
+### Using @tanstack/meta/json-ld
+
+The `@tanstack/meta/json-ld` subpath provides type-safe builders for common Schema.org types:
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { createMeta } from '@tanstack/meta'
+import { jsonLd } from '@tanstack/meta/json-ld'
+
+export const Route = createFileRoute('/posts/$postId')({
+  loader: async ({ params }) => {
+    const post = await fetchPost(params.postId)
+    return { post }
+  },
+  head: ({ loaderData }) => ({
+    meta: [
+      ...createMeta({
+        title: loaderData.post.title,
+        description: loaderData.post.excerpt,
+        url: `https://myapp.com/posts/${loaderData.post.id}`,
+        image: loaderData.post.coverImage,
+        type: 'article',
+      }),
+      ...jsonLd.article({
+        headline: loaderData.post.title,
+        description: loaderData.post.excerpt,
+        author: loaderData.post.author.name,
+        datePublished: loaderData.post.publishedAt,
+        image: loaderData.post.coverImage,
+      }),
+    ],
+  }),
+  component: PostPage,
+})
+```
+
+### Available JSON-LD Builders
+
+| Builder | Description |
+|---------|-------------|
+| `jsonLd.website(config)` | WebSite schema with optional search action |
+| `jsonLd.organization(config)` | Organization with logo, socials, address |
+| `jsonLd.person(config)` | Person schema |
+| `jsonLd.article(config)` | Article, BlogPosting, NewsArticle |
+| `jsonLd.product(config)` | Product with price, availability, ratings |
+| `jsonLd.breadcrumbs(items)` | BreadcrumbList for navigation |
+| `jsonLd.faq(items)` | FAQPage with questions and answers |
+| `jsonLd.event(config)` | Event with location, dates |
+| `jsonLd.localBusiness(config)` | LocalBusiness, Restaurant, Store |
+| `jsonLd.softwareApp(config)` | SoftwareApplication |
+| `jsonLd.video(config)` | VideoObject |
+| `jsonLd.recipe(config)` | Recipe with ingredients, instructions |
+| `jsonLd.course(config)` | Course with provider |
+| `jsonLd.howTo(config)` | HowTo with steps |
+| `jsonLd.create(schema)` | Raw JSON-LD for any schema type |
+
+### Product Page Example
+
+```tsx
+import { createMeta } from '@tanstack/meta'
+import { jsonLd } from '@tanstack/meta/json-ld'
+
+export const Route = createFileRoute('/products/$productId')({
+  loader: async ({ params }) => {
+    const product = await fetchProduct(params.productId)
+    return { product }
+  },
+  head: ({ loaderData }) => ({
+    meta: [
+      ...createMeta({
+        title: loaderData.product.name,
+        description: loaderData.product.description,
+        url: `https://myapp.com/products/${loaderData.product.id}`,
+        image: loaderData.product.image,
+        type: 'product',
+      }),
+      ...jsonLd.product({
+        name: loaderData.product.name,
+        description: loaderData.product.description,
+        image: loaderData.product.image,
+        price: loaderData.product.price,
+        currency: 'USD',
+        availability: 'InStock',
+        brand: loaderData.product.brand,
+        rating: {
+          value: loaderData.product.rating,
+          count: loaderData.product.reviewCount,
+        },
+      }),
+      ...jsonLd.breadcrumbs([
+        { name: 'Home', url: 'https://myapp.com' },
+        { name: 'Products', url: 'https://myapp.com/products' },
+        { name: loaderData.product.name, url: `https://myapp.com/products/${loaderData.product.id}` },
+      ]),
+    ],
+  }),
+  component: ProductPage,
 })
 ```
 
