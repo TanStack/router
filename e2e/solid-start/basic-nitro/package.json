@@ -29,7 +29,7 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@tanstack/nitro-v2-vite-plugin": "workspace:^",
     "@types/node": "^22.10.2",
-    "nitro": "^3.0.1-alpha.1",
+    "nitro": "npm:nitro-nightly@latest",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.1.15",
     "typescript": "^5.7.2",
