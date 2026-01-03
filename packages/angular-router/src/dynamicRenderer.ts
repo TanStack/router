@@ -4,16 +4,16 @@ import {
   Injector,
   inputBinding,
   Provider,
+  Type,
   ViewContainerRef,
 } from '@angular/core'
-import { RouteComponent } from './route'
 
 // Utility to dinamically render a component
 // on the component that calls it
 
 type RenderParams = {
   key?: string
-  component: RouteComponent | null | undefined
+  component: Type<any> | null | undefined
   inputs?: Record<string, () => unknown>
   providers?: Provider[]
 }
@@ -26,7 +26,7 @@ export function injectDynamicRenderer() {
     vcr.clear()
   })
 
-  let lastComponent: RouteComponent | null = null
+  let lastComponent: Type<any> | null = null
   let lastKey: string | null = null
 
   const clear = () => {

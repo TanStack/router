@@ -15,6 +15,8 @@ import { injectRouter } from './injectRouter'
 import { injectRouterState } from './injectRouterState'
 import type { AnyRouter } from '@tanstack/router-core'
 
+// TODO: review
+
 // Track mount state per router to avoid double-loading
 let mountLoadForRouter: { router: AnyRouter | null; mounted: boolean } = {
   router: null,

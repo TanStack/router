@@ -5,10 +5,3 @@
 🤖 Devtools for TanStack Angular Router!
 
 ## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!
-
-
-
-
-
-
-

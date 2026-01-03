@@ -407,11 +407,6 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
   }
 }
 
-/**
- * @deprecated Use the `createRootRouteWithContext` function instead.
- */
-export const rootRouteWithContext = createRootRouteWithContext
-
 export class RootRoute<
     in out TRegister = Register,
     in out TSearchValidator = undefined,
@@ -526,11 +521,11 @@ export function createRouteMask<
   return opts as any
 }
 
-export type RouteComponent<TComponent = unknown> = Type<TComponent>
+// Use a function becasue class definitions are not hoisted
 
-export type ErrorRouteComponent = Type<unknown>
-
-export type NotFoundRouteComponent = Type<unknown>
+export type RouteComponent<TComponent = unknown> = () => Type<TComponent>
+export type ErrorRouteComponent = () => Type<unknown>
+export type NotFoundRouteComponent = () => Type<unknown>
 
 export class NotFoundRoute<
   TRegister,

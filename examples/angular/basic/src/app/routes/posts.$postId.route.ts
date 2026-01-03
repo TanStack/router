@@ -192,11 +192,11 @@ const POSTS: Record<string, { id: string; title: string; content: string; author
 })
 class PostDetailComponent {
   // Inject route params
-  params = injectParams({ from: '/posts/$postId' });
-  navigate = injectNavigate({ from: '/posts/$postId' });
+  params = Route.injectParams();
+  navigate = Route.injectNavigate();
 
   // Get post from loader data
-  post = injectLoaderData({ from: '/posts/$postId' });
+  post = Route.injectLoaderData();
 
   navigateToPost(postId: string) {
     this.navigate({

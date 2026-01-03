@@ -11,7 +11,7 @@ import {
   deepEqual,
   exactPathTest,
   LinkCurrentTargetElement,
-  LinkOptions,
+  LinkOptions as CoreLinkOptions,
   preloadWarning,
   RegisteredRouter,
   removeTrailingSlash,
@@ -20,8 +20,6 @@ import {
 import { injectRouterState } from './injectRouterState'
 import { injectRouter } from './injectRouter'
 import { injectIntersectionObserver } from './injectIntersectionObserver'
-
-// TODO: make it typesafe
 
 @Directive({
   selector: 'a[routerLink]',
@@ -44,7 +42,7 @@ import { injectIntersectionObserver } from './injectIntersectionObserver'
       'isTransitioning() ? "transitioning" : undefined',
   },
 })
-export class RouterLink<
+export class Link<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string | undefined = '.',
@@ -52,7 +50,7 @@ export class RouterLink<
   TMaskTo extends string = '.',
 > {
   options = input.required<
-    LinkInputOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+    LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
   >({ alias: 'routerLink' })
 
   protected router = injectRouter()
@@ -67,7 +65,9 @@ export class RouterLink<
   protected disabled = computed(() => this._options().disabled ?? false)
   protected target = computed(() => this._options().target)
 
-  protected _options = computed(() => {
+  protected _options = computed<
+    LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  >(() => {
     return {
       ...this.options(),
       from: this.from(),
@@ -76,7 +76,7 @@ export class RouterLink<
 
   protected nextLocation = computed(() => {
     this.currentSearch()
-    return this.router.buildLocation(this._options())
+    return this.router.buildLocation(this._options() as any)
   })
 
   protected hrefOption = computed(() => {
@@ -131,60 +131,62 @@ export class RouterLink<
     )
   })
 
-  protected isActive = injectRouterState({
-    select: (s) => {
-      if (this.externalLink()) return false
+  protected location = injectRouterState({
+    select: (s) => s.location,
+  })
 
-      const options = this.options()
+  protected isActive = computed(() => {
+    if (this.externalLink()) return false
 
-      if (options.activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          this.nextLocation().pathname,
-          this.router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          this.router.basepath,
-        )
-        const nextPathSplit = removeTrailingSlash(
-          this.nextLocation().pathname,
-          this.router.basepath,
-        )
+    const options = this.options()
 
-        const pathIsFuzzyEqual =
-          currentPathSplit.startsWith(nextPathSplit) &&
-          (currentPathSplit.length === nextPathSplit.length ||
-            currentPathSplit[nextPathSplit.length] === '/')
-
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+    if (options.activeOptions?.exact) {
+      const testExact = exactPathTest(
+        this.location().pathname,
+        this.nextLocation().pathname,
+        this.router.basepath,
+      )
+      if (!testExact) {
+        return false
       }
+    } else {
+      const currentPathSplit = removeTrailingSlash(
+        this.location().pathname,
+        this.router.basepath,
+      )
+      const nextPathSplit = removeTrailingSlash(
+        this.nextLocation().pathname,
+        this.router.basepath,
+      )
 
-      if (options.activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(
-          s.location.search,
-          this.nextLocation().search,
-          {
-            partial: !options.activeOptions?.exact,
-            ignoreUndefined: !options.activeOptions?.explicitUndefined,
-          },
-        )
-        if (!searchTest) {
-          return false
-        }
-      }
+      const pathIsFuzzyEqual =
+        currentPathSplit.startsWith(nextPathSplit) &&
+        (currentPathSplit.length === nextPathSplit.length ||
+          currentPathSplit[nextPathSplit.length] === '/')
 
-      if (options.activeOptions?.includeHash) {
-        return s.location.hash === this.nextLocation().hash
+      if (!pathIsFuzzyEqual) {
+        return false
       }
-      return true
-    },
+    }
+
+    if (options.activeOptions?.includeSearch ?? true) {
+      const searchTest = deepEqual(
+        this.location().search,
+        this.nextLocation().search,
+        {
+          partial: !options.activeOptions?.exact,
+          ignoreUndefined: !options.activeOptions?.explicitUndefined,
+        },
+      )
+      if (!searchTest) {
+        return false
+      }
+    }
+
+    if (options.activeOptions?.includeHash) {
+      return this.location().hash === this.nextLocation().hash
+    }
+    return true
   })
 
   protected doPreload = () => {
@@ -286,13 +288,13 @@ export class RouterLink<
   }
 }
 
-export type LinkInputOptions<
+export type LinkOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
-> = LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {}
+> = CoreLinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {}
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)

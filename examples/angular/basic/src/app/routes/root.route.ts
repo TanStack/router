@@ -4,29 +4,26 @@ import {
   Outlet,
   injectNavigate,
   injectRouterState,
+  RouterLink,
 } from '@tanstack/angular-router';
 import { TanStackRouterDevtools } from '@tanstack/angular-router-devtools';
 
 @Component({
   selector: 'app-root-layout',
-  imports: [Outlet, TanStackRouterDevtools],
+  imports: [Outlet, TanStackRouterDevtools, RouterLink],
   template: `
     <div class="app-container">
       <nav>
         <h1>Angular Router Example</h1>
         <ul>
           <li>
-            <a href="/" (click)="navigateHome($event)" [class.active]="isActive('/')">Home</a>
+            <a [routerLink]="{ to: '/' }" [class.active]="isActive('/')">Home</a>
           </li>
           <li>
-            <a href="/about" (click)="navigateAbout($event)" [class.active]="isActive('/about')"
-              >About</a
-            >
+            <a [routerLink]="{ to: '/about' }" [class.active]="isActive('/about')">About</a>
           </li>
           <li>
-            <a href="/posts" (click)="navigatePosts($event)" [class.active]="isActive('/posts')"
-              >Posts</a
-            >
+            <a [routerLink]="{ to: '/posts' }" [class.active]="isActive('/posts')">Posts</a>
           </li>
         </ul>
       </nav>
@@ -80,21 +77,6 @@ import { TanStackRouterDevtools } from '@tanstack/angular-router-devtools';
 class RootLayout {
   navigate = injectNavigate();
   routerState = injectRouterState();
-
-  navigateHome(event: Event) {
-    event.preventDefault();
-    this.navigate({ to: '/' });
-  }
-
-  navigateAbout(event: Event) {
-    event.preventDefault();
-    this.navigate({ to: '/about' });
-  }
-
-  navigatePosts(event: Event) {
-    event.preventDefault();
-    this.navigate({ to: '/posts' });
-  }
 
   isActive(path: string): boolean {
     const currentPath = this.routerState().location.pathname;

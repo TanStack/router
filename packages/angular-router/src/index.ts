@@ -6,7 +6,6 @@ export {
   createRoute,
   createRootRoute,
   createRootRouteWithContext,
-  rootRouteWithContext,
   createRouteMask,
   getRouteApi,
   Route,
@@ -18,6 +17,8 @@ export {
   type ErrorRouteComponent,
   type NotFoundRouteComponent,
 } from './route'
+
+export { createLazyRoute } from './fileRoute'
 
 // Router Provider
 export { RouterProvider } from './RouterProvider'
@@ -94,13 +95,19 @@ export {
 export { injectCanGoBack } from './injectCanGoBack'
 
 // Link
-export { type LinkInputOptions, RouterLink } from './Link'
+export {
+  type LinkOptions as LinkInputOptions,
+  Link as RouterLink,
+} from './Link'
 
 // Utilities
 export { injectIntersectionObserver } from './injectIntersectionObserver'
 export { injectDynamicRenderer } from './dynamicRenderer'
 export { getRouterInjectionKey } from './routerInjectionToken'
 export { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'
+
+// Core re-exports
+export { notFound, redirect, retainSearchParams } from '@tanstack/router-core'
 
 // Re-export types from router-core that are commonly used
 export type {

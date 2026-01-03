@@ -132,8 +132,8 @@ export class RouteMatch {
       this.rendering.render({ component: NotFoundComponent })
     } else if (match.status === 'error') {
       const RouteErrorComponent =
-        route.options.errorComponent ??
-        this.router.options.defaultErrorComponent
+        getComponent(route.options.errorComponent) ??
+        getComponent(this.router.options.defaultErrorComponent)
 
       this.rendering.render({
         component: RouteErrorComponent || null,
@@ -176,14 +176,14 @@ export class RouteMatch {
       }
 
       const PendingComponent =
-        route.options.pendingComponent ??
-        this.router.options.defaultPendingComponent
+        getComponent(route.options.pendingComponent) ??
+        getComponent(this.router.options.defaultPendingComponent)
 
       this.rendering.render({ component: PendingComponent })
     } else if (match.status === 'success') {
       const Component =
-        route.options.component ??
-        this.router.options.defaultComponent ??
+        getComponent(route.options.component) ??
+        getComponent(this.router.options.defaultComponent) ??
         Outlet
 
       const key = matchData.key
@@ -267,7 +267,8 @@ export class Outlet {
 
 function getNotFoundComponent(router: AnyRouter, route: AnyRoute) {
   let NotFoundComponent =
-    route.options.notFoundComponent ?? router.options.defaultNotFoundComponent
+    getComponent(route.options.notFoundComponent) ??
+    getComponent(router.options.defaultNotFoundComponent)
 
   if (NotFoundComponent) {
     return NotFoundComponent
@@ -281,4 +282,13 @@ function getNotFoundComponent(router: AnyRouter, route: AnyRoute) {
   }
 
   return DefaultNotFoundComponent
+}
+
+type CalledIfFunction<T> = T extends (...args: any[]) => any ? ReturnType<T> : T
+
+function getComponent<T>(routeComponent: T): CalledIfFunction<T> {
+  if (typeof routeComponent === 'function') {
+    return routeComponent()
+  }
+  return routeComponent as any
 }
