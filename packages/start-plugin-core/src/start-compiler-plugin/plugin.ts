@@ -232,7 +232,7 @@ export function startCompilerPlugin(
       transform: {
         filter: {
           id: {
-            exclude: new RegExp(`${SERVER_FN_LOOKUP}$`),
+            exclude: [new RegExp(`${SERVER_FN_LOOKUP}$`), /node_modules/],
             include: TRANSFORM_ID_REGEX,
           },
           code: {
