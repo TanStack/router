@@ -242,7 +242,7 @@ const authMiddleware = createMiddleware({ type: 'function' })
   })
 ```
 
-**Next.js** has a single middleware.ts file that runs on the Edge Runtime for all requests. It cannot access server-only resources like databases and has limitations compared to Node.js runtime.
+**Next.js** has a single middleware.ts file that runs on the Edge Runtime for all requests. It cannot access server-only resources like databases and has limitations compared to the Node.js runtime.
 
 ### Deployment Flexibility
 
