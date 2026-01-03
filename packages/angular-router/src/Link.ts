@@ -21,8 +21,10 @@ import { injectRouterState } from './injectRouterState'
 import { injectRouter } from './injectRouter'
 import { injectIntersectionObserver } from './injectIntersectionObserver'
 
+// TODO: make it typesafe
+
 @Directive({
-  selector: 'a[router-link]',
+  selector: 'a[routerLink]',
   exportAs: 'routerLink',
   standalone: true,
   host: {
@@ -42,8 +44,16 @@ import { injectIntersectionObserver } from './injectIntersectionObserver'
       'isTransitioning() ? "transitioning" : undefined',
   },
 })
-export class RouterLink {
-  options = input.required<LinkInputOptions>({ alias: 'router-link' })
+export class RouterLink<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+  TTo extends string | undefined = '.',
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskTo extends string = '.',
+> {
+  options = input.required<
+    LinkInputOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  >({ alias: 'routerLink' })
 
   protected router = injectRouter()
   protected isTransitioning = signal(false)

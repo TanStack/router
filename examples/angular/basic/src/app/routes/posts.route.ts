@@ -1,7 +1,8 @@
 import { Component, computed } from '@angular/core';
-import { createRoute } from '@tanstack/angular-router';
+import { createRoute, Outlet, RouterLink } from '@tanstack/angular-router';
 import { Route as RootRoute } from './root.route';
 import { injectSearch, injectNavigate } from '@tanstack/angular-router';
+import { z } from 'zod';
 
 // Mock data
 const POSTS = [
@@ -14,8 +15,11 @@ const POSTS = [
 
 @Component({
   selector: 'app-posts',
+  imports: [Outlet, RouterLink],
   template: `
     <div class="posts">
+      <outlet />
+
       <h2>Posts</h2>
 
       <div class="controls">
@@ -46,10 +50,11 @@ const POSTS = [
 
       <div class="posts-list">
         @for (post of filteredPosts(); track post.id) {
-          <div class="post-card" (click)="navigateToPost(post.id)">
+          <div class="post-card">
             <h3>{{ post.title }}</h3>
             <p class="author">By {{ post.author }}</p>
             <p class="content">{{ post.content }}</p>
+            <a [routerLink]="{ to: '/posts/$postId', params: { postId: post.id } }">View Post</a>
           </div>
         }
       </div>
@@ -194,17 +199,16 @@ class PostsComponent {
       });
     }
   }
-
-  navigateToPost(postId: string) {
-    this.navigate({
-      to: '/posts/$postId',
-      params: { postId },
-    });
-  }
 }
 
 export const Route = createRoute({
   getParentRoute: () => RootRoute,
   path: '/posts',
+  // TODO: make it a function to allow using this at the top of the file
   component: PostsComponent,
+  validateSearch: z.object({
+    author: z.string().optional(),
+    sort: z.string().optional(),
+    page: z.number().optional(),
+  }),
 });

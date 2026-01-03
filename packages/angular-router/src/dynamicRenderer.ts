@@ -38,7 +38,8 @@ export function injectDynamicRenderer() {
   return {
     clear,
     render: ({ component, providers = [], key, inputs }: RenderParams) => {
-      if (lastComponent === component && lastKey === key) {
+      const normalizedKey = key ?? null
+      if (lastComponent === component && lastKey === normalizedKey) {
         return
       }
 
@@ -54,7 +55,7 @@ export function injectDynamicRenderer() {
       cmpRef.changeDetectorRef.markForCheck()
 
       lastComponent = component
-      lastKey = key ?? null
+      lastKey = normalizedKey
     },
   }
 }

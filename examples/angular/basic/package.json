@@ -29,8 +29,10 @@
     "@angular/forms": "21.0.4",
     "@angular/platform-browser": "21.0.4",
     "@tanstack/angular-router": "workspace:^",
+    "@tanstack/angular-router-devtools": "workspace:^",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "zod": "^4.3.4"
   },
   "devDependencies": {
     "@angular/build": "21.0.4",

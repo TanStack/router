@@ -5,10 +5,11 @@ import {
   injectNavigate,
   injectRouterState,
 } from '@tanstack/angular-router';
+import { TanStackRouterDevtools } from '@tanstack/angular-router-devtools';
 
 @Component({
   selector: 'app-root-layout',
-  imports: [Outlet],
+  imports: [Outlet, TanStackRouterDevtools],
   template: `
     <div class="app-container">
       <nav>
@@ -32,6 +33,7 @@ import {
       <main>
         <outlet />
       </main>
+      <router-devtools position="bottom-right" />
     </div>
   `,
   styles: [

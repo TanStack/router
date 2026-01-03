@@ -19,6 +19,7 @@ artifacts
 coverage
 *.tgz
 .wrangler
+**/.angular/
 
 # tests
 packages/router-generator/tests/**/*.gen.ts
