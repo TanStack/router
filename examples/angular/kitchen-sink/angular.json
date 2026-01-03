@@ -17,6 +17,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "conditions": ["module", "style"],
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "assets": [

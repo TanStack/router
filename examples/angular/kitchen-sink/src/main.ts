@@ -23,14 +23,14 @@ import {
   notFound,
   redirect,
   retainSearchParams,
+  RouterContextOptions,
 } from '@tanstack/angular-router';
-import { TanStackRouterDevtools } from '@tanstack/angular-router-devtools';
+import { TanStackRouterDevtoolsInProd } from '@tanstack/angular-router-devtools';
 import { z } from 'zod';
 import { injectMutation } from './injectMutation';
 import './styles.css';
 import { JsonPipe } from '@angular/common';
 import { UsersService, InvoiceService, Invoice } from './services';
-import { RouterContextOptions } from '@tanstack/router-core';
 
 @Component({
   selector: 'app-spinner',
@@ -200,7 +200,7 @@ class BreadcrumbsComponent {
     Outlet,
     RouterLink,
     RouterSpinnerComponent,
-    TanStackRouterDevtools,
+    TanStackRouterDevtoolsInProd,
     BreadcrumbsComponent,
   ],
   template: `
