@@ -57,7 +57,7 @@ To install them, run:
 npm i @tanstack/react-start @tanstack/react-router
 ```
 
-We also need vite as a devDependency:
+We also need Vite as a devDependency:
 
 ```shell
 npm i -D vite
@@ -127,7 +127,7 @@ There are 2 required files for TanStack Start usage:
 1. The router configuration
 2. The root of your application
 
-Once configuration is done, we'll have a file tree that looks like the following:
+Once the configuration is done, we'll have a file tree that looks like the following:
 
 ```
 .
@@ -279,4 +279,4 @@ That's it! 🤯 You've now set up a TanStack Start project and written your firs
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
 
-You want to deploy your application? Check out the [hosting guide](./guide/hosting.md).
+Ready to deploy your application? Check out the [hosting guide](./guide/hosting.md).
