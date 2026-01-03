@@ -8,6 +8,7 @@ import path from 'pathe'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { routesManifestPlugin } from './generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from './generator-plugins/prerender-routes-plugin'
+import { moduleDeclarationPlugin } from './generator-plugins/module-declaration-plugin'
 import { pruneServerOnlySubtrees } from './pruneServerOnlySubtrees'
 import { SERVER_PROP } from './constants'
 import type { GetConfigFn, TanStackStartVitePluginCoreOptions } from '../types'
@@ -27,63 +28,6 @@ function isServerOnlyNode(node: RouteNode | undefined) {
     node.createFileRouteProps.has(SERVER_PROP) &&
     node.createFileRouteProps.size === 1
   )
-}
-
-function moduleDeclaration({
-  startFilePath,
-  routerFilePath,
-  corePluginOpts,
-  generatedRouteTreePath,
-}: {
-  startFilePath: string | undefined
-  routerFilePath: string
-  corePluginOpts: TanStackStartVitePluginCoreOptions
-  generatedRouteTreePath: string
-}): string {
-  function getImportPath(absolutePath: string) {
-    let relativePath = path.relative(
-      path.dirname(generatedRouteTreePath),
-      absolutePath,
-    )
-
-    if (!relativePath.startsWith('.')) {
-      relativePath = './' + relativePath
-    }
-
-    // convert to POSIX-style for ESM imports (important on Windows)
-    relativePath = relativePath.split(path.sep).join('/')
-    return relativePath
-  }
-
-  const result: Array<string> = [
-    `import type { getRouter } from '${getImportPath(routerFilePath)}'`,
-  ]
-  if (startFilePath) {
-    result.push(
-      `import type { startInstance } from '${getImportPath(startFilePath)}'`,
-    )
-  }
-  // make sure we import something from start to get the server route declaration merge
-  else {
-    result.push(
-      `import type { createStart } from '@tanstack/${corePluginOpts.framework}-start'`,
-    )
-  }
-  result.push(
-    `declare module '@tanstack/${corePluginOpts.framework}-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>`,
-  )
-  if (startFilePath) {
-    result.push(
-      `    config: Awaited<ReturnType<typeof startInstance.getOptions>>`,
-    )
-  }
-  result.push(`  }
-}`)
-
-  return result.join('\n')
 }
 
 export function tanStackStartRouter(
@@ -131,7 +75,7 @@ export function tanStackStartRouter(
     if (routeTreeFileFooter) {
       return routeTreeFileFooter
     }
-    const { startConfig, resolvedStartConfig } = getConfig()
+    const { startConfig } = getConfig()
     const ogRouteTreeFileFooter = startConfig.router.routeTreeFileFooter
     if (ogRouteTreeFileFooter) {
       if (Array.isArray(ogRouteTreeFileFooter)) {
@@ -140,15 +84,10 @@ export function tanStackStartRouter(
         routeTreeFileFooter = ogRouteTreeFileFooter()
       }
     }
-    routeTreeFileFooter = [
-      moduleDeclaration({
-        generatedRouteTreePath: getGeneratedRouteTreePath(),
-        corePluginOpts,
-        startFilePath: resolvedStartConfig.startFilePath,
-        routerFilePath: resolvedStartConfig.routerFilePath,
-      }),
-      ...(routeTreeFileFooter ?? []),
-    ]
+    // Note: Module declaration is now generated in a separate .d.ts file
+    // by the moduleDeclarationPlugin to avoid circular dependencies
+    // that cause TDZ errors in Vite SSR
+    routeTreeFileFooter = routeTreeFileFooter ?? []
     return routeTreeFileFooter
   }
 
@@ -209,8 +148,20 @@ export function tanStackStartRouter(
   return [
     clientTreePlugin,
     tanstackRouterGenerator(() => {
-      const routerConfig = getConfig().startConfig.router
-      const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
+      const { startConfig, resolvedStartConfig } = getConfig()
+      const routerConfig = startConfig.router
+      const plugins = [
+        clientTreeGeneratorPlugin,
+        routesManifestPlugin(),
+        // Generate module declaration in a separate .d.ts file to avoid
+        // circular dependencies that cause TDZ errors in Vite SSR
+        moduleDeclarationPlugin(() => ({
+          generatedRouteTreePath: getGeneratedRouteTreePath(),
+          routerFilePath: resolvedStartConfig.routerFilePath,
+          startFilePath: resolvedStartConfig.startFilePath,
+          corePluginOpts,
+        })),
+      ]
       if (startPluginOpts?.prerender?.enabled === true) {
         plugins.push(prerenderRoutesPlugin())
       }
