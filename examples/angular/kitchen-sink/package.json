@@ -32,6 +32,7 @@
     "@tanstack/angular-router-devtools": "workspace:^",
     "immer": "^10.1.1",
     "redaxios": "^0.5.1",
+    "rxjs": "~7.8.2",
     "tslib": "^2.3.0",
     "zod": "^3.24.2"
   },

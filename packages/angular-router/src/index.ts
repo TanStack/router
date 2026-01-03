@@ -119,4 +119,5 @@ export type {
   RouteOptions,
   RootRouteOptions,
   Register,
+  RouterContextOptions,
 } from '@tanstack/router-core'

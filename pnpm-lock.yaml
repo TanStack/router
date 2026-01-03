@@ -5572,6 +5572,9 @@ importers:
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
+      rxjs:
+        specifier: ~7.8.2
+        version: 7.8.2
       tslib:
         specifier: ^2.3.0
         version: 2.8.1

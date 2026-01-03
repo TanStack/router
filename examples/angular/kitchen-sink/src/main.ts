@@ -1,4 +1,14 @@
-import { Component, computed, effect, input, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  EnvironmentInjector,
+  inject,
+  Injector,
+  input,
+  ProviderToken,
+  signal,
+} from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import {
   Outlet,
@@ -6,10 +16,8 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
-  injectNavigate,
   injectRouter,
   injectRouterState,
-  injectSearch,
   RouterLink,
   LinkOptions,
   notFound,
@@ -18,18 +26,11 @@ import {
 } from '@tanstack/angular-router';
 import { TanStackRouterDevtools } from '@tanstack/angular-router-devtools';
 import { z } from 'zod';
-import {
-  fetchInvoiceById,
-  fetchInvoices,
-  fetchUserById,
-  fetchUsers,
-  patchInvoice,
-  postInvoice,
-  type Invoice,
-} from './mockTodos';
 import { injectMutation } from './injectMutation';
 import './styles.css';
 import { JsonPipe } from '@angular/common';
+import { UsersService, InvoiceService, Invoice } from './services';
+import { RouterContextOptions } from '@tanstack/router-core';
 
 @Component({
   selector: 'app-spinner',
@@ -133,6 +134,7 @@ class UsersNotFoundComponent {
 
 const rootRoute = createRootRouteWithContext<{
   auth: Auth;
+  inject: Injector['get'];
 }>()({
   component: () => RootComponent,
 });
@@ -148,13 +150,64 @@ class RouterSpinnerComponent {
 }
 
 @Component({
+  selector: 'app-breadcrumbs',
+  standalone: true,
+  imports: [RouterLink],
+  template: `
+    @if (matchesWithCrumbs().length > 0) {
+      <nav>
+        <ul class="flex gap-2 items-center">
+          @for (match of matchesWithCrumbs(); track match.id) {
+            <li class="flex gap-2">
+              <a [routerLink]="{ to: match.pathname }" class="text-blue-700">
+                {{ match.loaderData.crumb }}
+              </a>
+              @if (!$last) {
+                <span>></span>
+              }
+            </li>
+          }
+        </ul>
+      </nav>
+    }
+  `,
+})
+class BreadcrumbsComponent {
+  routerState = injectRouterState();
+
+  matchesWithCrumbs = computed(() => {
+    const state = this.routerState();
+    const matches = state.matches;
+
+    // Filter out pending matches
+    if (matches.some((match) => match.status === 'pending')) {
+      return [];
+    }
+
+    // Filter matches that have loaderData.crumb
+    return matches.filter((match) => {
+      return (
+        match.loaderData && typeof match.loaderData === 'object' && 'crumb' in match.loaderData
+      );
+    }) as Array<{ id: string; pathname: string; loaderData: { crumb: string } }>;
+  });
+}
+
+@Component({
   selector: 'app-root-layout',
   standalone: true,
-  imports: [Outlet, RouterLink, RouterSpinnerComponent, TanStackRouterDevtools],
+  imports: [
+    Outlet,
+    RouterLink,
+    RouterSpinnerComponent,
+    TanStackRouterDevtools,
+    BreadcrumbsComponent,
+  ],
   template: `
     <div class="min-h-screen flex flex-col">
       <div class="flex items-center border-b gap-2">
         <h1 class="text-3xl p-2">Kitchen Sink</h1>
+        <app-breadcrumbs />
         <div class="text-3xl">
           <app-router-spinner />
         </div>
@@ -250,6 +303,7 @@ class IndexComponent {
 const dashboardLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
+  loader: () => ({ crumb: 'Dashboard' }),
   component: () => DashboardLayoutComponent,
 });
 
@@ -296,7 +350,10 @@ class DashboardLayoutComponent {
 const dashboardIndexRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: '/',
-  loader: () => fetchInvoices(),
+  loader: ({ context }) => {
+    const invoiceService = context.inject(InvoiceService);
+    return invoiceService.fetchInvoices();
+  },
   component: () => DashboardIndexComponent,
 });
 
@@ -319,7 +376,10 @@ class DashboardIndexComponent {
 const invoicesLayoutRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: 'invoices',
-  loader: () => fetchInvoices(),
+  loader: ({ context }) => {
+    const invoiceService = context.inject(InvoiceService);
+    return invoiceService.fetchInvoices();
+  },
   component: () => InvoicesLayoutComponent,
 });
 
@@ -427,8 +487,14 @@ const invoicesIndexRoute = createRoute({
 })
 class InvoicesIndexComponent {
   router = injectRouter();
+  routerContext = invoicesIndexRoute.injectRouteContext();
+
   createInvoiceMutation = injectMutation({
-    fn: postInvoice,
+    fn: (variables: Partial<Invoice>) => {
+      const context = this.routerContext();
+      const invoiceService = context.inject(InvoiceService);
+      return invoiceService.postInvoice(variables);
+    },
     onSuccess: () => this.router.invalidate(),
   });
 
@@ -465,7 +531,12 @@ const invoiceRoute = createRoute({
         notes: z.string().optional(),
       })
       .parse(search),
-  loader: ({ params: { invoiceId } }) => fetchInvoiceById(invoiceId),
+  loader: async ({ params: { invoiceId }, context }) => {
+    const invoiceService = context.inject(InvoiceService);
+    const invoice = await invoiceService.fetchInvoiceById(invoiceId);
+    if (!invoice) throw notFound();
+    return invoice;
+  },
   component: () => InvoiceComponent,
   pendingComponent: () => SpinnerComponent,
 });
@@ -539,8 +610,13 @@ class InvoiceComponent {
   search = invoiceRoute.injectSearch();
   navigate = invoiceRoute.injectNavigate();
   invoice = invoiceRoute.injectLoaderData();
+  routerContext = invoiceRoute.injectRouteContext();
   updateInvoiceMutation = injectMutation({
-    fn: patchInvoice,
+    fn: (variables: Partial<Invoice>) => {
+      const context = this.routerContext();
+      const invoiceService = context.inject(InvoiceService);
+      return invoiceService.patchInvoice(this.invoice().id, variables);
+    },
     onSuccess: () => this.router.invalidate(),
   });
   notes = signal(this.search().notes ?? '');
@@ -601,7 +677,11 @@ const usersLayoutRoute = createRoute({
     filterBy: usersView?.filterBy,
     sortBy: usersView?.sortBy ?? 'name',
   }),
-  loader: ({ deps }) => fetchUsers(deps),
+  loader: async ({ deps, context }) => {
+    const usersService = context.inject(UsersService);
+    const users = await usersService.fetchUsers(deps);
+    return { users, crumb: 'Users' };
+  },
   notFoundComponent: () => UsersNotFoundComponent,
   component: () => UsersLayoutComponent,
 });
@@ -653,6 +733,18 @@ const usersLayoutRoute = createRoute({
             </a>
           </div>
         }
+        <div class="px-3 py-2 text-xs text-gray-500 bg-gray-100 dark:bg-gray-800/60">
+          Need to see how not-found errors look?
+          <a
+            [routerLink]="{
+              to: '/dashboard/users/user',
+              search: { userId: 404 },
+            }"
+            class="text-blue-700"
+          >
+            Try loading user 404
+          </a>
+        </div>
       </div>
       <div class="flex-initial border-l">
         <outlet />
@@ -663,7 +755,8 @@ const usersLayoutRoute = createRoute({
 class UsersLayoutComponent {
   navigate = usersLayoutRoute.injectNavigate();
   searchSignal = usersLayoutRoute.injectSearch();
-  users = usersLayoutRoute.injectLoaderData();
+  loaderData = usersLayoutRoute.injectLoaderData();
+  users = computed(() => this.loaderData().users);
   routerState = injectRouterState();
   sortOptions = ['name', 'id', 'email'];
 
@@ -784,8 +877,9 @@ const userRoute = createRoute({
   loaderDeps: ({ search: { userId } }) => ({
     userId,
   }),
-  loader: async ({ deps: { userId } }) => {
-    const user = await fetchUserById(userId);
+  loader: async ({ deps: { userId }, context }) => {
+    const usersService = context.inject(UsersService);
+    const user = await usersService.fetchUserById(userId);
 
     if (!user) {
       throw notFound({
@@ -795,7 +889,7 @@ const userRoute = createRoute({
       });
     }
 
-    return user;
+    return { user, crumb: user.name };
   },
   component: () => UserComponent,
 });
@@ -809,7 +903,8 @@ const userRoute = createRoute({
   `,
 })
 class UserComponent {
-  user = userRoute.injectLoaderData();
+  loaderData = userRoute.injectLoaderData();
+  user = computed(() => this.loaderData().user);
   userJson = computed(() => JSON.stringify(this.user(), null, 2));
 }
 
@@ -1024,6 +1119,7 @@ const router = createRouter({
   defaultErrorComponent: () => ErrorComponent,
   context: {
     auth: undefined!,
+    inject: undefined!,
   },
   defaultPreload: 'intent',
   scrollRestoration: true,
@@ -1118,7 +1214,13 @@ const auth: Auth = {
 })
 class AppComponent {
   router = router;
-  routerContext = { auth };
+  environmentInjector = inject(EnvironmentInjector);
+
+  routerContext: RouterContextOptions<typeof routeTree>['context'] = {
+    auth,
+    inject: (token: ProviderToken<any>) => this.environmentInjector.get(token),
+  };
+
   loaderDelay = useSessionStorage('loaderDelay', 500);
   pendingMs = useSessionStorage('pendingMs', 1000);
   pendingMinMs = useSessionStorage('pendingMinMs', 500);

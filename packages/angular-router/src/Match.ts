@@ -66,35 +66,37 @@ export class RouteMatch {
 
   router = injectRouter()
 
-  matchData = injectRouterState({
-    select: (s) => {
-      const matchIndex = s.matches.findIndex((d) => d.id === this.matchId())
-      if (matchIndex === -1) return null
+  matches = injectRouterState({
+    select: (s) => s.matches,
+  })
 
-      const match = s.matches[matchIndex]!
-      const parentRouteId =
-        matchIndex > 0 ? s.matches[matchIndex - 1]?.routeId : null
+  matchData = computed(() => {
+    const matchIndex = this.matches().findIndex((d) => d.id === this.matchId())
+    if (matchIndex === -1) return null
 
-      const routeId = match.routeId
-      const route = this.router.routesById[routeId] as AnyRoute
-      const remountFn =
-        route.options.remountDeps ?? this.router.options.defaultRemountDeps
+    const match = this.matches()[matchIndex]!
+    const parentRouteId =
+      matchIndex > 0 ? this.matches()[matchIndex - 1]?.routeId : null
 
-      const remountDeps = remountFn?.({
-        routeId,
-        loaderDeps: match.loaderDeps,
-        params: match._strictParams,
-        search: match._strictSearch,
-      })
-      const key = remountDeps ? JSON.stringify(remountDeps) : undefined
+    const routeId = match.routeId
+    const route = this.router.routesById[routeId] as AnyRoute
+    const remountFn =
+      route.options.remountDeps ?? this.router.options.defaultRemountDeps
 
-      return {
-        key,
-        route,
-        match,
-        parentRouteId,
-      }
-    },
+    const remountDeps = remountFn?.({
+      routeId,
+      loaderDeps: match.loaderDeps,
+      params: match._strictParams,
+      search: match._strictSearch,
+    })
+    const key = remountDeps ? JSON.stringify(remountDeps) : undefined
+
+    return {
+      key,
+      route,
+      match,
+      parentRouteId,
+    }
   })
 
   isFistRouteInRouteTree = computed(
@@ -137,6 +139,8 @@ export class RouteMatch {
 
       this.rendering.render({
         component: RouteErrorComponent || null,
+        // TODO: we can't provide inputs if the inputs do not exist i in the component,
+        // we should provide an context instead
         inputs: {
           error: () => match.error,
           reset: () => {
