@@ -305,9 +305,17 @@ export function handleCreateServerFn(
       // 1. Create an extractedFn that calls __executeServer
       // 2. Modify .handler() to pass (extractedFn, serverFn) - two arguments
       //
+      // To avoid TDZ (Temporal Dead Zone) errors in production builds, we use an
+      // assignment expression inside .handler() instead of declaring the handler
+      // variable before the serverFn. This ensures proper initialization order
+      // when the bundler processes exports.
+      //
       // Expected output format:
-      // const extractedFn = createServerRpc("id", (opts) => varName.__executeServer(opts));
-      // const varName = createServerFn().handler(extractedFn, originalHandler);
+      // let extractedFn;
+      // const varName = createServerFn().handler(
+      //   extractedFn = createServerRpc("id", (opts) => varName.__executeServer(opts)),
+      //   originalHandler
+      // );
 
       // Build the arrow function: (opts, signal) => varName.__executeServer(opts, signal)
       // The signal parameter is passed through to allow abort signal propagation
@@ -328,9 +336,11 @@ export function handleCreateServerFn(
         executeServerArrowFn,
       )
 
-      // Build the extracted function statement
-      const extractedFnStatement = t.variableDeclaration('const', [
-        t.variableDeclarator(t.identifier(functionName), extractedFnInit),
+      // Build the extracted function declaration with 'let' (no initializer)
+      // Using 'let' without initialization avoids TDZ - the variable exists
+      // but is undefined until the assignment expression runs
+      const extractedFnDeclaration = t.variableDeclaration('let', [
+        t.variableDeclarator(t.identifier(functionName)),
       ])
 
       // Find the variable declaration statement containing our createServerFn
@@ -341,16 +351,24 @@ export function handleCreateServerFn(
         )
       }
 
-      // Insert the extracted function statement before the variable declaration
-      variableDeclaration.insertBefore(extractedFnStatement)
+      // Insert the 'let' declaration before the variable declaration
+      variableDeclaration.insertBefore(extractedFnDeclaration)
 
-      // Modify the .handler() call to pass two arguments: (extractedFn, serverFn)
-      // The handlerFnPath.node contains the original serverFn
-      const extractedFnIdentifier = t.identifier(functionName)
+      // Create an assignment expression: extractedFn = createServerRpc(...)
+      // This assigns the RPC during the .handler() call, ensuring the serverFn
+      // is being constructed when the assignment happens
+      const assignmentExpression = t.assignmentExpression(
+        '=',
+        t.identifier(functionName),
+        extractedFnInit,
+      )
+
+      // Modify the .handler() call to pass two arguments:
+      // (extractedFn = createServerRpc(...), serverFn)
       const serverFnNode = t.cloneNode(handlerFn, true)
 
-      // Replace handler's arguments with [extractedFn, serverFn]
-      handler.callPath.node.arguments = [extractedFnIdentifier, serverFnNode]
+      // Replace handler's arguments with [assignmentExpression, serverFn]
+      handler.callPath.node.arguments = [assignmentExpression, serverFnNode]
 
       // Only export the extracted handler (e.g., myFn_createServerFn_handler)
       // The manifest and all import paths only look up this suffixed name.

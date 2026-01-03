@@ -138,8 +138,8 @@ describe('createServerFn compiles correctly', async () => {
       const myFunc = () => {
         return 'hello from the server';
       };
-      const myServerFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15U2VydmVyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => myServerFn.__executeServer(opts, signal));
-      const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler, myFunc);
+      let myServerFn_createServerFn_handler;
+      const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im15U2VydmVyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => myServerFn.__executeServer(opts, signal)), myFunc);
       export { myServerFn_createServerFn_handler };"
     `)
   })
@@ -194,14 +194,10 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResultServerProvider!.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from '@tanstack/react-start/server-rpc';
       import { createServerFn } from '@tanstack/react-start';
-      const exportedVar = 'exported';
-      const exportedFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => exportedFn.__executeServer(opts, signal));
-      const exportedFn = createServerFn().handler(exportedFn_createServerFn_handler, async () => {
-        return exportedVar;
-      });
+      let exportedFn_createServerFn_handler;
       const nonExportedVar = 'non-exported';
-      const nonExportedFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im5vbkV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => nonExportedFn.__executeServer(opts, signal));
-      const nonExportedFn = createServerFn().handler(nonExportedFn_createServerFn_handler, async () => {
+      let nonExportedFn_createServerFn_handler;
+      const nonExportedFn = createServerFn().handler(nonExportedFn_createServerFn_handler = createServerRpc("eyJmaWxlIjoiL0BpZC90ZXN0LnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6Im5vbkV4cG9ydGVkRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", (opts, signal) => nonExportedFn.__executeServer(opts, signal)), async () => {
         return nonExportedVar;
       });
       export { exportedFn_createServerFn_handler, nonExportedFn_createServerFn_handler };"
