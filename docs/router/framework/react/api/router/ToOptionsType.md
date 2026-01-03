@@ -19,6 +19,6 @@ type SearchParamOptions = {
 }
 
 type PathParamOptions = {
-  path?: true | Record<string, TPathParam> | ((prev: TFromParams) => TToParams)
+  params?: true | Record<string, TPathParam> | ((prev: TFromParams) => TToParams)
 }
 ```
