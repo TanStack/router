@@ -5,6 +5,8 @@ import {
   DestroyRef,
   inject,
   afterNextRender,
+  EnvironmentInjector,
+  Signal,
 } from '@angular/core'
 import {
   getLocationChangeInfo,
@@ -32,9 +34,13 @@ let mountLoadForRouter: { router: AnyRouter | null; mounted: boolean } = {
  * - Router event watchers
  *
  * Must be called during component initialization.
+ *
+ * This is more complicated than the other adapters, since Angular
+ * does not have transition support and a mechanism to wait for the next tick.
  */
 export function injectTransitionerSetup() {
   const router = injectRouter()
+  const environmentInjector = inject(EnvironmentInjector)
 
   // Skip on server - no transitions needed
   if (router.isServer) {
@@ -55,16 +61,16 @@ export function injectTransitionerSetup() {
     select: (s) => s.matches.some((d) => d.status === 'pending'),
   })
 
-  // Track previous values for comparison
-  let previousIsLoading: boolean | undefined
-  let previousIsAnyPending: boolean | undefined
-  let previousIsPagePending: boolean | undefined
-
   const isAnyPending = computed(
     () => isLoading() || isTransitioning() || hasPendingMatches(),
   )
 
   const isPagePending = computed(() => isLoading() || hasPendingMatches())
+
+  // Track previous values for comparison using proper previous value tracking
+  const isLoadingWithPrev = injectPrevious(() => isLoading())
+  const isAnyPendingWithPrev = injectPrevious(() => isAnyPending())
+  const isPagePendingWithPrev = injectPrevious(() => isPagePending())
 
   // Implement startTransition similar to React/Solid
   // Angular doesn't have a native startTransition like React 18, so we simulate it
@@ -77,54 +83,30 @@ export function injectTransitionerSetup() {
       // Ignore errors if component is unmounted
     }
 
-    // Execute the function
+    // Helper to end the transition
+    const endTransition = () => {
+      // Use afterNextRender to ensure Angular has processed all change detection
+      // This is similar to Vue's nextTick approach
+      afterNextRender(
+        () => {
+          try {
+            isTransitioning.set(false)
+            router.__store.setState((s) => ({ ...s, isTransitioning: false }))
+          } catch {
+            // Ignore errors if component is unmounted
+          }
+        },
+        { injector: environmentInjector },
+      )
+    }
+
     const result = fn()
 
-    // Handle async functions
     if (result instanceof Promise) {
-      result
-        .then(() => {
-          isTransitioning.set(false)
-          try {
-            router.__store.setState((s) => ({ ...s, isTransitioning: false }))
-          } catch {
-            // Ignore errors if component is unmounted
-          }
-        })
-        .catch(() => {
-          isTransitioning.set(false)
-          try {
-            router.__store.setState((s) => ({ ...s, isTransitioning: false }))
-          } catch {
-            // Ignore errors if component is unmounted
-          }
-        })
+      result.finally(() => endTransition())
     } else {
-      // For sync functions, use setTimeout to allow Angular to process updates
-      setTimeout(() => {
-        isTransitioning.set(false)
-        try {
-          router.__store.setState((s) => ({ ...s, isTransitioning: false }))
-        } catch {
-          // Ignore errors if component is unmounted
-        }
-      }, 0)
+      endTransition()
     }
-  }
-
-  // Angular doesn't have View Transitions API support like Vue, but we can still
-  // set up the function for compatibility
-  const originalStartViewTransition:
-    | undefined
-    | ((fn: () => Promise<void>) => void) =
-    (router as any).__tsrOriginalStartViewTransition ??
-    router.startViewTransition
-
-  ;(router as any).__tsrOriginalStartViewTransition =
-    originalStartViewTransition
-
-  router.startViewTransition = (fn: () => Promise<void>) => {
-    return originalStartViewTransition?.(fn)
   }
 
   // Subscribe to location changes and try to load the new location
@@ -196,15 +178,14 @@ export function injectTransitionerSetup() {
   // Watch for onLoad event
   effect(() => {
     if (!isMounted()) return
-    const currentIsLoading = isLoading()
+    const loading = isLoadingWithPrev()
     try {
-      if (previousIsLoading && !currentIsLoading) {
+      if (loading.previous && !loading.current) {
         router.emit({
           type: 'onLoad',
           ...getLocationChangeInfo(router.state),
         })
       }
-      previousIsLoading = currentIsLoading
     } catch {
       // Ignore errors if component is unmounted
     }
@@ -213,15 +194,14 @@ export function injectTransitionerSetup() {
   // Watch for onBeforeRouteMount event
   effect(() => {
     if (!isMounted()) return
-    const currentIsPagePending = isPagePending()
+    const pagePending = isPagePendingWithPrev()
     try {
-      if (previousIsPagePending && !currentIsPagePending) {
+      if (pagePending.previous && !pagePending.current) {
         router.emit({
           type: 'onBeforeRouteMount',
           ...getLocationChangeInfo(router.state),
         })
       }
-      previousIsPagePending = currentIsPagePending
     } catch {
       // Ignore errors if component is unmounted
     }
@@ -230,9 +210,9 @@ export function injectTransitionerSetup() {
   // Watch for onResolved event
   effect(() => {
     if (!isMounted()) return
-    const currentIsAnyPending = isAnyPending()
+    const anyPending = isAnyPendingWithPrev()
     try {
-      if (!currentIsAnyPending && router.__store.state.status === 'pending') {
+      if (!anyPending.current && router.__store.state.status === 'pending') {
         router.__store.setState((s) => ({
           ...s,
           status: 'idle',
@@ -241,7 +221,7 @@ export function injectTransitionerSetup() {
       }
 
       // The router was pending and now it's not
-      if (previousIsAnyPending && !currentIsAnyPending) {
+      if (anyPending.previous && !anyPending.current) {
         const changeInfo = getLocationChangeInfo(router.state)
         router.emit({
           type: 'onResolved',
@@ -252,9 +232,28 @@ export function injectTransitionerSetup() {
           handleHashScroll(router)
         }
       }
-      previousIsAnyPending = currentIsAnyPending
     } catch {
       // Ignore errors if component is unmounted
     }
   })
+}
+
+export function injectPrevious<T>(
+  fn: () => NonNullable<T>,
+): Signal<{ previous: T | null; current: T }> {
+  return computed(
+    (
+      prev: { previous: T | null; current: T | null } = {
+        previous: null,
+        current: null,
+      },
+    ) => {
+      const current = fn()
+      if (prev.current !== current) {
+        prev.previous = prev.current
+        prev.current = current
+      }
+      return prev as { previous: T | null; current: T }
+    },
+  )
 }

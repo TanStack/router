@@ -73,8 +73,7 @@ export type UseBlockerOpts<
 > = {
   shouldBlockFn: ShouldBlockFn<TRouter>
   enableBeforeUnload?: boolean | (() => boolean)
-  // TODO: why is disabled needed? It isn't reactive
-  disabled?: boolean
+  disabled?: () => boolean
   withResolver?: TWithResolver
 }
 
@@ -84,7 +83,7 @@ export type InjectBlockerOpts<
 > = {
   shouldBlockFn: ShouldBlockFn<TRouter>
   enableBeforeUnload?: boolean | (() => boolean)
-  disabled?: boolean
+  disabled?: () => boolean
   withResolver?: TWithResolver
 }
 
@@ -178,12 +177,13 @@ export function injectBlocker<
       return canNavigateAsync
     }
 
-    const disposeBlock = opts.disabled
-      ? undefined
-      : router.history.block({
-          blockerFn: blockerFnComposed,
-          enableBeforeUnload: opts.enableBeforeUnload,
-        })
+    const disposeBlock =
+      (opts.disabled?.() ?? false)
+        ? undefined
+        : router.history.block({
+            blockerFn: blockerFnComposed,
+            enableBeforeUnload: opts.enableBeforeUnload,
+          })
 
     onCleanup(() => disposeBlock?.())
   })
