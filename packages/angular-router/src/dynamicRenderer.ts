@@ -30,7 +30,7 @@ export function injectDynamicRenderer() {
   let lastKey: string | null = null
 
   const clear = () => {
-    vcr.clear()
+    if (lastComponent) vcr.clear()
     lastComponent = null
     lastKey = null
   }
@@ -42,7 +42,9 @@ export function injectDynamicRenderer() {
         return
       }
 
-      if (!component) return void clear()
+      vcr.clear()
+
+      if (!component) return
 
       const injector = Injector.create({ providers, parent })
       const bindings = Object.entries(inputs ?? {}).map(([name, value]) =>

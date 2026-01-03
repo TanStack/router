@@ -31,7 +31,7 @@ import { injectIntersectionObserver } from './injectIntersectionObserver'
     '(focus)': 'handleFocus($event)',
     '(mouseenter)': 'handleEnter($event)',
     '(mouseover)': 'handleEnter($event)',
-    '(mousleave)': 'handleLeave($event)',
+    '(mouseleave)': 'handleLeave($event)',
     '(touchstart)': 'handleTouchStart($event)',
     '[attr.target]': 'target()',
     '[attr.role]': 'disabled() ? "link" : undefined',
@@ -42,7 +42,7 @@ import { injectIntersectionObserver } from './injectIntersectionObserver'
       'isTransitioning() ? "transitioning" : undefined',
   },
 })
-class RouterLink {
+export class RouterLink {
   options = input.required<LinkInputOptions>({ alias: 'router-link' })
 
   protected router = injectRouter()

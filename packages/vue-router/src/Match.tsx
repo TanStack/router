@@ -514,20 +514,6 @@ export const Outlet = Vue.defineComponent({
         key: childMatchData.value.paramsKey,
       })
 
-      if (safeMatchId.value === rootRouteId) {
-        return Vue.h(
-          Vue.Suspense,
-          {
-            fallback: router.options.defaultPendingComponent
-              ? Vue.h(router.options.defaultPendingComponent)
-              : null,
-          },
-          {
-            default: () => nextMatch,
-          },
-        )
-      }
-
       return nextMatch
     }
   },

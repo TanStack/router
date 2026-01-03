@@ -1,17 +1,11 @@
 import {
   Component,
   computed,
-  DestroyRef,
-  Directive,
   effect,
   inject,
-  Injector,
   input,
-  inputBinding,
   Provider,
   Signal,
-  untracked,
-  ViewContainerRef,
 } from '@angular/core'
 import { injectRouter } from './injectRouter'
 import { injectRouterState } from './injectRouterState'
@@ -59,7 +53,14 @@ function injectOnRendered({
   })
 }
 
-@Directive({ selector: 'router-match' })
+@Component({
+  selector: 'router-match',
+  template: '',
+  standalone: true,
+  host: {
+    '[attr.data-matchId]': 'matchId()',
+  },
+})
 export class RouteMatch {
   matchId = input.required<string>()
 
@@ -187,13 +188,14 @@ export class RouteMatch {
 
       const key = matchData.key
 
+      const matchIdSignal = computed(() => this.matchId())
       this.rendering.render({
         key,
         component: Component,
         providers: [
           {
             provide: MATCH_ID_INJECTOR_TOKEN,
-            useValue: this.matchId(),
+            useValue: matchIdSignal,
           },
         ],
       })
@@ -201,8 +203,9 @@ export class RouteMatch {
   })
 }
 
-@Directive({
+@Component({
   selector: 'outlet',
+  template: '',
   standalone: true,
 })
 export class Outlet {
@@ -256,7 +259,7 @@ export class Outlet {
     this.rendering.render({
       component: RouteMatch,
       inputs: {
-        matchId: () => this.matchId(),
+        matchId: () => this.childMatchId(),
       },
     })
   })

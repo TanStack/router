@@ -22,6 +22,11 @@ import {
               >About</a
             >
           </li>
+          <li>
+            <a href="/posts" (click)="navigatePosts($event)" [class.active]="isActive('/posts')"
+              >Posts</a
+            >
+          </li>
         </ul>
       </nav>
       <main>
@@ -84,8 +89,14 @@ class RootLayout {
     this.navigate({ to: '/about' });
   }
 
+  navigatePosts(event: Event) {
+    event.preventDefault();
+    this.navigate({ to: '/posts' });
+  }
+
   isActive(path: string): boolean {
-    return this.routerState().location.pathname === path;
+    const currentPath = this.routerState().location.pathname;
+    return currentPath === path || currentPath.startsWith(path + '/');
   }
 }
 

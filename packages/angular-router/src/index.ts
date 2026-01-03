@@ -24,6 +24,7 @@ export { RouterProvider } from './RouterProvider'
 
 // Components
 export { Outlet, RouteMatch } from './Match'
+export { Matches } from './Macthes'
 
 // Injection functions
 export { injectRouter, type InjectRouterResult } from './injectRouter'
@@ -93,7 +94,7 @@ export {
 export { injectCanGoBack } from './injectCanGoBack'
 
 // Link
-export { type LinkInputOptions } from './Link'
+export { type LinkInputOptions, RouterLink } from './Link'
 
 // Utilities
 export { injectIntersectionObserver } from './injectIntersectionObserver'
@@ -110,4 +111,5 @@ export type {
   NavigateOptions,
   RouteOptions,
   RootRouteOptions,
+  Register,
 } from '@tanstack/router-core'

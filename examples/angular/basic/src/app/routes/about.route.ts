@@ -34,3 +34,4 @@ export const Route = createRoute({
   path: '/about',
   component: AboutComponent,
 });
+
