@@ -1,8 +1,12 @@
 import {
+  afterNextRender,
   computed,
   Directive,
   effect,
+  ElementRef,
+  inject,
   input,
+  Renderer2,
   signal,
   untracked,
 } from '@angular/core'
@@ -32,7 +36,6 @@ import { injectIntersectionObserver } from './injectIntersectionObserver'
     '(mouseenter)': 'handleEnter($event)',
     '(mouseover)': 'handleEnter($event)',
     '(mouseleave)': 'handleLeave($event)',
-    '(touchstart)': 'handleTouchStart($event)',
     '[attr.target]': 'target()',
     '[attr.role]': 'disabled() ? "link" : undefined',
     '[attr.aria-disabled]': 'disabled()',
@@ -49,6 +52,10 @@ export class Link<
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
 > {
+  #passiveEvents = injectPasiveEvents(() => ({
+    touchstart: this.handleTouchStart,
+  }))
+
   options = input.required<
     LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
   >({ alias: 'routerLink' })
@@ -298,4 +305,25 @@ export type LinkOptions<
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
+}
+
+// Angular does not provide by default passive events listeners
+// to some events like React, and does not support a pasive options
+// in the template, so we attach the pasive events manually here
+
+type PassiveEvents = {
+  touchstart: (event: TouchEvent) => void
+}
+
+function injectPasiveEvents(passiveEvents: () => PassiveEvents) {
+  const element = inject(ElementRef).nativeElement
+  const renderer = inject(Renderer2)
+
+  afterNextRender(() => {
+    for (const [event, handler] of Object.entries(passiveEvents())) {
+      renderer.listen(element, event, handler, {
+        passive: true,
+      })
+    }
+  })
 }
