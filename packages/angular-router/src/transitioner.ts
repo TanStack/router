@@ -43,9 +43,7 @@ export function injectTransitionerSetup() {
   const environmentInjector = inject(EnvironmentInjector)
 
   // Skip on server - no transitions needed
-  if (router.isServer) {
-    return
-  }
+  if (router.isServer) return
 
   const destroyRef = inject(DestroyRef)
 
@@ -68,9 +66,9 @@ export function injectTransitionerSetup() {
   const isPagePending = computed(() => isLoading() || hasPendingMatches())
 
   // Track previous values for comparison using proper previous value tracking
-  const isLoadingWithPrev = injectPrevious(() => isLoading())
-  const isAnyPendingWithPrev = injectPrevious(() => isAnyPending())
-  const isPagePendingWithPrev = injectPrevious(() => isPagePending())
+  const prevIsLoading = injectPrevious(() => isLoading())
+  const prevIsAnyPending = injectPrevious(() => isAnyPending())
+  const prevIsPagePending = injectPrevious(() => isPagePending())
 
   // Implement startTransition similar to React/Solid
   // Angular doesn't have a native startTransition like React 18, so we simulate it
@@ -88,13 +86,15 @@ export function injectTransitionerSetup() {
       // Use afterNextRender to ensure Angular has processed all change detection
       // This is similar to Vue's nextTick approach
       afterNextRender(
-        () => {
-          try {
-            isTransitioning.set(false)
-            router.__store.setState((s) => ({ ...s, isTransitioning: false }))
-          } catch {
-            // Ignore errors if component is unmounted
-          }
+        {
+          read: () => {
+            try {
+              isTransitioning.set(false)
+              router.__store.setState((s) => ({ ...s, isTransitioning: false }))
+            } catch {
+              // Ignore errors if component is unmounted
+            }
+          },
         },
         { injector: environmentInjector },
       )
@@ -178,9 +178,8 @@ export function injectTransitionerSetup() {
   // Watch for onLoad event
   effect(() => {
     if (!isMounted()) return
-    const loading = isLoadingWithPrev()
     try {
-      if (loading.previous && !loading.current) {
+      if (prevIsLoading() && !isLoading()) {
         router.emit({
           type: 'onLoad',
           ...getLocationChangeInfo(router.state),
@@ -194,9 +193,8 @@ export function injectTransitionerSetup() {
   // Watch for onBeforeRouteMount event
   effect(() => {
     if (!isMounted()) return
-    const pagePending = isPagePendingWithPrev()
     try {
-      if (pagePending.previous && !pagePending.current) {
+      if (prevIsPagePending() && !isPagePending()) {
         router.emit({
           type: 'onBeforeRouteMount',
           ...getLocationChangeInfo(router.state),
@@ -210,9 +208,12 @@ export function injectTransitionerSetup() {
   // Watch for onResolved event
   effect(() => {
     if (!isMounted()) return
-    const anyPending = isAnyPendingWithPrev()
     try {
-      if (!anyPending.current && router.__store.state.status === 'pending') {
+      if (
+        prevIsAnyPending() &&
+        !isAnyPending() &&
+        router.__store.state.status === 'pending'
+      ) {
         router.__store.setState((s) => ({
           ...s,
           status: 'idle',
@@ -221,7 +222,7 @@ export function injectTransitionerSetup() {
       }
 
       // The router was pending and now it's not
-      if (anyPending.previous && !anyPending.current) {
+      if (prevIsAnyPending() && !isAnyPending()) {
         const changeInfo = getLocationChangeInfo(router.state)
         router.emit({
           type: 'onResolved',
@@ -238,22 +239,15 @@ export function injectTransitionerSetup() {
   })
 }
 
-export function injectPrevious<T>(
-  fn: () => NonNullable<T>,
-): Signal<{ previous: T | null; current: T }> {
-  return computed(
-    (
-      prev: { previous: T | null; current: T | null } = {
-        previous: null,
-        current: null,
-      },
-    ) => {
-      const current = fn()
-      if (prev.current !== current) {
-        prev.previous = prev.current
-        prev.current = current
-      }
-      return prev as { previous: T | null; current: T }
-    },
-  )
+export function injectPrevious<T>(fn: () => NonNullable<T>): Signal<T | null> {
+  const value = computed(fn)
+  let previousValue: T | null = null
+
+  return computed(() => {
+    // We known value is different that the previous one,
+    // thanks to signal memoization.
+    const lastPreviousValue = previousValue
+    previousValue = value()
+    return lastPreviousValue
+  })
 }
