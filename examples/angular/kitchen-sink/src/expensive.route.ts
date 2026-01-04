@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { createLazyRoute } from '@tanstack/angular-router';
+import { injectRouteErrorHandler } from '@tanstack/angular-router/experimental';
 
 @Component({
   selector: 'app-expensive',
@@ -8,10 +9,25 @@ import { createLazyRoute } from '@tanstack/angular-router';
     <div class="p-2">
       I am an "expensive" component... which really just means that I was code-split 😉
     </div>
+    <button (click)="throwError()">Throw error</button>
   `,
 })
-class ExpensiveComponent {}
+class ExpensiveComponent {
+  errorHandler = injectRouteErrorHandler({ from: '/expensive' });
+
+  throwError() {
+    this.errorHandler.throw(new Error('Test error'));
+  }
+}
 
 export const Route = createLazyRoute('/expensive')({
   component: () => ExpensiveComponent,
+  errorComponent: () => ExpensiveErrorComponent,
 });
+
+@Component({
+  selector: 'app-expensive-error',
+  standalone: true,
+  template: ` <div class="p-2">It broke!</div> `,
+})
+class ExpensiveErrorComponent {}

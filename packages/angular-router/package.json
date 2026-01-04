@@ -50,11 +50,16 @@
     ".": {
       "types": "./dist/types/tanstack-angular-router.d.ts",
       "default": "./dist/fesm2022/tanstack-angular-router.mjs"
+    },
+    "./experimental": {
+      "types": "./dist/types/tanstack-angular-router-experimental.d.ts",
+      "default": "./dist/fesm2022/tanstack-angular-router-experimental.mjs"
     }
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "experimental"
   ],
   "engines": {
     "node": ">=12"
