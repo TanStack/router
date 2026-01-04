@@ -94,6 +94,8 @@ export {
 
 export { injectCanGoBack } from './injectCanGoBack'
 
+export { injectErrorState } from './injectErrorState'
+
 // Link
 export {
   type LinkOptions as LinkInputOptions,

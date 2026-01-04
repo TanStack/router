@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { createLazyRoute } from '@tanstack/angular-router';
+import { createLazyRoute, injectErrorState } from '@tanstack/angular-router';
 import { injectRouteErrorHandler } from '@tanstack/angular-router/experimental';
 
 @Component({
@@ -28,6 +28,8 @@ export const Route = createLazyRoute('/expensive')({
 @Component({
   selector: 'app-expensive-error',
   standalone: true,
-  template: ` <div class="p-2">It broke!</div> `,
+  template: ` <div class="p-2">It broke! {{ errorState.error.message }}</div> `,
 })
-class ExpensiveErrorComponent {}
+class ExpensiveErrorComponent {
+  errorState = injectErrorState();
+}

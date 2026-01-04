@@ -21,6 +21,7 @@ import { DefaultNotFoundComponent } from './DefaultNotFound'
 import { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'
 import { RouteComponent } from './route'
 import { injectDynamicRenderer } from './dynamicRenderer'
+import { ERROR_STATE_INJECTOR_TOKEN } from './injectErrorState'
 
 // In Angular, there is not concept of suspense or error boundaries,
 // so we dont' need to wrap the inner content of the match.
@@ -139,17 +140,18 @@ export class RouteMatch {
 
       this.rendering.render({
         component: RouteErrorComponent || null,
-        // TODO: we can't provide inputs if the inputs do not exist i in the component,
-        // we should provide an context instead
-        inputs: {
-          error: () => match.error,
-          reset: () => {
-            this.router.invalidate()
+        providers: [
+          {
+            provide: ERROR_STATE_INJECTOR_TOKEN,
+            useValue: {
+              error: match.error,
+              reset: () => {
+                this.router.invalidate()
+              },
+              info: { componentStack: '' },
+            },
           },
-          info: () => {
-            return { componentStack: '' }
-          },
-        },
+        ],
       })
     } else if (
       match._forcePending ||
