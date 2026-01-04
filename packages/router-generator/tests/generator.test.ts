@@ -104,6 +104,18 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'virtual-config-file-default-export':
       config.virtualRouteConfig = './routes.ts'
       break
+    case 'virtual-physical-empty-path-merge':
+      config.virtualRouteConfig = './routes.ts'
+      break
+    case 'virtual-physical-empty-path-conflict-root':
+      config.virtualRouteConfig = './routes.ts'
+      break
+    case 'virtual-physical-empty-path-conflict-virtual':
+      config.virtualRouteConfig = './routes.ts'
+      break
+    case 'virtual-physical-no-prefix':
+      config.virtualRouteConfig = './routes.ts'
+      break
     case 'virtual-with-escaped-underscore':
       {
         // Test case for escaped underscores in physical routes mounted via virtual config
@@ -242,6 +254,12 @@ async function postprocess(folderName: string) {
 function shouldThrow(folderName: string) {
   if (folderName === 'duplicate-fullPath') {
     return `Conflicting configuration paths were found for the following routes: "/", "/".`
+  }
+  if (folderName === 'virtual-physical-empty-path-conflict-root') {
+    return `Conflicting configuration paths were found for the following routes: "/__root", "/__root".`
+  }
+  if (folderName === 'virtual-physical-empty-path-conflict-virtual') {
+    return `Conflicting configuration paths were found for the following routes: "/about", "/about".`
   }
   return undefined
 }
