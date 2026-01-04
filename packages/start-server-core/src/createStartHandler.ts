@@ -57,34 +57,36 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
   return headers
 }
 
-// Cached entries - loaded once per process
-let cachedStartEntry: StartEntry | null = null
-let cachedRouterEntry: RouterEntry | null = null
-let cachedManifest: Manifest | null = null
+// Cached entries - promises stored immediately to prevent concurrent imports
+// that can cause race conditions during module initialization
+let entriesPromise:
+  | Promise<{
+      startEntry: StartEntry
+      routerEntry: RouterEntry
+    }>
+  | undefined
+let manifestPromise: Promise<Manifest> | undefined
 
-async function getEntries(): Promise<{
-  startEntry: StartEntry
-  routerEntry: RouterEntry
-}> {
-  if (cachedRouterEntry === null) {
-    // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-    cachedRouterEntry = await import('#tanstack-router-entry')
-  }
-  if (cachedStartEntry === null) {
-    // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-    cachedStartEntry = await import('#tanstack-start-entry')
-  }
-  return {
-    startEntry: cachedStartEntry as unknown as StartEntry,
-    routerEntry: cachedRouterEntry as unknown as RouterEntry,
-  }
+async function loadEntries() {
+  // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+  const routerEntry = (await import('#tanstack-router-entry')) as RouterEntry
+  // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+  const startEntry = (await import('#tanstack-start-entry')) as StartEntry
+  return { startEntry, routerEntry }
 }
 
-async function getManifest(): Promise<Manifest> {
-  if (cachedManifest === null) {
-    cachedManifest = await getStartManifest()
+function getEntries() {
+  if (!entriesPromise) {
+    entriesPromise = loadEntries()
   }
-  return cachedManifest
+  return entriesPromise
+}
+
+function getManifest() {
+  if (!manifestPromise) {
+    manifestPromise = getStartManifest()
+  }
+  return manifestPromise
 }
 
 // Pre-computed constants
