@@ -394,3 +394,16 @@ test.describe('Pathless layout routes', () => {
     await expect(page.locator('body')).toContainText('Not Found')
   })
 })
+
+test.describe('Special characters in route paths', () => {
+  test('should render route with pipe character in path', async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto('/special|pipe')
+
+    await expect(page.locator('body')).toContainText('Hello /special|pipe!')
+
+    expect(page.url()).toBe(`${baseURL}/special%7Cpipe`)
+  })
+})

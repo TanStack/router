@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SpecialChar124pipeRouteImport } from './routes/special|pipe'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
@@ -118,6 +119,11 @@ import { Route as NonNestedDeepBazBarFooRouteRouteImport } from './routes/non-ne
 import { Route as NonNestedDeepBazBarFooIndexRouteImport } from './routes/non-nested/deep/$baz_.bar.$foo.index'
 import { Route as NonNestedDeepBazBarFooQuxRouteImport } from './routes/non-nested/deep/$baz_.bar.$foo_.qux'
 
+const SpecialChar124pipeRoute = SpecialChar124pipeRouteImport.update({
+  id: '/special|pipe',
+  path: '/special|pipe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RemountDepsRoute = RemountDepsRouteImport.update({
   id: '/remountDeps',
   path: '/remountDeps',
@@ -715,6 +721,7 @@ export interface FileRoutesByFullPath {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/special|pipe': typeof SpecialChar124pipeRoute
   '/non-nested/deep': typeof NonNestedDeepRouteRouteWithChildren
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
@@ -819,6 +826,7 @@ export interface FileRoutesByTo {
   '/masks': typeof MasksRouteWithChildren
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
+  '/special|pipe': typeof SpecialChar124pipeRoute
   '/non-nested/deep': typeof NonNestedDeepRouteRouteWithChildren
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
@@ -918,6 +926,7 @@ export interface FileRoutesById {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/special|pipe': typeof SpecialChar124pipeRoute
   '/non-nested/deep': typeof NonNestedDeepRouteRouteWithChildren
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
@@ -1029,6 +1038,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/special|pipe'
     | '/non-nested/deep'
     | '/non-nested/named'
     | '/non-nested/path'
@@ -1133,6 +1143,7 @@ export interface FileRouteTypes {
     | '/masks'
     | '/notRemountDeps'
     | '/remountDeps'
+    | '/special|pipe'
     | '/non-nested/deep'
     | '/non-nested/named'
     | '/non-nested/path'
@@ -1231,6 +1242,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/special|pipe'
     | '/non-nested/deep'
     | '/non-nested/named'
     | '/non-nested/path'
@@ -1342,6 +1354,7 @@ export interface RootRouteChildren {
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
+  SpecialChar124pipeRoute: typeof SpecialChar124pipeRoute
   ParamsPsNonNestedRouteRoute: typeof ParamsPsNonNestedRouteRouteWithChildren
   RelativeLinkRouteRoute: typeof RelativeLinkRouteRouteWithChildren
   RelativeUseNavigateRouteRoute: typeof RelativeUseNavigateRouteRouteWithChildren
@@ -1374,6 +1387,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/special|pipe': {
+      id: '/special|pipe'
+      path: '/special|pipe'
+      fullPath: '/special|pipe'
+      preLoaderRoute: typeof SpecialChar124pipeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/remountDeps': {
       id: '/remountDeps'
       path: '/remountDeps'
@@ -2598,6 +2618,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
   RemountDepsRoute: RemountDepsRoute,
+  SpecialChar124pipeRoute: SpecialChar124pipeRoute,
   ParamsPsNonNestedRouteRoute: ParamsPsNonNestedRouteRouteWithChildren,
   RelativeLinkRouteRoute: RelativeLinkRouteRouteWithChildren,
   RelativeUseNavigateRouteRoute: RelativeUseNavigateRouteRouteWithChildren,
