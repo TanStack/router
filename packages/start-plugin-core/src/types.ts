@@ -23,6 +23,7 @@ export interface ResolvedStartConfig {
   routerFilePath: string
   srcDirectory: string
   viteAppBase: string
+  viteConfigFile?: string
   serverFnProviderEnv: string
 }
 
