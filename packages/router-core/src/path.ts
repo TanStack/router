@@ -22,7 +22,7 @@ export function joinPaths(paths: Array<string | undefined>) {
 /** Remove repeated slashes from a path string. */
 export function cleanPath(path: string) {
   // remove double slashes
-  return path.replace(/\/{2,}/g, '/')
+  return path.replace(/\/{2,}/g, '/').replace(/\|/g, '%7C')
 }
 
 /** Trim leading slashes (except preserving root '/'). */
