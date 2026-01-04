@@ -66,7 +66,7 @@ test('server-side redirect', async ({ page, baseURL }) => {
     .get('/redirect/throw-it', { maxRedirects: 0 })
     .then((res) => {
       const headers = new Headers(res.headers())
-      expect(headers.get('location')).toBe('/custom/basepath/redirect/throw-it')
+      expect(headers.get('location')).toBe('/custom/basepath/posts/1')
     })
   await page.request
     .get('/custom/basepath/redirect/throw-it', { maxRedirects: 0 })
