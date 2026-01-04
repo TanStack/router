@@ -3,7 +3,7 @@ import { isRedirect, useRouter } from '@tanstack/react-router'
 
 export function useServerFn<T extends (...deps: Array<any>) => Promise<any>>(
   serverFn: T,
-): (...args: Parameters<T>) => ReturnType<T> {
+): (...args: Parameters<T>) => ReturnType<T> | Promise<void> {
   const router = useRouter()
 
   return React.useCallback(
