@@ -1,5 +1,6 @@
 import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { createMeta } from '@tanstack/meta'
 import { postQueryOptions } from '../utils/posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { NotFound } from '~/components/NotFound'
@@ -12,10 +13,23 @@ export const Route = createFileRoute('/posts/$postId')({
 
     return {
       title: data.title,
+      body: data.body,
+      id: data.id,
     }
   },
   head: ({ loaderData }) => ({
-    meta: loaderData ? [{ title: loaderData.title }] : undefined,
+    meta: loaderData
+      ? createMeta({
+          title: loaderData.title,
+          description: loaderData.body.slice(0, 160),
+          // In a real app, you'd use an actual URL
+          url: `https://example.com/posts/${loaderData.id}`,
+          titleTemplate: '%s | TanStack Start',
+          // Disable charset/viewport since root already provides them
+          charset: false,
+          viewport: false,
+        })
+      : undefined,
   }),
   errorComponent: PostErrorComponent,
   notFoundComponent: () => {

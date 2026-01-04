@@ -11233,6 +11233,12 @@ importers:
 
   packages/history: {}
 
+  packages/meta:
+    devDependencies:
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.10
+
   packages/nitro-v2-vite-plugin:
     dependencies:
       nitropack:
@@ -11460,6 +11466,9 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
+      '@tanstack/meta':
+        specifier: workspace:*
+        version: link:../meta
       '@tanstack/store':
         specifier: ^0.8.0
         version: 0.8.0
@@ -20961,9 +20970,6 @@ packages:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
 
-  loupe@3.1.3:
-    resolution: {integrity: sha512-kkIp7XSkP78ZxJEsSxW3712C6teJVoeHHwgo9zJ380de7IYyJ2ISlxojcH2pC5OFLewESmnRi/+XCDIEEVyoug==}
-
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
 
@@ -29200,11 +29206,11 @@ snapshots:
   '@types/eslint-scope@3.7.7':
     dependencies:
       '@types/eslint': 9.6.1
-      '@types/estree': 1.0.7
+      '@types/estree': 1.0.8
 
   '@types/eslint@9.6.1':
     dependencies:
-      '@types/estree': 1.0.7
+      '@types/estree': 1.0.8
       '@types/json-schema': 7.0.15
 
   '@types/estree@1.0.7': {}
@@ -29885,7 +29891,7 @@ snapshots:
   '@vitest/utils@3.0.6':
     dependencies:
       '@vitest/pretty-format': 3.0.6
-      loupe: 3.1.3
+      loupe: 3.2.1
       tinyrainbow: 2.0.0
 
   '@vitest/utils@3.2.4':
@@ -30816,7 +30822,7 @@ snapshots:
       assertion-error: 2.0.1
       check-error: 2.1.1
       deep-eql: 5.0.2
-      loupe: 3.1.3
+      loupe: 3.2.1
       pathval: 2.0.0
 
   chalk@3.0.0:
@@ -32167,7 +32173,7 @@ snapshots:
 
   estree-walker@3.0.3:
     dependencies:
-      '@types/estree': 1.0.7
+      '@types/estree': 1.0.8
 
   esutils@2.0.3: {}
 
@@ -33126,7 +33132,7 @@ snapshots:
 
   is-reference@1.2.1:
     dependencies:
-      '@types/estree': 1.0.7
+      '@types/estree': 1.0.8
 
   is-regex@1.2.1:
     dependencies:
@@ -33623,8 +33629,6 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
-
-  loupe@3.1.3: {}
 
   loupe@3.2.1: {}
 
