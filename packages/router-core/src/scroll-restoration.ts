@@ -66,10 +66,16 @@ function createScrollRestorationCache(): ScrollRestorationCache | null {
     // This setter is simply to make sure that we set the sessionStorage right
     // after the state is updated. It doesn't necessarily need to be a functional
     // update.
-    set: (updater) => (
-      (state = functionalUpdate(updater, state) || state),
-      safeSessionStorage.setItem(storageKey, JSON.stringify(state))
-    ),
+    set: (updater) => {
+      state = functionalUpdate(updater, state) || state
+      try {
+        safeSessionStorage.setItem(storageKey, JSON.stringify(state))
+      } catch {
+        console.warn(
+          '[ts-router] Could not persist scroll restoration state to sessionStorage.',
+        )
+      }
+    },
   }
 }
 
