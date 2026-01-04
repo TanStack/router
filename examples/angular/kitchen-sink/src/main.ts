@@ -621,19 +621,17 @@ class InvoiceComponent {
   });
   notes = signal(this.search().notes ?? '');
 
-  constructor() {
-    effect(() => {
-      const currentNotes = this.notes();
-      this.navigate({
-        search: (old) => ({
-          ...old,
-          notes: currentNotes ? currentNotes : undefined,
-        }),
-        params: true,
-        replace: true,
-      });
+  #updateNotes = effect(() => {
+    const currentNotes = this.notes();
+    this.navigate({
+      search: (old) => ({
+        ...old,
+        notes: currentNotes ? currentNotes : undefined,
+      }),
+      params: true,
+      replace: true,
     });
-  }
+  });
 
   onSubmit(event: Event) {
     event.preventDefault();
@@ -765,26 +763,24 @@ class UsersLayoutComponent {
   filterBy = computed(() => this.search().usersView?.filterBy);
   filterDraft = signal('');
 
-  constructor() {
-    effect(() => {
-      const currentFilterBy = this.filterBy();
-      this.filterDraft.set(currentFilterBy ?? '');
-    });
+  #updateFilterDraft = effect(() => {
+    const currentFilterBy = this.filterBy();
+    this.filterDraft.set(currentFilterBy ?? '');
+  });
 
-    effect(() => {
-      const draft = this.filterDraft();
-      this.navigate({
-        search: (old) => ({
-          ...old,
-          usersView: {
-            ...old.usersView,
-            filterBy: draft || undefined,
-          },
-        }),
-        replace: true,
-      });
+  #updateFilter = effect(() => {
+    const draft = this.filterDraft();
+    this.navigate({
+      search: (old) => ({
+        ...old,
+        usersView: {
+          ...old.usersView,
+          filterBy: draft || undefined,
+        },
+      }),
+      replace: true,
     });
-  }
+  });
 
   sortedUsers = computed(() => {
     const usersList = this.users();
@@ -973,6 +969,15 @@ const loginRoute = createRoute({
   validateSearch: z.object({
     redirect: z.string().optional(),
   }),
+  loaderDeps: ({ search: { redirect } }) => ({ redirect }),
+  loader: ({ context, deps }) => {
+    // This is not done in the other examples, but since in angular
+    // we don't have transitions, this loader can prevent double renders
+    // by doing an early redirect.
+    if (context.auth.status === 'loggedIn' && deps.redirect) {
+      throw redirect({ to: deps.redirect });
+    }
+  },
 }).update({
   component: () => LoginComponent,
 });
@@ -1026,13 +1031,11 @@ class LoginComponent {
   auth = computed(() => this.routeContext().auth);
   status = computed(() => this.routeContext().status);
 
-  constructor() {
-    effect(() => {
-      if (this.status() === 'loggedIn' && this.search().redirect) {
-        this.router.history.push(this.search().redirect!);
-      }
-    });
-  }
+  #redirectIfLoggedIn = effect(() => {
+    if (this.status() === 'loggedIn' && this.search().redirect) {
+      this.router.history.push(this.search().redirect!);
+    }
+  });
 
   onSubmit(event: Event) {
     event.preventDefault();
