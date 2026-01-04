@@ -6,6 +6,7 @@ import {
   inject,
   Injector,
   input,
+  linkedSignal,
   ProviderToken,
   signal,
 } from '@angular/core';
@@ -761,12 +762,7 @@ class UsersLayoutComponent {
   search = computed(() => this.searchSignal());
   sortBy = computed(() => this.search().usersView?.sortBy ?? 'name');
   filterBy = computed(() => this.search().usersView?.filterBy);
-  filterDraft = signal('');
-
-  #updateFilterDraft = effect(() => {
-    const currentFilterBy = this.filterBy();
-    this.filterDraft.set(currentFilterBy ?? '');
-  });
+  filterDraft = linkedSignal(() => this.filterBy() ?? '');
 
   #updateFilter = effect(() => {
     const draft = this.filterDraft();
