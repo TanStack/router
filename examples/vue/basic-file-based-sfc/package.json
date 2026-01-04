@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/router-plugin": "^1.145.2",
+    "@tanstack/router-plugin": "^1.145.4",
     "@tanstack/vue-router": "^1.144.0",
     "@tanstack/vue-router-devtools": "^1.144.0",
     "@tanstack/zod-adapter": "^1.144.0",

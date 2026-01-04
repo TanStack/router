@@ -15,7 +15,7 @@
     "@tanstack/react-router": "^1.144.0",
     "@tanstack/react-router-devtools": "^1.144.0",
     "@tanstack/react-router-ssr-query": "^1.144.0",
-    "@tanstack/react-start": "^1.145.3",
+    "@tanstack/react-start": "^1.145.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
