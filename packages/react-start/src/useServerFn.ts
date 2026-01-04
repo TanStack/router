@@ -26,5 +26,5 @@ export function useServerFn<T extends (...deps: Array<any>) => Promise<any>>(
       }
     },
     [router, serverFn],
-  ) as any
+  )
 }
