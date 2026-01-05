@@ -13,13 +13,12 @@ function ModalIndex() {
   return (
     <div className="modal-index">
       <h2>Quick Actions</h2>
+      {/* Navigation within the modal - context knows we're in @modal */}
       <nav>
-        <Link slot="modal" to="/users/$id" params={{ id: 'me' }}>
+        <Link to="/users/$id" params={{ id: 'me' }}>
           View My Profile
         </Link>
-        <Link slot="modal" to="/settings">
-          Settings
-        </Link>
+        <Link to="/settings">Settings</Link>
       </nav>
     </div>
   )

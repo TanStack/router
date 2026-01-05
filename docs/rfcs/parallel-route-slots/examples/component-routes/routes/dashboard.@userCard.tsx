@@ -1,7 +1,8 @@
 // @ts-nocheck
 // Example only - this is a conceptual demonstration
 
-import { createSlotRoute, Link } from '@tanstack/react-router'
+import { createSlotRoute } from '@tanstack/react-router'
+import { modalRoute } from '../routeTree.gen'
 
 export const Route = createSlotRoute({
   path: '/',
@@ -34,9 +35,10 @@ function UserCardWidget() {
           <span className="stat-label">Tasks</span>
         </div>
       </div>
-      <Link slot="modal" to="/users/$id" params={{ id: user.id }}>
+      {/* Open modal from dashboard using slot route's Link */}
+      <modalRoute.Link to="/users/$id" params={{ id: user.id }}>
         View Profile
-      </Link>
+      </modalRoute.Link>
     </div>
   )
 }

@@ -29,10 +29,9 @@ function UserModal() {
         <h2>{user.name}</h2>
       </header>
 
-      {/* Tab navigation within the modal */}
+      {/* Tab navigation within the modal - context knows we're in @modal */}
       <nav className="tabs">
         <Link
-          slot="modal"
           to="/users/$id"
           params={params}
           search={{ tab: 'profile' }}
@@ -41,7 +40,6 @@ function UserModal() {
           Profile
         </Link>
         <Link
-          slot="modal"
           to="/users/$id"
           params={params}
           search={{ tab: 'activity' }}
@@ -50,7 +48,6 @@ function UserModal() {
           Activity
         </Link>
         <Link
-          slot="modal"
           to="/users/$id"
           params={params}
           search={{ tab: 'settings' }}
