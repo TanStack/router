@@ -26,20 +26,28 @@ export function RouterServer<TRouter extends AnyRouter>(props: {
           {headStream}
         </head>
         <body>
-          <Hydration>
-            <RouterProvider
-              router={props.router}
-              InnerWrap={(props) => (
-                <NoHydration>
-                  <HeadContent />
-                  <Hydration>{props.children}</Hydration>
-                  <Scripts />
-                </NoHydration>
-              )}
-            />
-          </Hydration>
+          <RouterServerBody router={props.router} />
         </body>
       </html>
     </NoHydration>
+  )
+}
+
+export function RouterServerBody<TRouter extends AnyRouter>(props: {
+  router: TRouter
+}) {
+  return (
+    <Hydration>
+      <RouterProvider
+        router={props.router}
+        InnerWrap={(props) => (
+          <NoHydration>
+            <HeadContent />
+            <Hydration>{props.children}</Hydration>
+            <Scripts />
+          </NoHydration>
+        )}
+      />
+    </Hydration>
   )
 }
