@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Example only - this is a conceptual demonstration
 
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 
 // Slots are NOT declared here - they're discovered from mail.@*.tsx files
 // after composition. Route.Outlet gains type-safe slot prop automatically.
@@ -12,13 +12,12 @@ export const Route = createFileRoute('/mail')({
 function MailLayout() {
   return (
     <div className="mail-app">
-      {/* Sidebar with folders */}
+      {/* Sidebar with folders - using fully qualified paths */}
       <nav className="mail-sidebar">
         <h1>Mail</h1>
-        {/* These navigate the @list slot */}
-        <Route.Link slots={{ list: { to: '/inbox' } }}>Inbox</Route.Link>
-        <Route.Link slots={{ list: { to: '/sent' } }}>Sent</Route.Link>
-        <Route.Link slots={{ list: { to: '/drafts' } }}>Drafts</Route.Link>
+        <Link to="/mail/@list/inbox">Inbox</Link>
+        <Link to="/mail/@list/sent">Sent</Link>
+        <Link to="/mail/@list/drafts">Drafts</Link>
       </nav>
 
       {/* Message list pane */}

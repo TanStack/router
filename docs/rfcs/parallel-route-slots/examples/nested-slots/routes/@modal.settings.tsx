@@ -1,7 +1,8 @@
 // @ts-nocheck
 // Example only - this is a conceptual demonstration
 
-import { createSlotRoute } from '@tanstack/react-router'
+import { createSlotRoute, Link } from '@tanstack/react-router'
+import { useState } from 'react'
 
 export const Route = createSlotRoute({
   path: '/settings',
@@ -19,10 +20,11 @@ function SettingsModal() {
 
   const handleClose = () => {
     if (hasChanges) {
-      // Open the nested confirm slot instead of closing directly
-      // This navigates to @modal@confirm=/discard in the URL
-      navigate({ slots: { modal: { slots: { confirm: { to: '/discard' } } } } })
+      // Open the nested confirm slot - fully qualified path
+      // Results in URL: ?@modal=/settings&@modal@confirm=/discard
+      navigate({ to: '/@modal/@confirm/discard' })
     } else {
+      // Close modal - need slots object for null
       navigate({ slots: { modal: null } })
     }
   }
@@ -56,13 +58,10 @@ function SettingsModal() {
         </button>
         <button type="submit">Save</button>
 
-        {/* Direct link to delete confirmation - nested slot */}
-        <Route.Link
-          slots={{ modal: { slots: { confirm: { to: '/delete' } } } }}
-          className="danger"
-        >
+        {/* Direct link to delete confirmation - fully qualified nested slot path */}
+        <Link to="/@modal/@confirm/delete" className="danger">
           Delete Account
-        </Route.Link>
+        </Link>
       </div>
     </div>
   )

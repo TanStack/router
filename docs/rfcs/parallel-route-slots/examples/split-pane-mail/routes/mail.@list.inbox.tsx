@@ -21,8 +21,8 @@ function InboxList() {
       <ul>
         {messages.map((msg) => (
           <li key={msg.id}>
-            {/* Clicking a message opens it in the preview slot */}
-            <Link slot="preview" to="/$id" params={{ id: msg.id }}>
+            {/* Clicking a message opens it in the preview slot - fully qualified */}
+            <Link to="/mail/@preview/$id" params={{ id: msg.id }}>
               <strong>{msg.from}</strong>
               <span>{msg.subject}</span>
               <time>{msg.date}</time>
