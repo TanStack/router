@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Example only - this is a conceptual demonstration
 
-import { createSlotRootRoute, Outlet, useSlot } from '@tanstack/react-router'
+import { createSlotRootRoute, Outlet } from '@tanstack/react-router'
 
 // Nested confirmation dialog slot
 export const Route = createSlotRootRoute({
@@ -9,10 +9,15 @@ export const Route = createSlotRootRoute({
 })
 
 function ConfirmDialogWrapper() {
-  const confirm = useSlot('confirm')
+  const navigate = Route.useNavigate()
+
+  const handleClose = () => {
+    // Close just the confirm dialog, keep modal open
+    navigate({ slots: { modal: { slots: { confirm: null } } } })
+  }
 
   return (
-    <div className="confirm-backdrop" onClick={confirm.close}>
+    <div className="confirm-backdrop" onClick={handleClose}>
       <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
         <Outlet />
       </div>

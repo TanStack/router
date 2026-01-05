@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Example only - this is a conceptual demonstration
 
-import { createSlotRoute, useSlot } from '@tanstack/react-router'
+import { createSlotRoute } from '@tanstack/react-router'
 
 // Confirm delete account dialog
 export const Route = createSlotRoute({
@@ -10,14 +10,18 @@ export const Route = createSlotRoute({
 })
 
 function DeleteConfirm() {
-  const modal = useSlot('modal')
-  const confirm = useSlot('confirm')
+  const navigate = Route.useNavigate()
 
   const handleDelete = async () => {
     await deleteAccount()
-    // Close everything and redirect
-    modal.close()
+    // Close the entire modal (and its nested slots)
+    navigate({ slots: { modal: null } })
     // In reality you'd also redirect to a logged-out page
+  }
+
+  const handleCancel = () => {
+    // Close just the confirm dialog, keep modal open
+    navigate({ slots: { modal: { slots: { confirm: null } } } })
   }
 
   return (
@@ -28,7 +32,7 @@ function DeleteConfirm() {
       </p>
 
       <div className="confirm-actions">
-        <button onClick={confirm.close}>Cancel</button>
+        <button onClick={handleCancel}>Cancel</button>
         <button onClick={handleDelete} className="danger">
           Yes, Delete My Account
         </button>

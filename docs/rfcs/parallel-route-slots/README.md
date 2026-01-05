@@ -341,270 +341,282 @@ The `_addSlots` is internal - users never call it. The generator wires everythin
 
 ## Navigation API
 
-### Core Principle: Slots Are Scoped to Routes
+### Core Principle: Type-Safe Slot Hierarchy
 
-Slots are defined on specific routes (root or otherwise). You can only navigate a slot if you're also navigating to (or already at) a route that renders that slot. This ensures type safety and prevents navigating to slots that won't be rendered.
+Slots are scoped to specific routes. For type-safe slot navigation, `Link` and `useNavigate` need to know the current route context (via `from`) to determine which slots are available.
 
-### Simple API: SlotRoute.navigate() and SlotRoute.Link
+Two approaches:
 
-The simplest way to navigate a slot is through the slot route's own navigation methods. These are type-safe and ensure the parent route hierarchy is valid:
+1. **Use `from` prop** - Explicit route context for type safety
+2. **Use `Route.Link`** - Route object's Link has implicit `from`
 
-```ts
-// Import the slot route (generated)
-import { modalRoute } from './routeTree.gen'
+### Basic Slot Navigation
 
-// Navigate the modal slot
-modalRoute.navigate({
-  to: '/users/$id',
-  params: { id: '123' },
-  search: { tab: 'profile' },
-})
-
-// Navigate to slot root
-modalRoute.navigate({ to: '/' })
-// or just
-modalRoute.navigate({})
-
-// Close the slot
-modalRoute.navigate({ to: null })
-
-// Update just search params (preserve current path)
-modalRoute.navigate({ search: { tab: 'settings' } })
-```
-
-### SlotRoute.Link Component
+Navigate a slot using the `slots` property:
 
 ```tsx
-import { modalRoute } from './routeTree.gen'
+// Using Route.Link (from is implicit)
+import { Route } from './routes/dashboard'
 
-// Open modal to specific route
-<modalRoute.Link to="/users/$id" params={{ id: '123' }}>
-  View User
-</modalRoute.Link>
+<Route.Link slots={{ activity: { to: '/recent' } }}>
+  Recent Activity
+</Route.Link>
 
-// Open modal to root
-<modalRoute.Link>
-  Open Modal
-</modalRoute.Link>
+// Using global Link with explicit from
+<Link from="/dashboard" slots={{ activity: { to: '/recent' } }}>
+  Recent Activity
+</Link>
 
-// Close modal
-<modalRoute.Link to={null}>
-  Close
-</modalRoute.Link>
-
-// Update search only
-<modalRoute.Link search={{ tab: 'profile' }}>
-  Profile Tab
-</modalRoute.Link>
+// Programmatic navigation with from
+const navigate = useNavigate({ from: '/dashboard' })
+navigate({ slots: { activity: { to: '/recent' } } })
 ```
 
-### Within-Slot Navigation
+### Why `from` Matters
 
-When you're inside a slot component, regular `Link` and `navigate` work within that slot's context:
+The `from` route determines which slots are available in the type system:
+
+```tsx
+// Dashboard has @activity, @metrics slots
+// Root has @modal slot
+
+// ✅ from="/dashboard" - activity slot available
+<Link from="/dashboard" slots={{ activity: { to: '/recent' } }}>
+
+// ❌ Type error - activity not on root
+<Link from="/" slots={{ activity: { to: '/recent' } }}>
+
+// ✅ modal is on root, available from anywhere
+<Link from="/dashboard" slots={{ modal: { to: '/users/$id', params: { id: '123' } } }}>
+```
+
+### Slot Navigation Options
+
+```tsx
+// Navigate to a path within the slot
+<Route.Link slots={{ modal: { to: '/users/$id', params: { id: '123' } } }}>
+
+// Open slot at root (to: '/' is default when omitted)
+<Route.Link slots={{ modal: {} }}>
+
+// Update just search params (preserve current path)
+<Route.Link slots={{ modal: { search: { tab: 'profile' } } }}>
+
+// Close slot
+<Route.Link slots={{ modal: null }}>
+
+// Disable a slot that renders by default
+<Route.Link slots={{ notifications: false }}>
+```
+
+### Combined Main Route + Slot Navigation
+
+Navigate the main route and slots atomically:
+
+```tsx
+// Navigate to dashboard AND open modal
+<Link
+  from="/"
+  to="/dashboard"
+  slots={{ modal: { to: '/users/$id', params: { id: '123' } } }}
+>
+  View User on Dashboard
+</Link>
+
+// From dashboard, navigate to dashboard (stay), update slots
+<Route.Link
+  to="/dashboard"
+  slots={{
+    modal: null,
+    activity: { to: '/recent' },
+  }}
+>
+  Dashboard with Recent Activity
+</Route.Link>
+```
+
+### Route-Scoped Slots
+
+Slots scoped to specific routes require the `from` to include that route:
+
+```tsx
+// dashboard.@activity is scoped to /dashboard
+
+// ✅ Valid - from="/dashboard" knows about activity slot
+<Link from="/dashboard" slots={{ activity: { to: '/recent' } }}>
+  Recent Activity
+</Link>
+
+// ✅ Same thing using Route.Link
+import { Route } from './routes/dashboard'
+<Route.Link slots={{ activity: { to: '/recent' } }}>
+  Recent Activity
+</Route.Link>
+
+// ❌ Type error - from="/settings" doesn't have activity slot
+<Link from="/settings" slots={{ activity: { to: '/recent' } }}>
+
+// When navigating TO a route, its slots become available
+<Link from="/" to="/dashboard" slots={{ activity: { to: '/recent' } }}>
+  Go to Dashboard with Activity
+</Link>
+```
+
+### Nested Slot Navigation
+
+For slots within slots, nest the `slots` property:
+
+```tsx
+// Modal has a nested @confirm slot
+<Route.Link
+  slots={{
+    modal: {
+      to: '/settings',
+      slots: {
+        confirm: { to: '/delete' },
+      },
+    },
+  }}
+>
+  Delete Settings
+</Route.Link>
+// URL: ?@modal=/settings&@modal@confirm=/delete
+```
+
+### Navigation Within Slots
+
+When inside a slot component, use `Route.Link` from the slot's route for the implicit `from`:
 
 ```tsx
 // Inside @modal/users.$id.tsx
+import { Route } from './@modal.users.$id'
+
 function UserModal() {
   return (
     <div>
-      {/* These navigate within the modal slot */}
-      <Link to="/settings">Settings</Link>
-      <Link to="/users/$id" params={{ id: '456' }}>
+      {/* Navigate within the modal - Route.Link knows we're in modal context */}
+      <Route.Link slots={{ modal: { to: '/settings' } }}>Settings</Route.Link>
+
+      <Route.Link
+        slots={{ modal: { to: '/users/$id', params: { id: '456' } } }}
+      >
         Other User
-      </Link>
+      </Route.Link>
 
       {/* Close the modal */}
-      <Link to={null}>Close</Link>
+      <Route.Link slots={{ modal: null }}>Close</Route.Link>
+
+      {/* Navigate main route (modal stays open - shallow merge) */}
+      <Route.Link to="/dashboard">Go to Dashboard</Route.Link>
+
+      {/* Navigate main route AND close modal */}
+      <Route.Link to="/dashboard" slots={{ modal: null }}>
+        Go to Dashboard and Close
+      </Route.Link>
     </div>
   )
 }
 ```
 
-### Advanced: Atomic Multi-Slot Navigation
+### Shallow Merge Behavior
 
-For navigating multiple slots atomically (or combining with main route navigation), use the `slots` property:
+Unmentioned slots are preserved by default:
 
-```ts
-// Navigate to dashboard and update multiple slots atomically
-router.navigate({
-  to: '/dashboard',
-  slots: {
-    activity: { to: '/recent' },
-    metrics: { search: { range: '7d' } },
-    modal: null, // close modal
-  },
-})
+```tsx
+// Current URL: /dashboard?@modal=/users/123&@activity=/feed
+
+// Update just modal - activity preserved
+<Route.Link slots={{ modal: { to: '/settings' } }}>
+// Result: /dashboard?@modal=/settings&@activity=/feed
+
+// Navigate main route only - all slots preserved
+<Route.Link to="/settings">
+// Result: /settings?@modal=/users/123&@activity=/feed
+
+// Explicitly close one slot
+<Route.Link slots={{ modal: null }}>
+// Result: /dashboard?@activity=/feed
 ```
 
-This is useful when you need to:
+### Type Safety
 
-- Navigate main route + slots in one atomic update
-- Update multiple slots at once
-- Ensure consistency between route and slot state
+The `slots` property is fully typed based on `from` (implicit or explicit) and `to`:
 
-### Shallow Updates (Default Behavior)
+```tsx
+// Root has @modal, @drawer
+// Dashboard has @activity, @metrics
 
-Like params, slots use **shallow merging** by default - unmentioned slots are preserved:
+// ✅ Valid - from root, modal available; to dashboard, activity available
+<Link from="/" to="/dashboard" slots={{
+  modal: { to: '/users/$id', params: { id: '123' } },
+  activity: { to: '/recent' },
+}}>
 
-```ts
-// Current URL: /dashboard?@activity=/feed&@metrics.range=30d&@modal=/settings
+// ✅ Valid - using DashboardRoute.Link, activity is available
+<DashboardRoute.Link slots={{ activity: { to: '/recent' } }}>
 
-// Update just activity - others preserved
-activityRoute.navigate({ to: '/recent' })
-// Result: /dashboard?@activity=/recent&@metrics.range=30d&@modal=/settings
+// ❌ Type error - from="/settings", activity not available
+<Link from="/settings" slots={{ activity: { to: '/recent' } }}>
 
-// Or via slots object
-router.navigate({
-  slots: { activity: { to: '/recent' } },
-})
-```
-
-### Close vs Disable
-
-```ts
-// Close - removes slot from URL entirely
-modalRoute.navigate({ to: null })
-// or
-router.navigate({ slots: { modal: null } })
-
-// Disable - for slots that render by default, explicitly hide
-router.navigate({ slots: { notifications: false } })
-// Adds @notifications=false to URL
-```
-
-### Route-Scoped Slots and Navigation Validity
-
-Slots scoped to specific routes can only render when that route is active. This creates an important constraint: **navigating a slot that isn't rendered has no effect (or errors)**.
-
-```ts
-// dashboard.@activity is scoped to /dashboard
-import { activityRoute } from './routeTree.gen'
-
-// ✅ Works when currently on /dashboard
-activityRoute.navigate({ to: '/recent' })
-
-// ❌ Runtime issue - if you're on /settings, activity slot doesn't exist
-activityRoute.navigate({ to: '/recent' }) // no effect or error
-
-// ✅ Safe - atomic navigation ensures dashboard is active
-router.navigate({
-  to: '/dashboard',
-  slots: { activity: { to: '/recent' } },
-})
-
-// ❌ Type error - activity not available when navigating to /settings
-router.navigate({
-  to: '/settings',
-  slots: { activity: { to: '/recent' } },
-})
-```
-
-### Open Question: Handling Invalid Slot Navigation
-
-What should happen when you try to navigate a slot that isn't currently rendered?
-
-**Option A: Runtime Error**
-
-```ts
-// On /settings, try to navigate dashboard's activity slot
-activityRoute.navigate({ to: '/recent' })
-// Throws: "Cannot navigate slot 'activity' - parent route '/dashboard' is not active"
-```
-
-**Option B: No-op with Warning**
-
-```ts
-// Silent no-op, but warns in development
-console.warn("Slot 'activity' navigation ignored - parent route not active")
-```
-
-**Option C: Auto-navigate to Parent**
-
-```ts
-// Automatically navigates to the slot's parent route first
-activityRoute.navigate({ to: '/recent' })
-// Equivalent to: router.navigate({ to: '/dashboard', slots: { activity: { to: '/recent' } } })
-```
-
-**Option D: Type-level Prevention (Ideal but Complex)**
-
-Could we make `activityRoute.navigate()` only callable when TypeScript knows you're in a context where `/dashboard` is active? This would require:
-
-- Contextual typing based on current route
-- Possibly a hook like `useSlotNavigate('activity')` that's only valid within dashboard
-
-```ts
-// Inside a dashboard component
-const activityNav = useSlotNavigate('activity') // ✅ typed, safe
-activityNav({ to: '/recent' })
-
-// Outside dashboard - hook returns null or throws
-const activityNav = useSlotNavigate('activity') // ❌ null or type error
-```
-
-**Current recommendation:** Option A (runtime error) is clearest. Option D would be ideal but may be too complex. The `slots` object on `router.navigate()` remains the safest approach since it atomically ensures the parent route is active.
-
-### Nested Slot Navigation
-
-For slots within slots:
-
-```ts
-// Modal has a nested @confirm slot
-import { modalRoute, modalConfirmRoute } from './routeTree.gen'
-
-// Simple: use the nested slot's route directly
-modalConfirmRoute.navigate({ to: '/delete' })
-
-// Advanced: atomic navigation
-router.navigate({
-  slots: {
-    modal: {
-      to: '/users/$id',
-      params: { id: '123' },
-      slots: {
-        confirm: { to: '/delete' },
-      },
-    },
-  },
-})
-// URL: ?@modal=/users/123&@modal@confirm=/delete
-```
-
-### Type Safety Summary
-
-All navigation is fully typed:
-
-```ts
-import { modalRoute } from './routeTree.gen'
-
-// ✅ Valid
-modalRoute.navigate({ to: '/users/$id', params: { id: '123' } })
-
-// ❌ Type error - route doesn't exist
-modalRoute.navigate({ to: '/nonexistent' })
+// ❌ Type error - route doesn't exist in modal slot
+<Route.Link slots={{ modal: { to: '/nonexistent' } }}>
 
 // ❌ Type error - missing required param
-modalRoute.navigate({ to: '/users/$id' })
+<Route.Link slots={{ modal: { to: '/users/$id' } }}>
 
 // ❌ Type error - invalid search param
-modalRoute.navigate({
-  to: '/users/$id',
-  params: { id: '123' },
-  search: { invalid: true },
+<Link slots={{ modal: { to: '/users/$id', params: { id: '123' }, search: { invalid: true } } }}>
+```
+
+### useNavigate Hook
+
+Same API, programmatic. Requires `from` for type safety:
+
+```ts
+// With explicit from
+const navigate = useNavigate({ from: '/dashboard' })
+
+// Navigate slot (activity available because from="/dashboard")
+navigate({ slots: { activity: { to: '/recent' } } })
+
+// Navigate main + slots
+navigate({
+  to: '/dashboard',
+  slots: {
+    modal: { to: '/settings' },
+    activity: { to: '/recent' },
+  },
 })
+
+// Close slot
+navigate({ slots: { modal: null } })
+```
+
+Or use the Route's `useNavigate`:
+
+```ts
+import { Route } from './routes/dashboard'
+
+function DashboardComponent() {
+  const navigate = Route.useNavigate()
+
+  // Type-safe - knows dashboard's slots
+  navigate({ slots: { activity: { to: '/recent' } } })
+}
 ```
 
 ### API Summary
 
-| Task               | Simple API                         | Advanced API                                       |
-| ------------------ | ---------------------------------- | -------------------------------------------------- |
-| Navigate slot      | `slotRoute.navigate({ to })`       | `router.navigate({ slots: { name: { to } } })`     |
-| Open slot root     | `slotRoute.navigate({})`           | `router.navigate({ slots: { name: {} } })`         |
-| Update search only | `slotRoute.navigate({ search })`   | `router.navigate({ slots: { name: { search } } })` |
-| Close slot         | `slotRoute.navigate({ to: null })` | `router.navigate({ slots: { name: null } })`       |
-| Disable default    | -                                  | `router.navigate({ slots: { name: false } })`      |
-| Multi-slot atomic  | -                                  | `router.navigate({ to, slots: {...} })`            |
-| Link               | `<slotRoute.Link to={...}>`        | `<Link slots={{...}}>`                             |
+| Action               | Syntax                                               |
+| -------------------- | ---------------------------------------------------- |
+| Open slot to path    | `slots: { name: { to: '/path', params } }`           |
+| Open slot to root    | `slots: { name: {} }`                                |
+| Update slot search   | `slots: { name: { search: {...} } }`                 |
+| Close slot           | `slots: { name: null }`                              |
+| Disable default slot | `slots: { name: false }`                             |
+| Nested slots         | `slots: { parent: { to, slots: { child: {...} } } }` |
+| Preserve slots       | Don't mention them (shallow merge)                   |
+| Main + slots         | `to: '/path', slots: {...}`                          |
 
 ---
 
@@ -623,49 +635,84 @@ Render a slot's content. Type-safe based on the route's `slots` definition.
 <Route.SlotOutlet name="modal" fallback={<ModalPlaceholder />} />
 ```
 
-### useSlot Hook
+### Accessing Slot State
 
-Access slot state and helpers programmatically:
+Rather than introducing new hooks, existing router hooks work with slots via a `slot` option:
 
 ```ts
-const modal = useSlot('modal')
+// Check if a slot route matches
+const modalMatch = useMatch({
+  from: '/@modal/users/$id', // slot routes use @slotName prefix in path
+  shouldThrow: false,
+})
+const isModalOpen = !!modalMatch
 
-// Returns:
-{
-  isOpen: boolean,              // is the slot currently open?
-  path: string | null,          // current path within slot, null if closed
-  matches: RouteMatch[],        // slot's route matches
-  search: ModalSearchSchema,    // slot's search params (typed)
+// Get loader data from a slot route
+const userData = useLoaderData({ from: '/@modal/users/$id' })
 
-  // Navigation helpers
-  navigate: (opts) => void,     // navigate within this slot
-  close: () => void,            // close the slot
-}
+// Get search params from a slot route
+const { tab } = useSearch({ from: '/@modal/users/$id' })
 
-// Example usage
-function ModalTrigger() {
-  const modal = useSlot('modal')
+// Get params from a slot route
+const { id } = useParams({ from: '/@modal/users/$id' })
+```
 
-  if (modal.isOpen) {
-    return <button onClick={modal.close}>Close Modal</button>
-  }
+### Inside Slot Components
+
+When inside a slot component, the standard hooks work normally - they reference the current slot route:
+
+```tsx
+// Inside @modal/users.$id.tsx
+function UserModal() {
+  // These work exactly like in regular routes
+  const { user } = Route.useLoaderData()
+  const { tab } = Route.useSearch()
+  const { id } = Route.useParams()
+  const navigate = Route.useNavigate()
 
   return (
-    <button onClick={() => modal.navigate({ to: '/users/$id', params: { id: '123' } })}>
-      Open User Modal
-    </button>
+    <div>
+      <h2>{user.name}</h2>
+      <Route.Link slots={{ modal: null }}>Close</Route.Link>
+    </div>
   )
 }
 ```
 
-### useSlotLoaderData Hook
+### Checking Slot Open State
 
-Access a slot route's loader data from outside the slot:
+To check if a slot is open (from outside the slot):
 
-```ts
-// Access modal's current route loader data
-const userData = useSlotLoaderData('modal', '/users/$id')
+```tsx
+function ModalTrigger() {
+  // Match against the slot's root route
+  const modalMatch = useMatch({ from: '/@modal', shouldThrow: false })
+  const isOpen = !!modalMatch
+
+  if (isOpen) {
+    return <Route.Link slots={{ modal: null }}>Close Modal</Route.Link>
+  }
+
+  return (
+    <Route.Link slots={{ modal: { to: '/users/$id', params: { id: '123' } } }}>
+      Open User Modal
+    </Route.Link>
+  )
+}
 ```
+
+### Route Path Convention for Slots
+
+Slot routes use `/@slotName` prefix in their full path for `useMatch`, `useLoaderData`, etc:
+
+```
+Main route:     /dashboard
+Slot route:     /@modal/users/$id
+Nested slot:    /@modal/@confirm/delete
+Scoped slot:    /dashboard/@activity/recent
+```
+
+This mirrors the URL structure and makes it clear you're referencing a slot route.
 
 ---
 
@@ -1368,13 +1415,18 @@ This is an additive feature with no breaking changes to existing apps.
    <Route.SlotOutlet name="modal" />
    ```
 
-4. **Use the slot route to navigate**
+4. **Navigate to slots using Link or useNavigate**
 
    ```tsx
-   import { modalRoute } from './routeTree.gen'
-   ;<modalRoute.Link to="/users/$id" params={{ id: '123' }}>
+   // Using Route.Link (from is implicit)
+   <Route.Link slots={{ modal: { to: '/users/$id', params: { id: '123' } } }}>
      Open User
-   </modalRoute.Link>
+   </Route.Link>
+
+   // Or with explicit from
+   <Link from="/" slots={{ modal: { to: '/users/$id', params: { id: '123' } } }}>
+     Open User
+   </Link>
    ```
 
 Existing routes, loaders, and components continue to work unchanged.
@@ -1438,15 +1490,13 @@ TanStack Router is the only framework where parallel routes are truly URL-first.
 
 2. **Preloading**: How should `<Link slots={{ modal: {...} }} preload="intent">` work? Should it preload just the slot's route, or also affect main route preloading?
 
-3. **Invalid slot navigation behavior**: What happens when `slotRoute.navigate()` is called but the slot's parent route isn't active? Options: runtime error, no-op with warning, auto-navigate to parent, or type-level prevention. See [detailed discussion](#open-question-handling-invalid-slot-navigation) in the Navigation API section.
+3. **shouldRevalidate**: Should slots participate in the main route's revalidation cycle, or have completely independent revalidation?
 
-4. **shouldRevalidate**: Should slots participate in the main route's revalidation cycle, or have completely independent revalidation?
+4. **Devtools**: How should the devtools visualize parallel slots? Separate trees? Merged view?
 
-5. **Devtools**: How should the devtools visualize parallel slots? Separate trees? Merged view?
+5. **Code splitting**: Should slot route trees be lazy-loadable independently of the routes that render them?
 
-6. **Code splitting**: Should slot route trees be lazy-loadable independently of the routes that render them?
-
-7. **Testing utilities**: What test helpers are needed for testing slot navigation?
+6. **Testing utilities**: What test helpers are needed for testing slot navigation?
 
 ---
 

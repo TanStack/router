@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Example only - this is a conceptual demonstration
 
-import { createSlotRoute, useSlot } from '@tanstack/react-router'
+import { createSlotRoute } from '@tanstack/react-router'
 
 // Confirm discard changes dialog
 export const Route = createSlotRoute({
@@ -10,17 +10,16 @@ export const Route = createSlotRoute({
 })
 
 function DiscardConfirm() {
-  const modal = useSlot('modal')
-  const confirm = useSlot('confirm')
+  const navigate = Route.useNavigate()
 
   const handleDiscard = () => {
-    // Close both the confirm dialog and the modal
-    modal.close()
+    // Close the entire modal (and its nested slots)
+    navigate({ slots: { modal: null } })
   }
 
   const handleCancel = () => {
     // Just close the confirm dialog, keep modal open
-    confirm.close()
+    navigate({ slots: { modal: { slots: { confirm: null } } } })
   }
 
   return (

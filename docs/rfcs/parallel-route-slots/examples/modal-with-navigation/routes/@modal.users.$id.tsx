@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Example only - this is a conceptual demonstration
 
-import { createSlotRoute, Link } from '@tanstack/react-router'
+import { createSlotRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
 // User profile modal - shown when @modal=/users/123
@@ -29,32 +29,32 @@ function UserModal() {
         <h2>{user.name}</h2>
       </header>
 
-      {/* Tab navigation within the modal - context knows we're in @modal */}
+      {/* Tab navigation within the modal - Route.Link has implicit from */}
       <nav className="tabs">
-        <Link
-          to="/users/$id"
-          params={params}
-          search={{ tab: 'profile' }}
+        <Route.Link
+          slots={{
+            modal: { to: '/users/$id', params, search: { tab: 'profile' } },
+          }}
           className={tab === 'profile' ? 'active' : ''}
         >
           Profile
-        </Link>
-        <Link
-          to="/users/$id"
-          params={params}
-          search={{ tab: 'activity' }}
+        </Route.Link>
+        <Route.Link
+          slots={{
+            modal: { to: '/users/$id', params, search: { tab: 'activity' } },
+          }}
           className={tab === 'activity' ? 'active' : ''}
         >
           Activity
-        </Link>
-        <Link
-          to="/users/$id"
-          params={params}
-          search={{ tab: 'settings' }}
+        </Route.Link>
+        <Route.Link
+          slots={{
+            modal: { to: '/users/$id', params, search: { tab: 'settings' } },
+          }}
           className={tab === 'settings' ? 'active' : ''}
         >
           Settings
-        </Link>
+        </Route.Link>
       </nav>
 
       {/* Tab content */}

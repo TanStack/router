@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Example only - this is a conceptual demonstration
 
-import { createSlotRoute, useSlot } from '@tanstack/react-router'
+import { createSlotRoute } from '@tanstack/react-router'
 
 // Settings modal - shown when @modal=/settings
 export const Route = createSlotRoute({
@@ -15,11 +15,15 @@ export const Route = createSlotRoute({
 
 function SettingsModal() {
   const { settings } = Route.useLoaderData()
-  const modal = useSlot('modal')
+  const navigate = Route.useNavigate()
+
+  const handleClose = () => {
+    navigate({ slots: { modal: null } })
+  }
 
   const handleSave = async (formData: FormData) => {
     await saveSettings(formData)
-    modal.close()
+    handleClose()
   }
 
   return (
@@ -50,7 +54,7 @@ function SettingsModal() {
         </label>
 
         <div className="actions">
-          <button type="button" onClick={modal.close}>
+          <button type="button" onClick={handleClose}>
             Cancel
           </button>
           <button type="submit">Save</button>
