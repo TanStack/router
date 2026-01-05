@@ -70,14 +70,16 @@ export const renderRouterToStream = async ({
   }
   stream.pipeTo(writable)
 
-  const responseStream = transformReadableStreamWithRouter(
-    router,
-    readable as unknown as ReadableStream,
-  )
-  const headStream = (responseStream).pipeThrough(
+  const headStream = readable.pipeThrough(
     createHeadTransform(shellStatePromise),
   )
-  return new Response(headStream as any, {
+  // Ensure head/body tags (including the TSR barrier script) are in the stream
+  // before router serialization starts injecting scripts.
+  const responseStream = transformReadableStreamWithRouter(
+    router,
+    headStream as unknown as ReadableStream,
+  )
+  return new Response(responseStream as any, {
     status: router.state.statusCode,
     headers: responseHeaders,
   })
