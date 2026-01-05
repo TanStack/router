@@ -1090,9 +1090,22 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       })
 
       if (transformResult.result === 'no-route-export') {
-        this.logger.warn(
-          `Route file "${node.fullPath}" does not contain any route piece. This is likely a mistake.`,
-        )
+        const fileName = path.basename(node.fullPath)
+        const dirName = path.dirname(node.fullPath)
+        const ignorePrefix = this.config.routeFileIgnorePrefix
+        const ignorePattern = this.config.routeFileIgnorePattern
+        const suggestedFileName = `${ignorePrefix}${fileName}`
+        const suggestedFullPath = path.join(dirName, suggestedFileName)
+
+        let message = `Warning: Route file "${node.fullPath}" does not export a Route. This file will not be included in the route tree.`
+        message += `\n\nIf this file is not intended to be a route, you can exclude it using one of these options:`
+        message += `\n  1. Rename the file to "${suggestedFullPath}" (prefix with "${ignorePrefix}")`
+        message += `\n  2. Use 'routeFileIgnorePattern' in your config to match this file`
+        message += `\n\nCurrent configuration:`
+        message += `\n  routeFileIgnorePrefix: "${ignorePrefix}"`
+        message += `\n  routeFileIgnorePattern: ${ignorePattern ? `"${ignorePattern}"` : 'undefined'}`
+
+        this.logger.warn(message)
         return null
       }
       if (transformResult.result === 'error') {
@@ -1357,7 +1370,24 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     prefixMap: RoutePrefixMap,
     config?: Config,
   ) {
-    const parentRoute = hasParentRoute(prefixMap, node, node.routePath)
+    let parentRoute = hasParentRoute(prefixMap, node, node.routePath)
+
+    // Fallback: check acc.routeNodesByPath for parents not in prefixMap
+    // This handles virtual routes created from lazy-only files that weren't
+    // in the initial prefixMap build
+    if (!parentRoute && node.routePath) {
+      let searchPath = node.routePath
+      while (searchPath.length > 0) {
+        const lastSlash = searchPath.lastIndexOf('/')
+        if (lastSlash <= 0) break
+        searchPath = searchPath.substring(0, lastSlash)
+        const candidate = acc.routeNodesByPath.get(searchPath)
+        if (candidate && candidate.routePath !== node.routePath) {
+          parentRoute = candidate
+          break
+        }
+      }
+    }
 
     if (parentRoute) node.parent = parentRoute
 
@@ -1489,7 +1519,11 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     }
 
     acc.routeNodes.push(node)
-    if (node.routePath && !node.isVirtual) {
+    if (node.routePath) {
+      // Always register routes by path so child routes can find parents.
+      // Virtual routes (created from lazy-only files) also need to be registered
+      // so that index routes like path.index.lazy.tsx can find their parent path.lazy.tsx.
+      // If a non-virtual route is later processed for the same path, it will overwrite.
       acc.routeNodesByPath.set(node.routePath, node)
     }
   }
