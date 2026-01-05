@@ -10,4 +10,4 @@ See https://tanstack.com/router/latest/docs/framework/react/routing/file-based-r
 npm install -D @tanstack/router-plugin
 ```
 
-See https://tanstack.com/router/latest/docs/framework/react/routing/installation-with-router-cli for usage instructions.
+See https://tanstack.com/router/latest/docs/framework/react/routing/installation/with-router-cli for usage instructions.

@@ -12,7 +12,7 @@ function setupConfig(
   folder: string,
   inlineConfig: Partial<Omit<Config, 'routesDirectory'>> = {},
 ) {
-  const { generatedRouteTree = '/routeTree.gen.ts', ...rest } = inlineConfig
+  const { generatedRouteTree = `/routeTree.gen.ts`, ...rest } = inlineConfig
   const dir = makeFolderDir(folder)
 
   const config = getConfig({
@@ -30,7 +30,7 @@ type TestCases = Array<{
 }>
 
 describe('deny-route-group-config throws', () => {
-  it.each([
+  const testCases = [
     {
       folder: 'flat-flat',
       expectedError:
@@ -51,7 +51,9 @@ describe('deny-route-group-config throws', () => {
       expectedError:
         'A route configuration for a route group was found at `nested/(group).tsx`. This is not supported. Did you mean to use a layout/pathless route instead?',
     },
-  ] satisfies TestCases)(
+  ]
+
+  it.each(testCases)(
     'should throw an error for the folder: $folder',
     async ({ folder, expectedError }) => {
       const config = setupConfig(folder)

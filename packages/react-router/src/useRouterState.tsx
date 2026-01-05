@@ -28,6 +28,18 @@ export type UseRouterStateResult<
   TSelected,
 > = unknown extends TSelected ? RouterState<TRouter['routeTree']> : TSelected
 
+/**
+ * Subscribe to the router's state store with optional selection and
+ * structural sharing for render optimization.
+ *
+ * Options:
+ * - `select`: Project the full router state to a derived slice
+ * - `structuralSharing`: Replace-equal semantics for stable references
+ * - `router`: Read state from a specific router instance instead of context
+ *
+ * @returns The selected router state (or the full state by default).
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useRouterStateHook
+ */
 export function useRouterState<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,

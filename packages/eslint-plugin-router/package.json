@@ -1,12 +1,12 @@
 {
   "name": "@tanstack/eslint-plugin-router",
-  "version": "1.131.2",
+  "version": "1.141.0",
   "description": "ESLint plugin for TanStack Router",
   "author": "Manuel Schiller",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TanStack/router.git",
+    "url": "git+https://github.com/TanStack/router.git",
     "directory": "packages/eslint-plugin-router"
   },
   "homepage": "https://tanstack.com/router",

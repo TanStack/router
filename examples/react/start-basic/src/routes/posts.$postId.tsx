@@ -22,7 +22,7 @@ function PostComponent() {
       <Link
         to="/posts/$postId/deep"
         params={{
-          postId: post.id,
+          postId: String(post.id),
         }}
         activeProps={{ className: 'text-black font-bold' }}
         className="inline-block py-1 text-blue-800 hover:text-blue-600"

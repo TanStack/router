@@ -25,8 +25,20 @@ await publish({
       packageDir: 'packages/react-router',
     },
     {
+      name: '@tanstack/vue-router',
+      packageDir: 'packages/vue-router',
+    },
+    {
+      name: '@tanstack/solid-router-ssr-query',
+      packageDir: 'packages/solid-router-ssr-query',
+    },
+    {
       name: '@tanstack/react-router-ssr-query',
       packageDir: 'packages/react-router-ssr-query',
+    },
+    {
+      name: '@tanstack/vue-router-ssr-query',
+      packageDir: 'packages/vue-router-ssr-query',
     },
     {
       name: '@tanstack/router-ssr-query-core',
@@ -57,6 +69,10 @@ await publish({
       packageDir: 'packages/react-router-devtools',
     },
     {
+      name: '@tanstack/vue-router-devtools',
+      packageDir: 'packages/vue-router-devtools',
+    },
+    {
       name: '@tanstack/router-devtools-core',
       packageDir: 'packages/router-devtools-core',
     },
@@ -81,14 +97,6 @@ await publish({
       packageDir: 'packages/router-vite-plugin',
     },
     {
-      name: '@tanstack/directive-functions-plugin',
-      packageDir: 'packages/directive-functions-plugin',
-    },
-    {
-      name: '@tanstack/server-functions-plugin',
-      packageDir: 'packages/server-functions-plugin',
-    },
-    {
       name: '@tanstack/eslint-plugin-router',
       packageDir: 'packages/eslint-plugin-router',
     },
@@ -97,16 +105,24 @@ await publish({
       packageDir: 'packages/solid-start',
     },
     {
-      name: '@tanstack/solid-start-plugin',
-      packageDir: 'packages/solid-start-plugin',
-    },
-    {
       name: '@tanstack/solid-start-client',
       packageDir: 'packages/solid-start-client',
     },
     {
       name: '@tanstack/solid-start-server',
       packageDir: 'packages/solid-start-server',
+    },
+    {
+      name: '@tanstack/vue-start',
+      packageDir: 'packages/vue-start',
+    },
+    {
+      name: '@tanstack/vue-start-client',
+      packageDir: 'packages/vue-start-client',
+    },
+    {
+      name: '@tanstack/vue-start-server',
+      packageDir: 'packages/vue-start-server',
     },
     {
       name: '@tanstack/start-client-core',
@@ -121,12 +137,12 @@ await publish({
       packageDir: 'packages/start-storage-context',
     },
     {
-      name: '@tanstack/react-start',
-      packageDir: 'packages/react-start',
+      name: '@tanstack/start-fn-stubs',
+      packageDir: 'packages/start-fn-stubs',
     },
     {
-      name: '@tanstack/react-start-plugin',
-      packageDir: 'packages/react-start-plugin',
+      name: '@tanstack/react-start',
+      packageDir: 'packages/react-start',
     },
     {
       name: '@tanstack/react-start-client',
@@ -137,24 +153,20 @@ await publish({
       packageDir: 'packages/react-start-server',
     },
     {
-      name: '@tanstack/start-server-functions-fetcher',
-      packageDir: 'packages/start-server-functions-fetcher',
-    },
-    {
-      name: '@tanstack/start-server-functions-client',
-      packageDir: 'packages/start-server-functions-client',
-    },
-    {
-      name: '@tanstack/start-server-functions-server',
-      packageDir: 'packages/start-server-functions-server',
-    },
-    {
       name: '@tanstack/start-plugin-core',
       packageDir: 'packages/start-plugin-core',
     },
     {
+      name: '@tanstack/start-static-server-functions',
+      packageDir: 'packages/start-static-server-functions',
+    },
+    {
       name: '@tanstack/router-utils',
       packageDir: 'packages/router-utils',
+    },
+    {
+      name: '@tanstack/nitro-v2-vite-plugin',
+      packageDir: 'packages/nitro-v2-vite-plugin',
     },
   ],
   branchConfigs: {

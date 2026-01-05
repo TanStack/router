@@ -45,7 +45,7 @@ function RootComponent() {
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  loader: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise<any>((r) => setTimeout(r, 500)),
   component: IndexComponent,
 })
 
@@ -74,7 +74,7 @@ function IndexComponent() {
 const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/about',
-  loader: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise<any>((r) => setTimeout(r, 500)),
   component: AboutComponent,
 })
 
@@ -99,7 +99,7 @@ function AboutComponent() {
 const byElementRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/by-element',
-  loader: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise<any>((r) => setTimeout(r, 500)),
   component: ByElementComponent,
 })
 
@@ -114,10 +114,10 @@ function ByElementComponent() {
   })
 
   // Let's use TanStack Virtual to virtualize some content!
-  let virtualizerParentRef: any = null
+  let virtualizerParentRef: HTMLDivElement | undefined
   const virtualizer = createVirtualizer({
     count: 10000,
-    getScrollElement: () => virtualizerParentRef?.current,
+    getScrollElement: () => virtualizerParentRef ?? null,
     estimateSize: () => 100,
     // We pass the scrollY from the scroll restoration entry to the virtualizer
     // as the initial offset
@@ -194,7 +194,7 @@ function ByElementComponent() {
 const fooRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/foo',
-  loader: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise<any>((r) => setTimeout(r, 500)),
   component: FooComponent,
 })
 
@@ -219,7 +219,7 @@ function FooComponent() {
 const barRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/bar',
-  loader: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise<any>((r) => setTimeout(r, 500)),
   component: BarComponent,
 })
 

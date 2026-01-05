@@ -10,18 +10,17 @@
     "start": "NODE_ENV=production node dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.131.49",
-    "@tanstack/react-router-devtools": "^1.131.49",
-    "@tanstack/router-plugin": "^1.131.49",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-router": "^1.145.6",
+    "@tanstack/react-router-devtools": "^1.145.6",
+    "@tanstack/router-plugin": "^1.145.6",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
-    "autoprefixer": "^10.4.20",
     "express": "^4.21.2",
-    "postcss": "^8.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.1.18",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -30,6 +29,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "tsx": "^4.20.3",
-    "vite": "^6.3.5"
+    "vite": "^7.1.7"
   }
 }

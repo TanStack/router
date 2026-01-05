@@ -1,11 +1,31 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { AnyRouter } from '@tanstack/router-core'
+import type { Awaitable, RegisteredRouter } from '@tanstack/router-core'
 
 export interface StartStorageContext {
-  router: AnyRouter
+  getRouter: () => Awaitable<RegisteredRouter>
+  request: Request
+  // TODO type this properly
+  startOptions: /* AnyStartInstanceOptions*/ any
+
+  contextAfterGlobalMiddlewares: any
+  // Track middlewares that have already executed in the request phase
+  // to prevent duplicate execution
+  executedRequestMiddlewares: Set<any>
 }
 
-const startStorage = new AsyncLocalStorage<StartStorageContext>()
+// Use a global symbol to ensure the same AsyncLocalStorage instance is shared
+// across different bundles that may each bundle this module.
+const GLOBAL_STORAGE_KEY = Symbol.for('tanstack-start:start-storage-context')
+
+const globalObj = globalThis as typeof globalThis & {
+  [GLOBAL_STORAGE_KEY]?: AsyncLocalStorage<StartStorageContext>
+}
+
+if (!globalObj[GLOBAL_STORAGE_KEY]) {
+  globalObj[GLOBAL_STORAGE_KEY] = new AsyncLocalStorage<StartStorageContext>()
+}
+
+const startStorage = globalObj[GLOBAL_STORAGE_KEY]
 
 export async function runWithStartContext<T>(
   context: StartStorageContext,

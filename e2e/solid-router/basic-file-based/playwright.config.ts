@@ -8,6 +8,10 @@ import packageJson from './package.json' with { type: 'json' }
 const PORT = await getTestServerPort(packageJson.name)
 const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
+const command = `pnpm build && pnpm preview --port ${PORT}`
+
+console.info('Running with mode: ', process.env.MODE || 'default')
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -26,10 +30,18 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `VITE_NODE_ENV="test" VITE_EXTERNAL_PORT=${EXTERNAL_PORT} VITE_SERVER_PORT=${PORT} pnpm build && VITE_NODE_ENV="test" VITE_EXTERNAL_PORT=${EXTERNAL_PORT} VITE_SERVER_PORT=${PORT} pnpm serve --port ${PORT}`,
+    command,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
+    env: {
+      MODE: process.env.MODE || '',
+      VITE_MODE: process.env.MODE || '',
+      VITE_NODE_ENV: 'test',
+      VITE_EXTERNAL_PORT: String(EXTERNAL_PORT),
+      VITE_SERVER_PORT: String(PORT),
+      PORT: String(PORT),
+    },
   },
 
   projects: [

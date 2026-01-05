@@ -1,241 +1,310 @@
-import { isNotFound } from '@tanstack/router-core'
+import {
+  createRawStreamRPCPlugin,
+  isNotFound,
+  isRedirect,
+} from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
-import { startSerializer } from '@tanstack/start-client-core'
-import { getEvent, getResponseStatus } from './h3'
-import { VIRTUAL_MODULES } from './virtual-modules'
-import { loadVirtualModule } from './loadVirtualModule'
+import {
+  TSS_FORMDATA_CONTEXT,
+  X_TSS_RAW_RESPONSE,
+  X_TSS_SERIALIZED,
+  getDefaultSerovalPlugins,
+  safeObjectMerge,
+} from '@tanstack/start-client-core'
+import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
+import { getResponse } from './request-response'
+import { getServerFnById } from './getServerFnById'
+import {
+  TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+  createMultiplexedStream,
+} from './frame-protocol'
+import type { Plugin as SerovalPlugin } from 'seroval'
 
-function sanitizeBase(base: string | undefined) {
-  if (!base) {
-    throw new Error(
-      '🚨 process.env.TSS_SERVER_FN_BASE is required in start/server-handler/index',
-    )
-  }
+// Cache serovalPlugins at module level to avoid repeated calls
+let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined = undefined
 
-  return base.replace(/^\/|\/$/g, '')
-}
+// Cache TextEncoder for NDJSON serialization
+const textEncoder = new TextEncoder()
 
-async function revive(root: any, reviver?: (key: string, value: any) => any) {
-  async function reviveNode(holder: any, key: string) {
-    const value = holder[key]
+// Known FormData 'Content-Type' header values - module-level constant
+const FORM_DATA_CONTENT_TYPES = [
+  'multipart/form-data',
+  'application/x-www-form-urlencoded',
+]
 
-    if (value && typeof value === 'object') {
-      await Promise.all(Object.keys(value).map((k) => reviveNode(value, k)))
-    }
+// Maximum payload size for GET requests (1MB)
+const MAX_PAYLOAD_SIZE = 1_000_000
 
-    if (reviver) {
-      holder[key] = await reviver(key, holder[key])
-    }
-  }
-
-  const holder = { '': root }
-  await reviveNode(holder, '')
-  return holder['']
-}
-
-async function reviveServerFns(key: string, value: any) {
-  if (value && value.__serverFn === true && value.functionId) {
-    const serverFn = await getServerFnById(value.functionId)
-    return async (opts: any, signal: any): Promise<any> => {
-      const result = await serverFn(opts ?? {}, signal)
-      return result.result
-    }
-  }
-  return value
-}
-
-async function getServerFnById(serverFnId: string) {
-  const { default: serverFnManifest } = await loadVirtualModule(
-    VIRTUAL_MODULES.serverFnManifest,
-  )
-
-  const serverFnInfo = serverFnManifest[serverFnId]
-
-  if (!serverFnInfo) {
-    console.info('serverFnManifest', serverFnManifest)
-    throw new Error('Server function info not found for ' + serverFnId)
-  }
-
-  const fnModule = await serverFnInfo.importer()
-
-  if (!fnModule) {
-    console.info('serverFnInfo', serverFnInfo)
-    throw new Error('Server function module not resolved for ' + serverFnId)
-  }
-
-  const action = fnModule[serverFnInfo.functionName]
-
-  if (!action) {
-    console.info('serverFnInfo', serverFnInfo)
-    console.info('fnModule', fnModule)
-    throw new Error(
-      `Server function module export not resolved for serverFn ID: ${serverFnId}`,
-    )
-  }
-  return action
-}
-
-async function parsePayload(payload: any) {
-  const parsedPayload = startSerializer.parse(payload)
-  await revive(parsedPayload, reviveServerFns)
-  return parsedPayload
-}
-
-export const handleServerAction = async ({ request }: { request: Request }) => {
+export const handleServerAction = async ({
+  request,
+  context,
+  serverFnId,
+}: {
+  request: Request
+  context: any
+  serverFnId: string
+}) => {
   const controller = new AbortController()
   const signal = controller.signal
   const abort = () => controller.abort()
   request.signal.addEventListener('abort', abort)
 
   const method = request.method
-  const url = new URL(request.url, 'http://localhost:3000')
-  // extract the serverFnId from the url as host/_serverFn/:serverFnId
-  // Define a regex to match the path and extract the :thing part
-  const regex = new RegExp(
-    `${sanitizeBase(process.env.TSS_SERVER_FN_BASE)}/([^/?#]+)`,
-  )
+  const methodLower = method.toLowerCase()
+  const url = new URL(request.url)
 
-  // Execute the regex
-  const match = url.pathname.match(regex)
-  const serverFnId = match ? match[1] : null
-  const search = Object.fromEntries(url.searchParams.entries()) as {
-    payload?: any
-    createServerFn?: boolean
+  const action = await getServerFnById(serverFnId, { fromClient: true })
+
+  const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
+
+  // Initialize serovalPlugins lazily (cached at module level)
+  if (!serovalPlugins) {
+    serovalPlugins = getDefaultSerovalPlugins()
   }
 
-  const isCreateServerFn = 'createServerFn' in search
-  const isRaw = 'raw' in search
+  const contentType = request.headers.get('Content-Type')
 
-  if (typeof serverFnId !== 'string') {
-    throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
+  function parsePayload(payload: any) {
+    const parsedPayload = fromJSON(payload, { plugins: serovalPlugins })
+    return parsedPayload as any
   }
-
-  const action = await getServerFnById(serverFnId)
-
-  // Known FormData 'Content-Type' header values
-  const formDataContentTypes = [
-    'multipart/form-data',
-    'application/x-www-form-urlencoded',
-  ]
 
   const response = await (async () => {
     try {
-      let result = await (async () => {
+      let res = await (async () => {
         // FormData
         if (
-          request.headers.get('Content-Type') &&
-          formDataContentTypes.some((type) =>
-            request.headers.get('Content-Type')?.includes(type),
+          FORM_DATA_CONTENT_TYPES.some(
+            (type) => contentType && contentType.includes(type),
           )
         ) {
           // We don't support GET requests with FormData payloads... that seems impossible
           invariant(
-            method.toLowerCase() !== 'get',
+            methodLower !== 'get',
             'GET requests with FormData payloads are not supported',
           )
+          const formData = await request.formData()
+          const serializedContext = formData.get(TSS_FORMDATA_CONTEXT)
+          formData.delete(TSS_FORMDATA_CONTEXT)
 
-          return await action(await request.formData(), signal)
+          const params = {
+            context,
+            data: formData,
+          }
+          if (typeof serializedContext === 'string') {
+            try {
+              const parsedContext = JSON.parse(serializedContext)
+              const deserializedContext = fromJSON(parsedContext, {
+                plugins: serovalPlugins,
+              })
+              if (
+                typeof deserializedContext === 'object' &&
+                deserializedContext
+              ) {
+                params.context = safeObjectMerge(
+                  context,
+                  deserializedContext as Record<string, unknown>,
+                )
+              }
+            } catch (e) {
+              // Log warning for debugging but don't expose to client
+              if (process.env.NODE_ENV === 'development') {
+                console.warn('Failed to parse FormData context:', e)
+              }
+            }
+          }
+
+          return await action(params, signal)
         }
 
         // Get requests use the query string
-        if (method.toLowerCase() === 'get') {
-          // By default the payload is the search params
-          let payload: any = search
-
-          // If this GET request was created by createServerFn,
-          // then the payload will be on the payload param
-          if (isCreateServerFn) {
-            payload = search.payload
+        if (methodLower === 'get') {
+          // Get payload directly from searchParams
+          const payloadParam = url.searchParams.get('payload')
+          // Reject oversized payloads to prevent DoS
+          if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
+            throw new Error('Payload too large')
           }
-
           // If there's a payload, we should try to parse it
-          payload = payload ? await parsePayload(payload) : payload
-
+          const payload: any = payloadParam
+            ? parsePayload(JSON.parse(payloadParam))
+            : {}
+          payload.context = safeObjectMerge(context, payload.context)
           // Send it through!
           return await action(payload, signal)
         }
 
-        // This must be a POST request, likely JSON???
-        const jsonPayloadAsString = await request.text()
-
-        // We should probably try to deserialize the payload
-        // as JSON, but we'll just pass it through for now.
-        const payload = await parsePayload(jsonPayloadAsString)
-
-        // If this POST request was created by createServerFn,
-        // it's payload will be the only argument
-        if (isCreateServerFn) {
-          return await action(payload, signal)
+        if (methodLower !== 'post') {
+          throw new Error('expected POST method')
         }
 
-        // Otherwise, we'll spread the payload. Need to
-        // support `use server` functions that take multiple
-        // arguments.
-        return await action(...(payload as any), signal)
+        let jsonPayload
+        if (contentType?.includes('application/json')) {
+          jsonPayload = await request.json()
+        }
+
+        const payload = jsonPayload ? parsePayload(jsonPayload) : {}
+        payload.context = safeObjectMerge(payload.context, context)
+        return await action(payload, signal)
       })()
 
-      // Any time we get a Response back, we should just
-      // return it immediately.
-      if (result.result instanceof Response) {
-        return result.result
+      const unwrapped = res.result || res.error
+
+      if (isNotFound(res)) {
+        res = isNotFoundResponse(res)
       }
 
-      // If this is a non createServerFn request, we need to
-      // pull out the result from the result object
-      if (!isCreateServerFn) {
-        result = result.result
+      if (!isServerFn) {
+        return unwrapped
+      }
 
-        // The result might again be a response,
-        // and if it is, return it.
-        if (result instanceof Response) {
-          return result
+      if (unwrapped instanceof Response) {
+        if (isRedirect(unwrapped)) {
+          return unwrapped
         }
+        unwrapped.headers.set(X_TSS_RAW_RESPONSE, 'true')
+        return unwrapped
       }
 
-      // if (!search.createServerFn) {
-      //   result = result.result
-      // }
+      return serializeResult(res)
 
-      // else if (
-      //   isPlainObject(result) &&
-      //   'result' in result &&
-      //   result.result instanceof Response
-      // ) {
-      //   return result.result
-      // }
+      function serializeResult(res: unknown): Response {
+        let nonStreamingBody: any = undefined
 
-      // TODO: RSCs Where are we getting this package?
-      // if (isValidElement(result)) {
-      //   const { renderToPipeableStream } = await import(
-      //     // @ts-expect-error
-      //     'react-server-dom/server'
-      //   )
+        const alsResponse = getResponse()
+        if (res !== undefined) {
+          // Collect raw streams encountered during serialization
+          const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
+          const rawStreamPlugin = createRawStreamRPCPlugin(
+            (id: number, stream: ReadableStream<Uint8Array>) => {
+              rawStreams.set(id, stream)
+            },
+          )
 
-      //   const pipeableStream = renderToPipeableStream(result)
+          // Build plugins with RawStreamRPCPlugin first (before default SSR plugin)
+          const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
 
-      //   setHeaders(event, {
-      //     'Content-Type': 'text/x-component',
-      //   } as any)
+          // first run without the stream in case `result` does not need streaming
+          let done = false as boolean
+          const callbacks: {
+            onParse: (value: any) => void
+            onDone: () => void
+            onError: (error: any) => void
+          } = {
+            onParse: (value) => {
+              nonStreamingBody = value
+            },
+            onDone: () => {
+              done = true
+            },
+            onError: (error) => {
+              throw error
+            },
+          }
+          toCrossJSONStream(res, {
+            refs: new Map(),
+            plugins,
+            onParse(value) {
+              callbacks.onParse(value)
+            },
+            onDone() {
+              callbacks.onDone()
+            },
+            onError: (error) => {
+              callbacks.onError(error)
+            },
+          })
 
-      //   sendStream(event, response)
-      //   event._handled = true
+          // If no raw streams and done synchronously, return simple JSON
+          if (done && rawStreams.size === 0) {
+            return new Response(
+              nonStreamingBody ? JSON.stringify(nonStreamingBody) : undefined,
+              {
+                status: alsResponse.status,
+                statusText: alsResponse.statusText,
+                headers: {
+                  'Content-Type': 'application/json',
+                  [X_TSS_SERIALIZED]: 'true',
+                },
+              },
+            )
+          }
 
-      //   return new Response(null, { status: 200 })
-      // }
+          // If we have raw streams, use framed protocol
+          if (rawStreams.size > 0) {
+            // Create a stream of JSON chunks (NDJSON style)
+            const jsonStream = new ReadableStream<string>({
+              start(controller) {
+                callbacks.onParse = (value) => {
+                  controller.enqueue(JSON.stringify(value) + '\n')
+                }
+                callbacks.onDone = () => {
+                  try {
+                    controller.close()
+                  } catch {
+                    // Already closed
+                  }
+                }
+                callbacks.onError = (error) => controller.error(error)
+                // Emit initial body if we have one
+                if (nonStreamingBody !== undefined) {
+                  callbacks.onParse(nonStreamingBody)
+                }
+              },
+            })
 
-      if (isNotFound(result)) {
-        return isNotFoundResponse(result)
+            // Create multiplexed stream with JSON and raw streams
+            const multiplexedStream = createMultiplexedStream(
+              jsonStream,
+              rawStreams,
+            )
+
+            return new Response(multiplexedStream, {
+              status: alsResponse.status,
+              statusText: alsResponse.statusText,
+              headers: {
+                'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+                [X_TSS_SERIALIZED]: 'true',
+              },
+            })
+          }
+
+          // No raw streams but not done yet - use standard NDJSON streaming
+          const stream = new ReadableStream({
+            start(controller) {
+              callbacks.onParse = (value) =>
+                controller.enqueue(
+                  textEncoder.encode(JSON.stringify(value) + '\n'),
+                )
+              callbacks.onDone = () => {
+                try {
+                  controller.close()
+                } catch (error) {
+                  controller.error(error)
+                }
+              }
+              callbacks.onError = (error) => controller.error(error)
+              // stream initial body
+              if (nonStreamingBody !== undefined) {
+                callbacks.onParse(nonStreamingBody)
+              }
+            },
+          })
+          return new Response(stream, {
+            status: alsResponse.status,
+            statusText: alsResponse.statusText,
+            headers: {
+              'Content-Type': 'application/x-ndjson',
+              [X_TSS_SERIALIZED]: 'true',
+            },
+          })
+        }
+
+        return new Response(undefined, {
+          status: alsResponse.status,
+          statusText: alsResponse.statusText,
+        })
       }
-
-      return new Response(
-        result !== undefined ? startSerializer.stringify(result) : undefined,
-        {
-          status: getResponseStatus(getEvent()),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      )
     } catch (error: any) {
       if (error instanceof Response) {
         return error
@@ -263,20 +332,27 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
       console.error(error)
       console.info()
 
-      return new Response(startSerializer.stringify(error), {
-        status: 500,
+      const serializedError = JSON.stringify(
+        await Promise.resolve(
+          toCrossJSONAsync(error, {
+            refs: new Map(),
+            plugins: serovalPlugins,
+          }),
+        ),
+      )
+      const response = getResponse()
+      return new Response(serializedError, {
+        status: response.status ?? 500,
+        statusText: response.statusText,
         headers: {
           'Content-Type': 'application/json',
+          [X_TSS_SERIALIZED]: 'true',
         },
       })
     }
   })()
 
   request.signal.removeEventListener('abort', abort)
-
-  if (isRaw) {
-    return response
-  }
 
   return response
 }
@@ -285,7 +361,7 @@ function isNotFoundResponse(error: any) {
   const { headers, ...rest } = error
 
   return new Response(JSON.stringify(rest), {
-    status: 200,
+    status: 404,
     headers: {
       'Content-Type': 'application/json',
       ...(headers || {}),

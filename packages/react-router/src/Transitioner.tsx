@@ -52,9 +52,12 @@ export function Transitioner() {
       _includeValidateSearch: true,
     })
 
+    // Check if the current URL matches the canonical form.
+    // Compare publicHref (browser-facing URL) for consistency with
+    // the server-side redirect check in router.beforeLoad.
     if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
+      trimPathRight(router.latestLocation.publicHref) !==
+      trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
@@ -108,20 +111,22 @@ export function Transitioner() {
   }, [isPagePending, previousIsPagePending, router])
 
   useLayoutEffect(() => {
-    // The router was pending and now it's not
     if (previousIsAnyPending && !isAnyPending) {
+      const changeInfo = getLocationChangeInfo(router.state)
       router.emit({
         type: 'onResolved',
-        ...getLocationChangeInfo(router.state),
+        ...changeInfo,
       })
 
-      router.__store.setState((s) => ({
+      router.__store.setState((s: typeof router.state) => ({
         ...s,
         status: 'idle',
         resolvedLocation: s.location,
       }))
 
-      handleHashScroll(router)
+      if (changeInfo.hrefChanged) {
+        handleHashScroll(router)
+      }
     }
   }, [isAnyPending, previousIsAnyPending, router])
 

@@ -210,6 +210,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
           id: match.id,
           status: match.status,
           error: match.error,
+          invalid: match.invalid,
           _forcePending: match._forcePending,
           _displayPending: match._displayPending,
         },
@@ -306,6 +307,12 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   return out
 })
 
+/**
+ * Render the next child match in the route tree. Typically used inside
+ * a route component to render nested routes.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/outletComponent
+ */
 export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()
   const matchId = React.useContext(matchContext)
@@ -349,7 +356,7 @@ export const Outlet = React.memo(function OutletImpl() {
 
   const nextMatch = <Match matchId={childMatchId} />
 
-  if (matchId === rootRouteId) {
+  if (routeId === rootRouteId) {
     return (
       <React.Suspense fallback={pendingElement}>{nextMatch}</React.Suspense>
     )

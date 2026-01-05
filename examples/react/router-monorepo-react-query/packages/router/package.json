@@ -8,10 +8,10 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@tanstack/history": "^1.131.2",
-    "@tanstack/react-query": "^5.66.0",
-    "@tanstack/react-router": "^1.131.49",
-    "@tanstack/router-plugin": "^1.131.49",
+    "@tanstack/history": "^1.141.0",
+    "@tanstack/react-query": "^5.90.0",
+    "@tanstack/react-router": "^1.145.6",
+    "@tanstack/router-plugin": "^1.145.6",
     "@router-mono-react-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
     "zod": "^3.24.2",
@@ -23,7 +23,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.3.5",
-    "vite-plugin-dts": "^4.5.0"
+    "vite": "^7.1.7",
+    "vite-plugin-dts": "^4.5.4"
   }
 }

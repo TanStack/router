@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { NotFound } from 'src/components/NotFound'
 import { UserErrorComponent } from 'src/components/UserError'
+import type { User } from '../utils/users'
 
 export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
@@ -12,7 +13,7 @@ export const Route = createFileRoute('/users/$userId')({
 
       const data = await res.json()
 
-      return data
+      return data as User
     } catch {
       throw new Error('Failed to fetch user')
     }

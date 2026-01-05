@@ -2,6 +2,7 @@ import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import {
   determineInitialRoutePath,
+  hasEscapedLeadingUnderscore,
   removeExt,
   replaceBackslash,
   routePathToVariable,
@@ -17,7 +18,7 @@ import type {
 import type { FsRouteType, GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 
-const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
+const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx|vue)/
 
 const virtualConfigFileRegExp = /__virtual\.[mc]?[jt]s$/
 export function isVirtualConfigFile(fileName: string): boolean {
@@ -113,6 +114,10 @@ export async function getRouteNodes(
           `${dir}/${removeExt(node.filePath)}`,
         )
         node.routePath = routePath
+        // Keep originalRoutePath aligned with routePath for escape detection
+        if (node.originalRoutePath) {
+          node.originalRoutePath = `/${dir}${node.originalRoutePath}`
+        }
         node.filePath = filePath
       })
 
@@ -128,13 +133,23 @@ export async function getRouteNodes(
 
         if (dirent.isDirectory()) {
           await recurse(relativePath)
-        } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
+        } else if (fullPath.match(/\.(tsx|ts|jsx|js|vue)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
-          let routePath = determineInitialRoutePath(filePathNoExt)
+          const {
+            routePath: initialRoutePath,
+            originalRoutePath: initialOriginalRoutePath,
+          } = determineInitialRoutePath(filePathNoExt)
+
+          let routePath = initialRoutePath
+          let originalRoutePath = initialOriginalRoutePath
 
           if (routeFilePrefix) {
             routePath = routePath.replaceAll(routeFilePrefix, '')
+            originalRoutePath = originalRoutePath.replaceAll(
+              routeFilePrefix,
+              '',
+            )
           }
 
           if (disallowedRouteGroupConfiguration.test(dirent.name)) {
@@ -143,48 +158,111 @@ export async function getRouteNodes(
             throw new Error(errorMessage)
           }
 
-          const meta = getRouteMeta(routePath, config)
+          const meta = getRouteMeta(routePath, originalRoutePath, config)
           const variableName = meta.variableName
           let routeType: FsRouteType = meta.fsRouteType
 
           if (routeType === 'lazy') {
             routePath = routePath.replace(/\/lazy$/, '')
+            originalRoutePath = originalRoutePath.replace(/\/lazy$/, '')
           }
 
           // this check needs to happen after the lazy route has been cleaned up
           // since the routePath is used to determine if a route is pathless
-          if (isValidPathlessLayoutRoute(routePath, routeType, config)) {
+          if (
+            isValidPathlessLayoutRoute(
+              routePath,
+              originalRoutePath,
+              routeType,
+              config,
+            )
+          ) {
             routeType = 'pathless_layout'
           }
 
-          ;(
-            [
-              ['component', 'component'],
-              ['errorComponent', 'errorComponent'],
-              ['pendingComponent', 'pendingComponent'],
-              ['loader', 'loader'],
-            ] satisfies Array<[FsRouteType, string]>
-          ).forEach(([matcher, type]) => {
-            if (routeType === matcher) {
-              logger.warn(
-                `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
-              )
-            }
-          })
-
-          routePath = routePath.replace(
-            new RegExp(
-              `/(component|errorComponent|pendingComponent|loader|${config.routeToken}|lazy)$`,
-            ),
-            '',
-          )
-
-          if (routePath === config.indexToken) {
-            routePath = '/'
+          // Only show deprecation warning for .tsx/.ts files, not .vue files
+          // Vue files using .component.vue is the Vue-native way
+          const isVueFile = filePath.endsWith('.vue')
+          if (!isVueFile) {
+            ;(
+              [
+                ['component', 'component'],
+                ['errorComponent', 'errorComponent'],
+                ['notFoundComponent', 'notFoundComponent'],
+                ['pendingComponent', 'pendingComponent'],
+                ['loader', 'loader'],
+              ] satisfies Array<[FsRouteType, string]>
+            ).forEach(([matcher, type]) => {
+              if (routeType === matcher) {
+                logger.warn(
+                  `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
+                )
+              }
+            })
           }
 
-          routePath =
-            routePath.replace(new RegExp(`/${config.indexToken}$`), '/') || '/'
+          // Get the last segment of originalRoutePath to check for escaping
+          const originalSegments = originalRoutePath.split('/').filter(Boolean)
+          const lastOriginalSegmentForSuffix =
+            originalSegments[originalSegments.length - 1] || ''
+
+          // List of special suffixes that can be escaped
+          const specialSuffixes = [
+            'component',
+            'errorComponent',
+            'notFoundComponent',
+            'pendingComponent',
+            'loader',
+            config.routeToken,
+            'lazy',
+          ]
+
+          // Only strip the suffix if it wasn't escaped (not wrapped in brackets)
+          const suffixToStrip = specialSuffixes.find((suffix) => {
+            const endsWithSuffix = routePath.endsWith(`/${suffix}`)
+            const isEscaped = lastOriginalSegmentForSuffix === `[${suffix}]`
+            return endsWithSuffix && !isEscaped
+          })
+
+          if (suffixToStrip) {
+            routePath = routePath.replace(new RegExp(`/${suffixToStrip}$`), '')
+            originalRoutePath = originalRoutePath.replace(
+              new RegExp(`/${suffixToStrip}$`),
+              '',
+            )
+          }
+
+          // Check if the index token should be treated specially or as a literal path
+          // If it's escaped (wrapped in brackets in originalRoutePath), it should be literal
+          const lastOriginalSegment =
+            originalRoutePath.split('/').filter(Boolean).pop() || ''
+          const isIndexEscaped =
+            lastOriginalSegment === `[${config.indexToken}]`
+
+          if (!isIndexEscaped) {
+            if (routePath === config.indexToken) {
+              routePath = '/'
+            }
+
+            if (originalRoutePath === config.indexToken) {
+              originalRoutePath = '/'
+            }
+
+            // For layout routes, don't use '/' fallback - an empty path means
+            // "layout for the parent path" which is important for physical() mounts
+            // where route.tsx at root should have empty path, not '/'
+            const isLayoutRoute = routeType === 'layout'
+
+            routePath =
+              routePath.replace(new RegExp(`/${config.indexToken}$`), '/') ||
+              (isLayoutRoute ? '' : '/')
+
+            originalRoutePath =
+              originalRoutePath.replace(
+                new RegExp(`/${config.indexToken}$`),
+                '/',
+              ) || (isLayoutRoute ? '' : '/')
+          }
 
           routeNodes.push({
             filePath,
@@ -192,6 +270,7 @@ export async function getRouteNodes(
             routePath,
             variableName,
             _fsRouteType: routeType,
+            originalRoutePath,
           })
         }
       }),
@@ -202,7 +281,20 @@ export async function getRouteNodes(
 
   await recurse('./')
 
-  const rootRouteNode = routeNodes.find((d) => d.routePath === `/${rootPathId}`)
+  // Find the root route node - prefer the actual route file over component/loader files
+  const rootRouteNode =
+    routeNodes.find(
+      (d) =>
+        d.routePath === `/${rootPathId}` &&
+        ![
+          'component',
+          'errorComponent',
+          'notFoundComponent',
+          'pendingComponent',
+          'loader',
+          'lazy',
+        ].includes(d._fsRouteType),
+    ) ?? routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
     rootRouteNode._fsRouteType = '__root'
     rootRouteNode.variableName = 'root'
@@ -218,12 +310,14 @@ export async function getRouteNodes(
 /**
  * Determines the metadata for a given route path based on the provided configuration.
  *
- * @param routePath - The determined initial routePath.
+ * @param routePath - The determined initial routePath (with brackets removed).
+ * @param originalRoutePath - The original route path (may contain brackets for escaped content).
  * @param config - The user configuration object.
  * @returns An object containing the type of the route and the variable name derived from the route path.
  */
 export function getRouteMeta(
   routePath: string,
+  originalRoutePath: string,
   config: Pick<Config, 'routeToken' | 'indexToken'>,
 ): {
   // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
@@ -238,29 +332,58 @@ export function getRouteMeta(
     | 'component'
     | 'pendingComponent'
     | 'errorComponent'
+    | 'notFoundComponent'
   >
   variableName: string
 } {
   let fsRouteType: FsRouteType = 'static'
 
-  if (routePath.endsWith(`/${config.routeToken}`)) {
+  // Get the last segment from the original path to check for escaping
+  const originalSegments = originalRoutePath.split('/').filter(Boolean)
+  const lastOriginalSegment =
+    originalSegments[originalSegments.length - 1] || ''
+
+  // Helper to check if a specific suffix is escaped
+  const isSuffixEscaped = (suffix: string): boolean => {
+    return lastOriginalSegment === `[${suffix}]`
+  }
+
+  if (
+    routePath.endsWith(`/${config.routeToken}`) &&
+    !isSuffixEscaped(config.routeToken)
+  ) {
     // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
     fsRouteType = 'layout'
-  } else if (routePath.endsWith('/lazy')) {
+  } else if (routePath.endsWith('/lazy') && !isSuffixEscaped('lazy')) {
     // lazy routes, i.e. `/foo.lazy.tsx`
     fsRouteType = 'lazy'
-  } else if (routePath.endsWith('/loader')) {
+  } else if (routePath.endsWith('/loader') && !isSuffixEscaped('loader')) {
     // loader routes, i.e. `/foo.loader.tsx`
     fsRouteType = 'loader'
-  } else if (routePath.endsWith('/component')) {
+  } else if (
+    routePath.endsWith('/component') &&
+    !isSuffixEscaped('component')
+  ) {
     // component routes, i.e. `/foo.component.tsx`
     fsRouteType = 'component'
-  } else if (routePath.endsWith('/pendingComponent')) {
+  } else if (
+    routePath.endsWith('/pendingComponent') &&
+    !isSuffixEscaped('pendingComponent')
+  ) {
     // pending component routes, i.e. `/foo.pendingComponent.tsx`
     fsRouteType = 'pendingComponent'
-  } else if (routePath.endsWith('/errorComponent')) {
+  } else if (
+    routePath.endsWith('/errorComponent') &&
+    !isSuffixEscaped('errorComponent')
+  ) {
     // error component routes, i.e. `/foo.errorComponent.tsx`
     fsRouteType = 'errorComponent'
+  } else if (
+    routePath.endsWith('/notFoundComponent') &&
+    !isSuffixEscaped('notFoundComponent')
+  ) {
+    // not found component routes, i.e. `/foo.notFoundComponent.tsx`
+    fsRouteType = 'notFoundComponent'
   }
 
   const variableName = routePathToVariable(routePath)
@@ -271,11 +394,14 @@ export function getRouteMeta(
 /**
  * Used to validate if a route is a pathless layout route
  * @param normalizedRoutePath Normalized route path, i.e `/foo/_layout/route.tsx` and `/foo._layout.route.tsx` to `/foo/_layout/route`
+ * @param originalRoutePath Original route path with brackets for escaped content
+ * @param routeType The route type determined from file extension
  * @param config The `router-generator` configuration object
  * @returns Boolean indicating if the route is a pathless layout route
  */
 function isValidPathlessLayoutRoute(
   normalizedRoutePath: string,
+  originalRoutePath: string,
   routeType: FsRouteType,
   config: Pick<Config, 'routeToken' | 'indexToken'>,
 ): boolean {
@@ -284,13 +410,18 @@ function isValidPathlessLayoutRoute(
   }
 
   const segments = normalizedRoutePath.split('/').filter(Boolean)
+  const originalSegments = originalRoutePath.split('/').filter(Boolean)
 
   if (segments.length === 0) {
     return false
   }
 
   const lastRouteSegment = segments[segments.length - 1]!
+  const lastOriginalSegment =
+    originalSegments[originalSegments.length - 1] || ''
   const secondToLastRouteSegment = segments[segments.length - 2]
+  const secondToLastOriginalSegment =
+    originalSegments[originalSegments.length - 2]
 
   // If segment === __root, then exit as false
   if (lastRouteSegment === rootPathId) {
@@ -300,14 +431,25 @@ function isValidPathlessLayoutRoute(
   // If segment === config.routeToken and secondToLastSegment is a string that starts with _, then exit as true
   // Since the route is actually a configuration route for a layout/pathless route
   // i.e. /foo/_layout/route.tsx === /foo/_layout.tsx
+  // But if the underscore is escaped, it's not a pathless layout
   if (
     lastRouteSegment === config.routeToken &&
-    typeof secondToLastRouteSegment === 'string'
+    typeof secondToLastRouteSegment === 'string' &&
+    typeof secondToLastOriginalSegment === 'string'
   ) {
+    // Check if the underscore is escaped
+    if (hasEscapedLeadingUnderscore(secondToLastOriginalSegment)) {
+      return false
+    }
     return secondToLastRouteSegment.startsWith('_')
   }
 
-  // Segment starts with _
+  // Segment starts with _ but check if it's escaped
+  // If the original segment has [_] at the start, the underscore is escaped and it's not a pathless layout
+  if (hasEscapedLeadingUnderscore(lastOriginalSegment)) {
+    return false
+  }
+
   return (
     lastRouteSegment !== config.indexToken &&
     lastRouteSegment !== config.routeToken &&

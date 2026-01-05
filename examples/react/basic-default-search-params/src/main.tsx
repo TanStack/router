@@ -57,7 +57,7 @@ const rootRoute = createRootRoute({
 
 function RootComponent() {
   return (
-    <div className="bg-gradient-to-r from-green-700 to-lime-600 text-white">
+    <div className="bg-linear-to-r from-green-700 to-lime-600 text-white">
       <div className="p-2 flex gap-2 text-lg bg-black/40 shadow-xl">
         <Link
           to="/"
@@ -128,7 +128,7 @@ function PostsLayoutComponent() {
                   color: index % 2 ? 'red' : undefined,
                 }}
                 className="block py-1 px-2 text-green-300 hover:text-green-200"
-                activeProps={{ className: '!text-white font-bold' }}
+                activeProps={{ className: 'text-white! font-bold' }}
               >
                 <div>{post.title.substring(0, 20)}</div>
               </Link>

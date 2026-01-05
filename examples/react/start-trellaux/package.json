@@ -6,15 +6,16 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "vite start"
+    "preview": "vite preview",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.66.0",
-    "@tanstack/react-query-devtools": "^5.66.0",
-    "@tanstack/react-router": "^1.131.49",
-    "@tanstack/react-router-ssr-query": "^1.131.49",
-    "@tanstack/react-router-devtools": "^1.131.49",
-    "@tanstack/react-start": "^1.131.49",
+    "@tanstack/react-query": "^5.90.0",
+    "@tanstack/react-query-devtools": "^5.90.0",
+    "@tanstack/react-router": "^1.145.6",
+    "@tanstack/react-router-devtools": "^1.145.6",
+    "@tanstack/react-router-ssr-query": "^1.145.6",
+    "@tanstack/react-start": "^1.145.6",
     "ky": "^1.7.4",
     "msw": "^2.7.0",
     "react": "^19.0.0",
@@ -26,13 +27,14 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "postcss": "^8.5.1",
-    "autoprefixer": "^10.4.20",
-    "tailwindcss": "^3.4.17",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.6.2",
-    "vite": "^6.3.5",
+    "vite": "^7.1.7",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

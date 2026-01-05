@@ -21,7 +21,7 @@ function PostComponent() {
   const post = Route.useLoaderData()
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-testid="post-view">
       <h4 className="text-xl font-bold underline">{post.title}</h4>
       <div className="text-sm">{post.body}</div>
       <Link

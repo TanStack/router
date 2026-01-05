@@ -19,7 +19,7 @@ function PostsComponent() {
                 <Link
                   to="/posts/$postId"
                   params={{
-                    postId: post.id,
+                    postId: String(post.id),
                   }}
                   className="block py-1 text-blue-800 hover:text-blue-600"
                   activeProps={{ className: 'text-black font-bold' }}

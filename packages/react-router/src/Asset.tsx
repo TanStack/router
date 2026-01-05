@@ -12,7 +12,8 @@ export function Asset({
   tag,
   attrs,
   children,
-}: RouterManagedTag): React.ReactElement | null {
+  nonce,
+}: RouterManagedTag & { nonce?: string }): React.ReactElement | null {
   switch (tag) {
     case 'title':
       return (
@@ -23,12 +24,13 @@ export function Asset({
     case 'meta':
       return <meta {...attrs} suppressHydrationWarning />
     case 'link':
-      return <link {...attrs} suppressHydrationWarning />
+      return <link {...attrs} nonce={nonce} suppressHydrationWarning />
     case 'style':
       return (
         <style
           {...attrs}
           dangerouslySetInnerHTML={{ __html: children as string }}
+          nonce={nonce}
         />
       )
     case 'script':
@@ -142,7 +144,15 @@ function Script({
   }, [attrs, children])
 
   if (!router.isServer) {
-    return null
+    const { src, ...rest } = attrs || {}
+    // render an empty script on the client just to avoid hydration errors
+    return (
+      <script
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: '' }}
+        {...rest}
+      ></script>
+    )
   }
 
   if (attrs?.src && typeof attrs.src === 'string') {

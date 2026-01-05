@@ -514,5 +514,4 @@ Before deploying your Shadcn/ui + TanStack Router app:
 
 - [Shadcn/ui TanStack Router Installation](https://ui.shadcn.com/docs/installation/tanstack-router) - Official integration guide
 - [TanStack Router createLink API](../api/router#createlink) - API documentation for component integration
-- [Tailwind CSS with TanStack Router](./integrate-tailwind-css.md) - Styling setup guide
 - [Shadcn/ui Components](https://ui.shadcn.com/docs/components) - Complete component documentation

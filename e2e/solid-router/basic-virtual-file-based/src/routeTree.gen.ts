@@ -168,11 +168,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof homeRouteImport
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof postsPostsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_first': {
@@ -182,25 +182,18 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof layoutFirstLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof postsPostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/classic/hello': {
-      id: '/classic/hello'
-      path: '/classic/hello'
-      fullPath: '/classic/hello'
-      preLoaderRoute: typeof ClassicHelloRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts/': {
-      id: '/posts/'
+    '/': {
+      id: '/'
       path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof postsPostsHomeRouteImport
+      fullPath: '/'
+      preLoaderRoute: typeof homeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof postsPostsDetailRouteImport
       parentRoute: typeof postsPostsRoute
     }
     '/_first/_second': {
@@ -210,32 +203,25 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof layoutSecondLayoutRouteImport
       parentRoute: typeof layoutFirstLayoutRoute
     }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof postsPostsDetailRouteImport
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof postsPostsHomeRouteImport
       parentRoute: typeof postsPostsRoute
     }
-    '/_first/_second/layout-a': {
-      id: '/_first/_second/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: typeof aRouteImport
-      parentRoute: typeof layoutSecondLayoutRoute
+    '/classic/hello': {
+      id: '/classic/hello'
+      path: '/classic/hello'
+      fullPath: '/classic/hello'
+      preLoaderRoute: typeof ClassicHelloRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_first/_second/layout-b': {
-      id: '/_first/_second/layout-b'
-      path: '/layout-b'
-      fullPath: '/layout-b'
-      preLoaderRoute: typeof bRouteImport
-      parentRoute: typeof layoutSecondLayoutRoute
-    }
-    '/classic/hello/universe': {
-      id: '/classic/hello/universe'
-      path: '/universe'
-      fullPath: '/classic/hello/universe'
-      preLoaderRoute: typeof ClassicHelloUniverseRouteImport
+    '/classic/hello/': {
+      id: '/classic/hello/'
+      path: '/'
+      fullPath: '/classic/hello/'
+      preLoaderRoute: typeof ClassicHelloIndexRouteImport
       parentRoute: typeof ClassicHelloRouteRoute
     }
     '/classic/hello/world': {
@@ -245,12 +231,26 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ClassicHelloWorldRouteImport
       parentRoute: typeof ClassicHelloRouteRoute
     }
-    '/classic/hello/': {
-      id: '/classic/hello/'
-      path: '/'
-      fullPath: '/classic/hello/'
-      preLoaderRoute: typeof ClassicHelloIndexRouteImport
+    '/classic/hello/universe': {
+      id: '/classic/hello/universe'
+      path: '/universe'
+      fullPath: '/classic/hello/universe'
+      preLoaderRoute: typeof ClassicHelloUniverseRouteImport
       parentRoute: typeof ClassicHelloRouteRoute
+    }
+    '/_first/_second/layout-b': {
+      id: '/_first/_second/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: typeof bRouteImport
+      parentRoute: typeof layoutSecondLayoutRoute
+    }
+    '/_first/_second/layout-a': {
+      id: '/_first/_second/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: typeof aRouteImport
+      parentRoute: typeof layoutSecondLayoutRoute
     }
   }
 }

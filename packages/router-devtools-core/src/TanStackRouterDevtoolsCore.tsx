@@ -4,7 +4,7 @@ import { ShadowDomTargetContext } from './context'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Signal } from 'solid-js'
 
-interface DevtoolsOptions {
+export interface TanStackRouterDevtoolsCoreOptions {
   /**
    * Set this true if you want the dev tools to default to being open
    */
@@ -49,7 +49,7 @@ interface DevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-class TanStackRouterDevtoolsCore {
+export class TanStackRouterDevtoolsCore {
   #router: Signal<AnyRouter>
   #routerState: Signal<any>
   #position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
@@ -65,7 +65,7 @@ class TanStackRouterDevtoolsCore {
   #Component: any
   #dispose?: () => void
 
-  constructor(config: DevtoolsOptions) {
+  constructor(config: TanStackRouterDevtoolsCoreOptions) {
     this.#router = createSignal(config.router)
     this.#routerState = createSignal(config.routerState)
     this.#position = config.position ?? 'bottom-left'
@@ -141,7 +141,7 @@ class TanStackRouterDevtoolsCore {
     this.#routerState[1](routerState)
   }
 
-  setOptions(options: Partial<DevtoolsOptions>) {
+  setOptions(options: Partial<TanStackRouterDevtoolsCoreOptions>) {
     if (options.position !== undefined) {
       this.#position = options.position
     }
@@ -159,5 +159,3 @@ class TanStackRouterDevtoolsCore {
     }
   }
 }
-
-export { TanStackRouterDevtoolsCore }

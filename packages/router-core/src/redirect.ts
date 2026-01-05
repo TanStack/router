@@ -54,6 +54,23 @@ export type ResolvedRedirect<
   TMaskTo extends string = '',
 > = Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
+/**
+ * Create a redirect Response understood by TanStack Router.
+ *
+ * Use from route `loader`/`beforeLoad` or server functions to trigger a
+ * navigation. If `throw: true` is set, the redirect is thrown instead of
+ * returned. When an absolute `href` is supplied and `reloadDocument` is not
+ * set, a full-document navigation is inferred.
+ *
+ * @param opts Options for the redirect. Common fields:
+ * - `href`: absolute URL for external redirects; infers `reloadDocument`.
+ * - `statusCode`: HTTP status code to use (defaults to 307).
+ * - `headers`: additional headers to include on the Response.
+ * - Standard navigation options like `to`, `params`, `search`, `replace`,
+ *   and `reloadDocument` for internal redirects.
+ * @returns A Response augmented with router navigation options.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
+ */
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
   const TTo extends string | undefined = '.',
@@ -92,16 +109,22 @@ export function redirect<
   return response as Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 }
 
+/** Check whether a value is a TanStack Router redirect Response. */
+/** Check whether a value is a TanStack Router redirect Response. */
 export function isRedirect(obj: any): obj is AnyRedirect {
   return obj instanceof Response && !!(obj as any).options
 }
 
+/** True if value is a redirect with a resolved `href` location. */
+/** True if value is a redirect with a resolved `href` location. */
 export function isResolvedRedirect(
   obj: any,
 ): obj is AnyRedirect & { options: { href: string } } {
   return isRedirect(obj) && !!obj.options.href
 }
 
+/** Parse a serialized redirect object back into a redirect Response. */
+/** Parse a serialized redirect object back into a redirect Response. */
 export function parseRedirect(obj: any) {
   if (obj !== null && typeof obj === 'object' && obj.isSerializedRedirect) {
     return redirect(obj)

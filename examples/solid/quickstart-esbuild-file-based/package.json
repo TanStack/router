@@ -1,0 +1,24 @@
+{
+  "name": "tanstack-router-solid-example-quickstart-esbuild-file-based",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node build.js --dev",
+    "build": "node build.js",
+    "serve": "node build.js --dev",
+    "start": "dev"
+  },
+  "dependencies": {
+    "@tanstack/router-plugin": "^1.145.6",
+    "@tanstack/solid-router": "^1.145.6",
+    "@tanstack/solid-router-devtools": "^1.145.6",
+    "redaxios": "^0.5.1",
+    "solid-js": "^1.9.10",
+    "tailwindcss": "^4.1.18",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "esbuild-plugin-solid": "^0.6.0"
+  }
+}

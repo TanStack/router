@@ -32,7 +32,7 @@ describe('add-hmr works', () => {
           targetFramework: framework,
         })
 
-        await expect(compileResult.code).toMatchFileSnapshot(
+        await expect(compileResult?.code || code).toMatchFileSnapshot(
           path.join(dirs.snapshots, filename.replace('.tsx', '@true.tsx')),
         )
       },
@@ -53,7 +53,7 @@ describe('add-hmr works', () => {
           targetFramework: framework,
         })
 
-        await expect(compileResult.code).toMatchFileSnapshot(
+        await expect(compileResult?.code || code).toMatchFileSnapshot(
           path.join(dirs.snapshots, filename.replace('.tsx', '@false.tsx')),
         )
       },

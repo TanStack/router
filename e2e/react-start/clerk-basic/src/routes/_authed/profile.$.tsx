@@ -1,8 +1,8 @@
-import { Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 
 import { fetchPosts } from '~/utils/posts.js'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/_authed/profile/$')({
   loader: () => fetchPosts(),
   component: PostsComponent,
 })

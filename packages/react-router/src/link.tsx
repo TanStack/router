@@ -25,6 +25,18 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
+/**
+ * Build anchor-like props for declarative navigation and preloading.
+ *
+ * Returns stable `href`, event handlers and accessibility props derived from
+ * router options and active state. Used internally by `Link` and custom links.
+ *
+ * Options cover `to`, `params`, `search`, `hash`, `state`, `preload`,
+ * `activeProps`, `inactiveProps`, and more.
+ *
+ * @returns React anchor props suitable for `<a>` or custom components.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLinkPropsHook
+ */
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
@@ -78,20 +90,6 @@ export function useLinkProps<
     ...propsSafeToSpread
   } = options
 
-  // If this link simply reloads the current route,
-  // make sure it has a new key so it will trigger a data refresh
-
-  // If this `to` is a valid external URL, return
-  // null for LinkUtils
-
-  const type: 'internal' | 'external' = React.useMemo(() => {
-    try {
-      new URL(to as any)
-      return 'external'
-    } catch {}
-    return 'internal'
-  }, [to])
-
   // subscribe to search params to re-build location if it changes
   const currentSearch = useRouterState({
     select: (s) => s.location.search,
@@ -125,10 +123,38 @@ export function useLinkProps<
     [router, _options],
   )
 
-  const isExternal = type === 'external'
+  const hrefOption = React.useMemo(() => {
+    if (disabled) {
+      return undefined
+    }
+    let href = next.maskedLocation
+      ? next.maskedLocation.url.href
+      : next.url.href
+
+    let external = false
+    if (router.origin) {
+      if (href.startsWith(router.origin)) {
+        href = router.history.createHref(href.replace(router.origin, '')) || '/'
+      } else {
+        external = true
+      }
+    }
+    return { href, external }
+  }, [disabled, next.maskedLocation, next.url, router.origin, router.history])
+
+  const externalLink = React.useMemo(() => {
+    if (hrefOption?.external) {
+      return hrefOption.href
+    }
+    try {
+      new URL(to as any)
+      return to
+    } catch {}
+    return undefined
+  }, [to, hrefOption])
 
   const preload =
-    options.reloadDocument || isExternal
+    options.reloadDocument || externalLink
       ? false
       : (userPreload ?? router.options.defaultPreload)
   const preloadDelay =
@@ -136,7 +162,7 @@ export function useLinkProps<
 
   const isActive = useRouterState({
     select: (s) => {
-      if (isExternal) return false
+      if (externalLink) return false
       if (activeOptions?.exact) {
         const testExact = exactPathTest(
           s.location.pathname,
@@ -219,7 +245,9 @@ export function useLinkProps<
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
     // Check actual element's target attribute as fallback
-    const elementTarget = (e.currentTarget as HTMLAnchorElement).target
+    const elementTarget = (
+      e.currentTarget as HTMLAnchorElement | SVGAElement
+    ).getAttribute('target')
     const effectiveTarget = target !== undefined ? target : elementTarget
 
     if (
@@ -254,12 +282,11 @@ export function useLinkProps<
     }
   }
 
-  if (isExternal) {
+  if (externalLink) {
     return {
       ...propsSafeToSpread,
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      type,
-      href: to,
+      href: externalLink,
       ...(children && { children }),
       ...(target && { target }),
       ...(disabled && { disabled }),
@@ -342,11 +369,7 @@ export function useLinkProps<
     ...propsSafeToSpread,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
-    href: disabled
-      ? undefined
-      : next.maskedLocation
-        ? router.history.createHref(next.maskedLocation.href)
-        : router.history.createHref(next.href),
+    href: hrefOption?.href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
@@ -507,6 +530,18 @@ export interface LinkComponentRoute<
   ): React.ReactElement
 }
 
+/**
+ * Creates a typed Link-like component that preserves TanStack Router's
+ * navigation semantics and type-safety while delegating rendering to the
+ * provided host component.
+ *
+ * Useful for integrating design system anchors/buttons while keeping
+ * router-aware props (eg. `to`, `params`, `search`, `preload`).
+ *
+ * @param Comp The host component to render (eg. a design-system Link/Button)
+ * @returns A router-aware component with the same API as `Link`.
+ * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-link
+ */
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
 ): LinkComponent<TComp> {
@@ -515,6 +550,22 @@ export function createLink<const TComp>(
   }) as any
 }
 
+/**
+ * A strongly-typed anchor component for declarative navigation.
+ * Handles path, search, hash and state updates with optional route preloading
+ * and active-state styling.
+ *
+ * Props:
+ * - `preload`: Controls route preloading (eg. 'intent', 'render', 'viewport', true/false)
+ * - `preloadDelay`: Delay in ms before preloading on hover
+ * - `activeProps`/`inactiveProps`: Additional props merged when link is active/inactive
+ * - `resetScroll`/`hashScrollIntoView`: Control scroll behavior on navigation
+ * - `viewTransition`/`startTransition`: Use View Transitions/React transitions for navigation
+ * - `ignoreBlocker`: Bypass registered blockers
+ *
+ * @returns An anchor-like element that navigates without full page reloads.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/linkComponent
+ */
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
@@ -568,6 +619,21 @@ export type LinkOptionsFn<TComp> = <
   options: LinkOptionsFnOptions<TOptions, TComp, TRouter>,
 ) => TOptions
 
+/**
+ * Validate and reuse navigation options for `Link`, `navigate` or `redirect`.
+ * Accepts a literal options object and returns it typed for later spreading.
+ * @example
+ * const opts = linkOptions({ to: '/dashboard', search: { tab: 'home' } })
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/linkOptions
+ */
 export const linkOptions: LinkOptionsFn<'a'> = (options) => {
   return options as any
 }
+
+/**
+ * Type-check a literal object for use with `Link`, `navigate` or `redirect`.
+ * Use to validate and reuse navigation options across your app.
+ * @example
+ * const opts = linkOptions({ to: '/dashboard', search: { tab: 'home' } })
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/linkOptions
+ */

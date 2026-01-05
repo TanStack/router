@@ -8,23 +8,18 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-import type {
-  CreateServerFileRoute,
-  ServerFileRoutesByPath,
-} from '@tanstack/react-start/server'
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexport'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
+import { Route as RawStreamRouteImport } from './routes/raw-stream'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as DeferredRouteImport } from './routes/deferred'
+import { Route as ClientOnlyRouteImport } from './routes/client-only'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
@@ -32,20 +27,31 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
+import { Route as RawStreamIndexRouteImport } from './routes/raw-stream/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as NotFoundIndexRouteImport } from './routes/not-found/index'
+import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-cookie-redirect/index'
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as SearchParamsLoaderThrowsRedirectRouteImport } from './routes/search-params/loader-throws-redirect'
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
+import { Route as RawStreamSsrTextHintRouteImport } from './routes/raw-stream/ssr-text-hint'
+import { Route as RawStreamSsrSingleRouteImport } from './routes/raw-stream/ssr-single'
+import { Route as RawStreamSsrMultipleRouteImport } from './routes/raw-stream/ssr-multiple'
+import { Route as RawStreamSsrMixedRouteImport } from './routes/raw-stream/ssr-mixed'
+import { Route as RawStreamSsrBinaryHintRouteImport } from './routes/raw-stream/ssr-binary-hint'
+import { Route as RawStreamClientCallRouteImport } from './routes/raw-stream/client-call'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
+import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
+import { Route as ApiUsersRouteImport } from './routes/api.users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
 import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
+import { Route as ApiUsersIdRouteImport } from './routes/api/users.$id'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as RedirectTargetServerFnIndexRouteImport } from './routes/redirect/$target/serverFn/index'
@@ -54,11 +60,6 @@ import { Route as RedirectTargetServerFnViaLoaderRouteImport } from './routes/re
 import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
 import { Route as FooBarQuxHereRouteImport } from './routes/foo/$bar/$qux/_here'
 import { Route as FooBarQuxHereIndexRouteImport } from './routes/foo/$bar/$qux/_here/index'
-import { ServerRoute as ApiUsersServerRouteImport } from './routes/api.users'
-import { ServerRoute as ApiUsersIdServerRouteImport } from './routes/api/users.$id'
-
-const FooBarQuxRouteImport = createFileRoute('/foo/$bar/$qux')()
-const rootServerRouteImport = createServerRootRoute()
 
 const Char45824Char54620Char48124Char44397Route =
   Char45824Char54620Char48124Char44397RouteImport.update({
@@ -71,6 +72,11 @@ const UsersRoute = UsersRouteImport.update({
   path: '/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TypeOnlyReexportRoute = TypeOnlyReexportRouteImport.update({
+  id: '/type-only-reexport',
+  path: '/type-only-reexport',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StreamRoute = StreamRouteImport.update({
   id: '/stream',
   path: '/stream',
@@ -79,6 +85,11 @@ const StreamRoute = StreamRouteImport.update({
 const ScriptsRoute = ScriptsRouteImport.update({
   id: '/scripts',
   path: '/scripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RawStreamRoute = RawStreamRouteImport.update({
+  id: '/raw-stream',
+  path: '/raw-stream',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsRoute = PostsRouteImport.update({
@@ -99,6 +110,11 @@ const InlineScriptsRoute = InlineScriptsRouteImport.update({
 const DeferredRoute = DeferredRouteImport.update({
   id: '/deferred',
   path: '/deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientOnlyRoute = ClientOnlyRouteImport.update({
+  id: '/client-only',
+  path: '/client-only',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutRoute = LayoutRouteImport.update({
@@ -135,6 +151,11 @@ const RedirectIndexRoute = RedirectIndexRouteImport.update({
   path: '/redirect/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RawStreamIndexRoute = RawStreamIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RawStreamRoute,
+} as any)
 const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -145,6 +166,12 @@ const NotFoundIndexRoute = NotFoundIndexRouteImport.update({
   path: '/',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
+const MultiCookieRedirectIndexRoute =
+  MultiCookieRedirectIndexRouteImport.update({
+    id: '/multi-cookie-redirect/',
+    path: '/multi-cookie-redirect/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const UsersUserIdRoute = UsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
@@ -166,6 +193,36 @@ const RedirectTargetRoute = RedirectTargetRouteImport.update({
   path: '/redirect/$target',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RawStreamSsrTextHintRoute = RawStreamSsrTextHintRouteImport.update({
+  id: '/ssr-text-hint',
+  path: '/ssr-text-hint',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrSingleRoute = RawStreamSsrSingleRouteImport.update({
+  id: '/ssr-single',
+  path: '/ssr-single',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrMultipleRoute = RawStreamSsrMultipleRouteImport.update({
+  id: '/ssr-multiple',
+  path: '/ssr-multiple',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrMixedRoute = RawStreamSsrMixedRouteImport.update({
+  id: '/ssr-mixed',
+  path: '/ssr-mixed',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrBinaryHintRoute = RawStreamSsrBinaryHintRouteImport.update({
+  id: '/ssr-binary-hint',
+  path: '/ssr-binary-hint',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamClientCallRoute = RawStreamClientCallRouteImport.update({
+  id: '/client-call',
+  path: '/client-call',
+  getParentRoute: () => RawStreamRoute,
+} as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
@@ -181,14 +238,20 @@ const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
   path: '/via-beforeLoad',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
+const MultiCookieRedirectTargetRoute =
+  MultiCookieRedirectTargetRouteImport.update({
+    id: '/multi-cookie-redirect/target',
+    path: '/multi-cookie-redirect/target',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiUsersRoute = ApiUsersRouteImport.update({
+  id: '/api/users',
+  path: '/api/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
-} as any)
-const FooBarQuxRoute = FooBarQuxRouteImport.update({
-  id: '/foo/$bar/$qux',
-  path: '/foo/$bar/$qux',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
@@ -210,6 +273,11 @@ const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
   id: '/posts_/$postId/deep',
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUsersIdRoute = ApiUsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiUsersRoute,
 } as any)
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
@@ -246,51 +314,56 @@ const RedirectTargetServerFnViaBeforeLoadRoute =
     getParentRoute: () => RedirectTargetRoute,
   } as any)
 const FooBarQuxHereRoute = FooBarQuxHereRouteImport.update({
-  id: '/_here',
-  getParentRoute: () => FooBarQuxRoute,
+  id: '/foo/$bar/$qux/_here',
+  path: '/foo/$bar/$qux',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const FooBarQuxHereIndexRoute = FooBarQuxHereIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => FooBarQuxHereRoute,
 } as any)
-const ApiUsersServerRoute = ApiUsersServerRouteImport.update({
-  id: '/api/users',
-  path: '/api/users',
-  getParentRoute: () => rootServerRouteImport,
-} as any)
-const ApiUsersIdServerRoute = ApiUsersIdServerRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ApiUsersServerRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
+  '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
+  '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
+  '/api/users': typeof ApiUsersRouteWithChildren
+  '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/raw-stream/client-call': typeof RawStreamClientCallRoute
+  '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
+  '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
+  '/raw-stream/ssr-multiple': typeof RawStreamSsrMultipleRoute
+  '/raw-stream/ssr-single': typeof RawStreamSsrSingleRoute
+  '/raw-stream/ssr-text-hint': typeof RawStreamSsrTextHintRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/multi-cookie-redirect': typeof MultiCookieRedirectIndexRoute
   '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
+  '/raw-stream/': typeof RawStreamIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/api/users/$id': typeof ApiUsersIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
@@ -304,34 +377,47 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
+  '/api/users': typeof ApiUsersRouteWithChildren
+  '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/raw-stream/client-call': typeof RawStreamClientCallRoute
+  '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
+  '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
+  '/raw-stream/ssr-multiple': typeof RawStreamSsrMultipleRoute
+  '/raw-stream/ssr-single': typeof RawStreamSsrSingleRoute
+  '/raw-stream/ssr-text-hint': typeof RawStreamSsrTextHintRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/multi-cookie-redirect': typeof MultiCookieRedirectIndexRoute
   '/not-found': typeof NotFoundIndexRoute
   '/posts': typeof PostsIndexRoute
+  '/raw-stream': typeof RawStreamIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
   '/users': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/api/users/$id': typeof ApiUsersIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
-  '/foo/$bar/$qux': typeof FooBarQuxHereIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
   '/redirect/$target/serverFn': typeof RedirectTargetServerFnIndexRoute
+  '/foo/$bar/$qux': typeof FooBarQuxHereIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -339,34 +425,47 @@ export interface FileRoutesById {
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
+  '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
+  '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
+  '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/api/users': typeof ApiUsersRouteWithChildren
+  '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/raw-stream/client-call': typeof RawStreamClientCallRoute
+  '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
+  '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
+  '/raw-stream/ssr-multiple': typeof RawStreamSsrMultipleRoute
+  '/raw-stream/ssr-single': typeof RawStreamSsrSingleRoute
+  '/raw-stream/ssr-text-hint': typeof RawStreamSsrTextHintRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
+  '/multi-cookie-redirect/': typeof MultiCookieRedirectIndexRoute
   '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
+  '/raw-stream/': typeof RawStreamIndexRoute
   '/redirect/': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/api/users/$id': typeof ApiUsersIdRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
-  '/foo/$bar/$qux': typeof FooBarQuxRouteWithChildren
   '/foo/$bar/$qux/_here': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -380,28 +479,42 @@ export interface FileRouteTypes {
     | '/'
     | '/not-found'
     | '/search-params'
+    | '/client-only'
     | '/deferred'
     | '/inline-scripts'
     | '/links'
     | '/posts'
+    | '/raw-stream'
     | '/scripts'
     | '/stream'
+    | '/type-only-reexport'
     | '/users'
     | '/대한민국'
+    | '/api/users'
+    | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/raw-stream/client-call'
+    | '/raw-stream/ssr-binary-hint'
+    | '/raw-stream/ssr-mixed'
+    | '/raw-stream/ssr-multiple'
+    | '/raw-stream/ssr-single'
+    | '/raw-stream/ssr-text-hint'
     | '/redirect/$target'
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/users/$userId'
+    | '/multi-cookie-redirect'
     | '/not-found/'
     | '/posts/'
+    | '/raw-stream/'
     | '/redirect'
     | '/search-params/'
     | '/users/'
     | '/layout-a'
     | '/layout-b'
+    | '/api/users/$id'
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
@@ -415,68 +528,94 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/client-only'
     | '/deferred'
     | '/inline-scripts'
     | '/links'
     | '/scripts'
     | '/stream'
+    | '/type-only-reexport'
     | '/대한민국'
+    | '/api/users'
+    | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/raw-stream/client-call'
+    | '/raw-stream/ssr-binary-hint'
+    | '/raw-stream/ssr-mixed'
+    | '/raw-stream/ssr-multiple'
+    | '/raw-stream/ssr-single'
+    | '/raw-stream/ssr-text-hint'
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/users/$userId'
+    | '/multi-cookie-redirect'
     | '/not-found'
     | '/posts'
+    | '/raw-stream'
     | '/redirect'
     | '/search-params'
     | '/users'
     | '/layout-a'
     | '/layout-b'
+    | '/api/users/$id'
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/redirect/$target'
-    | '/foo/$bar/$qux'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
     | '/redirect/$target/serverFn'
+    | '/foo/$bar/$qux'
   id:
     | '__root__'
     | '/'
     | '/not-found'
     | '/search-params'
     | '/_layout'
+    | '/client-only'
     | '/deferred'
     | '/inline-scripts'
     | '/links'
     | '/posts'
+    | '/raw-stream'
     | '/scripts'
     | '/stream'
+    | '/type-only-reexport'
     | '/users'
     | '/대한민국'
     | '/_layout/_layout-2'
+    | '/api/users'
+    | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/raw-stream/client-call'
+    | '/raw-stream/ssr-binary-hint'
+    | '/raw-stream/ssr-mixed'
+    | '/raw-stream/ssr-multiple'
+    | '/raw-stream/ssr-single'
+    | '/raw-stream/ssr-text-hint'
     | '/redirect/$target'
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/users/$userId'
+    | '/multi-cookie-redirect/'
     | '/not-found/'
     | '/posts/'
+    | '/raw-stream/'
     | '/redirect/'
     | '/search-params/'
     | '/users/'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/api/users/$id'
     | '/posts_/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/redirect/$target/'
-    | '/foo/$bar/$qux'
     | '/foo/$bar/$qux/_here'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -490,114 +629,33 @@ export interface RootRouteChildren {
   NotFoundRouteRoute: typeof NotFoundRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
+  ClientOnlyRoute: typeof ClientOnlyRoute
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
+  RawStreamRoute: typeof RawStreamRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
   StreamRoute: typeof StreamRoute
+  TypeOnlyReexportRoute: typeof TypeOnlyReexportRoute
   UsersRoute: typeof UsersRouteWithChildren
   Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
+  ApiUsersRoute: typeof ApiUsersRouteWithChildren
+  MultiCookieRedirectTargetRoute: typeof MultiCookieRedirectTargetRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
+  MultiCookieRedirectIndexRoute: typeof MultiCookieRedirectIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
-  FooBarQuxRoute: typeof FooBarQuxRouteWithChildren
-}
-export interface FileServerRoutesByFullPath {
-  '/api/users': typeof ApiUsersServerRouteWithChildren
-  '/api/users/$id': typeof ApiUsersIdServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/api/users': typeof ApiUsersServerRouteWithChildren
-  '/api/users/$id': typeof ApiUsersIdServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/api/users': typeof ApiUsersServerRouteWithChildren
-  '/api/users/$id': typeof ApiUsersIdServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/users' | '/api/users/$id'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/users' | '/api/users/$id'
-  id: '__root__' | '/api/users' | '/api/users/$id'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ApiUsersServerRoute: typeof ApiUsersServerRouteWithChildren
+  FooBarQuxHereRoute: typeof FooBarQuxHereRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/not-found': {
-      id: '/not-found'
-      path: '/not-found'
-      fullPath: '/not-found'
-      preLoaderRoute: typeof NotFoundRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search-params': {
-      id: '/search-params'
-      path: '/search-params'
-      fullPath: '/search-params'
-      preLoaderRoute: typeof SearchParamsRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof LayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/deferred': {
-      id: '/deferred'
-      path: '/deferred'
-      fullPath: '/deferred'
-      preLoaderRoute: typeof DeferredRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inline-scripts': {
-      id: '/inline-scripts'
-      path: '/inline-scripts'
-      fullPath: '/inline-scripts'
-      preLoaderRoute: typeof InlineScriptsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/links': {
-      id: '/links'
-      path: '/links'
-      fullPath: '/links'
-      preLoaderRoute: typeof LinksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scripts': {
-      id: '/scripts'
-      path: '/scripts'
-      fullPath: '/scripts'
-      preLoaderRoute: typeof ScriptsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stream': {
-      id: '/stream'
-      path: '/stream'
-      fullPath: '/stream'
-      preLoaderRoute: typeof StreamRouteImport
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/users': {
@@ -607,11 +665,249 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/대한민국': {
-      id: '/대한민국'
-      path: '/대한민국'
-      fullPath: '/대한민국'
-      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteImport
+    '/type-only-reexport': {
+      id: '/type-only-reexport'
+      path: '/type-only-reexport'
+      fullPath: '/type-only-reexport'
+      preLoaderRoute: typeof TypeOnlyReexportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stream': {
+      id: '/stream'
+      path: '/stream'
+      fullPath: '/stream'
+      preLoaderRoute: typeof StreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scripts': {
+      id: '/scripts'
+      path: '/scripts'
+      fullPath: '/scripts'
+      preLoaderRoute: typeof ScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/raw-stream': {
+      id: '/raw-stream'
+      path: '/raw-stream'
+      fullPath: '/raw-stream'
+      preLoaderRoute: typeof RawStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/links': {
+      id: '/links'
+      path: '/links'
+      fullPath: '/links'
+      preLoaderRoute: typeof LinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inline-scripts': {
+      id: '/inline-scripts'
+      path: '/inline-scripts'
+      fullPath: '/inline-scripts'
+      preLoaderRoute: typeof InlineScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: typeof DeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-only': {
+      id: '/client-only'
+      path: '/client-only'
+      fullPath: '/client-only'
+      preLoaderRoute: typeof ClientOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search-params': {
+      id: '/search-params'
+      path: '/search-params'
+      fullPath: '/search-params'
+      preLoaderRoute: typeof SearchParamsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/not-found': {
+      id: '/not-found'
+      path: '/not-found'
+      fullPath: '/not-found'
+      preLoaderRoute: typeof NotFoundRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/search-params/': {
+      id: '/search-params/'
+      path: '/'
+      fullPath: '/search-params/'
+      preLoaderRoute: typeof SearchParamsIndexRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/raw-stream/': {
+      id: '/raw-stream/'
+      path: '/'
+      fullPath: '/raw-stream/'
+      preLoaderRoute: typeof RawStreamIndexRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/not-found/': {
+      id: '/not-found/'
+      path: '/'
+      fullPath: '/not-found/'
+      preLoaderRoute: typeof NotFoundIndexRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
+    '/multi-cookie-redirect/': {
+      id: '/multi-cookie-redirect/'
+      path: '/multi-cookie-redirect'
+      fullPath: '/multi-cookie-redirect'
+      preLoaderRoute: typeof MultiCookieRedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof UsersUserIdRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/search-params/loader-throws-redirect': {
+      id: '/search-params/loader-throws-redirect'
+      path: '/loader-throws-redirect'
+      fullPath: '/search-params/loader-throws-redirect'
+      preLoaderRoute: typeof SearchParamsLoaderThrowsRedirectRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/search-params/default': {
+      id: '/search-params/default'
+      path: '/default'
+      fullPath: '/search-params/default'
+      preLoaderRoute: typeof SearchParamsDefaultRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/redirect/$target': {
+      id: '/redirect/$target'
+      path: '/redirect/$target'
+      fullPath: '/redirect/$target'
+      preLoaderRoute: typeof RedirectTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/raw-stream/ssr-text-hint': {
+      id: '/raw-stream/ssr-text-hint'
+      path: '/ssr-text-hint'
+      fullPath: '/raw-stream/ssr-text-hint'
+      preLoaderRoute: typeof RawStreamSsrTextHintRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-single': {
+      id: '/raw-stream/ssr-single'
+      path: '/ssr-single'
+      fullPath: '/raw-stream/ssr-single'
+      preLoaderRoute: typeof RawStreamSsrSingleRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-multiple': {
+      id: '/raw-stream/ssr-multiple'
+      path: '/ssr-multiple'
+      fullPath: '/raw-stream/ssr-multiple'
+      preLoaderRoute: typeof RawStreamSsrMultipleRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-mixed': {
+      id: '/raw-stream/ssr-mixed'
+      path: '/ssr-mixed'
+      fullPath: '/raw-stream/ssr-mixed'
+      preLoaderRoute: typeof RawStreamSsrMixedRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-binary-hint': {
+      id: '/raw-stream/ssr-binary-hint'
+      path: '/ssr-binary-hint'
+      fullPath: '/raw-stream/ssr-binary-hint'
+      preLoaderRoute: typeof RawStreamSsrBinaryHintRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/client-call': {
+      id: '/raw-stream/client-call'
+      path: '/client-call'
+      fullPath: '/raw-stream/client-call'
+      preLoaderRoute: typeof RawStreamClientCallRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/not-found/via-loader': {
+      id: '/not-found/via-loader'
+      path: '/via-loader'
+      fullPath: '/not-found/via-loader'
+      preLoaderRoute: typeof NotFoundViaLoaderRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
+    '/not-found/via-beforeLoad': {
+      id: '/not-found/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/not-found/via-beforeLoad'
+      preLoaderRoute: typeof NotFoundViaBeforeLoadRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
+    '/multi-cookie-redirect/target': {
+      id: '/multi-cookie-redirect/target'
+      path: '/multi-cookie-redirect/target'
+      fullPath: '/multi-cookie-redirect/target'
+      preLoaderRoute: typeof MultiCookieRedirectTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/users': {
+      id: '/api/users'
+      path: '/api/users'
+      fullPath: '/api/users'
+      preLoaderRoute: typeof ApiUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/_layout-2': {
@@ -621,130 +917,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/api/users': {
-      id: '/api/users'
-      path: ''
-      fullPath: '/api/users'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootRouteImport
-    }
-    '/not-found/via-beforeLoad': {
-      id: '/not-found/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/not-found/via-beforeLoad'
-      preLoaderRoute: typeof NotFoundViaBeforeLoadRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
-    '/not-found/via-loader': {
-      id: '/not-found/via-loader'
-      path: '/via-loader'
-      fullPath: '/not-found/via-loader'
-      preLoaderRoute: typeof NotFoundViaLoaderRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRoute
-    }
-    '/redirect/$target': {
-      id: '/redirect/$target'
-      path: '/redirect/$target'
-      fullPath: '/redirect/$target'
-      preLoaderRoute: typeof RedirectTargetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search-params/default': {
-      id: '/search-params/default'
-      path: '/default'
-      fullPath: '/search-params/default'
-      preLoaderRoute: typeof SearchParamsDefaultRouteImport
-      parentRoute: typeof SearchParamsRouteRoute
-    }
-    '/search-params/loader-throws-redirect': {
-      id: '/search-params/loader-throws-redirect'
-      path: '/loader-throws-redirect'
-      fullPath: '/search-params/loader-throws-redirect'
-      preLoaderRoute: typeof SearchParamsLoaderThrowsRedirectRouteImport
-      parentRoute: typeof SearchParamsRouteRoute
-    }
-    '/users/$userId': {
-      id: '/users/$userId'
-      path: '/$userId'
-      fullPath: '/users/$userId'
-      preLoaderRoute: typeof UsersUserIdRouteImport
-      parentRoute: typeof UsersRoute
-    }
-    '/not-found/': {
-      id: '/not-found/'
+    '/redirect/$target/': {
+      id: '/redirect/$target/'
       path: '/'
-      fullPath: '/not-found/'
-      preLoaderRoute: typeof NotFoundIndexRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexRouteImport
-      parentRoute: typeof PostsRoute
-    }
-    '/redirect/': {
-      id: '/redirect/'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search-params/': {
-      id: '/search-params/'
-      path: '/'
-      fullPath: '/search-params/'
-      preLoaderRoute: typeof SearchParamsIndexRouteImport
-      parentRoute: typeof SearchParamsRouteRoute
-    }
-    '/users/': {
-      id: '/users/'
-      path: '/'
-      fullPath: '/users/'
-      preLoaderRoute: typeof UsersIndexRouteImport
-      parentRoute: typeof UsersRoute
-    }
-    '/_layout/_layout-2/layout-a': {
-      id: '/_layout/_layout-2/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
-      parentRoute: typeof LayoutLayout2Route
-    }
-    '/_layout/_layout-2/layout-b': {
-      id: '/_layout/_layout-2/layout-b'
-      path: '/layout-b'
-      fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
-      parentRoute: typeof LayoutLayout2Route
-    }
-    '/api/users/$id': {
-      id: '/api/users/$id'
-      path: ''
-      fullPath: '/api/users/$id'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts_/$postId/deep': {
-      id: '/posts_/$postId/deep'
-      path: '/posts/$postId/deep'
-      fullPath: '/posts/$postId/deep'
-      preLoaderRoute: typeof PostsPostIdDeepRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/redirect/$target/via-beforeLoad': {
-      id: '/redirect/$target/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/redirect/$target/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
+      fullPath: '/redirect/$target/'
+      preLoaderRoute: typeof RedirectTargetIndexRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
     '/redirect/$target/via-loader': {
@@ -754,32 +931,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
-    '/redirect/$target/': {
-      id: '/redirect/$target/'
-      path: '/'
-      fullPath: '/redirect/$target/'
-      preLoaderRoute: typeof RedirectTargetIndexRouteImport
+    '/redirect/$target/via-beforeLoad': {
+      id: '/redirect/$target/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/redirect/$target/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
-    '/foo/$bar/$qux/_here': {
-      id: '/foo/$bar/$qux/_here'
-      path: '/foo/$bar/$qux'
-      fullPath: '/foo/$bar/$qux'
-      preLoaderRoute: typeof FooBarQuxHereRouteImport
-      parentRoute: typeof FooBarQuxRoute
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
+      preLoaderRoute: typeof PostsPostIdDeepRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/redirect/$target/serverFn/via-beforeLoad': {
-      id: '/redirect/$target/serverFn/via-beforeLoad'
-      path: '/serverFn/via-beforeLoad'
-      fullPath: '/redirect/$target/serverFn/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetServerFnViaBeforeLoadRouteImport
-      parentRoute: typeof RedirectTargetRoute
+    '/api/users/$id': {
+      id: '/api/users/$id'
+      path: '/$id'
+      fullPath: '/api/users/$id'
+      preLoaderRoute: typeof ApiUsersIdRouteImport
+      parentRoute: typeof ApiUsersRoute
     }
-    '/redirect/$target/serverFn/via-loader': {
-      id: '/redirect/$target/serverFn/via-loader'
-      path: '/serverFn/via-loader'
-      fullPath: '/redirect/$target/serverFn/via-loader'
-      preLoaderRoute: typeof RedirectTargetServerFnViaLoaderRouteImport
+    '/_layout/_layout-2/layout-b': {
+      id: '/_layout/_layout-2/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/redirect/$target/serverFn/': {
+      id: '/redirect/$target/serverFn/'
+      path: '/serverFn'
+      fullPath: '/redirect/$target/serverFn'
+      preLoaderRoute: typeof RedirectTargetServerFnIndexRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
     '/redirect/$target/serverFn/via-useServerFn': {
@@ -789,12 +980,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTargetServerFnViaUseServerFnRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
-    '/redirect/$target/serverFn/': {
-      id: '/redirect/$target/serverFn/'
-      path: '/serverFn'
-      fullPath: '/redirect/$target/serverFn'
-      preLoaderRoute: typeof RedirectTargetServerFnIndexRouteImport
+    '/redirect/$target/serverFn/via-loader': {
+      id: '/redirect/$target/serverFn/via-loader'
+      path: '/serverFn/via-loader'
+      fullPath: '/redirect/$target/serverFn/via-loader'
+      preLoaderRoute: typeof RedirectTargetServerFnViaLoaderRouteImport
       parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/serverFn/via-beforeLoad': {
+      id: '/redirect/$target/serverFn/via-beforeLoad'
+      path: '/serverFn/via-beforeLoad'
+      fullPath: '/redirect/$target/serverFn/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetServerFnViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/foo/$bar/$qux/_here': {
+      id: '/foo/$bar/$qux/_here'
+      path: '/foo/$bar/$qux'
+      fullPath: '/foo/$bar/$qux'
+      preLoaderRoute: typeof FooBarQuxHereRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/foo/$bar/$qux/_here/': {
       id: '/foo/$bar/$qux/_here/'
@@ -803,955 +1008,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FooBarQuxHereIndexRouteImport
       parentRoute: typeof FooBarQuxHereRoute
     }
-    '/foo/$bar/$qux': {
-      id: '/foo/$bar/$qux'
-      path: '/foo/$bar/$qux'
-      fullPath: '/foo/$bar/$qux'
-      preLoaderRoute: typeof FooBarQuxRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/not-found': {
-      id: '/not-found'
-      path: '/not-found'
-      fullPath: '/not-found'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/search-params': {
-      id: '/search-params'
-      path: '/search-params'
-      fullPath: '/search-params'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/deferred': {
-      id: '/deferred'
-      path: '/deferred'
-      fullPath: '/deferred'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/inline-scripts': {
-      id: '/inline-scripts'
-      path: '/inline-scripts'
-      fullPath: '/inline-scripts'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/links': {
-      id: '/links'
-      path: '/links'
-      fullPath: '/links'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/scripts': {
-      id: '/scripts'
-      path: '/scripts'
-      fullPath: '/scripts'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/stream': {
-      id: '/stream'
-      path: '/stream'
-      fullPath: '/stream'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/users': {
-      id: '/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/대한민국': {
-      id: '/대한민국'
-      path: '/대한민국'
-      fullPath: '/대한민국'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_layout/_layout-2': {
-      id: '/_layout/_layout-2'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/api/users': {
-      id: '/api/users'
-      path: '/api/users'
-      fullPath: '/api/users'
-      preLoaderRoute: typeof ApiUsersServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/not-found/via-beforeLoad': {
-      id: '/not-found/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/not-found/via-beforeLoad'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/not-found/via-loader': {
-      id: '/not-found/via-loader'
-      path: '/via-loader'
-      fullPath: '/not-found/via-loader'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/redirect/$target': {
-      id: '/redirect/$target'
-      path: '/redirect/$target'
-      fullPath: '/redirect/$target'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/search-params/default': {
-      id: '/search-params/default'
-      path: '/default'
-      fullPath: '/search-params/default'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/search-params/loader-throws-redirect': {
-      id: '/search-params/loader-throws-redirect'
-      path: '/loader-throws-redirect'
-      fullPath: '/search-params/loader-throws-redirect'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/users/$userId': {
-      id: '/users/$userId'
-      path: '/$userId'
-      fullPath: '/users/$userId'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/not-found/': {
-      id: '/not-found/'
-      path: '/'
-      fullPath: '/not-found/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/redirect/': {
-      id: '/redirect/'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/search-params/': {
-      id: '/search-params/'
-      path: '/'
-      fullPath: '/search-params/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/users/': {
-      id: '/users/'
-      path: '/'
-      fullPath: '/users/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_layout/_layout-2/layout-a': {
-      id: '/_layout/_layout-2/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_layout/_layout-2/layout-b': {
-      id: '/_layout/_layout-2/layout-b'
-      path: '/layout-b'
-      fullPath: '/layout-b'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/api/users/$id': {
-      id: '/api/users/$id'
-      path: '/$id'
-      fullPath: '/api/users/$id'
-      preLoaderRoute: typeof ApiUsersIdServerRouteImport
-      parentRoute: typeof ApiUsersServerRoute
-    }
-    '/posts_/$postId/deep': {
-      id: '/posts_/$postId/deep'
-      path: '/posts/$postId/deep'
-      fullPath: '/posts/$postId/deep'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/redirect/$target/via-beforeLoad': {
-      id: '/redirect/$target/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/redirect/$target/via-beforeLoad'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/redirect/$target/via-loader': {
-      id: '/redirect/$target/via-loader'
-      path: '/via-loader'
-      fullPath: '/redirect/$target/via-loader'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/redirect/$target/': {
-      id: '/redirect/$target/'
-      path: '/'
-      fullPath: '/redirect/$target/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/foo/$bar/$qux/_here': {
-      id: '/foo/$bar/$qux/_here'
-      path: '/foo/$bar/$qux'
-      fullPath: '/foo/$bar/$qux'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/redirect/$target/serverFn/via-beforeLoad': {
-      id: '/redirect/$target/serverFn/via-beforeLoad'
-      path: '/serverFn/via-beforeLoad'
-      fullPath: '/redirect/$target/serverFn/via-beforeLoad'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/redirect/$target/serverFn/via-loader': {
-      id: '/redirect/$target/serverFn/via-loader'
-      path: '/serverFn/via-loader'
-      fullPath: '/redirect/$target/serverFn/via-loader'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/redirect/$target/serverFn/via-useServerFn': {
-      id: '/redirect/$target/serverFn/via-useServerFn'
-      path: '/serverFn/via-useServerFn'
-      fullPath: '/redirect/$target/serverFn/via-useServerFn'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/redirect/$target/serverFn/': {
-      id: '/redirect/$target/serverFn/'
-      path: '/serverFn'
-      fullPath: '/redirect/$target/serverFn'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/foo/$bar/$qux/_here/': {
-      id: '/foo/$bar/$qux/_here/'
-      path: '/'
-      fullPath: '/foo/$bar/$qux/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-  }
-}
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/']['parentRoute'],
-    ServerFileRoutesByPath['/']['id'],
-    ServerFileRoutesByPath['/']['path'],
-    ServerFileRoutesByPath['/']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/not-found/route' {
-  const createFileRoute: CreateFileRoute<
-    '/not-found',
-    FileRoutesByPath['/not-found']['parentRoute'],
-    FileRoutesByPath['/not-found']['id'],
-    FileRoutesByPath['/not-found']['path'],
-    FileRoutesByPath['/not-found']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/not-found']['parentRoute'],
-    ServerFileRoutesByPath['/not-found']['id'],
-    ServerFileRoutesByPath['/not-found']['path'],
-    ServerFileRoutesByPath['/not-found']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/search-params/route' {
-  const createFileRoute: CreateFileRoute<
-    '/search-params',
-    FileRoutesByPath['/search-params']['parentRoute'],
-    FileRoutesByPath['/search-params']['id'],
-    FileRoutesByPath['/search-params']['path'],
-    FileRoutesByPath['/search-params']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/search-params']['parentRoute'],
-    ServerFileRoutesByPath['/search-params']['id'],
-    ServerFileRoutesByPath['/search-params']['path'],
-    ServerFileRoutesByPath['/search-params']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/_layout' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout',
-    FileRoutesByPath['/_layout']['parentRoute'],
-    FileRoutesByPath['/_layout']['id'],
-    FileRoutesByPath['/_layout']['path'],
-    FileRoutesByPath['/_layout']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/_layout']['parentRoute'],
-    ServerFileRoutesByPath['/_layout']['id'],
-    ServerFileRoutesByPath['/_layout']['path'],
-    ServerFileRoutesByPath['/_layout']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/deferred' {
-  const createFileRoute: CreateFileRoute<
-    '/deferred',
-    FileRoutesByPath['/deferred']['parentRoute'],
-    FileRoutesByPath['/deferred']['id'],
-    FileRoutesByPath['/deferred']['path'],
-    FileRoutesByPath['/deferred']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/deferred']['parentRoute'],
-    ServerFileRoutesByPath['/deferred']['id'],
-    ServerFileRoutesByPath['/deferred']['path'],
-    ServerFileRoutesByPath['/deferred']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/inline-scripts' {
-  const createFileRoute: CreateFileRoute<
-    '/inline-scripts',
-    FileRoutesByPath['/inline-scripts']['parentRoute'],
-    FileRoutesByPath['/inline-scripts']['id'],
-    FileRoutesByPath['/inline-scripts']['path'],
-    FileRoutesByPath['/inline-scripts']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/inline-scripts']['parentRoute'],
-    ServerFileRoutesByPath['/inline-scripts']['id'],
-    ServerFileRoutesByPath['/inline-scripts']['path'],
-    ServerFileRoutesByPath['/inline-scripts']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/links' {
-  const createFileRoute: CreateFileRoute<
-    '/links',
-    FileRoutesByPath['/links']['parentRoute'],
-    FileRoutesByPath['/links']['id'],
-    FileRoutesByPath['/links']['path'],
-    FileRoutesByPath['/links']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/links']['parentRoute'],
-    ServerFileRoutesByPath['/links']['id'],
-    ServerFileRoutesByPath['/links']['path'],
-    ServerFileRoutesByPath['/links']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/posts' {
-  const createFileRoute: CreateFileRoute<
-    '/posts',
-    FileRoutesByPath['/posts']['parentRoute'],
-    FileRoutesByPath['/posts']['id'],
-    FileRoutesByPath['/posts']['path'],
-    FileRoutesByPath['/posts']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/posts']['parentRoute'],
-    ServerFileRoutesByPath['/posts']['id'],
-    ServerFileRoutesByPath['/posts']['path'],
-    ServerFileRoutesByPath['/posts']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/scripts' {
-  const createFileRoute: CreateFileRoute<
-    '/scripts',
-    FileRoutesByPath['/scripts']['parentRoute'],
-    FileRoutesByPath['/scripts']['id'],
-    FileRoutesByPath['/scripts']['path'],
-    FileRoutesByPath['/scripts']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/scripts']['parentRoute'],
-    ServerFileRoutesByPath['/scripts']['id'],
-    ServerFileRoutesByPath['/scripts']['path'],
-    ServerFileRoutesByPath['/scripts']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/stream' {
-  const createFileRoute: CreateFileRoute<
-    '/stream',
-    FileRoutesByPath['/stream']['parentRoute'],
-    FileRoutesByPath['/stream']['id'],
-    FileRoutesByPath['/stream']['path'],
-    FileRoutesByPath['/stream']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/stream']['parentRoute'],
-    ServerFileRoutesByPath['/stream']['id'],
-    ServerFileRoutesByPath['/stream']['path'],
-    ServerFileRoutesByPath['/stream']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/users' {
-  const createFileRoute: CreateFileRoute<
-    '/users',
-    FileRoutesByPath['/users']['parentRoute'],
-    FileRoutesByPath['/users']['id'],
-    FileRoutesByPath['/users']['path'],
-    FileRoutesByPath['/users']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/users']['parentRoute'],
-    ServerFileRoutesByPath['/users']['id'],
-    ServerFileRoutesByPath['/users']['path'],
-    ServerFileRoutesByPath['/users']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/대한민국' {
-  const createFileRoute: CreateFileRoute<
-    '/대한민국',
-    FileRoutesByPath['/대한민국']['parentRoute'],
-    FileRoutesByPath['/대한민국']['id'],
-    FileRoutesByPath['/대한민국']['path'],
-    FileRoutesByPath['/대한민국']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/대한민국']['parentRoute'],
-    ServerFileRoutesByPath['/대한민국']['id'],
-    ServerFileRoutesByPath['/대한민국']['path'],
-    ServerFileRoutesByPath['/대한민국']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/_layout/_layout-2' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/_layout-2',
-    FileRoutesByPath['/_layout/_layout-2']['parentRoute'],
-    FileRoutesByPath['/_layout/_layout-2']['id'],
-    FileRoutesByPath['/_layout/_layout-2']['path'],
-    FileRoutesByPath['/_layout/_layout-2']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/_layout/_layout-2']['parentRoute'],
-    ServerFileRoutesByPath['/_layout/_layout-2']['id'],
-    ServerFileRoutesByPath['/_layout/_layout-2']['path'],
-    ServerFileRoutesByPath['/_layout/_layout-2']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/api.users' {
-  const createFileRoute: CreateFileRoute<
-    '/api/users',
-    FileRoutesByPath['/api/users']['parentRoute'],
-    FileRoutesByPath['/api/users']['id'],
-    FileRoutesByPath['/api/users']['path'],
-    FileRoutesByPath['/api/users']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/api/users']['parentRoute'],
-    ServerFileRoutesByPath['/api/users']['id'],
-    ServerFileRoutesByPath['/api/users']['path'],
-    ServerFileRoutesByPath['/api/users']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/not-found/via-beforeLoad' {
-  const createFileRoute: CreateFileRoute<
-    '/not-found/via-beforeLoad',
-    FileRoutesByPath['/not-found/via-beforeLoad']['parentRoute'],
-    FileRoutesByPath['/not-found/via-beforeLoad']['id'],
-    FileRoutesByPath['/not-found/via-beforeLoad']['path'],
-    FileRoutesByPath['/not-found/via-beforeLoad']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/not-found/via-beforeLoad']['parentRoute'],
-    ServerFileRoutesByPath['/not-found/via-beforeLoad']['id'],
-    ServerFileRoutesByPath['/not-found/via-beforeLoad']['path'],
-    ServerFileRoutesByPath['/not-found/via-beforeLoad']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/not-found/via-loader' {
-  const createFileRoute: CreateFileRoute<
-    '/not-found/via-loader',
-    FileRoutesByPath['/not-found/via-loader']['parentRoute'],
-    FileRoutesByPath['/not-found/via-loader']['id'],
-    FileRoutesByPath['/not-found/via-loader']['path'],
-    FileRoutesByPath['/not-found/via-loader']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/not-found/via-loader']['parentRoute'],
-    ServerFileRoutesByPath['/not-found/via-loader']['id'],
-    ServerFileRoutesByPath['/not-found/via-loader']['path'],
-    ServerFileRoutesByPath['/not-found/via-loader']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/posts.$postId' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/$postId',
-    FileRoutesByPath['/posts/$postId']['parentRoute'],
-    FileRoutesByPath['/posts/$postId']['id'],
-    FileRoutesByPath['/posts/$postId']['path'],
-    FileRoutesByPath['/posts/$postId']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/posts/$postId']['parentRoute'],
-    ServerFileRoutesByPath['/posts/$postId']['id'],
-    ServerFileRoutesByPath['/posts/$postId']['path'],
-    ServerFileRoutesByPath['/posts/$postId']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/redirect/$target' {
-  const createFileRoute: CreateFileRoute<
-    '/redirect/$target',
-    FileRoutesByPath['/redirect/$target']['parentRoute'],
-    FileRoutesByPath['/redirect/$target']['id'],
-    FileRoutesByPath['/redirect/$target']['path'],
-    FileRoutesByPath['/redirect/$target']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/redirect/$target']['parentRoute'],
-    ServerFileRoutesByPath['/redirect/$target']['id'],
-    ServerFileRoutesByPath['/redirect/$target']['path'],
-    ServerFileRoutesByPath['/redirect/$target']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/search-params/default' {
-  const createFileRoute: CreateFileRoute<
-    '/search-params/default',
-    FileRoutesByPath['/search-params/default']['parentRoute'],
-    FileRoutesByPath['/search-params/default']['id'],
-    FileRoutesByPath['/search-params/default']['path'],
-    FileRoutesByPath['/search-params/default']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/search-params/default']['parentRoute'],
-    ServerFileRoutesByPath['/search-params/default']['id'],
-    ServerFileRoutesByPath['/search-params/default']['path'],
-    ServerFileRoutesByPath['/search-params/default']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/search-params/loader-throws-redirect' {
-  const createFileRoute: CreateFileRoute<
-    '/search-params/loader-throws-redirect',
-    FileRoutesByPath['/search-params/loader-throws-redirect']['parentRoute'],
-    FileRoutesByPath['/search-params/loader-throws-redirect']['id'],
-    FileRoutesByPath['/search-params/loader-throws-redirect']['path'],
-    FileRoutesByPath['/search-params/loader-throws-redirect']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/search-params/loader-throws-redirect']['parentRoute'],
-    ServerFileRoutesByPath['/search-params/loader-throws-redirect']['id'],
-    ServerFileRoutesByPath['/search-params/loader-throws-redirect']['path'],
-    ServerFileRoutesByPath['/search-params/loader-throws-redirect']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/users.$userId' {
-  const createFileRoute: CreateFileRoute<
-    '/users/$userId',
-    FileRoutesByPath['/users/$userId']['parentRoute'],
-    FileRoutesByPath['/users/$userId']['id'],
-    FileRoutesByPath['/users/$userId']['path'],
-    FileRoutesByPath['/users/$userId']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/users/$userId']['parentRoute'],
-    ServerFileRoutesByPath['/users/$userId']['id'],
-    ServerFileRoutesByPath['/users/$userId']['path'],
-    ServerFileRoutesByPath['/users/$userId']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/not-found/index' {
-  const createFileRoute: CreateFileRoute<
-    '/not-found/',
-    FileRoutesByPath['/not-found/']['parentRoute'],
-    FileRoutesByPath['/not-found/']['id'],
-    FileRoutesByPath['/not-found/']['path'],
-    FileRoutesByPath['/not-found/']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/not-found/']['parentRoute'],
-    ServerFileRoutesByPath['/not-found/']['id'],
-    ServerFileRoutesByPath['/not-found/']['path'],
-    ServerFileRoutesByPath['/not-found/']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/posts.index' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/',
-    FileRoutesByPath['/posts/']['parentRoute'],
-    FileRoutesByPath['/posts/']['id'],
-    FileRoutesByPath['/posts/']['path'],
-    FileRoutesByPath['/posts/']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/posts/']['parentRoute'],
-    ServerFileRoutesByPath['/posts/']['id'],
-    ServerFileRoutesByPath['/posts/']['path'],
-    ServerFileRoutesByPath['/posts/']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/redirect/index' {
-  const createFileRoute: CreateFileRoute<
-    '/redirect/',
-    FileRoutesByPath['/redirect/']['parentRoute'],
-    FileRoutesByPath['/redirect/']['id'],
-    FileRoutesByPath['/redirect/']['path'],
-    FileRoutesByPath['/redirect/']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/redirect/']['parentRoute'],
-    ServerFileRoutesByPath['/redirect/']['id'],
-    ServerFileRoutesByPath['/redirect/']['path'],
-    ServerFileRoutesByPath['/redirect/']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/search-params/index' {
-  const createFileRoute: CreateFileRoute<
-    '/search-params/',
-    FileRoutesByPath['/search-params/']['parentRoute'],
-    FileRoutesByPath['/search-params/']['id'],
-    FileRoutesByPath['/search-params/']['path'],
-    FileRoutesByPath['/search-params/']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/search-params/']['parentRoute'],
-    ServerFileRoutesByPath['/search-params/']['id'],
-    ServerFileRoutesByPath['/search-params/']['path'],
-    ServerFileRoutesByPath['/search-params/']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/users.index' {
-  const createFileRoute: CreateFileRoute<
-    '/users/',
-    FileRoutesByPath['/users/']['parentRoute'],
-    FileRoutesByPath['/users/']['id'],
-    FileRoutesByPath['/users/']['path'],
-    FileRoutesByPath['/users/']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/users/']['parentRoute'],
-    ServerFileRoutesByPath['/users/']['id'],
-    ServerFileRoutesByPath['/users/']['path'],
-    ServerFileRoutesByPath['/users/']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/_layout/_layout-2/layout-a' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/_layout-2/layout-a',
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
-    ServerFileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
-    ServerFileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
-    ServerFileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/_layout/_layout-2/layout-b' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/_layout-2/layout-b',
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
-    ServerFileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
-    ServerFileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
-    ServerFileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/api/users.$id' {
-  const createFileRoute: CreateFileRoute<
-    '/api/users/$id',
-    FileRoutesByPath['/api/users/$id']['parentRoute'],
-    FileRoutesByPath['/api/users/$id']['id'],
-    FileRoutesByPath['/api/users/$id']['path'],
-    FileRoutesByPath['/api/users/$id']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/api/users/$id']['parentRoute'],
-    ServerFileRoutesByPath['/api/users/$id']['id'],
-    ServerFileRoutesByPath['/api/users/$id']['path'],
-    ServerFileRoutesByPath['/api/users/$id']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/posts_.$postId.deep' {
-  const createFileRoute: CreateFileRoute<
-    '/posts_/$postId/deep',
-    FileRoutesByPath['/posts_/$postId/deep']['parentRoute'],
-    FileRoutesByPath['/posts_/$postId/deep']['id'],
-    FileRoutesByPath['/posts_/$postId/deep']['path'],
-    FileRoutesByPath['/posts_/$postId/deep']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/posts_/$postId/deep']['parentRoute'],
-    ServerFileRoutesByPath['/posts_/$postId/deep']['id'],
-    ServerFileRoutesByPath['/posts_/$postId/deep']['path'],
-    ServerFileRoutesByPath['/posts_/$postId/deep']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/redirect/$target/via-beforeLoad' {
-  const createFileRoute: CreateFileRoute<
-    '/redirect/$target/via-beforeLoad',
-    FileRoutesByPath['/redirect/$target/via-beforeLoad']['parentRoute'],
-    FileRoutesByPath['/redirect/$target/via-beforeLoad']['id'],
-    FileRoutesByPath['/redirect/$target/via-beforeLoad']['path'],
-    FileRoutesByPath['/redirect/$target/via-beforeLoad']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/redirect/$target/via-beforeLoad']['parentRoute'],
-    ServerFileRoutesByPath['/redirect/$target/via-beforeLoad']['id'],
-    ServerFileRoutesByPath['/redirect/$target/via-beforeLoad']['path'],
-    ServerFileRoutesByPath['/redirect/$target/via-beforeLoad']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/redirect/$target/via-loader' {
-  const createFileRoute: CreateFileRoute<
-    '/redirect/$target/via-loader',
-    FileRoutesByPath['/redirect/$target/via-loader']['parentRoute'],
-    FileRoutesByPath['/redirect/$target/via-loader']['id'],
-    FileRoutesByPath['/redirect/$target/via-loader']['path'],
-    FileRoutesByPath['/redirect/$target/via-loader']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/redirect/$target/via-loader']['parentRoute'],
-    ServerFileRoutesByPath['/redirect/$target/via-loader']['id'],
-    ServerFileRoutesByPath['/redirect/$target/via-loader']['path'],
-    ServerFileRoutesByPath['/redirect/$target/via-loader']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/redirect/$target/index' {
-  const createFileRoute: CreateFileRoute<
-    '/redirect/$target/',
-    FileRoutesByPath['/redirect/$target/']['parentRoute'],
-    FileRoutesByPath['/redirect/$target/']['id'],
-    FileRoutesByPath['/redirect/$target/']['path'],
-    FileRoutesByPath['/redirect/$target/']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/redirect/$target/']['parentRoute'],
-    ServerFileRoutesByPath['/redirect/$target/']['id'],
-    ServerFileRoutesByPath['/redirect/$target/']['path'],
-    ServerFileRoutesByPath['/redirect/$target/']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/foo/$bar/$qux/_here' {
-  const createFileRoute: CreateFileRoute<
-    '/foo/$bar/$qux/_here',
-    FileRoutesByPath['/foo/$bar/$qux/_here']['parentRoute'],
-    FileRoutesByPath['/foo/$bar/$qux/_here']['id'],
-    FileRoutesByPath['/foo/$bar/$qux/_here']['path'],
-    FileRoutesByPath['/foo/$bar/$qux/_here']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/foo/$bar/$qux/_here']['parentRoute'],
-    ServerFileRoutesByPath['/foo/$bar/$qux/_here']['id'],
-    ServerFileRoutesByPath['/foo/$bar/$qux/_here']['path'],
-    ServerFileRoutesByPath['/foo/$bar/$qux/_here']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/redirect/$target/serverFn/via-beforeLoad' {
-  const createFileRoute: CreateFileRoute<
-    '/redirect/$target/serverFn/via-beforeLoad',
-    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['parentRoute'],
-    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['id'],
-    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['path'],
-    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['parentRoute'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['id'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['path'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/redirect/$target/serverFn/via-loader' {
-  const createFileRoute: CreateFileRoute<
-    '/redirect/$target/serverFn/via-loader',
-    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['parentRoute'],
-    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['id'],
-    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['path'],
-    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-loader']['parentRoute'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-loader']['id'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-loader']['path'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-loader']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/redirect/$target/serverFn/via-useServerFn' {
-  const createFileRoute: CreateFileRoute<
-    '/redirect/$target/serverFn/via-useServerFn',
-    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['parentRoute'],
-    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['id'],
-    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['path'],
-    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['parentRoute'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['id'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['path'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/redirect/$target/serverFn/index' {
-  const createFileRoute: CreateFileRoute<
-    '/redirect/$target/serverFn/',
-    FileRoutesByPath['/redirect/$target/serverFn/']['parentRoute'],
-    FileRoutesByPath['/redirect/$target/serverFn/']['id'],
-    FileRoutesByPath['/redirect/$target/serverFn/']['path'],
-    FileRoutesByPath['/redirect/$target/serverFn/']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/redirect/$target/serverFn/']['parentRoute'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/']['id'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/']['path'],
-    ServerFileRoutesByPath['/redirect/$target/serverFn/']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/foo/$bar/$qux/_here/index' {
-  const createFileRoute: CreateFileRoute<
-    '/foo/$bar/$qux/_here/',
-    FileRoutesByPath['/foo/$bar/$qux/_here/']['parentRoute'],
-    FileRoutesByPath['/foo/$bar/$qux/_here/']['id'],
-    FileRoutesByPath['/foo/$bar/$qux/_here/']['path'],
-    FileRoutesByPath['/foo/$bar/$qux/_here/']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/foo/$bar/$qux/_here/']['parentRoute'],
-    ServerFileRoutesByPath['/foo/$bar/$qux/_here/']['id'],
-    ServerFileRoutesByPath['/foo/$bar/$qux/_here/']['path'],
-    ServerFileRoutesByPath['/foo/$bar/$qux/_here/']['fullPath'],
-    unknown
-  >
 }
 
 interface NotFoundRouteRouteChildren {
@@ -1822,6 +1079,30 @@ const PostsRouteChildren: PostsRouteChildren = {
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
+interface RawStreamRouteChildren {
+  RawStreamClientCallRoute: typeof RawStreamClientCallRoute
+  RawStreamSsrBinaryHintRoute: typeof RawStreamSsrBinaryHintRoute
+  RawStreamSsrMixedRoute: typeof RawStreamSsrMixedRoute
+  RawStreamSsrMultipleRoute: typeof RawStreamSsrMultipleRoute
+  RawStreamSsrSingleRoute: typeof RawStreamSsrSingleRoute
+  RawStreamSsrTextHintRoute: typeof RawStreamSsrTextHintRoute
+  RawStreamIndexRoute: typeof RawStreamIndexRoute
+}
+
+const RawStreamRouteChildren: RawStreamRouteChildren = {
+  RawStreamClientCallRoute: RawStreamClientCallRoute,
+  RawStreamSsrBinaryHintRoute: RawStreamSsrBinaryHintRoute,
+  RawStreamSsrMixedRoute: RawStreamSsrMixedRoute,
+  RawStreamSsrMultipleRoute: RawStreamSsrMultipleRoute,
+  RawStreamSsrSingleRoute: RawStreamSsrSingleRoute,
+  RawStreamSsrTextHintRoute: RawStreamSsrTextHintRoute,
+  RawStreamIndexRoute: RawStreamIndexRoute,
+}
+
+const RawStreamRouteWithChildren = RawStreamRoute._addFileChildren(
+  RawStreamRouteChildren,
+)
+
 interface UsersRouteChildren {
   UsersUserIdRoute: typeof UsersUserIdRoute
   UsersIndexRoute: typeof UsersIndexRoute
@@ -1833,6 +1114,18 @@ const UsersRouteChildren: UsersRouteChildren = {
 }
 
 const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
+
+interface ApiUsersRouteChildren {
+  ApiUsersIdRoute: typeof ApiUsersIdRoute
+}
+
+const ApiUsersRouteChildren: ApiUsersRouteChildren = {
+  ApiUsersIdRoute: ApiUsersIdRoute,
+}
+
+const ApiUsersRouteWithChildren = ApiUsersRoute._addFileChildren(
+  ApiUsersRouteChildren,
+)
 
 interface RedirectTargetRouteChildren {
   RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
@@ -1872,55 +1165,40 @@ const FooBarQuxHereRouteWithChildren = FooBarQuxHereRoute._addFileChildren(
   FooBarQuxHereRouteChildren,
 )
 
-interface FooBarQuxRouteChildren {
-  FooBarQuxHereRoute: typeof FooBarQuxHereRouteWithChildren
-}
-
-const FooBarQuxRouteChildren: FooBarQuxRouteChildren = {
-  FooBarQuxHereRoute: FooBarQuxHereRouteWithChildren,
-}
-
-const FooBarQuxRouteWithChildren = FooBarQuxRoute._addFileChildren(
-  FooBarQuxRouteChildren,
-)
-
-interface ApiUsersServerRouteChildren {
-  ApiUsersIdServerRoute: typeof ApiUsersIdServerRoute
-}
-
-const ApiUsersServerRouteChildren: ApiUsersServerRouteChildren = {
-  ApiUsersIdServerRoute: ApiUsersIdServerRoute,
-}
-
-const ApiUsersServerRouteWithChildren = ApiUsersServerRoute._addFileChildren(
-  ApiUsersServerRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NotFoundRouteRoute: NotFoundRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
+  ClientOnlyRoute: ClientOnlyRoute,
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
+  RawStreamRoute: RawStreamRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
   StreamRoute: StreamRoute,
+  TypeOnlyReexportRoute: TypeOnlyReexportRoute,
   UsersRoute: UsersRouteWithChildren,
   Char45824Char54620Char48124Char44397Route:
     Char45824Char54620Char48124Char44397Route,
+  ApiUsersRoute: ApiUsersRouteWithChildren,
+  MultiCookieRedirectTargetRoute: MultiCookieRedirectTargetRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
+  MultiCookieRedirectIndexRoute: MultiCookieRedirectIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
-  FooBarQuxRoute: FooBarQuxRouteWithChildren,
+  FooBarQuxHereRoute: FooBarQuxHereRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ApiUsersServerRoute: ApiUsersServerRouteWithChildren,
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
 }
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()

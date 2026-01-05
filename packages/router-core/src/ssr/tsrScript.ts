@@ -1,7 +1,20 @@
 self.$_TSR = {
-  c: () => {
-    document.querySelectorAll('.\\$tsr').forEach((o) => {
-      o.remove()
-    })
+  h() {
+    this.hydrated = true
+    this.c()
   },
+  e() {
+    this.streamEnded = true
+    this.c()
+  },
+  c() {
+    if (this.hydrated && this.streamEnded) {
+      delete self.$_TSR
+      delete self.$R['tsr']
+    }
+  },
+  p(script) {
+    !this.initialized ? this.buffer.push(script) : script()
+  },
+  buffer: [],
 }

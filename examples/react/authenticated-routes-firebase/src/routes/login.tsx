@@ -1,17 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import * as React from 'react'
-import { redirect, useRouter, useRouterState } from '@tanstack/react-router'
+import { redirect, useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { useAuth } from '../auth'
-import { sleep } from '../utils'
-import { siApple, siGithub, siGoogle } from 'simple-icons'
+import { siGithub } from 'simple-icons'
 
-import {
-  GoogleAuthProvider,
-  GithubAuthProvider,
-  OAuthProvider,
-} from 'firebase/auth'
+import { GithubAuthProvider } from 'firebase/auth'
 
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 const fallback = '/dashboard' as const
@@ -56,7 +50,7 @@ function LoginComponent() {
   return (
     <div className="flex justify-center items-center min-h-screen">
       <div className="w-full max-w-md px-4 animate-fade-up relative z-10">
-        <div className="w-full backdrop-blur-sm bg-card/80 p-8 space-y-8 shadow-md border border-border">
+        <div className="w-full backdrop-blur-xs bg-card/80 p-8 space-y-8 shadow-md border border-border">
           <div className="space-y-4">
             {/* biome-ignore lint/a11y/useButtonType: <explanation> */}
             <button

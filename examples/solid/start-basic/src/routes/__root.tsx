@@ -6,6 +6,7 @@ import {
   createRootRoute,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import { HydrationScript } from 'solid-js/web'
 import type * as Solid from 'solid-js'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -58,64 +59,69 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
-    <>
-      <HeadContent />
-      <div class="p-2 flex gap-2 text-lg">
-        <Link
-          to="/"
-          activeProps={{
-            class: 'font-bold',
-          }}
-          activeOptions={{ exact: true }}
-        >
-          Home
-        </Link>{' '}
-        <Link
-          to="/posts"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Posts
-        </Link>{' '}
-        <Link
-          to="/users"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Users
-        </Link>{' '}
-        <Link
-          to="/route-a"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Pathless Layout
-        </Link>{' '}
-        <Link
-          to="/deferred"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Deferred
-        </Link>{' '}
-        <Link
-          // @ts-expect-error
-          to="/this-route-does-not-exist"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          This Route Does Not Exist
-        </Link>
-      </div>
-      <hr />
-      {children}
-      <TanStackRouterDevtools position="bottom-right" />
-      <Scripts />
-    </>
+    <html>
+      <head>
+        <HydrationScript />
+      </head>
+      <body>
+        <HeadContent />
+        <div class="p-2 flex gap-2 text-lg">
+          <Link
+            to="/"
+            activeProps={{
+              class: 'font-bold',
+            }}
+            activeOptions={{ exact: true }}
+          >
+            Home
+          </Link>{' '}
+          <Link
+            to="/posts"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Posts
+          </Link>{' '}
+          <Link
+            to="/users"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Users
+          </Link>{' '}
+          <Link
+            to="/route-a"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Pathless Layout
+          </Link>{' '}
+          <Link
+            to="/deferred"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Deferred
+          </Link>{' '}
+          <Link
+            // @ts-expect-error
+            to="/this-route-does-not-exist"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            This Route Does Not Exist
+          </Link>
+        </div>
+        <hr />
+        {children}
+        <TanStackRouterDevtools position="bottom-right" />
+        <Scripts />
+      </body>
+    </html>
   )
 }

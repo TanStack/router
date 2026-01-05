@@ -44,7 +44,7 @@ function setupConfig(
   folder: string,
   inlineConfig: Partial<Omit<Config, 'routesDirectory'>> = {},
 ) {
-  const { generatedRouteTree = '/routeTree.gen.ts', ...rest } = inlineConfig
+  const { generatedRouteTree = `/routeTree.gen.ts`, ...rest } = inlineConfig
   const dir = makeFolderDir(folder)
 
   const config = getConfig({
@@ -75,6 +75,10 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.indexToken = '_1nd3x'
       config.routeToken = '_r0ut3_'
       break
+    case 'escaped-custom-tokens':
+      config.indexToken = '_1nd3x'
+      config.routeToken = '_r0ut3_'
+      break
     case 'virtual':
       {
         const virtualRouteConfig = rootRoute('root.tsx', [
@@ -100,10 +104,33 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'virtual-config-file-default-export':
       config.virtualRouteConfig = './routes.ts'
       break
+    case 'virtual-physical-empty-path-merge':
+      config.virtualRouteConfig = './routes.ts'
+      break
+    case 'virtual-physical-empty-path-conflict-root':
+      config.virtualRouteConfig = './routes.ts'
+      break
+    case 'virtual-physical-empty-path-conflict-virtual':
+      config.virtualRouteConfig = './routes.ts'
+      break
+    case 'virtual-physical-no-prefix':
+      config.virtualRouteConfig = './routes.ts'
+      break
+    case 'virtual-with-escaped-underscore':
+      {
+        // Test case for escaped underscores in physical routes mounted via virtual config
+        // This ensures originalRoutePath is correctly prefixed when paths are updated
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          index('index.tsx'),
+          physical('/api', 'physical-routes'),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
     case 'types-disabled':
       config.disableTypes = true
       config.generatedRouteTree =
-        makeFolderDir(folderName) + '/routeTree.gen.js'
+        makeFolderDir(folderName) + `/routeTree.gen.js`
       break
     case 'custom-scaffolding':
       config.customScaffolding = {
@@ -228,13 +255,19 @@ function shouldThrow(folderName: string) {
   if (folderName === 'duplicate-fullPath') {
     return `Conflicting configuration paths were found for the following routes: "/", "/".`
   }
+  if (folderName === 'virtual-physical-empty-path-conflict-root') {
+    return `Conflicting configuration paths were found for the following routes: "/__root", "/__root".`
+  }
+  if (folderName === 'virtual-physical-empty-path-conflict-virtual') {
+    return `Conflicting configuration paths were found for the following routes: "/about", "/about".`
+  }
   return undefined
 }
 
 describe('generator works', async () => {
   const folderNames = await readDir()
 
-  it.each(folderNames.map((folder) => [folder]))(
+  it.each(folderNames)(
     'should wire-up the routes for a "%s" tree',
     async (folderName) => {
       const folderRoot = makeFolderDir(folderName)
@@ -258,16 +291,70 @@ describe('generator works', async () => {
 
         const generatedRouteTree = await getRouteTreeFileText(config)
 
+        const snapshotPath = `routeTree.snapshot.${config.disableTypes ? 'js' : 'ts'}`
+
         await expect(generatedRouteTree).toMatchFileSnapshot(
-          join(
-            'generator',
-            folderName,
-            `routeTree.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
-          ),
+          join('generator', folderName, snapshotPath),
         )
       }
 
       await postprocess(folderName)
+    },
+  )
+
+  it.each(folderNames)(
+    'should create directory for routeTree if it does not exist',
+    async () => {
+      const folderName = 'only-root'
+      const folderRoot = makeFolderDir(folderName)
+      let pathCreated = false
+
+      const config = await setupConfig(folderName)
+
+      rewriteConfigByFolderName(folderName, config)
+
+      await preprocess(folderName)
+      config.generatedRouteTree = join(
+        folderRoot,
+        'generated',
+        `/routeTree.gen.ts`,
+      )
+      const generator = new Generator({ config, root: folderRoot })
+
+      const error = shouldThrow(folderName)
+      if (error) {
+        try {
+          await generator.run()
+        } catch (e) {
+          expect(e).toBeInstanceOf(Error)
+          expect((e as Error).message.startsWith(error)).toBeTruthy()
+        }
+      } else {
+        await generator.run()
+
+        const generatedRouteTree = await getRouteTreeFileText(config)
+
+        await expect(generatedRouteTree).toMatchFileSnapshot(
+          join(
+            'generator',
+            folderName,
+            `routeTree.generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
+          ),
+        )
+
+        pathCreated = await fs.access(dirname(config.generatedRouteTree)).then(
+          () => true,
+          () => false,
+        )
+
+        await expect(pathCreated).toBe(true)
+      }
+
+      await postprocess(folderName)
+
+      if (pathCreated) {
+        await fs.rm(dirname(config.generatedRouteTree), { recursive: true })
+      }
     },
   )
 })

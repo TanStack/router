@@ -2,6 +2,15 @@ import * as React from 'react'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import type { AsyncRouteComponent } from './route'
 
+/**
+ * Wrap a dynamic import to create a route component that supports
+ * `.preload()` and friendly reload-on-module-missing behavior.
+ *
+ * @param importer Function returning a module promise
+ * @param exportName Named export to use (default: `default`)
+ * @returns A lazy route component compatible with TanStack Router
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/lazyRouteComponentFunction
+ */
 export function lazyRouteComponent<
   T extends Record<string, any>,
   TKey extends keyof T = 'default',
@@ -70,7 +79,12 @@ export function lazyRouteComponent<
     }
 
     if (!comp) {
-      throw load()
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (React.use) {
+        React.use(load())
+      } else {
+        throw load()
+      }
     }
 
     return React.createElement(comp, props)

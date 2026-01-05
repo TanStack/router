@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -10,9 +10,12 @@ function Home() {
       <h1 className="font-bold text-lg">Server Routes E2E tests</h1>
       <ul className="list-disc p-4">
         <li>
-          <Link to="/merge-server-fn-middleware-context">
-            server function middleware context is merged correctly
-          </Link>
+          <Route.Link to="./merge-middleware-context">
+            server route middleware context is merged correctly
+          </Route.Link>
+        </li>
+        <li>
+          <Route.Link to="./methods">server route methods</Route.Link>
         </li>
       </ul>
     </div>

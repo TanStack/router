@@ -4,17 +4,15 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Learn the Basics](../learn-the-basics.md) guide.
+> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](./guide/routing) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 
 This guide will help you build a **very** basic TanStack Start web application. Together, we will use TanStack Start to:
 
-- Serve an index page...
-- Which displays a counter...
-- With a button to increment the counter persistently.
-
-[Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/solid/start-bare)
+- Serve an index page
+- Display a counter
+- Increment the counter on the server and client
 
 Let's create a new project directory and initialize it.
 
@@ -24,7 +22,8 @@ cd myApp
 npm init -y
 ```
 
-> [!NOTE] > We use `npm` in all of these examples, but you can use your package manager of choice instead.
+> [!NOTE]
+> We use `npm` in all of these examples, but you can use your package manager of choice instead.
 
 ## TypeScript Configuration
 
@@ -44,7 +43,8 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 }
 ```
 
-> [!NOTE] > Enabling `verbatimModuleSyntax` can result in server bundles leaking into client bundles. It is recommended to keep this option disabled.
+> [!NOTE]
+> Enabling `verbatimModuleSyntax` can result in server bundles leaking into client bundles. It is recommended to keep this option disabled.
 
 ## Install Dependencies
 
@@ -56,16 +56,16 @@ To install them, run:
 npm i @tanstack/solid-start @tanstack/solid-router vite
 ```
 
-You'll also need Solid:
+You'll also need SolidJS:
 
 ```shell
-npm i solid-js
+npm i solid-js vite-plugin-solid
 ```
 
 and some TypeScript:
 
 ```shell
-npm i -D typescript vite-tsconfig-paths
+npm i -D typescript @types/node vite-tsconfig-paths
 ```
 
 ## Update Configuration Files
@@ -85,9 +85,6 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
 
 Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
-> [!NOTE]
-> TanStack Start will stop auto-configuring React/Solid Vite plugins. You’ll get full control - choose `vite-plugin-solid`. Set `customViteSolidPlugin: true` to opt in to this feature right now!
-
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
@@ -101,7 +98,8 @@ export default defineConfig({
   },
   plugins: [
     tsConfigPaths(),
-    tanstackStart({ customViteSolidPlugin: true }),
+    tanstackStart(),
+    // solid's vite plugin must come after start's vite plugin
     viteSolid({ ssr: true }),
   ],
 })
@@ -123,7 +121,6 @@ Once configuration is done, we'll have a file tree that looks like the following
 │   │   └── `__root.tsx`
 │   ├── `router.tsx`
 │   ├── `routeTree.gen.ts`
-├── `.gitignore`
 ├── `vite.config.ts`
 ├── `package.json`
 └── `tsconfig.json`
@@ -139,27 +136,18 @@ from the default [preloading functionality](/router/latest/docs/framework/solid/
 
 ```tsx
 // src/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/solid-router'
+import { createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
 
   return router
 }
-
-declare module '@tanstack/solid-router' {
-  interface Register {
-    router: ReturnType<typeof createRouter>
-  }
-}
 ```
-
-> [!NOTE]
-> TanStack Start provides **default server and client entry points** to handle requests and client-entry + hydration. You can customize these entry points by adding a `server.ts` and/or `client.tsx` file in the root of your project, but for now, we'll use the defaults.
 
 ## The Root of Your Application
 
@@ -167,18 +155,21 @@ Finally, we need to create the root of our application. This is the entry point 
 
 ```tsx
 // src/routes/__root.tsx
+/// <reference types="vite/client" />
+import * as Solid from 'solid-js'
 import {
   Outlet,
   createRootRoute,
   HeadContent,
   Scripts,
 } from '@tanstack/solid-router'
+import { HydrationScript } from 'solid-js/web'
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        charset: 'utf-8',
+        charSet: 'utf-8',
       },
       {
         name: 'viewport',
@@ -193,16 +184,34 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
-  return <Outlet />
+  return (
+    <RootDocument>
+      <Outlet />
+    </RootDocument>
+  )
+}
+
+function RootDocument({ children }: Readonly<{ children: Solid.JSX.Element }>) {
+  return (
+    <html>
+      <head>
+        <HydrationScript />
+      </head>
+      <body>
+        <HeadContent />
+        <Solid.Suspense>{children}</Solid.Suspense>
+        <Scripts />
+      </body>
+    </html>
+  )
 }
 ```
 
 ## Writing Your First Route
 
-Now that we have the basic templating setup, we can write our first route. This is done by creating a new file in the `app/routes` directory.
+Now that we have the basic templating setup, we can write our first route. This is done by creating a new file in the `src/routes` directory.
 
 ```tsx
-// src/routes/index.tsx
 import * as fs from 'node:fs'
 import { createFileRoute, useRouter } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
@@ -222,7 +231,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
+  .inputValidator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + data}`)
@@ -256,4 +265,4 @@ That's it! 🤯 You've now set up a TanStack Start project and written your firs
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
 
-You want to deploy your application? Check out the [hosting guide](../hosting.md).
+You want to deploy your application? Check out the [hosting guide](./guide/hosting.md).

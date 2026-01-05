@@ -1,3 +1,4 @@
+import type { Register } from './router'
 import type {
   AnyContext,
   AnyPathParams,
@@ -33,6 +34,7 @@ export interface FileRoutesByPath {
 }
 
 export interface FileRouteOptions<
+  TRegister,
   TFilePath extends string,
   TParentRoute extends AnyRoute,
   TId extends RouteConstraints['TId'],
@@ -44,7 +46,11 @@ export interface FileRouteOptions<
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
+  TSSR = unknown,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
 > extends FileBaseRouteOptions<
+      TRegister,
       TParentRoute,
       TId,
       TPath,
@@ -54,7 +60,11 @@ export interface FileRouteOptions<
       TLoaderFn,
       AnyContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      AnyContext,
+      TSSR,
+      TServerMiddlewares,
+      THandlers
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -76,14 +86,19 @@ export type CreateFileRoute<
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
 > = <
+  TRegister = Register,
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
+  TSSR = unknown,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
 >(
   options?: FileRouteOptions<
+    TRegister,
     TFilePath,
     TParentRoute,
     TId,
@@ -94,9 +109,13 @@ export type CreateFileRoute<
     TRouteContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
-    TLoaderFn
+    TLoaderFn,
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >,
 ) => Route<
+  TRegister,
   TParentRoute,
   TPath,
   TFullPath,
@@ -110,7 +129,10 @@ export type CreateFileRoute<
   TLoaderDeps,
   TLoaderFn,
   unknown,
-  unknown
+  unknown,
+  TSSR,
+  TServerMiddlewares,
+  THandlers
 >
 
 export type LazyRouteOptions = Pick<

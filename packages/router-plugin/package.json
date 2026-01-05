@@ -1,12 +1,12 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.131.49",
+  "version": "1.145.6",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TanStack/router.git",
+    "url": "git+https://github.com/TanStack/router.git",
     "directory": "packages/router-plugin"
   },
   "homepage": "https://tanstack.com/router",
@@ -104,17 +104,17 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@babel/core": "^7.27.7",
+    "@babel/core": "^7.28.5",
     "@babel/plugin-syntax-jsx": "^7.27.1",
     "@babel/plugin-syntax-typescript": "^7.27.1",
     "@babel/template": "^7.27.2",
-    "@babel/traverse": "^7.27.7",
-    "@babel/types": "^7.27.7",
+    "@babel/traverse": "^7.28.5",
+    "@babel/types": "^7.28.5",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
-    "babel-dead-code-elimination": "^1.0.10",
+    "babel-dead-code-elimination": "^1.0.11",
     "chokidar": "^3.6.0",
     "unplugin": "^2.1.2",
     "zod": "^3.24.2"
@@ -122,13 +122,13 @@
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
     "@types/babel__template": "^7.4.4",
-    "@types/babel__traverse": "^7.20.7"
+    "@types/babel__traverse": "^7.28.0"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2",
     "@tanstack/react-router": "workspace:^",
-    "vite": ">=5.0.0 || >=6.0.0",
-    "vite-plugin-solid": "^2.11.2",
+    "vite": ">=5.0.0 || >=6.0.0 || >=7.0.0",
+    "vite-plugin-solid": "^2.11.10",
     "webpack": ">=5.92.0"
   },
   "peerDependenciesMeta": {

@@ -1,0 +1,35 @@
+{
+  "name": "tanstack-solid-start-example-basic-auth",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
+    "prisma-generate": "prisma generate"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.15",
+    "@prisma/adapter-libsql": "^7.0.0",
+    "@prisma/client": "^7.0.0",
+    "@tanstack/solid-router": "^1.145.6",
+    "@tanstack/solid-router-devtools": "^1.145.6",
+    "@tanstack/solid-start": "^1.145.6",
+    "redaxios": "^0.5.1",
+    "solid-js": "^1.9.10",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^22.5.4",
+    "dotenv": "^17.2.3",
+    "prisma": "^7.0.0",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-plugin-solid": "^2.11.10",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

@@ -1,5 +1,5 @@
 import * as TanstackStart from '@tanstack/react-start'
 
-const serverFunc = TanstackStart.serverOnly(() => 'server')
+const serverFunc = TanstackStart.createServerOnlyFn(() => 'server')
 
-const clientFunc = TanstackStart.clientOnly(() => 'client')
+const clientFunc = TanstackStart.createClientOnlyFn(() => 'client')

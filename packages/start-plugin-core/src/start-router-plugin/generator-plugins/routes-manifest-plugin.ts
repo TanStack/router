@@ -9,27 +9,27 @@ import type { GeneratorPlugin } from '@tanstack/router-generator'
 export function routesManifestPlugin(): GeneratorPlugin {
   return {
     name: 'routes-manifest-plugin',
-    onRouteTreesChanged: ({ routeTrees, rootRouteNode }) => {
-      const routeTree = routeTrees.find((tree) => tree.exportName === 'Route')
-      if (!routeTree) {
-        throw new Error(
-          'No route tree found with export name "Route". Please ensure your routes are correctly defined.',
-        )
-      }
-      const routesManifest = {
+    onRouteTreeChanged: ({ routeTree, rootRouteNode, routeNodes }) => {
+      const allChildren = routeTree.map((d) => d.routePath)
+      const routes: Record<
+        string,
+        {
+          filePath: string
+          children: Array<string>
+        }
+      > = {
         [rootRouteId]: {
           filePath: rootRouteNode.fullPath,
-          children: routeTree.acc.routeTree.map((d) => d.routePath),
+          children: allChildren,
         },
         ...Object.fromEntries(
-          routeTree.acc.routeNodes.map((d) => {
+          routeNodes.map((d) => {
             const filePathId = d.routePath
 
             return [
               filePathId,
               {
                 filePath: d.fullPath,
-                parent: d.parent?.routePath ? d.parent.routePath : undefined,
                 children: d.children?.map((childRoute) => childRoute.routePath),
               },
             ]
@@ -37,7 +37,7 @@ export function routesManifestPlugin(): GeneratorPlugin {
         ),
       }
 
-      globalThis.TSS_ROUTES_MANIFEST = { routes: routesManifest }
+      globalThis.TSS_ROUTES_MANIFEST = routes
     },
   }
 }

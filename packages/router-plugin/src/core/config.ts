@@ -3,7 +3,11 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
-import type { RegisteredRouter, RouteIds } from '@tanstack/router-core'
+import type {
+  CreateFileRoute,
+  RegisteredRouter,
+  RouteIds,
+} from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
 
 export const splitGroupingsSchema = z
@@ -68,15 +72,17 @@ export type CodeSplittingOptions = {
   addHmr?: boolean
 }
 
-const DELETABLE_NODES = ['ssr'] as const
-export const deletableNodesSchema = z.enum(DELETABLE_NODES)
 const codeSplittingOptionsSchema = z.object({
   splitBehavior: z.function().optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
-  deleteNodes: z.array(deletableNodesSchema).optional(),
+  deleteNodes: z.array(z.string()).optional(),
   addHmr: z.boolean().optional().default(true),
 })
-export type DeletableNodes = (typeof DELETABLE_NODES)[number]
+
+type FileRouteKeys = keyof (Parameters<
+  CreateFileRoute<any, any, any, any, any>
+>[0] & {})
+export type DeletableNodes = FileRouteKeys | (string & {})
 
 export const configSchema = generatorConfigSchema.extend({
   enableRouteGeneration: z.boolean().optional(),
@@ -99,7 +105,7 @@ export const configSchema = generatorConfigSchema.extend({
 export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
   const config = getGeneratorConfig(inlineConfig, root)
 
-  return configSchema.parse({ ...config, ...inlineConfig })
+  return configSchema.parse({ ...inlineConfig, ...config })
 }
 
 export type Config = z.infer<typeof configSchema>

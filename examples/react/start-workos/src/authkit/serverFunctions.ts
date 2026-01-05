@@ -6,7 +6,7 @@ import { getWorkOS } from './ssr/workos';
 import type { GetAuthURLOptions, NoUserInfo, UserInfo } from './ssr/interfaces';
 
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
-  .validator((options?: GetAuthURLOptions) => options)
+  .inputValidator((options?: GetAuthURLOptions) => options)
   .handler(({ data: options = {} }) => {
     const { returnPathname, screenHint, redirectUri } = options;
 
@@ -20,19 +20,19 @@ export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   });
 
 export const getSignInUrl = createServerFn({ method: 'GET' })
-  .validator((data?: string) => data)
+  .inputValidator((data?: string) => data)
   .handler(async ({ data: returnPathname }) => {
     return await getAuthorizationUrl({ data: { returnPathname, screenHint: 'sign-in' } });
   });
 
 export const getSignUpUrl = createServerFn({ method: 'GET' })
-  .validator((data?: string) => data)
+  .inputValidator((data?: string) => data)
   .handler(async ({ data: returnPathname }) => {
     return getAuthorizationUrl({ data: { returnPathname, screenHint: 'sign-up' } });
   });
 
-export const signOut = createServerFn({ method: 'POST', response: 'full' })
-  .validator((data?: string) => data)
+export const signOut = createServerFn({ method: 'POST' })
+  .inputValidator((data?: string) => data)
   .handler(async ({ data: returnTo }) => {
     const cookieName = getConfig('cookieName') || 'wos_session';
     deleteCookie(cookieName);
