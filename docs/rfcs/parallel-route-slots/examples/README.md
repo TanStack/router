@@ -44,10 +44,10 @@ These examples illustrate file structures and component patterns for different s
 
 ## Patterns Comparison
 
-| Pattern           | Use Case          | Slot Placement                 | URL Behavior                         |
-| ----------------- | ----------------- | ------------------------------ | ------------------------------------ |
-| Modal             | Global overlays   | Explicit `<Route.SlotOutlet>`  | Manual open/close                    |
-| Dashboard Widgets | Fixed layout      | Explicit `<Route.SlotOutlet>`  | Manual open/close                    |
-| Component Routes  | Dynamic widgets   | `<Route.Slots>` iteration      | `defaultOpen: true` auto-adds to URL |
-| Split Pane        | Independent panes | Explicit `<Route.SlotOutlet>`  | Both panes in URL                    |
-| Nested Slots      | Layered UI        | Parent slot places child slots | Nested `@parent@child` prefix        |
+| Pattern           | Use Case          | Slot Placement                     | URL Behavior                         |
+| ----------------- | ----------------- | ---------------------------------- | ------------------------------------ |
+| Modal             | Global overlays   | Explicit `<Route.Outlet slot="x">` | Manual open/close                    |
+| Dashboard Widgets | Fixed layout      | Explicit `<Route.Outlet slot="x">` | Manual open/close                    |
+| Component Routes  | Dynamic widgets   | `<Route.Slots>` iteration          | `defaultOpen: true` auto-adds to URL |
+| Split Pane        | Independent panes | Explicit `<Route.Outlet slot="x">` | Both panes in URL                    |
+| Nested Slots      | Layered UI        | Parent slot places child slots     | Nested `@parent@child` prefix        |

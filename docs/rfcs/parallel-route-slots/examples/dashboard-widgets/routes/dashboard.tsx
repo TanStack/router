@@ -3,13 +3,9 @@
 
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
+// Slots are NOT declared here - they're discovered from dashboard.@*.tsx files
+// after composition. Route.Outlet gains type-safe slot prop automatically.
 export const Route = createFileRoute('/dashboard')({
-  // Define route-scoped slots for dashboard widgets
-  slots: {
-    activity: true, // auto-wired from dashboard.@activity.tsx
-    metrics: true, // auto-wired from dashboard.@metrics.tsx
-    quickActions: true, // auto-wired from dashboard.@quickActions.tsx
-  },
   loader: async () => {
     // Dashboard-level data (user info, permissions, etc.)
     const user = await fetchCurrentUser()
@@ -28,7 +24,7 @@ function Dashboard() {
       <div className="dashboard-grid">
         {/* Left column - Activity feed */}
         <aside className="dashboard-sidebar">
-          <Route.SlotOutlet name="activity" />
+          <Route.Outlet slot="activity" />
         </aside>
 
         {/* Main content area */}
@@ -38,8 +34,8 @@ function Dashboard() {
 
         {/* Right column - Metrics and Quick Actions */}
         <aside className="dashboard-sidebar">
-          <Route.SlotOutlet name="metrics" />
-          <Route.SlotOutlet name="quickActions" />
+          <Route.Outlet slot="metrics" />
+          <Route.Outlet slot="quickActions" />
         </aside>
       </div>
     </div>

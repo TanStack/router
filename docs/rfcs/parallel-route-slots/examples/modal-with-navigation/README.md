@@ -17,7 +17,7 @@ A global modal slot that can be opened from anywhere in the app. The modal has i
 
 ```
 routes/
-├── __root.tsx          # defines modal slot, renders SlotOutlet
+├── __root.tsx          # defines modal slot, renders Outlet with slot prop
 ├── @modal.tsx          # modal wrapper (backdrop, close button, animation)
 ├── @modal.index.tsx    # modal landing/index view
 ├── @modal.users.$id.tsx    # user profile view

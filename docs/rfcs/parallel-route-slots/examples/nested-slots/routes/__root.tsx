@@ -3,10 +3,9 @@
 
 import { createRootRoute, Outlet } from '@tanstack/react-router'
 
+// Slots are NOT declared here - they're discovered from @modal.tsx files
+// after composition. Route.Outlet gains type-safe slot prop automatically.
 export const Route = createRootRoute({
-  slots: {
-    modal: true, // auto-wired from @modal.tsx
-  },
   component: RootComponent,
 })
 
@@ -15,7 +14,7 @@ function RootComponent() {
     <html>
       <body>
         <Outlet />
-        <Route.SlotOutlet name="modal" />
+        <Route.Outlet slot="modal" />
       </body>
     </html>
   )

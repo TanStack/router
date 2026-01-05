@@ -3,11 +3,9 @@
 
 import { createSlotRootRoute, Outlet } from '@tanstack/react-router'
 
+// Nested slots are NOT declared here - they're discovered from @modal.@confirm.tsx
+// after composition. Route.Outlet gains type-safe slot prop automatically.
 export const Route = createSlotRootRoute({
-  // Modal has its own nested slot for confirmation dialogs
-  slots: {
-    confirm: true, // auto-wired from @modal.@confirm.tsx
-  },
   component: ModalWrapper,
 })
 
@@ -29,7 +27,7 @@ function ModalWrapper() {
         <Outlet />
 
         {/* Nested confirmation dialog slot */}
-        <Route.SlotOutlet name="confirm" />
+        <Route.Outlet slot="confirm" />
       </div>
     </div>
   )

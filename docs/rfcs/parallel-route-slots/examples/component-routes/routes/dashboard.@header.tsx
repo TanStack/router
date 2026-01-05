@@ -4,7 +4,7 @@
 import { createSlotRoute, Link } from '@tanstack/react-router'
 
 // Header is explicitly placed, not part of iteration
-// No meta.area needed since it's rendered via <Route.SlotOutlet name="header" />
+// No staticData.area needed since it's rendered via <Route.Outlet slot="header" />
 export const Route = createSlotRoute({
   path: '/',
   // No defaultOpen needed - slots render by default!

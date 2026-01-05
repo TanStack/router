@@ -183,9 +183,9 @@ function RootComponent() {
     <html>
       <body>
         <Outlet />
-        {/* Type-safe: Route knows about @modal from composition */}
-        <Route.SlotOutlet name="modal" />
-        <Route.SlotOutlet name="drawer" />
+        {/* Type-safe: Route.Outlet knows available slots */}
+        <Route.Outlet slot="modal" />
+        <Route.Outlet slot="drawer" />
       </body>
     </html>
   )
@@ -220,15 +220,15 @@ function Dashboard() {
   return (
     <div className="grid grid-cols-3 gap-4">
       <aside>
-        {/* Type-safe: Route knows about @activity from composition */}
-        <Route.SlotOutlet name="activity" />
+        {/* Type-safe: Route.Outlet knows available slots */}
+        <Route.Outlet slot="activity" />
       </aside>
       <main>
         <Outlet />
       </main>
       <aside>
-        <Route.SlotOutlet name="metrics" />
-        <Route.SlotOutlet name="quickActions" />
+        <Route.Outlet slot="metrics" />
+        <Route.Outlet slot="quickActions" />
       </aside>
     </div>
   )
@@ -316,7 +316,7 @@ The route generator:
 1. Detects `@slotName` prefixed files/folders
 2. Associates each slot with its parent route based on file path
 3. Generates typed slot route trees
-4. Augments parent route types so `Route.SlotOutlet`, `Route.Slots`, etc. are type-safe
+4. Augments parent route types so `Route.Outlet` slot prop, `Route.Slots`, etc. are type-safe
 
 ```ts
 // Generated routeTree.gen.ts (simplified)
@@ -622,22 +622,49 @@ function DashboardComponent() {
 
 ## Rendering API
 
-### SlotOutlet Component
+### Rendering Slots with Outlet
 
-Render a slot's content. Type-safe based on the route's `slots` definition.
+Rather than a new `SlotOutlet` component, the existing `Outlet` component is extended with a `slot` prop:
 
 ```tsx
-// Basic usage
-<Route.SlotOutlet name="modal" />
+// Render a slot (from is implicit when using Route.Outlet)
+<Route.Outlet slot="modal" />
 
-// With fallback when slot is closed
-<Route.SlotOutlet name="modal" fallback={null} />
-<Route.SlotOutlet name="modal" fallback={<ModalPlaceholder />} />
+// With explicit from for type safety
+<Outlet from="/dashboard" slot="activity" />
+
+// With fallback when slot is closed/empty
+<Outlet from="/dashboard" slot="modal" fallback={null} />
+<Outlet from="/dashboard" slot="modal" fallback={<ModalPlaceholder />} />
+
+// Nested slots use dot notation
+<Outlet from="/" slot="modal.confirm" />
+```
+
+The `from` prop determines which slots are available (type-safe). When using `Route.Outlet`, the `from` is implicit.
+
+### Regular Outlet (No slot prop)
+
+Without the `slot` prop, `Outlet` renders child routes as usual:
+
+```tsx
+function Dashboard() {
+  return (
+    <div>
+      {/* Regular child routes */}
+      <Outlet />
+
+      {/* Slot outlets */}
+      <Route.Outlet slot="activity" />
+      <Route.Outlet slot="metrics" />
+    </div>
+  )
+}
 ```
 
 ### Accessing Slot State
 
-Rather than introducing new hooks, existing router hooks work with slots via a `slot` option:
+Existing router hooks work with slots - slot routes use `/@slotName` prefix in their path:
 
 ```ts
 // Check if a slot route matches
@@ -876,7 +903,7 @@ function Dashboard() {
     <div className="dashboard">
       {/* Explicitly placed slot */}
       <header>
-        <Route.SlotOutlet name="header" />
+        <Route.Outlet slot="header" />
       </header>
 
       {/* Dynamically rendered slots */}
@@ -932,37 +959,84 @@ The URL stays clean for the common case while still capturing all state when nee
 
 ## Loader Execution
 
-### Parallel Execution
+### Two-Phase Execution
 
-All matched loaders run in parallel - main route, child routes, and all active slot routes:
+Route loading happens in two phases:
+
+1. **beforeLoad phase** - Serial down the tree, branching in parallel at slots
+2. **loader phase** - All loaders run in parallel after all beforeLoads complete
+
+### beforeLoad: Serial to Parent, Then Parallel Branches
+
+Slots are children of routes, so a slot's `beforeLoad` can only start after its parent route's `beforeLoad` completes. Once a route's `beforeLoad` finishes, its child routes AND its slots can begin their `beforeLoad` in parallel.
 
 ```
-Navigation to /dashboard (with @modal=/users/123 in URL, other slots at default)
+Navigation to /dashboard?@modal=/users/123
 
-Executes in parallel:
+Phase 1 - beforeLoad:
+
+__root.beforeLoad()
+         ↓
+dashboard.beforeLoad()
+         ↓
+    ┌────┴────────────────────────────────────┐
+    │ (parallel from here)                    │
+    ↓                    ↓                    ↓
+dashboard/index    @activity.beforeLoad()  @metrics.beforeLoad()
+.beforeLoad()            ↓                    ↓
+                   @activity/index         @metrics/index
+                   .beforeLoad()           .beforeLoad()
+
+Meanwhile, @modal runs in parallel after __root completes:
+
+__root.beforeLoad()
+         ↓
+    ┌────┴────┐
+    ↓         ↓
+dashboard   @modal.beforeLoad()
+(above)           ↓
+            @modal/users.$id.beforeLoad()
+
+         ↓ All beforeLoads complete ↓
+
+Phase 2 - loaders (all parallel):
 ├── dashboard.loader()
-├── @modal/users.$id.loader()      # modal navigated to /users/123
-├── dashboard.@activity.loader()    # renders by default
-├── dashboard.@metrics.loader()     # renders by default
-└── dashboard.@quickActions.loader() # renders by default
-```
-
-This eliminates the waterfall problem. Each "widget" on a dashboard can fetch its own data without blocking others.
-
-### beforeLoad Remains Serial
-
-As with current nested routes, `beforeLoad` runs serially for authentication, redirects, etc.:
-
-```
-Serial (beforeLoad):
-1. __root.beforeLoad()
-2. dashboard.beforeLoad()
-
-Then parallel (loaders):
-├── dashboard.loader()
+├── dashboard/index.loader()
 ├── @modal/users.$id.loader()
-└── dashboard.@activity/index.loader()
+├── @activity/index.loader()
+├── @metrics/index.loader()
+└── ...
 ```
+
+### Key Points
+
+- Slots branch off from their parent route
+- A slot's `beforeLoad` waits for its parent's `beforeLoad` to complete
+- Once a parent completes, ALL its children (routes and slots) can start in parallel
+- ALL `beforeLoad`s must complete before ANY loader runs
+
+### Example: Root-Level Modal vs Dashboard Slots
+
+```
+/dashboard?@modal=/users/123
+
+__root.beforeLoad()
+         │
+    ┌────┴────────────┐
+    │                 │
+    ↓                 ↓
+dashboard         @modal           ← both start after __root
+.beforeLoad()     .beforeLoad()
+    │                 │
+    ↓                 ↓
+@activity         @modal/users.$id  ← start after their parents
+.beforeLoad()     .beforeLoad()
+```
+
+- `@modal` is a child of `__root`, so it starts after `__root.beforeLoad()`
+- `@activity` is a child of `dashboard`, so it starts after `dashboard.beforeLoad()`
+- `@modal` and `dashboard` run in parallel (both children of `__root`)
+- `@activity` and `@modal/users.$id` may run at different times depending on when their parents complete
 
 ### Slot beforeLoad
 
@@ -975,12 +1049,27 @@ export const Route = createSlotRoute({
   beforeLoad: async ({ params }) => {
     const canViewUser = await checkPermission(params.id)
     if (!canViewUser) {
-      throw redirect({ slot: 'modal', to: '/unauthorized' })
+      throw redirect({ slots: { modal: { to: '/unauthorized' } } })
     }
   },
   loader: ({ params }) => fetchUser(params.id),
 })
 ```
+
+### Loader Phase
+
+After all `beforeLoad`s complete, all loaders run in parallel:
+
+```
+All loaders execute in parallel:
+├── dashboard.loader()
+├── @modal/users.$id.loader()
+├── @activity/index.loader()
+├── @metrics/index.loader()
+└── ...
+```
+
+This eliminates waterfall problems. Each widget fetches its own data without blocking others.
 
 ---
 
@@ -1004,8 +1093,11 @@ export const Route = createSlotRoute({
 })
 
 function UserModal() {
+  // Slot's own search params (see open question below about exact API)
   const { tab, expanded } = Route.useSearch()
-  // tab and expanded are typed and validated
+
+  // Access parent route's search params explicitly
+  const { filter } = useSearch({ from: '/dashboard' })
 }
 ```
 
@@ -1023,17 +1115,35 @@ Combined URL:
 
 ### Open Question: Search Param Access Within Slots
 
+**Context:** Currently in TanStack Router, `useSearch` merges all parent route search params down - all search params are shared across nested routes. If we apply this same pattern to slots, there's a problem:
+
+```ts
+// URL: /dashboard?filter=active&@modal=/users/123&@modal.tab=profile
+
+// Inside @modal/users.$id.tsx
+const search = Route.useSearch()
+// With current merge behavior, this would be:
+// { filter: 'active', '@modal.tab': 'profile' }
+```
+
+**The problem:** `@modal.tab` is awkward to use in JavaScript:
+
+```ts
+const { '@modal.tab': tab } = search // ugly destructuring
+const tab = search['@modal.tab'] // bracket notation required
+```
+
 **How should slot components access their search params?**
 
-There are several options, each with tradeoffs:
+#### Option A: Strip Prefix for Own Params, Merge Parents
 
-#### Option A: Strip Prefix (Transparent Access)
-
-Inside the slot, access params without the prefix - the router handles namespacing transparently:
+Inside the slot, the slot's own params have their prefix stripped, but parent params are merged in as-is:
 
 ```ts
 // Inside @modal/users.$id.tsx
-const { tab, expanded } = Route.useSearch() // not @modal.tab, just tab
+const { filter, tab } = Route.useSearch()
+//      ^^^^^^ from parent (dashboard)
+//              ^^^ from slot (prefix stripped because it's "mine")
 
 // Schema defines unprefixed keys
 validateSearch: z.object({
@@ -1043,97 +1153,159 @@ validateSearch: z.object({
 
 **Pros:**
 
-- Clean, ergonomic API - feels like regular routes
+- Clean destructuring for the common case
+- Consistent with current search merging behavior
 - Slot code is portable (no hardcoded slot name)
-- Schema matches what you access in code
 
 **Cons:**
 
-- "Magic" transformation happening under the hood
-- Debugging confusion: URL shows `@modal.tab` but code uses `tab`
-- Implementation complexity in router internals
+- Name collisions if parent and slot both define `tab`
+- "Magic" prefix stripping
+- Need to define collision behavior
 
-#### Option B: Always Prefixed (Explicit Access)
+**Collision handling options:**
 
-Slot components always use the full prefixed key:
+- Slot wins (shadows parent)
+- Error at build time if schemas conflict
+- Both available under different keys somehow
 
-```ts
-// Inside @modal/users.$id.tsx
-const { '@modal.tab': tab, '@modal.expanded': expanded } = Route.useSearch()
-
-// Or with a helper
-const { tab, expanded } = Route.useSlotSearch()
-```
-
-**Pros:**
-
-- What you see in URL is what you use in code
-- No magic transformation
-- Easier to debug
-
-**Cons:**
-
-- Verbose, especially with destructuring
-- Slot code is coupled to its name
-- Renaming a slot requires updating component code
-
-#### Option C: Slot-Scoped Hook
-
-Provide a dedicated hook that handles the namespacing:
+#### Option B: Separate Hooks for Slot vs Inherited Search
 
 ```ts
 // Inside @modal/users.$id.tsx
-const { tab, expanded } = Route.useSlotSearch() // knows it's in @modal context
+const { tab } = Route.useSearch() // only MY slot's params: { tab }
+const { filter } = Route.useInheritedSearch() // parent params: { filter }
 
-// Regular useSearch still works for accessing parent route search
+// Or combined with explicit separation:
+const { tab } = Route.useSearch()
 const { filter } = useSearch({ from: '/dashboard' })
 ```
 
 **Pros:**
 
-- Clear separation between slot search and parent search
+- No collision possible
 - Explicit about what you're accessing
-- Slot code remains portable
+- Slot's own search is clean
 
 **Cons:**
 
-- New API to learn
-- Two different hooks for search params
+- Breaks from current "merged search" pattern
+- Two calls to get all available search params
 
-#### Option D: Nested Search Object
-
-Structure the search object to reflect the nesting:
+#### Option C: Nested Structure
 
 ```ts
 // Inside @modal/users.$id.tsx
 const search = Route.useSearch()
-// search = { tab: 'profile', expanded: true } within slot context
-// But from parent: search = { filter: 'active', '@modal': { tab: 'profile', ... } }
+// {
+//   filter: 'active',           // parent's
+//   modal: { tab: 'profile' }   // slot's, under clean key
+// }
+
+const {
+  filter,
+  modal: { tab },
+} = search
 ```
 
 **Pros:**
 
-- Clear structure
-- Works well with TypeScript
+- Clear structure, no collisions
+- Single hook call
+- JS-friendly keys (no `@` or `.` in property names)
 
 **Cons:**
 
-- Different shapes depending on where you're reading from
-- Complex to type correctly
+- Different structure than current flat search
+- Deeper nesting for nested slots
+- Schema definition would need to match this structure?
+
+#### Option D: Transform Keys to JS-Friendly Format
+
+URL uses `@modal.tab`, but internally transform to JS-friendly keys:
+
+```ts
+// URL: ?@modal.tab=profile
+// Internally: { modal_tab: 'profile' } or { modalTab: 'profile' }
+
+const { filter, modal_tab } = Route.useSearch()
+// or
+const { filter, modalTab } = Route.useSearch()
+```
+
+**Pros:**
+
+- Flat structure like today
+- Valid JS identifiers
+
+**Cons:**
+
+- Disconnect between URL and code
+- Naming convention feels arbitrary
+- Nested slots get ugly: `modal_confirm_action`
 
 ---
 
-**Current leaning:** Option A (strip prefix) or Option C (dedicated hook) seem most ergonomic, but this needs more research and community input before deciding.
+**Current leaning:** Option A (strip prefix for own params) or Option C (nested structure) seem most promising. Option A is closest to current behavior but has collision concerns. Option C is cleanest but changes the search shape.
+
+This needs more research and community input before deciding.
+
+### Accessing Parent Route Search from Slots
+
+Slots are children of routes, so a slot component might need access to both:
+
+1. Its own search params (e.g., `@modal.tab`)
+2. Its parent route's search params (e.g., `filter` on `/dashboard`)
+
+```ts
+// URL: /dashboard?filter=active&@modal=/users/123&@modal.tab=profile
+
+// dashboard.tsx defines:
+validateSearch: z.object({ filter: z.string() })
+
+// @modal/users.$id.tsx defines:
+validateSearch: z.object({ tab: z.enum(['profile', 'settings']) })
+```
+
+**Inside the modal component, how do you access both?**
+
+```ts
+// @modal/users.$id.tsx
+function UserModal() {
+  // Slot's own search - however we decide to expose it
+  const { tab } = Route.useSearch() // or Route.useSlotSearch(), etc.
+
+  // Parent route's search - use from to specify which route
+  const { filter } = useSearch({ from: '/dashboard' })
+
+  // Or access root's search
+  const rootSearch = useSearch({ from: '/' })
+}
+```
+
+This works because `useSearch({ from })` already lets you read any route's search params. The open question is only about how the slot accesses _its own_ params.
 
 ### Conflict Handling
 
-Regardless of which option is chosen, conflicts between slot search keys and parent route search keys need handling. Options:
+What if both the slot and parent define `tab`?
 
-1. **Error at schema validation** - Conflict is a build/runtime error
-2. **Slot always wins** - Slot params shadow parent params within slot context
-3. **Explicit namespacing required** - Force users to namespace in their schemas
+```ts
+// dashboard.tsx
+validateSearch: z.object({ tab: z.string() }) // ?tab=overview
 
-This is related to the access pattern decision above and should be resolved together.
+// @modal/users.$id.tsx
+validateSearch: z.object({ tab: z.string() }) // ?@modal.tab=profile
+```
+
+**URL:** `/dashboard?tab=overview&@modal=/users/123&@modal.tab=profile`
+
+These don't actually conflict in the URL because slot params are prefixed. The question is what `Route.useSearch()` returns inside the slot:
+
+1. **Slot's own params only** - `{ tab: 'profile' }` (from `@modal.tab`)
+2. **Merged with parent** - `{ tab: 'profile' }` (slot shadows parent)
+3. **Error** - Can't have same key in slot and parent schemas
+
+**Recommendation:** Option 1 - `Route.useSearch()` inside a slot returns only that slot's search params. Use `useSearch({ from: '/dashboard' })` to explicitly access parent params. This is consistent with how nested routes work today.
 
 ---
 
@@ -1141,60 +1313,87 @@ This is related to the access pattern decision above and should be resolved toge
 
 ### Persistence
 
-Slots persist to the URL by default. This means:
+Slot state is stored in URL search params. This means:
 
 - Refresh preserves slot state
 - Back/forward navigation works
 - Sharing URL shares complete state
 - SSR renders slots correctly
 
-### Slot Preservation on Navigation
+### Automatic Slot Param Persistence
 
-When navigating the main route without mentioning slots, slots are **preserved by default** (since they're in search params):
+**Important:** Normal search params are not automatically preserved during navigation - you typically need a search param filter/persister. However, **slot search params are treated specially** and automatically persist across navigations within the same slot hierarchy.
 
 ```ts
-// Modal stays open when navigating main route
-router.navigate({ to: '/settings' })
+// URL: /dashboard?@modal=/users/123&@modal.tab=profile
 
-// Explicitly close modal when navigating
-router.navigate({
-  to: '/settings',
-  slots: { modal: null },
-})
+// Navigate main route - slot params automatically preserved
+navigate({ to: '/settings' })
+// Result: /settings?@modal=/users/123&@modal.tab=profile
 
-// Open a different modal route when navigating
-router.navigate({
-  to: '/settings',
-  slots: { modal: { to: '/confirmation' } },
-})
+// Explicitly close modal
+navigate({ to: '/settings', slots: { modal: null } })
+// Result: /settings (slot params removed)
 ```
 
-### Scoped Slot Behavior
+### When Slot State is Lost
 
-Route-scoped slots (defined on a specific route rather than root) are only rendered when that route is active:
+Slot state is lost when navigating away from a route that owns the slot:
 
 ```ts
-// dashboard.tsx defines @activity slot
-// When navigating away from /dashboard, the @activity slot is not rendered
-// But its URL state (@activity or @activity=/path) remains in the URL
+// @activity is scoped to /dashboard
+// URL: /dashboard?@activity=/recent
 
-// When returning to /dashboard, the slot renders with previous state
-router.navigate({ to: '/settings' }) // slot not rendered, but state preserved
-router.navigate({ to: '/dashboard' }) // slot renders with previous state
+// Navigate away from dashboard - @activity slot no longer exists
+navigate({ to: '/settings' })
+// Result: /settings (no @activity params - that slot doesn't exist here)
+
+// Navigate back to dashboard - slot state is gone
+navigate({ to: '/dashboard' })
+// Result: /dashboard (starts fresh, @activity at default)
+
+// BUT: the previous state is still in browser history
+// Pressing "back" restores: /dashboard?@activity=/recent
+```
+
+### Root Slots vs Scoped Slots
+
+**Root slots** (defined on `__root`) persist across all navigation since root is always active:
+
+```ts
+// @modal is on root - persists everywhere
+/dashboard?@modal=/users/123
+/settings?@modal=/users/123   // still there
+/products?@modal=/users/123   // still there
+```
+
+**Scoped slots** (defined on specific routes) only exist when that route is active:
+
+```ts
+// @activity is scoped to /dashboard
+;/dashboard?@activity=/ceenrt / // exists
+  settings / // @activity gone (dashboard not active)
+  dashboard // @activity starts fresh
 ```
 
 ---
 
 ## Nested Slots (Slots Within Slots)
 
-Slots can define their own slots for complex nested UI:
+Slots can have their own nested slots. Like all slots, nested slots are defined via files - the parent slot discovers them after composition and gains type-safe access.
+
+```
+routes/
+├── @modal.tsx                 # modal slot root
+├── @modal.settings.tsx        # modal route
+├── @modal.@confirm.tsx        # nested slot root (child of @modal)
+├── @modal.@confirm.delete.tsx # nested slot route
+└── @modal.@confirm.discard.tsx
+```
 
 ```ts
-// @modal/route.tsx
+// @modal.tsx - doesn't declare slots, discovers @confirm after composition
 export const Route = createSlotRootRoute({
-  slots: {
-    confirm: confirmDialogTree, // nested slot
-  },
   component: ModalWrapper,
 })
 
@@ -1202,7 +1401,8 @@ function ModalWrapper() {
   return (
     <div className="modal">
       <Outlet />
-      <Route.SlotOutlet name="confirm" />
+      {/* Type-safe: Route.Outlet knows about @confirm from composition */}
+      <Route.Outlet slot="confirm" />
     </div>
   )
 }
@@ -1221,19 +1421,27 @@ Prefixes nest using `@`:
 ### Navigation to Nested Slots
 
 ```ts
-// From within the modal
-router.navigate({
-  slot: 'confirm',
-  to: '/delete',
+// From within the modal - navigate the nested confirm slot
+navigate({
+  slots: {
+    modal: {
+      slots: {
+        confirm: { to: '/delete' },
+      },
+    },
+  },
 })
 
-// From outside (fully qualified)
-router.navigate({
-  slot: 'modal',
-  to: '/users/$id',
-  params: { id: '123' },
+// Navigate modal AND its nested confirm slot together
+navigate({
   slots: {
-    confirm: { to: '/delete' },
+    modal: {
+      to: '/users/$id',
+      params: { id: '123' },
+      slots: {
+        confirm: { to: '/delete' },
+      },
+    },
   },
 })
 ```
@@ -1282,23 +1490,27 @@ The metrics error doesn't crash the dashboard or other slots.
 
 ## Streaming / Suspense
 
-Each slot can suspend independently, enabling granular loading states:
+Slot routes are regular routes with standard route config options. Each slot can handle its own loading and error states:
 
-```tsx
-function RootComponent() {
-  return (
-    <>
-      <Outlet />
-      <Suspense fallback={<ModalSkeleton />}>
-        <Route.SlotOutlet name="modal" />
-      </Suspense>
-      <Suspense fallback={<DrawerSkeleton />}>
-        <Route.SlotOutlet name="drawer" />
-      </Suspense>
-    </>
-  )
-}
+```ts
+// @modal.tsx
+export const Route = createSlotRootRoute({
+  component: ModalWrapper,
+  pendingComponent: ModalSkeleton,
+  errorComponent: ModalError,
+})
+
+// @modal/users.$id.tsx
+export const Route = createSlotRoute({
+  path: '/users/$id',
+  loader: fetchUser,
+  component: UserModal,
+  pendingComponent: UserModalSkeleton,
+  errorComponent: UserModalError,
+})
 ```
+
+Each slot suspends independently - a slow loader in `@modal` doesn't block `@activity` from rendering.
 
 ### SSR Streaming
 
@@ -1321,14 +1533,19 @@ This enables:
 
 Full type inference throughout the system.
 
-### Slot Names
+### Slot Outlet
 
 ```tsx
 // ✅ Valid - modal slot exists on root
-<Route.SlotOutlet name="modal" />
+<Route.Outlet slot="modal" />
 
 // ❌ Type error - slot doesn't exist
-<Route.SlotOutlet name="nonexistent" />
+<Route.Outlet slot="nonexistent" />
+
+// With explicit from
+<Outlet from="/" slot="modal" />           // ✅ Valid
+<Outlet from="/dashboard" slot="activity" /> // ✅ Valid
+<Outlet from="/settings" slot="activity" /> // ❌ Type error - activity not on /settings
 ```
 
 ### Slot Navigation
@@ -1337,16 +1554,16 @@ Full type inference throughout the system.
 // Given modal has routes: /, /users/$id, /settings
 
 // ✅ Valid
-router.navigate({ slot: 'modal', to: '/users/$id', params: { id: '123' } })
+navigate({ slots: { modal: { to: '/users/$id', params: { id: '123' } } } })
 
 // ❌ Type error - route doesn't exist
-router.navigate({ slot: 'modal', to: '/invalid' })
+navigate({ slots: { modal: { to: '/invalid' } } })
 
 // ❌ Type error - missing required param
-router.navigate({ slot: 'modal', to: '/users/$id' })
+navigate({ slots: { modal: { to: '/users/$id' } } })
 
-// ❌ Type error - slot doesn't exist
-router.navigate({ slot: 'invalid', to: '/' })
+// ❌ Type error - slot doesn't exist on current route
+navigate({ slots: { invalid: { to: '/' } } })
 ```
 
 ### Slot Search Params
@@ -1355,19 +1572,25 @@ router.navigate({ slot: 'invalid', to: '/' })
 // Given modal's /users/$id route has search schema { tab: 'profile' | 'settings' }
 
 // ✅ Valid
-router.navigate({
-  slot: 'modal',
-  to: '/users/$id',
-  params: { id: '123' },
-  search: { tab: 'profile' },
+navigate({
+  slots: {
+    modal: {
+      to: '/users/$id',
+      params: { id: '123' },
+      search: { tab: 'profile' },
+    },
+  },
 })
 
 // ❌ Type error - invalid tab value
-router.navigate({
-  slot: 'modal',
-  to: '/users/$id',
-  params: { id: '123' },
-  search: { tab: 'invalid' },
+navigate({
+  slots: {
+    modal: {
+      to: '/users/$id',
+      params: { id: '123' },
+      search: { tab: 'invalid' },
+    },
+  },
 })
 ```
 
@@ -1391,31 +1614,23 @@ This is an additive feature with no breaking changes to existing apps.
 
 ### Incremental Adoption
 
-1. **Add a slot to `__root.tsx`**
-
-   ```ts
-   export const Route = createRootRoute({
-     slots: {
-       modal: modalRouteTree,
-     },
-   })
-   ```
-
-2. **Create the slot's route files**
+1. **Create the slot's route files**
 
    ```
    routes/
-     @modal.tsx
-     @modal.users.$id.tsx
+     @modal.tsx              # slot root
+     @modal.users.$id.tsx    # slot child route
    ```
 
-3. **Render the SlotOutlet**
+   The slot is automatically discovered and wired to its parent route (`__root` in this case) during route generation.
+
+2. **Render the slot with Outlet** (in `__root.tsx` or wherever the slot should appear)
 
    ```tsx
-   <Route.SlotOutlet name="modal" />
+   <Route.Outlet slot="modal" />
    ```
 
-4. **Navigate to slots using Link or useNavigate**
+3. **Navigate to slots using Link or useNavigate**
 
    ```tsx
    // Using Route.Link (from is implicit)

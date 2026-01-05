@@ -3,11 +3,9 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 
+// Slots are NOT declared here - they're discovered from mail.@*.tsx files
+// after composition. Route.Outlet gains type-safe slot prop automatically.
 export const Route = createFileRoute('/mail')({
-  slots: {
-    list: true, // auto-wired from mail.@list.tsx
-    preview: true, // auto-wired from mail.@preview.tsx
-  },
   component: MailLayout,
 })
 
@@ -18,25 +16,19 @@ function MailLayout() {
       <nav className="mail-sidebar">
         <h1>Mail</h1>
         {/* These navigate the @list slot */}
-        <Link slot="list" to="/inbox">
-          Inbox
-        </Link>
-        <Link slot="list" to="/sent">
-          Sent
-        </Link>
-        <Link slot="list" to="/drafts">
-          Drafts
-        </Link>
+        <Route.Link slots={{ list: { to: '/inbox' } }}>Inbox</Route.Link>
+        <Route.Link slots={{ list: { to: '/sent' } }}>Sent</Route.Link>
+        <Route.Link slots={{ list: { to: '/drafts' } }}>Drafts</Route.Link>
       </nav>
 
       {/* Message list pane */}
       <div className="mail-list-pane">
-        <Route.SlotOutlet name="list" />
+        <Route.Outlet slot="list" />
       </div>
 
       {/* Preview pane */}
       <div className="mail-preview-pane">
-        <Route.SlotOutlet name="preview" />
+        <Route.Outlet slot="preview" />
       </div>
     </div>
   )

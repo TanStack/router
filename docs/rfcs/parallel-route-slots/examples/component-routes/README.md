@@ -42,6 +42,6 @@ routes/
 - **Slots render by default** - No URL param needed for default state
 - **enabled** - Opt-out function to conditionally disable slots
 - **`=false` in URL** - Users can explicitly disable slots via URL
-- **meta** - Static metadata for filtering and organizing slots
+- **staticData** - Static metadata for filtering and organizing slots
 - **<Route.Slots>** - Render prop to iterate over all enabled slots
-- **Mixed approach** - Combine explicit `<Route.SlotOutlet>` with dynamic iteration
+- **Mixed approach** - Combine explicit `<Route.Outlet slot="x">` with dynamic iteration

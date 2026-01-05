@@ -3,16 +3,9 @@
 
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
+// Slots are NOT declared here - they're discovered from dashboard.@*.tsx files
+// after composition. Route.Outlet and Route.Slots gain type-safe access automatically.
 export const Route = createFileRoute('/dashboard')({
-  slots: {
-    header: true,
-    activity: true,
-    metrics: true,
-    notifications: true,
-    adminPanel: true,
-    quickActions: true,
-    userCard: true,
-  },
   component: Dashboard,
 })
 
@@ -21,7 +14,7 @@ function Dashboard() {
     <div className="dashboard">
       {/* Explicitly placed header slot */}
       <header>
-        <Route.SlotOutlet name="header" />
+        <Route.Outlet slot="header" />
       </header>
 
       <div className="dashboard-layout">
