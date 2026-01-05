@@ -1,31 +1,42 @@
 import * as React from 'react'
-import { View, StyleSheet } from 'react-native'
 import { rootRouteId } from '@tanstack/router-core'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Match } from './Match'
 import { matchContext } from './matchContext'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
-import { SafeFragment } from './SafeFragment'
+import { Transitioner } from './Transitioner'
 import type { AnyRoute } from '@tanstack/router-core'
+import type { NativeScreenOptions } from './route'
 
-// Optional: Import react-native-screens if available
-let Screen: any
-let ScreenStack: any
-let ScreenStackHeaderConfig: any
+// Lazily load react-native-screens to avoid accessing native modules at module load time
+let _Screen: any = null
+let _ScreenStack: any = null
+let _ScreenStackHeaderConfig: any = null
+let _screensChecked = false
 
-try {
-  const screens = require('react-native-screens')
-  Screen = screens.Screen
-  ScreenStack = screens.ScreenStack
-  ScreenStackHeaderConfig = screens.ScreenStackHeaderConfig
-} catch {
-  // react-native-screens not installed, will use View-based rendering
+function getScreenComponents() {
+  if (!_screensChecked) {
+    _screensChecked = true
+    try {
+      const screens = require('react-native-screens')
+      _Screen = screens.Screen
+      _ScreenStack = screens.ScreenStack
+      _ScreenStackHeaderConfig = screens.ScreenStackHeaderConfig
+    } catch {
+      // react-native-screens not installed, will use View-based rendering
+    }
+  }
+  return {
+    Screen: _Screen,
+    ScreenStack: _ScreenStack,
+    ScreenStackHeaderConfig: _ScreenStackHeaderConfig,
+  }
 }
 
 /**
  * Internal component that renders the router's active match tree.
- * Uses react-native-screens if available for native stack navigation.
+ * Uses View-based rendering (no native screen stack).
  */
 export function Matches() {
   const router = useRouter()
@@ -38,6 +49,7 @@ export function Matches() {
 
   const inner = (
     <React.Suspense fallback={pendingElement}>
+      <Transitioner />
       <MatchesInner />
     </React.Suspense>
   )
@@ -84,87 +96,154 @@ function MatchesInner() {
 }
 
 /**
- * Alternative renderer using react-native-screens for native stack navigation.
- * Each route match at the top level becomes a separate screen.
+ * Map our animation option to react-native-screens stackAnimation
+ */
+function getStackAnimation(
+  animation: NativeScreenOptions['animation'],
+): string | undefined {
+  if (!animation || animation === 'default') return undefined
+  return animation
+}
+
+interface ScreenEntry {
+  pathname: string
+  animation?: NativeScreenOptions['animation']
+}
+
+/**
+ * Native screen wrapper using react-native-screens.
+ *
+ * Provides native push/pop animations when navigating between routes.
+ * Maintains a minimal screen stack to enable proper animation direction:
+ * - Forward navigation: new screen slides in from right
+ * - Back navigation: current screen slides out to right
+ *
+ * NOTE: Swipe-to-go-back gesture is disabled. This feature requires parallel
+ * route/location support in TanStack Router, which is not yet available.
+ * Back navigation works via header back button, Android hardware back button,
+ * or programmatically via router.history.back().
  */
 export function NativeScreenMatches() {
   const router = useRouter()
 
-  // Get only the "leaf" matches that should be separate screens
-  // For nested routes, they render inside their parent via Outlet
-  const screenMatches = useRouterState({
-    select: (s) => {
-      // For now, we render each top-level match as a screen
-      // Nested routes render via Outlet pattern inside their parent
-      return s.matches.map((m) => ({
-        id: m.id,
-        routeId: m.routeId,
-      }))
+  // Lazily get screen components
+  const { Screen, ScreenStack, ScreenStackHeaderConfig } = getScreenComponents()
+
+  // Get current pathname and animation options from deepest screen match
+  const currentScreen = useRouterState({
+    select: (s): ScreenEntry => {
+      const matches = s.matches
+      // Find the deepest match that is a screen (not a layout/navigator)
+      for (let i = matches.length - 1; i >= 0; i--) {
+        const match = matches[i]!
+        if (match.routeId === rootRouteId) continue
+        const route = router.routesById[match.routeId] as AnyRoute
+        const nativeOptions = (route.options as any)?.nativeOptions as
+          | NativeScreenOptions
+          | undefined
+        // Skip routes with presentation: 'none' (these are layouts/navigators)
+        if (nativeOptions?.presentation === 'none') continue
+        return {
+          pathname: s.location.pathname,
+          animation: nativeOptions?.animation,
+        }
+      }
+      return {
+        pathname: s.location.pathname,
+        animation: undefined,
+      }
     },
-    structuralSharing: true as any,
   })
 
-  const resetKey = useRouterState({
-    select: (s) => s.loadedAt,
-  })
+  // Track screen stack for proper animation direction
+  const [screenStack, setScreenStack] = React.useState<Array<ScreenEntry>>(
+    () => [currentScreen],
+  )
+
+  // Update stack when navigation happens
+  React.useEffect(() => {
+    setScreenStack((prev) => {
+      // Check if navigating back to a screen in the stack
+      const existingIndex = prev.findIndex(
+        (s) => s.pathname === currentScreen.pathname,
+      )
+
+      if (existingIndex !== -1 && existingIndex < prev.length - 1) {
+        // Going back - trim stack to this screen
+        return prev.slice(0, existingIndex + 1)
+      }
+
+      // Check if same screen (no navigation)
+      const top = prev[prev.length - 1]
+      if (top?.pathname === currentScreen.pathname) {
+        return prev
+      }
+
+      // Forward navigation - push new screen
+      return [...prev, currentScreen]
+    })
+  }, [currentScreen.pathname])
+
+  const rootRoute: AnyRoute = router.routesById[rootRouteId]
+  const PendingComponent =
+    rootRoute.options.pendingComponent ?? router.options.defaultPendingComponent
+  const pendingElement = PendingComponent ? <PendingComponent /> : null
 
   // If react-native-screens is not available, fall back to View-based rendering
   if (!ScreenStack || !Screen) {
-    return (
-      <View style={styles.container}>
-        <Matches />
-      </View>
-    )
-  }
-
-  const handleDismissed = React.useCallback(() => {
-    // When user swipes back on iOS, sync router state
-    if (router.history.canGoBack()) {
-      router.history.back()
-    }
-  }, [router])
-
-  // Only render the first match as a screen (the root)
-  // Nested matches render via Outlet
-  const rootMatchId = screenMatches[0]?.id
-
-  if (!rootMatchId) {
-    return null
+    return <Matches />
   }
 
   return (
     <ScreenStack style={styles.container}>
-      <Screen
-        key={rootMatchId}
-        style={styles.screen}
-        stackPresentation="push"
-        onDismissed={handleDismissed}
-      >
-        <ScreenStackHeaderConfig hidden />
-        <CatchBoundary
-          getResetKey={() => resetKey}
-          errorComponent={ErrorComponent}
-          onCatch={(error) => {
-            console.warn(
-              `The following error wasn't caught by any route! Consider setting an 'errorComponent' in your RootRoute!`,
-            )
-            console.warn(error.message || error.toString())
-          }}
-        >
-          <matchContext.Provider value={rootMatchId}>
-            <Match matchId={rootMatchId} />
-          </matchContext.Provider>
-        </CatchBoundary>
-      </Screen>
+      {screenStack.map((screen, index) => {
+        const isTop = index === screenStack.length - 1
+        const stackAnimation = getStackAnimation(screen.animation)
+
+        return (
+          <Screen
+            key={screen.pathname}
+            style={styles.screen}
+            stackPresentation="push"
+            stackAnimation={stackAnimation}
+            gestureEnabled={false}
+            activityState={isTop ? 2 : 0} // 2 = active, 0 = inactive
+          >
+            <ScreenStackHeaderConfig hidden />
+            {isTop ? (
+              <React.Suspense fallback={pendingElement}>
+                <Matches />
+              </React.Suspense>
+            ) : null}
+          </Screen>
+        )
+      })}
     </ScreenStack>
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+// Lazy styles to avoid accessing native modules at module load time
+let _styles: { container: object; screen: object } | null = null
+function getStyles() {
+  if (!_styles) {
+    const { StyleSheet } = require('react-native')
+    _styles = StyleSheet.create({
+      container: {
+        flex: 1,
+      },
+      screen: {
+        flex: 1,
+      },
+    })
+  }
+  return _styles!
+}
+
+const styles = {
+  get container() {
+    return getStyles().container
   },
-  screen: {
-    flex: 1,
+  get screen() {
+    return getStyles().screen
   },
-})
+}

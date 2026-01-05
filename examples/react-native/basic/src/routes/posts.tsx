@@ -1,7 +1,14 @@
 import * as React from 'react'
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native'
-import { createRoute, Link, Outlet } from '@tanstack/react-native-router'
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native'
+import { createRoute, Link } from '@tanstack/react-native-router'
 import { Route as RootRoute } from './__root'
+import { ScreenHeader } from '../components/ScreenHeader'
 
 type Post = {
   id: number
@@ -10,32 +17,37 @@ type Post = {
 }
 
 async function fetchPosts(): Promise<Post[]> {
-  const response = await fetch('https://jsonplaceholder.typicode.com/posts?_limit=10')
+  const response = await fetch(
+    'https://jsonplaceholder.typicode.com/posts?_limit=10',
+  )
   return response.json()
 }
 
 export const Route = createRoute({
   getParentRoute: () => RootRoute,
-  path: '/posts',
-  component: PostsComponent,
+  path: 'posts',
+  component: PostsScreen,
   loader: async () => {
     const posts = await fetchPosts()
     return { posts }
   },
   pendingComponent: () => (
-    <View style={styles.loading}>
-      <ActivityIndicator size="large" color="#6366f1" />
-      <Text style={styles.loadingText}>Loading posts...</Text>
+    <View style={styles.loadingContainer}>
+      <ScreenHeader title="Posts" showBack />
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text style={styles.loadingText}>Loading posts...</Text>
+      </View>
     </View>
   ),
 })
 
-function PostsComponent() {
+function PostsScreen() {
   const { posts } = Route.useLoaderData()
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Posts</Text>
+      <ScreenHeader title="Posts" showBack />
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id.toString()}
@@ -49,11 +61,11 @@ function PostsComponent() {
             <Text style={styles.postBody} numberOfLines={2}>
               {item.body}
             </Text>
+            <Text style={styles.postArrow}>→</Text>
           </Link>
         )}
         contentContainerStyle={styles.list}
       />
-      <Outlet />
     </View>
   )
 }
@@ -61,15 +73,14 @@ function PostsComponent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: '#f5f5f5',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 16,
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
   },
   list: {
+    padding: 16,
     gap: 12,
   },
   postCard: {
@@ -81,17 +92,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   postTitle: {
-    fontSize: 16,
+    flex: 1,
+    fontSize: 15,
     fontWeight: '600',
     color: '#1f2937',
-    marginBottom: 8,
   },
   postBody: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
+    display: 'none', // Hide body for cleaner list
+  },
+  postArrow: {
+    fontSize: 18,
+    color: '#9ca3af',
+    marginLeft: 8,
   },
   loading: {
     flex: 1,

@@ -1,17 +1,24 @@
 import * as React from 'react'
-import { View, StyleSheet, BackHandler, Platform } from 'react-native'
+import { View, BackHandler, Platform } from 'react-native'
 import { getRouterContext } from './routerContext'
 import { Matches, NativeScreenMatches } from './Matches'
 import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
 
-// Optional: Import GestureHandlerRootView if available
-let GestureHandlerRootView: any
+// Lazily load GestureHandlerRootView to avoid accessing native modules at module load time
+let _GestureHandlerRootView: any = null
+let _gestureHandlerChecked = false
 
-try {
-  const gestureHandler = require('react-native-gesture-handler')
-  GestureHandlerRootView = gestureHandler.GestureHandlerRootView
-} catch {
-  // react-native-gesture-handler not installed
+function getGestureHandlerRootView() {
+  if (!_gestureHandlerChecked) {
+    _gestureHandlerChecked = true
+    try {
+      const gestureHandler = require('react-native-gesture-handler')
+      _GestureHandlerRootView = gestureHandler.GestureHandlerRootView
+    } catch {
+      // react-native-gesture-handler not installed
+    }
+  }
+  return _GestureHandlerRootView
 }
 
 export interface NativeRouterProviderProps<
@@ -115,26 +122,27 @@ export function NativeRouterProvider<
   // Handle Android back button
   useAndroidBackHandler(router)
 
+  // Use NativeScreenMatches for native transitions when enabled
+  // Falls back to View-based Matches if react-native-screens is not available
+  const MatchesComponent = useNativeScreens ? NativeScreenMatches : Matches
+
   const content = (
     <RouterContextProvider router={router} context={context}>
-      {children ?? (useNativeScreens ? <NativeScreenMatches /> : <Matches />)}
+      {children ?? <MatchesComponent />}
     </RouterContextProvider>
   )
+
+  // Lazily get GestureHandlerRootView (called during render, not module load)
+  const GestureHandlerRootView = getGestureHandlerRootView()
 
   // Wrap in GestureHandlerRootView if available
   if (GestureHandlerRootView) {
     return (
-      <GestureHandlerRootView style={styles.container}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
         {content}
       </GestureHandlerRootView>
     )
   }
 
-  return <View style={styles.container}>{content}</View>
+  return <View style={{ flex: 1 }}>{content}</View>
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-})

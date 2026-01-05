@@ -6,6 +6,7 @@ import {
   notFound,
 } from '@tanstack/router-core'
 import { useLoaderData } from './useLoaderData'
+import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
@@ -36,6 +37,7 @@ import type {
   NotFoundError,
 } from '@tanstack/router-core'
 import type { UseLoaderDataRoute } from './useLoaderData'
+import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseMatchRoute } from './useMatch'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
@@ -49,6 +51,71 @@ export type ErrorRouteComponent = React.ComponentType<{
 }>
 export type NotFoundRouteComponent = React.ComponentType<NotFoundRouteProps>
 
+/**
+ * Native screen presentation options for React Native.
+ */
+export interface NativeScreenOptions {
+  /**
+   * How this route should be presented in the native navigation stack.
+   * - 'push': Standard screen push with back gesture (default)
+   * - 'modal': Present as a modal
+   * - 'transparentModal': Present as a transparent modal overlay
+   * - 'containedModal': Modal that stays within parent bounds
+   * - 'containedTransparentModal': Transparent modal within parent bounds
+   * - 'fullScreenModal': Full screen modal
+   * - 'formSheet': Form sheet presentation (iOS)
+   * - 'none': Not a screen - renders inline (for navigators like tabs/drawer)
+   */
+  presentation?:
+    | 'push'
+    | 'modal'
+    | 'transparentModal'
+    | 'containedModal'
+    | 'containedTransparentModal'
+    | 'fullScreenModal'
+    | 'formSheet'
+    | 'none'
+
+  /**
+   * Enable/disable swipe gesture for back navigation (iOS).
+   * @default true for 'push', false for modals
+   */
+  gestureEnabled?: boolean
+
+  /**
+   * Custom animation for screen transitions.
+   * - 'default': Platform default animation
+   * - 'fade': Fade in/out
+   * - 'fade_from_bottom': Fade from bottom (Android)
+   * - 'flip': Card flip
+   * - 'simple_push': Simple slide
+   * - 'slide_from_right': Slide from right
+   * - 'slide_from_left': Slide from left
+   * - 'slide_from_bottom': Slide from bottom
+   * - 'none': No animation
+   */
+  animation?:
+    | 'default'
+    | 'fade'
+    | 'fade_from_bottom'
+    | 'flip'
+    | 'simple_push'
+    | 'slide_from_right'
+    | 'slide_from_left'
+    | 'slide_from_bottom'
+    | 'none'
+
+  /**
+   * Status bar style when this screen is active.
+   */
+  statusBarStyle?: 'auto' | 'inverted' | 'light' | 'dark'
+
+  /**
+   * Whether this screen should be rendered with a translucent status bar.
+   */
+  statusBarTranslucent?: boolean
+}
+
 // Type extensions for components
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
@@ -56,6 +123,11 @@ declare module '@tanstack/router-core' {
     errorComponent?: false | null | undefined | ErrorRouteComponent
     notFoundComponent?: NotFoundRouteComponent
     pendingComponent?: RouteComponent
+    /**
+     * Native screen options for React Native navigation.
+     * Controls how this route is presented in the native navigation stack.
+     */
+    nativeOptions?: NativeScreenOptions
   }
 
   export interface RootRouteOptionsExtensions {
@@ -74,6 +146,7 @@ declare module '@tanstack/router-core' {
     useSearch: UseSearchRoute<TId>
     useParams: UseParamsRoute<TId>
     useLoaderData: UseLoaderDataRoute<TId>
+    useLoaderDeps: UseLoaderDepsRoute<TId>
     useNavigate: () => UseNavigateResult<TFullPath>
   }
 }
@@ -122,6 +195,10 @@ export class RouteApi<
 
   useLoaderData: UseLoaderDataRoute<TId> = (opts) => {
     return useLoaderData({ ...opts, from: this.id, strict: false } as any)
+  }
+
+  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
+    return useLoaderDeps({ ...opts, from: this.id, strict: false } as any)
   }
 
   useNavigate = (): UseNavigateResult<
@@ -235,6 +312,10 @@ export class Route<
     return useLoaderData({ ...opts, from: this.id, strict: false } as any)
   }
 
+  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
+    return useLoaderDeps({ ...opts, from: this.id, strict: false } as any)
+  }
+
   useNavigate = (): UseNavigateResult<TFullPath> => {
     const router = useRouter()
     return useNavigate({ from: router.routesById[this.id as string].fullPath })
@@ -313,6 +394,10 @@ export class RootRoute<
 
   useLoaderData: UseLoaderDataRoute<RootRouteId> = (opts) => {
     return useLoaderData({ ...opts, from: this.id } as any)
+  }
+
+  useLoaderDeps: UseLoaderDepsRoute<RootRouteId> = (opts) => {
+    return useLoaderDeps({ ...opts, from: this.id } as any)
   }
 
   useNavigate = (): UseNavigateResult<'/'> => {

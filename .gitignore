@@ -79,3 +79,5 @@ vite.config.ts.timestamp_*
 **/llms
 
 **/.tanstack
+**/ios/**
+**/android/**

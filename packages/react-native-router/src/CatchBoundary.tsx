@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { View, Text, StyleSheet, Pressable } from 'react-native'
+import { View, Text, Pressable } from 'react-native'
 import type { ErrorInfo } from 'react'
 import type { ErrorRouteComponent } from './route'
 
@@ -34,48 +34,74 @@ export function ErrorComponent({ error }: ErrorComponentProps) {
   )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  button: {
-    borderWidth: 1,
-    borderColor: '#6b7280',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  buttonText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#6b7280',
-  },
-  errorBox: {
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#dc2626',
-    borderRadius: 4,
-    padding: 8,
-    maxWidth: '100%',
-  },
-  message: {
-    fontSize: 12,
-    color: '#dc2626',
-  },
-})
+// Lazy styles to avoid accessing native modules at module load time
+let _styles: {
+  container: object
+  header: object
+  title: object
+  button: object
+  buttonText: object
+  errorBox: object
+  message: object
+} | null = null
+function getStyles() {
+  if (!_styles) {
+    const { StyleSheet } = require('react-native')
+    _styles = StyleSheet.create({
+      container: {
+        flex: 1,
+        padding: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+      },
+      title: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#1f2937',
+      },
+      button: {
+        borderWidth: 1,
+        borderColor: '#6b7280',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+      },
+      buttonText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#6b7280',
+      },
+      errorBox: {
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: '#dc2626',
+        borderRadius: 4,
+        padding: 8,
+        maxWidth: '100%',
+      },
+      message: {
+        fontSize: 12,
+        color: '#dc2626',
+      },
+    })
+  }
+  return _styles!
+}
+
+const styles = {
+  get container() { return getStyles().container },
+  get header() { return getStyles().header },
+  get title() { return getStyles().title },
+  get button() { return getStyles().button },
+  get buttonText() { return getStyles().buttonText },
+  get errorBox() { return getStyles().errorBox },
+  get message() { return getStyles().message },
+}
 
 export function CatchBoundary(props: {
   getResetKey: () => number | string

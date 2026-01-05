@@ -1,7 +1,14 @@
 import * as React from 'react'
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native'
 import { createRoute, Link } from '@tanstack/react-native-router'
-import { Route as PostsRoute } from './posts'
+import { Route as RootRoute } from './__root'
+import { ScreenHeader } from '../components/ScreenHeader'
 
 type Post = {
   id: number
@@ -12,60 +19,76 @@ type Post = {
 
 async function fetchPost(postId: string): Promise<Post> {
   const response = await fetch(
-    `https://jsonplaceholder.typicode.com/posts/${postId}`
+    `https://jsonplaceholder.typicode.com/posts/${postId}`,
   )
   return response.json()
 }
 
 export const Route = createRoute({
-  getParentRoute: () => PostsRoute,
-  path: '$postId',
-  component: PostComponent,
+  getParentRoute: () => RootRoute,
+  path: 'posts/$postId',
+  component: PostScreen,
   loader: async ({ params }) => {
     const post = await fetchPost(params.postId)
     return { post }
   },
   pendingComponent: () => (
-    <View style={styles.loading}>
-      <ActivityIndicator size="large" color="#6366f1" />
-      <Text style={styles.loadingText}>Loading post...</Text>
+    <View style={styles.loadingContainer}>
+      <ScreenHeader title="Loading..." showBack />
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#6366f1" />
+        <Text style={styles.loadingText}>Loading post...</Text>
+      </View>
     </View>
   ),
 })
 
-function PostComponent() {
+function PostScreen() {
   const { post } = Route.useLoaderData()
   const { postId } = Route.useParams()
 
   return (
-    <ScrollView style={styles.container}>
-      <Link to="/posts" style={styles.backLink}>
-        <Text style={styles.backText}>← Back to Posts</Text>
-      </Link>
-      <View style={styles.card}>
-        <Text style={styles.postId}>Post #{postId}</Text>
-        <Text style={styles.title}>{post.title}</Text>
-        <Text style={styles.body}>{post.body}</Text>
-        <View style={styles.meta}>
-          <Text style={styles.metaText}>User ID: {post.userId}</Text>
+    <View style={styles.container}>
+      <ScreenHeader title={`Post #${postId}`} showBack />
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <View style={styles.card}>
+          <Text style={styles.title}>{post.title}</Text>
+          <Text style={styles.body}>{post.body}</Text>
+          <View style={styles.meta}>
+            <Text style={styles.metaLabel}>Author</Text>
+            <Text style={styles.metaValue}>User #{post.userId}</Text>
+          </View>
         </View>
-      </View>
-    </ScrollView>
+
+        <Link
+          to="/posts/$postId/deep"
+          params={{ postId }}
+          style={styles.deepLink}
+        >
+          <Text style={styles.deepLinkText}>View Comments →</Text>
+        </Link>
+      </ScrollView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: '#f5f5f5',
   },
-  backLink: {
-    marginBottom: 16,
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
   },
-  backText: {
-    fontSize: 16,
-    color: '#6366f1',
-    fontWeight: '500',
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
   },
   card: {
     backgroundColor: 'white',
@@ -77,19 +100,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  postId: {
-    fontSize: 12,
-    color: '#9ca3af',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#1f2937',
     marginBottom: 16,
-    lineHeight: 32,
+    lineHeight: 30,
   },
   body: {
     fontSize: 16,
@@ -101,10 +117,29 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     paddingTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  metaText: {
+  metaLabel: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  metaValue: {
+    fontSize: 14,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  deepLink: {
+    marginTop: 16,
+    paddingVertical: 16,
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  deepLinkText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   loading: {
     flex: 1,

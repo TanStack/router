@@ -47,6 +47,26 @@
         "default": "./dist/cjs/index.cjs"
       }
     },
+    "./history": {
+      "import": {
+        "types": "./dist/esm/history.d.ts",
+        "default": "./dist/esm/history.js"
+      },
+      "require": {
+        "types": "./dist/cjs/history.d.cts",
+        "default": "./dist/cjs/history.cjs"
+      }
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/esm/core.d.ts",
+        "default": "./dist/esm/core.js"
+      },
+      "require": {
+        "types": "./dist/cjs/core.d.cts",
+        "default": "./dist/cjs/core.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

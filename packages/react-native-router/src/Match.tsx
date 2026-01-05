@@ -47,7 +47,7 @@ export const Match = React.memo(function MatchImpl({
   const routeOnCatch = route.options.onCatch ?? router.options.defaultOnCatch
 
   const ResolvedSuspenseBoundary =
-    route.options.wrapInSuspense ?? PendingComponent
+    (route.options.wrapInSuspense ?? PendingComponent)
       ? React.Suspense
       : SafeFragment
 
@@ -87,7 +87,17 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
   const { match, key, routeId } = useRouterState({
     select: (s) => {
-      const match = s.matches.find((d) => d.id === matchId)!
+      const match = s.matches.find((d) => d.id === matchId)
+
+      // Return early if match not found (can happen during navigation transitions)
+      if (!match) {
+        return {
+          key: undefined,
+          routeId: undefined,
+          match: undefined,
+        }
+      }
+
       const routeId = match.routeId as string
 
       const remountFn =
@@ -116,15 +126,21 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     structuralSharing: true as any,
   })
 
-  const route = router.routesById[routeId] as AnyRoute
+  const route = routeId ? (router.routesById[routeId] as AnyRoute) : undefined
 
   const out = React.useMemo(() => {
+    if (!route) return null
     const Comp = route.options.component ?? router.options.defaultComponent
     if (Comp) {
       return <Comp key={key} />
     }
     return <Outlet />
-  }, [key, route.options.component, router.options.defaultComponent])
+  }, [key, route, router.options.defaultComponent])
+
+  // Don't render if match not found yet
+  if (!match || !routeId || !route) {
+    return null
+  }
 
   if (match._displayPending) {
     throw router.getMatch(match.id)?._nonReactive.displayPendingPromise

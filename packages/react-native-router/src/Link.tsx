@@ -1,6 +1,11 @@
 import * as React from 'react'
-import { Pressable, Text, StyleSheet } from 'react-native'
-import { deepEqual, exactPathTest, functionalUpdate, removeTrailingSlash } from '@tanstack/router-core'
+import { Pressable, Text } from 'react-native'
+import {
+  deepEqual,
+  exactPathTest,
+  functionalUpdate,
+  removeTrailingSlash,
+} from '@tanstack/router-core'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import type {
@@ -57,7 +62,10 @@ export type NativeLinkProps<
      */
     children?:
       | React.ReactNode
-      | ((state: { isActive: boolean; isTransitioning: boolean }) => React.ReactNode)
+      | ((state: {
+          isActive: boolean
+          isTransitioning: boolean
+        }) => React.ReactNode)
     /**
      * Style for the text when children is a string
      */
@@ -81,9 +89,7 @@ export function useNativeLinkProps<
   TTo extends string | undefined = undefined,
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
->(
-  options: NativeLinkProps<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) {
+>(options: NativeLinkProps<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>) {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = React.useState(false)
 
@@ -109,10 +115,7 @@ export function useNativeLinkProps<
 
   const from = options.from
 
-  const _options = React.useMemo(
-    () => ({ ...options, from }),
-    [options, from],
-  )
+  const _options = React.useMemo(() => ({ ...options, from }), [options, from])
 
   const next = React.useMemo(
     () => router.buildLocation({ ..._options } as any),
@@ -183,12 +186,19 @@ export function useNativeLinkProps<
         ignoreBlocker,
       } as any)
     },
-    [disabled, userOnPress, router, _options, replace, resetScroll, viewTransition, ignoreBlocker],
+    [
+      disabled,
+      userOnPress,
+      router,
+      _options,
+      replace,
+      resetScroll,
+      viewTransition,
+      ignoreBlocker,
+    ],
   )
 
-  const resolvedActiveProps = isActive
-    ? functionalUpdate(activeProps, {})
-    : {}
+  const resolvedActiveProps = isActive ? functionalUpdate(activeProps, {}) : {}
 
   const resolvedInactiveProps = isActive
     ? {}
@@ -219,16 +229,30 @@ export const Link = React.forwardRef<
     return [
       styles.link,
       style,
-      linkProps.isActive ? linkProps.activeProps?.style : linkProps.inactiveProps?.style,
+      linkProps.isActive
+        ? linkProps.activeProps?.style
+        : linkProps.inactiveProps?.style,
     ]
-  }, [style, linkProps.isActive, linkProps.activeProps?.style, linkProps.inactiveProps?.style])
+  }, [
+    style,
+    linkProps.isActive,
+    linkProps.activeProps?.style,
+    linkProps.inactiveProps?.style,
+  ])
 
   const resolvedTextStyle = React.useMemo(() => {
     return [
       textStyle,
-      linkProps.isActive ? linkProps.activeProps?.textStyle : linkProps.inactiveProps?.textStyle,
+      linkProps.isActive
+        ? linkProps.activeProps?.textStyle
+        : linkProps.inactiveProps?.textStyle,
     ]
-  }, [textStyle, linkProps.isActive, linkProps.activeProps?.textStyle, linkProps.inactiveProps?.textStyle])
+  }, [
+    textStyle,
+    linkProps.isActive,
+    linkProps.activeProps?.textStyle,
+    linkProps.inactiveProps?.textStyle,
+  ])
 
   const renderChildren = () => {
     if (typeof children === 'function') {
@@ -249,7 +273,10 @@ export const Link = React.forwardRef<
     <Pressable
       ref={ref}
       {...linkProps.pressableProps}
-      onPress={linkProps.onPress}
+      onPress={(e) => {
+        console.log('Link pressed!', props.to)
+        linkProps.onPress(e)
+      }}
       disabled={linkProps.disabled}
       style={resolvedStyle}
       accessibilityRole="link"
@@ -269,8 +296,23 @@ export const Link = React.forwardRef<
   },
 ) => React.ReactElement
 
-const styles = StyleSheet.create({
-  link: {
-    // Default link styling (minimal)
+// Lazy styles to avoid accessing native modules at module load time
+let _styles: { link: object } | null = null
+function getStyles() {
+  if (!_styles) {
+    const { StyleSheet } = require('react-native')
+    _styles = StyleSheet.create({
+      link: {
+        // Default link styling (minimal)
+      },
+    })
+  }
+  return _styles!
+}
+
+// Use getter for styles
+const styles = {
+  get link() {
+    return getStyles().link
   },
-})
+}

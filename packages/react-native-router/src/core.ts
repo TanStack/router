@@ -1,3 +1,6 @@
+// Core exports that don't include any React Native-specific components
+// Safe to import at module load time without triggering native module access
+
 // History
 export { createNativeHistory } from './history'
 export type { NativeHistoryOptions, NativeRouterHistory } from './history'
@@ -19,34 +22,12 @@ export type {
   RouteComponent,
   ErrorRouteComponent,
   NotFoundRouteComponent,
-  NativeScreenOptions,
 } from './route'
 
-// Provider
-export {
-  NativeRouterProvider,
-  RouterContextProvider,
-} from './NativeRouterProvider'
-export type { NativeRouterProviderProps } from './NativeRouterProvider'
-
-// Components
-export { Link, useNativeLinkProps } from './Link'
-export type { NativeLinkProps, ActiveLinkOptions } from './Link'
-
-export { Match, MatchInner, Outlet } from './Match'
-export { Matches, NativeScreenMatches } from './Matches'
-export { Transitioner } from './Transitioner'
-export { CatchBoundary, ErrorComponent } from './CatchBoundary'
-export type { ErrorComponentProps } from './CatchBoundary'
-export { SafeFragment } from './SafeFragment'
-
-// Hooks
+// Hooks - these don't import React Native components
 export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
-export type {
-  UseRouterStateOptions,
-  UseRouterStateResult,
-} from './useRouterState'
+export type { UseRouterStateOptions, UseRouterStateResult } from './useRouterState'
 
 export { useMatch } from './useMatch'
 export type {
@@ -78,24 +59,6 @@ export type {
   UseLoaderDataOptions,
   UseLoaderDataRoute,
 } from './useLoaderData'
-
-export { useLoaderDeps } from './useLoaderDeps'
-export type {
-  UseLoaderDepsBaseOptions,
-  UseLoaderDepsOptions,
-  UseLoaderDepsRoute,
-} from './useLoaderDeps'
-
-export { useLocation } from './useLocation'
-export type { UseLocationBaseOptions, UseLocationResult } from './useLocation'
-
-export { useCanGoBack } from './useCanGoBack'
-
-export { useMatches, useParentMatches, useChildMatches } from './useMatches'
-export type { UseMatchesBaseOptions, UseMatchesResult } from './useMatches'
-
-export { useBlocker, Block } from './useBlocker'
-export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 
 // Context
 export { getRouterContext } from './routerContext'

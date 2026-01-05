@@ -1,40 +1,44 @@
 import * as React from 'react'
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, ScrollView } from 'react-native'
 import { createRoute } from '@tanstack/react-native-router'
 import { Route as RootRoute } from './__root'
+import { ScreenHeader } from '../components/ScreenHeader'
 
 export const Route = createRoute({
   getParentRoute: () => RootRoute,
-  path: '/about',
-  component: AboutComponent,
+  path: 'about',
+  component: AboutScreen,
 })
 
-function AboutComponent() {
+function AboutScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>About</Text>
-      <Text style={styles.description}>
-        TanStack Router for React Native provides the same powerful routing
-        capabilities you love from the web, adapted for mobile.
-      </Text>
-      <View style={styles.infoBox}>
-        <Text style={styles.infoTitle}>Features</Text>
-        <Text style={styles.infoText}>
-          • Native stack navigation with react-native-screens
+      <ScreenHeader title="About" showBack />
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <Text style={styles.title}>About</Text>
+        <Text style={styles.description}>
+          TanStack Router for React Native provides the same powerful routing
+          capabilities you love from the web, adapted for mobile.
         </Text>
-        <Text style={styles.infoText}>
-          • Full TypeScript support with type-safe routes
-        </Text>
-        <Text style={styles.infoText}>
-          • Search params and path params
-        </Text>
-        <Text style={styles.infoText}>
-          • Data loading with loaders
-        </Text>
-        <Text style={styles.infoText}>
-          • Android back button handling
-        </Text>
-      </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Features</Text>
+          <Text style={styles.featureText}>
+            • Native stack navigation with react-native-screens
+          </Text>
+          <Text style={styles.featureText}>
+            • Full TypeScript support with type-safe routes
+          </Text>
+          <Text style={styles.featureText}>
+            • Search params and path params
+          </Text>
+          <Text style={styles.featureText}>• Data loading with loaders</Text>
+          <Text style={styles.featureText}>• Android back button handling</Text>
+        </View>
+      </ScrollView>
     </View>
   )
 }
@@ -42,10 +46,16 @@ function AboutComponent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
     padding: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#1f2937',
     marginBottom: 12,
@@ -53,12 +63,12 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 16,
     color: '#6b7280',
-    marginBottom: 24,
     lineHeight: 24,
+    marginBottom: 24,
   },
-  infoBox: {
+  card: {
     backgroundColor: 'white',
-    padding: 16,
+    padding: 20,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -66,16 +76,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  infoTitle: {
+  cardTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1f2937',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  infoText: {
-    fontSize: 14,
+  featureText: {
+    fontSize: 15,
     color: '#4b5563',
-    marginBottom: 8,
-    lineHeight: 20,
+    lineHeight: 28,
   },
 })

@@ -5,14 +5,15 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
-    "ios": {
-      "supportsTablet": true
+        "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tannerlinsley.tanstack-router-rn-example"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.tannerlinsley.tanstackrouterrnexample"
     }
   }
 }
