@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ScrollErrorRouteImport } from './routes/scroll-error'
 import { Route as RedirectReloadRouteImport } from './routes/redirectReload'
 import { Route as RedirectRouteImport } from './routes/redirect'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ScrollErrorRoute = ScrollErrorRouteImport.update({
+  id: '/scroll-error',
+  path: '/scroll-error',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RedirectReloadRoute = RedirectReloadRouteImport.update({
   id: '/redirectReload',
   path: '/redirectReload',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/redirect': typeof RedirectRoute
   '/redirectReload': typeof RedirectReloadRoute
+  '/scroll-error': typeof ScrollErrorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/redirect': typeof RedirectRoute
   '/redirectReload': typeof RedirectReloadRoute
+  '/scroll-error': typeof ScrollErrorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,20 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/redirect': typeof RedirectRoute
   '/redirectReload': typeof RedirectReloadRoute
+  '/scroll-error': typeof ScrollErrorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/redirect' | '/redirectReload'
+  fullPaths: '/' | '/about' | '/redirect' | '/redirectReload' | '/scroll-error'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/redirect' | '/redirectReload'
-  id: '__root__' | '/' | '/about' | '/redirect' | '/redirectReload'
+  to: '/' | '/about' | '/redirect' | '/redirectReload' | '/scroll-error'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/redirect'
+    | '/redirectReload'
+    | '/scroll-error'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +82,18 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   RedirectRoute: typeof RedirectRoute
   RedirectReloadRoute: typeof RedirectReloadRoute
+  ScrollErrorRoute: typeof ScrollErrorRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/scroll-error': {
+      id: '/scroll-error'
+      path: '/scroll-error'
+      fullPath: '/scroll-error'
+      preLoaderRoute: typeof ScrollErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/redirectReload': {
       id: '/redirectReload'
       path: '/redirectReload'
@@ -107,6 +130,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   RedirectRoute: RedirectRoute,
   RedirectReloadRoute: RedirectReloadRoute,
+  ScrollErrorRoute: ScrollErrorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
