@@ -14,6 +14,7 @@ import { isbot } from 'isbot'
 import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
+import { TransformStream } from 'node:stream/web'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
@@ -71,11 +72,14 @@ export const renderRouterToStream = async ({
     } as any,
   )
 
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
+  stream.pipeTo(writable)
+
   if (isbot(request.headers.get('User-Agent'))) {
     await stream
   }
   const wrappedStream = wrapStream(
-    stream as unknown as ReadableStream<Uint8Array>,
+    readable as unknown as ReadableStream<Uint8Array>,
     template,
   )
   const responseStream = transformReadableStreamWithRouter(
