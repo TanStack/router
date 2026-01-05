@@ -472,18 +472,21 @@ router.navigate({ slots: { notifications: false } })
 // Adds @notifications=false to URL
 ```
 
-### Route-Scoped Slot Type Safety
+### Route-Scoped Slots and Navigation Validity
 
-Slots scoped to specific routes enforce that you're on (or navigating to) that route:
+Slots scoped to specific routes can only render when that route is active. This creates an important constraint: **navigating a slot that isn't rendered has no effect (or errors)**.
 
 ```ts
 // dashboard.@activity is scoped to /dashboard
 import { activityRoute } from './routeTree.gen'
 
-// ✅ Works when on /dashboard
+// ✅ Works when currently on /dashboard
 activityRoute.navigate({ to: '/recent' })
 
-// ✅ Works when navigating to /dashboard
+// ❌ Runtime issue - if you're on /settings, activity slot doesn't exist
+activityRoute.navigate({ to: '/recent' }) // no effect or error
+
+// ✅ Safe - atomic navigation ensures dashboard is active
 router.navigate({
   to: '/dashboard',
   slots: { activity: { to: '/recent' } },
@@ -495,6 +498,51 @@ router.navigate({
   slots: { activity: { to: '/recent' } },
 })
 ```
+
+### Open Question: Handling Invalid Slot Navigation
+
+What should happen when you try to navigate a slot that isn't currently rendered?
+
+**Option A: Runtime Error**
+
+```ts
+// On /settings, try to navigate dashboard's activity slot
+activityRoute.navigate({ to: '/recent' })
+// Throws: "Cannot navigate slot 'activity' - parent route '/dashboard' is not active"
+```
+
+**Option B: No-op with Warning**
+
+```ts
+// Silent no-op, but warns in development
+console.warn("Slot 'activity' navigation ignored - parent route not active")
+```
+
+**Option C: Auto-navigate to Parent**
+
+```ts
+// Automatically navigates to the slot's parent route first
+activityRoute.navigate({ to: '/recent' })
+// Equivalent to: router.navigate({ to: '/dashboard', slots: { activity: { to: '/recent' } } })
+```
+
+**Option D: Type-level Prevention (Ideal but Complex)**
+
+Could we make `activityRoute.navigate()` only callable when TypeScript knows you're in a context where `/dashboard` is active? This would require:
+
+- Contextual typing based on current route
+- Possibly a hook like `useSlotNavigate('activity')` that's only valid within dashboard
+
+```ts
+// Inside a dashboard component
+const activityNav = useSlotNavigate('activity') // ✅ typed, safe
+activityNav({ to: '/recent' })
+
+// Outside dashboard - hook returns null or throws
+const activityNav = useSlotNavigate('activity') // ❌ null or type error
+```
+
+**Current recommendation:** Option A (runtime error) is clearest. Option D would be ideal but may be too complex. The `slots` object on `router.navigate()` remains the safest approach since it atomically ensures the parent route is active.
 
 ### Nested Slot Navigation
 
@@ -1324,7 +1372,6 @@ This is an additive feature with no breaking changes to existing apps.
 
    ```tsx
    import { modalRoute } from './routeTree.gen'
-
    ;<modalRoute.Link to="/users/$id" params={{ id: '123' }}>
      Open User
    </modalRoute.Link>
@@ -1391,13 +1438,15 @@ TanStack Router is the only framework where parallel routes are truly URL-first.
 
 2. **Preloading**: How should `<Link slots={{ modal: {...} }} preload="intent">` work? Should it preload just the slot's route, or also affect main route preloading?
 
-3. **shouldRevalidate**: Should slots participate in the main route's revalidation cycle, or have completely independent revalidation?
+3. **Invalid slot navigation behavior**: What happens when `slotRoute.navigate()` is called but the slot's parent route isn't active? Options: runtime error, no-op with warning, auto-navigate to parent, or type-level prevention. See [detailed discussion](#open-question-handling-invalid-slot-navigation) in the Navigation API section.
 
-4. **Devtools**: How should the devtools visualize parallel slots? Separate trees? Merged view?
+4. **shouldRevalidate**: Should slots participate in the main route's revalidation cycle, or have completely independent revalidation?
 
-5. **Code splitting**: Should slot route trees be lazy-loadable independently of the routes that render them?
+5. **Devtools**: How should the devtools visualize parallel slots? Separate trees? Merged view?
 
-6. **Testing utilities**: What test helpers are needed for testing slot navigation?
+6. **Code splitting**: Should slot route trees be lazy-loadable independently of the routes that render them?
+
+7. **Testing utilities**: What test helpers are needed for testing slot navigation?
 
 ---
 
