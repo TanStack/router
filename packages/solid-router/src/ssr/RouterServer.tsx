@@ -5,7 +5,6 @@ import {
   ssr,
   useAssets,
 } from 'solid-js/web'
-import { MetaProvider } from '@solidjs/meta'
 import { Asset } from '../Asset'
 import { useTags } from '../HeadContent'
 import { RouterProvider } from '../RouterProvider'
@@ -16,11 +15,11 @@ export function ServerHeadContent() {
   const tags = useTags()
   useAssets(() => {
     return (
-      <MetaProvider>
+      <>
         {tags().map((tag) => (
           <Asset {...tag} />
         ))}
-      </MetaProvider>
+      </>
     )
   })
   return null
@@ -44,11 +43,9 @@ export function RouterServer<TRouter extends AnyRouter>(props: {
               router={props.router}
               InnerWrap={(props) => (
                 <NoHydration>
-                  <MetaProvider>
-                    <ServerHeadContent />
-                    <Hydration>{props.children}</Hydration>
-                    <Scripts />
-                  </MetaProvider>
+                  <ServerHeadContent />
+                  <Hydration>{props.children}</Hydration>
+                  <Scripts />
                 </NoHydration>
               )}
             />

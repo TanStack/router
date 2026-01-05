@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest'
-import { render } from '@solidjs/testing-library'
+import { afterEach, describe, expect, test } from 'vitest'
+import { cleanup, render } from '@solidjs/testing-library'
 
 import {
   HeadContent,
@@ -10,6 +10,10 @@ import {
   createRouter,
 } from '../src'
 import { Scripts } from '../src/Scripts'
+
+afterEach(() => {
+  cleanup()
+})
 
 describe('ssr scripts', () => {
   test('it works', async () => {
@@ -193,5 +197,82 @@ describe('ssr HeadContent', () => {
       { name: 'last-modified', content: '2021-10-10' },
       { property: 'og:image', content: 'index-image.jpg' },
     ])
+  })
+})
+
+describe('client HeadContent', () => {
+  test('renders and cleans up head tags', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        meta: [
+          { title: 'Root' },
+          { name: 'description', content: 'Root description' },
+        ],
+        links: [{ rel: 'stylesheet', href: '/root.css' }],
+        styles: [{ children: '.root{color:red}' }],
+      }),
+      component: () => {
+        return <HeadContent />
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      head: () => ({
+        meta: [
+          { title: 'Index' },
+          { name: 'description', content: 'Index description' },
+        ],
+        links: [{ rel: 'stylesheet', href: '/index.css' }],
+        styles: [{ children: '.index{color:red}' }],
+      }),
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    await router.load()
+
+    const { unmount } = render(() => <RouterProvider router={router} />)
+
+    const meta = document.head.querySelector('meta[name="description"]')
+    const link = document.head.querySelector(
+      'link[rel="stylesheet"][href="/index.css"]',
+    )
+    const style = Array.from(document.head.querySelectorAll('style')).find(
+      (el) => el.textContent === '.index{color:red}',
+    )
+    const title = Array.from(document.head.querySelectorAll('title')).find(
+      (el) => el.textContent === 'Index',
+    )
+
+    expect(meta?.getAttribute('content')).toBe('Index description')
+    expect(link).not.toBeNull()
+    expect(style).not.toBeUndefined()
+    expect(title).not.toBeUndefined()
+
+    unmount()
+
+    expect(
+      document.head.querySelector('meta[name="description"]'),
+    ).toBeNull()
+    expect(
+      document.head.querySelector('link[rel="stylesheet"][href="/index.css"]'),
+    ).toBeNull()
+    expect(
+      Array.from(document.head.querySelectorAll('style')).find(
+        (el) => el.textContent === '.index{color:red}',
+      ),
+    ).toBeUndefined()
+    expect(
+      Array.from(document.head.querySelectorAll('title')).find(
+        (el) => el.textContent === 'Index',
+      ),
+    ).toBeUndefined()
   })
 })

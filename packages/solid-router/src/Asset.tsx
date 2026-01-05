@@ -1,4 +1,3 @@
-import { Link, Meta, Style, Title } from '@solidjs/meta'
 import { onCleanup, onMount } from 'solid-js'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
@@ -9,15 +8,43 @@ export function Asset({
   attrs,
   children,
 }: RouterManagedTag): JSX.Element | null {
+  const router = useRouter()
+
+  if (router.isServer) {
+    switch (tag) {
+      case 'title':
+        return <title {...attrs}>{children}</title>
+      case 'meta':
+        return <meta {...attrs} />
+      case 'link':
+        return <link {...attrs} />
+      case 'style':
+        if (typeof children === 'string') {
+          return <style {...attrs} innerHTML={children} />
+        }
+        return <style {...attrs} />
+      case 'script':
+        if (attrs?.src && typeof attrs.src === 'string') {
+          return <script {...attrs} />
+        }
+        if (typeof children === 'string') {
+          return <script {...attrs} innerHTML={children} />
+        }
+        return <script {...attrs} />
+      default:
+        return null
+    }
+  }
+
   switch (tag) {
     case 'title':
-      return <Title {...attrs}>{children}</Title>
+      return <HeadTag tag="title" attrs={attrs} children={children} />
     case 'meta':
-      return <Meta {...attrs} />
+      return <HeadTag tag="meta" attrs={attrs} />
     case 'link':
-      return <Link {...attrs} />
+      return <HeadTag tag="link" attrs={attrs} />
     case 'style':
-      return <Style {...attrs} innerHTML={children} />
+      return <HeadTag tag="style" attrs={attrs} children={children} />
     case 'script':
       return <Script attrs={attrs}>{children}</Script>
     default:
@@ -137,4 +164,121 @@ function Script({
   }
 
   return null
+}
+
+function HeadTag({
+  tag,
+  attrs,
+  children,
+}: {
+  tag: 'title' | 'meta' | 'link' | 'style'
+  attrs?: Record<string, any>
+  children?: string
+}): null {
+  onMount(() => {
+    if (typeof document === 'undefined') {
+      return
+    }
+
+    const element = findOrCreateHeadElement(tag, attrs, children)
+
+    if (!element) {
+      return
+    }
+
+    onCleanup(() => {
+      if (element.parentNode) {
+        element.parentNode.removeChild(element)
+      }
+    })
+  })
+
+  return null
+}
+
+function findOrCreateHeadElement(
+  tag: 'title' | 'meta' | 'link' | 'style',
+  attrs?: Record<string, any>,
+  children?: string,
+) {
+  const existing = findExistingHeadElement(tag, attrs, children)
+  if (existing) {
+    return existing
+  }
+
+  const element = document.createElement(tag)
+  setAttributes(element, attrs)
+
+  if (typeof children === 'string' && (tag === 'title' || tag === 'style')) {
+    element.textContent = children
+  }
+
+  document.head.appendChild(element)
+
+  return element
+}
+
+function findExistingHeadElement(
+  tag: 'title' | 'meta' | 'link' | 'style',
+  attrs?: Record<string, any>,
+  children?: string,
+) {
+  const candidates = document.head.querySelectorAll(tag)
+  for (const candidate of candidates) {
+    if (!matchesAttributes(candidate, attrs)) {
+      continue
+    }
+
+    if (typeof children === 'string' && (tag === 'title' || tag === 'style')) {
+      if (candidate.textContent !== children) {
+        continue
+      }
+    }
+
+    return candidate as HTMLElement
+  }
+
+  return undefined
+}
+
+function matchesAttributes(
+  element: Element,
+  attrs?: Record<string, any>,
+): boolean {
+  if (!attrs) {
+    return true
+  }
+
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === undefined || value === false) {
+      continue
+    }
+
+    if (value === true) {
+      if (!element.hasAttribute(key)) {
+        return false
+      }
+      continue
+    }
+
+    if (element.getAttribute(key) !== String(value)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+function setAttributes(element: Element, attrs?: Record<string, any>) {
+  if (!attrs) {
+    return
+  }
+
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === undefined || value === false) {
+      continue
+    }
+
+    element.setAttribute(key, value === true ? '' : String(value))
+  }
 }
