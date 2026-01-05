@@ -271,6 +271,7 @@ async function startPreviewServer(
     return await vite.preview({
       configFile: viteConfig.configFile,
       preview: {
+        host: '127.0.0.1',
         port: 0,
         open: false,
       },
