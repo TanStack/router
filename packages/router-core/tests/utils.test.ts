@@ -612,4 +612,55 @@ describe('decodePath', () => {
       expectedResultWithLowerCase,
     )
   })
+
+  describe('open redirect prevention', () => {
+    it('should strip CR (%0d) to prevent open redirect', () => {
+      // /%0d/google.com/ decodes to /\r/google.com/ which becomes //google.com/
+      // This must be sanitized to prevent protocol-relative URL interpretation
+      const result = decodePath('/%0d/google.com/')
+      expect(result).toBe('/google.com/')
+      expect(result).not.toMatch(/^\/\//)
+    })
+
+    it('should strip LF (%0a) to prevent open redirect', () => {
+      const result = decodePath('/%0a/evil.com/')
+      expect(result).toBe('/evil.com/')
+      expect(result).not.toMatch(/^\/\//)
+    })
+
+    it('should strip CRLF (%0d%0a) to prevent open redirect', () => {
+      const result = decodePath('/%0d%0a/evil.com/')
+      expect(result).toBe('/evil.com/')
+      expect(result).not.toMatch(/^\/\//)
+    })
+
+    it('should strip multiple control characters to prevent open redirect', () => {
+      const result = decodePath('/%0d%0d%0d/evil.com/')
+      expect(result).toBe('/evil.com/')
+      expect(result).not.toMatch(/^\/\//)
+    })
+
+    it('should strip null bytes and other control characters', () => {
+      const result = decodePath('/%00/test/')
+      expect(result).toBe('/test/')
+    })
+
+    it('should collapse leading double slashes to prevent protocol-relative URLs', () => {
+      // After stripping control chars, ensure we don't end up with //evil.com
+      const result = decodePath('/%0d%0a/evil.com/path')
+      // Should resolve to localhost, not evil.com
+      const url = new URL(result, 'http://localhost:3000')
+      expect(url.origin).toBe('http://localhost:3000')
+    })
+
+    it('should handle normal paths unchanged', () => {
+      expect(decodePath('/users/profile/')).toBe('/users/profile/')
+      expect(decodePath('/api/v1/data')).toBe('/api/v1/data')
+    })
+
+    it('should handle double slash only input', () => {
+      // Direct // input should also be collapsed
+      expect(decodePath('//')).toBe('/')
+    })
+  })
 })
