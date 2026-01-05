@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js'
-import { MetaProvider } from '@solidjs/meta'
 import { For } from 'solid-js'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -185,16 +184,12 @@ export const useTags = () => {
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
  * When using full document hydration (hydrating from `<html>`), this component should be rendered in the `<body>`
  * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
- * The component uses portals internally to render content into the `<head>` element.
+ * The component registers tags with Unhead so the provider can render them into the `<head>` element.
  */
 export function HeadContent() {
   const tags = useTags()
 
-  return (
-    <MetaProvider>
-      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
-    </MetaProvider>
-  )
+  return <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {

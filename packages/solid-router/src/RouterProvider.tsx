@@ -1,3 +1,6 @@
+import { UnheadContext, createHead } from '@unhead/solid-js/client'
+import { useContext } from 'solid-js'
+import { isServer } from 'solid-js/web'
 import { getRouterContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
@@ -7,6 +10,21 @@ import type {
   RouterOptions,
 } from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
+
+let clientHead: ReturnType<typeof createHead> | undefined
+
+function HeadProvider(props: { children: () => Solid.JSX.Element }) {
+  const existing = useContext(UnheadContext)
+  if (existing || isServer) {
+    return props.children()
+  }
+  clientHead ||= createHead()
+  return (
+    <UnheadContext.Provider value={clientHead}>
+      {props.children()}
+    </UnheadContext.Provider>
+  )
+}
 
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -34,9 +52,13 @@ export function RouterContextProvider<
 
   return (
     <OptionalWrapper>
-      <routerContext.Provider value={router as AnyRouter}>
-        {children()}
-      </routerContext.Provider>
+      <HeadProvider>
+        {() => (
+          <routerContext.Provider value={router as AnyRouter}>
+            {children()}
+          </routerContext.Provider>
+        )}
+      </HeadProvider>
     </OptionalWrapper>
   )
 }
