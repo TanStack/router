@@ -1,7 +1,7 @@
 import { promises as fsp } from 'node:fs'
 import os from 'node:os'
 import path from 'pathe'
-import { joinURL, withBase, withoutBase, withTrailingSlash } from 'ufo'
+import { joinURL, withBase, withTrailingSlash, withoutBase } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { createLogger } from './utils'
 import { Queue } from './queue'
