@@ -11,7 +11,6 @@ import {
 import warning from 'tiny-warning'
 import { DefaultNotFoundComponent } from './DefaultNotFound'
 import { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'
-import { RouteComponent } from './route'
 import { injectDynamicRenderer } from './dynamicRenderer'
 import { ERROR_STATE_INJECTOR_TOKEN } from './injectErrorState'
 
@@ -21,11 +20,9 @@ import { ERROR_STATE_INJECTOR_TOKEN } from './injectErrorState'
 
 // Equivalent to the OnRendered component.
 function injectOnRendered({
-  parentRouteId,
-  rootRouteId,
+  parentRouteIsRoot,
 }: {
-  parentRouteId: Angular.Signal<string>
-  rootRouteId: Angular.Signal<string>
+  parentRouteIsRoot: Angular.Signal<boolean>
 }) {
   const router = injectRouter({ warn: false })
 
@@ -33,10 +30,8 @@ function injectOnRendered({
     select: (s) => s.resolvedLocation?.state.key,
   })
 
-  const isRootRoute = Angular.computed(() => parentRouteId() === rootRouteId())
-
   Angular.effect(() => {
-    if (!isRootRoute()) return
+    if (!parentRouteIsRoot()) return
     location() // Track location
 
     router.emit({
@@ -109,6 +104,17 @@ export class RouteMatch {
   })
 
   rendering = injectDynamicRenderer()
+
+  parentRouteIdSignal = Angular.computed(
+    () => this.matchData()?.parentRouteId ?? '',
+  )
+  rootRouteIdSignal = Angular.computed(() => rootRouteId)
+
+  onRendered = injectOnRendered({
+    parentRouteIsRoot: Angular.computed(
+      () => this.parentRouteIdSignal() === rootRouteId,
+    ),
+  })
 
   render = Angular.effect(() => {
     const matchData = this.matchData()
