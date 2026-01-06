@@ -1,5 +1,4 @@
-import { injectMatch } from './injectMatch'
-import type { Signal } from '@angular/core'
+import * as Angular from '@angular/core'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -9,6 +8,7 @@ import type {
   ThrowOrOptional,
   UseSearchResult,
 } from '@tanstack/router-core'
+import { injectMatch } from './injectMatch'
 
 export interface InjectSearchBaseOptions<
   TRouter extends AnyRouter,
@@ -41,7 +41,7 @@ export type InjectSearchRoute<out TFrom> = <
     /* TThrow */ true,
     TSelected
   >,
-) => Signal<UseSearchResult<TRouter, TFrom, true, TSelected>>
+) => Angular.Signal<UseSearchResult<TRouter, TFrom, true, TSelected>>
 
 export function injectSearch<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -57,7 +57,7 @@ export function injectSearch<
     ThrowConstraint<TStrict, TThrow>,
     TSelected
   >,
-): Signal<
+): Angular.Signal<
   ThrowOrOptional<UseSearchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   return injectMatch({

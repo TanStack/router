@@ -1,6 +1,10 @@
-import { computed, inject, Signal } from '@angular/core'
-import { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'
+import * as Angular from '@angular/core'
+import invariant from 'tiny-invariant'
 import { injectRouterState } from './injectRouterState'
+import {
+  DUMMY_MATCH_ID_INJECTOR_TOKEN,
+  MATCH_ID_INJECTOR_TOKEN,
+} from './matchInjectorToken'
 import {
   AnyRouter,
   MakeRouteMatch,
@@ -24,6 +28,13 @@ export interface InjectMatchBaseOptions<
   shouldThrow?: TThrow
 }
 
+export type InjectMatchRoute<out TFrom> = <
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+>(
+  opts?: InjectMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
+) => Angular.Signal<InjectMatchResult<TRouter, TFrom, true, TSelected>>
+
 export type InjectMatchOptions<
   TRouter extends AnyRouter,
   TFrom,
@@ -44,13 +55,6 @@ export type InjectMatchResult<
     : MakeRouteMatchUnion<TRouter>
   : TSelected
 
-export type InjectMatchRoute<out TFrom> = <
-  TRouter extends AnyRouter = RegisteredRouter,
-  TSelected = unknown,
->(
-  opts?: InjectMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
-) => Signal<InjectMatchResult<TRouter, TFrom, true, TSelected>>
-
 export function injectMatch<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string | undefined = undefined,
@@ -65,10 +69,12 @@ export function injectMatch<
     ThrowConstraint<TStrict, TThrow>,
     TSelected
   >,
-): Signal<
+): Angular.Signal<
   ThrowOrOptional<InjectMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  const nearestMatchId = inject(MATCH_ID_INJECTOR_TOKEN)
+  const nearestMatchId = Angular.inject(
+    opts.from ? DUMMY_MATCH_ID_INJECTOR_TOKEN : MATCH_ID_INJECTOR_TOKEN,
+  )
 
   const matchState = injectRouterState({
     select: (state) => {
@@ -101,10 +107,11 @@ export function injectMatch<
 
   // Throw the error if we have one - this happens after the selector runs
   // Using a computed so the error is thrown when the return value is accessed
-  return computed(() => {
+  return Angular.computed(() => {
     const state = matchState()
     if (state.shouldThrowError) {
-      throw new Error(
+      invariant(
+        false,
         `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
       )
     }

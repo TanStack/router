@@ -6,9 +6,3 @@
   },
   "include": ["src", "tests", "vite.config.ts", "eslint.config.js"]
 }
-
-
-
-
-
-

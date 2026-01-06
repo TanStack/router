@@ -1,16 +1,10 @@
+import * as Angular from '@angular/core'
 import {
   BaseRootRoute,
   BaseRoute,
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
-import { injectLoaderData } from './injectLoaderData'
-import { injectLoaderDeps } from './injectLoaderDeps'
-import { injectParams } from './injectParams'
-import { injectSearch } from './injectSearch'
-import { injectNavigate } from './injectNavigate'
-import { injectMatch } from './injectMatch'
-import { injectRouter } from './injectRouter'
 import type {
   AnyContext,
   AnyRoute,
@@ -35,13 +29,19 @@ import type {
   ToMaskOptions,
   UseNavigateResult,
 } from '@tanstack/router-core'
+import { injectLoaderData } from './injectLoaderData'
 import type { InjectLoaderDataRoute } from './injectLoaderData'
-import type { InjectMatchRoute } from './injectMatch'
+import { injectLoaderDeps } from './injectLoaderDeps'
 import type { InjectLoaderDepsRoute } from './injectLoaderDeps'
+import { injectMatch } from './injectMatch'
+import type { InjectMatchRoute } from './injectMatch'
+import { injectNavigate } from './injectNavigate'
+import { injectParams } from './injectParams'
 import type { InjectParamsRoute } from './injectParams'
-import type { InjectSearchRoute } from './injectSearch'
 import type { InjectRouteContextRoute } from './injectRouteContext'
-import type { Type } from '@angular/core'
+import { injectRouter } from './injectRouter'
+import { injectSearch } from './injectSearch'
+import type { InjectSearchRoute } from './injectSearch'
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
@@ -52,7 +52,7 @@ declare module '@tanstack/router-core' {
   }
 
   export interface RootRouteOptionsExtensions {
-    shellComponent?: Type<{
+    shellComponent?: Angular.Type<{
       children: any
     }>
   }
@@ -523,9 +523,10 @@ export function createRouteMask<
 
 // Use a function becasue class definitions are not hoisted
 
-export type RouteComponent<TComponent = unknown> = () => Type<TComponent>
-export type ErrorRouteComponent = () => Type<unknown>
-export type NotFoundRouteComponent = () => Type<unknown>
+export type RouteComponent<TComponent = unknown> =
+  () => Angular.Type<TComponent>
+export type ErrorRouteComponent = () => Angular.Type<unknown>
+export type NotFoundRouteComponent = () => Angular.Type<unknown>
 
 export class NotFoundRoute<
   TRegister,

@@ -1,32 +1,24 @@
-import {
-  DestroyRef,
-  inject,
-  Injector,
-  inputBinding,
-  Provider,
-  Type,
-  ViewContainerRef,
-} from '@angular/core'
+import * as Angular from '@angular/core'
 
 // Utility to dinamically render a component
 // on the component that calls it
 
 type RenderParams = {
   key?: string
-  component: Type<any> | null | undefined
+  component: Angular.Type<any> | null | undefined
   inputs?: Record<string, () => unknown>
-  providers?: Provider[]
+  providers?: Angular.Provider[]
 }
 
 export function injectDynamicRenderer() {
-  const vcr = inject(ViewContainerRef)
-  const parent = inject(Injector)
+  const vcr = Angular.inject(Angular.ViewContainerRef)
+  const parent = Angular.inject(Angular.Injector)
 
-  inject(DestroyRef).onDestroy(() => {
+  Angular.inject(Angular.DestroyRef).onDestroy(() => {
     vcr.clear()
   })
 
-  let lastComponent: Type<any> | null = null
+  let lastComponent: Angular.Type<any> | null = null
   let lastKey: string | null = null
 
   const clear = () => {
@@ -47,9 +39,9 @@ export function injectDynamicRenderer() {
 
       if (!component) return
 
-      const injector = Injector.create({ providers, parent })
+      const injector = Angular.Injector.create({ providers, parent })
       const bindings = Object.entries(inputs ?? {}).map(([name, value]) =>
-        inputBinding(name, value),
+        Angular.inputBinding(name, value),
       )
       const cmpRef = vcr.createComponent(component, { injector, bindings })
       cmpRef.changeDetectorRef.markForCheck()

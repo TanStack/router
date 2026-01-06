@@ -4,8 +4,5 @@
   "lib": {
     "entryFile": "src/index.ts"
   },
-  "allowedNonPeerDependencies": [
-    "@tanstack/router-devtools-core"
-  ]
+  "allowedNonPeerDependencies": ["@tanstack/router-devtools-core"]
 }
-

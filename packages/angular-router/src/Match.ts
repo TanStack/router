@@ -1,12 +1,4 @@
-import {
-  Component,
-  computed,
-  effect,
-  inject,
-  input,
-  Provider,
-  Signal,
-} from '@angular/core'
+import * as Angular from '@angular/core'
 import { injectRouter } from './injectRouter'
 import { injectRouterState } from './injectRouterState'
 import {
@@ -32,8 +24,8 @@ function injectOnRendered({
   parentRouteId,
   rootRouteId,
 }: {
-  parentRouteId: Signal<string>
-  rootRouteId: Signal<string>
+  parentRouteId: Angular.Signal<string>
+  rootRouteId: Angular.Signal<string>
 }) {
   const router = injectRouter({ warn: false })
 
@@ -41,9 +33,9 @@ function injectOnRendered({
     select: (s) => s.resolvedLocation?.state.key,
   })
 
-  const isRootRoute = computed(() => parentRouteId() === rootRouteId())
+  const isRootRoute = Angular.computed(() => parentRouteId() === rootRouteId())
 
-  effect(() => {
+  Angular.effect(() => {
     if (!isRootRoute()) return
     location() // Track location
 
@@ -54,7 +46,7 @@ function injectOnRendered({
   })
 }
 
-@Component({
+@Angular.Component({
   selector: 'router-match',
   template: '',
   standalone: true,
@@ -63,7 +55,7 @@ function injectOnRendered({
   },
 })
 export class RouteMatch {
-  matchId = input.required<string>()
+  matchId = Angular.input.required<string>()
 
   router = injectRouter()
 
@@ -71,7 +63,7 @@ export class RouteMatch {
     select: (s) => s.matches,
   })
 
-  matchData = computed(() => {
+  matchData = Angular.computed(() => {
     const matchIndex = this.matches().findIndex((d) => d.id === this.matchId())
     if (matchIndex === -1) return null
 
@@ -100,17 +92,17 @@ export class RouteMatch {
     }
   })
 
-  isFistRouteInRouteTree = computed(
+  isFistRouteInRouteTree = Angular.computed(
     () => this.matchData()?.parentRouteId === rootRouteId,
   )
 
-  resolvedNoSsr = computed(() => {
+  resolvedNoSsr = Angular.computed(() => {
     const match = this.matchData()?.match
     if (!match) return true
     return match.ssr === false || match.ssr === 'data-only'
   })
 
-  shouldClientOnly = computed(() => {
+  shouldClientOnly = Angular.computed(() => {
     const match = this.matchData()?.match
     if (!match) return true
     return this.resolvedNoSsr() || !!match._displayPending
@@ -118,7 +110,7 @@ export class RouteMatch {
 
   rendering = injectDynamicRenderer()
 
-  render = effect(() => {
+  render = Angular.effect(() => {
     const matchData = this.matchData()
     if (!matchData) return
 
@@ -194,14 +186,13 @@ export class RouteMatch {
 
       const key = matchData.key
 
-      const matchIdSignal = computed(() => this.matchId())
       this.rendering.render({
         key,
         component: Component,
         providers: [
           {
             provide: MATCH_ID_INJECTOR_TOKEN,
-            useValue: matchIdSignal,
+            useValue: this.matchId as Angular.Signal<string | undefined>,
           },
         ],
       })
@@ -209,21 +200,23 @@ export class RouteMatch {
   })
 }
 
-@Component({
+@Angular.Component({
   selector: 'outlet',
   template: '',
   standalone: true,
 })
 export class Outlet {
   router = injectRouter()
-  matchId = inject(MATCH_ID_INJECTOR_TOKEN)
+  matchId = Angular.inject(MATCH_ID_INJECTOR_TOKEN)
 
   routeId = injectRouterState({
     select: (s) =>
       s.matches.find((d) => d.id === this.matchId())?.routeId as string,
   })
 
-  route = computed(() => this.router.routesById[this.routeId()] as AnyRoute)
+  route = Angular.computed(
+    () => this.router.routesById[this.routeId()] as AnyRoute,
+  )
 
   parentGlobalNotFound = injectRouterState({
     select: (s) => {
@@ -247,7 +240,7 @@ export class Outlet {
 
   rendering = injectDynamicRenderer()
 
-  render = effect(() => {
+  render = Angular.effect(() => {
     if (this.parentGlobalNotFound()) {
       // Render not found with warning
       const NotFoundComponent = getNotFoundComponent(this.router, this.route())

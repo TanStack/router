@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core'
+import * as Angular from '@angular/core'
 
-@Component({
+@Angular.Component({
   template: `<p>Not found</p>`,
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: Angular.ChangeDetectionStrategy.OnPush,
   host: { style: 'display: contents;' },
 })
 export class DefaultNotFoundComponent {}

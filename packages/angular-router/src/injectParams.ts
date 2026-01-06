@@ -1,5 +1,4 @@
-import { injectMatch } from './injectMatch'
-import type { Signal } from '@angular/core'
+import * as Angular from '@angular/core'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -9,6 +8,7 @@ import type {
   ThrowOrOptional,
   UseParamsResult,
 } from '@tanstack/router-core'
+import { injectMatch } from './injectMatch'
 
 export interface InjectParamsBaseOptions<
   TRouter extends AnyRouter,
@@ -41,7 +41,7 @@ export type InjectParamsRoute<out TFrom> = <
     /* TThrow */ true,
     TSelected
   >,
-) => Signal<UseParamsResult<TRouter, TFrom, true, TSelected>>
+) => Angular.Signal<UseParamsResult<TRouter, TFrom, true, TSelected>>
 
 export function injectParams<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -57,7 +57,7 @@ export function injectParams<
     ThrowConstraint<TStrict, TThrow>,
     TSelected
   >,
-): Signal<
+): Angular.Signal<
   ThrowOrOptional<UseParamsResult<TRouter, TFrom, true, TSelected>, TThrow>
 > {
   return injectMatch({
@@ -69,5 +69,5 @@ export function injectParams<
 
       return opts.select ? opts.select(params) : params
     },
-  } as any) as Signal<any>
+  } as any) as Angular.Signal<any>
 }

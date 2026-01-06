@@ -1,4 +1,4 @@
-import { Signal } from '@angular/core'
+import * as Angular from '@angular/core'
 import {
   AnyRouter,
   RegisteredRouter,
@@ -28,7 +28,7 @@ export type InjectLoaderDepsRoute<out TFrom> = <
   TSelected = unknown,
 >(
   opts?: InjectLoaderDepsBaseOptions<TRouter, TFrom, TSelected>,
-) => Signal<UseLoaderDepsResult<TRouter, TFrom, TSelected>>
+) => Angular.Signal<UseLoaderDepsResult<TRouter, TFrom, TSelected>>
 
 export function injectLoaderDeps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -36,7 +36,7 @@ export function injectLoaderDeps<
   TSelected = unknown,
 >(
   opts: InjectLoaderDepsOptions<TRouter, TFrom, TSelected>,
-): Signal<UseLoaderDepsResult<TRouter, TFrom, TSelected>> {
+): Angular.Signal<UseLoaderDepsResult<TRouter, TFrom, TSelected>> {
   const { select, ...rest } = opts
   return injectMatch({
     ...rest,

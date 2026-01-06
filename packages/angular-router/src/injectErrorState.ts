@@ -1,6 +1,6 @@
-import { inject, InjectionToken } from '@angular/core'
+import * as Angular from '@angular/core'
 
-export const ERROR_STATE_INJECTOR_TOKEN = new InjectionToken<{
+export const ERROR_STATE_INJECTOR_TOKEN = new Angular.InjectionToken<{
   error: Error
   reset: () => void
   info: { componentStack: string }
@@ -11,7 +11,9 @@ export const ERROR_STATE_INJECTOR_TOKEN = new InjectionToken<{
  */
 
 export function injectErrorState() {
-  const errorState = inject(ERROR_STATE_INJECTOR_TOKEN, { optional: true })
+  const errorState = Angular.inject(ERROR_STATE_INJECTOR_TOKEN, {
+    optional: true,
+  })
   if (!errorState) {
     throw new Error('injectErrorState was called outside of an error component')
   }

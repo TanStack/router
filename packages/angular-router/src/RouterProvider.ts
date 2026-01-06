@@ -1,26 +1,30 @@
-import { Component, effect, input, InputSignal, untracked } from '@angular/core'
+import * as Angular from '@angular/core'
 import {
   AnyRouter,
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
 import { injectDynamicRenderer } from './dynamicRenderer'
-import { Matches } from './Macthes'
+import { Matches } from './Matches'
 import { getRouterInjectionKey } from './routerInjectionToken'
 
-@Component({ selector: 'router-provider', template: '', standalone: true })
+@Angular.Component({
+  selector: 'router-provider',
+  template: '',
+  standalone: true,
+})
 export class RouterProvider<TRouter extends AnyRouter = RegisteredRouter> {
-  context: InputSignal<RouterInputs<TRouter>['context']> = input<
-    RouterInputs<TRouter>['context']
-  >({})
+  context: Angular.InputSignal<RouterInputs<TRouter>['context']> =
+    Angular.input<RouterInputs<TRouter>['context']>({})
 
-  options: InputSignal<Omit<RouterInputs<TRouter>, 'router' | 'context'>> =
-    input<Omit<RouterInputs<TRouter>, 'router' | 'context'>>({})
+  options: Angular.InputSignal<
+    Omit<RouterInputs<TRouter>, 'router' | 'context'>
+  > = Angular.input<Omit<RouterInputs<TRouter>, 'router' | 'context'>>({})
 
-  router = input.required<AnyRouter>()
+  router = Angular.input.required<AnyRouter>()
   renderer = injectDynamicRenderer()
 
-  updateRouter = effect(() => {
+  updateRouter = Angular.effect(() => {
     // This effect will run before we render
     this.router().update({
       ...this.router().options,
@@ -32,8 +36,8 @@ export class RouterProvider<TRouter extends AnyRouter = RegisteredRouter> {
     })
   })
 
-  render = effect(() => {
-    const router = untracked(this.router)
+  render = Angular.effect(() => {
+    const router = Angular.untracked(this.router)
     this.renderer.render({
       component: Matches,
       providers: [

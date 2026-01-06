@@ -1,4 +1,4 @@
-import { effect, signal, Signal } from '@angular/core'
+import * as Angular from '@angular/core'
 import {
   BlockerFnArgs,
   HistoryLocation,
@@ -92,11 +92,13 @@ export function injectBlocker<
   TWithResolver extends boolean = boolean,
 >(
   opts: InjectBlockerOpts<TRouter, TWithResolver>,
-): TWithResolver extends true ? Signal<BlockerResolver<TRouter>> : void {
+): TWithResolver extends true
+  ? Angular.Signal<BlockerResolver<TRouter>>
+  : void {
   const shouldBlockFn = opts.shouldBlockFn as ShouldBlockFn<AnyRouter>
   const router = injectRouter()
 
-  const resolver = signal<BlockerResolver>({
+  const resolver = Angular.signal<BlockerResolver>({
     status: 'idle',
     current: undefined,
     next: undefined,
@@ -105,7 +107,7 @@ export function injectBlocker<
     reset: undefined,
   })
 
-  effect((onCleanup) => {
+  Angular.effect((onCleanup) => {
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
       function getLocation(
         location: HistoryLocation,

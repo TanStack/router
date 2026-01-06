@@ -1,13 +1,4 @@
-import {
-  computed,
-  effect,
-  signal,
-  DestroyRef,
-  inject,
-  afterNextRender,
-  EnvironmentInjector,
-  Signal,
-} from '@angular/core'
+import * as Angular from '@angular/core'
 import {
   getLocationChangeInfo,
   handleHashScroll,
@@ -16,8 +7,6 @@ import {
 import { injectRouter } from './injectRouter'
 import { injectRouterState } from './injectRouterState'
 import type { AnyRouter } from '@tanstack/router-core'
-
-// TODO: review
 
 // Track mount state per router to avoid double-loading
 let mountLoadForRouter: { router: AnyRouter | null; mounted: boolean } = {
@@ -40,30 +29,32 @@ let mountLoadForRouter: { router: AnyRouter | null; mounted: boolean } = {
  */
 export function injectTransitionerSetup() {
   const router = injectRouter()
-  const environmentInjector = inject(EnvironmentInjector)
+  const environmentInjector = Angular.inject(Angular.EnvironmentInjector)
 
   // Skip on server - no transitions needed
   if (router.isServer) return
 
-  const destroyRef = inject(DestroyRef)
+  const destroyRef = Angular.inject(Angular.DestroyRef)
 
   const isLoading = injectRouterState({
     select: (s) => s.isLoading,
   })
 
   // Track if we're in a transition
-  const isTransitioning = signal(false)
+  const isTransitioning = Angular.signal(false)
 
   // Track pending state changes
   const hasPendingMatches = injectRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
   })
 
-  const isAnyPending = computed(
+  const isAnyPending = Angular.computed(
     () => isLoading() || isTransitioning() || hasPendingMatches(),
   )
 
-  const isPagePending = computed(() => isLoading() || hasPendingMatches())
+  const isPagePending = Angular.computed(
+    () => isLoading() || hasPendingMatches(),
+  )
 
   // Track previous values for comparison using proper previous value tracking
   const prevIsLoading = injectPrevious(() => isLoading())
@@ -85,7 +76,7 @@ export function injectTransitionerSetup() {
     const endTransition = () => {
       // Use afterNextRender to ensure Angular has processed all change detection
       // This is similar to Vue's nextTick approach
-      afterNextRender(
+      Angular.afterNextRender(
         {
           read: () => {
             try {
@@ -112,7 +103,7 @@ export function injectTransitionerSetup() {
   // Subscribe to location changes and try to load the new location
   let unsubscribe: (() => void) | undefined
 
-  afterNextRender(() => {
+  Angular.afterNextRender(() => {
     unsubscribe = router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
@@ -133,9 +124,9 @@ export function injectTransitionerSetup() {
   })
 
   // Track if component is mounted to prevent updates after unmount
-  const isMounted = signal(false)
+  const isMounted = Angular.signal(false)
 
-  afterNextRender(() => {
+  Angular.afterNextRender(() => {
     isMounted.set(true)
     if (!isAnyPending()) {
       router.__store.setState((s) =>
@@ -154,7 +145,7 @@ export function injectTransitionerSetup() {
   })
 
   // Try to load the initial location
-  afterNextRender(() => {
+  Angular.afterNextRender(() => {
     if (
       (typeof window !== 'undefined' && router.ssr) ||
       (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
@@ -176,7 +167,7 @@ export function injectTransitionerSetup() {
   // All effects check isMounted to prevent updates after unmount
 
   // Watch for onLoad event
-  effect(() => {
+  Angular.effect(() => {
     if (!isMounted()) return
     try {
       if (prevIsLoading() && !isLoading()) {
@@ -191,7 +182,7 @@ export function injectTransitionerSetup() {
   })
 
   // Watch for onBeforeRouteMount event
-  effect(() => {
+  Angular.effect(() => {
     if (!isMounted()) return
     try {
       if (prevIsPagePending() && !isPagePending()) {
@@ -206,7 +197,7 @@ export function injectTransitionerSetup() {
   })
 
   // Watch for onResolved event
-  effect(() => {
+  Angular.effect(() => {
     if (!isMounted()) return
     try {
       if (
@@ -239,11 +230,13 @@ export function injectTransitionerSetup() {
   })
 }
 
-export function injectPrevious<T>(fn: () => NonNullable<T>): Signal<T | null> {
-  const value = computed(fn)
+export function injectPrevious<T>(
+  fn: () => NonNullable<T>,
+): Angular.Signal<T | null> {
+  const value = Angular.computed(fn)
   let previousValue: T | null = null
 
-  return computed(() => {
+  return Angular.computed(() => {
     // We known value is different that the previous one,
     // thanks to signal memoization.
     const lastPreviousValue = previousValue

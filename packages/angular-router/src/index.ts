@@ -1,5 +1,5 @@
 // Router
-export { createRouter } from './router'
+export { createRouter, Router } from './router'
 
 // Route creation
 export {
@@ -25,7 +25,7 @@ export { RouterProvider } from './RouterProvider'
 
 // Components
 export { Outlet, RouteMatch } from './Match'
-export { Matches } from './Macthes'
+export { Matches } from './Matches'
 
 // Injection functions
 export { injectRouter, type InjectRouterResult } from './injectRouter'
@@ -105,11 +105,35 @@ export {
 // Utilities
 export { injectIntersectionObserver } from './injectIntersectionObserver'
 export { injectDynamicRenderer } from './dynamicRenderer'
+export { injectTransitionerSetup } from './transitioner'
 export { getRouterInjectionKey } from './routerInjectionToken'
 export { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'
+export { DefaultNotFoundComponent } from './DefaultNotFound'
 
 // Core re-exports
-export { notFound, redirect, retainSearchParams } from '@tanstack/router-core'
+export {
+  notFound,
+  redirect,
+  isRedirect,
+  retainSearchParams,
+  createRouterConfig,
+} from '@tanstack/router-core'
+
+// History utilities
+export {
+  createHistory,
+  createBrowserHistory,
+  createHashHistory,
+  createMemoryHistory,
+} from '@tanstack/history'
+
+export type {
+  BlockerFn,
+  HistoryLocation,
+  RouterHistory,
+  ParsedPath,
+  HistoryState,
+} from '@tanstack/history'
 
 // Re-export types from router-core that are commonly used
 export type {

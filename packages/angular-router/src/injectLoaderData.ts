@@ -1,4 +1,4 @@
-import { Signal } from '@angular/core'
+import * as Angular from '@angular/core'
 import {
   AnyRouter,
   RegisteredRouter,
@@ -30,7 +30,7 @@ export type InjectLoaderDataRoute<out TFrom> = <
   TSelected = unknown,
 >(
   opts?: InjectLoaderDataBaseOptions<TRouter, TFrom, true, TSelected>,
-) => Signal<UseLoaderDataResult<TRouter, TFrom, true, TSelected>>
+) => Angular.Signal<UseLoaderDataResult<TRouter, TFrom, true, TSelected>>
 
 export function injectLoaderData<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -39,7 +39,7 @@ export function injectLoaderData<
   TSelected = unknown,
 >(
   opts: InjectLoaderDataOptions<TRouter, TFrom, TStrict, TSelected>,
-): Signal<UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>> {
+): Angular.Signal<UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>> {
   return injectMatch({
     from: opts.from!,
     strict: opts.strict as true | undefined,

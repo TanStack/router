@@ -1,11 +1,11 @@
+import * as Angular from '@angular/core'
+import { injectRouter } from './injectRouter'
 import { injectStore } from '@tanstack/angular-store'
 import type {
   AnyRouter,
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
-import { injectRouter } from './injectRouter'
-import { Signal } from '@angular/core'
 
 export type InjectRouterStateOptions<TRouter extends AnyRouter, TSelected> = {
   router?: TRouter
@@ -22,7 +22,7 @@ export function injectRouterState<
   TSelected = unknown,
 >(
   opts?: InjectRouterStateOptions<TRouter, TSelected>,
-): Signal<InjectRouterStateResult<TRouter, TSelected>> {
+): Angular.Signal<InjectRouterStateResult<TRouter, TSelected>> {
   const contextRouter = injectRouter({
     warn: opts?.router === undefined,
   })
@@ -33,5 +33,5 @@ export function injectRouterState<
     if (opts?.select) return opts.select(state)
 
     return state
-  }) as Signal<InjectRouterStateResult<TRouter, TSelected>>
+  }) as Angular.Signal<InjectRouterStateResult<TRouter, TSelected>>
 }

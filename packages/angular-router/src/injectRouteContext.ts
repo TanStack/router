@@ -1,5 +1,4 @@
-import { injectMatch } from './injectMatch'
-import type { Signal } from '@angular/core'
+import * as Angular from '@angular/core'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -7,13 +6,14 @@ import type {
   UseRouteContextOptions,
   UseRouteContextResult,
 } from '@tanstack/router-core'
+import { injectMatch } from './injectMatch'
 
 export type InjectRouteContextRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
 >(
   opts?: UseRouteContextBaseOptions<TRouter, TFrom, true, TSelected>,
-) => Signal<UseRouteContextResult<TRouter, TFrom, true, TSelected>>
+) => Angular.Signal<UseRouteContextResult<TRouter, TFrom, true, TSelected>>
 
 export function injectRouterContext<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -22,7 +22,7 @@ export function injectRouterContext<
   TSelected = unknown,
 >(
   opts: UseRouteContextOptions<TRouter, TFrom, TStrict, TSelected>,
-): Signal<UseRouteContextResult<TRouter, TFrom, TStrict, TSelected>> {
+): Angular.Signal<UseRouteContextResult<TRouter, TFrom, TStrict, TSelected>> {
   return injectMatch({
     ...opts,
     select: (match) =>

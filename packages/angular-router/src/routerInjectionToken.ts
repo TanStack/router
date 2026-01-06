@@ -1,13 +1,13 @@
-import { InjectionToken } from '@angular/core'
+import * as Angular from '@angular/core'
 import type { AnyRouter } from '@tanstack/router-core'
 
 declare global {
   interface Window {
-    __TSR_ROUTER_INJECTION_KEY__?: InjectionToken<AnyRouter>
+    __TSR_ROUTER_INJECTION_KEY__?: Angular.InjectionToken<AnyRouter>
   }
 }
 
-const routerInjectionKey = new InjectionToken<AnyRouter>('ROUTER')
+const routerInjectionKey = new Angular.InjectionToken<AnyRouter>('ROUTER')
 
 export function getRouterInjectionKey() {
   if (typeof document === 'undefined') {

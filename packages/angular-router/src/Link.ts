@@ -1,15 +1,4 @@
-import {
-  afterNextRender,
-  computed,
-  Directive,
-  effect,
-  ElementRef,
-  inject,
-  input,
-  Renderer2,
-  signal,
-  untracked,
-} from '@angular/core'
+import * as Angular from '@angular/core'
 import {
   AnyRouter,
   deepEqual,
@@ -25,7 +14,7 @@ import { injectRouterState } from './injectRouterState'
 import { injectRouter } from './injectRouter'
 import { injectIntersectionObserver } from './injectIntersectionObserver'
 
-@Directive({
+@Angular.Directive({
   selector: 'a[routerLink]',
   exportAs: 'routerLink',
   standalone: true,
@@ -56,23 +45,25 @@ export class Link<
     touchstart: this.handleTouchStart,
   }))
 
-  options = input.required<
+  options = Angular.input.required<
     LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
   >({ alias: 'routerLink' })
 
   protected router = injectRouter()
-  protected isTransitioning = signal(false)
+  protected isTransitioning = Angular.signal(false)
 
   protected currentSearch = injectRouterState({
     select: (s) => s.location.searchStr,
   })
 
-  protected from = computed(() => untracked(() => this.options().from))
+  protected from = Angular.computed(() =>
+    Angular.untracked(() => this.options().from),
+  )
 
-  protected disabled = computed(() => this._options().disabled ?? false)
-  protected target = computed(() => this._options().target)
+  protected disabled = Angular.computed(() => this._options().disabled ?? false)
+  protected target = Angular.computed(() => this._options().target)
 
-  protected _options = computed<
+  protected _options = Angular.computed<
     LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
   >(() => {
     return {
@@ -81,12 +72,12 @@ export class Link<
     }
   })
 
-  protected nextLocation = computed(() => {
+  protected nextLocation = Angular.computed(() => {
     this.currentSearch()
     return this.router.buildLocation(this._options() as any)
   })
 
-  protected hrefOption = computed(() => {
+  protected hrefOption = Angular.computed(() => {
     if (this._options().disabled) {
       return undefined
     }
@@ -111,7 +102,7 @@ export class Link<
     return { href, external }
   })
 
-  protected externalLink = computed(() => {
+  protected externalLink = Angular.computed(() => {
     const hrefOption = this.hrefOption()
     if (hrefOption?.external) {
       return hrefOption.href
@@ -123,14 +114,14 @@ export class Link<
     return undefined
   })
 
-  protected preload = computed(() => {
+  protected preload = Angular.computed(() => {
     if (this.options()['reloadDocument']) {
       return false
     }
     return this.options()['preload'] ?? this.router.options.defaultPreload
   })
 
-  protected preloadDelay = computed(() => {
+  protected preloadDelay = Angular.computed(() => {
     return (
       this.options()['preloadDelay'] ??
       this.router.options.defaultPreloadDelay ??
@@ -142,7 +133,7 @@ export class Link<
     select: (s) => s.location,
   })
 
-  protected isActive = computed(() => {
+  protected isActive = Angular.computed(() => {
     if (this.externalLink()) return false
 
     const options = this.options()
@@ -218,7 +209,7 @@ export class Link<
   )
 
   private hasRenderFetched = false
-  private rendererPreloader = effect(() => {
+  private rendererPreloader = Angular.effect(() => {
     if (this.hasRenderFetched) return
 
     if (!this._options().disabled && this.preload() === 'render') {
@@ -316,10 +307,10 @@ type PassiveEvents = {
 }
 
 function injectPasiveEvents(passiveEvents: () => PassiveEvents) {
-  const element = inject(ElementRef).nativeElement
-  const renderer = inject(Renderer2)
+  const element = Angular.inject(Angular.ElementRef).nativeElement
+  const renderer = Angular.inject(Angular.Renderer2)
 
-  afterNextRender(() => {
+  Angular.afterNextRender(() => {
     for (const [event, handler] of Object.entries(passiveEvents())) {
       renderer.listen(element, event, handler, {
         passive: true,

@@ -1,4 +1,4 @@
-import { Signal } from '@angular/core'
+import * as Angular from '@angular/core'
 import { AnyRouter, RegisteredRouter, RouterState } from '@tanstack/router-core'
 import { injectRouterState } from './injectRouterState'
 
@@ -20,7 +20,7 @@ export function injectLocation<
   TSelected = unknown,
 >(
   opts: InjectLocationOptions<TRouter, TSelected>,
-): Signal<InjectLocationResult<TRouter, TSelected>> {
+): Angular.Signal<InjectLocationResult<TRouter, TSelected>> {
   return injectRouterState({
     select: (s) => (opts.select ? opts.select(s.location) : s.location),
   }) as any
