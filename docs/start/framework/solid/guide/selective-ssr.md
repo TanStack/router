@@ -205,9 +205,15 @@ export const Route = createRootRoute({
 
 function RootShell(props) {
   return (
-    <HeadContent />
-    {props.children}
-    <Scripts />
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {props.children}
+        <Scripts />
+      </body>
+    </html>
   )
 }
 

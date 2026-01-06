@@ -23,9 +23,9 @@ function RootDocument(props: { children: Solid.JSX.Element }) {
     <html>
       <head>
         <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <Suspense>
           <AppConvexProvider>{props.children}</AppConvexProvider>
         </Suspense>

@@ -10,20 +10,20 @@ export function Asset({
 }: RouterManagedTag): JSX.Element | null {
   const router = useRouter()
 
-  if (router.isServer) {
-    switch (tag) {
-      case 'title':
-        return <title {...attrs}>{children}</title>
-      case 'meta':
-        return <meta {...attrs} />
-      case 'link':
-        return <link {...attrs} />
-      case 'style':
-        if (typeof children === 'string') {
-          return <style {...attrs} innerHTML={children} />
-        }
-        return <style {...attrs} />
-      case 'script':
+  switch (tag) {
+    case 'title':
+      return <title {...attrs}>{children}</title>
+    case 'meta':
+      return <meta {...attrs} />
+    case 'link':
+      return <link {...attrs} />
+    case 'style':
+      if (typeof children === 'string') {
+        return <style {...attrs} innerHTML={children} />
+      }
+      return <style {...attrs} />
+    case 'script':
+      if (router.isServer) {
         if (attrs?.src && typeof attrs.src === 'string') {
           return <script {...attrs} />
         }
@@ -31,22 +31,9 @@ export function Asset({
           return <script {...attrs} innerHTML={children} />
         }
         return <script {...attrs} />
-      default:
-        return null
-    }
-  }
+      }
 
-  switch (tag) {
-    case 'title':
-      return <HeadTag tag="title" attrs={attrs} children={children} />
-    case 'meta':
-      return <HeadTag tag="meta" attrs={attrs} />
-    case 'link':
-      return <HeadTag tag="link" attrs={attrs} />
-    case 'style':
-      return <HeadTag tag="style" attrs={attrs} children={children} />
-    case 'script':
-      return <Script attrs={attrs}>{children}</Script>
+      return <ClientScript attrs={attrs}>{children}</ClientScript>
     default:
       return null
   }
@@ -57,15 +44,13 @@ interface ScriptAttrs {
   src?: string
 }
 
-function Script({
+function ClientScript({
   attrs,
   children,
 }: {
   attrs?: ScriptAttrs
   children?: string
-}): JSX.Element | null {
-  const router = useRouter()
-
+}): null {
   onMount(() => {
     if (attrs?.src) {
       const normSrc = (() => {
@@ -102,6 +87,7 @@ function Script({
           script.parentNode.removeChild(script)
         }
       })
+      return
     }
 
     if (typeof children === 'string') {
@@ -150,135 +136,5 @@ function Script({
     }
   })
 
-  if (!router.isServer) {
-    // render an empty script on the client just to avoid hydration errors
-    return null
-  }
-
-  if (attrs?.src && typeof attrs.src === 'string') {
-    return <script {...attrs} />
-  }
-
-  if (typeof children === 'string') {
-    return <script {...attrs} innerHTML={children} />
-  }
-
   return null
-}
-
-function HeadTag({
-  tag,
-  attrs,
-  children,
-}: {
-  tag: 'title' | 'meta' | 'link' | 'style'
-  attrs?: Record<string, any>
-  children?: string
-}): null {
-  onMount(() => {
-    if (typeof document === 'undefined') {
-      return
-    }
-
-    const element = findOrCreateHeadElement(tag, attrs, children)
-
-    if (!element) {
-      return
-    }
-
-    onCleanup(() => {
-      if (element.parentNode) {
-        element.parentNode.removeChild(element)
-      }
-    })
-  })
-
-  return null
-}
-
-function findOrCreateHeadElement(
-  tag: 'title' | 'meta' | 'link' | 'style',
-  attrs?: Record<string, any>,
-  children?: string,
-) {
-  const existing = findExistingHeadElement(tag, attrs, children)
-  if (existing) {
-    return existing
-  }
-
-  const element = document.createElement(tag)
-  setAttributes(element, attrs)
-
-  if (typeof children === 'string' && (tag === 'title' || tag === 'style')) {
-    element.textContent = children
-  }
-
-  document.head.appendChild(element)
-
-  return element
-}
-
-function findExistingHeadElement(
-  tag: 'title' | 'meta' | 'link' | 'style',
-  attrs?: Record<string, any>,
-  children?: string,
-) {
-  const candidates = document.head.querySelectorAll(tag)
-  for (const candidate of candidates) {
-    if (!matchesAttributes(candidate, attrs)) {
-      continue
-    }
-
-    if (typeof children === 'string' && (tag === 'title' || tag === 'style')) {
-      if (candidate.textContent !== children) {
-        continue
-      }
-    }
-
-    return candidate as HTMLElement
-  }
-
-  return undefined
-}
-
-function matchesAttributes(
-  element: Element,
-  attrs?: Record<string, any>,
-): boolean {
-  if (!attrs) {
-    return true
-  }
-
-  for (const [key, value] of Object.entries(attrs)) {
-    if (value === undefined || value === false) {
-      continue
-    }
-
-    if (value === true) {
-      if (!element.hasAttribute(key)) {
-        return false
-      }
-      continue
-    }
-
-    if (element.getAttribute(key) !== String(value)) {
-      return false
-    }
-  }
-
-  return true
-}
-
-function setAttributes(element: Element, attrs?: Record<string, any>) {
-  if (!attrs) {
-    return
-  }
-
-  for (const [key, value] of Object.entries(attrs)) {
-    if (value === undefined || value === false) {
-      continue
-    }
-
-    element.setAttribute(key, value === true ? '' : String(value))
-  }
 }

@@ -72,9 +72,9 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
     <html>
       <head>
         <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <div class="p-2 flex gap-2 text-lg">
           <h1>SPA Mode E2E Test</h1>
           <Link

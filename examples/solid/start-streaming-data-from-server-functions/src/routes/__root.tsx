@@ -30,9 +30,9 @@ function RootDocument({ children }: { children: JSX.Element }) {
     <html>
       <head>
         <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         {children}
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />

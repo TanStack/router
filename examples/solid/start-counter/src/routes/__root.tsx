@@ -22,9 +22,9 @@ function RootDocument(props: { children: Solid.JSX.Element }) {
     <html>
       <head>
         <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <div>
           <Link to="/">Index</Link>
           <Link to="/about">About</Link>

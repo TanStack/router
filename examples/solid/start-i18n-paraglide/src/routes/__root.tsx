@@ -37,9 +37,9 @@ function RootDocument({ children }: { children: JSX.Element }) {
     <html lang={getLocale()}>
       <head>
         <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <div class="p-2 flex gap-2 text-lg justify-between">
           <div class="flex gap-2 text-lg">
             <Link

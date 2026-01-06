@@ -3,27 +3,11 @@ import {
   HydrationScript,
   NoHydration,
   ssr,
-  useAssets,
 } from 'solid-js/web'
-import { Asset } from '../Asset'
-import { useTags } from '../HeadContent'
+import { HeadContent } from '../HeadContent'
 import { RouterProvider } from '../RouterProvider'
 import { Scripts } from '../Scripts'
 import type { AnyRouter } from '@tanstack/router-core'
-
-export function ServerHeadContent() {
-  const tags = useTags()
-  useAssets(() => {
-    return (
-      <>
-        {tags().map((tag) => (
-          <Asset {...tag} />
-        ))}
-      </>
-    )
-  })
-  return null
-}
 
 const docType = ssr('<!DOCTYPE html>')
 
@@ -33,25 +17,25 @@ export function RouterServer<TRouter extends AnyRouter>(props: {
   return (
     <NoHydration>
       {docType as any}
-      <html>
-        <head>
-          <HydrationScript />
-        </head>
-        <body>
-          <Hydration>
-            <RouterProvider
-              router={props.router}
-              InnerWrap={(props) => (
-                <NoHydration>
-                  <ServerHeadContent />
-                  <Hydration>{props.children}</Hydration>
-                  <Scripts />
-                </NoHydration>
-              )}
-            />
-          </Hydration>
-        </body>
-      </html>
+      <RouterProvider
+        router={props.router}
+        InnerWrap={(innerProps) => (
+          <html>
+            <head>
+              <HydrationScript />
+              <Hydration>
+                <HeadContent renderIn="head" />
+              </Hydration>
+            </head>
+            <body>
+              <Hydration>
+                {innerProps.children}
+                <Scripts />
+              </Hydration>
+            </body>
+          </html>
+        )}
+      />
     </NoHydration>
   )
 }

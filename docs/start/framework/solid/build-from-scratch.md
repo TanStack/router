@@ -196,9 +196,9 @@ function RootDocument({ children }: Readonly<{ children: Solid.JSX.Element }>) {
     <html>
       <head>
         <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <Solid.Suspense>{children}</Solid.Suspense>
         <Scripts />
       </body>

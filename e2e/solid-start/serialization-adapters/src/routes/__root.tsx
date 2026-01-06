@@ -40,9 +40,9 @@ function RootDocument({ children }: { children: JSX.Element }) {
     <html>
       <head>
         <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <div class="p-2 flex gap-2 text-lg">
           <h1>Serialization Adapters E2E Test</h1>
           <Link
