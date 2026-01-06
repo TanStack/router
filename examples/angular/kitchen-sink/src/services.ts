@@ -1,53 +1,53 @@
-import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { lastValueFrom, tap } from 'rxjs';
-import { actionDelayFn, loaderDelayFn, shuffle } from './utils';
+import { inject, Injectable } from '@angular/core'
+import { HttpClient } from '@angular/common/http'
+import { lastValueFrom, tap } from 'rxjs'
+import { actionDelayFn, loaderDelayFn, shuffle } from './utils'
 
 export type Invoice = {
-  id: number;
-  title: string;
-  body: string;
-};
+  id: number
+  title: string
+  body: string
+}
 
 export interface User {
-  id: number;
-  name: string;
-  username: string;
-  email: string;
-  address: Address;
-  phone: string;
-  website: string;
-  company: Company;
+  id: number
+  name: string
+  username: string
+  email: string
+  address: Address
+  phone: string
+  website: string
+  company: Company
 }
 
 export interface Address {
-  street: string;
-  suite: string;
-  city: string;
-  zipcode: string;
-  geo: Geo;
+  street: string
+  suite: string
+  city: string
+  zipcode: string
+  geo: Geo
 }
 
 export interface Geo {
-  lat: string;
-  lng: string;
+  lat: string
+  lng: string
 }
 
 export interface Company {
-  name: string;
-  catchPhrase: string;
-  bs: string;
+  name: string
+  catchPhrase: string
+  bs: string
 }
 
 @Injectable({
   providedIn: 'root',
 })
 export class InvoiceService {
-  readonly #httpClient = inject(HttpClient);
+  readonly #httpClient = inject(HttpClient)
 
-  #invoices: Array<Invoice> = [];
+  #invoices: Array<Invoice> = []
 
-  #invoicesPromise: Promise<any> | undefined;
+  #invoicesPromise: Promise<any> | undefined
 
   private ensureInvoices = async () => {
     if (!this.#invoicesPromise) {
@@ -55,26 +55,26 @@ export class InvoiceService {
         this.#httpClient
           .get<Array<Invoice>>('https://jsonplaceholder.typicode.com/posts')
           .pipe(tap((data) => (this.#invoices = data.slice(0, 10)))),
-      );
+      )
     }
-    await this.#invoicesPromise;
-  };
+    await this.#invoicesPromise
+  }
 
   fetchInvoices() {
-    return loaderDelayFn(() => this.ensureInvoices().then(() => this.#invoices));
+    return loaderDelayFn(() => this.ensureInvoices().then(() => this.#invoices))
   }
 
   fetchInvoiceById(id: number) {
     return loaderDelayFn(() =>
       this.ensureInvoices().then(() => this.#invoices.find((invoice) => invoice.id === id)),
-    );
+    )
   }
 
   postInvoice(partialInvoice: Partial<Invoice>) {
     return actionDelayFn(() => {
       if (partialInvoice.title?.includes('error')) {
-        console.error('error');
-        throw new Error('Ouch!');
+        console.error('error')
+        throw new Error('Ouch!')
       }
 
       const invoice = {
@@ -88,45 +88,45 @@ export class InvoiceService {
       Vestibulum sapien. Proin quam. Etiam ultrices. Suspendisse in justo eu magna luctus suscipit. Sed lectus. Integer euismod lacus luctus magna.  Integer id quam. Morbi mi. Quisque nisl felis, venenatis tristique, dignissim in, ultrices sit amet, augue. Proin sodales libero eget ante.
       `.split(' '),
           ).join(' '),
-      };
+      }
 
-      this.#invoices = [...this.#invoices, invoice];
-      return invoice;
-    });
+      this.#invoices = [...this.#invoices, invoice]
+      return invoice
+    })
   }
 
   patchInvoice(id: number, partialInvoice: Partial<Invoice>) {
     return actionDelayFn(() => {
       if (partialInvoice.title?.includes('error')) {
-        console.error('error');
-        throw new Error('Ouch!');
+        console.error('error')
+        throw new Error('Ouch!')
       }
-      const index = this.#invoices.findIndex((invoice) => invoice.id === id);
+      const index = this.#invoices.findIndex((invoice) => invoice.id === id)
 
       if (index === -1) {
-        throw new Error('Invoice not found.');
+        throw new Error('Invoice not found.')
       }
 
-      const newArray = [...this.#invoices];
-      newArray[index] = { ...this.#invoices[index], ...partialInvoice, id };
+      const newArray = [...this.#invoices]
+      newArray[index] = { ...this.#invoices[index], ...partialInvoice, id }
 
-      this.#invoices = newArray;
-      return this.#invoices[index];
-    });
+      this.#invoices = newArray
+      return this.#invoices[index]
+    })
   }
 }
 
-type UsersSortBy = 'name' | 'id' | 'email';
+type UsersSortBy = 'name' | 'id' | 'email'
 
 @Injectable({
   providedIn: 'root',
 })
 export class UsersService {
-  readonly #httpClient = inject(HttpClient);
+  readonly #httpClient = inject(HttpClient)
 
-  #users: Array<User> = [];
+  #users: Array<User> = []
 
-  #usersPromise: Promise<any> | undefined;
+  #usersPromise: Promise<any> | undefined
 
   private ensureUsers = async () => {
     if (!this.#usersPromise) {
@@ -134,37 +134,37 @@ export class UsersService {
         this.#httpClient
           .get<Array<User>>('https://jsonplaceholder.typicode.com/users')
           .pipe(tap((data) => (this.#users = data.slice(0, 10)))),
-      );
+      )
     }
-    await this.#usersPromise;
-  };
+    await this.#usersPromise
+  }
 
   fetchUsers({ filterBy, sortBy }: { filterBy?: string; sortBy?: UsersSortBy } = {}) {
     return loaderDelayFn(() =>
       this.ensureUsers().then(() => {
-        let usersDraft = this.#users;
+        let usersDraft = this.#users
 
         if (filterBy) {
           usersDraft = usersDraft.filter((user) =>
             user.name.toLowerCase().includes(filterBy.toLowerCase()),
-          );
+          )
         }
 
         if (sortBy) {
           usersDraft = usersDraft.sort((a, b) => {
-            return a[sortBy] > b[sortBy] ? 1 : -1;
-          });
+            return a[sortBy] > b[sortBy] ? 1 : -1
+          })
         }
 
-        return usersDraft;
+        return usersDraft
       }),
-    );
+    )
   }
 
   fetchUserById(id: number) {
     return loaderDelayFn(() =>
       this.ensureUsers().then(() => this.#users.find((user) => user.id === id)),
-    );
+    )
   }
 }
 
@@ -174,7 +174,7 @@ export class UsersService {
 export class RandomService {
   fetchRandomNumber() {
     return loaderDelayFn(() => {
-      return Math.random();
-    });
+      return Math.random()
+    })
   }
 }

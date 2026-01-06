@@ -1,11 +1,11 @@
 import { Component } from '@angular/core';
-import { createRoute, RouterLink } from '@tanstack/angular-router';
+import { createRoute, Link } from '@tanstack/angular-router';
 import { Route as RootRoute } from './root.route';
 import { Outlet, injectNavigate, injectRouterState } from '@tanstack/angular-router';
 
 @Component({
   selector: 'app-about',
-  imports: [Outlet, RouterLink],
+  imports: [Outlet, Link],
   template: `
     <div class="about">
       <h2>About</h2>
@@ -14,11 +14,11 @@ import { Outlet, injectNavigate, injectRouterState } from '@tanstack/angular-rou
 
       <nav class="about-nav">
         <a
-          [routerLink]="{ to: '/about' }"
+          [link]="{ to: '/about' }"
           [class.active]="isActive('/about') && !isActive('/about/angular')"
           >About</a
         >
-        <a [routerLink]="{ to: '/about/angular' }" [class.active]="isActive('/about/angular')"
+        <a [link]="{ to: '/about/angular' }" [class.active]="isActive('/about/angular')"
           >About Angular</a
         >
       </nav>
@@ -76,5 +76,5 @@ class AboutComponent {
 export const Route = createRoute({
   getParentRoute: () => RootRoute,
   path: '/about',
-  component: AboutComponent,
+  component: () => AboutComponent,
 });

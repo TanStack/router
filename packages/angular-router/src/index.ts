@@ -97,10 +97,7 @@ export { injectCanGoBack } from './injectCanGoBack'
 export { injectErrorState } from './injectErrorState'
 
 // Link
-export {
-  type LinkOptions as LinkInputOptions,
-  Link as RouterLink,
-} from './Link'
+export { type LinkOptions as LinkInputOptions, Link } from './Link'
 
 // Utilities
 export { injectIntersectionObserver } from './injectIntersectionObserver'

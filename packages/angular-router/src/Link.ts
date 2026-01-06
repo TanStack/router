@@ -15,8 +15,8 @@ import { injectRouter } from './injectRouter'
 import { injectIntersectionObserver } from './injectIntersectionObserver'
 
 @Angular.Directive({
-  selector: 'a[routerLink]',
-  exportAs: 'routerLink',
+  selector: 'a[link]',
+  exportAs: 'link',
   standalone: true,
   host: {
     '[href]': 'hrefOption()?.href',
@@ -47,7 +47,7 @@ export class Link<
 
   options = Angular.input.required<
     LinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
-  >({ alias: 'routerLink' })
+  >({ alias: 'link' })
 
   protected router = injectRouter()
   protected isTransitioning = Angular.signal(false)

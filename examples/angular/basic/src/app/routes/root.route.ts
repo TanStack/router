@@ -4,26 +4,26 @@ import {
   Outlet,
   injectNavigate,
   injectRouterState,
-  RouterLink,
+  Link,
 } from '@tanstack/angular-router';
 import { TanStackRouterDevtools } from '@tanstack/angular-router-devtools';
 
 @Component({
   selector: 'app-root-layout',
-  imports: [Outlet, TanStackRouterDevtools, RouterLink],
+  imports: [Outlet, TanStackRouterDevtools, Link],
   template: `
     <div class="app-container">
       <nav>
         <h1>Angular Router Example</h1>
         <ul>
           <li>
-            <a [routerLink]="{ to: '/' }" [class.active]="isActive('/')">Home</a>
+            <a [link]="{ to: '/' }" [class.active]="isActive('/')">Home</a>
           </li>
           <li>
-            <a [routerLink]="{ to: '/about' }" [class.active]="isActive('/about')">About</a>
+            <a [link]="{ to: '/about' }" [class.active]="isActive('/about')">About</a>
           </li>
           <li>
-            <a [routerLink]="{ to: '/posts' }" [class.active]="isActive('/posts')">Posts</a>
+            <a [link]="{ to: '/posts' }" [class.active]="isActive('/posts')">Posts</a>
           </li>
         </ul>
       </nav>
@@ -85,5 +85,5 @@ class RootLayout {
 }
 
 export const Route = createRootRoute({
-  component: RootLayout,
+  component: () => RootLayout,
 });

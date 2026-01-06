@@ -1,6 +1,4 @@
-export async function loaderDelayFn<T>(
-  fn: (...args: Array<any>) => Promise<T> | T,
-) {
+export async function loaderDelayFn<T>(fn: (...args: Array<any>) => Promise<T> | T) {
   const delay = Number(sessionStorage.getItem('loaderDelay') ?? 0)
   const delayPromise = new Promise((r) => setTimeout(r, delay))
 
@@ -10,9 +8,7 @@ export async function loaderDelayFn<T>(
   return res
 }
 
-export async function actionDelayFn<T>(
-  fn: (...args: Array<any>) => Promise<T> | T,
-) {
+export async function actionDelayFn<T>(fn: (...args: Array<any>) => Promise<T> | T) {
   const delay = Number(sessionStorage.getItem('actionDelay') ?? 0)
   await new Promise((r) => setTimeout(r, delay))
   return fn()
@@ -31,4 +27,3 @@ export function shuffle<T>(arr: Array<T>): Array<T> {
   }
   return copy
 }
-

@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
-import { RouterProvider } from '@tanstack/angular-router';
-import { router } from './router';
+import { Component } from '@angular/core'
+import { RouterProvider } from '@tanstack/angular-router'
+import { router } from './router'
 
 @Component({
   selector: 'app-root',
@@ -8,5 +8,5 @@ import { router } from './router';
   template: `<router-provider [router]="router" />`,
 })
 export class App {
-  router = router;
+  router = router
 }

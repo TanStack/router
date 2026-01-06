@@ -3,7 +3,7 @@ import { JsonPipe } from '@angular/common'
 import { bootstrapApplication } from '@angular/platform-browser'
 import {
   Outlet,
-  RouterLink,
+  Link,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -25,38 +25,31 @@ const rootRoute = createRootRoute({
 @Component({
   selector: 'app-root-layout',
   standalone: true,
-  imports: [Outlet, RouterLink, TanStackRouterDevtools],
+  imports: [Outlet, Link, TanStackRouterDevtools],
   template: `
     <div id="app">
       <div class="p-2 flex gap-2 text-lg border-b">
-        <a
-          [routerLink]="{ to: '/' }"
-          [class]="isActive('/') ? 'font-bold' : ''"
-        >
+        <a [link]="{ to: '/' }" [class]="isActive('/') ? 'font-bold' : ''">
           Home
         </a>
         <a
-          [routerLink]="{ to: '/posts' }"
+          [link]="{ to: '/posts' }"
           [class]="isActive('/posts') ? 'font-bold' : ''"
         >
           Posts
         </a>
-        <a [routerLink]="{ to: '/posts', viewTransition: true }">
-          View Transition
-        </a>
-        <a
-          [routerLink]="{ to: '/posts', viewTransition: { types: ['dummy'] } }"
-        >
+        <a [link]="{ to: '/posts', viewTransition: true }"> View Transition </a>
+        <a [link]="{ to: '/posts', viewTransition: { types: ['dummy'] } }">
           View Transition types
         </a>
         <a
-          [routerLink]="{ to: '/layout-a' }"
+          [link]="{ to: '/layout-a' }"
           [class]="isActive('/layout-a') ? 'font-bold' : ''"
         >
           Layout
         </a>
         <a
-          [routerLink]="{ to: '/this-route-does-not-exist' }"
+          [link]="{ to: '/this-route-does-not-exist' }"
           [class]="isActive('/this-route-does-not-exist') ? 'font-bold' : ''"
         >
           This Route Does Not Exist
@@ -64,7 +57,7 @@ const rootRoute = createRootRoute({
         <div class="flex items-center">
           <svg width="20" height="20" viewBox="0 0 20 20" role="img">
             <title id="rectTitle">Link in SVG</title>
-            <a [routerLink]="{ to: '/posts' }" aria-label="Open posts from SVG">
+            <a [link]="{ to: '/posts' }" aria-label="Open posts from SVG">
               <rect
                 x="0"
                 y="0"
@@ -98,11 +91,11 @@ class RootComponent {
 @Component({
   selector: 'app-not-found',
   standalone: true,
-  imports: [RouterLink],
+  imports: [Link],
   template: `
     <div>
       <p>This is the notFoundComponent configured on root route</p>
-      <a [routerLink]="{ to: '/' }">Start Over</a>
+      <a [link]="{ to: '/' }">Start Over</a>
     </div>
   `,
 })
@@ -215,19 +208,19 @@ const layout2Route = createRoute({
 @Component({
   selector: 'app-layout-2',
   standalone: true,
-  imports: [Outlet, RouterLink],
+  imports: [Outlet, Link],
   template: `
     <div>
       <div>I'm a nested layout</div>
       <div class="flex gap-2 border-b">
         <a
-          [routerLink]="{ to: '/layout-a' }"
+          [link]="{ to: '/layout-a' }"
           [class]="isActive('/layout-a') ? 'font-bold' : ''"
         >
           Layout A
         </a>
         <a
-          [routerLink]="{ to: '/layout-b' }"
+          [link]="{ to: '/layout-b' }"
           [class]="isActive('/layout-b') ? 'font-bold' : ''"
         >
           Layout B
@@ -288,7 +281,7 @@ const paramsPsIndexRoute = createRoute({
 @Component({
   selector: 'app-params-index',
   standalone: true,
-  imports: [RouterLink],
+  imports: [Link],
   template: `
     <div>
       <h3 class="pb-2">Named path params</h3>
@@ -296,7 +289,7 @@ const paramsPsIndexRoute = createRoute({
         <li>
           <a
             data-testid="l-to-named-foo"
-            [routerLink]="{
+            [link]="{
               to: '/params-ps/named/$foo',
               params: { foo: 'foo' },
             }"
@@ -307,7 +300,7 @@ const paramsPsIndexRoute = createRoute({
         <li>
           <a
             data-testid="l-to-named-prefixfoo"
-            [routerLink]="{
+            [link]="{
               to: '/params-ps/named/prefix{$foo}',
               params: { foo: 'foo' },
             }"
@@ -318,7 +311,7 @@ const paramsPsIndexRoute = createRoute({
         <li>
           <a
             data-testid="l-to-named-foosuffix"
-            [routerLink]="{
+            [link]="{
               to: '/params-ps/named/{$foo}suffix',
               params: { foo: 'foo' },
             }"
@@ -333,7 +326,7 @@ const paramsPsIndexRoute = createRoute({
         <li>
           <a
             data-testid="l-to-wildcard-foo"
-            [routerLink]="{
+            [link]="{
               to: '/params-ps/wildcard/$',
               params: { _splat: 'foo' },
             }"
@@ -344,7 +337,7 @@ const paramsPsIndexRoute = createRoute({
         <li>
           <a
             data-testid="l-to-wildcard-prefixfoo"
-            [routerLink]="{
+            [link]="{
               to: '/params-ps/wildcard/prefix{$}',
               params: { _splat: 'foo' },
             }"
@@ -355,7 +348,7 @@ const paramsPsIndexRoute = createRoute({
         <li>
           <a
             data-testid="l-to-wildcard-foosuffix"
-            [routerLink]="{
+            [link]="{
               to: '/params-ps/wildcard/{$}suffix',
               params: { _splat: 'foo' },
             }"

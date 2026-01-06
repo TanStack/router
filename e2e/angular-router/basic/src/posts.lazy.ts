@@ -1,5 +1,5 @@
 import { Component, computed } from '@angular/core'
-import { Outlet, RouterLink, createLazyRoute } from '@tanstack/angular-router'
+import { Outlet, Link, createLazyRoute } from '@tanstack/angular-router'
 
 export const Route = createLazyRoute('/posts')({
   component: () => PostsComponent,
@@ -8,14 +8,14 @@ export const Route = createLazyRoute('/posts')({
 @Component({
   selector: 'app-posts',
   standalone: true,
-  imports: [Outlet, RouterLink],
+  imports: [Outlet, Link],
   template: `
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
         @for (post of postsWithExtra(); track post.id) {
           <li class="whitespace-nowrap">
             <a
-              [routerLink]="{
+              [link]="{
                 to: '/posts/$postId',
                 params: { postId: post.id },
               }"

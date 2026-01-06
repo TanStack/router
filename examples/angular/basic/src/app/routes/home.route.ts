@@ -32,7 +32,5 @@ class HomeComponent {}
 export const Route = createRoute({
   getParentRoute: () => RootRoute,
   path: '/',
-  component: HomeComponent,
+  component: () => HomeComponent,
 });
-
-

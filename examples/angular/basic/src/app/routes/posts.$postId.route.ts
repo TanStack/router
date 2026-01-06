@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { createRoute } from '@tanstack/angular-router';
 import { Route as PostsRoute } from './posts.route';
-import { injectParams, injectNavigate, injectLoaderData } from '@tanstack/angular-router';
 
 // Mock data
 const POSTS: Record<string, { id: string; title: string; content: string; author: string }> = {
@@ -215,7 +214,7 @@ class PostDetailComponent {
 export const Route = createRoute({
   getParentRoute: () => PostsRoute,
   path: '/$postId',
-  component: PostDetailComponent,
+  component: () => PostDetailComponent,
   loader: async ({ params }) => {
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 500));

@@ -1,5 +1,5 @@
 import { Component, computed } from '@angular/core';
-import { createRoute, Outlet, RouterLink } from '@tanstack/angular-router';
+import { createRoute, Outlet, Link } from '@tanstack/angular-router';
 import { Route as RootRoute } from './root.route';
 import { injectSearch, injectNavigate } from '@tanstack/angular-router';
 import { z } from 'zod';
@@ -15,7 +15,7 @@ const POSTS = [
 
 @Component({
   selector: 'app-posts',
-  imports: [Outlet, RouterLink],
+  imports: [Outlet, Link],
   template: `
     <div class="posts">
       <outlet />
@@ -54,7 +54,7 @@ const POSTS = [
             <h3>{{ post.title }}</h3>
             <p class="author">By {{ post.author }}</p>
             <p class="content">{{ post.content }}</p>
-            <a [routerLink]="{ to: '/posts/$postId', params: { postId: post.id } }">View Post</a>
+            <a [link]="{ to: '/posts/$postId', params: { postId: post.id } }">View Post</a>
           </div>
         }
       </div>
@@ -204,8 +204,7 @@ class PostsComponent {
 export const Route = createRoute({
   getParentRoute: () => RootRoute,
   path: '/posts',
-  // TODO: make it a function to allow using this at the top of the file
-  component: PostsComponent,
+  component: () => PostsComponent,
   validateSearch: z.object({
     author: z.string().optional(),
     sort: z.string().optional(),

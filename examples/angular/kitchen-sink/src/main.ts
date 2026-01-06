@@ -9,8 +9,8 @@ import {
   linkedSignal,
   ProviderToken,
   signal,
-} from '@angular/core';
-import { bootstrapApplication } from '@angular/platform-browser';
+} from '@angular/core'
+import { bootstrapApplication } from '@angular/platform-browser'
 import {
   Outlet,
   RouterProvider,
@@ -19,19 +19,19 @@ import {
   createRouter,
   injectRouter,
   injectRouterState,
-  RouterLink,
+  Link,
   LinkOptions,
   notFound,
   redirect,
   retainSearchParams,
   RouterContextOptions,
-} from '@tanstack/angular-router';
-import { TanStackRouterDevtoolsInProd } from '@tanstack/angular-router-devtools';
-import { z } from 'zod';
-import { injectMutation } from './injectMutation';
-import './styles.css';
-import { JsonPipe } from '@angular/common';
-import { UsersService, InvoiceService, Invoice } from './services';
+} from '@tanstack/angular-router'
+import { TanStackRouterDevtoolsInProd } from '@tanstack/angular-router-devtools'
+import { z } from 'zod'
+import { injectMutation } from './injectMutation'
+import './styles.css'
+import { JsonPipe } from '@angular/common'
+import { UsersService, InvoiceService, Invoice } from './services'
 
 @Component({
   selector: 'app-spinner',
@@ -50,8 +50,8 @@ import { UsersService, InvoiceService, Invoice } from './services';
   `,
 })
 class SpinnerComponent {
-  show = input(true);
-  wait = input<`delay-${number}` | undefined>(undefined);
+  show = input(true)
+  wait = input<`delay-${number}` | undefined>(undefined)
 }
 
 @Component({
@@ -87,22 +87,22 @@ class SpinnerComponent {
   `,
 })
 class InvoiceFieldsComponent {
-  invoice = input.required<Invoice>();
-  disabled = input(false);
+  invoice = input.required<Invoice>()
+  disabled = input(false)
 }
 
-type UsersViewSortBy = 'name' | 'id' | 'email';
+type UsersViewSortBy = 'name' | 'id' | 'email'
 
 type MissingUserData = {
-  userId: number;
-};
+  userId: number
+}
 
 function isMissingUserData(data: unknown): data is MissingUserData {
   return (
     typeof data === 'object' &&
     data !== null &&
     typeof (data as { userId?: unknown }).userId === 'number'
-  );
+  )
 }
 
 @Component({
@@ -124,21 +124,21 @@ function isMissingUserData(data: unknown): data is MissingUserData {
   `,
 })
 class UsersNotFoundComponent {
-  data = signal<any>(null);
-  routeId = signal<string>('');
+  data = signal<any>(null)
+  routeId = signal<string>('')
 
   userId = computed(() => {
-    const d = this.data();
-    return isMissingUserData(d) ? d.userId : undefined;
-  });
+    const d = this.data()
+    return isMissingUserData(d) ? d.userId : undefined
+  })
 }
 
 const rootRoute = createRootRouteWithContext<{
-  auth: Auth;
-  inject: Injector['get'];
+  auth: Auth
+  inject: Injector['get']
 }>()({
   component: () => RootComponent,
-});
+})
 
 @Component({
   selector: 'app-router-spinner',
@@ -147,20 +147,20 @@ const rootRoute = createRootRouteWithContext<{
   template: `<app-spinner [show]="isLoading()" />`,
 })
 class RouterSpinnerComponent {
-  isLoading = injectRouterState({ select: (s) => s.status === 'pending' });
+  isLoading = injectRouterState({ select: (s) => s.status === 'pending' })
 }
 
 @Component({
   selector: 'app-breadcrumbs',
   standalone: true,
-  imports: [RouterLink],
+  imports: [Link],
   template: `
     @if (matchesWithCrumbs().length > 0) {
       <nav>
         <ul class="flex gap-2 items-center">
           @for (match of matchesWithCrumbs(); track match.id) {
             <li class="flex gap-2">
-              <a [routerLink]="{ to: match.pathname }" class="text-blue-700">
+              <a [link]="{ to: match.pathname }" class="text-blue-700">
                 {{ match.loaderData.crumb }}
               </a>
               @if (!$last) {
@@ -174,24 +174,22 @@ class RouterSpinnerComponent {
   `,
 })
 class BreadcrumbsComponent {
-  routerState = injectRouterState();
+  routerState = injectRouterState()
 
   matchesWithCrumbs = computed(() => {
-    const state = this.routerState();
-    const matches = state.matches;
+    const state = this.routerState()
+    const matches = state.matches
 
     // Filter out pending matches
     if (matches.some((match) => match.status === 'pending')) {
-      return [];
+      return []
     }
 
     // Filter matches that have loaderData.crumb
     return matches.filter((match) => {
-      return (
-        match.loaderData && typeof match.loaderData === 'object' && 'crumb' in match.loaderData
-      );
-    }) as Array<{ id: string; pathname: string; loaderData: { crumb: string } }>;
-  });
+      return match.loaderData && typeof match.loaderData === 'object' && 'crumb' in match.loaderData
+    }) as Array<{ id: string; pathname: string; loaderData: { crumb: string } }>
+  })
 }
 
 @Component({
@@ -199,7 +197,7 @@ class BreadcrumbsComponent {
   standalone: true,
   imports: [
     Outlet,
-    RouterLink,
+    Link,
     RouterSpinnerComponent,
     TanStackRouterDevtoolsInProd,
     BreadcrumbsComponent,
@@ -218,7 +216,7 @@ class BreadcrumbsComponent {
           @for (link of links(); track link[0]) {
             <div>
               <a
-                [routerLink]="{ to: link[0] }"
+                [link]="{ to: link[0] }"
                 [class]="'block py-2 px-3 text-blue-700'"
                 [class.font-bold]="isActive(link[0])"
                 preload="intent"
@@ -237,11 +235,11 @@ class BreadcrumbsComponent {
   `,
 })
 class RootComponent {
-  authSignal = signal(auth);
-  routerState = injectRouterState();
+  authSignal = signal(auth)
+  routerState = injectRouterState()
 
   links = computed(() => {
-    const currentAuth = this.authSignal();
+    const currentAuth = this.authSignal()
     const baseLinks: Array<[string, string]> = [
       ['/', 'Home'],
       ['/dashboard', 'Dashboard'],
@@ -249,16 +247,16 @@ class RootComponent {
       ['/route-a', 'Pathless Layout A'],
       ['/route-b', 'Pathless Layout B'],
       ['/profile', 'Profile'],
-    ];
+    ]
     if (currentAuth.status === 'loggedOut') {
-      return [...baseLinks, ['/login', 'Login']];
+      return [...baseLinks, ['/login', 'Login']]
     }
-    return baseLinks;
-  });
+    return baseLinks
+  })
 
   isActive(path: string): boolean {
-    const currentPath = this.routerState().location.pathname;
-    return currentPath === path || currentPath.startsWith(path + '/');
+    const currentPath = this.routerState().location.pathname
+    return currentPath === path || currentPath.startsWith(path + '/')
   }
 }
 
@@ -266,18 +264,18 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: () => IndexComponent,
-});
+})
 
 @Component({
   selector: 'app-index',
   standalone: true,
-  imports: [RouterLink],
+  imports: [Link],
   template: `
     <div class="p-2">
       <div class="text-lg">Welcome Home!</div>
       <hr class="my-2" />
       <a
-        [routerLink]="{ to: '/dashboard/invoices/$invoiceId', params: { invoiceId: 3 } }"
+        [link]="{ to: '/dashboard/invoices/$invoiceId', params: { invoiceId: 3 } }"
         class="py-1 px-2 text-xs bg-blue-500 text-white rounded-full"
       >
         1 New Invoice
@@ -298,7 +296,7 @@ const indexRoute = createRoute({
   `,
 })
 class IndexComponent {
-  invoiceRoute = invoiceRoute;
+  invoiceRoute = invoiceRoute
 }
 
 const dashboardLayoutRoute = createRoute({
@@ -306,12 +304,12 @@ const dashboardLayoutRoute = createRoute({
   path: 'dashboard',
   loader: () => ({ crumb: 'Dashboard' }),
   component: () => DashboardLayoutComponent,
-});
+})
 
 @Component({
   selector: 'app-dashboard-layout',
   standalone: true,
-  imports: [Outlet, RouterLink],
+  imports: [Outlet, Link],
   template: `
     <div class="flex items-center border-b">
       <h2 class="text-xl p-2">Dashboard</h2>
@@ -319,7 +317,7 @@ const dashboardLayoutRoute = createRoute({
     <div class="flex flex-wrap divide-x">
       @for (link of links; track link[0]) {
         <a
-          [routerLink]="{ to: link[0] }"
+          [link]="{ to: link[0] }"
           [class]="'p-2'"
           [class.font-bold]="isActive(link[0], link[2])"
         >
@@ -332,19 +330,19 @@ const dashboardLayoutRoute = createRoute({
   `,
 })
 class DashboardLayoutComponent {
-  routerState = injectRouterState();
+  routerState = injectRouterState()
   links: Array<[string, string, boolean?]> = [
     ['/dashboard', 'Summary', true],
     ['/dashboard/invoices', 'Invoices'],
     ['/dashboard/users', 'Users'],
-  ];
+  ]
 
   isActive(path: string, exact?: boolean): boolean {
-    const currentPath = this.routerState().location.pathname;
+    const currentPath = this.routerState().location.pathname
     if (exact) {
-      return currentPath === path;
+      return currentPath === path
     }
-    return currentPath === path || currentPath.startsWith(path + '/');
+    return currentPath === path || currentPath.startsWith(path + '/')
   }
 }
 
@@ -352,11 +350,11 @@ const dashboardIndexRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: '/',
   loader: ({ context }) => {
-    const invoiceService = context.inject(InvoiceService);
-    return invoiceService.fetchInvoices();
+    const invoiceService = context.inject(InvoiceService)
+    return invoiceService.fetchInvoices()
   },
   component: () => DashboardIndexComponent,
-});
+})
 
 @Component({
   selector: 'app-dashboard-index',
@@ -371,23 +369,23 @@ const dashboardIndexRoute = createRoute({
   `,
 })
 class DashboardIndexComponent {
-  invoices = dashboardIndexRoute.injectLoaderData();
+  invoices = dashboardIndexRoute.injectLoaderData()
 }
 
 const invoicesLayoutRoute = createRoute({
   getParentRoute: () => dashboardLayoutRoute,
   path: 'invoices',
   loader: ({ context }) => {
-    const invoiceService = context.inject(InvoiceService);
-    return invoiceService.fetchInvoices();
+    const invoiceService = context.inject(InvoiceService)
+    return invoiceService.fetchInvoices()
   },
   component: () => InvoicesLayoutComponent,
-});
+})
 
 @Component({
   selector: 'app-invoices-layout',
   standalone: true,
-  imports: [Outlet, RouterLink, SpinnerComponent],
+  imports: [Outlet, Link, SpinnerComponent],
   preserveWhitespaces: false,
   template: `
     <div class="flex-1 flex">
@@ -395,7 +393,7 @@ const invoicesLayoutRoute = createRoute({
         @for (invoice of invoices(); track invoice.id) {
           <div>
             <a
-              [routerLink]="{
+              [link]="{
                 to: '/dashboard/invoices/$invoiceId',
                 params: { invoiceId: invoice.id },
               }"
@@ -420,22 +418,22 @@ const invoicesLayoutRoute = createRoute({
   `,
 })
 class InvoicesLayoutComponent {
-  invoices = invoicesLayoutRoute.injectLoaderData();
-  routerState = injectRouterState();
+  invoices = invoicesLayoutRoute.injectLoaderData()
+  routerState = injectRouterState()
 
   isActive(path: string): boolean {
     return (
       this.routerState().location.pathname === path ||
       this.routerState().location.pathname.startsWith(path + '/')
-    );
+    )
   }
 
   isPending(invoiceId: number): boolean {
-    const matches = this.routerState().matches;
+    const matches = this.routerState().matches
     const match = matches.find(
       (m) => m.routeId === invoiceRoute.id && m.params?.invoiceId === invoiceId,
-    );
-    return match?.status === 'pending' || false;
+    )
+    return match?.status === 'pending' || false
   }
 }
 
@@ -443,7 +441,7 @@ const invoicesIndexRoute = createRoute({
   getParentRoute: () => invoicesLayoutRoute,
   path: '/',
   component: () => InvoicesIndexComponent,
-});
+})
 
 @Component({
   selector: 'app-invoices-index',
@@ -487,32 +485,32 @@ const invoicesIndexRoute = createRoute({
   `,
 })
 class InvoicesIndexComponent {
-  router = injectRouter();
-  routerContext = invoicesIndexRoute.injectRouteContext();
+  router = injectRouter()
+  routerContext = invoicesIndexRoute.injectRouteContext()
 
   createInvoiceMutation = injectMutation({
     fn: (variables: Partial<Invoice>) => {
-      const context = this.routerContext();
-      const invoiceService = context.inject(InvoiceService);
-      return invoiceService.postInvoice(variables);
+      const context = this.routerContext()
+      const invoiceService = context.inject(InvoiceService)
+      return invoiceService.postInvoice(variables)
     },
     onSuccess: () => this.router.invalidate(),
-  });
+  })
 
   emptyInvoice = {
     body: '',
     title: '',
-  } as Invoice;
+  } as Invoice
 
   onSubmit(event: Event) {
-    event.preventDefault();
-    event.stopPropagation();
-    const form = event.target as HTMLFormElement;
-    const formData = new FormData(form);
+    event.preventDefault()
+    event.stopPropagation()
+    const form = event.target as HTMLFormElement
+    const formData = new FormData(form)
     this.createInvoiceMutation.mutate({
       title: formData.get('title') as string,
       body: formData.get('body') as string,
-    });
+    })
   }
 }
 
@@ -533,19 +531,19 @@ const invoiceRoute = createRoute({
       })
       .parse(search),
   loader: async ({ params: { invoiceId }, context }) => {
-    const invoiceService = context.inject(InvoiceService);
-    const invoice = await invoiceService.fetchInvoiceById(invoiceId);
-    if (!invoice) throw notFound();
-    return invoice;
+    const invoiceService = context.inject(InvoiceService)
+    const invoice = await invoiceService.fetchInvoiceById(invoiceId)
+    if (!invoice) throw notFound()
+    return invoice
   },
   component: () => InvoiceComponent,
   pendingComponent: () => SpinnerComponent,
-});
+})
 
 @Component({
   selector: 'app-invoice',
   standalone: true,
-  imports: [RouterLink, InvoiceFieldsComponent],
+  imports: [Link, InvoiceFieldsComponent],
   template: `
     <form (submit)="onSubmit($event)" class="p-2 space-y-2">
       <app-invoice-fields
@@ -553,7 +551,7 @@ const invoiceRoute = createRoute({
         [disabled]="updateInvoiceMutation.status() === 'pending'"
       />
       <div>
-        <a [routerLink]="toggleSearchNotesLinkOptions()" class="text-blue-700">
+        <a [link]="toggleSearchNotesLinkOptions()" class="text-blue-700">
           {{ search().showNotes ? 'Close Notes' : 'Show Notes' }}
         </a>
         @if (search().showNotes) {
@@ -607,23 +605,23 @@ const invoiceRoute = createRoute({
   `,
 })
 class InvoiceComponent {
-  router = injectRouter();
-  search = invoiceRoute.injectSearch();
-  navigate = invoiceRoute.injectNavigate();
-  invoice = invoiceRoute.injectLoaderData();
-  routerContext = invoiceRoute.injectRouteContext();
+  router = injectRouter()
+  search = invoiceRoute.injectSearch()
+  navigate = invoiceRoute.injectNavigate()
+  invoice = invoiceRoute.injectLoaderData()
+  routerContext = invoiceRoute.injectRouteContext()
   updateInvoiceMutation = injectMutation({
     fn: (variables: Partial<Invoice>) => {
-      const context = this.routerContext();
-      const invoiceService = context.inject(InvoiceService);
-      return invoiceService.patchInvoice(this.invoice().id, variables);
+      const context = this.routerContext()
+      const invoiceService = context.inject(InvoiceService)
+      return invoiceService.patchInvoice(this.invoice().id, variables)
     },
     onSuccess: () => this.router.invalidate(),
-  });
-  notes = signal(this.search().notes ?? '');
+  })
+  notes = signal(this.search().notes ?? '')
 
   #updateNotes = effect(() => {
-    const currentNotes = this.notes();
+    const currentNotes = this.notes()
     this.navigate({
       search: (old) => ({
         ...old,
@@ -631,19 +629,19 @@ class InvoiceComponent {
       }),
       params: true,
       replace: true,
-    });
-  });
+    })
+  })
 
   onSubmit(event: Event) {
-    event.preventDefault();
-    event.stopPropagation();
-    const form = event.target as HTMLFormElement;
-    const formData = new FormData(form);
+    event.preventDefault()
+    event.stopPropagation()
+    const form = event.target as HTMLFormElement
+    const formData = new FormData(form)
     this.updateInvoiceMutation.mutate({
       id: this.invoice().id,
       title: formData.get('title') as string,
       body: formData.get('body') as string,
-    });
+    })
   }
 
   toggleSearchNotesLinkOptions() {
@@ -654,7 +652,7 @@ class InvoiceComponent {
         ...old,
         showNotes: old.showNotes ? undefined : true,
       }),
-    } as LinkOptions;
+    } as LinkOptions
   }
 }
 
@@ -677,18 +675,18 @@ const usersLayoutRoute = createRoute({
     sortBy: usersView?.sortBy ?? 'name',
   }),
   loader: async ({ deps, context }) => {
-    const usersService = context.inject(UsersService);
-    const users = await usersService.fetchUsers(deps);
-    return { users, crumb: 'Users' };
+    const usersService = context.inject(UsersService)
+    const users = await usersService.fetchUsers(deps)
+    return { users, crumb: 'Users' }
   },
   notFoundComponent: () => UsersNotFoundComponent,
   component: () => UsersLayoutComponent,
-});
+})
 
 @Component({
   selector: 'app-users-layout',
   standalone: true,
-  imports: [Outlet, RouterLink, SpinnerComponent],
+  imports: [Outlet, Link, SpinnerComponent],
   template: `
     <div class="flex-1 flex">
       <div class="divide-y">
@@ -716,7 +714,7 @@ const usersLayoutRoute = createRoute({
         @for (user of filteredUsers(); track user.id) {
           <div>
             <a
-              [routerLink]="{
+              [link]="{
                 to: '/dashboard/users/user',
                 search: { userId: user.id },
               }"
@@ -735,7 +733,7 @@ const usersLayoutRoute = createRoute({
         <div class="px-3 py-2 text-xs text-gray-500 bg-gray-100 dark:bg-gray-800/60">
           Need to see how not-found errors look?
           <a
-            [routerLink]="{
+            [link]="{
               to: '/dashboard/users/user',
               search: { userId: 404 },
             }"
@@ -752,20 +750,20 @@ const usersLayoutRoute = createRoute({
   `,
 })
 class UsersLayoutComponent {
-  navigate = usersLayoutRoute.injectNavigate();
-  searchSignal = usersLayoutRoute.injectSearch();
-  loaderData = usersLayoutRoute.injectLoaderData();
-  users = computed(() => this.loaderData().users);
-  routerState = injectRouterState();
-  sortOptions = ['name', 'id', 'email'];
+  navigate = usersLayoutRoute.injectNavigate()
+  searchSignal = usersLayoutRoute.injectSearch()
+  loaderData = usersLayoutRoute.injectLoaderData()
+  users = computed(() => this.loaderData().users)
+  routerState = injectRouterState()
+  sortOptions = ['name', 'id', 'email']
 
-  search = computed(() => this.searchSignal());
-  sortBy = computed(() => this.search().usersView?.sortBy ?? 'name');
-  filterBy = computed(() => this.search().usersView?.filterBy);
-  filterDraft = linkedSignal(() => this.filterBy() ?? '');
+  search = computed(() => this.searchSignal())
+  sortBy = computed(() => this.search().usersView?.sortBy ?? 'name')
+  filterBy = computed(() => this.search().usersView?.filterBy)
+  filterDraft = linkedSignal(() => this.filterBy() ?? '')
 
   #updateFilter = effect(() => {
-    const draft = this.filterDraft();
+    const draft = this.filterDraft()
     this.navigate({
       search: (old) => ({
         ...old,
@@ -775,25 +773,25 @@ class UsersLayoutComponent {
         },
       }),
       replace: true,
-    });
-  });
+    })
+  })
 
   sortedUsers = computed(() => {
-    const usersList = this.users();
-    if (!usersList) return [];
-    const sort = this.sortBy();
-    if (!sort) return usersList;
+    const usersList = this.users()
+    if (!usersList) return []
+    const sort = this.sortBy()
+    if (!sort) return usersList
     return [...usersList].sort((a, b) => {
-      return a[sort] > b[sort] ? 1 : -1;
-    });
-  });
+      return a[sort] > b[sort] ? 1 : -1
+    })
+  })
 
   filteredUsers = computed(() => {
-    const sorted = this.sortedUsers();
-    const filter = this.filterBy();
-    if (!filter) return sorted;
-    return sorted.filter((user) => user.name.toLowerCase().includes(filter.toLowerCase()));
-  });
+    const sorted = this.sortedUsers()
+    const filter = this.filterBy()
+    if (!filter) return sorted
+    return sorted.filter((user) => user.name.toLowerCase().includes(filter.toLowerCase()))
+  })
 
   setSortBy(sortBy: UsersViewSortBy) {
     this.navigate({
@@ -805,27 +803,27 @@ class UsersLayoutComponent {
         },
       }),
       replace: true,
-    });
+    })
   }
 
   isActive(path: string, userId?: number): boolean {
-    const currentPath = this.routerState().location.pathname;
-    const currentSearch = this.search();
+    const currentPath = this.routerState().location.pathname
+    const currentSearch = this.search()
     if (userId !== undefined) {
-      return currentPath === path && (currentSearch as { userId?: number }).userId === userId;
+      return currentPath === path && (currentSearch as { userId?: number }).userId === userId
     }
-    return currentPath === path || currentPath.startsWith(path + '/');
+    return currentPath === path || currentPath.startsWith(path + '/')
   }
 
   isPending(userId: number): boolean {
-    const matches = this.routerState().matches;
+    const matches = this.routerState().matches
     const match = matches.find(
       (m) =>
         m.routeId === userRoute.id &&
         m.search &&
         (m.search as { userId?: number }).userId === userId,
-    );
-    return match?.status === 'pending' || false;
+    )
+    return match?.status === 'pending' || false
   }
 }
 
@@ -833,7 +831,7 @@ const usersIndexRoute = createRoute({
   getParentRoute: () => usersLayoutRoute,
   path: '/',
   component: () => UsersIndexComponent,
-});
+})
 
 @Component({
   selector: 'app-users-index',
@@ -870,21 +868,21 @@ const userRoute = createRoute({
     userId,
   }),
   loader: async ({ deps: { userId }, context }) => {
-    const usersService = context.inject(UsersService);
-    const user = await usersService.fetchUserById(userId);
+    const usersService = context.inject(UsersService)
+    const user = await usersService.fetchUserById(userId)
 
     if (!user) {
       throw notFound({
         data: {
           userId,
         },
-      });
+      })
     }
 
-    return { user, crumb: user.name };
+    return { user, crumb: user.name }
   },
   component: () => UserComponent,
-});
+})
 
 @Component({
   selector: 'app-user',
@@ -895,41 +893,41 @@ const userRoute = createRoute({
   `,
 })
 class UserComponent {
-  loaderData = userRoute.injectLoaderData();
-  user = computed(() => this.loaderData().user);
-  userJson = computed(() => JSON.stringify(this.user(), null, 2));
+  loaderData = userRoute.injectLoaderData()
+  user = computed(() => this.loaderData().user)
+  userJson = computed(() => JSON.stringify(this.user(), null, 2))
 }
 
 const expensiveRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'expensive',
-}).lazy(() => import('./expensive.route').then((d) => d.Route));
+}).lazy(() => import('./expensive.route').then((d) => d.Route))
 
 const authPathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'auth',
   beforeLoad: ({ context, location }) => {
     if (context.auth.status === 'loggedOut') {
-      console.log(location);
+      console.log(location)
       throw redirect({
         to: loginRoute.to,
         search: {
           redirect: location.href,
         },
-      });
+      })
     }
 
     return {
       username: auth.username,
-    };
+    }
   },
-});
+})
 
 const profileRoute = createRoute({
   getParentRoute: () => authPathlessLayoutRoute,
   path: 'profile',
   component: () => ProfileComponent,
-});
+})
 
 @Component({
   selector: 'app-profile',
@@ -949,13 +947,13 @@ const profileRoute = createRoute({
   `,
 })
 class ProfileComponent {
-  router = injectRouter();
-  routeContext = profileRoute.injectRouteContext();
-  username = computed(() => this.routeContext().username);
+  router = injectRouter()
+  routeContext = profileRoute.injectRouteContext()
+  username = computed(() => this.routeContext().username)
 
   logout() {
-    auth.logout();
-    this.router.invalidate();
+    auth.logout()
+    this.router.invalidate()
   }
 }
 
@@ -971,12 +969,12 @@ const loginRoute = createRoute({
     // we don't have transitions, this loader can prevent double renders
     // by doing an early redirect.
     if (context.auth.status === 'loggedIn' && deps.redirect) {
-      throw redirect({ to: deps.redirect });
+      throw redirect({ to: deps.redirect })
     }
   },
 }).update({
   component: () => LoginComponent,
-});
+})
 
 @Component({
   selector: 'app-login',
@@ -1017,31 +1015,31 @@ const loginRoute = createRoute({
   `,
 })
 class LoginComponent {
-  router = injectRouter();
+  router = injectRouter()
   routeContext = loginRoute.injectRouteContext({
     select: ({ auth }) => ({ auth, status: auth.status }),
-  });
-  search = loginRoute.injectSearch();
-  username = signal('');
+  })
+  search = loginRoute.injectSearch()
+  username = signal('')
 
-  auth = computed(() => this.routeContext().auth);
-  status = computed(() => this.routeContext().status);
+  auth = computed(() => this.routeContext().auth)
+  status = computed(() => this.routeContext().status)
 
   #redirectIfLoggedIn = effect(() => {
     if (this.status() === 'loggedIn' && this.search().redirect) {
-      this.router.history.push(this.search().redirect!);
+      this.router.history.push(this.search().redirect!)
     }
-  });
+  })
 
   onSubmit(event: Event) {
-    event.preventDefault();
-    this.auth().login(this.username());
-    this.router.invalidate();
+    event.preventDefault()
+    this.auth().login(this.username())
+    this.router.invalidate()
   }
 
   logout() {
-    this.auth().logout();
-    this.router.invalidate();
+    this.auth().logout()
+    this.router.invalidate()
   }
 }
 
@@ -1049,7 +1047,7 @@ const pathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'pathless-layout',
   component: () => PathlessLayoutComponent,
-});
+})
 
 @Component({
   selector: 'app-pathless-layout',
@@ -1069,7 +1067,7 @@ const pathlessLayoutARoute = createRoute({
   getParentRoute: () => pathlessLayoutRoute,
   path: 'route-a',
   component: () => PathlessLayoutAComponent,
-});
+})
 
 @Component({
   selector: 'app-pathless-layout-a',
@@ -1086,7 +1084,7 @@ const pathlessLayoutBRoute = createRoute({
   getParentRoute: () => pathlessLayoutRoute,
   path: 'route-b',
   component: () => PathlessLayoutBComponent,
-});
+})
 
 @Component({
   selector: 'app-pathless-layout-b',
@@ -1110,7 +1108,7 @@ const routeTree = rootRoute.addChildren([
   authPathlessLayoutRoute.addChildren([profileRoute]),
   loginRoute,
   pathlessLayoutRoute.addChildren([pathlessLayoutARoute, pathlessLayoutBRoute]),
-]);
+])
 
 const router = createRouter({
   routeTree,
@@ -1122,11 +1120,11 @@ const router = createRouter({
   },
   defaultPreload: 'intent',
   scrollRestoration: true,
-});
+})
 
 declare module '@tanstack/angular-router' {
   interface Register {
-    router: typeof router;
+    router: typeof router
   }
 }
 
@@ -1134,14 +1132,14 @@ const auth: Auth = {
   status: 'loggedOut',
   username: undefined,
   login: (username: string) => {
-    auth.username = username;
-    auth.status = 'loggedIn';
+    auth.username = username
+    auth.status = 'loggedIn'
   },
   logout: () => {
-    auth.status = 'loggedOut';
-    auth.username = undefined;
+    auth.status = 'loggedOut'
+    auth.username = undefined
   },
-};
+}
 
 @Component({
   selector: 'app-root',
@@ -1212,42 +1210,42 @@ const auth: Auth = {
   `,
 })
 class AppComponent {
-  router = router;
-  environmentInjector = inject(EnvironmentInjector);
+  router = router
+  environmentInjector = inject(EnvironmentInjector)
 
   routerContext: RouterContextOptions<typeof routeTree>['context'] = {
     auth,
     inject: (token: ProviderToken<any>) => this.environmentInjector.get(token),
-  };
+  }
 
-  loaderDelay = useSessionStorage('loaderDelay', 500);
-  pendingMs = useSessionStorage('pendingMs', 1000);
-  pendingMinMs = useSessionStorage('pendingMinMs', 500);
+  loaderDelay = useSessionStorage('loaderDelay', 500)
+  pendingMs = useSessionStorage('pendingMs', 1000)
+  pendingMinMs = useSessionStorage('pendingMinMs', 500)
 
   setLoaderDelay(value: number) {
-    this.loaderDelay.set(value);
+    this.loaderDelay.set(value)
   }
 
   setPendingMs(value: number) {
-    this.pendingMs.set(value);
+    this.pendingMs.set(value)
   }
 
   setPendingMinMs(value: number) {
-    this.pendingMinMs.set(value);
+    this.pendingMinMs.set(value)
   }
 
   resetPending() {
-    this.pendingMs.set(1000);
-    this.pendingMinMs.set(500);
+    this.pendingMs.set(1000)
+    this.pendingMinMs.set(500)
   }
 }
 
 type Auth = {
-  login: (username: string) => void;
-  logout: () => void;
-  status: 'loggedOut' | 'loggedIn';
-  username?: string;
-};
+  login: (username: string) => void
+  logout: () => void
+  status: 'loggedOut' | 'loggedIn'
+  username?: string
+}
 
 @Component({
   selector: 'app-error',
@@ -1262,23 +1260,23 @@ type Auth = {
   `,
 })
 class ErrorComponent {
-  error = signal<any>(null);
-  router = injectRouter();
+  error = signal<any>(null)
+  router = injectRouter()
 
   reset() {
-    this.router.invalidate();
+    this.router.invalidate()
   }
 }
 
 function useSessionStorage<T>(key: string, initialValue: T) {
-  const stored = sessionStorage.getItem(key);
-  const value = signal<T>(stored ? JSON.parse(stored) : initialValue);
+  const stored = sessionStorage.getItem(key)
+  const value = signal<T>(stored ? JSON.parse(stored) : initialValue)
 
   effect(() => {
-    sessionStorage.setItem(key, JSON.stringify(value()));
-  });
+    sessionStorage.setItem(key, JSON.stringify(value()))
+  })
 
-  return value;
+  return value
 }
 
-bootstrapApplication(AppComponent).catch((err) => console.error(err));
+bootstrapApplication(AppComponent).catch((err) => console.error(err))

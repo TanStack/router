@@ -68,5 +68,5 @@ class AboutAngularComponent {}
 export const Route = createRoute({
   getParentRoute: () => AboutRoute,
   path: 'angular',
-  component: AboutAngularComponent,
+  component: () => AboutAngularComponent,
 });
