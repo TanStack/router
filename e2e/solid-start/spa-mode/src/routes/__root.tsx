@@ -9,7 +9,6 @@ import {
   useRouterState,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import { HydrationScript } from 'solid-js/web'
 import type * as Solid from 'solid-js'
 import appCss from '~/styles/app.css?url'
 
@@ -71,7 +70,6 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
     <html>
       <head>
-        <HydrationScript />
         <HeadContent />
       </head>
       <body>

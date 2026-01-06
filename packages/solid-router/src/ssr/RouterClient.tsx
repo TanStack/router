@@ -5,7 +5,6 @@ import { RouterProvider } from '../RouterProvider'
 import { Scripts } from '../Scripts'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
-import { HydrationScript } from 'solid-js/web'
 
 let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
 
@@ -32,7 +31,6 @@ export function RouterClient(props: { router: AnyRouter }) {
                   <Dummy>
                     <html>
                       <head>
-                        <HydrationScript />
                         <HeadContent />
                       </head>
                       <body>

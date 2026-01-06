@@ -1,9 +1,4 @@
-import {
-  Hydration,
-  HydrationScript,
-  NoHydration,
-  ssr,
-} from 'solid-js/web'
+import { Hydration, NoHydration, ssr } from 'solid-js/web'
 import { HeadContent } from '../HeadContent'
 import { RouterProvider } from '../RouterProvider'
 import { Scripts } from '../Scripts'
@@ -22,7 +17,6 @@ export function RouterServer<TRouter extends AnyRouter>(props: {
         InnerWrap={(innerProps) => (
           <html>
             <head>
-              <HydrationScript />
               <Hydration>
                 <HeadContent />
               </Hydration>

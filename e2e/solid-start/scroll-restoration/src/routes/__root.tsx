@@ -6,7 +6,7 @@ import {
   createRootRoute,
   linkOptions,
 } from '@tanstack/solid-router'
-import { Dynamic, HydrationScript } from 'solid-js/web'
+import { Dynamic } from 'solid-js/web'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -62,7 +62,6 @@ function RootComponent() {
   return (
     <html>
       <head>
-        <HydrationScript />
         <HeadContent />
       </head>
       <body>
