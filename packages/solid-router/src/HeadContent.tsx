@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { For } from 'solid-js'
+import { Portal, isServer } from 'solid-js/web'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -190,12 +191,18 @@ export function HeadContent() {
     <meta name="tsr-head" content="true" data-tsr-head="true" />
   )
 
-  return (
+  const content = (
     <>
       <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
       {marker}
     </>
   )
+
+  if (isServer) {
+    return content
+  }
+
+  return <Portal mount={document.head}>{content}</Portal>
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
