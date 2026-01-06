@@ -699,6 +699,16 @@ const runLoader = async (
     } catch (e) {
       let error = e
 
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        const head = await executeHead(inner, matchId, route)
+        inner.updateMatch(matchId, (prev) => ({
+          ...prev,
+          status: prev.status === 'pending' ? 'success' : prev.status,
+          ...head,
+        }))
+        return
+      }
+
       const pendingPromise = match._nonReactive.minPendingPromise
       if (pendingPromise) await pendingPromise
 

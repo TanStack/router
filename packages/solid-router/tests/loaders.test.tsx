@@ -320,6 +320,33 @@ test('throw error from beforeLoad when navigating to route', async () => {
   expect(indexElement).toBeInTheDocument()
 })
 
+test('throw abortError from loader upon initial load with basepath', async () => {
+  window.history.replaceState(null, 'root', '/app')
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async () => {
+      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+    },
+    component: () => <div>Index route content</div>,
+    errorComponent: () => (
+      <div data-testid="index-error">indexErrorComponent</div>
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree, basepath: '/app' })
+
+  render(() => <RouterProvider router={router} />)
+
+  const indexElement = await screen.findByText('Index route content')
+  expect(indexElement).toBeInTheDocument()
+  expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
+  expect(window.location.pathname.startsWith('/app')).toBe(true)
+})
+
 test('reproducer #4245', async () => {
   const LOADER_WAIT_TIME = 500
   const rootRoute = createRootRoute({})
