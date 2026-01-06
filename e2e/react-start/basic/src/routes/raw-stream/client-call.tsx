@@ -1,29 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import {
-  singleRawStreamFn,
-  multipleRawStreamsFn,
-  jsonEndsFirstFn,
-  rawEndsFirstFn,
-  largeBinaryFn,
-  mixedStreamingFn,
-  textHintPureTextFn,
-  textHintPureBinaryFn,
-  textHintMixedFn,
-  binaryHintTextFn,
-  binaryHintBinaryFn,
-  interleavedStreamsFn,
-  burstPauseBurstFn,
-  threeStreamsFn,
-  emptyStreamFn,
-  errorStreamFn,
-  createStreamConsumer,
-  consumeBinaryStream,
-  collectBytes,
-  compareBytes,
-  TEST7_EXPECTED,
-  TEST8_EXPECTED,
-  TEST9_EXPECTED,
   TEST10_EXPECTED,
   TEST11_EXPECTED,
   TEST12_STREAM_A_EXPECTED,
@@ -32,6 +9,29 @@ import {
   TEST14_STREAM_A_EXPECTED,
   TEST14_STREAM_B_EXPECTED,
   TEST14_STREAM_C_EXPECTED,
+  TEST7_EXPECTED,
+  TEST8_EXPECTED,
+  TEST9_EXPECTED,
+  binaryHintBinaryFn,
+  binaryHintTextFn,
+  burstPauseBurstFn,
+  collectBytes,
+  compareBytes,
+  consumeBinaryStream,
+  createStreamConsumer,
+  emptyStreamFn,
+  errorStreamFn,
+  interleavedStreamsFn,
+  jsonEndsFirstFn,
+  largeBinaryFn,
+  mixedStreamingFn,
+  multipleRawStreamsFn,
+  rawEndsFirstFn,
+  singleRawStreamFn,
+  textHintMixedFn,
+  textHintPureBinaryFn,
+  textHintPureTextFn,
+  threeStreamsFn,
 } from '../../raw-stream-fns'
 
 export const Route = createFileRoute('/raw-stream/client-call')({
@@ -88,7 +88,12 @@ function ClientCallTests() {
         >
           {loading.test1 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test1-result">{JSON.stringify(results.test1)}</pre>
+        <pre
+          className={results.test1 ? '' : 'hidden'}
+          data-testid="test1-result"
+        >
+          {JSON.stringify(results.test1)}
+        </pre>
       </div>
 
       {/* Test 2: Multiple Raw Streams */}
@@ -108,7 +113,12 @@ function ClientCallTests() {
         >
           {loading.test2 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test2-result">{JSON.stringify(results.test2)}</pre>
+        <pre
+          className={results.test2 ? '' : 'hidden'}
+          data-testid="test2-result"
+        >
+          {JSON.stringify(results.test2)}
+        </pre>
       </div>
 
       {/* Test 3: JSON Ends First */}
@@ -128,7 +138,12 @@ function ClientCallTests() {
         >
           {loading.test3 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test3-result">{JSON.stringify(results.test3)}</pre>
+        <pre
+          className={results.test3 ? '' : 'hidden'}
+          data-testid="test3-result"
+        >
+          {JSON.stringify(results.test3)}
+        </pre>
       </div>
 
       {/* Test 4: Raw Ends First */}
@@ -148,7 +163,12 @@ function ClientCallTests() {
         >
           {loading.test4 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test4-result">{JSON.stringify(results.test4)}</pre>
+        <pre
+          className={results.test4 ? '' : 'hidden'}
+          data-testid="test4-result"
+        >
+          {JSON.stringify(results.test4)}
+        </pre>
       </div>
 
       {/* Test 5: Large Binary */}
@@ -172,7 +192,12 @@ function ClientCallTests() {
         >
           {loading.test5 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test5-result">{JSON.stringify(results.test5)}</pre>
+        <pre
+          className={results.test5 ? '' : 'hidden'}
+          data-testid="test5-result"
+        >
+          {JSON.stringify(results.test5)}
+        </pre>
       </div>
 
       {/* Test 6: Mixed Streaming */}
@@ -192,7 +217,12 @@ function ClientCallTests() {
         >
           {loading.test6 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test6-result">{JSON.stringify(results.test6)}</pre>
+        <pre
+          className={results.test6 ? '' : 'hidden'}
+          data-testid="test6-result"
+        >
+          {JSON.stringify(results.test6)}
+        </pre>
       </div>
 
       {/* Hint Tests Section */}
@@ -224,7 +254,12 @@ function ClientCallTests() {
         >
           {loading.test7 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test7-result">{JSON.stringify(results.test7)}</pre>
+        <pre
+          className={results.test7 ? '' : 'hidden'}
+          data-testid="test7-result"
+        >
+          {JSON.stringify(results.test7)}
+        </pre>
       </div>
 
       {/* Test 8: Text Hint with Pure Binary */}
@@ -247,7 +282,12 @@ function ClientCallTests() {
         >
           {loading.test8 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test8-result">{JSON.stringify(results.test8)}</pre>
+        <pre
+          className={results.test8 ? '' : 'hidden'}
+          data-testid="test8-result"
+        >
+          {JSON.stringify(results.test8)}
+        </pre>
       </div>
 
       {/* Test 9: Text Hint with Mixed Content */}
@@ -270,7 +310,12 @@ function ClientCallTests() {
         >
           {loading.test9 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test9-result">{JSON.stringify(results.test9)}</pre>
+        <pre
+          className={results.test9 ? '' : 'hidden'}
+          data-testid="test9-result"
+        >
+          {JSON.stringify(results.test9)}
+        </pre>
       </div>
 
       {/* Test 10: Binary Hint with Text Data */}
@@ -295,7 +340,12 @@ function ClientCallTests() {
         >
           {loading.test10 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test10-result">{JSON.stringify(results.test10)}</pre>
+        <pre
+          className={results.test10 ? '' : 'hidden'}
+          data-testid="test10-result"
+        >
+          {JSON.stringify(results.test10)}
+        </pre>
       </div>
 
       {/* Test 11: Binary Hint with Binary Data */}
@@ -318,7 +368,12 @@ function ClientCallTests() {
         >
           {loading.test11 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test11-result">{JSON.stringify(results.test11)}</pre>
+        <pre
+          className={results.test11 ? '' : 'hidden'}
+          data-testid="test11-result"
+        >
+          {JSON.stringify(results.test11)}
+        </pre>
       </div>
 
       {/* Multiplexing Tests Section */}
@@ -352,7 +407,12 @@ function ClientCallTests() {
         >
           {loading.test12 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test12-result">{JSON.stringify(results.test12)}</pre>
+        <pre
+          className={results.test12 ? '' : 'hidden'}
+          data-testid="test12-result"
+        >
+          {JSON.stringify(results.test12)}
+        </pre>
       </div>
 
       {/* Test 13: Burst-Pause-Burst */}
@@ -375,7 +435,12 @@ function ClientCallTests() {
         >
           {loading.test13 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test13-result">{JSON.stringify(results.test13)}</pre>
+        <pre
+          className={results.test13 ? '' : 'hidden'}
+          data-testid="test13-result"
+        >
+          {JSON.stringify(results.test13)}
+        </pre>
       </div>
 
       {/* Test 14: Three Concurrent Streams */}
@@ -406,7 +471,12 @@ function ClientCallTests() {
         >
           {loading.test14 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test14-result">{JSON.stringify(results.test14)}</pre>
+        <pre
+          className={results.test14 ? '' : 'hidden'}
+          data-testid="test14-result"
+        >
+          {JSON.stringify(results.test14)}
+        </pre>
       </div>
 
       {/* Edge Case Tests Section */}
@@ -435,7 +505,12 @@ function ClientCallTests() {
         >
           {loading.test15 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test15-result">{JSON.stringify(results.test15)}</pre>
+        <pre
+          className={results.test15 ? '' : 'hidden'}
+          data-testid="test15-result"
+        >
+          {JSON.stringify(results.test15)}
+        </pre>
       </div>
 
       {/* Test 16: Stream Error */}
@@ -467,7 +542,12 @@ function ClientCallTests() {
         >
           {loading.test16 ? 'Loading...' : 'Run Test'}
         </button>
-        <pre data-testid="test16-result">{JSON.stringify(results.test16)}</pre>
+        <pre
+          className={results.test16 ? '' : 'hidden'}
+          data-testid="test16-result"
+        >
+          {JSON.stringify(results.test16)}
+        </pre>
       </div>
     </div>
   )
