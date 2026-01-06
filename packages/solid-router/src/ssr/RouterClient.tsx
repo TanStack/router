@@ -33,7 +33,7 @@ export function RouterClient(props: { router: AnyRouter }) {
                     <html>
                       <head>
                         <HydrationScript />
-                        <HeadContent renderIn="head" />
+                        <HeadContent />
                       </head>
                       <body>
                         {props.children}

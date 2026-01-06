@@ -24,7 +24,7 @@ export function RouterServer<TRouter extends AnyRouter>(props: {
             <head>
               <HydrationScript />
               <Hydration>
-                <HeadContent renderIn="head" />
+                <HeadContent />
               </Hydration>
             </head>
             <body>

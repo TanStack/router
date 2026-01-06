@@ -1,6 +1,5 @@
 import * as Solid from 'solid-js'
 import { For } from 'solid-js'
-import { Portal } from 'solid-js/web'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -181,37 +180,15 @@ export const useTags = () => {
     )
 }
 
-type HeadContentProps = {
-  renderIn?: 'auto' | 'head' | 'portal'
-}
-
 /**
  * @description The `HeadContent` component is used to render meta tags, links,
- * and scripts for the current route.
- *
- * Render it in the document `<head>` when hydrating the full document, or let
- * it portal into `<head>` for client-only usage.
+ * and scripts for the current route. Render it in your document `<head>`.
  */
-export function HeadContent(props: HeadContentProps = {}) {
+export function HeadContent() {
   const tags = useTags()
-  const router = useRouter()
-  const renderIn = props.renderIn ?? 'auto'
-  const hasHydrationScript =
-    typeof window !== 'undefined' && Boolean((window as any)._$HY)
-  const renderInline =
-    renderIn === 'head' || (renderIn === 'auto' && hasHydrationScript)
   const marker = (
     <meta name="tsr-head" content="true" data-tsr-head="true" />
   )
-
-  if (!router.isServer && !renderInline && typeof document !== 'undefined') {
-    return (
-      <Portal mount={document.head}>
-        <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
-        {marker}
-      </Portal>
-    )
-  }
 
   return (
     <>

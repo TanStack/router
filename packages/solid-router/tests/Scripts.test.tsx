@@ -238,7 +238,9 @@ describe('client HeadContent', () => {
 
     await router.load()
 
-    const { unmount } = render(() => <RouterProvider router={router} />)
+    const { unmount } = render(() => <RouterProvider router={router} />, {
+      container: document.head,
+    })
 
     const meta = document.head.querySelector('meta[name="description"]')
     const link = document.head.querySelector(
