@@ -15,7 +15,7 @@ import {
   getClientOutputDirectory,
   getServerOutputDirectory,
 } from './output-directory'
-import { postServerBuild } from './post-server-build'
+import { postServerBuild, postServerBuildForNitro } from './post-server-build'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import type {
   GetConfigFn,
@@ -36,6 +36,37 @@ function isFullUrl(str: string): boolean {
   } catch {
     return false
   }
+}
+
+type NitroPluginKind = 'v3' | 'v2' | null
+
+function getNitroPluginKind(
+  plugins: ReadonlyArray<PluginOption>,
+): NitroPluginKind {
+  let hasV3 = false
+  let hasV2 = false
+  const queue = [...plugins]
+
+  while (queue.length) {
+    const plugin = queue.shift()
+    if (!plugin) continue
+    if (Array.isArray(plugin)) {
+      queue.push(...plugin)
+      continue
+    }
+    if (typeof plugin === 'object' && 'name' in plugin) {
+      const name = typeof plugin.name === 'string' ? plugin.name : ''
+      if (name.startsWith('nitro:')) {
+        hasV3 = true
+      } else if (name === 'tanstack-nitro-v2-vite-plugin') {
+        hasV2 = true
+      }
+    }
+  }
+
+  if (hasV3) return 'v3'
+  if (hasV2) return 'v2'
+  return null
 }
 
 export function TanStackStartVitePluginCore(
@@ -351,14 +382,74 @@ export function TanStackStartVitePluginCore(
     // would cause this hook to run before those others' buildApp, breaking prerendering.
     {
       name: 'tanstack-start-core:post-build',
+      configResolved(config) {
+        resolvedStartConfig.viteConfigFile = config.configFile || undefined
+      },
       buildApp: {
         order: 'post',
         async handler(builder) {
           const { startConfig } = getConfig()
-          await postServerBuild({ builder, startConfig })
+          const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
+          if (!serverEnv) {
+            throw new Error('SSR environment not found')
+          }
+          const nitroKindFromPlugins = getNitroPluginKind(
+            builder.config.plugins,
+          )
+          const nitroKind =
+            nitroKindFromPlugins ??
+            (serverEnv.config.build.write === false ? 'v2' : null)
+
+          if (nitroKind === 'v3') {
+            return
+          }
+
+          if (nitroKind === 'v2') {
+            await postServerBuildForNitro({
+              startConfig,
+              mode: 'nitro-server',
+              nitro: {
+                options: {
+                  rootDir: builder.config.root,
+                  output: {
+                    dir: '.output',
+                    publicDir: '.output/public',
+                  },
+                },
+              },
+            })
+            return
+          }
+
+          await postServerBuild({
+            builder,
+            startConfig,
+          })
         },
       },
     },
+    // Nitro module plugin - runs prerendering after Nitro build using vite preview
+    {
+      name: 'tanstack-start-core:nitro-prerender',
+      nitro: {
+        name: 'tanstack-start-prerender',
+        setup(nitro: any) {
+          nitro.hooks.hook('compiled', async () => {
+            const { startConfig, resolvedStartConfig } = getConfig()
+            if (!startConfig.prerender?.enabled && !startConfig.spa?.enabled) {
+              return
+            }
+
+            await postServerBuildForNitro({
+              startConfig,
+              nitro,
+              mode: 'vite-preview',
+              configFile: resolvedStartConfig.viteConfigFile,
+            })
+          })
+        },
+      },
+    } as PluginOption,
     // Server function plugin handles:
     // 1. Identifying createServerFn().handler() calls
     // 2. Extracting server functions to separate modules
