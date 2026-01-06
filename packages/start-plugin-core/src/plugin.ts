@@ -345,12 +345,13 @@ export function TanStackStartVitePluginCore(
         }
       },
     },
-    // Separate plugin for buildApp hook without enforce: 'pre'
+    // Separate plugin for buildApp hook with enforce: 'post'
     // This ensures proper ordering with other plugins that also have
-    // buildApp hooks with order: 'post'. The enforce: 'pre' on the config plugin
-    // would cause this hook to run before those others' buildApp, breaking prerendering.
+    // buildApp hooks with order: 'post'. The enforce: 'post' ensures this
+    // runs after other plugins (like Nitro) complete their builds.
     {
       name: 'tanstack-start-core:post-build',
+      enforce: 'post',
       buildApp: {
         order: 'post',
         async handler(builder) {
