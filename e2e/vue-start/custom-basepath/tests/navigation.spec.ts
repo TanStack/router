@@ -68,7 +68,6 @@ test('server-side redirect', async ({ page, baseURL }) => {
       const headers = new Headers(res.headers())
       expect(headers.get('location')).toBe('/custom/basepath/redirect/throw-it')
     })
-  // now go to the route WITH the base path, this will redirect to the final destination
   await page.request
     .get('/custom/basepath/redirect/throw-it', { maxRedirects: 0 })
     .then((res) => {

@@ -15,7 +15,17 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     nitro({ preset: 'node-server' }),
-    tanstackStart(),
+    tanstackStart({
+      sitemap: { enabled: false },
+      prerender: {
+        enabled: true,
+        filter: ({ path }) =>
+          !path.startsWith('/users') &&
+          !path.startsWith('/this-route-does-not-exist') &&
+          !path.startsWith('/posts/i-do-not-exist') &&
+          !path.startsWith('/deferred'),
+      },
+    }),
     viteSolid({ ssr: true }),
   ],
 })

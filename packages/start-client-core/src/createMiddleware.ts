@@ -227,7 +227,7 @@ export type IntersectAllValidatorOutputs<TMiddlewares, TInputValidator> =
       ? IntersectAllMiddleware<TMiddlewares, 'allOutput'>
       : IntersectAssign<
           IntersectAllMiddleware<TMiddlewares, 'allOutput'>,
-          ResolveValidatorOutput<TInputValidator>
+          Awaited<ResolveValidatorOutput<TInputValidator>>
         >
 
 /**

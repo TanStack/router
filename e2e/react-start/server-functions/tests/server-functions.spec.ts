@@ -367,6 +367,54 @@ test.describe('server function sets cookies', () => {
   })
 })
 
+test.describe('server functions with async validation', () => {
+  test.use({
+    whitelistErrors: [
+      /Failed to load resource: the server responded with a status of 500/,
+    ],
+  })
+
+  test('with valid input', async ({ page }) => {
+    await page.goto('/async-validation')
+
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('run-with-valid-btn').click()
+    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('[data-testid="result"]:has-text("valid")')
+    await page.waitForSelector(
+      '[data-testid="errorMessage"]:has-text("$undefined")',
+    )
+
+    const result = (await page.getByTestId('result').textContent()) || ''
+    expect(result).toBe('valid')
+
+    const errorMessage =
+      (await page.getByTestId('errorMessage').textContent()) || ''
+    expect(errorMessage).toBe('$undefined')
+  })
+
+  test('with invalid input', async ({ page }) => {
+    await page.goto('/async-validation')
+
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('run-with-invalid-btn').click()
+    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('[data-testid="result"]:has-text("$undefined")')
+    await page.waitForSelector(
+      '[data-testid="errorMessage"]:has-text("invalid")',
+    )
+
+    const result = (await page.getByTestId('result').textContent()) || ''
+    expect(result).toBe('$undefined')
+
+    const errorMessage =
+      (await page.getByTestId('errorMessage').textContent()) || ''
+    expect(errorMessage).toContain('Invalid input')
+  })
+})
+
 test('raw response', async ({ page }) => {
   await page.goto('/raw-response')
 
@@ -614,4 +662,98 @@ test('nested star re-exported server function factory middleware executes correc
   await expect(
     page.getByTestId('fn-comparison-nestedReexportedFactoryFn'),
   ).toContainText('equal')
+})
+
+test('server-only imports in middleware.server() are stripped from client build', async ({
+  page,
+}) => {
+  // This test verifies that server-only imports (like getRequestHeaders from @tanstack/react-start/server)
+  // inside createMiddleware().server() are properly stripped from the client build.
+  // If the .server() part is not removed, the build would fail with node:async_hooks externalization errors.
+  // The fact that this page loads at all proves the server code was stripped correctly.
+  await page.goto('/middleware/server-import-middleware')
+
+  await page.waitForLoadState('networkidle')
+
+  // Click the button to call the server function with middleware
+  await page.getByTestId('test-server-import-middleware-btn').click()
+
+  // Wait for the result - should contain our custom test header value
+  await expect(
+    page.getByTestId('server-import-middleware-result'),
+  ).toContainText('test-header-value')
+})
+
+test('middleware factories with server-only imports are stripped from client build', async ({
+  page,
+}) => {
+  // This test verifies that middleware factories (functions returning createMiddleware().server())
+  // with server-only imports are properly stripped from the client build.
+  // If the .server() part inside the factory is not removed, the build would fail with
+  // node:async_hooks externalization errors because getRequestHeaders uses node:async_hooks internally.
+  // The fact that this page loads at all proves the server code was stripped correctly.
+  await page.goto('/middleware/middleware-factory')
+
+  await page.waitForLoadState('networkidle')
+
+  // Click the button to call the server function with factory middlewares
+  await page.getByTestId('test-middleware-factory-btn').click()
+
+  // Wait for the result - should contain our custom header value from the factory middleware
+  await expect(page.getByTestId('header-value')).toContainText(
+    'factory-header-value',
+  )
+
+  // Also verify the prefixed headers were matched correctly
+  await expect(page.getByTestId('matched-headers')).toContainText(
+    'x-factory-one',
+  )
+  await expect(page.getByTestId('matched-headers')).toContainText(
+    'x-factory-two',
+  )
+})
+
+test('redirect via server function with middleware does not cause serialization error (issue #5372)', async ({
+  page,
+}) => {
+  // This test verifies that throwing a redirect from a server function
+  // that has middleware attached does not cause a SerovalUnsupportedTypeError.
+  // Issue #5372: Middleware causes serialization error when throwing redirects via server function
+  await page.goto('/middleware/redirect-with-middleware')
+
+  await page.waitForLoadState('networkidle')
+
+  // Verify we're on the source page
+  await expect(page.getByTestId('middleware-redirect-source')).toBeVisible()
+
+  // Click the button to trigger the redirect via server function with middleware
+  await page.getByTestId('trigger-redirect-btn').click()
+
+  // Should redirect to target page without serialization error
+  await expect(page.getByTestId('middleware-redirect-target')).toBeVisible()
+  expect(page.url()).toContain('/middleware/redirect-with-middleware/target')
+
+  // Verify no error was shown (would indicate serialization failure)
+  await expect(page.getByTestId('error-message')).not.toBeVisible()
+})
+
+test.describe('unhandled exception in middleware (issue #5266)', () => {
+  // Whitelist the expected 500 error since this test verifies error handling
+  test.use({ whitelistErrors: [/500/] })
+
+  test('does not crash server and shows error component', async ({ page }) => {
+    // This test verifies that when a middleware throws an unhandled exception,
+    // the server does not crash and the error is properly caught and displayed.
+    // Issue #5266: Server crashes when unhandled exception in server function or middleware
+    await page.goto('/middleware/unhandled-exception')
+
+    // The error should be caught and displayed via errorComponent
+    await expect(page.getByTestId('unhandled-exception-error')).toBeVisible()
+
+    // Verify the error message is shown
+    await expect(page.getByTestId('error-message')).toBeVisible()
+
+    // The route component should NOT render since error was thrown
+    await expect(page.getByTestId('route-success')).not.toBeVisible()
+  })
 })

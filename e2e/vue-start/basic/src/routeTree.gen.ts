@@ -13,6 +13,7 @@ import { Route as Char45824Char54620Char48124Char44397RouteImport } from './rout
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
+import { Route as RawStreamRouteImport } from './routes/raw-stream'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
@@ -24,6 +25,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
+import { Route as RawStreamIndexRouteImport } from './routes/raw-stream/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as NotFoundIndexRouteImport } from './routes/not-found/index'
 import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-cookie-redirect/index'
@@ -31,9 +33,14 @@ import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as SearchParamsLoaderThrowsRedirectRouteImport } from './routes/search-params/loader-throws-redirect'
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
+import { Route as RawStreamSsrTextHintRouteImport } from './routes/raw-stream/ssr-text-hint'
+import { Route as RawStreamSsrSingleRouteImport } from './routes/raw-stream/ssr-single'
+import { Route as RawStreamSsrMultipleRouteImport } from './routes/raw-stream/ssr-multiple'
+import { Route as RawStreamSsrMixedRouteImport } from './routes/raw-stream/ssr-mixed'
+import { Route as RawStreamSsrBinaryHintRouteImport } from './routes/raw-stream/ssr-binary-hint'
+import { Route as RawStreamClientCallRouteImport } from './routes/raw-stream/client-call'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
-import { Route as NotFoundViaHeadRouteImport } from './routes/not-found/via-head'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
 import { Route as ApiUsersRouteImport } from './routes/api/users'
@@ -69,6 +76,11 @@ const StreamRoute = StreamRouteImport.update({
 const ScriptsRoute = ScriptsRouteImport.update({
   id: '/scripts',
   path: '/scripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RawStreamRoute = RawStreamRouteImport.update({
+  id: '/raw-stream',
+  path: '/raw-stream',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsRoute = PostsRouteImport.update({
@@ -125,6 +137,11 @@ const RedirectIndexRoute = RedirectIndexRouteImport.update({
   path: '/redirect/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RawStreamIndexRoute = RawStreamIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RawStreamRoute,
+} as any)
 const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -162,6 +179,36 @@ const RedirectTargetRoute = RedirectTargetRouteImport.update({
   path: '/redirect/$target',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RawStreamSsrTextHintRoute = RawStreamSsrTextHintRouteImport.update({
+  id: '/ssr-text-hint',
+  path: '/ssr-text-hint',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrSingleRoute = RawStreamSsrSingleRouteImport.update({
+  id: '/ssr-single',
+  path: '/ssr-single',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrMultipleRoute = RawStreamSsrMultipleRouteImport.update({
+  id: '/ssr-multiple',
+  path: '/ssr-multiple',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrMixedRoute = RawStreamSsrMixedRouteImport.update({
+  id: '/ssr-mixed',
+  path: '/ssr-mixed',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrBinaryHintRoute = RawStreamSsrBinaryHintRouteImport.update({
+  id: '/ssr-binary-hint',
+  path: '/ssr-binary-hint',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamClientCallRoute = RawStreamClientCallRouteImport.update({
+  id: '/client-call',
+  path: '/client-call',
+  getParentRoute: () => RawStreamRoute,
+} as any)
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
@@ -170,11 +217,6 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
 const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
-  getParentRoute: () => NotFoundRouteRoute,
-} as any)
-const NotFoundViaHeadRoute = NotFoundViaHeadRouteImport.update({
-  id: '/via-head',
-  path: '/via-head',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
 const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
@@ -266,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
+  '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
@@ -273,9 +316,14 @@ export interface FileRoutesByFullPath {
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
-  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/raw-stream/client-call': typeof RawStreamClientCallRoute
+  '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
+  '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
+  '/raw-stream/ssr-multiple': typeof RawStreamSsrMultipleRoute
+  '/raw-stream/ssr-single': typeof RawStreamSsrSingleRoute
+  '/raw-stream/ssr-text-hint': typeof RawStreamSsrTextHintRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
@@ -283,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/multi-cookie-redirect': typeof MultiCookieRedirectIndexRoute
   '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
+  '/raw-stream/': typeof RawStreamIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -309,15 +358,21 @@ export interface FileRoutesByTo {
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
-  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/raw-stream/client-call': typeof RawStreamClientCallRoute
+  '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
+  '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
+  '/raw-stream/ssr-multiple': typeof RawStreamSsrMultipleRoute
+  '/raw-stream/ssr-single': typeof RawStreamSsrSingleRoute
+  '/raw-stream/ssr-text-hint': typeof RawStreamSsrTextHintRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/multi-cookie-redirect': typeof MultiCookieRedirectIndexRoute
   '/not-found': typeof NotFoundIndexRoute
   '/posts': typeof PostsIndexRoute
+  '/raw-stream': typeof RawStreamIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
   '/users': typeof UsersIndexRoute
@@ -343,6 +398,7 @@ export interface FileRoutesById {
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
+  '/raw-stream': typeof RawStreamRouteWithChildren
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
@@ -351,9 +407,14 @@ export interface FileRoutesById {
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
-  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/raw-stream/client-call': typeof RawStreamClientCallRoute
+  '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
+  '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
+  '/raw-stream/ssr-multiple': typeof RawStreamSsrMultipleRoute
+  '/raw-stream/ssr-single': typeof RawStreamSsrSingleRoute
+  '/raw-stream/ssr-text-hint': typeof RawStreamSsrTextHintRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
@@ -361,6 +422,7 @@ export interface FileRoutesById {
   '/multi-cookie-redirect/': typeof MultiCookieRedirectIndexRoute
   '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
+  '/raw-stream/': typeof RawStreamIndexRoute
   '/redirect/': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
   '/users/': typeof UsersIndexRoute
@@ -386,6 +448,7 @@ export interface FileRouteTypes {
     | '/inline-scripts'
     | '/links'
     | '/posts'
+    | '/raw-stream'
     | '/scripts'
     | '/stream'
     | '/users'
@@ -393,9 +456,14 @@ export interface FileRouteTypes {
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
-    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/raw-stream/client-call'
+    | '/raw-stream/ssr-binary-hint'
+    | '/raw-stream/ssr-mixed'
+    | '/raw-stream/ssr-multiple'
+    | '/raw-stream/ssr-single'
+    | '/raw-stream/ssr-text-hint'
     | '/redirect/$target'
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
@@ -403,6 +471,7 @@ export interface FileRouteTypes {
     | '/multi-cookie-redirect'
     | '/not-found/'
     | '/posts/'
+    | '/raw-stream/'
     | '/redirect'
     | '/search-params/'
     | '/users/'
@@ -429,15 +498,21 @@ export interface FileRouteTypes {
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
-    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/raw-stream/client-call'
+    | '/raw-stream/ssr-binary-hint'
+    | '/raw-stream/ssr-mixed'
+    | '/raw-stream/ssr-multiple'
+    | '/raw-stream/ssr-single'
+    | '/raw-stream/ssr-text-hint'
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/users/$userId'
     | '/multi-cookie-redirect'
     | '/not-found'
     | '/posts'
+    | '/raw-stream'
     | '/redirect'
     | '/search-params'
     | '/users'
@@ -462,6 +537,7 @@ export interface FileRouteTypes {
     | '/inline-scripts'
     | '/links'
     | '/posts'
+    | '/raw-stream'
     | '/scripts'
     | '/stream'
     | '/users'
@@ -470,9 +546,14 @@ export interface FileRouteTypes {
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
-    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/raw-stream/client-call'
+    | '/raw-stream/ssr-binary-hint'
+    | '/raw-stream/ssr-mixed'
+    | '/raw-stream/ssr-multiple'
+    | '/raw-stream/ssr-single'
+    | '/raw-stream/ssr-text-hint'
     | '/redirect/$target'
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
@@ -480,6 +561,7 @@ export interface FileRouteTypes {
     | '/multi-cookie-redirect/'
     | '/not-found/'
     | '/posts/'
+    | '/raw-stream/'
     | '/redirect/'
     | '/search-params/'
     | '/users/'
@@ -505,6 +587,7 @@ export interface RootRouteChildren {
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
+  RawStreamRoute: typeof RawStreamRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
   StreamRoute: typeof StreamRoute
   UsersRoute: typeof UsersRouteWithChildren
@@ -545,6 +628,13 @@ declare module '@tanstack/vue-router' {
       path: '/scripts'
       fullPath: '/scripts'
       preLoaderRoute: typeof ScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/raw-stream': {
+      id: '/raw-stream'
+      path: '/raw-stream'
+      fullPath: '/raw-stream'
+      preLoaderRoute: typeof RawStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts': {
@@ -624,6 +714,13 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof RedirectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/raw-stream/': {
+      id: '/raw-stream/'
+      path: '/'
+      fullPath: '/raw-stream/'
+      preLoaderRoute: typeof RawStreamIndexRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
     '/posts/': {
       id: '/posts/'
       path: '/'
@@ -673,6 +770,48 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof RedirectTargetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/raw-stream/ssr-text-hint': {
+      id: '/raw-stream/ssr-text-hint'
+      path: '/ssr-text-hint'
+      fullPath: '/raw-stream/ssr-text-hint'
+      preLoaderRoute: typeof RawStreamSsrTextHintRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-single': {
+      id: '/raw-stream/ssr-single'
+      path: '/ssr-single'
+      fullPath: '/raw-stream/ssr-single'
+      preLoaderRoute: typeof RawStreamSsrSingleRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-multiple': {
+      id: '/raw-stream/ssr-multiple'
+      path: '/ssr-multiple'
+      fullPath: '/raw-stream/ssr-multiple'
+      preLoaderRoute: typeof RawStreamSsrMultipleRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-mixed': {
+      id: '/raw-stream/ssr-mixed'
+      path: '/ssr-mixed'
+      fullPath: '/raw-stream/ssr-mixed'
+      preLoaderRoute: typeof RawStreamSsrMixedRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-binary-hint': {
+      id: '/raw-stream/ssr-binary-hint'
+      path: '/ssr-binary-hint'
+      fullPath: '/raw-stream/ssr-binary-hint'
+      preLoaderRoute: typeof RawStreamSsrBinaryHintRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/client-call': {
+      id: '/raw-stream/client-call'
+      path: '/client-call'
+      fullPath: '/raw-stream/client-call'
+      preLoaderRoute: typeof RawStreamClientCallRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
@@ -685,13 +824,6 @@ declare module '@tanstack/vue-router' {
       path: '/via-loader'
       fullPath: '/not-found/via-loader'
       preLoaderRoute: typeof NotFoundViaLoaderRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
-    '/not-found/via-head': {
-      id: '/not-found/via-head'
-      path: '/via-head'
-      fullPath: '/not-found/via-head'
-      preLoaderRoute: typeof NotFoundViaHeadRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
     '/not-found/via-beforeLoad': {
@@ -804,14 +936,12 @@ declare module '@tanstack/vue-router' {
 
 interface NotFoundRouteRouteChildren {
   NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
-  NotFoundViaHeadRoute: typeof NotFoundViaHeadRoute
   NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
   NotFoundIndexRoute: typeof NotFoundIndexRoute
 }
 
 const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
   NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
-  NotFoundViaHeadRoute: NotFoundViaHeadRoute,
   NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
   NotFoundIndexRoute: NotFoundIndexRoute,
 }
@@ -872,6 +1002,30 @@ const PostsRouteChildren: PostsRouteChildren = {
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
+interface RawStreamRouteChildren {
+  RawStreamClientCallRoute: typeof RawStreamClientCallRoute
+  RawStreamSsrBinaryHintRoute: typeof RawStreamSsrBinaryHintRoute
+  RawStreamSsrMixedRoute: typeof RawStreamSsrMixedRoute
+  RawStreamSsrMultipleRoute: typeof RawStreamSsrMultipleRoute
+  RawStreamSsrSingleRoute: typeof RawStreamSsrSingleRoute
+  RawStreamSsrTextHintRoute: typeof RawStreamSsrTextHintRoute
+  RawStreamIndexRoute: typeof RawStreamIndexRoute
+}
+
+const RawStreamRouteChildren: RawStreamRouteChildren = {
+  RawStreamClientCallRoute: RawStreamClientCallRoute,
+  RawStreamSsrBinaryHintRoute: RawStreamSsrBinaryHintRoute,
+  RawStreamSsrMixedRoute: RawStreamSsrMixedRoute,
+  RawStreamSsrMultipleRoute: RawStreamSsrMultipleRoute,
+  RawStreamSsrSingleRoute: RawStreamSsrSingleRoute,
+  RawStreamSsrTextHintRoute: RawStreamSsrTextHintRoute,
+  RawStreamIndexRoute: RawStreamIndexRoute,
+}
+
+const RawStreamRouteWithChildren = RawStreamRoute._addFileChildren(
+  RawStreamRouteChildren,
+)
+
 interface UsersRouteChildren {
   UsersUserIdRoute: typeof UsersUserIdRoute
   UsersIndexRoute: typeof UsersIndexRoute
@@ -931,6 +1085,7 @@ const rootRouteChildren: RootRouteChildren = {
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
+  RawStreamRoute: RawStreamRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
   StreamRoute: StreamRoute,
   UsersRoute: UsersRouteWithChildren,

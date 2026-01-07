@@ -33,6 +33,31 @@ function RouteComponent() {
             Request Middleware in combination with server function
           </Route.Link>
         </li>
+        <li>
+          <Route.Link
+            to="./server-import-middleware"
+            data-testid="server-import-middleware-link"
+          >
+            Server imports in middleware are stripped from client build
+          </Route.Link>
+        </li>
+        <li>
+          <Route.Link
+            to="./middleware-factory"
+            data-testid="middleware-factory-link"
+          >
+            Middleware factories with server imports are stripped from client
+            build
+          </Route.Link>
+        </li>
+        <li>
+          <Route.Link
+            to="./redirect-with-middleware"
+            data-testid="redirect-with-middleware-link"
+          >
+            Redirect via server function with middleware
+          </Route.Link>
+        </li>
       </ul>
     </div>
   )

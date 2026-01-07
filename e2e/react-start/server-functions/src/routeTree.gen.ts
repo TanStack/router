@@ -23,6 +23,7 @@ import { Route as FormdataContextRouteImport } from './routes/formdata-context'
 import { Route as EnvOnlyRouteImport } from './routes/env-only'
 import { Route as DeadCodePreserveRouteImport } from './routes/dead-code-preserve'
 import { Route as ConsistentRouteImport } from './routes/consistent'
+import { Route as AsyncValidationRouteImport } from './routes/async-validation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RedirectTestIndexRouteImport } from './routes/redirect-test/index'
 import { Route as RedirectTestSsrIndexRouteImport } from './routes/redirect-test-ssr/index'
@@ -34,11 +35,16 @@ import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as AbortSignalIndexRouteImport } from './routes/abort-signal/index'
 import { Route as RedirectTestTargetRouteImport } from './routes/redirect-test/target'
 import { Route as RedirectTestSsrTargetRouteImport } from './routes/redirect-test-ssr/target'
+import { Route as MiddlewareUnhandledExceptionRouteImport } from './routes/middleware/unhandled-exception'
+import { Route as MiddlewareServerImportMiddlewareRouteImport } from './routes/middleware/server-import-middleware'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
+import { Route as MiddlewareMiddlewareFactoryRouteImport } from './routes/middleware/middleware-factory'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as AbortSignalMethodRouteImport } from './routes/abort-signal/$method'
+import { Route as MiddlewareRedirectWithMiddlewareIndexRouteImport } from './routes/middleware/redirect-with-middleware/index'
+import { Route as MiddlewareRedirectWithMiddlewareTargetRouteImport } from './routes/middleware/redirect-with-middleware/target'
 import { Route as FormdataRedirectTargetNameRouteImport } from './routes/formdata-redirect/target.$name'
 
 const SubmitPostFormdataRoute = SubmitPostFormdataRouteImport.update({
@@ -111,6 +117,11 @@ const ConsistentRoute = ConsistentRouteImport.update({
   path: '/consistent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AsyncValidationRoute = AsyncValidationRouteImport.update({
+  id: '/async-validation',
+  path: '/async-validation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -166,6 +177,18 @@ const RedirectTestSsrTargetRoute = RedirectTestSsrTargetRouteImport.update({
   path: '/redirect-test-ssr/target',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MiddlewareUnhandledExceptionRoute =
+  MiddlewareUnhandledExceptionRouteImport.update({
+    id: '/middleware/unhandled-exception',
+    path: '/middleware/unhandled-exception',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MiddlewareServerImportMiddlewareRoute =
+  MiddlewareServerImportMiddlewareRouteImport.update({
+    id: '/middleware/server-import-middleware',
+    path: '/middleware/server-import-middleware',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MiddlewareSendServerFnRoute = MiddlewareSendServerFnRouteImport.update({
   id: '/middleware/send-serverFn',
   path: '/middleware/send-serverFn',
@@ -175,6 +198,12 @@ const MiddlewareRequestMiddlewareRoute =
   MiddlewareRequestMiddlewareRouteImport.update({
     id: '/middleware/request-middleware',
     path: '/middleware/request-middleware',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MiddlewareMiddlewareFactoryRoute =
+  MiddlewareMiddlewareFactoryRouteImport.update({
+    id: '/middleware/middleware-factory',
+    path: '/middleware/middleware-factory',
     getParentRoute: () => rootRouteImport,
   } as any)
 const MiddlewareClientMiddlewareRouterRoute =
@@ -193,6 +222,18 @@ const AbortSignalMethodRoute = AbortSignalMethodRouteImport.update({
   path: '/abort-signal/$method',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MiddlewareRedirectWithMiddlewareIndexRoute =
+  MiddlewareRedirectWithMiddlewareIndexRouteImport.update({
+    id: '/middleware/redirect-with-middleware/',
+    path: '/middleware/redirect-with-middleware/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MiddlewareRedirectWithMiddlewareTargetRoute =
+  MiddlewareRedirectWithMiddlewareTargetRouteImport.update({
+    id: '/middleware/redirect-with-middleware/target',
+    path: '/middleware/redirect-with-middleware/target',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const FormdataRedirectTargetNameRoute =
   FormdataRedirectTargetNameRouteImport.update({
     id: '/formdata-redirect/target/$name',
@@ -202,6 +243,7 @@ const FormdataRedirectTargetNameRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -219,8 +261,11 @@ export interface FileRoutesByFullPath {
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
+  '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/abort-signal': typeof AbortSignalIndexRoute
@@ -232,9 +277,12 @@ export interface FileRoutesByFullPath {
   '/redirect-test-ssr': typeof RedirectTestSsrIndexRoute
   '/redirect-test': typeof RedirectTestIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
+  '/middleware/redirect-with-middleware/target': typeof MiddlewareRedirectWithMiddlewareTargetRoute
+  '/middleware/redirect-with-middleware': typeof MiddlewareRedirectWithMiddlewareIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -252,8 +300,11 @@ export interface FileRoutesByTo {
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
+  '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/abort-signal': typeof AbortSignalIndexRoute
@@ -265,10 +316,13 @@ export interface FileRoutesByTo {
   '/redirect-test-ssr': typeof RedirectTestSsrIndexRoute
   '/redirect-test': typeof RedirectTestIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
+  '/middleware/redirect-with-middleware/target': typeof MiddlewareRedirectWithMiddlewareTargetRoute
+  '/middleware/redirect-with-middleware': typeof MiddlewareRedirectWithMiddlewareIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
@@ -286,8 +340,11 @@ export interface FileRoutesById {
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
+  '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/abort-signal/': typeof AbortSignalIndexRoute
@@ -299,11 +356,14 @@ export interface FileRoutesById {
   '/redirect-test-ssr/': typeof RedirectTestSsrIndexRoute
   '/redirect-test/': typeof RedirectTestIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
+  '/middleware/redirect-with-middleware/target': typeof MiddlewareRedirectWithMiddlewareTargetRoute
+  '/middleware/redirect-with-middleware/': typeof MiddlewareRedirectWithMiddlewareIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/async-validation'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -321,8 +381,11 @@ export interface FileRouteTypes {
     | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/middleware-factory'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/server-import-middleware'
+    | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/abort-signal'
@@ -334,9 +397,12 @@ export interface FileRouteTypes {
     | '/redirect-test-ssr'
     | '/redirect-test'
     | '/formdata-redirect/target/$name'
+    | '/middleware/redirect-with-middleware/target'
+    | '/middleware/redirect-with-middleware'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/async-validation'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -354,8 +420,11 @@ export interface FileRouteTypes {
     | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/middleware-factory'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/server-import-middleware'
+    | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/abort-signal'
@@ -367,9 +436,12 @@ export interface FileRouteTypes {
     | '/redirect-test-ssr'
     | '/redirect-test'
     | '/formdata-redirect/target/$name'
+    | '/middleware/redirect-with-middleware/target'
+    | '/middleware/redirect-with-middleware'
   id:
     | '__root__'
     | '/'
+    | '/async-validation'
     | '/consistent'
     | '/dead-code-preserve'
     | '/env-only'
@@ -387,8 +459,11 @@ export interface FileRouteTypes {
     | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/middleware-factory'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/server-import-middleware'
+    | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/abort-signal/'
@@ -400,10 +475,13 @@ export interface FileRouteTypes {
     | '/redirect-test-ssr/'
     | '/redirect-test/'
     | '/formdata-redirect/target/$name'
+    | '/middleware/redirect-with-middleware/target'
+    | '/middleware/redirect-with-middleware/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AsyncValidationRoute: typeof AsyncValidationRoute
   ConsistentRoute: typeof ConsistentRoute
   DeadCodePreserveRoute: typeof DeadCodePreserveRoute
   EnvOnlyRoute: typeof EnvOnlyRoute
@@ -421,8 +499,11 @@ export interface RootRouteChildren {
   AbortSignalMethodRoute: typeof AbortSignalMethodRoute
   CookiesSetRoute: typeof CookiesSetRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
+  MiddlewareMiddlewareFactoryRoute: typeof MiddlewareMiddlewareFactoryRoute
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
+  MiddlewareServerImportMiddlewareRoute: typeof MiddlewareServerImportMiddlewareRoute
+  MiddlewareUnhandledExceptionRoute: typeof MiddlewareUnhandledExceptionRoute
   RedirectTestSsrTargetRoute: typeof RedirectTestSsrTargetRoute
   RedirectTestTargetRoute: typeof RedirectTestTargetRoute
   AbortSignalIndexRoute: typeof AbortSignalIndexRoute
@@ -434,6 +515,8 @@ export interface RootRouteChildren {
   RedirectTestSsrIndexRoute: typeof RedirectTestSsrIndexRoute
   RedirectTestIndexRoute: typeof RedirectTestIndexRoute
   FormdataRedirectTargetNameRoute: typeof FormdataRedirectTargetNameRoute
+  MiddlewareRedirectWithMiddlewareTargetRoute: typeof MiddlewareRedirectWithMiddlewareTargetRoute
+  MiddlewareRedirectWithMiddlewareIndexRoute: typeof MiddlewareRedirectWithMiddlewareIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -536,6 +619,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsistentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/async-validation': {
+      id: '/async-validation'
+      path: '/async-validation'
+      fullPath: '/async-validation'
+      preLoaderRoute: typeof AsyncValidationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -613,6 +703,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTestSsrTargetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/unhandled-exception': {
+      id: '/middleware/unhandled-exception'
+      path: '/middleware/unhandled-exception'
+      fullPath: '/middleware/unhandled-exception'
+      preLoaderRoute: typeof MiddlewareUnhandledExceptionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/middleware/server-import-middleware': {
+      id: '/middleware/server-import-middleware'
+      path: '/middleware/server-import-middleware'
+      fullPath: '/middleware/server-import-middleware'
+      preLoaderRoute: typeof MiddlewareServerImportMiddlewareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/send-serverFn': {
       id: '/middleware/send-serverFn'
       path: '/middleware/send-serverFn'
@@ -625,6 +729,13 @@ declare module '@tanstack/react-router' {
       path: '/middleware/request-middleware'
       fullPath: '/middleware/request-middleware'
       preLoaderRoute: typeof MiddlewareRequestMiddlewareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/middleware/middleware-factory': {
+      id: '/middleware/middleware-factory'
+      path: '/middleware/middleware-factory'
+      fullPath: '/middleware/middleware-factory'
+      preLoaderRoute: typeof MiddlewareMiddlewareFactoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/middleware/client-middleware-router': {
@@ -648,6 +759,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AbortSignalMethodRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/redirect-with-middleware/': {
+      id: '/middleware/redirect-with-middleware/'
+      path: '/middleware/redirect-with-middleware'
+      fullPath: '/middleware/redirect-with-middleware'
+      preLoaderRoute: typeof MiddlewareRedirectWithMiddlewareIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/middleware/redirect-with-middleware/target': {
+      id: '/middleware/redirect-with-middleware/target'
+      path: '/middleware/redirect-with-middleware/target'
+      fullPath: '/middleware/redirect-with-middleware/target'
+      preLoaderRoute: typeof MiddlewareRedirectWithMiddlewareTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/formdata-redirect/target/$name': {
       id: '/formdata-redirect/target/$name'
       path: '/formdata-redirect/target/$name'
@@ -660,6 +785,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AsyncValidationRoute: AsyncValidationRoute,
   ConsistentRoute: ConsistentRoute,
   DeadCodePreserveRoute: DeadCodePreserveRoute,
   EnvOnlyRoute: EnvOnlyRoute,
@@ -677,8 +803,11 @@ const rootRouteChildren: RootRouteChildren = {
   AbortSignalMethodRoute: AbortSignalMethodRoute,
   CookiesSetRoute: CookiesSetRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
+  MiddlewareMiddlewareFactoryRoute: MiddlewareMiddlewareFactoryRoute,
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
+  MiddlewareServerImportMiddlewareRoute: MiddlewareServerImportMiddlewareRoute,
+  MiddlewareUnhandledExceptionRoute: MiddlewareUnhandledExceptionRoute,
   RedirectTestSsrTargetRoute: RedirectTestSsrTargetRoute,
   RedirectTestTargetRoute: RedirectTestTargetRoute,
   AbortSignalIndexRoute: AbortSignalIndexRoute,
@@ -690,6 +819,10 @@ const rootRouteChildren: RootRouteChildren = {
   RedirectTestSsrIndexRoute: RedirectTestSsrIndexRoute,
   RedirectTestIndexRoute: RedirectTestIndexRoute,
   FormdataRedirectTargetNameRoute: FormdataRedirectTargetNameRoute,
+  MiddlewareRedirectWithMiddlewareTargetRoute:
+    MiddlewareRedirectWithMiddlewareTargetRoute,
+  MiddlewareRedirectWithMiddlewareIndexRoute:
+    MiddlewareRedirectWithMiddlewareIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

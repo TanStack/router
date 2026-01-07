@@ -8,6 +8,7 @@ import type {
 } from '../../router'
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
+import type { RawStream } from './RawStream'
 
 declare const TSR_SERIALIZABLE: unique symbol
 export type TSR_SERIALIZABLE = typeof TSR_SERIALIZABLE
@@ -21,6 +22,8 @@ export interface DefaultSerializable {
   undefined: undefined
   bigint: bigint
   Date: Date
+  Uint8Array: Uint8Array
+  RawStream: RawStream
   TsrSerializable: TsrSerializable
 }
 

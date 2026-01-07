@@ -72,6 +72,7 @@
   },
   "pnpm": {
     "overrides": {
+      "@types/babel__traverse": "^7.28.0",
       "vite-plugin-dts": "4.0.3",
       "solid-js": "1.9.10",
       "react": "$react",
@@ -119,8 +120,6 @@
       "@tanstack/vue-router": "workspace:*",
       "@tanstack/vue-router-devtools": "workspace:*",
       "@tanstack/eslint-plugin-router": "workspace:*",
-      "@tanstack/server-functions-plugin": "workspace:*",
-      "@tanstack/directive-functions-plugin": "workspace:*",
       "@tanstack/router-utils": "workspace:*",
       "@tanstack/start-static-server-functions": "workspace:*",
       "@tanstack/nitro-v2-vite-plugin": "workspace:*"

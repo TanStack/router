@@ -128,7 +128,7 @@ export const Route = createFileRoute('/api/users')({
     middleware: [requestLogger],
     handlers: {
       GET: async () => {
-        return json({ users: await getUsers() })
+        return Response.json({ users: await getUsers() })
       },
     },
   },
@@ -185,7 +185,6 @@ Create server routes for health monitoring:
 ```tsx
 // routes/health.ts
 import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
 
 export const Route = createFileRoute('/health')({
   server: {
@@ -200,7 +199,7 @@ export const Route = createFileRoute('/health')({
           version: process.env.npm_package_version,
         }
 
-        return json(checks)
+        return Response.json(checks)
       },
     },
   },
@@ -314,7 +313,7 @@ export const Route = createFileRoute('/metrics')({
   server: {
     handlers: {
       GET: async () => {
-        return json({
+        return Response.json({
           system: {
             uptime: process.uptime(),
             memory: process.memoryUsage(),
@@ -459,7 +458,7 @@ export const Route = createFileRoute('/admin/errors')({
           ...data,
         }))
 
-        return json({ errors })
+        return Response.json({ errors })
       },
     },
   },

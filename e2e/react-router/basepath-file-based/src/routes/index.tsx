@@ -19,6 +19,26 @@ function App() {
         }
       >
         Navigate to /about with document reload
+      </button>{' '}
+      <button
+        data-testid="to-redirect-btn"
+        onClick={() =>
+          navigate({
+            to: '/redirect',
+          })
+        }
+      >
+        Navigate to /redirect
+      </button>{' '}
+      <button
+        data-testid="to-redirect-reload-btn"
+        onClick={() =>
+          navigate({
+            to: '/redirectReload',
+          })
+        }
+      >
+        Navigate to /redirectReload
       </button>
     </div>
   )

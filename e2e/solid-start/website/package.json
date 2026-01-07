@@ -26,7 +26,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "srvx": "^0.9.8",
+    "srvx": "^0.10.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.10",

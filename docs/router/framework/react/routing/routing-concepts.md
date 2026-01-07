@@ -309,7 +309,7 @@ routes/
 │   ├── b.tsx
 ```
 
-However, unlike Layout Routes, since Pathless Layout Routes do match based on URL path segments, this means that these routes do not support [Dynamic Route Segments](#dynamic-route-segments) as part of their path and therefore cannot be matched in the URL.
+However, unlike Layout Routes, since Pathless Layout Routes do not match based on URL path segments, this means that these routes do not support [Dynamic Route Segments](#dynamic-route-segments) as part of their path and therefore cannot be matched in the URL.
 
 This means that you cannot do this:
 

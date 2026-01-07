@@ -210,6 +210,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
           id: match.id,
           status: match.status,
           error: match.error,
+          invalid: match.invalid,
           _forcePending: match._forcePending,
           _displayPending: match._displayPending,
         },

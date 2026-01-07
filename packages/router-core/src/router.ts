@@ -751,16 +751,27 @@ export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
 }) => void
 
 export interface ServerSsr {
-  injectedHtml: Array<InjectedHtmlEntry>
-  injectHtml: (getHtml: () => string | Promise<string>) => Promise<void>
-  injectScript: (
-    getScript: () => string | Promise<string>,
-    opts?: { logScript?: boolean },
-  ) => Promise<void>
+  /**
+   * Injects HTML synchronously into the stream.
+   * Emits an onInjectedHtml event that listeners can handle.
+   * If no subscriber is listening, the HTML is buffered and can be retrieved via takeBufferedHtml().
+   */
+  injectHtml: (html: string) => void
+  /**
+   * Injects a script tag synchronously into the stream.
+   */
+  injectScript: (script: string) => void
   isDehydrated: () => boolean
+  isSerializationFinished: () => boolean
   onRenderFinished: (listener: () => void) => void
+  onSerializationFinished: (listener: () => void) => void
   dehydrate: () => Promise<void>
   takeBufferedScripts: () => RouterManagedTag | undefined
+  /**
+   * Takes any buffered HTML that was injected.
+   * Returns the buffered HTML string (which may include multiple script tags) or undefined if empty.
+   */
+  takeBufferedHtml: () => string | undefined
   liftScriptBarrier: () => void
 }
 
@@ -1170,6 +1181,7 @@ export class RouterCore<
       // Before we do any processing, we need to allow rewrites to modify the URL
       // build up the full URL by combining the href from history with the router's origin
       const fullUrl = new URL(href, this.origin)
+
       const url = executeRewriteInput(this.rewrite, fullUrl)
 
       const parsedSearch = this.options.parseSearch(url.search)
@@ -2007,19 +2019,34 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType
    */
-  navigate: NavigateFn = async ({ to, reloadDocument, href, ...rest }) => {
-    if (!reloadDocument && href) {
+  navigate: NavigateFn = async ({
+    to,
+    reloadDocument,
+    href,
+    publicHref,
+    ...rest
+  }) => {
+    let hrefIsUrl = false
+
+    if (href) {
       try {
         new URL(`${href}`)
-        reloadDocument = true
+        hrefIsUrl = true
       } catch {}
     }
 
+    if (hrefIsUrl && !reloadDocument) {
+      reloadDocument = true
+    }
+
     if (reloadDocument) {
-      if (!href) {
+      if (!href || (!publicHref && !hrefIsUrl)) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = location.url.href
+        href = href ?? location.url.href
+        publicHref = publicHref ?? location.url.href
       }
+
+      const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
 
       // Check blockers for external URLs unless ignoreBlocker is true
       if (!rest.ignoreBlocker) {
@@ -2041,9 +2068,9 @@ export class RouterCore<
       }
 
       if (rest.replace) {
-        window.location.replace(href)
+        window.location.replace(reloadHref)
       } else {
-        window.location.href = href
+        window.location.href = reloadHref
       }
       return Promise.resolve()
     }

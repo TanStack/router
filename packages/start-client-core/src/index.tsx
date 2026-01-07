@@ -2,14 +2,18 @@ export type { JsonResponse } from '@tanstack/router-core/ssr/client'
 
 export { hydrate, json, mergeHeaders } from '@tanstack/router-core/ssr/client'
 
+export { RawStream } from '@tanstack/router-core'
+export type { OnRawStreamCallback } from '@tanstack/router-core'
+
 export {
   createIsomorphicFn,
+  createServerOnlyFn,
+  createClientOnlyFn,
   type IsomorphicFn,
   type ServerOnlyFn,
   type ClientOnlyFn,
   type IsomorphicFnBase,
-} from './createIsomorphicFn'
-export { createServerOnlyFn, createClientOnlyFn } from './envOnly'
+} from '@tanstack/start-fn-stubs'
 export { createServerFn } from './createServerFn'
 export {
   createMiddleware,
@@ -71,7 +75,6 @@ export type {
   RequiredFetcher,
 } from './createServerFn'
 export {
-  applyMiddleware,
   execValidator,
   flattenMiddlewares,
   executeMiddleware,
@@ -80,9 +83,17 @@ export {
 export {
   TSS_FORMDATA_CONTEXT,
   TSS_SERVER_FUNCTION,
+  TSS_CONTENT_TYPE_FRAMED,
+  TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+  TSS_FRAMED_PROTOCOL_VERSION,
+  FrameType,
+  FRAME_HEADER_SIZE,
   X_TSS_SERIALIZED,
   X_TSS_RAW_RESPONSE,
+  X_TSS_CONTEXT,
+  validateFramedProtocolVersion,
 } from './constants'
+export type { FrameType as FrameTypeValue } from './constants'
 
 export type * from './serverRoute'
 
@@ -99,3 +110,4 @@ export type { Register } from '@tanstack/router-core'
 export { getRouterInstance } from './getRouterInstance'
 export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'
 export { getGlobalStartContext } from './getGlobalStartContext'
+export { safeObjectMerge, createNullProtoObject } from './safeObjectMerge'

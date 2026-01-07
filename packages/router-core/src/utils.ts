@@ -489,12 +489,25 @@ export function findLast<T>(
   return undefined
 }
 
+/**
+ * Remove control characters that can cause open redirect vulnerabilities.
+ * Characters like \r (CR) and \n (LF) can trick URL parsers into interpreting
+ * paths like "/\r/evil.com" as "http://evil.com".
+ */
+function sanitizePathSegment(segment: string): string {
+  // Remove ASCII control characters (0x00-0x1F) and DEL (0x7F)
+  // These include CR (\r = 0x0D), LF (\n = 0x0A), and other potentially dangerous characters
+  // eslint-disable-next-line no-control-regex
+  return segment.replace(/[\x00-\x1f\x7f]/g, '')
+}
+
 function decodeSegment(segment: string): string {
+  let decoded: string
   try {
-    return decodeURI(segment)
+    decoded = decodeURI(segment)
   } catch {
     // if the decoding fails, try to decode the various parts leaving the malformed tags in place
-    return segment.replaceAll(/%[0-9A-F]{2}/gi, (match) => {
+    decoded = segment.replaceAll(/%[0-9A-F]{2}/gi, (match) => {
       try {
         return decodeURI(match)
       } catch {
@@ -502,6 +515,7 @@ function decodeSegment(segment: string): string {
       }
     })
   }
+  return sanitizePathSegment(decoded)
 }
 
 export function decodePath(path: string, decodeIgnore?: Array<string>): string {
@@ -516,5 +530,14 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
     result += decodeSegment(path.slice(cursor, match.index)) + match[0]
     cursor = re.lastIndex
   }
-  return result + decodeSegment(cursor ? path.slice(cursor) : path)
+  result = result + decodeSegment(cursor ? path.slice(cursor) : path)
+
+  // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
+  // After sanitizing control characters, paths like "/\r/evil.com" become "//evil.com"
+  // Collapse leading double slashes to a single slash
+  if (result.startsWith('//')) {
+    result = '/' + result.replace(/^\/+/, '')
+  }
+
+  return result
 }
