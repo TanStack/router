@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url'
 import { basename, extname, join } from 'pathe'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
+import { joinURL } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { getServerOutputDirectory } from '../output-directory'
 import type { Plugin } from 'vite'
@@ -42,6 +43,9 @@ export function previewServerPlugin(): Plugin {
 
                 serverBuild = imported.default
               }
+
+              // Prepend base path to request URL to match routing setup
+              req.url = joinURL(server.config.base, req.url ?? '/')
 
               const webReq = new NodeRequest({ req, res })
               const webRes: Response = await serverBuild.fetch(webReq)
