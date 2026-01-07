@@ -119,6 +119,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             data: opts?.data as any,
             headers: opts?.headers,
             signal: opts?.signal,
+            fetch: opts?.fetch,
             context: createNullProtoObject(),
           })
 
@@ -248,6 +249,8 @@ export async function executeMiddleware(
             context: safeObjectMerge(ctx.context, userCtx.context),
             sendContext: safeObjectMerge(ctx.sendContext, userCtx.sendContext),
             headers: mergeHeaders(ctx.headers, userCtx.headers),
+            _callSiteFetch: ctx._callSiteFetch,
+            fetch: ctx._callSiteFetch ?? userCtx.fetch ?? ctx.fetch,
             result:
               userCtx.result !== undefined
                 ? userCtx.result
@@ -313,6 +316,7 @@ export async function executeMiddleware(
     headers: opts.headers || {},
     sendContext: opts.sendContext || {},
     context: opts.context || createNullProtoObject(),
+    _callSiteFetch: opts.fetch,
   })
 }
 
@@ -321,6 +325,7 @@ export type CompiledFetcherFnOptions = {
   data: unknown
   headers?: HeadersInit
   signal?: AbortSignal
+  fetch?: CustomFetch
   context?: any
 }
 
@@ -355,9 +360,12 @@ export interface RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
   ): Promise<Awaited<TResponse>>
 }
 
+export type CustomFetch = typeof globalThis.fetch
+
 export type FetcherBaseOptions = {
   headers?: HeadersInit
   signal?: AbortSignal
+  fetch?: CustomFetch
 }
 
 export interface OptionalFetcherDataOptions<TMiddlewares, TInputValidator>
@@ -686,6 +694,9 @@ export type ServerFnMiddlewareOptions = {
   sendContext?: any
   context?: any
   functionId: string
+  fetch?: CustomFetch
+  /** @internal - Preserves the call-site fetch to ensure it has highest priority over middleware */
+  _callSiteFetch?: CustomFetch
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
@@ -736,11 +747,12 @@ function serverFnBaseToMiddleware(
     '~types': undefined!,
     options: {
       inputValidator: options.inputValidator,
-      client: async ({ next, sendContext, ...ctx }) => {
+      client: async ({ next, sendContext, fetch, ...ctx }) => {
         const payload = {
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
+          fetch,
         } as any
 
         // Execute the extracted function

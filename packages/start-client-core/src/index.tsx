@@ -59,6 +59,7 @@ export {
 export type {
   CompiledFetcherFnOptions,
   CompiledFetcherFn,
+  CustomFetch,
   Fetcher,
   RscStream,
   FetcherBaseOptions,

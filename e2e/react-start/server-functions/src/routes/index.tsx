@@ -104,6 +104,11 @@ function Home() {
             Server Functions Middleware Unhandled Exception E2E tests
           </Link>
         </li>
+        <li>
+          <Link to="/custom-fetch">
+            Server function with custom fetch implementation
+          </Link>
+        </li>
       </ul>
     </div>
   )
