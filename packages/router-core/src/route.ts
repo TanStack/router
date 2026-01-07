@@ -1190,6 +1190,10 @@ export interface UpdatableRouteOptions<
     UpdatableRouteOptionsExtensions {
   /**
    * Options to control route matching behavior with runtime code.
+   *
+   * @experimental 🚧 this feature is subject to change
+   *
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType
    */
   skipRouteOnParseError?: {
     /**
