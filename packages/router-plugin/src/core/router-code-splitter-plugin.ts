@@ -256,14 +256,9 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         ROOT = process.cwd()
         initUserConfig()
 
-        if (compiler.options.mode === 'production') {
-          compiler.hooks.done.tap(PLUGIN_NAME, () => {
-            console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
-            setTimeout(() => {
-              process.exit(0)
-            })
-          })
-        }
+        compiler.hooks.done.tap(PLUGIN_NAME, () => {
+          console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
+        })
       },
     },
     {
