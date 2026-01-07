@@ -10,6 +10,29 @@ import type {
 } from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
 
+// Helper to create a function schema compatible with both Zod v3 and v4
+function createGenericFunctionSchema(): any {
+  // Try Zod v4 syntax first
+  if (typeof (z as any).function === 'function') {
+    try {
+      // Check if this is Zod v4 by testing for the new API
+      const testSchema = z.string()
+      if ('_zod' in testSchema) {
+        // Zod v4: use new function API with any input/output
+        return (z as any).function({
+          input: [z.any()],
+          output: z.any(),
+        })
+      }
+    } catch (e) {
+      // Fall through to v3
+    }
+  }
+
+  // Zod v3: use old function API
+  return (z as any).function()
+}
+
 export const splitGroupingsSchema = z
   .array(
     z.array(
@@ -73,7 +96,7 @@ export type CodeSplittingOptions = {
 }
 
 const codeSplittingOptionsSchema = z.object({
-  splitBehavior: z.function().optional(),
+  splitBehavior: createGenericFunctionSchema().optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
   deleteNodes: z.array(z.string()).optional(),
   addHmr: z.boolean().optional().default(true),
