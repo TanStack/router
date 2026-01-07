@@ -699,6 +699,15 @@ const runLoader = async (
     } catch (e) {
       let error = e
 
+      if ((error as any)?.name === 'AbortError') {
+        inner.updateMatch(matchId, (prev) => ({
+          ...prev,
+          status: prev.status === 'pending' ? 'success' : prev.status,
+          isFetching: false,
+        }))
+        return
+      }
+
       const pendingPromise = match._nonReactive.minPendingPromise
       if (pendingPromise) await pendingPromise
 

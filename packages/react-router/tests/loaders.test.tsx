@@ -430,7 +430,7 @@ test('reproducer #4546', async () => {
     component: () => {
       return (
         <>
-          <div className="p-2 flex gap-2 text-lg">
+          <div className="flex gap-2 p-2 text-lg">
             <Link
               data-testid="link-to-index"
               to="/"
@@ -728,6 +728,33 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(defaultPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(nestedPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
+})
+
+test('throw abortError from loader upon initial load with basepath', async () => {
+  window.history.replaceState(null, 'root', '/app')
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async () => {
+      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+    },
+    component: () => <div>Index route content</div>,
+    errorComponent: () => (
+      <div data-testid="index-error">indexErrorComponent</div>
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree, history, basepath: '/app' })
+
+  render(<RouterProvider router={router} />)
+
+  const indexElement = await screen.findByText('Index route content')
+  expect(indexElement).toBeInTheDocument()
+  expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
+  expect(window.location.pathname.startsWith('/app')).toBe(true)
 })
 
 test('cancelMatches after pending timeout', async () => {
