@@ -699,12 +699,11 @@ const runLoader = async (
     } catch (e) {
       let error = e
 
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        const head = await executeHead(inner, matchId, route)
+      if ((error as any)?.name === 'AbortError') {
         inner.updateMatch(matchId, (prev) => ({
           ...prev,
           status: prev.status === 'pending' ? 'success' : prev.status,
-          ...head,
+          isFetching: false,
         }))
         return
       }
