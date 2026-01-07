@@ -247,9 +247,15 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         },
       },
 
-      rspack() {
+      rspack(compiler) {
         ROOT = process.cwd()
         initUserConfig()
+
+        if (compiler.options.mode === 'production') {
+          compiler.hooks.done.tap(PLUGIN_NAME, () => {
+            console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
+          })
+        }
       },
 
       webpack(compiler) {
@@ -259,9 +265,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         if (compiler.options.mode === 'production') {
           compiler.hooks.done.tap(PLUGIN_NAME, () => {
             console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
-            setTimeout(() => {
-              process.exit(0)
-            })
           })
         }
       },
