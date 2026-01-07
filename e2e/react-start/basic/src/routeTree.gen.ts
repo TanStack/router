@@ -42,6 +42,7 @@ import { Route as RawStreamSsrMixedRouteImport } from './routes/raw-stream/ssr-m
 import { Route as RawStreamSsrBinaryHintRouteImport } from './routes/raw-stream/ssr-binary-hint'
 import { Route as RawStreamClientCallRouteImport } from './routes/raw-stream/client-call'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as PipeReferenceRouteImport } from './routes/pipe.$reference'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
@@ -228,6 +229,11 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
+const PipeReferenceRoute = PipeReferenceRouteImport.update({
+  id: '/pipe/$reference',
+  path: '/pipe/$reference',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
@@ -343,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
+  '/pipe/$reference': typeof PipeReferenceRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
   '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
@@ -389,6 +396,7 @@ export interface FileRoutesByTo {
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
+  '/pipe/$reference': typeof PipeReferenceRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
   '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
@@ -441,6 +449,7 @@ export interface FileRoutesById {
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
+  '/pipe/$reference': typeof PipeReferenceRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
   '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
@@ -494,6 +503,7 @@ export interface FileRouteTypes {
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
+    | '/pipe/$reference'
     | '/posts/$postId'
     | '/raw-stream/client-call'
     | '/raw-stream/ssr-binary-hint'
@@ -540,6 +550,7 @@ export interface FileRouteTypes {
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
+    | '/pipe/$reference'
     | '/posts/$postId'
     | '/raw-stream/client-call'
     | '/raw-stream/ssr-binary-hint'
@@ -591,6 +602,7 @@ export interface FileRouteTypes {
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
+    | '/pipe/$reference'
     | '/posts/$postId'
     | '/raw-stream/client-call'
     | '/raw-stream/ssr-binary-hint'
@@ -642,6 +654,7 @@ export interface RootRouteChildren {
   Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   MultiCookieRedirectTargetRoute: typeof MultiCookieRedirectTargetRoute
+  PipeReferenceRoute: typeof PipeReferenceRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   MultiCookieRedirectIndexRoute: typeof MultiCookieRedirectIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
@@ -881,6 +894,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof PostsRoute
+    }
+    '/pipe/$reference': {
+      id: '/pipe/$reference'
+      path: '/pipe/$reference'
+      fullPath: '/pipe/$reference'
+      preLoaderRoute: typeof PipeReferenceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/not-found/via-loader': {
       id: '/not-found/via-loader'
@@ -1184,6 +1204,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char45824Char54620Char48124Char44397Route,
   ApiUsersRoute: ApiUsersRouteWithChildren,
   MultiCookieRedirectTargetRoute: MultiCookieRedirectTargetRoute,
+  PipeReferenceRoute: PipeReferenceRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   MultiCookieRedirectIndexRoute: MultiCookieRedirectIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
