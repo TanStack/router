@@ -107,7 +107,7 @@ type skipRouteOnParseError = {
 - See [Guides > Path Params > Validating path parameters during matching](../../guide/path-params#validating-path-parameters-during-matching) for detailed usage examples.
 
 > [!IMPORTANT]
-> **Performance impact**: This option has a **non-negligible performance cost** and should not be used indiscriminately. Routes with `skipRouteOnParseError` are placed on separate branches in the route matching tree instead of sharing nodes with other dynamic routes. This reduces the tree's ability to efficiently narrow down matches and requires testing more route, even for routes that wouldn't match the path structure alone.
+> **Performance impact**: This option has a **non-negligible performance cost** and should only be enabled when needed. Routes with `skipRouteOnParseError` are placed on separate branches in the route matching tree instead of sharing nodes with other dynamic routes. This reduces the tree's ability to efficiently narrow down matches and requires testing more routes, even for routes that wouldn't match the path structure alone.
 
 ### `beforeLoad` method
 

@@ -238,6 +238,10 @@
               "to": "framework/react/guide/path-params"
             },
             {
+              "label": "Validating Path Params",
+              "to": "framework/react/guide/validating-path-params"
+            },
+            {
               "label": "Search Params",
               "to": "framework/react/guide/search-params"
             },
@@ -353,6 +357,10 @@
             {
               "label": "Path Params",
               "to": "framework/solid/guide/path-params"
+            },
+            {
+              "label": "Validating Path Params",
+              "to": "framework/solid/guide/validating-path-params"
             },
             {
               "label": "Search Params",

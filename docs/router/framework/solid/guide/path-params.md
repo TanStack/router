@@ -744,6 +744,18 @@ function ShopComponent() {
 
 Optional path parameters provide a powerful and flexible foundation for implementing internationalization in your TanStack Router applications. Whether you prefer prefix-based or combined approaches, you can create clean, SEO-friendly URLs while maintaining excellent developer experience and type safety.
 
+## Validating and Transforming Path Parameters
+
+Path parameters are captured from URLs as strings, but you often need to transform them to other types (numbers, dates) or validate they meet specific criteria (UUIDs, patterns). TanStack Router provides `params.parse` and `params.stringify` options for this purpose.
+
+For a comprehensive guide on validating and transforming path parameters, including:
+
+- Using `params.parse` to transform and validate parameters
+- Understanding error handling with `errorComponent`
+- Using the experimental `skipRouteOnParseError` feature for type-specific routes
+
+See the dedicated [Validating Path Params](./validating-path-params.md) guide.
+
 ## Allowed Characters
 
 By default, path params are escaped with `encodeURIComponent`. If you want to allow other valid URI characters (e.g. `@` or `+`), you can specify that in your [RouterOptions](../api/router/RouterOptionsType.md#pathparamsallowedcharacters-property).
