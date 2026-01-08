@@ -68,7 +68,15 @@ function makeStartConfig(pagePath: string) {
     prerender: { enabled: true, autoStaticPathsDiscovery: false },
     pages: [{ path: pagePath }],
     router: { basepath: '' },
-    spa: { enabled: false },
+    spa: {
+      enabled: false,
+      prerender: {
+        outputPath: '/_shell',
+        crawlLinks: false,
+        retryCount: 0,
+        enabled: true,
+      },
+    },
   } as any
 }
 
