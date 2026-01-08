@@ -2436,15 +2436,30 @@ export class RouterCore<
   }
 
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
+    const locationHeader = redirect.headers.get('Location')
+
     if (!redirect.options.href) {
       const location = this.buildLocation(redirect.options)
       const href = this.getParsedLocationHref(location)
-      redirect.options.href = location.href
+      redirect.options.href = href
       redirect.headers.set('Location', href)
+    } else if (locationHeader) {
+      try {
+        const url = new URL(locationHeader)
+        if (this.origin && url.origin === this.origin) {
+          const href = url.pathname + url.search + url.hash
+          redirect.options.href = href
+          redirect.headers.set('Location', href)
+        }
+      } catch {
+        // ignore invalid URLs
+      }
     }
+
     if (!redirect.headers.get('Location')) {
       redirect.headers.set('Location', redirect.options.href)
     }
+
     return redirect
   }
 
