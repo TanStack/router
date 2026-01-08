@@ -212,7 +212,7 @@ export async function prerender({
             : cleanPagePath
 
           const isSpaShell =
-            startConfig.spa?.prerender?.outputPath === cleanPagePath
+            startConfig.spa?.prerender.outputPath === cleanPagePath
 
           let htmlPath: string
           if (isSpaShell) {
