@@ -105,11 +105,15 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: Solid.JSX.Element }>) {
   return (
-    <>
-      <HeadContent />
-      {children}
-      <Scripts />
-    </>
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
   )
 }
 ```

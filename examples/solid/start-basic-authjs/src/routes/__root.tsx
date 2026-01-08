@@ -65,9 +65,9 @@ function RootDocument({ children }: { children: JSX.Element }) {
     <html>
       <head>
         <HydrationScript />
+        <HeadContent />
       </head>
       <body>
-        <HeadContent />
         <NavBar />
         <main class="p-4">{children}</main>
         <TanStackRouterDevtools position="bottom-right" />

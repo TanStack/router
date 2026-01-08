@@ -4,4 +4,4 @@ import { createRouter } from './router'
 
 const router = createRouter()
 
-hydrate(() => <RouterClient router={router} />, document.body)
+hydrate(() => <RouterClient router={router} />, document)

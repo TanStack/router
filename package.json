@@ -74,7 +74,11 @@
     "overrides": {
       "@types/babel__traverse": "^7.28.0",
       "vite-plugin-dts": "4.0.3",
-      "solid-js": "1.9.10",
+      "solid-js": "file:external-packages/solid/packages/solid",
+      "dom-expressions": "file:external-packages/dom-expressions/packages/dom-expressions",
+      "babel-plugin-jsx-dom-expressions": "file:external-packages/dom-expressions/packages/babel-plugin-jsx-dom-expressions",
+      "hyper-dom-expressions": "file:external-packages/dom-expressions/packages/hyper-dom-expressions",
+      "lit-dom-expressions": "file:external-packages/dom-expressions/packages/lit-dom-expressions",
       "react": "$react",
       "react-dom": "$react-dom",
       "@types/react": "$@types/react",

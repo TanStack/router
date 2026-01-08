@@ -2,6 +2,7 @@ import { hydrate } from '@tanstack/router-core/ssr/client'
 import { Await } from '../awaited'
 import { HeadContent } from '../HeadContent'
 import { RouterProvider } from '../RouterProvider'
+import { Scripts } from '../Scripts'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 
@@ -28,8 +29,15 @@ export function RouterClient(props: { router: AnyRouter }) {
               InnerWrap={(props) => (
                 <Dummy>
                   <Dummy>
-                    <HeadContent />
-                    {props.children}
+                    <html>
+                      <head>
+                        <HeadContent />
+                      </head>
+                      <body>
+                        {props.children}
+                        <Scripts />
+                      </body>
+                    </html>
                   </Dummy>
                   <Dummy />
                 </Dummy>

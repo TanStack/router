@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
-import { MetaProvider } from '@solidjs/meta'
 import { For } from 'solid-js'
+import { HydrationScript, Portal, isServer } from 'solid-js/web'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -182,19 +182,28 @@ export const useTags = () => {
 }
 
 /**
- * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
- * When using full document hydration (hydrating from `<html>`), this component should be rendered in the `<body>`
- * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
- * The component uses portals internally to render content into the `<head>` element.
+ * @description The `HeadContent` component is used to render meta tags, links,
+ * and scripts for the current route. Render it in your document `<head>`.
  */
 export function HeadContent() {
   const tags = useTags()
-
-  return (
-    <MetaProvider>
-      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
-    </MetaProvider>
+  const marker = (
+    <meta name="tsr-head" content="true" data-tsr-head="true" />
   )
+
+  const content = (
+    <>
+      {isServer ? <HydrationScript /> : null}
+      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
+      {marker}
+    </>
+  )
+
+  if (isServer) {
+    return content
+  }
+
+  return <Portal mount={document.head}>{content}</Portal>
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {

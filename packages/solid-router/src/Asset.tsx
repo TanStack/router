@@ -1,8 +1,37 @@
-import { Link, Meta, Style, Title } from '@solidjs/meta'
-import { onCleanup, onMount } from 'solid-js'
-import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
+import { createEffect, onCleanup } from 'solid-js'
 import type { JSX } from 'solid-js'
+import { isServer } from 'solid-js/web'
+
+const applyScriptAttributes = (
+  script: HTMLScriptElement,
+  attrs?: RouterManagedTag['attrs'],
+) => {
+  if (!attrs) return
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === undefined || value === false) continue
+    script.setAttribute(key, value === true ? '' : String(value))
+  }
+}
+
+const findScriptBySrc = (src: string) => {
+  if (typeof document === 'undefined') return null
+  const escape =
+    typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+      ? CSS.escape
+      : (value: string) => value.replace(/["\\]/g, '\\$&')
+  return document.head.querySelector(
+    `script[src="${escape(src)}"]`,
+  ) as HTMLScriptElement | null
+}
+
+const findScriptByContent = (content: string) => {
+  if (typeof document === 'undefined') return null
+  const scripts = Array.from(
+    document.head.querySelectorAll('script:not([src])'),
+  ) as Array<HTMLScriptElement>
+  return scripts.find((script) => script.textContent === content) ?? null
+}
 
 export function Asset({
   tag,
@@ -11,130 +40,65 @@ export function Asset({
 }: RouterManagedTag): JSX.Element | null {
   switch (tag) {
     case 'title':
-      return <Title {...attrs}>{children}</Title>
+      return <title {...attrs}>{children}</title>
     case 'meta':
-      return <Meta {...attrs} />
+      return <meta {...attrs} />
     case 'link':
-      return <Link {...attrs} />
+      return <link {...attrs} />
     case 'style':
-      return <Style {...attrs} innerHTML={children} />
+      if (typeof children === 'string') {
+        return <style {...attrs} innerHTML={children} />
+      }
+      return <style {...attrs} />
     case 'script':
-      return <Script attrs={attrs}>{children}</Script>
+      if (!isServer) {
+        createEffect(() => {
+          const src = typeof attrs?.src === 'string' ? attrs.src : undefined
+          const inline =
+            typeof children === 'string' ? children : undefined
+          if (!src && !inline) return
+
+          const existing = src
+            ? findScriptBySrc(src)
+            : findScriptByContent(inline ?? '')
+
+          const shouldReuse =
+            existing?.hasAttribute('data-hk') ||
+            existing?.hasAttribute('data-tsr-executed')
+
+          let script = existing
+          if (!script || !shouldReuse) {
+            script = document.createElement('script')
+            applyScriptAttributes(script, attrs)
+            if (inline !== undefined) {
+              script.textContent = inline
+            }
+            script.setAttribute('data-tsr-executed', 'true')
+            script.setAttribute('data-tsr-managed', 'true')
+            document.head.appendChild(script)
+            if (existing?.parentNode) {
+              existing.parentNode.removeChild(existing)
+            }
+          } else {
+            script.setAttribute('data-tsr-managed', 'true')
+          }
+
+          onCleanup(() => {
+            if (script?.getAttribute('data-tsr-managed') === 'true') {
+              script.remove()
+            }
+          })
+        })
+        return null
+      }
+      if (attrs?.src && typeof attrs.src === 'string') {
+        return <script {...attrs} />
+      }
+      if (typeof children === 'string') {
+        return <script {...attrs} innerHTML={children} />
+      }
+      return <script {...attrs} />
     default:
       return null
   }
-}
-
-interface ScriptAttrs {
-  [key: string]: string | boolean | undefined
-  src?: string
-}
-
-function Script({
-  attrs,
-  children,
-}: {
-  attrs?: ScriptAttrs
-  children?: string
-}): JSX.Element | null {
-  const router = useRouter()
-
-  onMount(() => {
-    if (attrs?.src) {
-      const normSrc = (() => {
-        try {
-          const base = document.baseURI || window.location.href
-          return new URL(attrs.src, base).href
-        } catch {
-          return attrs.src
-        }
-      })()
-      const existingScript = Array.from(
-        document.querySelectorAll('script[src]'),
-      ).find((el) => (el as HTMLScriptElement).src === normSrc)
-
-      if (existingScript) {
-        return
-      }
-
-      const script = document.createElement('script')
-
-      for (const [key, value] of Object.entries(attrs)) {
-        if (value !== undefined && value !== false) {
-          script.setAttribute(
-            key,
-            typeof value === 'boolean' ? '' : String(value),
-          )
-        }
-      }
-
-      document.head.appendChild(script)
-
-      onCleanup(() => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      })
-    }
-
-    if (typeof children === 'string') {
-      const typeAttr =
-        typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
-      const nonceAttr =
-        typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
-      const existingScript = Array.from(
-        document.querySelectorAll('script:not([src])'),
-      ).find((el) => {
-        if (!(el instanceof HTMLScriptElement)) return false
-        const sType = el.getAttribute('type') ?? 'text/javascript'
-        const sNonce = el.getAttribute('nonce') ?? undefined
-        return (
-          el.textContent === children &&
-          sType === typeAttr &&
-          sNonce === nonceAttr
-        )
-      })
-
-      if (existingScript) {
-        return
-      }
-
-      const script = document.createElement('script')
-      script.textContent = children
-
-      if (attrs) {
-        for (const [key, value] of Object.entries(attrs)) {
-          if (value !== undefined && value !== false) {
-            script.setAttribute(
-              key,
-              typeof value === 'boolean' ? '' : String(value),
-            )
-          }
-        }
-      }
-
-      document.head.appendChild(script)
-
-      onCleanup(() => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      })
-    }
-  })
-
-  if (!router.isServer) {
-    // render an empty script on the client just to avoid hydration errors
-    return null
-  }
-
-  if (attrs?.src && typeof attrs.src === 'string') {
-    return <script {...attrs} />
-  }
-
-  if (typeof children === 'string') {
-    return <script {...attrs} innerHTML={children} />
-  }
-
-  return null
 }
