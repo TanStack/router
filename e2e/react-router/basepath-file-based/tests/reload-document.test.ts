@@ -39,9 +39,7 @@ test('redirect respects basepath with reloadDocument = true on redirect', async 
   await expect(page.getByTestId(`about-component`)).toBeInViewport()
 })
 
-test('navigate() with href containing basepath should not double the basepath', async ({
-  page,
-}) => {
+test('navigate() with href containing basepath', async ({ page }) => {
   await page.goto(`/app/`)
   await expect(page.getByTestId(`home-component`)).toBeInViewport()
 
@@ -52,7 +50,7 @@ test('navigate() with href containing basepath should not double the basepath', 
   await expect(page.getByTestId(`about-component`)).toBeInViewport()
 })
 
-test('navigate() with href containing basepath and reloadDocument=true should work', async ({
+test('navigate() with href containing basepath and reloadDocument=true', async ({
   page,
 }) => {
   await page.goto(`/app/`)
