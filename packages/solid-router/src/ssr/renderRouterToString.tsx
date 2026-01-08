@@ -1,4 +1,9 @@
 import * as Solid from 'solid-js/web'
+import {
+  UnheadContext,
+  createHead,
+  transformHtmlTemplate,
+} from '@unhead/solid-js/server'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
@@ -21,10 +26,19 @@ export const renderRouterToString = async ({
       return plugin
     })
 
-    let html = Solid.renderToString(children, {
-      nonce: router.options.ssr?.nonce,
-      plugins: serovalPlugins,
-    } as any)
+    const head = createHead()
+    let html = Solid.renderToString(
+      () => (
+        <UnheadContext.Provider value={head}>
+          {children()}
+        </UnheadContext.Provider>
+      ),
+      {
+        nonce: router.options.ssr?.nonce,
+        plugins: serovalPlugins,
+      } as any,
+    )
+    html = await transformHtmlTemplate(head, html)
     router.serverSsr!.setRenderFinished()
 
     const injectedHtml = router.serverSsr!.takeBufferedHtml()

@@ -3,58 +3,51 @@ import {
   HydrationScript,
   NoHydration,
   ssr,
-  useAssets,
 } from 'solid-js/web'
-import { MetaProvider } from '@solidjs/meta'
-import { Asset } from '../Asset'
-import { useTags } from '../HeadContent'
+import { HeadStream } from '@unhead/solid-js/stream/server'
+import { HeadContent } from '../HeadContent'
 import { RouterProvider } from '../RouterProvider'
 import { Scripts } from '../Scripts'
+import type { JSXElement } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
-
-export function ServerHeadContent() {
-  const tags = useTags()
-  useAssets(() => {
-    return (
-      <MetaProvider>
-        {tags().map((tag) => (
-          <Asset {...tag} />
-        ))}
-      </MetaProvider>
-    )
-  })
-  return null
-}
 
 const docType = ssr('<!DOCTYPE html>')
 
 export function RouterServer<TRouter extends AnyRouter>(props: {
   router: TRouter
 }) {
+  const headStream = HeadStream() as unknown as JSXElement
   return (
     <NoHydration>
       {docType as any}
       <html>
         <head>
           <HydrationScript />
+          {headStream}
         </head>
         <body>
-          <Hydration>
-            <RouterProvider
-              router={props.router}
-              InnerWrap={(props) => (
-                <NoHydration>
-                  <MetaProvider>
-                    <ServerHeadContent />
-                    <Hydration>{props.children}</Hydration>
-                    <Scripts />
-                  </MetaProvider>
-                </NoHydration>
-              )}
-            />
-          </Hydration>
+          <RouterServerBody router={props.router} />
         </body>
       </html>
     </NoHydration>
+  )
+}
+
+export function RouterServerBody<TRouter extends AnyRouter>(props: {
+  router: TRouter
+}) {
+  return (
+    <Hydration>
+      <RouterProvider
+        router={props.router}
+        InnerWrap={(props) => (
+          <NoHydration>
+            <HeadContent />
+            <Hydration>{props.children}</Hydration>
+            <Scripts />
+          </NoHydration>
+        )}
+      />
+    </Hydration>
   )
 }

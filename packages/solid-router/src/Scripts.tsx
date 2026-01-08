@@ -69,7 +69,7 @@ export const Scripts = () => {
   return (
     <>
       {allScripts.map((asset, i) => (
-        <Asset {...asset} />
+        <Asset {...asset} tagPosition="bodyClose" />
       ))}
     </>
   )

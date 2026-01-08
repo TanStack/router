@@ -58,12 +58,12 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
-    "@solidjs/meta": "^0.29.4",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
-    "@tanstack/start-server-core": "workspace:*"
+    "@tanstack/start-server-core": "workspace:*",
+    "@unhead/solid-js": "3.0.0-beta.5"
   },
   "devDependencies": {
     "solid-js": "^1.9.10",

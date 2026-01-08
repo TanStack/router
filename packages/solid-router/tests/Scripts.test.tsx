@@ -97,11 +97,15 @@ describe('ssr scripts', () => {
       { src: 'script3.js' },
     ])
 
-    const { container } = render(() => <RouterProvider router={router} />)
+    render(() => <RouterProvider router={router} />)
 
-    expect(container.innerHTML).toEqual(
-      '<script src="script.js"></script><script src="script3.js"></script>',
-    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const scripts = Array.from(
+      document.body.querySelectorAll('script[src]'),
+    ).map((el) => (el as HTMLScriptElement).getAttribute('src'))
+
+    expect(scripts).toEqual(['script.js', 'script3.js'])
   })
 })
 

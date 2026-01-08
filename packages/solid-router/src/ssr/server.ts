@@ -1,4 +1,4 @@
-export { RouterServer } from './RouterServer'
+export { RouterServer, RouterServerBody } from './RouterServer'
 export { defaultRenderHandler } from './defaultRenderHandler'
 export { defaultStreamHandler } from './defaultStreamHandler'
 export { renderRouterToStream } from './renderRouterToStream'

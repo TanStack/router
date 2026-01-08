@@ -9,5 +9,6 @@ export const defaultStreamHandler = defineHandlerCallback(
       router,
       responseHeaders,
       children: () => <StartServer router={router} />,
+      document: true,
     }),
 )
