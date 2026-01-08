@@ -16,3 +16,29 @@ test('navigate() respects basepath for when reloadDocument=true', async ({
   await page.waitForURL('/app/')
   await expect(page.getByTestId(`home-component`)).toBeInViewport()
 })
+
+test('navigate() with href containing basepath should not double the basepath', async ({
+  page,
+}) => {
+  await page.goto(`/app/`)
+  await expect(page.getByTestId(`home-component`)).toBeInViewport()
+
+  const aboutBtn = page.getByTestId(`to-about-href-with-basepath-btn`)
+  await aboutBtn.click()
+  // Should navigate to /app/about, NOT /app/app/about
+  await page.waitForURL('/app/about')
+  await expect(page.getByTestId(`about-component`)).toBeInViewport()
+})
+
+test('navigate() with href containing basepath and reloadDocument=true should work', async ({
+  page,
+}) => {
+  await page.goto(`/app/`)
+  await expect(page.getByTestId(`home-component`)).toBeInViewport()
+
+  const aboutBtn = page.getByTestId(`to-about-href-with-basepath-reload-btn`)
+  await aboutBtn.click()
+  // Should navigate to /app/about, NOT stay on current page
+  await page.waitForURL('/app/about')
+  await expect(page.getByTestId(`about-component`)).toBeInViewport()
+})
