@@ -44,24 +44,10 @@ export async function prerender({
   const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
 
   // Enforce that prerender page paths are relative/path-based (no protocol/host)
-  startConfig.pages = startConfig.pages.map((page) => {
-    let url: URL
-    try {
-      url = new URL(page.path, routerBaseUrl)
-    } catch (err) {
-      throw new Error(`prerender page path must be relative: ${page.path}`, {
-        cause: err,
-      })
-    }
-
-    if (url.origin !== 'http://localhost') {
-      throw new Error(`prerender page path must be relative: ${page.path}`)
-    }
-    return {
-      ...page,
-      path: url.pathname + url.search + url.hash,
-    }
-  })
+  startConfig.pages = validateAndNormalizePrerenderPages(
+    startConfig.pages,
+    routerBaseUrl,
+  )
 
   const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
 
@@ -150,26 +136,11 @@ export async function prerender({
     const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
 
     // Normalize discovered pages and enforce path-only entries
-    const absoluteBase =
-      'http://localhost' +
-      (routerBasePath.startsWith('/') ? routerBasePath : '/' + routerBasePath)
-    startConfig.pages = startConfig.pages.map((page) => {
-      let url: URL
-      try {
-        url = new URL(page.path, absoluteBase)
-      } catch (err) {
-        throw new Error(`prerender page path must be relative: ${page.path}`, {
-          cause: err,
-        })
-      }
-      if (url.origin !== 'http://localhost') {
-        throw new Error(`prerender page path must be relative: ${page.path}`)
-      }
-      return {
-        ...page,
-        path: url.pathname + url.search + url.hash,
-      }
-    })
+    const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
+    startConfig.pages = validateAndNormalizePrerenderPages(
+      startConfig.pages,
+      routerBaseUrl,
+    )
 
     startConfig.pages.forEach((page) => addCrawlPageTask(page))
 
@@ -241,7 +212,7 @@ export async function prerender({
             : cleanPagePath
 
           const isSpaShell =
-            startConfig.spa?.prerender.outputPath === cleanPagePath
+            startConfig.spa?.prerender?.outputPath === cleanPagePath
 
           let htmlPath: string
           if (isSpaShell) {
@@ -338,4 +309,33 @@ function getResolvedUrl(previewServer: PreviewServer): URL {
   }
 
   return new URL(baseUrl)
+}
+
+/**
+ * Validates and normalizes prerender page paths to ensure they are relative
+ * (no protocol/host) and returns normalized Page objects with cleaned paths.
+ */
+function validateAndNormalizePrerenderPages(
+  pages: Array<Page>,
+  routerBaseUrl: URL,
+): Array<Page> {
+  return pages.map((page) => {
+    let url: URL
+    try {
+      url = new URL(page.path, routerBaseUrl)
+    } catch (err) {
+      throw new Error(`prerender page path must be relative: ${page.path}`, {
+        cause: err,
+      })
+    }
+
+    if (url.origin !== 'http://localhost') {
+      throw new Error(`prerender page path must be relative: ${page.path}`)
+    }
+
+    return {
+      ...page,
+      path: url.pathname + url.search + url.hash,
+    }
+  })
 }
