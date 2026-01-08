@@ -314,6 +314,7 @@ function getResolvedUrl(previewServer: PreviewServer): URL {
 /**
  * Validates and normalizes prerender page paths to ensure they are relative
  * (no protocol/host) and returns normalized Page objects with cleaned paths.
+ * Preserves unicode characters by decoding the pathname after URL validation.
  */
 function validateAndNormalizePrerenderPages(
   pages: Array<Page>,
@@ -333,9 +334,14 @@ function validateAndNormalizePrerenderPages(
       throw new Error(`prerender page path must be relative: ${page.path}`)
     }
 
+    // Decode the pathname to preserve unicode characters (e.g., /대한민국)
+    // The URL constructor encodes non-ASCII characters, but we want to keep
+    // the original unicode form for filesystem paths
+    const decodedPathname = decodeURIComponent(url.pathname)
+
     return {
       ...page,
-      path: url.pathname + url.search + url.hash,
+      path: decodedPathname + url.search + url.hash,
     }
   })
 }
