@@ -11134,11 +11134,11 @@ importers:
         version: 2.8.1
     devDependencies:
       '@analogjs/vite-plugin-angular':
-        specifier: ^1.22.5
-        version: 1.22.5
+        specifier: ^2.2.1
+        version: 2.2.1(@angular/build@21.0.4(6487870d02f806dfbba2ad94d5070241))
       '@analogjs/vitest-angular':
         specifier: ^2.2.1
-        version: 2.2.1(@analogjs/vite-plugin-angular@1.22.5)(@angular-devkit/architect@0.2100.4(chokidar@4.0.3))(vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.56.1)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.2.1(@analogjs/vite-plugin-angular@2.2.1(@angular/build@21.0.4(6487870d02f806dfbba2ad94d5070241)))(@angular-devkit/architect@0.2100.4(chokidar@4.0.3))(vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.56.1)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))
       '@angular/compiler':
         specifier: 21.0.4
         version: 21.0.4
@@ -11189,11 +11189,11 @@ importers:
         version: 2.8.1
     devDependencies:
       '@analogjs/vite-plugin-angular':
-        specifier: ^1.15.0
-        version: 1.22.5
+        specifier: ^2.0.0
+        version: 2.2.1(@angular/build@21.0.4(6487870d02f806dfbba2ad94d5070241))
       '@analogjs/vitest-angular':
         specifier: ^2.2.1
-        version: 2.2.1(@analogjs/vite-plugin-angular@1.22.5)(@angular-devkit/architect@0.2100.4(chokidar@4.0.3))(vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.56.1)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.2.1(@analogjs/vite-plugin-angular@2.2.1(@angular/build@21.0.4(6487870d02f806dfbba2ad94d5070241)))(@angular-devkit/architect@0.2100.4(chokidar@4.0.3))(vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.56.1)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))
       '@angular/compiler':
         specifier: 21.0.4
         version: 21.0.4
@@ -12454,11 +12454,11 @@ packages:
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
 
-  '@analogjs/vite-plugin-angular@1.22.5':
-    resolution: {integrity: sha512-N1BQD6HQSp2Imbb1fThymskWFSLq0ZF+d2fe3DgErwlBFf6SzRp++iFltddQc3wIzenTXE+5brS4fAPXO8UT9g==}
+  '@analogjs/vite-plugin-angular@2.2.1':
+    resolution: {integrity: sha512-SYtaWKPHE+BtywbSOQl5r31bIDuph7SCzCbRMsrS7H3MvS1SDc9bsTdn+RewYKqKUJzReRwNe9CDLdVCY8eLFg==}
     peerDependencies:
-      '@angular-devkit/build-angular': ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0
-      '@angular/build': ^18.0.0 || ^19.0.0 || ^20.0.0
+      '@angular-devkit/build-angular': ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0
+      '@angular/build': ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0
     peerDependenciesMeta:
       '@angular-devkit/build-angular':
         optional: true
@@ -24927,9 +24927,6 @@ packages:
     resolution: {integrity: sha512-4Lup7Ezn8W3d52/xBhZBVdx323ckxa7DEvd9kPQHppTkLoJXw6ltrBCyj5pnrxj0qKDxYMJ56CoxNuFCscdTiw==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
-  unist-util-stringify-position@4.0.0:
-    resolution: {integrity: sha512-0ASV06AAoKCDkS2+xw5RXJywruurpbC4JZSm7nr7MOt1ojAzvyyaO+UxZf18j8FCF6kmzCZKcAgN/yu2gm2XgQ==}
-
   universalify@0.1.2:
     resolution: {integrity: sha512-rBJeI5CXAlmy1pV+617WB9J63U6XcazHHF2f2dbJix4XzpUF0RS3Zbj0FGIOCAva5P/d/GBOYaACQ1w+0azUkg==}
     engines: {node: '>= 4.0.0'}
@@ -25228,12 +25225,6 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
-
-  vfile-message@4.0.3:
-    resolution: {integrity: sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==}
-
-  vfile@6.0.3:
-    resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
   vibe-rules@0.2.57:
     resolution: {integrity: sha512-CVGXHyKRvDeC3S6SywxTcNGuckmSjwB+2q/v8eDSmwDBTlz0ziRqm49eI5ELLy4djKq6DdCSYvV4EGcwzsHRog==}
@@ -25937,14 +25928,15 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
 
-  '@analogjs/vite-plugin-angular@1.22.5':
+  '@analogjs/vite-plugin-angular@2.2.1(@angular/build@21.0.4(6487870d02f806dfbba2ad94d5070241))':
     dependencies:
       ts-morph: 21.0.1
-      vfile: 6.0.3
+    optionalDependencies:
+      '@angular/build': 21.0.4(@angular/compiler-cli@21.0.4(@angular/compiler@21.0.4)(typescript@5.9.2))(@angular/compiler@21.0.4)(@angular/core@21.0.4(@angular/compiler@21.0.4)(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@21.0.4(@angular/common@21.0.6(@angular/core@21.0.4(@angular/compiler@21.0.4)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@21.0.4(@angular/compiler@21.0.4)(rxjs@7.8.2)(zone.js@0.15.1)))(@types/node@22.10.2)(chokidar@4.0.3)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(ng-packagr@21.0.1(@angular/compiler-cli@21.0.4(@angular/compiler@21.0.4)(typescript@5.9.2))(tailwindcss@4.1.18)(tslib@2.8.1)(typescript@5.9.2))(postcss@8.5.6)(tailwindcss@4.1.18)(terser@5.44.0)(tslib@2.8.1)(tsx@4.20.3)(typescript@5.9.2)(vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(yaml@2.8.1)
 
-  '@analogjs/vitest-angular@2.2.1(@analogjs/vite-plugin-angular@1.22.5)(@angular-devkit/architect@0.2100.4(chokidar@4.0.3))(vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.56.1)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))':
+  '@analogjs/vitest-angular@2.2.1(@analogjs/vite-plugin-angular@2.2.1(@angular/build@21.0.4(6487870d02f806dfbba2ad94d5070241)))(@angular-devkit/architect@0.2100.4(chokidar@4.0.3))(vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.56.1)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
-      '@analogjs/vite-plugin-angular': 1.22.5
+      '@analogjs/vite-plugin-angular': 2.2.1(@angular/build@21.0.4(6487870d02f806dfbba2ad94d5070241))
       '@angular-devkit/architect': 0.2100.4(chokidar@4.0.3)
       vitest: 3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.56.1)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1)
 
@@ -26032,6 +26024,62 @@ snapshots:
       - terser
       - tsx
       - yaml
+
+  '@angular/build@21.0.4(@angular/compiler-cli@21.0.4(@angular/compiler@21.0.4)(typescript@5.9.2))(@angular/compiler@21.0.4)(@angular/core@21.0.4(@angular/compiler@21.0.4)(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@21.0.4(@angular/common@21.0.6(@angular/core@21.0.4(@angular/compiler@21.0.4)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@21.0.4(@angular/compiler@21.0.4)(rxjs@7.8.2)(zone.js@0.15.1)))(@types/node@22.10.2)(chokidar@4.0.3)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(ng-packagr@21.0.1(@angular/compiler-cli@21.0.4(@angular/compiler@21.0.4)(typescript@5.9.2))(tailwindcss@4.1.18)(tslib@2.8.1)(typescript@5.9.2))(postcss@8.5.6)(tailwindcss@4.1.18)(terser@5.44.0)(tslib@2.8.1)(tsx@4.20.3)(typescript@5.9.2)(vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(yaml@2.8.1)':
+    dependencies:
+      '@ampproject/remapping': 2.3.0
+      '@angular-devkit/architect': 0.2100.4(chokidar@4.0.3)
+      '@angular/compiler': 21.0.4
+      '@angular/compiler-cli': 21.0.4(@angular/compiler@21.0.4)(typescript@5.9.2)
+      '@babel/core': 7.28.4
+      '@babel/helper-annotate-as-pure': 7.27.3
+      '@babel/helper-split-export-declaration': 7.24.7
+      '@inquirer/confirm': 5.1.19(@types/node@22.10.2)
+      '@vitejs/plugin-basic-ssl': 2.1.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))
+      beasties: 0.3.5
+      browserslist: 4.28.1
+      esbuild: 0.26.0
+      https-proxy-agent: 7.0.6
+      istanbul-lib-instrument: 6.0.3
+      jsonc-parser: 3.3.1
+      listr2: 9.0.5
+      magic-string: 0.30.19
+      mrmime: 2.0.1
+      parse5-html-rewriting-stream: 8.0.0
+      picomatch: 4.0.3
+      piscina: 5.1.3
+      rolldown: 1.0.0-beta.47
+      sass: 1.93.2
+      semver: 7.7.3
+      source-map-support: 0.5.21
+      tinyglobby: 0.2.15
+      tslib: 2.8.1
+      typescript: 5.9.2
+      undici: 7.16.0
+      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1)
+      watchpack: 2.4.4
+    optionalDependencies:
+      '@angular/core': 21.0.4(@angular/compiler@21.0.4)(rxjs@7.8.2)(zone.js@0.15.1)
+      '@angular/platform-browser': 21.0.4(@angular/common@21.0.6(@angular/core@21.0.4(@angular/compiler@21.0.4)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@21.0.4(@angular/compiler@21.0.4)(rxjs@7.8.2)(zone.js@0.15.1))
+      less: 4.5.1
+      lmdb: 3.4.3
+      ng-packagr: 21.0.1(@angular/compiler-cli@21.0.4(@angular/compiler@21.0.4)(typescript@5.9.2))(tailwindcss@4.1.18)(tslib@2.8.1)(typescript@5.9.2)
+      postcss: 8.5.6
+      tailwindcss: 4.1.18
+      vitest: 3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.56.1)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(less@4.5.1)(lightningcss@1.30.2)(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(less@4.5.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(sass@1.93.2)(terser@5.44.0)(tsx@4.20.3)(yaml@2.8.1)
+    transitivePeerDependencies:
+      - '@types/node'
+      - chokidar
+      - jiti
+      - lightningcss
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - yaml
+    optional: true
 
   '@angular/cli@21.0.4(@types/node@22.10.2)(chokidar@4.0.3)':
     dependencies:
@@ -39984,10 +40032,6 @@ snapshots:
     dependencies:
       imurmurhash: 0.1.4
 
-  unist-util-stringify-position@4.0.0:
-    dependencies:
-      '@types/unist': 3.0.3
-
   universalify@0.1.2: {}
 
   universalify@0.2.0: {}
@@ -40201,16 +40245,6 @@ snapshots:
   validate-npm-package-name@6.0.2: {}
 
   vary@1.1.2: {}
-
-  vfile-message@4.0.3:
-    dependencies:
-      '@types/unist': 3.0.3
-      unist-util-stringify-position: 4.0.0
-
-  vfile@6.0.3:
-    dependencies:
-      '@types/unist': 3.0.3
-      vfile-message: 4.0.3
 
   vibe-rules@0.2.57:
     dependencies:
