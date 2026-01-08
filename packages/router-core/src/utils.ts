@@ -518,6 +518,41 @@ function decodeSegment(segment: string): string {
   return sanitizePathSegment(decoded)
 }
 
+/**
+ * List of URL protocols that are safe for navigation.
+ * Only these protocols are allowed in redirects and navigation.
+ */
+export const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+
+/**
+ * Check if a URL string uses a protocol that is not in the safe list.
+ * Returns true for dangerous protocols like javascript:, data:, vbscript:, etc.
+ *
+ * The URL constructor correctly normalizes:
+ * - Mixed case (JavaScript: → javascript:)
+ * - Whitespace/control characters (java\nscript: → javascript:)
+ * - Leading whitespace
+ *
+ * For relative URLs (no protocol), returns false (safe).
+ *
+ * @param url - The URL string to check
+ * @returns true if the URL uses a dangerous (non-whitelisted) protocol
+ */
+export function isDangerousProtocol(url: string): boolean {
+  if (!url) return false
+
+  try {
+    // Use the URL constructor - it correctly normalizes protocols
+    // per WHATWG URL spec, handling all bypass attempts automatically
+    const parsed = new URL(url)
+    return !SAFE_URL_PROTOCOLS.includes(parsed.protocol)
+  } catch {
+    // URL constructor throws for relative URLs (no protocol)
+    // These are safe - they can't execute scripts
+    return false
+  }
+}
+
 export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   if (!path) return path
   const re = decodeIgnore

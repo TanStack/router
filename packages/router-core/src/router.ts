@@ -6,6 +6,7 @@ import {
   deepEqual,
   findLast,
   functionalUpdate,
+  isDangerousProtocol,
   last,
   replaceEqualDeep,
 } from './utils'
@@ -2047,6 +2048,17 @@ export class RouterCore<
       }
 
       const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
+
+      // Block dangerous protocols like javascript:, data:, vbscript:
+      // These could execute arbitrary code if passed to window.location
+      if (isDangerousProtocol(reloadHref)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `Blocked navigation to dangerous protocol: ${reloadHref}`,
+          )
+        }
+        return Promise.resolve()
+      }
 
       // Check blockers for external URLs unless ignoreBlocker is true
       if (!rest.ignoreBlocker) {
