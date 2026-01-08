@@ -2,7 +2,7 @@ import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import babel from '@babel/core'
 import * as template from '@babel/template'
 import { getConfig } from './config'
-import { debug } from './utils'
+import { debug, normalizePath } from './utils'
 import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
@@ -33,7 +33,8 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
         code: /createFileRoute\(|createLazyFileRoute\(/,
       },
       handler(code, id) {
-        if (!globalThis.TSR_ROUTES_BY_ID_MAP?.has(id)) {
+        const normalizedId = normalizePath(id)
+        if (!globalThis.TSR_ROUTES_BY_ID_MAP?.has(normalizedId)) {
           return null
         }
         let routeType: 'createFileRoute' | 'createLazyFileRoute'
@@ -72,7 +73,7 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
         })
 
         if (!isCreateRouteFunctionImported) {
-          if (debug) console.info('Adding autoimports to route ', id)
+          if (debug) console.info('Adding autoimports to route ', normalizedId)
 
           const autoImportStatement = template.statement(
             `import { ${routeType} } from '${routerImportPath}'`,
@@ -81,8 +82,8 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
 
           const result = generateFromAst(ast, {
             sourceMaps: true,
-            filename: id,
-            sourceFileName: id,
+            filename: normalizedId,
+            sourceFileName: normalizedId,
           })
           if (debug) {
             logDiff(code, result.code)
