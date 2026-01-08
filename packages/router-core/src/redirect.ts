@@ -1,6 +1,6 @@
+import { SAFE_URL_PROTOCOLS, isDangerousProtocol } from './utils'
 import type { NavigateOptions } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
-import { isDangerousProtocol, SAFE_URL_PROTOCOLS } from './utils'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 

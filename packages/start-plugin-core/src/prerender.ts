@@ -49,16 +49,13 @@ export async function prerender({
     try {
       url = new URL(page.path, routerBaseUrl)
     } catch (err) {
-      throw new Error(
-        `prerender page path must be relative: ${page.path}`,
-        { cause: err },
-      )
+      throw new Error(`prerender page path must be relative: ${page.path}`, {
+        cause: err,
+      })
     }
 
     if (url.origin !== 'http://localhost') {
-      throw new Error(
-        `prerender page path must be relative: ${page.path}`,
-      )
+      throw new Error(`prerender page path must be relative: ${page.path}`)
     }
     return {
       ...page,
@@ -156,9 +153,7 @@ export async function prerender({
     startConfig.pages = startConfig.pages.map((page) => {
       const url = new URL(page.path, routerBasePath)
       if (url.origin !== 'http://localhost') {
-        throw new Error(
-          `prerender page path must be relative: ${page.path}`,
-        )
+        throw new Error(`prerender page path must be relative: ${page.path}`)
       }
       return {
         ...page,

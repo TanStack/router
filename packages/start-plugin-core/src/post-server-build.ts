@@ -35,9 +35,7 @@ export async function postServerBuild({
 
     const maskUrl = new URL(startConfig.spa.maskPath, 'http://localhost')
     if (maskUrl.origin !== 'http://localhost') {
-      throw new Error(
-        'spa.maskPath must be a path (no protocol/host)',
-      )
+      throw new Error('spa.maskPath must be a path (no protocol/host)')
     }
 
     startConfig.pages.push({
