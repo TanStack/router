@@ -2,6 +2,7 @@ import * as Vue from 'vue'
 import {
   deepEqual,
   exactPathTest,
+  isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
@@ -250,6 +251,39 @@ export function useLinkProps<
   }
 
   if (type.value === 'external') {
+    // Block dangerous protocols like javascript:, data:, vbscript:
+    if (isDangerousProtocol(options.to as string)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${options.to}`)
+      }
+      // Return props without href to prevent navigation
+      const safeProps: Record<string, unknown> = {
+        ...getPropsSafeToSpread(),
+        ref,
+        // No href attribute - blocks the dangerous protocol
+        target: options.target,
+        disabled: options.disabled,
+        style: options.style,
+        class: options.class,
+        onClick: options.onClick,
+        onFocus: options.onFocus,
+        onMouseEnter: options.onMouseEnter,
+        onMouseLeave: options.onMouseLeave,
+        onMouseOver: options.onMouseOver,
+        onMouseOut: options.onMouseOut,
+        onTouchStart: options.onTouchStart,
+      }
+
+      // Remove undefined values
+      Object.keys(safeProps).forEach((key) => {
+        if (safeProps[key] === undefined) {
+          delete safeProps[key]
+        }
+      })
+
+      return safeProps as LinkHTMLAttributes
+    }
+
     // External links just have simple props
     const externalProps: Record<string, unknown> = {
       ...getPropsSafeToSpread(),

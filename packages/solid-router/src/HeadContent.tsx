@@ -1,6 +1,7 @@
 import * as Solid from 'solid-js'
 import { MetaProvider } from '@solidjs/meta'
 import { For } from 'solid-js'
+import { escapeHtml } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -32,6 +33,21 @@ export const useTags = () => {
               tag: 'title',
               children: m.title,
             }
+          }
+        } else if ('script:ld+json' in m) {
+          // Handle JSON-LD structured data
+          // Content is HTML-escaped to prevent XSS when injected via innerHTML
+          try {
+            const json = JSON.stringify(m['script:ld+json'])
+            resultMeta.push({
+              tag: 'script',
+              attrs: {
+                type: 'application/ld+json',
+              },
+              children: escapeHtml(json),
+            })
+          } catch {
+            // Skip invalid JSON-LD objects
           }
         } else {
           const attribute = m.name ?? m.property

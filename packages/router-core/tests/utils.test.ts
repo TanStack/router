@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   decodePath,
   deepEqual,
+  escapeHtml,
   isPlainArray,
   replaceEqualDeep,
 } from '../src/utils'
@@ -662,5 +663,63 @@ describe('decodePath', () => {
       // Direct // input should also be collapsed
       expect(decodePath('//')).toBe('/')
     })
+  })
+})
+
+describe('escapeHtml', () => {
+  it('should escape less-than sign', () => {
+    expect(escapeHtml('<')).toBe('\\u003c')
+  })
+
+  it('should escape greater-than sign', () => {
+    expect(escapeHtml('>')).toBe('\\u003e')
+  })
+
+  it('should escape ampersand', () => {
+    expect(escapeHtml('&')).toBe('\\u0026')
+  })
+
+  it('should escape line separator (U+2028)', () => {
+    expect(escapeHtml('\u2028')).toBe('\\u2028')
+  })
+
+  it('should escape paragraph separator (U+2029)', () => {
+    expect(escapeHtml('\u2029')).toBe('\\u2029')
+  })
+
+  it('should escape multiple characters', () => {
+    expect(escapeHtml('<script>alert("XSS")</script>')).toBe(
+      '\\u003cscript\\u003ealert("XSS")\\u003c/script\\u003e',
+    )
+  })
+
+  it('should handle script tag injection attempt in JSON', () => {
+    const maliciousKey = '</script><script>alert("XSS")</script>'
+    const json = JSON.stringify({ key: maliciousKey })
+    const escaped = escapeHtml(json)
+
+    // The escaped version should not contain literal < or > characters
+    expect(escaped).not.toContain('<')
+    expect(escaped).not.toContain('>')
+
+    // The escaped version should still be valid JSON when evaluated
+    // (the escape sequences are valid in JavaScript strings)
+    expect(escaped).toContain('\\u003c')
+    expect(escaped).toContain('\\u003e')
+  })
+
+  it('should return strings without special characters unchanged', () => {
+    const safe = 'hello world 123'
+    expect(escapeHtml(safe)).toBe(safe)
+  })
+
+  it('should handle empty string', () => {
+    expect(escapeHtml('')).toBe('')
+  })
+
+  it('should handle mixed content', () => {
+    expect(escapeHtml('a<b>c&d\u2028e\u2029f')).toBe(
+      'a\\u003cb\\u003ec\\u0026d\\u2028e\\u2029f',
+    )
   })
 })

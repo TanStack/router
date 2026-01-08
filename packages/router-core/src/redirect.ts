@@ -1,3 +1,4 @@
+import { SAFE_URL_PROTOCOLS, isDangerousProtocol } from './utils'
 import type { NavigateOptions } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
 
@@ -81,6 +82,13 @@ export function redirect<
   opts: RedirectOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
   opts.statusCode = opts.statusCode || opts.code || 307
+
+  // Block dangerous protocols in redirect href
+  if (typeof opts.href === 'string' && isDangerousProtocol(opts.href)) {
+    throw new Error(
+      `Redirect blocked: unsafe protocol in href "${opts.href}". Only ${SAFE_URL_PROTOCOLS.join(', ')} protocols are allowed.`,
+    )
+  }
 
   if (!opts.reloadDocument && typeof opts.href === 'string') {
     try {

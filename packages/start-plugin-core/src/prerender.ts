@@ -40,6 +40,15 @@ export async function prerender({
     startConfig.pages = pages
   }
 
+  const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
+  const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
+
+  // Enforce that prerender page paths are relative/path-based (no protocol/host)
+  startConfig.pages = validateAndNormalizePrerenderPages(
+    startConfig.pages,
+    routerBaseUrl,
+  )
+
   const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
 
   if (!serverEnv) {
@@ -125,6 +134,13 @@ export async function prerender({
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
     const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
+
+    // Normalize discovered pages and enforce path-only entries
+    const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
+    startConfig.pages = validateAndNormalizePrerenderPages(
+      startConfig.pages,
+      routerBaseUrl,
+    )
 
     startConfig.pages.forEach((page) => addCrawlPageTask(page))
 
@@ -293,4 +309,39 @@ function getResolvedUrl(previewServer: PreviewServer): URL {
   }
 
   return new URL(baseUrl)
+}
+
+/**
+ * Validates and normalizes prerender page paths to ensure they are relative
+ * (no protocol/host) and returns normalized Page objects with cleaned paths.
+ * Preserves unicode characters by decoding the pathname after URL validation.
+ */
+function validateAndNormalizePrerenderPages(
+  pages: Array<Page>,
+  routerBaseUrl: URL,
+): Array<Page> {
+  return pages.map((page) => {
+    let url: URL
+    try {
+      url = new URL(page.path, routerBaseUrl)
+    } catch (err) {
+      throw new Error(`prerender page path must be relative: ${page.path}`, {
+        cause: err,
+      })
+    }
+
+    if (url.origin !== 'http://localhost') {
+      throw new Error(`prerender page path must be relative: ${page.path}`)
+    }
+
+    // Decode the pathname to preserve unicode characters (e.g., /대한민국)
+    // The URL constructor encodes non-ASCII characters, but we want to keep
+    // the original unicode form for filesystem paths
+    const decodedPathname = decodeURIComponent(url.pathname)
+
+    return {
+      ...page,
+      path: decodedPathname + url.search + url.hash,
+    }
+  })
 }

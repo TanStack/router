@@ -328,14 +328,21 @@ export function attachRouterServerSsrUtils({
   }
 }
 
+/**
+ * Get the origin for the request.
+ *
+ * SECURITY: We intentionally do NOT trust the Origin header for determining
+ * the router's origin. The Origin header can be spoofed by attackers, which
+ * could lead to SSRF-like vulnerabilities where redirects are constructed
+ * using a malicious origin (CVE-2024-34351).
+ *
+ * Instead, we derive the origin from request.url, which is typically set by
+ * the server infrastructure (not client-controlled headers).
+ *
+ * For applications behind proxies that need to trust forwarded headers,
+ * use the router's `origin` option to explicitly configure a trusted origin.
+ */
 export function getOrigin(request: Request) {
-  const originHeader = request.headers.get('Origin')
-  if (originHeader) {
-    try {
-      new URL(originHeader)
-      return originHeader
-    } catch {}
-  }
   try {
     return new URL(request.url).origin
   } catch {}

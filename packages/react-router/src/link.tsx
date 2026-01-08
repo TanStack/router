@@ -4,6 +4,7 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
@@ -144,10 +145,26 @@ export function useLinkProps<
 
   const externalLink = React.useMemo(() => {
     if (hrefOption?.external) {
+      // Block dangerous protocols for external links
+      if (isDangerousProtocol(hrefOption.href)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `Blocked Link with dangerous protocol: ${hrefOption.href}`,
+          )
+        }
+        return undefined
+      }
       return hrefOption.href
     }
     try {
       new URL(to as any)
+      // Block dangerous protocols like javascript:, data:, vbscript:
+      if (isDangerousProtocol(to as string)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${to}`)
+        }
+        return undefined
+      }
       return to
     } catch {}
     return undefined

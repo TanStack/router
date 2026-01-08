@@ -6,6 +6,7 @@ import {
   deepEqual,
   findLast,
   functionalUpdate,
+  isDangerousProtocol,
   last,
   replaceEqualDeep,
 } from './utils'
@@ -2061,6 +2062,17 @@ export class RouterCore<
       // otherwise use href directly (which may already include basepath)
       const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
 
+      // Block dangerous protocols like javascript:, data:, vbscript:
+      // These could execute arbitrary code if passed to window.location
+      if (isDangerousProtocol(reloadHref)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `Blocked navigation to dangerous protocol: ${reloadHref}`,
+          )
+        }
+        return Promise.resolve()
+      }
+
       // Check blockers for external URLs unless ignoreBlocker is true
       if (!rest.ignoreBlocker) {
         // Cast to access internal getBlockers method
@@ -2449,15 +2461,30 @@ export class RouterCore<
   }
 
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
+    const locationHeader = redirect.headers.get('Location')
+
     if (!redirect.options.href) {
       const location = this.buildLocation(redirect.options)
       const href = this.getParsedLocationHref(location)
-      redirect.options.href = location.href
+      redirect.options.href = href
       redirect.headers.set('Location', href)
+    } else if (locationHeader) {
+      try {
+        const url = new URL(locationHeader)
+        if (this.origin && url.origin === this.origin) {
+          const href = url.pathname + url.search + url.hash
+          redirect.options.href = href
+          redirect.headers.set('Location', href)
+        }
+      } catch {
+        // ignore invalid URLs
+      }
     }
+
     if (!redirect.headers.get('Location')) {
       redirect.headers.set('Location', redirect.options.href)
     }
+
     return redirect
   }
 

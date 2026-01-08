@@ -518,6 +518,64 @@ function decodeSegment(segment: string): string {
   return sanitizePathSegment(decoded)
 }
 
+/**
+ * List of URL protocols that are safe for navigation.
+ * Only these protocols are allowed in redirects and navigation.
+ */
+export const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+
+/**
+ * Check if a URL string uses a protocol that is not in the safe list.
+ * Returns true for dangerous protocols like javascript:, data:, vbscript:, etc.
+ *
+ * The URL constructor correctly normalizes:
+ * - Mixed case (JavaScript: → javascript:)
+ * - Whitespace/control characters (java\nscript: → javascript:)
+ * - Leading whitespace
+ *
+ * For relative URLs (no protocol), returns false (safe).
+ *
+ * @param url - The URL string to check
+ * @returns true if the URL uses a dangerous (non-whitelisted) protocol
+ */
+export function isDangerousProtocol(url: string): boolean {
+  if (!url) return false
+
+  try {
+    // Use the URL constructor - it correctly normalizes protocols
+    // per WHATWG URL spec, handling all bypass attempts automatically
+    const parsed = new URL(url)
+    return !SAFE_URL_PROTOCOLS.includes(parsed.protocol)
+  } catch {
+    // URL constructor throws for relative URLs (no protocol)
+    // These are safe - they can't execute scripts
+    return false
+  }
+}
+
+// This utility is based on https://github.com/zertosh/htmlescape
+// License: https://github.com/zertosh/htmlescape/blob/0527ca7156a524d256101bb310a9f970f63078ad/LICENSE
+const HTML_ESCAPE_LOOKUP: { [match: string]: string } = {
+  '&': '\\u0026',
+  '>': '\\u003e',
+  '<': '\\u003c',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+}
+
+const HTML_ESCAPE_REGEX = /[&><\u2028\u2029]/g
+
+/**
+ * Escape HTML special characters in a string to prevent XSS attacks
+ * when embedding strings in script tags during SSR.
+ *
+ * This is essential for preventing XSS vulnerabilities when user-controlled
+ * content is embedded in inline scripts.
+ */
+export function escapeHtml(str: string): string {
+  return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
+}
+
 export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   if (!path) return path
   const re = decodeIgnore
