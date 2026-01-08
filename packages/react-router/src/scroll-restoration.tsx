@@ -1,5 +1,6 @@
 import {
   defaultGetScrollRestorationKey,
+  escapeHtml,
   restoreScroll,
   storageKey,
 } from '@tanstack/router-core'
@@ -37,7 +38,7 @@ export function ScrollRestoration() {
 
   return (
     <ScriptOnce
-      children={`(${restoreScroll.toString()})(${JSON.stringify(restoreScrollOptions)})`}
+      children={`(${restoreScroll.toString()})(${escapeHtml(JSON.stringify(restoreScrollOptions))})`}
     />
   )
 }

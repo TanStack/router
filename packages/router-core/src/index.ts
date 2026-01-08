@@ -273,6 +273,7 @@ export {
   createControlledPromise,
   isModuleNotFoundError,
   decodePath,
+  escapeHtml,
 } from './utils'
 export type {
   NoInfer,

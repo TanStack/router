@@ -553,6 +553,29 @@ export function isDangerousProtocol(url: string): boolean {
   }
 }
 
+// This utility is based on https://github.com/zertosh/htmlescape
+// License: https://github.com/zertosh/htmlescape/blob/0527ca7156a524d256101bb310a9f970f63078ad/LICENSE
+const HTML_ESCAPE_LOOKUP: { [match: string]: string } = {
+  '&': '\\u0026',
+  '>': '\\u003e',
+  '<': '\\u003c',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+}
+
+const HTML_ESCAPE_REGEX = /[&><\u2028\u2029]/g
+
+/**
+ * Escape HTML special characters in a string to prevent XSS attacks
+ * when embedding strings in script tags during SSR.
+ *
+ * This is essential for preventing XSS vulnerabilities when user-controlled
+ * content is embedded in inline scripts.
+ */
+export function escapeHtml(str: string): string {
+  return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
+}
+
 export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   if (!path) return path
   const re = decodeIgnore
