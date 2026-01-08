@@ -150,8 +150,18 @@ export async function prerender({
     const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
 
     // Normalize discovered pages and enforce path-only entries
+    const absoluteBase =
+      'http://localhost' +
+      (routerBasePath.startsWith('/') ? routerBasePath : '/' + routerBasePath)
     startConfig.pages = startConfig.pages.map((page) => {
-      const url = new URL(page.path, routerBasePath)
+      let url: URL
+      try {
+        url = new URL(page.path, absoluteBase)
+      } catch (err) {
+        throw new Error(`prerender page path must be relative: ${page.path}`, {
+          cause: err,
+        })
+      }
       if (url.origin !== 'http://localhost') {
         throw new Error(`prerender page path must be relative: ${page.path}`)
       }
