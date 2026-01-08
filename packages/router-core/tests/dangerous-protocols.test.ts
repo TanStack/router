@@ -96,6 +96,141 @@ describe('isDangerousProtocol', () => {
       expect(isDangerousProtocol('/path?time=12:00')).toBe(false)
     })
   })
+
+  describe('additional edge cases', () => {
+    describe('null and undefined inputs', () => {
+      it('should return false for null', () => {
+        expect(isDangerousProtocol(null as unknown as string)).toBe(false)
+      })
+
+      it('should return false for undefined', () => {
+        expect(isDangerousProtocol(undefined as unknown as string)).toBe(false)
+      })
+    })
+
+    describe('URL-encoded schemes', () => {
+      it('should return false for URL-encoded javascript: protocol (URL constructor does not decode protocol)', () => {
+        // %6a%61%76%61%73%63%72%69%70%74 = javascript
+        // The URL constructor treats this as an invalid URL (throws), so it returns false
+        // This is safe because browsers also don't decode percent-encoding in protocols
+        expect(
+          isDangerousProtocol('%6a%61%76%61%73%63%72%69%70%74:alert(1)'),
+        ).toBe(false)
+      })
+
+      it('should return false for partially URL-encoded javascript: protocol', () => {
+        // URL constructor throws for these malformed URLs
+        expect(isDangerousProtocol('%6aavascript:alert(1)')).toBe(false)
+        expect(isDangerousProtocol('j%61vascript:alert(1)')).toBe(false)
+      })
+
+      it('should return false for URL-encoded data: protocol', () => {
+        // %64%61%74%61 = data
+        // URL constructor treats this as invalid
+        expect(
+          isDangerousProtocol(
+            '%64%61%74%61:text/html,<script>alert(1)</script>',
+          ),
+        ).toBe(false)
+      })
+
+      it('should return false for URL-encoded vbscript: protocol', () => {
+        // %76%62%73%63%72%69%70%74 = vbscript
+        // URL constructor treats this as invalid
+        expect(isDangerousProtocol('%76%62%73%63%72%69%70%74:msgbox(1)')).toBe(
+          false,
+        )
+      })
+
+      it('should return false for URL-encoded safe protocols (URL constructor does not decode)', () => {
+        // %68%74%74%70%73 = https
+        // URL constructor treats this as invalid since percent-encoding in protocol is not decoded
+        expect(isDangerousProtocol('%68%74%74%70%73://example.com')).toBe(false)
+      })
+    })
+
+    describe('protocol-relative URLs', () => {
+      it('should return false for protocol-relative URLs', () => {
+        expect(isDangerousProtocol('//example.com')).toBe(false)
+      })
+
+      it('should return false for protocol-relative URLs with paths', () => {
+        expect(isDangerousProtocol('//example.com/path/to/page')).toBe(false)
+      })
+
+      it('should return false for protocol-relative URLs with query strings', () => {
+        expect(isDangerousProtocol('//example.com?foo=bar')).toBe(false)
+      })
+
+      it('should return false for protocol-relative URLs with hash', () => {
+        expect(isDangerousProtocol('//example.com#section')).toBe(false)
+      })
+    })
+
+    describe('malformed inputs', () => {
+      it('should return false for strings without valid protocol pattern', () => {
+        expect(isDangerousProtocol('not a url at all')).toBe(false)
+      })
+
+      it('should return false for strings with only colons', () => {
+        expect(isDangerousProtocol(':::')).toBe(false)
+      })
+
+      it('should return false for strings starting with numbers', () => {
+        expect(isDangerousProtocol('123:456')).toBe(false)
+      })
+
+      it('should handle strings with non-printable characters', () => {
+        expect(isDangerousProtocol('\x00javascript:alert(1)')).toBe(true)
+        expect(isDangerousProtocol('\x01\x02\x03javascript:alert(1)')).toBe(
+          true,
+        )
+      })
+
+      it('should return false for very long benign paths', () => {
+        const longPath = '/' + 'a'.repeat(10000)
+        expect(isDangerousProtocol(longPath)).toBe(false)
+      })
+
+      it('should return false for very long query strings', () => {
+        const longQuery = '/path?' + 'a=b&'.repeat(1000)
+        expect(isDangerousProtocol(longQuery)).toBe(false)
+      })
+
+      it('should detect dangerous protocol even with long payload', () => {
+        const longPayload = 'javascript:' + 'a'.repeat(10000)
+        expect(isDangerousProtocol(longPayload)).toBe(true)
+      })
+
+      it('should handle unicode characters in URLs', () => {
+        expect(isDangerousProtocol('/путь/к/странице')).toBe(false)
+        expect(isDangerousProtocol('https://例え.jp/path')).toBe(false)
+      })
+
+      it('should return false for full-width unicode characters (not recognized as javascript protocol)', () => {
+        // Full-width characters are not normalized by URL constructor
+        // URL constructor throws, so this is treated as safe (relative URL)
+        expect(isDangerousProtocol('ｊａｖａｓｃｒｉｐｔ:alert(1)')).toBe(false)
+      })
+    })
+
+    describe('whitespace variations', () => {
+      it('should detect javascript: with various whitespace combinations', () => {
+        expect(isDangerousProtocol('  \t\n  javascript:alert(1)')).toBe(true)
+        expect(isDangerousProtocol('\r\njavascript:alert(1)')).toBe(true)
+      })
+
+      it('should return false for non-breaking space prefix (URL constructor throws)', () => {
+        // Non-breaking space is not stripped by URL constructor, causes it to throw
+        expect(isDangerousProtocol('\u00A0javascript:alert(1)')).toBe(false)
+      })
+
+      it('should return false for javascript: with embedded null bytes (URL constructor throws)', () => {
+        // Null bytes in the protocol cause URL constructor to throw
+        expect(isDangerousProtocol('java\x00script:alert(1)')).toBe(false)
+      })
+    })
+  })
 })
 
 describe('redirect with dangerous protocols', () => {
