@@ -6,6 +6,7 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
@@ -157,10 +158,24 @@ export function useLinkProps<
   const externalLink = Solid.createMemo(() => {
     const _href = hrefOption()
     if (_href?.external) {
+      // Block dangerous protocols for external links
+      if (isDangerousProtocol(_href.href)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
+        }
+        return undefined
+      }
       return _href.href
     }
     try {
       new URL(_options().to as any)
+      // Block dangerous protocols like javascript:, data:, vbscript:
+      if (isDangerousProtocol(_options().to as string)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${_options().to}`)
+        }
+        return undefined
+      }
       return _options().to
     } catch {}
     return undefined

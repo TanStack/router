@@ -274,6 +274,7 @@ export {
   isModuleNotFoundError,
   decodePath,
   escapeHtml,
+  isDangerousProtocol,
 } from './utils'
 export type {
   NoInfer,
