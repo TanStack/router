@@ -40,6 +40,32 @@ export async function prerender({
     startConfig.pages = pages
   }
 
+  const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
+  const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
+
+  // Enforce that prerender page paths are relative/path-based (no protocol/host)
+  startConfig.pages = startConfig.pages.map((page) => {
+    let url: URL
+    try {
+      url = new URL(page.path, routerBaseUrl)
+    } catch (err) {
+      throw new Error(
+        `prerender page path must be relative: ${page.path}`,
+        { cause: err },
+      )
+    }
+
+    if (url.origin !== 'http://localhost') {
+      throw new Error(
+        `prerender page path must be relative: ${page.path}`,
+      )
+    }
+    return {
+      ...page,
+      path: url.pathname + url.search + url.hash,
+    }
+  })
+
   const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
 
   if (!serverEnv) {
@@ -125,6 +151,20 @@ export async function prerender({
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
     const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
+
+    // Normalize discovered pages and enforce path-only entries
+    startConfig.pages = startConfig.pages.map((page) => {
+      const url = new URL(page.path, routerBasePath)
+      if (url.origin !== 'http://localhost') {
+        throw new Error(
+          `prerender page path must be relative: ${page.path}`,
+        )
+      }
+      return {
+        ...page,
+        path: url.pathname + url.search + url.hash,
+      }
+    })
 
     startConfig.pages.forEach((page) => addCrawlPageTask(page))
 
