@@ -1977,7 +1977,14 @@ export class RouterCore<
       const parsed = parseHref(href, {
         __TSR_index: replace ? currentIndex : currentIndex + 1,
       })
-      rest.to = parsed.pathname
+
+      // If the href contains the basepath, we need to strip it before setting `to`
+      // because `buildLocation` will add the basepath back when creating the final URL.
+      // Without this, hrefs like '/app/about' would become '/app/app/about'.
+      const hrefUrl = new URL(parsed.pathname, this.origin)
+      const rewrittenUrl = executeRewriteInput(this.rewrite, hrefUrl)
+
+      rest.to = rewrittenUrl.pathname
       rest.search = this.options.parseSearch(parsed.search)
       // remove the leading `#` from the hash
       rest.hash = parsed.hash.slice(1)
@@ -2040,12 +2047,18 @@ export class RouterCore<
     }
 
     if (reloadDocument) {
-      if (!href || (!publicHref && !hrefIsUrl)) {
+      // When to is provided, always build a location to get the proper publicHref
+      // (this handles redirects where href might be an internal path from resolveRedirect)
+      // When only href is provided (no to), use it directly as it should already
+      // be a complete path (possibly with basepath)
+      if (to !== undefined || !href) {
         const location = this.buildLocation({ to, ...rest } as any)
         href = href ?? location.url.href
         publicHref = publicHref ?? location.url.href
       }
 
+      // Use publicHref when available and href is not a full URL,
+      // otherwise use href directly (which may already include basepath)
       const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
 
       // Check blockers for external URLs unless ignoreBlocker is true
