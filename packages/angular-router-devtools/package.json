@@ -60,7 +60,7 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@analogjs/vite-plugin-angular": "^1.15.0",
+    "@analogjs/vite-plugin-angular": "^2.0.0",
     "@analogjs/vitest-angular": "^2.2.1",
     "@angular/compiler": "21.0.4",
     "@angular/compiler-cli": "21.0.4",
