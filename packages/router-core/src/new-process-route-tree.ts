@@ -429,8 +429,7 @@ function sortDynamic(
   if (
     a.skipOnParamError &&
     b.skipOnParamError &&
-    a.parsingPriority &&
-    b.parsingPriority
+    (a.parsingPriority || b.parsingPriority)
   )
     return b.parsingPriority - a.parsingPriority
   if (a.prefix && b.prefix && a.prefix !== b.prefix) {
