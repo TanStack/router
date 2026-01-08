@@ -17,6 +17,27 @@ vi.mock('../src/prerender', async () => {
   }
 })
 
+// Mock vite to prevent actual server from starting
+vi.mock('vite', () => ({
+  preview: vi.fn().mockResolvedValue({
+    resolvedUrls: { local: ['http://localhost:5173/'] },
+    close: vi.fn().mockResolvedValue(undefined),
+  }),
+}))
+
+// Mock fs to prevent actual file system operations
+vi.mock('node:fs', async () => {
+  const actual = await vi.importActual<any>('node:fs')
+  return {
+    ...actual,
+    promises: {
+      ...actual.promises,
+      mkdir: vi.fn().mockResolvedValue(undefined),
+      writeFile: vi.fn().mockResolvedValue(undefined),
+    },
+  }
+})
+
 const builder = {
   environments: {
     [VITE_ENVIRONMENT_NAMES.client]: {
@@ -29,7 +50,11 @@ const builder = {
 } as any
 
 const fetchMock = vi.fn(
-  async () => new Response('<html></html>', { status: 200 }),
+  async () =>
+    new Response('<html></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    }),
 )
 
 vi.stubGlobal('fetch', fetchMock)
