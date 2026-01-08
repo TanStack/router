@@ -38,8 +38,9 @@
     "test:perf": "vitest bench",
     "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "ng build angular-router --configuration production"
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json"
   },
+  "type": "module",
   "sideEffects": false,
   "module": "./dist/fesm2022/tanstack-angular-router.mjs",
   "typings": "./dist/types/tanstack-angular-router.d.ts",
@@ -74,11 +75,16 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "21.0.4",
-    "@angular/cli": "21.0.4",
+    "@analogjs/vite-plugin-angular": "^1.22.5",
+    "@analogjs/vitest-angular": "^2.2.1",
     "@angular/compiler": "21.0.4",
     "@angular/compiler-cli": "21.0.4",
+    "@angular/platform-browser": "21.0.4",
+    "@testing-library/angular": "^19.0.0",
+    "@testing-library/jest-dom": "^6.6.3",
     "combinate": "^1.1.11",
+    "jsdom": "^27.4.0",
+    "ng-packagr": "^21.0.0",
     "vibe-rules": "^0.2.57",
     "zod": "^3.24.2"
   },

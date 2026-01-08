@@ -34,7 +34,7 @@
     "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js -p tsconfig.legacy.json",
     "test:types:ts59": "tsc -p tsconfig.legacy.json",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "ng build angular-router-devtools --configuration production"
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json"
   },
   "sideEffects": false,
   "module": "./dist/fesm2022/tanstack-angular-router-devtools.mjs",
@@ -56,18 +56,20 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-devtools-core": "workspace:*"
+    "@tanstack/router-devtools-core": "workspace:*",
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "21.0.4",
-    "@angular/cli": "21.0.4",
+    "@analogjs/vite-plugin-angular": "^1.15.0",
+    "@analogjs/vitest-angular": "^2.2.1",
     "@angular/compiler": "21.0.4",
-    "@angular/compiler-cli": "21.0.4"
+    "@angular/compiler-cli": "21.0.4",
+    "ng-packagr": "^21.0.0"
   },
   "peerDependencies": {
+    "@angular/core": "21.0.4",
     "@tanstack/angular-router": "workspace:^",
-    "@tanstack/router-core": "workspace:^",
-    "@angular/core": "21.0.4"
+    "@tanstack/router-core": "workspace:^"
   },
   "peerDependenciesMeta": {
     "@tanstack/router-core": {

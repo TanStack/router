@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist/out-tsc",
     "declaration": true,
@@ -19,5 +19,5 @@
     "skipMetadataEmit": false
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.spec.ts", "tests/**/*"]
+  "exclude": ["**/*.spec.ts", "tests/**/*", "**/*.test.ts"]
 }

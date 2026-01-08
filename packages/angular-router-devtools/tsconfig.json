@@ -2,14 +2,9 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "target": "ES2022",
+    "useDefineForClassFields": false
   },
-  "include": [
-    "src",
-    "tests",
-    "vite.config.ts",
-    "angular.json",
-    "ng-package.json",
-    "eslint.config.js"
-  ]
+  "include": ["src", "tests", "vitest.config.ts", "eslint.config.js"]
 }

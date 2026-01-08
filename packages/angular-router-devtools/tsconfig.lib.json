@@ -1,23 +1,13 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist/out-tsc",
+    "outDir": "../../dist/out-tsc",
     "declaration": true,
     "declarationMap": true,
-    "noEmit": false,
-    "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "useDefineForClassFields": false
+    "inlineSources": true,
+    "types": ["node"]
   },
-  "angularCompilerOptions": {
-    "compilationMode": "partial",
-    "strictInjectionParameters": true,
-    "strictInputAccessModifiers": false,
-    "strictTemplates": true,
-    "skipMetadataEmit": false
-  },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.spec.ts", "tests/**/*"]
+  "exclude": ["**/*.spec.ts", "tests/**/*", "**/*.test.ts"],
+  "include": ["src/**/*.ts"]
 }
+

@@ -6,3 +6,4 @@
   },
   "allowedNonPeerDependencies": ["@tanstack/router-devtools-core"]
 }
+
