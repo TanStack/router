@@ -1,0 +1,25 @@
+{
+  "name": "tanstack-react-start-e2e-vitest-hooks",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "vitest run"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "jsdom": "^27.4.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
+  }
+}
