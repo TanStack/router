@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
     "target": "ES2022",
+    "noEmit": false,
     "types": ["node", "vitest/globals"],
     "isolatedModules": true
   },

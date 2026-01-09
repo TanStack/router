@@ -35,7 +35,7 @@ export function injectTransitionerSetup() {
   if (router.isServer) return
 
   const destroyRef = Angular.inject(Angular.DestroyRef)
-
+  let destroyed = false
   const isLoading = injectRouterState({
     select: (s) => s.isLoading,
   })
@@ -74,6 +74,8 @@ export function injectTransitionerSetup() {
 
     // Helper to end the transition
     const endTransition = () => {
+      if (destroyed) return
+
       // Use afterNextRender to ensure Angular has processed all change detection
       // This is similar to Vue's nextTick approach
       Angular.afterNextRender(
@@ -139,6 +141,7 @@ export function injectTransitionerSetup() {
 
   destroyRef.onDestroy(() => {
     isMounted.set(false)
+    destroyed = true
     if (unsubscribe) {
       unsubscribe()
     }

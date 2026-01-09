@@ -13,10 +13,16 @@ import {
   injectNavigate,
 } from '../src'
 import type { InjectBlockerOpts, ShouldBlockFn } from '../src'
+import { beforeEach } from 'vitest'
+
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+})
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
+  vi.useRealTimers()
 })
 
 interface BlockerTestOpts {
@@ -39,7 +45,7 @@ const IGNORE_BLOCKER_TOKEN = new Angular.InjectionToken<boolean>(
     <h1>Index</h1>
     <a [link]="{ to: '/posts', ignoreBlocker }">link to posts</a>
     <a [link]="{ to: '/foo', ignoreBlocker }">link to foo</a>
-    <button (click)="navigate.to('/posts', { ignoreBlocker })">button</button>
+    <button (click)="navigate({ to: '/posts', ignoreBlocker })">button</button>
   `,
 })
 class IndexComponent {
