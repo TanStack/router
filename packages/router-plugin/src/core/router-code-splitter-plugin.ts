@@ -17,7 +17,7 @@ import {
   tsrSplit,
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
-import { debug } from './utils'
+import { debug, normalizePath } from './utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { Config } from './config'
@@ -212,7 +212,9 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           },
         },
         handler(code, id) {
-          const generatorFileInfo = globalThis.TSR_ROUTES_BY_ID_MAP?.get(id)
+          const normalizedId = normalizePath(id)
+          const generatorFileInfo =
+            globalThis.TSR_ROUTES_BY_ID_MAP?.get(normalizedId)
           if (
             generatorFileInfo &&
             includedCode.some((included) => code.includes(included))
@@ -227,7 +229,11 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
               }
             }
 
-            return handleCompilingReferenceFile(code, id, generatorFileInfo)
+            return handleCompilingReferenceFile(
+              code,
+              normalizedId,
+              generatorFileInfo,
+            )
           }
 
           return null
@@ -280,8 +286,8 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         handler(code, id) {
           const url = pathToFileURL(id)
           url.searchParams.delete('v')
-          id = fileURLToPath(url).replace(/\\/g, '/')
-          return handleCompilingVirtualFile(code, id)
+          const normalizedId = normalizePath(fileURLToPath(url))
+          return handleCompilingVirtualFile(code, normalizedId)
         },
       },
     },
