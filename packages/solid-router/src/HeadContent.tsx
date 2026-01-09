@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js'
-import { MetaProvider } from '@solidjs/meta'
 import { For } from 'solid-js'
 import { escapeHtml } from '@tanstack/router-core'
 import { Asset } from './Asset'
@@ -207,9 +206,7 @@ export function HeadContent() {
   const tags = useTags()
 
   return (
-    <MetaProvider>
-      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
-    </MetaProvider>
+    <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
   )
 }
 
