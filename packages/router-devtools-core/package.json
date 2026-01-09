@@ -73,8 +73,7 @@
   },
   "peerDependencies": {
     "@tanstack/router-core": "workspace:^",
-    "csstype": "^3.0.10",
-    "solid-js": ">=1.9.5"
+    "csstype": "^3.0.10"
   },
   "peerDependenciesMeta": {
     "csstype": {
