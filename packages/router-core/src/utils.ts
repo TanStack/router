@@ -613,8 +613,9 @@ export function buildDevStylesUrl(
   basepath: string,
   routeIds: Array<string>,
 ): string {
-  // Router basepath may or may not have leading slash, so normalize it
-  const normalizedBasepath =
-    basepath === '/' ? '' : `/${basepath}`.replace(/\/+/g, '/')
+  // Trim all leading and trailing slashes from basepath
+  const trimmedBasepath = basepath.replace(/^\/+|\/+$/g, '')
+  // Build normalized basepath: empty string for root, or '/path' for non-root
+  const normalizedBasepath = trimmedBasepath === '' ? '' : `/${trimmedBasepath}`
   return `${normalizedBasepath}/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds.join(','))}`
 }

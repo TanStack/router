@@ -17,7 +17,8 @@ export interface TestFixtureOptions {
 }
 export const test = base.extend<TestFixtureOptions>({
   whitelistErrors: [
-    async (_deps, use) => {
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
       await use([])
     },
     { option: true },

@@ -154,7 +154,9 @@ test.describe('CSS styles in SSR (dev mode)', () => {
 
     // Navigate back to home
     await page.getByTestId('nav-home').click()
-    await page.waitForURL('/')
+    // Match home URL with or without trailing slash and optional query string
+    // Matches: /, /?, /my-app, /my-app/, /my-app?foo=bar
+    await page.waitForURL(/\/([^/]*)(\/)?($|\?)/)
 
     // Verify global styles still work
     await expect(globalElement).toBeVisible()
