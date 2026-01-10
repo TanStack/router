@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { isModuleNotFoundError } from '@tanstack/router-core'
+import { reactUse } from './utils'
 import type { AsyncRouteComponent } from './route'
 
 /**
@@ -79,9 +80,8 @@ export function lazyRouteComponent<
     }
 
     if (!comp) {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (React.use) {
-        React.use(load())
+      if (reactUse) {
+        reactUse(load())
       } else {
         throw load()
       }
