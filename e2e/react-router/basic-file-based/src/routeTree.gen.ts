@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SpecialChar124pipeRouteImport } from './routes/special|pipe'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
@@ -34,6 +33,7 @@ import { Route as StructuralSharingEnabledRouteImport } from './routes/structura
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as PipeReferenceRouteImport } from './routes/pipe.$reference'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
 import { Route as groupInsideRouteImport } from './routes/(group)/inside'
@@ -119,11 +119,6 @@ import { Route as NonNestedDeepBazBarFooRouteRouteImport } from './routes/non-ne
 import { Route as NonNestedDeepBazBarFooIndexRouteImport } from './routes/non-nested/deep/$baz_.bar.$foo.index'
 import { Route as NonNestedDeepBazBarFooQuxRouteImport } from './routes/non-nested/deep/$baz_.bar.$foo_.qux'
 
-const SpecialChar124pipeRoute = SpecialChar124pipeRouteImport.update({
-  id: '/special|pipe',
-  path: '/special|pipe',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RemountDepsRoute = RemountDepsRouteImport.update({
   id: '/remountDeps',
   path: '/remountDeps',
@@ -244,6 +239,11 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
+} as any)
+const PipeReferenceRoute = PipeReferenceRouteImport.update({
+  id: '/pipe/$reference',
+  path: '/pipe/$reference',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
@@ -721,7 +721,6 @@ export interface FileRoutesByFullPath {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
-  '/special|pipe': typeof SpecialChar124pipeRoute
   '/non-nested/deep': typeof NonNestedDeepRouteRouteWithChildren
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
@@ -733,6 +732,7 @@ export interface FileRoutesByFullPath {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/pipe/$reference': typeof PipeReferenceRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -826,7 +826,6 @@ export interface FileRoutesByTo {
   '/masks': typeof MasksRouteWithChildren
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
-  '/special|pipe': typeof SpecialChar124pipeRoute
   '/non-nested/deep': typeof NonNestedDeepRouteRouteWithChildren
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
@@ -838,6 +837,7 @@ export interface FileRoutesByTo {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/pipe/$reference': typeof PipeReferenceRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
@@ -926,7 +926,6 @@ export interface FileRoutesById {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
-  '/special|pipe': typeof SpecialChar124pipeRoute
   '/non-nested/deep': typeof NonNestedDeepRouteRouteWithChildren
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
@@ -941,6 +940,7 @@ export interface FileRoutesById {
   '/(group)/inside': typeof groupInsideRoute
   '/(group)/lazyinside': typeof groupLazyinsideRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/pipe/$reference': typeof PipeReferenceRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -1038,7 +1038,6 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
-    | '/special|pipe'
     | '/non-nested/deep'
     | '/non-nested/named'
     | '/non-nested/path'
@@ -1050,6 +1049,7 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/pipe/$reference'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -1143,7 +1143,6 @@ export interface FileRouteTypes {
     | '/masks'
     | '/notRemountDeps'
     | '/remountDeps'
-    | '/special|pipe'
     | '/non-nested/deep'
     | '/non-nested/named'
     | '/non-nested/path'
@@ -1155,6 +1154,7 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/pipe/$reference'
     | '/posts/$postId'
     | '/search-params/default'
     | '/structural-sharing/$enabled'
@@ -1242,7 +1242,6 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
-    | '/special|pipe'
     | '/non-nested/deep'
     | '/non-nested/named'
     | '/non-nested/path'
@@ -1257,6 +1256,7 @@ export interface FileRouteTypes {
     | '/(group)/inside'
     | '/(group)/lazyinside'
     | '/_layout/_layout-2'
+    | '/pipe/$reference'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -1354,7 +1354,6 @@ export interface RootRouteChildren {
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
-  SpecialChar124pipeRoute: typeof SpecialChar124pipeRoute
   ParamsPsNonNestedRouteRoute: typeof ParamsPsNonNestedRouteRouteWithChildren
   RelativeLinkRouteRoute: typeof RelativeLinkRouteRouteWithChildren
   RelativeUseNavigateRouteRoute: typeof RelativeUseNavigateRouteRouteWithChildren
@@ -1362,6 +1361,7 @@ export interface RootRouteChildren {
   groupLayoutRoute: typeof groupLayoutRouteWithChildren
   groupInsideRoute: typeof groupInsideRoute
   groupLazyinsideRoute: typeof groupLazyinsideRoute
+  PipeReferenceRoute: typeof PipeReferenceRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
@@ -1387,13 +1387,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/special|pipe': {
-      id: '/special|pipe'
-      path: '/special|pipe'
-      fullPath: '/special|pipe'
-      preLoaderRoute: typeof SpecialChar124pipeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/remountDeps': {
       id: '/remountDeps'
       path: '/remountDeps'
@@ -1561,6 +1554,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof PostsRoute
+    }
+    '/pipe/$reference': {
+      id: '/pipe/$reference'
+      path: '/pipe/$reference'
+      fullPath: '/pipe/$reference'
+      preLoaderRoute: typeof PipeReferenceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
@@ -2618,7 +2618,6 @@ const rootRouteChildren: RootRouteChildren = {
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
   RemountDepsRoute: RemountDepsRoute,
-  SpecialChar124pipeRoute: SpecialChar124pipeRoute,
   ParamsPsNonNestedRouteRoute: ParamsPsNonNestedRouteRouteWithChildren,
   RelativeLinkRouteRoute: RelativeLinkRouteRouteWithChildren,
   RelativeUseNavigateRouteRoute: RelativeUseNavigateRouteRouteWithChildren,
@@ -2626,6 +2625,7 @@ const rootRouteChildren: RootRouteChildren = {
   groupLayoutRoute: groupLayoutRouteWithChildren,
   groupInsideRoute: groupInsideRoute,
   groupLazyinsideRoute: groupLazyinsideRoute,
+  PipeReferenceRoute: PipeReferenceRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
   ParamsPsIndexRoute: ParamsPsIndexRoute,

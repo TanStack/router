@@ -400,10 +400,10 @@ test.describe('Special characters in route paths', () => {
     page,
     baseURL,
   }) => {
-    await page.goto('/special|pipe')
+    await page.goto('/pipe/hello|world')
 
-    await expect(page.locator('body')).toContainText('Hello /special|pipe!')
+    await expect(page.locator('body')).toContainText('Hello hello|world!')
 
-    expect(page.url()).toBe(`${baseURL}/special%7Cpipe`)
+    expect(page.url()).toBe(`${baseURL}/pipe/hello%7Cworld`)
   })
 })
