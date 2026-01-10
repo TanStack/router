@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { createFileRoute } from '@tanstack/solid-router'
 import styles from '~/styles/card.module.css'
 

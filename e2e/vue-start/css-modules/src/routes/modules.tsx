@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { createFileRoute } from '@tanstack/vue-router'
 import styles from '~/styles/card.module.css'
 
