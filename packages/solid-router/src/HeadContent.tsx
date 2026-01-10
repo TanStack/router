@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { MetaProvider } from '@solidjs/meta'
-import { For } from 'solid-js'
+import { For, onMount } from 'solid-js'
 import { escapeHtml } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -198,6 +198,31 @@ export const useTags = () => {
 }
 
 /**
+ * Renders a stylesheet link for dev mode CSS collection.
+ * On the server, renders the full link with route-scoped CSS URL.
+ * On the client, renders the same link to avoid hydration mismatch,
+ * then removes it after hydration since Vite's HMR handles CSS updates.
+ */
+function DevStylesLink() {
+  const routeIds = useRouterState({
+    select: (state) => state.matches.map((match) => match.routeId),
+  })
+
+  onMount(() => {
+    // After hydration, remove the SSR-rendered dev styles link
+    document
+      .querySelectorAll('[data-tanstack-start-dev-styles]')
+      .forEach((el) => el.remove())
+  })
+
+  // Build the same href on both server and client for hydration match
+  const href = () =>
+    `/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds().join(','))}`
+
+  return <link rel="stylesheet" href={href()} data-tanstack-start-dev-styles />
+}
+
+/**
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
  * When using full document hydration (hydrating from `<html>`), this component should be rendered in the `<body>`
  * to ensure it's part of the reactive tree and updates correctly during client-side navigation.
@@ -208,6 +233,7 @@ export function HeadContent() {
 
   return (
     <MetaProvider>
+      {process.env.NODE_ENV !== 'production' && <DevStylesLink />}
       <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
     </MetaProvider>
   )

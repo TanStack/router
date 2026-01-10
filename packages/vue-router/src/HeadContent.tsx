@@ -6,6 +6,41 @@ import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+/**
+ * Renders a stylesheet link for dev mode CSS collection.
+ * On the server, renders the full link with route-scoped CSS URL.
+ * On the client, renders the same link to avoid hydration mismatch,
+ * then removes it after hydration since Vite's HMR handles CSS updates.
+ */
+const DevStylesLink = Vue.defineComponent({
+  name: 'DevStylesLink',
+  setup() {
+    const routeIds = useRouterState({
+      select: (state) => state.matches.map((match) => match.routeId),
+    })
+
+    Vue.onMounted(() => {
+      // After hydration, remove the SSR-rendered dev styles link
+      document
+        .querySelectorAll('[data-tanstack-start-dev-styles]')
+        .forEach((el) => el.remove())
+    })
+
+    // Build the same href on both server and client for hydration match
+    const href = Vue.computed(
+      () =>
+        `/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds.value.join(','))}`,
+    )
+
+    return () =>
+      Vue.h('link', {
+        rel: 'stylesheet',
+        href: href.value,
+        'data-tanstack-start-dev-styles': true,
+      })
+  },
+})
+
 export const useTags = () => {
   const router = useRouter()
 
@@ -152,12 +187,19 @@ export const HeadContent = Vue.defineComponent({
     const tags = useTags()
 
     return () => {
-      return tags().map((tag) =>
+      const children = tags().map((tag) =>
         Vue.h(Asset, {
           ...tag,
           key: `tsr-meta-${JSON.stringify(tag)}`,
         }),
       )
+
+      // In dev mode, prepend the DevStylesLink
+      if (process.env.NODE_ENV !== 'production') {
+        return [Vue.h(DevStylesLink), ...children]
+      }
+
+      return children
     }
   },
 })
