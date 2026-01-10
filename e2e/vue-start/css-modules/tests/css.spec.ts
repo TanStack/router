@@ -1,4 +1,4 @@
-import { expect, request } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
 // Whitelist errors that can occur in CI:
@@ -15,21 +15,24 @@ test.describe('CSS styles in SSR (dev mode)', () => {
   test.use({ whitelistErrors })
 
   // Warmup: trigger Vite's dependency optimization before running tests
-  // This prevents "504 (Outdated Optimize Dep)" errors during actual tests
-  test.beforeAll(async ({ baseURL }) => {
-    const context = await request.newContext()
+  // This prevents "optimized dependencies changed. reloading" during actual tests
+  // We use a real browser context since dep optimization happens on JS load, not HTTP requests
+  test.beforeAll(async ({ browser, baseURL }) => {
+    const context = await browser.newContext()
+    const page = await context.newPage()
     try {
-      // Hit both pages to trigger any dependency optimization
-      await context.get(baseURL!)
-      await context.get(`${baseURL}/modules`)
-      // Give Vite time to complete optimization
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      // Hit again after optimization
-      await context.get(baseURL!)
+      // Load both pages to trigger dependency optimization
+      await page.goto(baseURL!)
+      await page.waitForTimeout(2000) // Wait for deps to optimize
+      await page.goto(`${baseURL}/modules`)
+      await page.waitForTimeout(2000)
+      // Load again after optimization completes
+      await page.goto(baseURL!)
+      await page.waitForTimeout(1000)
     } catch {
       // Ignore errors during warmup
     } finally {
-      await context.dispose()
+      await context.close()
     }
   })
 
@@ -117,14 +120,17 @@ test.describe('CSS styles in SSR (dev mode)', () => {
   test('styles persist after hydration', async ({ page, baseURL }) => {
     await page.goto(buildUrl(baseURL!, '/'))
 
-    // Wait for hydration
-    await page.waitForTimeout(1000)
-
+    // Wait for hydration and styles to be applied
     const element = page.getByTestId('global-styled')
-    const backgroundColor = await element.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(59, 130, 246)')
+    await expect(element).toBeVisible()
+
+    // Wait for CSS to be applied (background color should not be transparent)
+    await expect(async () => {
+      const backgroundColor = await element.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(59, 130, 246)')
+    }).toPass({ timeout: 5000 })
   })
 
   test('CSS modules styles persist after hydration', async ({
@@ -133,14 +139,17 @@ test.describe('CSS styles in SSR (dev mode)', () => {
   }) => {
     await page.goto(buildUrl(baseURL!, '/modules'))
 
-    // Wait for hydration
-    await page.waitForTimeout(1000)
-
+    // Wait for hydration and styles to be applied
     const card = page.getByTestId('module-card')
-    const backgroundColor = await card.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    await expect(card).toBeVisible()
+
+    // Wait for CSS to be applied (background color should not be transparent)
+    await expect(async () => {
+      const backgroundColor = await card.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    }).toPass({ timeout: 5000 })
   })
 
   test('styles work correctly after client-side navigation', async ({
