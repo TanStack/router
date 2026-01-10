@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { MetaProvider } from '@solidjs/meta'
-import { For, onMount } from 'solid-js'
+import { For, onMount, Show } from 'solid-js'
 import { escapeHtml } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -233,7 +233,9 @@ export function HeadContent() {
 
   return (
     <MetaProvider>
-      {process.env.NODE_ENV !== 'production' && <DevStylesLink />}
+      <Show when={process.env.NODE_ENV !== 'production'}>
+        <DevStylesLink />
+      </Show>
       <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
     </MetaProvider>
   )
