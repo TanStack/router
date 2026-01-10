@@ -1,7 +1,26 @@
-import { expect } from '@playwright/test'
+import { expect, request } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
 test.describe('CSS styles in SSR (dev mode)', () => {
+  // Warmup: trigger Vite's dependency optimization before running tests
+  // This prevents "504 (Outdated Optimize Dep)" errors during actual tests
+  test.beforeAll(async ({ baseURL }) => {
+    const context = await request.newContext()
+    try {
+      // Hit both pages to trigger any dependency optimization
+      await context.get(baseURL!)
+      await context.get(`${baseURL}/modules`)
+      // Give Vite time to complete optimization
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Hit again after optimization
+      await context.get(baseURL!)
+    } catch {
+      // Ignore errors during warmup
+    } finally {
+      await context.dispose()
+    }
+  })
+
   test.describe('with JavaScript disabled', () => {
     test.use({ javaScriptEnabled: false })
 
