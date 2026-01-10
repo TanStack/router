@@ -20,6 +20,7 @@ import {
   createRouteNodesByFullPath,
   createRouteNodesById,
   createRouteNodesByTo,
+  createTokenRegex,
   determineNodePath,
   findParent,
   format,
@@ -191,8 +192,26 @@ export class Generator {
   private static routeGroupPatternRegex = /\(.+\)/
   private physicalDirectories: Array<string> = []
 
-  private indexTokenRegex: RegExp
-  private routeTokenRegex: RegExp
+  /**
+   * Token regexes are pre-compiled once here and reused throughout route processing.
+   * We need TWO types of regex for each token because they match against different inputs:
+   *
+   * 1. FILENAME regexes: Match token patterns within full file path strings.
+   *    Example: For file "routes/dashboard.index.tsx", we want to detect ".index."
+   *    Pattern: `[./](?:token)[.]` - matches token bounded by path separators/dots
+   *    Used in: sorting route nodes by file path
+   *
+   * 2. SEGMENT regexes: Match token against a single logical route segment.
+   *    Example: For segment "index" (extracted from path), match the whole segment
+   *    Pattern: `^(?:token)$` - matches entire segment exactly
+   *    Used in: route parsing, determining route types, escape detection
+   *
+   * We cannot reuse one for the other without false positives or missing matches.
+   */
+  private indexTokenFilenameRegex: RegExp
+  private routeTokenFilenameRegex: RegExp
+  private indexTokenSegmentRegex: RegExp
+  private routeTokenSegmentRegex: RegExp
   private static componentPieceRegex =
     /[./](component|errorComponent|notFoundComponent|pendingComponent|loader|lazy)[.]/
 
@@ -207,8 +226,19 @@ export class Generator {
     this.routesDirectoryPath = this.getRoutesDirectoryPath()
     this.plugins.push(...(opts.config.plugins || []))
 
-    this.indexTokenRegex = new RegExp(`[./]${this.config.indexToken}[.]`)
-    this.routeTokenRegex = new RegExp(`[./]${this.config.routeToken}[.]`)
+    // Create all token regexes once in constructor
+    this.indexTokenFilenameRegex = createTokenRegex(this.config.indexToken, {
+      type: 'filename',
+    })
+    this.routeTokenFilenameRegex = createTokenRegex(this.config.routeToken, {
+      type: 'filename',
+    })
+    this.indexTokenSegmentRegex = createTokenRegex(this.config.indexToken, {
+      type: 'segment',
+    })
+    this.routeTokenSegmentRegex = createTokenRegex(this.config.routeToken, {
+      type: 'segment',
+    })
 
     for (const plugin of this.plugins) {
       plugin.init?.({ generator: this })
@@ -330,9 +360,19 @@ export class Generator {
     let getRouteNodesResult: GetRouteNodesResult
 
     if (this.config.virtualRouteConfig) {
-      getRouteNodesResult = await virtualGetRouteNodes(this.config, this.root)
+      getRouteNodesResult = await virtualGetRouteNodes(this.config, this.root, {
+        indexTokenSegmentRegex: this.indexTokenSegmentRegex,
+        routeTokenSegmentRegex: this.routeTokenSegmentRegex,
+      })
     } else {
-      getRouteNodesResult = await physicalGetRouteNodes(this.config, this.root)
+      getRouteNodesResult = await physicalGetRouteNodes(
+        this.config,
+        this.root,
+        {
+          indexTokenSegmentRegex: this.indexTokenSegmentRegex,
+          routeTokenSegmentRegex: this.routeTokenSegmentRegex,
+        },
+      )
     }
 
     const {
@@ -354,9 +394,9 @@ export class Generator {
     const preRouteNodes = multiSortBy(beforeRouteNodes, [
       (d) => (d.routePath === '/' ? -1 : 1),
       (d) => d.routePath?.split('/').length,
-      (d) => (d.filePath.match(this.indexTokenRegex) ? 1 : -1),
+      (d) => (d.filePath.match(this.indexTokenFilenameRegex) ? 1 : -1),
       (d) => (d.filePath.match(Generator.componentPieceRegex) ? 1 : -1),
-      (d) => (d.filePath.match(this.routeTokenRegex) ? -1 : 1),
+      (d) => (d.filePath.match(this.routeTokenFilenameRegex) ? -1 : 1),
       (d) => (d.routePath?.endsWith('/') ? -1 : 1),
       (d) => d.routePath,
     ]).filter((d) => {
@@ -541,10 +581,20 @@ export class Generator {
 
     const { rootRouteNode, acc } = opts
 
+    // Use pre-compiled regex if config hasn't been overridden, otherwise create new one
+    const indexTokenSegmentRegex =
+      config.indexToken === this.config.indexToken
+        ? this.indexTokenSegmentRegex
+        : createTokenRegex(config.indexToken, { type: 'segment' })
+
     const sortedRouteNodes = multiSortBy(acc.routeNodes, [
       (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
       (d) => d.routePath?.split('/').length,
-      (d) => (d.routePath?.endsWith(config.indexToken) ? -1 : 1),
+      (d) => {
+        const segments = d.routePath?.split('/').filter(Boolean) ?? []
+        const last = segments[segments.length - 1] ?? ''
+        return indexTokenSegmentRegex.test(last) ? -1 : 1
+      },
       (d) => d,
     ])
 

@@ -101,6 +101,34 @@ src/routes/posts.route.tsx -> /posts
 src/routes/posts/route.tsx -> /posts
 ```
 
+#### Using regex patterns for `routeToken`
+
+You can use a regular expression pattern instead of a literal string to match multiple layout route naming conventions. This is useful when you want more flexibility in your file naming.
+
+**In `tsr.config.json`** (JSON config), use an object with `regex` and optional `flags` properties:
+
+```json
+{
+  "routeToken": { "regex": "[a-z]+-layout", "flags": "i" }
+}
+```
+
+**In code** (inline config), you can use a native `RegExp`:
+
+```ts
+{
+  routeToken: /[a-z]+-layout/i
+}
+```
+
+With the regex pattern `[a-z]+-layout`, filenames like `dashboard.main-layout.tsx`, `posts.protected-layout.tsx`, or `admin.settings-layout.tsx` would all be recognized as layout routes.
+
+> [!NOTE]
+> The regex is matched against the **entire** final segment of the route path. For example, with `routeToken: { "regex": "[a-z]+-layout" }`:
+>
+> - `dashboard.main-layout.tsx` matches (`main-layout` is the full segment)
+> - `dashboard.my-layout-extra.tsx` does NOT match (the segment is `my-layout-extra`, not just `my-layout`)
+
 ### `indexToken`
 
 As mentioned in the Routing Concepts guide, an index route is a route that is matched when the URL path is exactly the same as the parent route. The `indexToken` is used to identify the index route file in the route directory.
@@ -113,6 +141,32 @@ By default, this value is set to `index`.
 src/routes/posts.index.tsx -> /posts/
 src/routes/posts/index.tsx -> /posts/
 ```
+
+#### Using regex patterns for `indexToken`
+
+Similar to `routeToken`, you can use a regular expression pattern for `indexToken` to match multiple index route naming conventions.
+
+**In `tsr.config.json`** (JSON config):
+
+```json
+{
+  "indexToken": { "regex": "[a-z]+-page" }
+}
+```
+
+**In code** (inline config):
+
+```ts
+{
+  indexToken: /[a-z]+-page/
+}
+```
+
+With the regex pattern `[a-z]+-page`, filenames like `home-page.tsx`, `posts.list-page.tsx`, or `dashboard.overview-page.tsx` would all be recognized as index routes.
+
+#### Escaping regex tokens
+
+When using regex tokens, you can still escape a segment to prevent it from being treated as a token by wrapping it in square brackets. For example, if your `indexToken` is `{ "regex": "[a-z]+-page" }` and you want a literal route segment called `home-page`, name your file `[home-page].tsx`.
 
 ### `quoteStyle`
 
