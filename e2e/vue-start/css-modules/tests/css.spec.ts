@@ -5,15 +5,15 @@ import { test } from '@tanstack/router-e2e-utils'
 // - net::ERR_NAME_NOT_RESOLVED: transient network issues
 // - 504 (Outdated Optimize Dep): Vite dependency optimization reload
 // - net::ERR_INTERNET_DISCONNECTED: transient network issues
-test.use({
-  whitelistErrors: [
-    'Failed to load resource: net::ERR_NAME_NOT_RESOLVED',
-    'Failed to load resource: net::ERR_INTERNET_DISCONNECTED',
-    'Failed to load resource: the server responded with a status of 504',
-  ],
-})
+const whitelistErrors = [
+  'Failed to load resource: net::ERR_NAME_NOT_RESOLVED',
+  'Failed to load resource: net::ERR_INTERNET_DISCONNECTED',
+  'Failed to load resource: the server responded with a status of 504',
+]
 
 test.describe('CSS styles in SSR (dev mode)', () => {
+  test.use({ whitelistErrors })
+
   // Warmup: trigger Vite's dependency optimization before running tests
   // This prevents "504 (Outdated Optimize Dep)" errors during actual tests
   test.beforeAll(async ({ baseURL }) => {
@@ -33,11 +33,21 @@ test.describe('CSS styles in SSR (dev mode)', () => {
     }
   })
 
-  test.describe('with JavaScript disabled', () => {
-    test.use({ javaScriptEnabled: false })
+  // Helper to build full URL from baseURL and path
+  // Playwright's goto with absolute paths (like '/modules') ignores baseURL's path portion
+  // So we need to manually construct the full URL
+  const buildUrl = (baseURL: string, path: string) => {
+    return baseURL.replace(/\/$/, '') + path
+  }
 
-    test('global CSS is applied on initial page load', async ({ page }) => {
-      await page.goto('/')
+  test.describe('with JavaScript disabled', () => {
+    test.use({ javaScriptEnabled: false, whitelistErrors })
+
+    test('global CSS is applied on initial page load', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto(buildUrl(baseURL!, '/'))
 
       const element = page.getByTestId('global-styled')
       await expect(element).toBeVisible()
@@ -60,8 +70,11 @@ test.describe('CSS styles in SSR (dev mode)', () => {
       expect(borderRadius).toBe('12px')
     })
 
-    test('CSS modules are applied on initial page load', async ({ page }) => {
-      await page.goto('/modules')
+    test('CSS modules are applied on initial page load', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto(buildUrl(baseURL!, '/modules'))
 
       const card = page.getByTestId('module-card')
       await expect(card).toBeVisible()
@@ -89,8 +102,8 @@ test.describe('CSS styles in SSR (dev mode)', () => {
       expect(borderRadius).toBe('8px')
     })
 
-    test('global CSS class names are NOT scoped', async ({ page }) => {
-      await page.goto('/')
+    test('global CSS class names are NOT scoped', async ({ page, baseURL }) => {
+      await page.goto(buildUrl(baseURL!, '/'))
 
       const element = page.getByTestId('global-styled')
       await expect(element).toBeVisible()
@@ -101,8 +114,8 @@ test.describe('CSS styles in SSR (dev mode)', () => {
     })
   })
 
-  test('styles persist after hydration', async ({ page }) => {
-    await page.goto('/')
+  test('styles persist after hydration', async ({ page, baseURL }) => {
+    await page.goto(buildUrl(baseURL!, '/'))
 
     // Wait for hydration
     await page.waitForTimeout(1000)
@@ -114,8 +127,11 @@ test.describe('CSS styles in SSR (dev mode)', () => {
     expect(backgroundColor).toBe('rgb(59, 130, 246)')
   })
 
-  test('CSS modules styles persist after hydration', async ({ page }) => {
-    await page.goto('/modules')
+  test('CSS modules styles persist after hydration', async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto(buildUrl(baseURL!, '/modules'))
 
     // Wait for hydration
     await page.waitForTimeout(1000)
@@ -129,9 +145,10 @@ test.describe('CSS styles in SSR (dev mode)', () => {
 
   test('styles work correctly after client-side navigation', async ({
     page,
+    baseURL,
   }) => {
     // Start from home
-    await page.goto('/')
+    await page.goto(buildUrl(baseURL!, '/'))
     await page.waitForTimeout(1000)
 
     // Verify initial styles
@@ -144,7 +161,8 @@ test.describe('CSS styles in SSR (dev mode)', () => {
 
     // Navigate to modules page
     await page.getByTestId('nav-modules').click()
-    await page.waitForURL('/modules')
+    // Use glob pattern to match with or without basepath
+    await page.waitForURL('**/modules')
 
     // Verify CSS modules styles
     const card = page.getByTestId('module-card')
