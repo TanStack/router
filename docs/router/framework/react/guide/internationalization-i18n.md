@@ -26,7 +26,7 @@ This pattern relies exclusively on TanStack Router features. It is suitable when
 Optional path parameters are ideal for implementing locale-aware routing without duplicating routes.
 
 ```ts
-;/{-$locale}/abotu
+/{-$locale}/about
 ```
 
 This single route matches:
@@ -125,7 +125,7 @@ Paraglide provides type-safe translations, locale detection, and URL localizatio
 **GitHub example:**
 [https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide)
 
-### Project Setup
+#### Project Setup
 
 ```bash
 npx @inlang/paraglide-js@latest init
@@ -140,7 +140,7 @@ paraglideVitePlugin({
 })
 ```
 
-### URL Localization via Router Rewrite
+#### URL Localization via Router Rewrite
 
 ```ts
 import { deLocalizeUrl, localizeUrl } from './paraglide/runtime'
@@ -156,43 +156,9 @@ const router = createRouter({
 
 ---
 
-## Server-side i18n (TanStack Start)
-
-This pattern integrates i18n at the routing and server layers. It is suitable when:
-
-- You use TanStack Start
-- You need SSR or streaming
-- You want locale-aware redirects and metadata
-
-### TanStack Start + Paraglide
-
-**GitHub example:**
-[https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide)
-
-### Server Middleware (SSR)
-
-```ts
-import { paraglideMiddleware } from './paraglide/server'
-
-export default {
-  fetch(req: Request) {
-    return paraglideMiddleware(req, () => handler.fetch(req))
-  },
-}
-```
-
-### HTML Language Attribute
-
-```tsx
-import { getLocale } from '../paraglide/runtime'
-;<html lang={getLocale()} />
-```
-
----
-
 ## Offline-safe Redirects
 
-For offline or client-only environments:
+For offline or client-only environments (don't use with TanStack STart/SS):
 
 ```ts
 import { shouldRedirect } from '../paraglide/runtime'
@@ -224,25 +190,6 @@ This guarantees:
 
 ---
 
-## Prerendering Localized Routes
+## Looking for i18n with SSR/TanStack Start?
 
-```ts
-import { localizeHref } from './paraglide/runtime'
-
-export const prerenderRoutes = ['/', '/about'].map((path) => ({
-  path: localizeHref(path),
-  prerender: { enabled: true },
-}))
-```
-
----
-
-## Additional i18n Integration Patterns
-
-### Intlayer (TanStack Start integration)
-
-[https://intlayer.org/doc/environment/tanstack-start](https://intlayer.org/doc/environment/tanstack-start)
-
-### use-intl (TanStack Start integration)
-
-[https://nikuscs.com/blog/13-tanstackstart-i18n/](https://nikuscs.com/blog/13-tanstackstart-i18n/)
+Check out the guide on integrating [i18n in TanStack Start](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n).
