@@ -142,6 +142,10 @@
               "to": "framework/react/guide/hosting"
             },
             {
+              "label": "Docker Production Setup",
+              "to": "framework/react/guide/docker-production-setup"
+            },
+            {
               "label": "Authentication Overview",
               "to": "framework/react/guide/authentication-overview"
             },
