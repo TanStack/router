@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { MetaProvider } from '@solidjs/meta'
-import { For, onMount, Show } from 'solid-js'
+import { For, Show, onMount } from 'solid-js'
 import { escapeHtml } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
