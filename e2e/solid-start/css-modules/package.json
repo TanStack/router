@@ -14,13 +14,13 @@
     "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:dev"
   },
   "dependencies": {
-    "@tanstack/solid-router": "workspace:^",
-    "@tanstack/solid-start": "workspace:^",
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/solid-start": "workspace:*",
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-e2e-utils": "workspace:*",
     "@types/node": "^22.10.2",
     "srvx": "^0.10.0",
     "typescript": "^5.7.2",

@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
 import { MetaProvider } from '@solidjs/meta'
 import { For, Show, onMount } from 'solid-js'
-import { escapeHtml } from '@tanstack/router-core'
+import { buildDevStylesUrl, escapeHtml } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -204,6 +204,7 @@ export const useTags = () => {
  * then removes it after hydration since Vite's HMR handles CSS updates.
  */
 function DevStylesLink() {
+  const router = useRouter()
   const routeIds = useRouterState({
     select: (state) => state.matches.map((match) => match.routeId),
   })
@@ -215,9 +216,7 @@ function DevStylesLink() {
       .forEach((el) => el.remove())
   })
 
-  // Build the same href on both server and client for hydration match
-  const href = () =>
-    `/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds().join(','))}`
+  const href = () => buildDevStylesUrl(router.basepath, routeIds())
 
   return <link rel="stylesheet" href={href()} data-tanstack-start-dev-styles />
 }

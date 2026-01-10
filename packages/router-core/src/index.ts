@@ -275,6 +275,7 @@ export {
   decodePath,
   escapeHtml,
   isDangerousProtocol,
+  buildDevStylesUrl,
 } from './utils'
 export type {
   NoInfer,
