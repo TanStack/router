@@ -1,7 +1,17 @@
 import { expect, request } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
+// Whitelist errors that can occur in CI:
+// - net::ERR_NAME_NOT_RESOLVED: transient network issues
+// - 504 (Outdated Optimize Dep): Vite dependency optimization reload
+const whitelistErrors = [
+  'Failed to load resource: net::ERR_NAME_NOT_RESOLVED',
+  'Failed to load resource: the server responded with a status of 504',
+]
+
 test.describe('CSS styles in SSR (dev mode)', () => {
+  test.use({ whitelistErrors })
+
   // Warmup: trigger Vite's dependency optimization before running tests
   // This prevents "504 (Outdated Optimize Dep)" errors during actual tests
   test.beforeAll(async ({ baseURL }) => {
@@ -22,7 +32,7 @@ test.describe('CSS styles in SSR (dev mode)', () => {
   })
 
   test.describe('with JavaScript disabled', () => {
-    test.use({ javaScriptEnabled: false })
+    test.use({ javaScriptEnabled: false, whitelistErrors })
 
     test('global CSS is applied on initial page load', async ({ page }) => {
       await page.goto('/')

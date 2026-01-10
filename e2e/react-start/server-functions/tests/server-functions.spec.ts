@@ -370,7 +370,7 @@ test.describe('server function sets cookies', () => {
 test.describe('server functions with async validation', () => {
   test.use({
     whitelistErrors: [
-      /Failed to load resource: the server responded with a status of 500/,
+      'Failed to load resource: the server responded with a status of 500',
     ],
   })
 
@@ -739,7 +739,7 @@ test('redirect via server function with middleware does not cause serialization 
 
 test.describe('unhandled exception in middleware (issue #5266)', () => {
   // Whitelist the expected 500 error since this test verifies error handling
-  test.use({ whitelistErrors: [/500/] })
+  test.use({ whitelistErrors: ['500'] })
 
   test('does not crash server and shows error component', async ({ page }) => {
     // This test verifies that when a middleware throws an unhandled exception,

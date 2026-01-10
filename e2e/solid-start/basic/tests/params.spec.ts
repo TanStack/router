@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 
 test.use({
   whitelistErrors: [
-    /Failed to load resource: the server responded with a status of 404/,
+    'Failed to load resource: the server responded with a status of 404',
   ],
 })
 test.describe('Unicode route rendering', () => {

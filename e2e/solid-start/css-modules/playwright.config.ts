@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
-const isDev = process.env.MODE === 'dev'
+const isDev = process.env.MODE !== 'prod'
 const PORT = await getTestServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 

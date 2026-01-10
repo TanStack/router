@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
-const isDev = process.env.MODE === 'dev'
+const isDev = process.env.MODE !== 'prod'
 const viteConfig = process.env.VITE_CONFIG // 'nitro' | 'basepath' | 'cloudflare' | undefined
 const PORT = await getTestServerPort(
   viteConfig ? `${packageJson.name}-${viteConfig}` : packageJson.name,
