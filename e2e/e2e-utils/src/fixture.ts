@@ -17,7 +17,7 @@ export interface TestFixtureOptions {
 }
 export const test = base.extend<TestFixtureOptions>({
   whitelistErrors: [
-    async ({}, use) => {
+    async (_deps, use) => {
       await use([])
     },
     { option: true },
