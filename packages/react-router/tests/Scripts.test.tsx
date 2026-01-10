@@ -217,7 +217,7 @@ describe('ssr HeadContent', () => {
       <RouterProvider router={router} />,
     )
     expect(html).toEqual(
-      `<title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/>`,
+      `<title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/><link rel="stylesheet" href="/@tanstack-start/styles.css?routes=__root__%2C%2F" data-tanstack-start-dev-styles="true"/>`,
     )
   })
 })

@@ -4,13 +4,14 @@ import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { resolveViteId } from '../utils'
 import { extractHtmlScripts } from './extract-html-scripts'
+import { collectDevStyles } from './dev-styles'
 import type { Connect, DevEnvironment, PluginOption } from 'vite'
-import type { TanStackStartOutputConfig } from '../schema'
+import type { GetConfigFn } from '../types'
 
 export function devServerPlugin({
   getConfig,
 }: {
-  getConfig: () => { startConfig: TanStackStartOutputConfig }
+  getConfig: GetConfigFn
 }): PluginOption {
   let isTest = false
 
@@ -74,6 +75,52 @@ export function devServerPlugin({
               'cannot install vite dev server middleware for TanStack Start since the SSR environment is not a RunnableDevEnvironment',
             )
           }
+
+          // Middleware to serve collected CSS for dev mode
+          // Security: Route IDs from query params are validated against TSS_ROUTES_MANIFEST.
+          // Only routes that exist in the manifest will have their CSS collected.
+          // Arbitrary file paths cannot be injected.
+          viteDevServer.middlewares.use(async (req, res, next) => {
+            const url = req.url ?? ''
+            if (!url.startsWith('/@tanstack-start/styles.css')) {
+              return next()
+            }
+
+            // Parse route IDs from query param
+            const urlObj = new URL(url, 'http://localhost')
+            const routesParam = urlObj.searchParams.get('routes')
+            const routeIds = routesParam ? routesParam.split(',') : []
+
+            // Build entries list from route file paths
+            const entries: Array<string> = []
+
+            // Look up route file paths from manifest
+            // Only routes registered in the manifest are used - this prevents path injection
+            const routesManifest = (globalThis as any).TSS_ROUTES_MANIFEST as
+              | Record<string, { filePath: string; children?: Array<string> }>
+              | undefined
+
+            if (routesManifest && routeIds.length > 0) {
+              for (const routeId of routeIds) {
+                const route = routesManifest[routeId]
+                if (route?.filePath) {
+                  entries.push(route.filePath)
+                }
+              }
+            }
+
+            const css =
+              entries.length > 0
+                ? await collectDevStyles({
+                    viteDevServer,
+                    entries,
+                  })
+                : undefined
+
+            res.setHeader('Content-Type', 'text/css')
+            res.setHeader('Cache-Control', 'no-store')
+            res.end(css ?? '')
+          })
 
           viteDevServer.middlewares.use(async (req, res) => {
             // fix the request URL to match the original URL

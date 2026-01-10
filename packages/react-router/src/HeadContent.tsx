@@ -204,6 +204,39 @@ export const useTags = () => {
 }
 
 /**
+ * Renders a stylesheet link for dev mode CSS collection.
+ * On the server, renders the full link with route-scoped CSS URL.
+ * On the client, renders the same link to avoid hydration mismatch,
+ * then removes it after hydration since Vite's HMR handles CSS updates.
+ */
+function DevStylesLink() {
+  const router = useRouter()
+
+  const routeIds = useRouterState({
+    select: (state) => state.matches.map((match) => match.routeId),
+  })
+
+  React.useEffect(() => {
+    // After hydration, remove the SSR-rendered dev styles link
+    document
+      .querySelectorAll('[data-tanstack-start-dev-styles]')
+      .forEach((el) => el.remove())
+  }, [])
+
+  // Build the same href on both server and client for hydration match
+  const href = `/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds.join(','))}`
+
+  return (
+    <link
+      rel="stylesheet"
+      href={href}
+      data-tanstack-start-dev-styles
+      suppressHydrationWarning
+    />
+  )
+}
+
+/**
  * Render route-managed head tags (title, meta, links, styles, head scripts).
  * Place inside the document head of your app shell.
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/document-head-management
@@ -212,9 +245,14 @@ export function HeadContent() {
   const tags = useTags()
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  return tags.map((tag) => (
-    <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} nonce={nonce} />
-  ))
+  return (
+    <>
+      {process.env.NODE_ENV !== 'production' && <DevStylesLink />}
+      {tags.map((tag) => (
+        <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} nonce={nonce} />
+      ))}
+    </>
+  )
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
