@@ -5,6 +5,12 @@ import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+const METAS_TO_ALLOW_MULTIPLE = new Set(['theme-color'])
+
+function shouldDeduplicateMetaTag(attribute: string) {
+  return METAS_TO_ALLOW_MULTIPLE.has(attribute) === false
+}
+
 /**
  * Build the list of head/link/meta/script tags to render for active matches.
  * Used internally by `HeadContent`.
@@ -53,7 +59,10 @@ export const useTags = () => {
         } else {
           const attribute = m.name ?? m.property
           if (attribute) {
-            if (metaByAttribute[attribute]) {
+            if (
+              metaByAttribute[attribute] &&
+              shouldDeduplicateMetaTag(attribute)
+            ) {
               continue
             } else {
               metaByAttribute[attribute] = true
