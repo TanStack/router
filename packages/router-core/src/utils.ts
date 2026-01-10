@@ -599,3 +599,22 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
 
   return result
 }
+
+/**
+ * Builds the dev-mode CSS styles URL for route-scoped CSS collection.
+ * Used by HeadContent components in all framework implementations to construct
+ * the URL for the `/@tanstack-start/styles.css` endpoint.
+ *
+ * @param basepath - The router's basepath (may or may not have leading slash)
+ * @param routeIds - Array of matched route IDs to include in the CSS collection
+ * @returns The full URL path for the dev styles CSS endpoint
+ */
+export function buildDevStylesUrl(
+  basepath: string,
+  routeIds: Array<string>,
+): string {
+  // Router basepath may or may not have leading slash, so normalize it
+  const normalizedBasepath =
+    basepath === '/' ? '' : `/${basepath}`.replace(/\/+/g, '/')
+  return `${normalizedBasepath}/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds.join(','))}`
+}

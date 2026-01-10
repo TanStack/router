@@ -44,7 +44,7 @@ export async function collectDevStyles(
 
   for (const entry of entries) {
     const normalizedPath = entry.replace(/\\/g, '/')
-    let node = await viteDevServer.moduleGraph.getModuleById(normalizedPath)
+    let node = viteDevServer.moduleGraph.getModuleById(normalizedPath)
 
     // If module isn't in the graph yet, request it to trigger transform
     if (!node) {
@@ -53,7 +53,7 @@ export async function collectDevStyles(
       } catch (err) {
         // Ignore - the module might not exist yet
       }
-      node = await viteDevServer.moduleGraph.getModuleById(normalizedPath)
+      node = viteDevServer.moduleGraph.getModuleById(normalizedPath)
     }
 
     if (node) {

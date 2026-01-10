@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 
-import { escapeHtml } from '@tanstack/router-core'
+import { buildDevStylesUrl, escapeHtml } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -15,6 +15,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 const DevStylesLink = Vue.defineComponent({
   name: 'DevStylesLink',
   setup() {
+    const router = useRouter()
     const routeIds = useRouterState({
       select: (state) => state.matches.map((match) => match.routeId),
     })
@@ -26,10 +27,8 @@ const DevStylesLink = Vue.defineComponent({
         .forEach((el) => el.remove())
     })
 
-    // Build the same href on both server and client for hydration match
-    const href = Vue.computed(
-      () =>
-        `/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds.value.join(','))}`,
+    const href = Vue.computed(() =>
+      buildDevStylesUrl(router.basepath, routeIds.value),
     )
 
     return () =>
