@@ -163,9 +163,11 @@ export const useTags = () => {
           .filter(Boolean) as Array<RouterManagedTag>
       ).map(({ children, ...attrs }) => ({
         tag: 'style',
-        attrs,
+        attrs: {
+          ...attrs,
+          nonce,
+        },
         children,
-        nonce,
       })),
     structuralSharing: true as any,
   })
