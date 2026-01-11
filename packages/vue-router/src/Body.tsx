@@ -11,7 +11,7 @@ export const Body = Vue.defineComponent({
       if (isServer) {
         return Vue.h(
           'body',
-          {},
+          null,
           Vue.h(
             'div',
             { id: '__app' },

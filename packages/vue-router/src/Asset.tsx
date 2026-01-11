@@ -155,18 +155,32 @@ const Script = Vue.defineComponent({
   },
 })
 
-export function Asset({ tag, attrs, children }: RouterManagedTag): any {
+export function Asset({
+  tag,
+  attrs,
+  children,
+  nonce,
+}: RouterManagedTag & { nonce?: string }): any {
+  const nonceAttr = nonce ? { nonce } : {}
   switch (tag) {
     case 'title':
       return Vue.h(Title, { children: children })
     case 'meta':
-      return <meta {...attrs} />
+      return Vue.h('meta', attrs)
     case 'link':
-      return <link {...attrs} />
+      return Vue.h('link', { ...attrs, ...nonceAttr })
     case 'style':
-      return <style {...attrs} innerHTML={children} />
+      return Vue.h('style', {
+        ...attrs,
+        ...nonceAttr,
+        'data-allow-mismatch': true,
+        innerHTML: children,
+      })
     case 'script':
-      return Vue.h(Script, { attrs, children: children })
+      return Vue.h(Script, {
+        attrs: { ...attrs, ...nonceAttr },
+        children: children,
+      })
     default:
       return null
   }

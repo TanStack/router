@@ -64,10 +64,16 @@ export const Matches = Vue.defineComponent({
 
     return () => {
       const pendingElement = router?.options?.defaultPendingComponent
-        ? Vue.h(router.options.defaultPendingComponent)
+        ? Vue.h(router.options.defaultPendingComponent, {
+            // Avoid v-show style mutations (display:none) in strict CSP.
+            // Vue uses inline styles for v-show, which are blocked by style-src nonce.
+            style: undefined,
+          } as any)
         : null
 
-      // Do not render a root Suspense during SSR or hydrating from SSR
+      // Do not render a root Suspense during SSR or hydrating from SSR.
+      // Vue's hydration + Suspense can trigger v-show style mutations (display:none)
+      // which violate strict CSP (style-src nonce) due to inline style attributes.
       const inner =
         router?.isServer || (typeof document !== 'undefined' && router?.ssr)
           ? Vue.h(MatchesContent)
