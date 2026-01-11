@@ -3,6 +3,7 @@ import { createMiddleware } from '../createMiddleware'
 import type { RequestServerNextFn } from '../createMiddleware'
 import type { ConstrainValidator } from '../createServerFn'
 import type { Register } from '@tanstack/router-core'
+import type { ServerFnMeta } from '../constants'
 
 test('createServeMiddleware removes middleware after middleware,', () => {
   const middleware = createMiddleware({ type: 'function' })
@@ -659,6 +660,7 @@ test('createMiddleware with type request, no middleware or context', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      serverFnMeta?: ServerFnMeta
     }>()
 
     const result = await options.next()
@@ -681,6 +683,7 @@ test('createMiddleware with type request, no middleware with context', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      serverFnMeta?: ServerFnMeta
     }>()
 
     const result = await options.next({ context: { a: 'a' } })
@@ -704,6 +707,7 @@ test('createMiddleware with type request, middleware and context', () => {
         next: RequestServerNextFn<{}, undefined>
         pathname: string
         context: undefined
+        serverFnMeta?: ServerFnMeta
       }>()
 
       const result = await options.next({ context: { a: 'a' } })
@@ -727,6 +731,7 @@ test('createMiddleware with type request, middleware and context', () => {
         next: RequestServerNextFn<{}, undefined>
         pathname: string
         context: { a: string }
+        serverFnMeta?: ServerFnMeta
       }>()
 
       const result = await options.next({ context: { b: 'b' } })
@@ -749,6 +754,7 @@ test('createMiddleware with type request can return Response directly', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      serverFnMeta?: ServerFnMeta
     }>()
 
     // Should be able to return a Response directly
@@ -768,6 +774,7 @@ test('createMiddleware with type request can return Promise<Response>', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      serverFnMeta?: ServerFnMeta
     }>()
 
     // Should be able to return a Promise<Response>
@@ -782,6 +789,7 @@ test('createMiddleware with type request can return sync Response', () => {
       next: RequestServerNextFn<{}, undefined>
       pathname: string
       context: undefined
+      serverFnMeta?: ServerFnMeta
     }>()
 
     // Should be able to return a synchronous Response
