@@ -33,6 +33,7 @@ import { Route as StructuralSharingEnabledRouteImport } from './routes/structura
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as PipeReferenceRouteImport } from './routes/pipe.$reference'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
 import { Route as groupInsideRouteImport } from './routes/(group)/inside'
@@ -238,6 +239,11 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
+} as any)
+const PipeReferenceRoute = PipeReferenceRouteImport.update({
+  id: '/pipe/$reference',
+  path: '/pipe/$reference',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
@@ -726,6 +732,7 @@ export interface FileRoutesByFullPath {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/pipe/$reference': typeof PipeReferenceRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -830,6 +837,7 @@ export interface FileRoutesByTo {
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/pipe/$reference': typeof PipeReferenceRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
@@ -932,6 +940,7 @@ export interface FileRoutesById {
   '/(group)/inside': typeof groupInsideRoute
   '/(group)/lazyinside': typeof groupLazyinsideRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/pipe/$reference': typeof PipeReferenceRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -1040,6 +1049,7 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/pipe/$reference'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -1144,6 +1154,7 @@ export interface FileRouteTypes {
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/pipe/$reference'
     | '/posts/$postId'
     | '/search-params/default'
     | '/structural-sharing/$enabled'
@@ -1245,6 +1256,7 @@ export interface FileRouteTypes {
     | '/(group)/inside'
     | '/(group)/lazyinside'
     | '/_layout/_layout-2'
+    | '/pipe/$reference'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -1349,6 +1361,7 @@ export interface RootRouteChildren {
   groupLayoutRoute: typeof groupLayoutRouteWithChildren
   groupInsideRoute: typeof groupInsideRoute
   groupLazyinsideRoute: typeof groupLazyinsideRoute
+  PipeReferenceRoute: typeof PipeReferenceRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
@@ -1541,6 +1554,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof PostsRoute
+    }
+    '/pipe/$reference': {
+      id: '/pipe/$reference'
+      path: '/pipe/$reference'
+      fullPath: '/pipe/$reference'
+      preLoaderRoute: typeof PipeReferenceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
@@ -2605,6 +2625,7 @@ const rootRouteChildren: RootRouteChildren = {
   groupLayoutRoute: groupLayoutRouteWithChildren,
   groupInsideRoute: groupInsideRoute,
   groupLazyinsideRoute: groupLazyinsideRoute,
+  PipeReferenceRoute: PipeReferenceRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
   ParamsPsIndexRoute: ParamsPsIndexRoute,

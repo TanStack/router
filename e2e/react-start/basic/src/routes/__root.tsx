@@ -182,6 +182,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Raw Stream
           </Link>{' '}
           <Link
+            to="/pipe/$reference"
+            params={{ reference: 'hello|world' }}
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Dynamic Pipe Character
+          </Link>{' '}
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{

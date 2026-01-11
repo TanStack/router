@@ -157,6 +157,15 @@ function RootComponent() {
           Masks
         </Link>{' '}
         <Link
+          to="/pipe/$reference"
+          params={{ reference: 'hello|world' }}
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Dynamic Pipe Character
+        </Link>{' '}
+        <Link
           to="/pathless-layout"
           data-testid="link-to-pathless-layout"
           activeProps={{
