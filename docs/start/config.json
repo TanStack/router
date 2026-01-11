@@ -150,6 +150,14 @@
               "to": "framework/react/guide/authentication"
             },
             {
+              "label": "Security Headers",
+              "to": "framework/react/guide/security-headers"
+            },
+            {
+              "label": "Multi-Tenant Routing",
+              "to": "framework/react/guide/multi-tenant-routing"
+            },
+            {
               "label": "Databases",
               "to": "framework/react/guide/databases"
             },
