@@ -324,6 +324,10 @@
             {
               "label": "Render Optimizations",
               "to": "framework/react/guide/render-optimizations"
+            },
+            {
+              "label": "Internationalization (i18n)",
+              "to": "framework/react/guide/Internationalization-18n"
             }
           ]
         },
