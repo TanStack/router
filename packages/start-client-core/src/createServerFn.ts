@@ -6,6 +6,11 @@ import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
 import { createNullProtoObject, safeObjectMerge } from './safeObjectMerge'
 import type {
+  ClientFnMeta,
+  ServerFnMeta,
+  TSS_SERVER_FUNCTION,
+} from './constants'
+import type {
   AnyValidator,
   Constrain,
   Expand,
@@ -16,7 +21,6 @@ import type {
   ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
-import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -143,6 +147,11 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             const ctx = {
               ...extractedFn,
               ...opts,
+              // Ensure we use the full serverFnMeta from the provider file's extractedFn
+              // (which has id, name, filename) rather than the partial one from SSR/client
+              // callers (which only has id)
+              serverFnMeta: extractedFn.serverFnMeta,
+              // Use safeObjectMerge for opts.context which comes from client
               context: safeObjectMerge(
                 serverContextAfterGlobalMiddlewares,
                 opts.context,
@@ -404,6 +413,7 @@ export type CompiledFetcherFn<TRegister, TResponse> = {
     opts: CompiledFetcherFnOptions & ServerFnBaseOptions<TRegister, Method>,
   ): Promise<TResponse>
   url: string
+  serverFnMeta: ServerFnMeta
 }
 
 export type ServerFnBaseOptions<
@@ -427,7 +437,6 @@ export type ServerFnBaseOptions<
     TInputValidator,
     TResponse
   >
-  functionId: string
 }
 
 export type ValidateValidatorInput<
@@ -685,7 +694,7 @@ export type ServerFnMiddlewareOptions = {
   signal?: AbortSignal
   sendContext?: any
   context?: any
-  functionId: string
+  serverFnMeta: ClientFnMeta
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {

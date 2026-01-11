@@ -93,7 +93,11 @@ export {
   X_TSS_CONTEXT,
   validateFramedProtocolVersion,
 } from './constants'
-export type { FrameType as FrameTypeValue } from './constants'
+export type {
+  FrameType as FrameTypeValue,
+  ClientFnMeta,
+  ServerFnMeta,
+} from './constants'
 
 export type * from './serverRoute'
 
