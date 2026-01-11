@@ -13,21 +13,13 @@ export function devServerPlugin({
 }: {
   getConfig: GetConfigFn
 }): PluginOption {
-  let isTest = false
 
   let injectedHeadScripts: string | undefined
 
   return [
     {
       name: 'tanstack-start-core:dev-server',
-      config(_userConfig, { mode }) {
-        isTest = isTest ? isTest : mode === 'test'
-      },
       async configureServer(viteDevServer) {
-        if (isTest) {
-          return
-        }
-
         // Extract the scripts that Vite plugins would inject into the initial HTML
         const templateHtml = `<html><head></head><body></body></html>`
         const transformedHtml = await viteDevServer.transformIndexHtml(
