@@ -11,8 +11,9 @@ This guide covers:
 - Language navigation and switching
 - SEO considerations
 - Type safety
-- Integration patterns with i18n libraries (Paraglide)
+- Integration patterns with i18n libraries (e.g. Paraglide)
 
+---
 
 ## Server-side i18n (TanStack Start)
 
