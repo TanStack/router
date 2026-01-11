@@ -448,11 +448,11 @@ function createTranslatedPathnames(
 export const translatedPathnames = createTranslatedPathnames({
   "/": {
     en: "/",
-    es: "/"
+    de: "/"
   },
   "/about": {
     en: "/about",
-    es: "/nosotros"
+    de: "/ueber"
   }
 ```
 
