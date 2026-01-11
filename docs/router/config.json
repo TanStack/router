@@ -327,7 +327,7 @@
             },
             {
               "label": "Internationalization (i18n)",
-              "to": "framework/react/guide/internationalization-18n"
+              "to": "framework/react/guide/internationalization-i18n"
             }
           ]
         },
