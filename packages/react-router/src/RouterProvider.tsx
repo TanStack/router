@@ -30,7 +30,7 @@ export function RouterContextProvider<
         ...router.options.context,
         ...rest.context,
       },
-    } as any)
+    })
   }
 
   const routerContext = getRouterContext()

@@ -1909,7 +1909,7 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   id: TId
 
   constructor({ id }: { id: TId }) {
-    this.id = id as any
+    this.id = id
   }
 
   notFound = (opts?: NotFoundError) => {

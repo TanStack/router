@@ -251,7 +251,7 @@ export function createHistory(opts: {
 
 function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
   if (!state) {
-    state = {} as HistoryState
+    state = {}
   }
   const key = createRandomKey()
   return {
