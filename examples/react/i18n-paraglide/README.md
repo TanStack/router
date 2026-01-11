@@ -2,9 +2,6 @@
 
 Paraglide provides type-safe translations, locale detection, and URL localization that pair naturally with TanStack Router.
 
-**GitHub example:**
-[https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide)
-
 #### Project Setup
 
 ```bash

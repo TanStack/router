@@ -1,141 +1,45 @@
-# TanStack Start example with Paraglide
+### TanStack Start + Paraglide
 
-This example shows how to use Paraglide with TanStack Start.
+Paraglide provides type-safe translations, locale detection, and URL localization that pair naturally with TanStack Start.
 
-- [TanStack Router Docs](https://tanstack.com/router)
-- [Paraglide Documentation](https://inlang.com/m/gerre34r/library-inlang-paraglideJs)
-
-## Start a new project based on this example
-
-To start a new project based on this example, run:
-
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-i18n-paraglide start-i18n-paraglide
-```
-
-## Getting started
-
-1. Init Paraglide JS
+#### Project Setup
 
 ```bash
 npx @inlang/paraglide-js@latest init
 ```
 
-2. Add the vite plugin to your `vite.config.ts`:
+```ts
+import { paraglideVitePlugin } from '@inlang/paraglide-js'
 
-```diff
-import { defineConfig } from 'vite'
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import react from '@vitejs/plugin-react'
-+import { paraglideVitePlugin } from "@inlang/paraglide-js";
-
-export default defineConfig({
-       plugins: [
-    tanstackStart(),
-    react(),
-+              paraglideVitePlugin({
-+                      project: "./project.inlang",
-+                      outdir: "./app/paraglide",
-+     outputStructure: "message-modules",
-+     cookieName: "PARAGLIDE_LOCALE",
-+     strategy: ["url", "cookie", "preferredLanguage", "baseLocale"],
-+      urlPatterns: [
-+       {
-+         pattern: "/:path(.*)?",
-+         localized: [
-+           ["en", "/en/:path(.*)?"],
-+         ],
-+       },
-+     ],
-+              }),
-       ],
-});
+paraglideVitePlugin({
+  project: './project.inlang',
+  outdir: './app/paraglide',
+})
 ```
 
-3. Done :)
+#### URL Localization via Router rewrite
 
-Run the app and start translating. See the [basics documentation](https://inlang.com/m/gerre34r/library-inlang-paraglideJs/basics) for information on how to use Paraglide's messages, parameters, and locale management.
-
-## Rewrite URL
-
-If you want to handle how the URL looks when the user changes the locale, you can rewrite the URL in the router.
-
-```diff
-import { createRouter } from "@tanstack/react-router";
-import { routeTree } from "./routeTree.gen";
-+import { deLocalizeUrl, localizeUrl } from "./paraglide/runtime.js";
+```ts
+import { deLocalizeUrl, localizeUrl } from './paraglide/runtime'
 
 const router = createRouter({
   routeTree,
-+ rewrite: {
-+   input: ({ url }) => deLocalizeUrl(url),
-+   output: ({ url }) => localizeUrl(url),
+  rewrite: {
+    input: ({ url }) => deLocalizeUrl(url),
+    output: ({ url }) => localizeUrl(url),
   },
-});
+})
 ```
 
-In `server.ts` intercept the request with the paraglideMiddleware.
+## Type-safe Translated Pathnames
+
+If you use translated pathnames. To ensure every route has translations, you can derive translated pathnames directly from the TanStack Router route tree.
 
 ```ts
-import { paraglideMiddleware } from './paraglide/server.js'
-import handler from '@tanstack/react-start/server-entry'
-export default {
-  fetch(req: Request): Promise<Response> {
-    return paraglideMiddleware(req, () => handler.fetch(req))
-  },
-}
-```
+import { Locale } from "@reland/i18n/runtime"
+import { RoutePath } from "../../types/Routes"
 
-In `__root.tsx` change the html lang attribute to the current locale.
-
-```tsx
-import { getLocale } from '../paraglide/runtime.js'
-
-function RootDocument({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang={getLocale()}>
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  )
-}
-```
-
-## Offline redirect
-
-If you have an application that needs to work offline, you will need to handle the redirect in the client like this.
-
-```ts
-import { shouldRedirect } from "../paraglide/runtime";
-
-export const Route = createRootRoute({
-  beforeLoad: async () => {
-    const decision = await shouldRedirect({ url: window.location.href });
-
-    if (decision.redirectUrl) {
-      throw redirect({ href: decision.redirectUrl.href });
-    }
-  },
-  ...
-});
-```
-
-## Typesafe translated pathnames
-
-If you don't want to miss any translated path, you can create a `createTranslatedPathnames` function and pass it to the vite plugin.
-
-```ts
-import { Locale } from '@/paraglide/runtime'
-import { FileRoutesByTo } from '../routeTree.gen'
-
-type RoutePath = keyof FileRoutesByTo
-
-const excludedPaths = ['admin', 'docs', 'api'] as const
+const excludedPaths = ["admin", "partner", "tests", "api"] as const
 
 type PublicRoutePath = Exclude<
   RoutePath,
@@ -150,14 +54,16 @@ type TranslatedPathname = {
 function toUrlPattern(path: string) {
   return (
     path
-      // catch-all
-      .replace(/\/\$$/, '/:path(.*)?')
-      // optional parameters: {-$param}
-      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ':$1?')
-      // named parameters: $param
-      .replace(/\$([a-zA-Z0-9_]+)/g, ':$1')
+      // explicit catch-all: "/$" → "/:path(.*)?"
+      .replace(/\/\$$/, "/:path(.*)?")
+      // optional params like {-$param} → ":param(.*)?"
+      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ":$1(.*)?")
+      // normal params like $param → ":param(.*)?"
+      .replace(/\$([a-zA-Z0-9_]+)/g, ":$1(.*)?")
+      // remove any remaining braces (safety)
+      .replace(/[{}]/g, "")
       // remove trailing slash
-      .replace(/\/+$/, '')
+      .replace(/\/+$/, "")
   )
 }
 
@@ -177,38 +83,87 @@ function createTranslatedPathnames(
 }
 
 export const translatedPathnames = createTranslatedPathnames({
-  '/': {
-    en: '/',
-    de: '/',
+  "/": {
+    en: "/",
+    es: "/"
   },
-  '/about': {
-    en: '/about',
-    de: '/ueber',
-  },
+  "/about": {
+    en: "/about",
+    es: "/nosotros"
+  }
+```
+
+Use in vite.config.ts:
+
+```ts
+paraglideVitePlugin({
+  project: './project.inlang',
+  outdir: './app/paraglide',
+  urlPatterns: translatedPathnames
 })
 ```
 
-And import into the Paraglide Vite plugin.
+This guarantees:
 
-## Prerender routes
+- No missing translations
+- Full type safety
+- Compiler feedback for routing mistakes
 
-You can use the `localizeHref` function to map the routes to localized versions and import into the pages option in the TanStack Start plugin. For this to work you will need to compile paraglide before the build with the CLI.
+#### Server Middleware (SSR)
+
+```ts
+import { paraglideMiddleware } from './paraglide/server'
+
+export default {
+  fetch(req: Request) {
+    return paraglideMiddleware(req, () => handler.fetch(req))
+  },
+}
+```
+
+#### HTML Language Attribute
+
+Set the lang atribute in html at __root.tsx:
+
+```tsx
+import { getLocale } from '../paraglide/runtime'
+
+<html lang={getLocale()} />
+```
+
+---
+
+### Prerendering Localized Routes
 
 ```ts
 import { localizeHref } from './paraglide/runtime'
+
 export const prerenderRoutes = ['/', '/about'].map((path) => ({
   path: localizeHref(path),
-  prerender: {
-    enabled: true,
-  },
+  prerender: { enabled: true },
 }))
 ```
 
-## About This Example
+In vite.config.ts:
 
-This example demonstrates:
+```ts
+tanstackStart({
+  prerender: {
+    // Enable prerendering
+    enabled: true,
 
-- Multi-language support with Paraglide in TanStack Start
-- Server-side translation
-- Type-safe translations
-- Locale-based routing
+    // Whether to extract links from the HTML and prerender them also
+    crawlLinks: true,
+  },
+  pages: [
+    {
+      path: '/my-page',
+      prerender: { enabled: true, outputPath: '/my-page/index.html' },
+    },
+  ],
+})
+```
+
+## Looking for i18n with SSR/TanStack Start?
+
+Check out the guide on integrating [i18n in TanStack Start](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n).

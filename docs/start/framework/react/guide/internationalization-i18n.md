@@ -13,22 +13,26 @@ This guide covers:
 - Type safety
 - Integration patterns with i18n libraries (e.g. Paraglide)
 
----
+# Integration with TanStack Router
 
-## Server-side i18n (TanStack Start)
+The base of this guide is built with TansTack Router. Check out the guide on integrating [i18n in TanStack Router](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n).
 
-This pattern integrates i18n at the routing and server layers. It is suitable when:
+If you already set up the TanStack Router with i18n. This guide will be suitable when:
 
 - You use TanStack Start
 - You need SSR or streaming
 - You want locale-aware redirects and metadata
+
+## Library integrations
 
 ### TanStack Start + Paraglide
 
 **GitHub example:**
 [https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide)
 
-### Server Middleware (SSR)
+First, check out [TanStack Router + Paraglide integration guide](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n#tanstack-router-paraglide)
+
+#### Server Middleware (SSR)
 
 ```ts
 import { paraglideMiddleware } from './paraglide/server'
@@ -40,7 +44,9 @@ export default {
 }
 ```
 
-### HTML Language Attribute
+#### HTML Language Attribute
+
+Set the lang atribute in html at __root.tsx:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
@@ -50,7 +56,7 @@ import { getLocale } from '../paraglide/runtime'
 
 ---
 
-## Prerendering Localized Routes
+### Prerendering Localized Routes
 
 ```ts
 import { localizeHref } from './paraglide/runtime'
@@ -61,7 +67,25 @@ export const prerenderRoutes = ['/', '/about'].map((path) => ({
 }))
 ```
 
----
+In vite.config.ts:
+
+```ts
+tanstackStart({
+  prerender: {
+    // Enable prerendering
+    enabled: true,
+
+    // Whether to extract links from the HTML and prerender them also
+    crawlLinks: true,
+  },
+  pages: [
+    {
+      path: '/my-page',
+      prerender: { enabled: true, outputPath: '/my-page/index.html' },
+    },
+  ],
+})
+```
 
 ## Additional i18n Integration Patterns
 
