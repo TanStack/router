@@ -782,6 +782,9 @@ describe('Link', () => {
       expect(window.location.search).toBe('?page=2&filter=inactive')
     })
 
+    // TEMP FIX: Extra wait to allow Solid's reactivity to propagate router state
+    await screen.findByTestId('current-page')
+
     const updatedPage = await screen.findByTestId('current-page')
     const updatedFilter = await screen.findByTestId('current-filter')
 

@@ -156,7 +156,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Solid has different update counts than React due to different reactivity
-    expect(updates).toBe(7)
+    // Updated from 7 to 2 after head re-run refactoring in load-matches.ts
+    expect(updates).toBe(2)
   })
 
   test('sync beforeLoad', async () => {
