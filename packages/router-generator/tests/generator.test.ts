@@ -1,5 +1,6 @@
+import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
-import { dirname, join, relative } from 'node:path'
+import path, { dirname, join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -9,7 +10,7 @@ import {
   rootRoute,
   route,
 } from '@tanstack/virtual-file-routes'
-import { Generator, getConfig } from '../src'
+import { Generator, getConfig, virtualGetRouteNodes } from '../src'
 import type { Config } from '../src'
 
 function makeFolderDir(folder: string) {
@@ -47,12 +48,18 @@ function setupConfig(
   const { generatedRouteTree = `/routeTree.gen.ts`, ...rest } = inlineConfig
   const dir = makeFolderDir(folder)
 
-  const config = getConfig({
-    disableLogging: true,
-    routesDirectory: dir + '/routes',
-    generatedRouteTree: dir + generatedRouteTree,
-    ...rest,
-  })
+  const configFilePath = join(dir, 'tsr.config.json')
+  const configDirectory = existsSync(configFilePath) ? dir : undefined
+
+  const config = getConfig(
+    {
+      disableLogging: true,
+      routesDirectory: dir + '/routes',
+      generatedRouteTree: dir + generatedRouteTree,
+      ...rest,
+    },
+    configDirectory,
+  )
   return config
 }
 
@@ -97,24 +104,6 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         ])
         config.virtualRouteConfig = virtualRouteConfig
       }
-      break
-    case 'virtual-config-file-named-export':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-config-file-default-export':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-physical-empty-path-merge':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-physical-empty-path-conflict-root':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-physical-empty-path-conflict-virtual':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-physical-no-prefix':
-      config.virtualRouteConfig = './routes.ts'
       break
     case 'virtual-with-escaped-underscore':
       {
@@ -168,6 +157,13 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'routeFilePrefix':
       config.routeFileIgnorePattern = 'ignoredPattern'
       config.routeFilePrefix = 'r&'
+      break
+    case 'regex-tokens-inline':
+      // Test inline config with RegExp tokens
+      // indexToken matches patterns like "index-page", "home-page"
+      // routeToken matches patterns like "main-layout", "protected-layout"
+      config.indexToken = /[a-z]+-page/
+      config.routeToken = /[a-z]+-layout/
       break
     default:
       break
@@ -301,6 +297,22 @@ describe('generator works', async () => {
       await postprocess(folderName)
     },
   )
+
+  it('physical() mount returns absolute physicalDirectories', async () => {
+    const folderName = 'virtual-physical-no-prefix'
+    const dir = makeFolderDir(folderName)
+    const config = await setupConfig(folderName)
+
+    const { physicalDirectories } = await virtualGetRouteNodes(config, dir, {
+      indexTokenSegmentRegex: /^(?:index)$/,
+      routeTokenSegmentRegex: /^(?:route)$/,
+    })
+
+    expect(physicalDirectories.length).toBeGreaterThan(0)
+    physicalDirectories.forEach((physicalDir) => {
+      expect(path.isAbsolute(physicalDir)).toBe(true)
+    })
+  })
 
   it.each(folderNames)(
     'should create directory for routeTree if it does not exist',

@@ -6,6 +6,7 @@ import {
   removeExt,
   replaceBackslash,
   routePathToVariable,
+  unwrapBracketWrappedSegment,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesVirtual } from '../virtual/getRouteNodes'
 import { loadConfigFile } from '../virtual/loadConfigFile'
@@ -17,6 +18,16 @@ import type {
 } from '@tanstack/virtual-file-routes'
 import type { FsRouteType, GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
+
+/**
+ * Pre-compiled segment regexes for matching token patterns against route segments.
+ * These are created once (in Generator constructor) and passed through to avoid
+ * repeated regex compilation during route crawling.
+ */
+export interface TokenRegexBundle {
+  indexTokenSegmentRegex: RegExp
+  routeTokenSegmentRegex: RegExp
+}
 
 const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx|vue)/
 
@@ -37,6 +48,7 @@ export async function getRouteNodes(
     | 'indexToken'
   >,
   root: string,
+  tokenRegexes: TokenRegexBundle,
 ): Promise<GetRouteNodesResult> {
   const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
     config
@@ -104,6 +116,7 @@ export async function getRouteNodes(
             virtualRouteConfig: dummyRoot,
           },
           root,
+          tokenRegexes,
         )
       allPhysicalDirectories.push(...physicalDirectories)
       virtualRouteNodes.forEach((node) => {
@@ -158,7 +171,7 @@ export async function getRouteNodes(
             throw new Error(errorMessage)
           }
 
-          const meta = getRouteMeta(routePath, originalRoutePath, config)
+          const meta = getRouteMeta(routePath, originalRoutePath, tokenRegexes)
           const variableName = meta.variableName
           let routeType: FsRouteType = meta.fsRouteType
 
@@ -174,7 +187,7 @@ export async function getRouteNodes(
               routePath,
               originalRoutePath,
               routeType,
-              config,
+              tokenRegexes,
             )
           ) {
             routeType = 'pathless_layout'
@@ -206,6 +219,9 @@ export async function getRouteNodes(
           const lastOriginalSegmentForSuffix =
             originalSegments[originalSegments.length - 1] || ''
 
+          const { routeTokenSegmentRegex, indexTokenSegmentRegex } =
+            tokenRegexes
+
           // List of special suffixes that can be escaped
           const specialSuffixes = [
             'component',
@@ -213,55 +229,87 @@ export async function getRouteNodes(
             'notFoundComponent',
             'pendingComponent',
             'loader',
-            config.routeToken,
             'lazy',
           ]
 
-          // Only strip the suffix if it wasn't escaped (not wrapped in brackets)
+          const routePathSegments = routePath.split('/').filter(Boolean)
+          const lastRouteSegment =
+            routePathSegments[routePathSegments.length - 1] || ''
+
           const suffixToStrip = specialSuffixes.find((suffix) => {
             const endsWithSuffix = routePath.endsWith(`/${suffix}`)
-            const isEscaped = lastOriginalSegmentForSuffix === `[${suffix}]`
+            // A suffix is escaped if wrapped in brackets in the original: [lazy] means literal "lazy"
+            const isEscaped =
+              lastOriginalSegmentForSuffix.startsWith('[') &&
+              lastOriginalSegmentForSuffix.endsWith(']') &&
+              unwrapBracketWrappedSegment(lastOriginalSegmentForSuffix) ===
+                suffix
             return endsWithSuffix && !isEscaped
           })
 
-          if (suffixToStrip) {
-            routePath = routePath.replace(new RegExp(`/${suffixToStrip}$`), '')
+          const routeTokenCandidate = unwrapBracketWrappedSegment(
+            lastOriginalSegmentForSuffix,
+          )
+          const isRouteTokenEscaped =
+            lastOriginalSegmentForSuffix !== routeTokenCandidate &&
+            routeTokenSegmentRegex.test(routeTokenCandidate)
+
+          const shouldStripRouteToken =
+            routeTokenSegmentRegex.test(lastRouteSegment) &&
+            !isRouteTokenEscaped
+
+          if (suffixToStrip || shouldStripRouteToken) {
+            const stripSegment = suffixToStrip ?? lastRouteSegment
+            routePath = routePath.replace(new RegExp(`/${stripSegment}$`), '')
             originalRoutePath = originalRoutePath.replace(
-              new RegExp(`/${suffixToStrip}$`),
+              new RegExp(`/${stripSegment}$`),
               '',
             )
           }
 
           // Check if the index token should be treated specially or as a literal path
-          // If it's escaped (wrapped in brackets in originalRoutePath), it should be literal
+          // Escaping stays literal-only: if the last original segment is bracket-wrapped,
+          // treat it as literal even if it matches the token regex.
           const lastOriginalSegment =
             originalRoutePath.split('/').filter(Boolean).pop() || ''
+
+          const indexTokenCandidate =
+            unwrapBracketWrappedSegment(lastOriginalSegment)
           const isIndexEscaped =
-            lastOriginalSegment === `[${config.indexToken}]`
+            lastOriginalSegment !== indexTokenCandidate &&
+            indexTokenSegmentRegex.test(indexTokenCandidate)
 
           if (!isIndexEscaped) {
-            if (routePath === config.indexToken) {
-              routePath = '/'
+            const updatedRouteSegments = routePath.split('/').filter(Boolean)
+            const updatedLastRouteSegment =
+              updatedRouteSegments[updatedRouteSegments.length - 1] || ''
+
+            if (indexTokenSegmentRegex.test(updatedLastRouteSegment)) {
+              if (routePathSegments.length === 1) {
+                routePath = '/'
+              }
+
+              if (lastOriginalSegment === updatedLastRouteSegment) {
+                originalRoutePath = '/'
+              }
+
+              // For layout routes, don't use '/' fallback - an empty path means
+              // "layout for the parent path" which is important for physical() mounts
+              // where route.tsx at root should have empty path, not '/'
+              const isLayoutRoute = routeType === 'layout'
+
+              routePath =
+                routePath.replace(
+                  new RegExp(`/${updatedLastRouteSegment}$`),
+                  '/',
+                ) || (isLayoutRoute ? '' : '/')
+
+              originalRoutePath =
+                originalRoutePath.replace(
+                  new RegExp(`/${indexTokenCandidate}$`),
+                  '/',
+                ) || (isLayoutRoute ? '' : '/')
             }
-
-            if (originalRoutePath === config.indexToken) {
-              originalRoutePath = '/'
-            }
-
-            // For layout routes, don't use '/' fallback - an empty path means
-            // "layout for the parent path" which is important for physical() mounts
-            // where route.tsx at root should have empty path, not '/'
-            const isLayoutRoute = routeType === 'layout'
-
-            routePath =
-              routePath.replace(new RegExp(`/${config.indexToken}$`), '/') ||
-              (isLayoutRoute ? '' : '/')
-
-            originalRoutePath =
-              originalRoutePath.replace(
-                new RegExp(`/${config.indexToken}$`),
-                '/',
-              ) || (isLayoutRoute ? '' : '/')
           }
 
           routeNodes.push({
@@ -312,13 +360,13 @@ export async function getRouteNodes(
  *
  * @param routePath - The determined initial routePath (with brackets removed).
  * @param originalRoutePath - The original route path (may contain brackets for escaped content).
- * @param config - The user configuration object.
+ * @param tokenRegexes - Pre-compiled token regexes for matching.
  * @returns An object containing the type of the route and the variable name derived from the route path.
  */
 export function getRouteMeta(
   routePath: string,
   originalRoutePath: string,
-  config: Pick<Config, 'routeToken' | 'indexToken'>,
+  tokenRegexes: TokenRegexBundle,
 ): {
   // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
   // `pathless` is needs to determined after `lazy` has been cleaned up from the routePath
@@ -343,15 +391,27 @@ export function getRouteMeta(
   const lastOriginalSegment =
     originalSegments[originalSegments.length - 1] || ''
 
-  // Helper to check if a specific suffix is escaped
+  const { routeTokenSegmentRegex } = tokenRegexes
+
+  // Helper to check if a specific suffix is escaped (literal-only)
+  // A suffix is escaped if the original segment is wrapped in brackets: [lazy] means literal "lazy"
   const isSuffixEscaped = (suffix: string): boolean => {
-    return lastOriginalSegment === `[${suffix}]`
+    return (
+      lastOriginalSegment.startsWith('[') &&
+      lastOriginalSegment.endsWith(']') &&
+      unwrapBracketWrappedSegment(lastOriginalSegment) === suffix
+    )
   }
 
-  if (
-    routePath.endsWith(`/${config.routeToken}`) &&
-    !isSuffixEscaped(config.routeToken)
-  ) {
+  const routeSegments = routePath.split('/').filter(Boolean)
+  const lastRouteSegment = routeSegments[routeSegments.length - 1] || ''
+
+  const routeTokenCandidate = unwrapBracketWrappedSegment(lastOriginalSegment)
+  const isRouteTokenEscaped =
+    lastOriginalSegment !== routeTokenCandidate &&
+    routeTokenSegmentRegex.test(routeTokenCandidate)
+
+  if (routeTokenSegmentRegex.test(lastRouteSegment) && !isRouteTokenEscaped) {
     // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
     fsRouteType = 'layout'
   } else if (routePath.endsWith('/lazy') && !isSuffixEscaped('lazy')) {
@@ -396,14 +456,14 @@ export function getRouteMeta(
  * @param normalizedRoutePath Normalized route path, i.e `/foo/_layout/route.tsx` and `/foo._layout.route.tsx` to `/foo/_layout/route`
  * @param originalRoutePath Original route path with brackets for escaped content
  * @param routeType The route type determined from file extension
- * @param config The `router-generator` configuration object
+ * @param tokenRegexes Pre-compiled token regexes for matching
  * @returns Boolean indicating if the route is a pathless layout route
  */
 function isValidPathlessLayoutRoute(
   normalizedRoutePath: string,
   originalRoutePath: string,
   routeType: FsRouteType,
-  config: Pick<Config, 'routeToken' | 'indexToken'>,
+  tokenRegexes: TokenRegexBundle,
 ): boolean {
   if (routeType === 'lazy') {
     return false
@@ -428,12 +488,14 @@ function isValidPathlessLayoutRoute(
     return false
   }
 
-  // If segment === config.routeToken and secondToLastSegment is a string that starts with _, then exit as true
+  const { routeTokenSegmentRegex, indexTokenSegmentRegex } = tokenRegexes
+
+  // If segment matches routeToken and secondToLastSegment is a string that starts with _, then exit as true
   // Since the route is actually a configuration route for a layout/pathless route
   // i.e. /foo/_layout/route.tsx === /foo/_layout.tsx
   // But if the underscore is escaped, it's not a pathless layout
   if (
-    lastRouteSegment === config.routeToken &&
+    routeTokenSegmentRegex.test(lastRouteSegment) &&
     typeof secondToLastRouteSegment === 'string' &&
     typeof secondToLastOriginalSegment === 'string'
   ) {
@@ -451,8 +513,8 @@ function isValidPathlessLayoutRoute(
   }
 
   return (
-    lastRouteSegment !== config.indexToken &&
-    lastRouteSegment !== config.routeToken &&
+    !indexTokenSegmentRegex.test(lastRouteSegment) &&
+    !routeTokenSegmentRegex.test(lastRouteSegment) &&
     lastRouteSegment.startsWith('_')
   )
 }

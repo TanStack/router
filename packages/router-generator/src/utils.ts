@@ -3,7 +3,7 @@ import * as fsp from 'node:fs/promises'
 import path from 'node:path'
 import * as prettier from 'prettier'
 import { rootPathId } from './filesystem/physical/rootPathId'
-import type { Config } from './config'
+import type { Config, TokenMatcher } from './config'
 import type { ImportDeclaration, RouteNode } from './types'
 
 /**
@@ -416,6 +416,78 @@ export function isSegmentPathless(
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function sanitizeTokenFlags(flags?: string): string | undefined {
+  if (!flags) return flags
+
+  // Prevent stateful behavior with RegExp.prototype.test/exec
+  // g = global, y = sticky
+  return flags.replace(/[gy]/g, '')
+}
+
+export function createTokenRegex(
+  token: TokenMatcher,
+  opts: {
+    type: 'segment' | 'filename'
+  },
+): RegExp {
+  // Defensive check: if token is undefined/null, throw a clear error
+  // (runtime safety for config loading edge cases)
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (token === undefined || token === null) {
+    throw new Error(
+      `createTokenRegex: token is ${token}. This usually means the config was not properly parsed with defaults.`,
+    )
+  }
+
+  try {
+    if (typeof token === 'string') {
+      return opts.type === 'segment'
+        ? new RegExp(`^${escapeRegExp(token)}$`)
+        : new RegExp(`[./]${escapeRegExp(token)}[.]`)
+    }
+
+    if (token instanceof RegExp) {
+      const flags = sanitizeTokenFlags(token.flags)
+      return opts.type === 'segment'
+        ? new RegExp(`^(?:${token.source})$`, flags)
+        : new RegExp(`[./](?:${token.source})[.]`, flags)
+    }
+
+    // Handle JSON regex object form: { regex: string, flags?: string }
+    if (typeof token === 'object' && 'regex' in token) {
+      const flags = sanitizeTokenFlags(token.flags)
+      return opts.type === 'segment'
+        ? new RegExp(`^(?:${token.regex})$`, flags)
+        : new RegExp(`[./](?:${token.regex})[.]`, flags)
+    }
+
+    throw new Error(
+      `createTokenRegex: invalid token type. Expected string, RegExp, or { regex, flags } object, got: ${typeof token}`,
+    )
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      const pattern =
+        typeof token === 'string'
+          ? token
+          : token instanceof RegExp
+            ? token.source
+            : token.regex
+      throw new Error(
+        `Invalid regex pattern in token config: "${pattern}". ${e.message}`,
+      )
+    }
+    throw e
+  }
+}
+
+export function isBracketWrappedSegment(segment: string): boolean {
+  return segment.startsWith('[') && segment.endsWith(']')
+}
+
+export function unwrapBracketWrappedSegment(segment: string): string {
+  return isBracketWrappedSegment(segment) ? segment.slice(1, -1) : segment
 }
 
 export function removeLeadingUnderscores(s: string, routeToken: string) {

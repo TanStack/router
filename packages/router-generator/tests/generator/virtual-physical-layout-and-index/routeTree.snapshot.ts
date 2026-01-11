@@ -10,7 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as FeatureRouteRouteImport } from './routes/feature/route'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as indexRouteImport } from './routes/index'
 import { Route as FeatureIndexRouteImport } from './routes/feature/index'
 
 const FeatureRouteRoute = FeatureRouteRouteImport.update({
@@ -18,7 +18,7 @@ const FeatureRouteRoute = FeatureRouteRouteImport.update({
   path: '/feature',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const indexRoute = indexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
@@ -30,17 +30,17 @@ const FeatureIndexRoute = FeatureIndexRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof indexRoute
   '/feature': typeof FeatureRouteRouteWithChildren
   '/feature/': typeof FeatureIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof indexRoute
   '/feature': typeof FeatureIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/': typeof indexRoute
   '/feature': typeof FeatureRouteRouteWithChildren
   '/feature/': typeof FeatureIndexRoute
 }
@@ -53,7 +53,7 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  indexRoute: typeof indexRoute
   FeatureRouteRoute: typeof FeatureRouteRouteWithChildren
 }
 
@@ -70,7 +70,7 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof indexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feature/': {
@@ -96,7 +96,7 @@ const FeatureRouteRouteWithChildren = FeatureRouteRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  indexRoute: indexRoute,
   FeatureRouteRoute: FeatureRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
