@@ -430,7 +430,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TLoaderFn,
       TSSR,
       THandlers
-    >(options as any)
+    >(options)
   }
 }
 
