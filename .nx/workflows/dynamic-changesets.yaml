@@ -2,3 +2,16 @@ distribute-on:
   small-changeset: 3 linux-medium-js
   medium-changeset: 6 linux-medium-js
   large-changeset: 10 linux-medium-js
+
+assignment-rules:
+  - targets:
+      - build
+    run-on:
+      - agent: linux-medium-js
+        parallelism: 5
+
+  - targets:
+      - lint
+    run-on:
+      - agent: linux-medium-js
+        parallelism: 4
