@@ -127,7 +127,6 @@ Set the lang atribute in html at \_\_root.tsx:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
-
 ;<html lang={getLocale()} />
 ```
 
