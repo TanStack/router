@@ -572,7 +572,7 @@ export function useLinkProps<
       }
     }
 
-    return result as LinkHTMLAttributes
+    return result
   })
 
   // Return the computed ref itself - callers should access .value
