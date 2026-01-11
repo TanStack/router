@@ -16,7 +16,7 @@
     "@fontsource-variable/roboto": "5.2.5",
     "@mui/material": "6.4.7",
     "@tanstack/react-router": "^1.147.3",
-    "@tanstack/react-start": "^1.149.0",
+    "@tanstack/react-start": "^1.149.1",
     "@tanstack/react-router-devtools": "^1.149.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
