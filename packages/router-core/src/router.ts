@@ -2849,7 +2849,7 @@ export class RouterCore<
       ...location,
       to: location.to
         ? this.resolvePathWithBase(
-            (location.from || '') as string,
+            (location.from || ''),
             location.to as string,
           )
         : undefined,
