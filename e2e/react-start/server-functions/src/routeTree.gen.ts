@@ -22,6 +22,7 @@ import { Route as HeadersRouteImport } from './routes/headers'
 import { Route as FormdataContextRouteImport } from './routes/formdata-context'
 import { Route as EnvOnlyRouteImport } from './routes/env-only'
 import { Route as DeadCodePreserveRouteImport } from './routes/dead-code-preserve'
+import { Route as CustomFetchRouteImport } from './routes/custom-fetch'
 import { Route as ConsistentRouteImport } from './routes/consistent'
 import { Route as AsyncValidationRouteImport } from './routes/async-validation'
 import { Route as IndexRouteImport } from './routes/index'
@@ -110,6 +111,11 @@ const EnvOnlyRoute = EnvOnlyRouteImport.update({
 const DeadCodePreserveRoute = DeadCodePreserveRouteImport.update({
   id: '/dead-code-preserve',
   path: '/dead-code-preserve',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomFetchRoute = CustomFetchRouteImport.update({
+  id: '/custom-fetch',
+  path: '/custom-fetch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConsistentRoute = ConsistentRouteImport.update({
@@ -245,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
+  '/custom-fetch': typeof CustomFetchRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
   '/formdata-context': typeof FormdataContextRoute
@@ -284,6 +291,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
+  '/custom-fetch': typeof CustomFetchRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
   '/formdata-context': typeof FormdataContextRoute
@@ -324,6 +332,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/async-validation': typeof AsyncValidationRoute
   '/consistent': typeof ConsistentRoute
+  '/custom-fetch': typeof CustomFetchRoute
   '/dead-code-preserve': typeof DeadCodePreserveRoute
   '/env-only': typeof EnvOnlyRoute
   '/formdata-context': typeof FormdataContextRoute
@@ -365,6 +374,7 @@ export interface FileRouteTypes {
     | '/'
     | '/async-validation'
     | '/consistent'
+    | '/custom-fetch'
     | '/dead-code-preserve'
     | '/env-only'
     | '/formdata-context'
@@ -404,6 +414,7 @@ export interface FileRouteTypes {
     | '/'
     | '/async-validation'
     | '/consistent'
+    | '/custom-fetch'
     | '/dead-code-preserve'
     | '/env-only'
     | '/formdata-context'
@@ -443,6 +454,7 @@ export interface FileRouteTypes {
     | '/'
     | '/async-validation'
     | '/consistent'
+    | '/custom-fetch'
     | '/dead-code-preserve'
     | '/env-only'
     | '/formdata-context'
@@ -483,6 +495,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AsyncValidationRoute: typeof AsyncValidationRoute
   ConsistentRoute: typeof ConsistentRoute
+  CustomFetchRoute: typeof CustomFetchRoute
   DeadCodePreserveRoute: typeof DeadCodePreserveRoute
   EnvOnlyRoute: typeof EnvOnlyRoute
   FormdataContextRoute: typeof FormdataContextRoute
@@ -610,6 +623,13 @@ declare module '@tanstack/react-router' {
       path: '/dead-code-preserve'
       fullPath: '/dead-code-preserve'
       preLoaderRoute: typeof DeadCodePreserveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/custom-fetch': {
+      id: '/custom-fetch'
+      path: '/custom-fetch'
+      fullPath: '/custom-fetch'
+      preLoaderRoute: typeof CustomFetchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/consistent': {
@@ -787,6 +807,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AsyncValidationRoute: AsyncValidationRoute,
   ConsistentRoute: ConsistentRoute,
+  CustomFetchRoute: CustomFetchRoute,
   DeadCodePreserveRoute: DeadCodePreserveRoute,
   EnvOnlyRoute: EnvOnlyRoute,
   FormdataContextRoute: FormdataContextRoute,
