@@ -46,7 +46,7 @@ export default {
 
 #### HTML Language Attribute
 
-Set the lang attribute in html at __root.tsx:
+Set the lang attribute in html at \_\_root.tsx:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
