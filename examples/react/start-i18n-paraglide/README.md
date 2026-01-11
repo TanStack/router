@@ -123,14 +123,25 @@ export default {
 
 #### HTML Language Attribute
 
-Set the lang atribute in html at \_\_root.tsx:
+Set the lang attribute in html at __root.tsx:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
-;<html lang={getLocale()} />
-```
 
----
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <html lang={getLocale()}>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+```
 
 ### Prerendering Localized Routes
 
