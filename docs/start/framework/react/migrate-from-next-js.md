@@ -315,7 +315,7 @@ Learn more about the [Links](/router/latest/docs/framework/react/guide/navigatio
 ### Images
 
 Next.js uses the `next/image` component for optimized images. In TanStack Start, you can use the package called [Unpic](https://unpic.pics/) for similar functionality
-and almost a drop-in replacement.
+and almost as a drop-in replacement.
 
 ```tsx
 import Image from 'next/image' // [!code --]
