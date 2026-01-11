@@ -556,6 +556,7 @@ const executeHead = (
     return
   }
   const assetContext = {
+    ssr: inner.router.options.ssr,
     matches: inner.matches,
     match,
     params: match.params,
