@@ -46,12 +46,12 @@ export default {
 
 #### HTML Language Attribute
 
-Set the lang atribute in html at __root.tsx:
+Set the lang atribute in html at \_\_root.tsx:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
 
-<html lang={getLocale()} />
+;<html lang={getLocale()} />
 ```
 
 ---

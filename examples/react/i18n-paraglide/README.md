@@ -114,7 +114,7 @@ Use in vite.config.ts:
 paraglideVitePlugin({
   project: './project.inlang',
   outdir: './app/paraglide',
-  urlPatterns: translatedPathnames
+  urlPatterns: translatedPathnames,
 })
 ```
 
