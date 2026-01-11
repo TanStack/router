@@ -50,10 +50,12 @@
     ".": {
       "import": {
         "types": "./dist/esm/index.d.ts",
+        "development": "./dist/esm/index.dev.js",
         "default": "./dist/esm/index.js"
       },
       "require": {
         "types": "./dist/cjs/index.d.cts",
+        "development": "./dist/cjs/index.dev.cjs",
         "default": "./dist/cjs/index.cjs"
       }
     },
