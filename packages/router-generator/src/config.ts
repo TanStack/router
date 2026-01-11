@@ -4,6 +4,29 @@ import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
 
+// Helper to create a function schema compatible with both Zod v3 and v4
+function createFunctionSchema() {
+  // Try Zod v4 syntax first
+  if (typeof (z as any).function === 'function') {
+    try {
+      // Check if this is Zod v4 by testing for the new API
+      const testSchema = z.string()
+      if ('_zod' in testSchema) {
+        // Zod v4: use new function API
+        return (z as any).function({
+          input: [],
+          output: z.array(z.string()),
+        })
+      }
+    } catch (e) {
+      // Fall through to v3
+    }
+  }
+
+  // Zod v3: use old function API
+  return (z as any).function().returns(z.array(z.string()))
+}
+
 export const baseConfigSchema = z.object({
   target: z.enum(['react', 'solid', 'vue']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
@@ -40,7 +63,7 @@ export const configSchema = baseConfigSchema.extend({
   routeTreeFileFooter: z
     .union([
       z.array(z.string()).optional().default([]),
-      z.function().returns(z.array(z.string())),
+      createFunctionSchema(),
     ])
     .optional(),
   autoCodeSplitting: z.boolean().optional(),

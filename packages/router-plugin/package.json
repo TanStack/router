@@ -117,7 +117,7 @@
     "babel-dead-code-elimination": "^1.0.11",
     "chokidar": "^3.6.0",
     "unplugin": "^2.1.2",
-    "zod": "^3.24.2"
+    "zod": "^3.25.0 || ^4.0.0"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",

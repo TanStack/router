@@ -3,6 +3,33 @@ import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
 import type { TanStackStartVitePluginCoreOptions } from './types'
 
+// Helper to create a function schema compatible with both Zod v3 and v4
+function createFunctionSchema(
+  args: any,
+  returns: any,
+): any {
+  // Try Zod v4 syntax first
+  if (typeof (z as any).function === 'function') {
+    try {
+      // Check if this is Zod v4 by testing for the new API
+      const testSchema = z.string()
+      if ('_zod' in testSchema) {
+        // Zod v4: use new function API
+        return (z as any).function({
+          input: Array.isArray(args) ? args : [args],
+          output: returns,
+        })
+      }
+    } catch (e) {
+      // Fall through to v3
+    }
+  }
+
+  // Zod v3: use old function API
+  const argsArray = Array.isArray(args) ? args : [args]
+  return (z as any).function().args(...argsArray).returns(returns)
+}
+
 const tsrConfig = configSchema
   .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
   .partial()
@@ -94,16 +121,13 @@ const pagePrerenderOptionsSchema = z.object({
   crawlLinks: z.boolean().optional(),
   retryCount: z.number().optional(),
   retryDelay: z.number().optional(),
-  onSuccess: z
-    .function()
-    .args(
-      z.object({
-        page: pageBaseSchema,
-        html: z.string(),
-      }),
-    )
-    .returns(z.any())
-    .optional(),
+  onSuccess: createFunctionSchema(
+    z.object({
+      page: pageBaseSchema,
+      html: z.string(),
+    }),
+    z.any(),
+  ).optional(),
   headers: z.record(z.string(), z.string()).optional(),
 })
 
@@ -159,16 +183,13 @@ const tanstackStartOptionsSchema = z
     serverFns: z
       .object({
         base: z.string().optional().default('/_serverFn'),
-        generateFunctionId: z
-          .function()
-          .args(
-            z.object({
-              filename: z.string(),
-              functionName: z.string(),
-            }),
-          )
-          .returns(z.string().optional())
-          .optional(),
+        generateFunctionId: createFunctionSchema(
+          z.object({
+            filename: z.string(),
+            functionName: z.string(),
+          }),
+          z.string().optional(),
+        ).optional(),
       })
       .optional()
       .default({}),
@@ -184,7 +205,7 @@ const tanstackStartOptionsSchema = z
       .object({
         enabled: z.boolean().optional(),
         concurrency: z.number().optional(),
-        filter: z.function().args(pageSchema).returns(z.any()).optional(),
+        filter: createFunctionSchema(pageSchema, z.any()).optional(),
         failOnError: z.boolean().optional(),
         autoStaticPathsDiscovery: z.boolean().optional(),
         maxRedirects: z.number().min(0).optional(),
