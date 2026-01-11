@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/vue-router": "^1.147.3",
-    "@tanstack/vue-router-devtools": "^1.147.3",
+    "@tanstack/vue-router-devtools": "^1.149.0",
     "redaxios": "^0.5.1",
     "vue": "^3.5.13",
     "tailwindcss": "4.1.18"
