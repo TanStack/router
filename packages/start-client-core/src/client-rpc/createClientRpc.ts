@@ -1,6 +1,6 @@
 import { TSS_SERVER_FUNCTION } from '../constants'
-import type { ClientFnMeta } from '../constants'
 import { serverFnFetcher } from './serverFnFetcher'
+import type { ClientFnMeta } from '../constants'
 
 export function createClientRpc(functionId: string) {
   const url = process.env.TSS_SERVER_FN_BASE + functionId
@@ -14,5 +14,5 @@ export function createClientRpc(functionId: string) {
     url,
     serverFnMeta,
     [TSS_SERVER_FUNCTION]: true,
-  }) 
+  })
 }

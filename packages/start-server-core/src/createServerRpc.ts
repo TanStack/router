@@ -1,7 +1,5 @@
-import {
-  TSS_SERVER_FUNCTION,
-  type ServerFnMeta,
-} from '@tanstack/start-client-core'
+import { TSS_SERVER_FUNCTION } from '@tanstack/start-client-core'
+import type { ServerFnMeta } from '@tanstack/start-client-core'
 
 export const createServerRpc = (
   serverFnMeta: ServerFnMeta,
