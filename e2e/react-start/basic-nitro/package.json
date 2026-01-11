@@ -1,0 +1,42 @@
+{
+  "name": "tanstack-react-start-e2e-basic-nitro",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev:v2": "vite dev -c vite.config.v2.ts --port 3000",
+    "dev:v3": "vite dev -c vite.config.v3.ts --port 3000",
+    "dev:e2e:v2": "vite dev -c vite.config.v2.ts",
+    "dev:e2e:v3": "vite dev -c vite.config.v3.ts",
+    "build:v2": "vite build -c vite.config.v2.ts && tsc --noEmit",
+    "build:v3": "vite build -c vite.config.v3.ts && tsc --noEmit",
+    "preview:v2": "vite preview -c vite.config.v2.ts",
+    "preview:v3": "vite preview -c vite.config.v3.ts",
+    "test:e2e:shared": "rm -rf port*.txt; playwright test --project=chromium",
+    "test:e2e:v2": "rm -rf .output dist .nitro && NITRO_VARIANT=v2 pnpm run test:e2e:shared",
+    "test:e2e:v3": "rm -rf .output dist .nitro && NITRO_VARIANT=v3 pnpm run test:e2e:shared",
+    "test:e2e": "pnpm run test:e2e:v2 && pnpm run test:e2e:v3"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-router-devtools": "workspace:^",
+    "@tanstack/react-start": "workspace:^",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1",
+    "@tailwindcss/postcss": "^4.1.15",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/nitro-v2-vite-plugin": "workspace:^",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "nitro": "npm:nitro-nightly@latest",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^4.1.15",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
