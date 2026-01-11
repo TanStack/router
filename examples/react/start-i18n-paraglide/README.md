@@ -31,7 +31,7 @@ const router = createRouter({
 })
 ```
 
-## Type-safe Translated Pathnames
+#### Type-safe Translated Pathnames
 
 If you use translated pathnames. To ensure every route has translations, you can derive translated pathnames directly from the TanStack Router route tree.
 
@@ -143,7 +143,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 }
 ```
 
-### Prerendering Localized Routes
+#### Prerendering Localized Routes
 
 ```ts
 import { localizeHref } from './paraglide/runtime'

@@ -179,7 +179,7 @@
             },
             {
               "label": "Internationalization (i18n)",
-              "to": "framework/react/guide/Internationalization-i18n"
+              "to": "framework/react/guide/internationalization-i18n"
             }
           ]
         },

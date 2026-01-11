@@ -31,7 +31,7 @@ const router = createRouter({
 })
 ```
 
-## URL redirects
+#### URL redirects
 
 ```ts
 import { shouldRedirect } from '../paraglide/runtime'
@@ -44,9 +44,9 @@ beforeLoad: async () => {
 }
 ```
 
-If you use TanStack Start and do not need offline capabilities, you don`t need to use the shouldRedirect logic, only paraglideMiddleware in the TanStack Start Paraglide integration guide.
+If you use TanStack Start and do not need offline capabilities, you don't need to use the shouldRedirect logic, only paraglideMiddleware in the TanStack Start Paraglide integration guide.
 
-## Type-safe Translated Pathnames
+#### Type-safe Translated Pathnames
 
 If you use translated pathnames. To ensure every route has translations, you can derive translated pathnames directly from the TanStack Router route tree.
 
