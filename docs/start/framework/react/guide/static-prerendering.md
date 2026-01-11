@@ -86,3 +86,59 @@ Note: Dynamic routes can still be prerendered if they are linked from other page
 When `crawlLinks` is enabled (default: `true`), TanStack Start will extract links from prerendered pages and prerender those linked pages as well.
 
 For example, if `/` contains a link to `/posts`, then `/posts` will also be automatically prerendered.
+
+## Sitemap Generation
+
+TanStack Start can automatically generate a `sitemap.xml` file from your prerendered pages. To enable sitemap generation, add the `sitemap` option:
+
+```ts
+tanstackStart({
+  prerender: {
+    enabled: true,
+  },
+  sitemap: {
+    host: 'https://example.com', // Required: Your site's base URL
+  },
+})
+```
+
+### Excluding Pages from Sitemap
+
+You can exclude specific pages from the sitemap using the `pages` config:
+
+```ts
+tanstackStart({
+  prerender: { enabled: true },
+  sitemap: { host: 'https://example.com' },
+  pages: [
+    {
+      path: '/admin',
+      sitemap: { exclude: true },
+    },
+    {
+      path: '/blog',
+      sitemap: {
+        priority: 0.8,
+        changefreq: 'daily',
+        lastmod: '2025-01-01',
+      },
+    },
+  ],
+})
+```
+
+### Available Sitemap Options
+
+- `host` - **Required.** The base URL of your site
+- `enabled` - Enable/disable sitemap generation (default: `true`)
+- `outputPath` - Output filename (default: `sitemap.xml`)
+
+### Per-Page Sitemap Options
+
+- `exclude` - Exclude the page from sitemap
+- `priority` - Priority from 0.0 to 1.0
+- `changefreq` - Frequency of changes to the page, one of `never`, `always`, `hourly`, `daily`, `weekly`, `monthly`, `yearly`
+- `lastmod` - Last modification date
+- `alternateRefs` - Array of alternate language URLs
+- `images` - Array of images
+- `news` - News sitemap extension
