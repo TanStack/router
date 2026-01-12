@@ -1912,6 +1912,28 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
     this.id = id as any
   }
 
+  /**
+   * The full path of the route, which can be used as the `from` parameter
+   * in navigation APIs like `<Link from={routeApi.fullPath}>` or `navigate({ from: routeApi.fullPath })`.
+   */
+  get fullPath(): RouteTypesById<TRouter, TId>['fullPath'] {
+    if (typeof window !== 'undefined' && window.__TSR_ROUTER__) {
+      const route = window.__TSR_ROUTER__.routesById[this.id as string]
+      if (route) {
+        return route.fullPath as RouteTypesById<TRouter, TId>['fullPath']
+      }
+    }
+    return this.id as RouteTypesById<TRouter, TId>['fullPath']
+  }
+
+  /**
+   * The `to` path of the route, an alias for `fullPath` that can be used
+   * for navigation. This provides parity with the `Route.to` property.
+   */
+  get to(): RouteTypesById<TRouter, TId>['fullPath'] {
+    return this.fullPath
+  }
+
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
   }

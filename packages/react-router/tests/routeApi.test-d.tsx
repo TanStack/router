@@ -29,8 +29,19 @@ const invoiceRoute = createRoute({
   loader: () => ({ data: 0 }),
 })
 
+const layoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_layout',
+})
+
+const postsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: 'posts',
+})
+
 const routeTree = rootRoute.addChildren([
   invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+  layoutRoute.addChildren([postsRoute]),
   indexRoute,
 ])
 
@@ -93,6 +104,39 @@ describe('getRouteApi', () => {
     expectTypeOf(Link).toEqualTypeOf<
       LinkComponentRoute<'/invoices/$invoiceId'>
     >()
+  })
+  test('fullPath', () => {
+    expectTypeOf(invoiceRouteApi.fullPath).toEqualTypeOf<'/invoices/$invoiceId'>()
+  })
+  test('to', () => {
+    expectTypeOf(invoiceRouteApi.to).toEqualTypeOf<'/invoices/$invoiceId'>()
+  })
+  test('id', () => {
+    expectTypeOf(invoiceRouteApi.id).toEqualTypeOf<'/invoices/$invoiceId'>()
+  })
+})
+
+describe('getRouteApi with pathless layout route', () => {
+  const postsRouteApi = getRouteApi<'/_layout/posts', DefaultRouter>(
+    '/_layout/posts',
+  )
+
+  test('id includes the layout segment', () => {
+    expectTypeOf(postsRouteApi.id).toEqualTypeOf<'/_layout/posts'>()
+  })
+
+  test('fullPath excludes the pathless layout segment', () => {
+    expectTypeOf(postsRouteApi.fullPath).toEqualTypeOf<'/posts'>()
+  })
+
+  test('to excludes the pathless layout segment', () => {
+    expectTypeOf(postsRouteApi.to).toEqualTypeOf<'/posts'>()
+  })
+
+  test('fullPath is a valid RoutePaths type for Link from prop', () => {
+    // Verify fullPath is assignable to RoutePaths (valid for Link's from prop)
+    type RoutePaths = '/posts' | '/invoices' | '/invoices/$invoiceId' | '/'
+    expectTypeOf(postsRouteApi.fullPath).toMatchTypeOf<RoutePaths>()
   })
 })
 

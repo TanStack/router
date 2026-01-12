@@ -61,6 +61,42 @@ describe('getRouteApi', () => {
     const api = getRouteApi('foo')
     expect(api.useNavigate).toBeDefined()
   })
+
+  it('should have the fullPath property', () => {
+    const api = getRouteApi('/posts')
+    expect(api.fullPath).toBe('/posts')
+  })
+
+  it('should have the to property', () => {
+    const api = getRouteApi('/posts')
+    expect(api.to).toBe('/posts')
+  })
+
+  it('fullPath should equal id for standard routes', () => {
+    const api = getRouteApi('/invoices/$invoiceId')
+    expect(api.fullPath).toBe('/invoices/$invoiceId')
+    expect(api.to).toBe('/invoices/$invoiceId')
+    expect(api.fullPath).toBe(api.id)
+  })
+
+  it('fullPath should differ from id for pathless layout routes', () => {
+    const rootRoute = createRootRoute()
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: 'posts',
+    })
+    const routeTree = rootRoute.addChildren([layoutRoute.addChildren([postsRoute])])
+    createRouter({ routeTree, history })
+
+    const api = getRouteApi('/_layout/posts')
+    expect(api.id).toBe('/_layout/posts')
+    expect(api.fullPath).toBe('/posts')
+    expect(api.to).toBe('/posts')
+  })
 })
 
 describe('createRoute has the same hooks as getRouteApi', () => {
