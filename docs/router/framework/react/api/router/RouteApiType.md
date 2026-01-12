@@ -149,3 +149,35 @@ The `RouteApi` has the following properties and methods:
 ```
 
 - A type-safe version of [`useNavigate`](./useNavigateHook.md) that is pre-bound to the route ID that the `RouteApi` instance was created with.
+
+### `redirect` method
+
+```tsx
+  redirect(opts?: RedirectOptions): Redirect
+```
+
+- A type-safe version of the [`redirect`](./redirectFunction.md) function that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- The `from` parameter is automatically set to the route ID, enabling type-safe relative redirects.
+- Options
+  - All options from [`redirect`](./redirectFunction.md) except `from`, which is automatically provided.
+- Returns
+  - A `Redirect` object that can be thrown from `beforeLoad` or `loader` callbacks.
+
+#### Example
+
+```tsx
+import { getRouteApi } from '@tanstack/react-router'
+
+const routeApi = getRouteApi('/dashboard/settings')
+
+export const Route = createFileRoute('/dashboard/settings')({
+  beforeLoad: ({ context }) => {
+    if (!context.user) {
+      // Type-safe redirect - 'from' is automatically '/dashboard/settings'
+      throw routeApi.redirect({
+        to: '../login', // Relative path to sibling route
+      })
+    }
+  },
+})
+```

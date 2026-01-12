@@ -56,6 +56,35 @@ export type ResolvedRedirect<
 > = Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 /**
+ * Options for route-bound redirect, where 'from' is automatically set.
+ * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RedirectType)
+ */
+export type RedirectOptionsRoute<
+  TDefaultFrom extends string = string,
+  TRouter extends AnyRouter = RegisteredRouter,
+  TTo extends string | undefined = undefined,
+  TMaskTo extends string = '',
+> = Omit<
+  RedirectOptions<TRouter, TDefaultFrom, TTo, TDefaultFrom, TMaskTo>,
+  'from'
+>
+
+/**
+ * A redirect function bound to a specific route, with 'from' pre-set to the route's fullPath.
+ * This enables relative redirects like `Route.redirect({ to: './overview' })`.
+ * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RedirectType)
+ */
+export interface RedirectFnRoute<in out TDefaultFrom extends string = string> {
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    const TTo extends string | undefined = undefined,
+    const TMaskTo extends string = '',
+  >(
+    opts: RedirectOptionsRoute<TDefaultFrom, TRouter, TTo, TMaskTo>,
+  ): Redirect<TRouter, TDefaultFrom, TTo, TDefaultFrom, TMaskTo>
+}
+
+/**
  * Create a redirect Response understood by TanStack Router.
  *
  * Use from route `loader`/`beforeLoad` or server functions to trigger a
