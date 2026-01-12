@@ -547,6 +547,13 @@ export interface LinkComponentRoute<
   ): React.ReactElement
 }
 
+export interface CreateLinkOptions<
+  TRouter extends AnyRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']>,
+> {
+  from: TFrom
+}
+
 /**
  * Creates a typed Link-like component that preserves TanStack Router's
  * navigation semantics and type-safety while delegating rendering to the
@@ -556,14 +563,28 @@ export interface LinkComponentRoute<
  * router-aware props (eg. `to`, `params`, `search`, `preload`).
  *
  * @param Comp The host component to render (eg. a design-system Link/Button)
+ * @param options Optional config with `from` for type-safe relative navigation
  * @returns A router-aware component with the same API as `Link`.
+ * @example
+ * const ButtonLink = createLink(MyButton)
+ * const DashboardLink = createLink(MyButton, { from: '/dashboard' })
+ * <DashboardLink to="./settings" /> // Type-safe relative to /dashboard
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-link
  */
-export function createLink<const TComp>(
+export function createLink<
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TComp = 'a',
+  const TFrom extends RoutePaths<TRouter['routeTree']> = RoutePaths<
+    TRouter['routeTree']
+  >,
+>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
-): LinkComponent<TComp> {
+  options?: CreateLinkOptions<TRouter, TFrom>,
+): LinkComponent<TComp, TFrom> {
   return React.forwardRef(function CreatedLink(props, ref) {
-    return <Link {...(props as any)} _asChild={Comp} ref={ref} />
+    return (
+      <Link {...(props as any)} _asChild={Comp} from={options?.from} ref={ref} />
+    )
   }) as any
 }
 
