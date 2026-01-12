@@ -98,11 +98,16 @@ test('createLink with from rejects invalid relative paths', () => {
 test('createLink with from requires params for parameterized routes', () => {
   const UsersLink = createLink(Button, { from: '/dashboard/users' })
 
-  // Valid: navigating to $userId with params
+  // Valid: navigating to $userId with params (descendant path without ./)
+  ;<UsersLink to="$userId" params={{ userId: '123' }}>
+    User
+  </UsersLink>
+
+  // Valid: also works with explicit ./ relative prefix
   ;<UsersLink to="./$userId" params={{ userId: '123' }}>
     User
   </UsersLink>
 
   // @ts-expect-error - missing required userId param
-  ;<UsersLink to="./$userId">User</UsersLink>
+  ;<UsersLink to="$userId">User</UsersLink>
 })
