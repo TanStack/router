@@ -2,16 +2,35 @@
  * CSS collection for dev mode.
  * Crawls the Vite module graph to collect CSS from the router entry and all its dependencies.
  */
+import path from 'node:path'
 import type { ModuleNode, ViteDevServer } from 'vite'
 
 // CSS file extensions supported by Vite
 const CSS_FILE_REGEX =
   /\.(css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/
+// CSS modules file pattern - exported for use in plugin hook filters
+// Note: allow query/hash suffix since Vite ids often include them.
+export const CSS_MODULES_REGEX =
+  /\.module\.(css|less|sass|scss|styl|stylus)(?:$|[?#])/i
+
+export function normalizeCssModuleCacheKey(idOrFile: string): string {
+  const baseId = idOrFile.split('?')[0]!.split('#')[0]!
+  return baseId.replace(/\\/g, '/')
+}
 // URL params that indicate CSS should not be injected (e.g., ?url, ?inline)
 const CSS_SIDE_EFFECT_FREE_PARAMS = ['url', 'inline', 'raw', 'inline-css']
 
+const VITE_CSS_REGEX = /const\s+__vite__css\s*=\s*["'`]([\s\S]*?)["'`]/
+
+const ESCAPE_CSS_COMMENT_START_REGEX = /\/\*/g
+const ESCAPE_CSS_COMMENT_END_REGEX = /\*\//g
+
 function isCssFile(file: string): boolean {
   return CSS_FILE_REGEX.test(file)
+}
+
+export function isCssModulesFile(file: string): boolean {
+  return CSS_MODULES_REGEX.test(file)
 }
 
 function hasCssSideEffectFreeParam(url: string): boolean {
@@ -27,9 +46,31 @@ function hasCssSideEffectFreeParam(url: string): boolean {
   )
 }
 
+/**
+ * Resolve a file path to a Vite dev server URL.
+ * Files within the root directory use relative paths, files outside use /@fs prefix.
+ */
+function resolveDevUrl(rootDirectory: string, filePath: string): string {
+  const normalizedPath = filePath.replace(/\\/g, '/')
+  const relativePath = path.posix.relative(
+    rootDirectory.replace(/\\/g, '/'),
+    normalizedPath,
+  )
+  const isWithinRoot =
+    !relativePath.startsWith('..') && !path.isAbsolute(relativePath)
+
+  if (isWithinRoot) {
+    return path.posix.join('/', relativePath)
+  }
+  // Files outside root need /@fs prefix
+  return path.posix.join('/@fs', normalizedPath)
+}
+
 export interface CollectDevStylesOptions {
   viteDevServer: ViteDevServer
   entries: Array<string>
+  /** Cache of CSS modules content captured during transform hook */
+  cssModulesCache?: Record<string, string>
 }
 
 /**
@@ -38,139 +79,182 @@ export interface CollectDevStylesOptions {
 export async function collectDevStyles(
   opts: CollectDevStylesOptions,
 ): Promise<string | undefined> {
-  const { viteDevServer, entries } = opts
+  const { viteDevServer, entries, cssModulesCache = {} } = opts
   const styles: Map<string, string> = new Map()
   const visited = new Set<ModuleNode>()
 
-  for (const entry of entries) {
-    const normalizedPath = entry.replace(/\\/g, '/')
-    let node = viteDevServer.moduleGraph.getModuleById(normalizedPath)
+  const rootDirectory = viteDevServer.config.root
 
-    // If module isn't in the graph yet, request it to trigger transform
-    if (!node) {
-      try {
-        await viteDevServer.transformRequest(normalizedPath)
-      } catch (err) {
-        // Ignore - the module might not exist yet
-      }
-      node = viteDevServer.moduleGraph.getModuleById(normalizedPath)
+  // Process entries in parallel - each entry is independent
+  await Promise.all(
+    entries.map((entry) =>
+      processEntry(viteDevServer, resolveDevUrl(rootDirectory, entry), visited),
+    ),
+  )
+
+  // Collect CSS from visited modules in parallel
+  const cssPromises: Array<Promise<readonly [string, string] | null>> = []
+
+  for (const dep of visited) {
+    if (hasCssSideEffectFreeParam(dep.url)) {
+      continue
     }
 
-    if (node) {
-      await crawlModuleForCss(viteDevServer, node, visited, styles)
+    if (dep.file && isCssModulesFile(dep.file)) {
+      const css = cssModulesCache[normalizeCssModuleCacheKey(dep.file)]
+      if (!css) {
+        throw new Error(
+          `[tanstack-start] Missing CSS module in cache: ${dep.file}`,
+        )
+      }
+      styles.set(dep.url, css)
+      continue
+    }
+
+    const fileOrUrl = dep.file ?? dep.url
+    if (!isCssFile(fileOrUrl)) {
+      continue
+    }
+
+    // Load regular CSS files in parallel
+    cssPromises.push(
+      fetchCssFromModule(viteDevServer, dep).then((css) =>
+        css ? ([dep.url, css] as const) : null,
+      ),
+    )
+  }
+
+  // Wait for all CSS loads to complete
+  const cssResults = await Promise.all(cssPromises)
+  for (const result of cssResults) {
+    if (result) {
+      styles.set(result[0], result[1])
     }
   }
 
   if (styles.size === 0) return undefined
 
-  return Array.from(styles.entries())
-    .map(([fileName, css]) => {
-      const escapedFileName = fileName
-        .replace(/\/\*/g, '/\\*')
-        .replace(/\*\//g, '*\\/')
-      return `\n/* ${escapedFileName} */\n${css}`
-    })
-    .join('\n')
+  const parts: Array<string> = []
+  for (const [fileName, css] of styles.entries()) {
+    const escapedFileName = fileName
+      .replace(ESCAPE_CSS_COMMENT_START_REGEX, '/\\*')
+      .replace(ESCAPE_CSS_COMMENT_END_REGEX, '*\\/')
+    parts.push(`\n/* ${escapedFileName} */\n${css}`)
+  }
+  return parts.join('\n')
 }
 
-async function crawlModuleForCss(
-  vite: ViteDevServer,
+/**
+ * Process an entry URL: transform it if needed, get the module node, and crawl its dependencies.
+ */
+async function processEntry(
+  viteDevServer: ViteDevServer,
+  entryUrl: string,
+  visited: Set<ModuleNode>,
+): Promise<void> {
+  let node = await viteDevServer.moduleGraph.getModuleByUrl(entryUrl)
+
+  // Only transform if not yet SSR-transformed (need ssrTransformResult.deps for crawling)
+  if (!node?.ssrTransformResult) {
+    try {
+      await viteDevServer.transformRequest(entryUrl)
+    } catch {
+      // ignore - module might not exist yet
+    }
+    node = await viteDevServer.moduleGraph.getModuleByUrl(entryUrl)
+  }
+
+  if (!node || visited.has(node)) return
+
+  visited.add(node)
+  await findModuleDeps(viteDevServer, node, visited)
+}
+
+/**
+ * Find all module dependencies by crawling the module graph.
+ * Uses transformResult.deps for URL-based lookups (parallel) and
+ * importedModules for already-resolved nodes (parallel).
+ */
+async function findModuleDeps(
+  viteDevServer: ViteDevServer,
   node: ModuleNode,
   visited: Set<ModuleNode>,
-  styles: Map<string, string>,
 ): Promise<void> {
-  if (visited.has(node)) return
-  visited.add(node)
+  // Note: caller must add node to visited BEFORE calling this function
+  // to prevent race conditions with parallel traversal
 
+  // Process deps from transformResult if available (URLs including bare imports)
+  const deps =
+    node.ssrTransformResult?.deps ?? node.transformResult?.deps ?? null
+
+  const importedModules = node.importedModules
+
+  // Fast path: no deps and no imports
+  if ((!deps || deps.length === 0) && importedModules.size === 0) {
+    return
+  }
+
+  // Build branches only when needed (avoid array allocation on leaf nodes)
   const branches: Array<Promise<void>> = []
 
-  // Ensure the module has been transformed to populate its deps
-  // This is important for code-split modules that may not have been processed yet
-  if (!node.ssrTransformResult) {
-    try {
-      await vite.transformRequest(node.url, { ssr: true })
-      // Re-fetch the node to get updated state
-      const updatedNode = await vite.moduleGraph.getModuleByUrl(node.url)
-      if (updatedNode) {
-        node = updatedNode
-      }
-    } catch {
-      // Ignore transform errors - the module might not be transformable
+  if (deps) {
+    for (const depUrl of deps) {
+      const dep = await viteDevServer.moduleGraph.getModuleByUrl(depUrl)
+      if (!dep) continue
+
+      if (visited.has(dep)) continue
+      visited.add(dep)
+      branches.push(findModuleDeps(viteDevServer, dep, visited))
     }
   }
 
-  // Check if this is a CSS file
-  if (
-    node.file &&
-    isCssFile(node.file) &&
-    !hasCssSideEffectFreeParam(node.url)
-  ) {
-    const css = await loadCssContent(vite, node)
-    if (css) {
-      styles.set(node.url, css)
-    }
+  // ALWAYS also traverse importedModules - this catches:
+  // - Code-split chunks (e.g. ?tsr-split=component) not in deps
+  // - Already-resolved nodes
+  for (const depNode of importedModules) {
+    if (visited.has(depNode)) continue
+    visited.add(depNode)
+    branches.push(findModuleDeps(viteDevServer, depNode, visited))
   }
 
-  // Crawl dependencies using ssrTransformResult.deps and importedModules
-  // We need both because:
-  // 1. ssrTransformResult.deps has resolved URLs for SSR dependencies
-  // 2. importedModules may contain CSS files and code-split modules not in SSR deps
-  const depsFromSsr = node.ssrTransformResult?.deps ?? []
-  const urlsToVisit = new Set<string>(depsFromSsr)
-
-  // Check importedModules for CSS files and additional modules
-  for (const importedNode of node.importedModules) {
-    if (importedNode.file && isCssFile(importedNode.file)) {
-      // CSS files often don't appear in ssrTransformResult.deps, add them explicitly
-      branches.push(crawlModuleForCss(vite, importedNode, visited, styles))
-    } else if (!urlsToVisit.has(importedNode.url)) {
-      // Also add non-CSS imports that aren't in SSR deps (e.g., code-split modules)
-      urlsToVisit.add(importedNode.url)
-    }
-  }
-
-  for (const depUrl of urlsToVisit) {
-    branches.push(
-      (async () => {
-        const depNode = await vite.moduleGraph.getModuleByUrl(depUrl)
-        if (depNode) {
-          await crawlModuleForCss(vite, depNode, visited, styles)
-        }
-      })(),
-    )
+  if (branches.length === 1) {
+    await branches[0]
+    return
   }
 
   await Promise.all(branches)
 }
 
-async function loadCssContent(
-  vite: ViteDevServer,
+async function fetchCssFromModule(
+  viteDevServer: ViteDevServer,
   node: ModuleNode,
 ): Promise<string | undefined> {
-  // For ALL CSS files (including CSS modules), get the transformed content
-  // and extract __vite__css. Vite's transform puts the final CSS (with hashed
-  // class names for modules) into the __vite__css variable.
-  const transformResult = await vite.transformRequest(node.url)
-  if (!transformResult?.code) return undefined
+  // Use cached transform result if available
+  const cachedCode = node.transformResult?.code ?? node.ssrTransformResult?.code
+  if (cachedCode) {
+    return extractCssFromCode(cachedCode)
+  }
 
-  // Extract CSS content from Vite's transformed module
-  return extractCssFromViteModule(transformResult.code)
+  // Otherwise request a fresh transform
+  try {
+    const transformResult = await viteDevServer.transformRequest(node.url)
+    if (!transformResult?.code) return undefined
+
+    return extractCssFromCode(transformResult.code)
+  } catch {
+    // Preprocessor partials (e.g., Sass files with mixins) can't compile in isolation.
+    // The root stylesheet that @imports them will contain the compiled CSS.
+    return undefined
+  }
 }
 
-/**
- * Extract CSS string from Vite's transformed CSS module code.
- * Vite wraps CSS content in a JS module with __vite__css variable.
- */
-function extractCssFromViteModule(code: string): string | undefined {
-  // Match: const __vite__css = "..."
-  const match = code.match(/const\s+__vite__css\s*=\s*["'`]([\s\S]*?)["'`]/)
-  if (match?.[1]) {
-    // Unescape the string
-    return match[1]
-      .replace(/\\n/g, '\n')
-      .replace(/\\t/g, '\t')
-      .replace(/\\"/g, '"')
-      .replace(/\\\\/g, '\\')
-  }
-  return undefined
+function extractCssFromCode(code: string): string | undefined {
+  const match = VITE_CSS_REGEX.exec(code)
+  if (!match?.[1]) return undefined
+
+  return match[1]
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, '\t')
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\')
 }
