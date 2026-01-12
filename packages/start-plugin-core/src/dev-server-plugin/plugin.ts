@@ -94,14 +94,14 @@ export function devServerPlugin({
               }
             }
 
-              const css =
-                entries.length > 0
-                  ? await collectDevStyles({
-                      viteDevServer,
-                      entries,
-                      cssModulesCache,
-                    })
-                  : undefined
+            const css =
+              entries.length > 0
+                ? await collectDevStyles({
+                    viteDevServer,
+                    entries,
+                    cssModulesCache,
+                  })
+                : undefined
 
             res.setHeader('Content-Type', 'text/css')
             res.setHeader('Cache-Control', 'no-store')
