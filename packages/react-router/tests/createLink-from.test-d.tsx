@@ -1,4 +1,4 @@
-import { expectTypeOf, test } from 'vitest'
+import { test } from 'vitest'
 import React from 'react'
 import {
   createLink,
