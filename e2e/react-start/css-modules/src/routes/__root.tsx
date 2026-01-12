@@ -48,6 +48,13 @@ function RootComponent() {
           >
             CSS Modules
           </Link>
+          <Link
+            to="/sass-mixin"
+            style={{ color: '#0284c7', textDecoration: 'none' }}
+            data-testid="nav-sass-mixin"
+          >
+            Sass Mixin
+          </Link>
         </nav>
 
         <main style={{ padding: '20px' }}>
