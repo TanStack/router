@@ -199,7 +199,12 @@ async function findModuleDeps(
 
   if (deps) {
     for (const depUrl of deps) {
-      branches.push(resolveUrlAndVisit(viteDevServer, depUrl, visited))
+      const dep = await viteDevServer.moduleGraph.getModuleByUrl(depUrl)
+      if (!dep) continue
+
+      if (visited.has(dep)) continue
+      visited.add(dep)
+      branches.push(findModuleDeps(viteDevServer, dep, visited))
     }
   }
 
@@ -207,7 +212,9 @@ async function findModuleDeps(
   // - Code-split chunks (e.g. ?tsr-split=component) not in deps
   // - Already-resolved nodes
   for (const depNode of importedModules) {
-    branches.push(visitNodeAndRecurse(viteDevServer, depNode, visited))
+    if (visited.has(depNode)) continue
+    visited.add(depNode)
+    branches.push(findModuleDeps(viteDevServer, depNode, visited))
   }
 
   if (branches.length === 1) {
@@ -216,26 +223,6 @@ async function findModuleDeps(
   }
 
   await Promise.all(branches)
-}
-
-async function visitNodeAndRecurse(
-  viteDevServer: ViteDevServer,
-  depNode: ModuleNode,
-  visited: Set<ModuleNode>,
-): Promise<void> {
-  if (visited.has(depNode)) return
-  visited.add(depNode)
-  await findModuleDeps(viteDevServer, depNode, visited)
-}
-
-async function resolveUrlAndVisit(
-  viteDevServer: ViteDevServer,
-  depUrl: string,
-  visited: Set<ModuleNode>,
-): Promise<void> {
-  const depNode = await viteDevServer.moduleGraph.getModuleByUrl(depUrl)
-  if (!depNode) return
-  await visitNodeAndRecurse(viteDevServer, depNode, visited)
 }
 
 async function fetchCssFromModule(
