@@ -57,48 +57,42 @@ export function devServerPlugin({
           .flatMap((script) => script.content ?? [])
           .join(';')
 
-        return () => {
-          const serverEnv = viteDevServer.environments[
-            VITE_ENVIRONMENT_NAMES.server
-          ] as DevEnvironment | undefined
-
-          if (!serverEnv) {
-            throw new Error(
-              `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
-            )
+        // CSS middleware registered in PRE-PHASE (before Vite's internal middlewares)
+        // This ensures it handles /@tanstack-start/styles.css before any catch-all middleware
+        // from other plugins (like nitro) that may be registered in the post-phase.
+        // This makes the CSS endpoint work regardless of plugin order in the Vite config.
+        // We check pathname.endsWith() to handle basepaths (e.g., /my-app/@tanstack-start/styles.css)
+        // since pre-phase runs before Vite's base middleware strips the basepath.
+        viteDevServer.middlewares.use(async (req, res, next) => {
+          const url = req.url ?? ''
+          const pathname = url.split('?')[0]
+          if (!pathname?.endsWith('/@tanstack-start/styles.css')) {
+            return next()
           }
 
-          // CSS middleware is always installed - it doesn't depend on the server environment type
-          // This ensures dev styles work with nitro, cloudflare, and other environments
-          viteDevServer.middlewares.use(async (req, res, next) => {
-            const url = req.url ?? ''
-            if (!url.startsWith('/@tanstack-start/styles.css')) {
-              return next()
-            }
+          try {
+            // Parse route IDs from query param
+            const urlObj = new URL(url, 'http://localhost')
+            const routesParam = urlObj.searchParams.get('routes')
+            const routeIds = routesParam ? routesParam.split(',') : []
 
-            try {
-              // Parse route IDs from query param
-              const urlObj = new URL(url, 'http://localhost')
-              const routesParam = urlObj.searchParams.get('routes')
-              const routeIds = routesParam ? routesParam.split(',') : []
+            // Build entries list from route file paths
+            const entries: Array<string> = []
 
-              // Build entries list from route file paths
-              const entries: Array<string> = []
+            // Look up route file paths from manifest
+            // Only routes registered in the manifest are used - this prevents path injection
+            const routesManifest = (globalThis as any).TSS_ROUTES_MANIFEST as
+              | Record<string, { filePath: string; children?: Array<string> }>
+              | undefined
 
-              // Look up route file paths from manifest
-              // Only routes registered in the manifest are used - this prevents path injection
-              const routesManifest = (globalThis as any).TSS_ROUTES_MANIFEST as
-                | Record<string, { filePath: string; children?: Array<string> }>
-                | undefined
-
-              if (routesManifest && routeIds.length > 0) {
-                for (const routeId of routeIds) {
-                  const route = routesManifest[routeId]
-                  if (route?.filePath) {
-                    entries.push(route.filePath)
-                  }
+            if (routesManifest && routeIds.length > 0) {
+              for (const routeId of routeIds) {
+                const route = routesManifest[routeId]
+                if (route?.filePath) {
+                  entries.push(route.filePath)
                 }
               }
+            }
 
               const css =
                 entries.length > 0
@@ -109,19 +103,30 @@ export function devServerPlugin({
                     })
                   : undefined
 
-              res.setHeader('Content-Type', 'text/css')
-              res.setHeader('Cache-Control', 'no-store')
-              res.end(css ?? '')
-            } catch (e) {
-              // Log error but still return valid CSS response to avoid MIME type issues
-              console.error('[tanstack-start] Error collecting dev styles:', e)
-              res.setHeader('Content-Type', 'text/css')
-              res.setHeader('Cache-Control', 'no-store')
-              res.end(
-                `/* Error collecting styles: ${e instanceof Error ? e.message : String(e)} */`,
-              )
-            }
-          })
+            res.setHeader('Content-Type', 'text/css')
+            res.setHeader('Cache-Control', 'no-store')
+            res.end(css ?? '')
+          } catch (e) {
+            // Log error but still return valid CSS response to avoid MIME type issues
+            console.error('[tanstack-start] Error collecting dev styles:', e)
+            res.setHeader('Content-Type', 'text/css')
+            res.setHeader('Cache-Control', 'no-store')
+            res.end(
+              `/* Error collecting styles: ${e instanceof Error ? e.message : String(e)} */`,
+            )
+          }
+        })
+
+        return () => {
+          const serverEnv = viteDevServer.environments[
+            VITE_ENVIRONMENT_NAMES.server
+          ] as DevEnvironment | undefined
+
+          if (!serverEnv) {
+            throw new Error(
+              `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
+            )
+          }
 
           const { startConfig } = getConfig()
           const installMiddleware = startConfig.vite?.installDevServerMiddleware

@@ -22,9 +22,11 @@ export default defineConfig(async () => {
       tsConfigPaths({
         projects: ['./tsconfig.json'],
       }),
+      // Nitro is placed BEFORE tanstackStart to test that our CSS middleware
+      // works regardless of plugin order (nitro has a catch-all middleware)
+      ...nitroPlugin,
       tanstackStart(),
       viteReact(),
-      ...nitroPlugin,
     ],
   }
 })
