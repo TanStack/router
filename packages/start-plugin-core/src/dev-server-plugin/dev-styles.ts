@@ -20,7 +20,8 @@ export function normalizeCssModuleCacheKey(idOrFile: string): string {
 // URL params that indicate CSS should not be injected (e.g., ?url, ?inline)
 const CSS_SIDE_EFFECT_FREE_PARAMS = ['url', 'inline', 'raw', 'inline-css']
 
-const VITE_CSS_REGEX = /const\s+__vite__css\s*=\s*["'`]([\s\S]*?)["'`]/
+const VITE_CSS_REGEX =
+  /const\s+__vite__css\s*=\s*(["'`])((?:\\[\s\S]|(?!\1)[\s\S])*)\1/
 
 const ESCAPE_CSS_COMMENT_START_REGEX = /\/\*/g
 const ESCAPE_CSS_COMMENT_END_REGEX = /\*\//g
@@ -250,9 +251,9 @@ async function fetchCssFromModule(
 
 function extractCssFromCode(code: string): string | undefined {
   const match = VITE_CSS_REGEX.exec(code)
-  if (!match?.[1]) return undefined
+  if (!match?.[2]) return undefined
 
-  return match[1]
+  return match[2]
     .replace(/\\n/g, '\n')
     .replace(/\\t/g, '\t')
     .replace(/\\"/g, '"')

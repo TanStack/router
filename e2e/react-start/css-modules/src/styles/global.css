@@ -1,5 +1,10 @@
 /* Global styles for testing CSS collection in dev mode */
 
+.global-container:before {
+  content: ' ';
+  content: " ";
+}
+
 .global-container {
   background-color: #3b82f6; /* blue-500 */
   padding: 24px;
