@@ -55,6 +55,13 @@ function RootComponent() {
           >
             Sass Mixin
           </Link>
+          <Link
+            to="/quotes"
+            style={{ color: '#0284c7', textDecoration: 'none' }}
+            data-testid="nav-quotes"
+          >
+            Quoted CSS
+          </Link>
         </nav>
 
         <main style={{ padding: '20px' }}>

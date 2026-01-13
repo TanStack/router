@@ -20,7 +20,8 @@ export function normalizeCssModuleCacheKey(idOrFile: string): string {
 // URL params that indicate CSS should not be injected (e.g., ?url, ?inline)
 const CSS_SIDE_EFFECT_FREE_PARAMS = ['url', 'inline', 'raw', 'inline-css']
 
-const VITE_CSS_REGEX = /const\s+__vite__css\s*=\s*["'`]([\s\S]*?)["'`]/
+// Marker to find the CSS string in Vite's transformed output
+const VITE_CSS_MARKER = 'const __vite__css = '
 
 const ESCAPE_CSS_COMMENT_START_REGEX = /\/\*/g
 const ESCAPE_CSS_COMMENT_END_REGEX = /\*\//g
@@ -248,13 +249,43 @@ async function fetchCssFromModule(
   }
 }
 
-function extractCssFromCode(code: string): string | undefined {
-  const match = VITE_CSS_REGEX.exec(code)
-  if (!match?.[1]) return undefined
+/**
+ * Extract CSS content from Vite's transformed CSS module code.
+ *
+ * Vite embeds CSS into the module as a JS string via `JSON.stringify(cssContent)`,
+ * e.g. `const __vite__css = ${JSON.stringify('...css...')}`.
+ *
+ * We locate that JSON string literal and run `JSON.parse` on it to reverse the
+ * escaping (\\n, \\t, \\", \\\\, \\uXXXX, etc.).
+ */
+export function extractCssFromCode(code: string): string | undefined {
+  const startIdx = code.indexOf(VITE_CSS_MARKER)
+  if (startIdx === -1) return undefined
 
-  return match[1]
-    .replace(/\\n/g, '\n')
-    .replace(/\\t/g, '\t')
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, '\\')
+  const valueStart = startIdx + VITE_CSS_MARKER.length
+  // Vite emits `const __vite__css = ${JSON.stringify(cssContent)}` which always
+  // produces double-quoted JSON string literals.
+  if (code.charCodeAt(valueStart) !== 34) return undefined
+
+  const codeLength = code.length
+  let i = valueStart + 1
+  while (i < codeLength) {
+    const charCode = code.charCodeAt(i)
+    // 34 = '"'
+    if (charCode === 34) {
+      try {
+        return JSON.parse(code.slice(valueStart, i + 1))
+      } catch {
+        return undefined
+      }
+    }
+    // 92 = '\\'
+    if (charCode === 92) {
+      i += 2
+    } else {
+      i++
+    }
+  }
+
+  return undefined
 }
