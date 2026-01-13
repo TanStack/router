@@ -151,6 +151,34 @@ test.describe('CSS styles in SSR (dev mode)', () => {
       )
       expect(padding).toBe('24px')
     })
+
+    test('CSS with quoted content is fully extracted', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto(buildUrl(baseURL!, '/quotes'))
+
+      // Verify the element using CSS with content:"..." is styled
+      const quoteElement = page.getByTestId('quote-styled')
+      await expect(quoteElement).toBeVisible()
+
+      // #ef4444 (red-500) in RGB is rgb(239, 68, 68)
+      const quoteBackgroundColor = await quoteElement.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(quoteBackgroundColor).toBe('rgb(239, 68, 68)')
+
+      // Verify styles AFTER the quoted content are also extracted
+      // This is the key test - the regex bug would cut off CSS at the first quote
+      const afterQuoteElement = page.getByTestId('after-quote-styled')
+      await expect(afterQuoteElement).toBeVisible()
+
+      // #f59e0b (amber-500) in RGB is rgb(245, 158, 11)
+      const afterQuoteBackgroundColor = await afterQuoteElement.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(afterQuoteBackgroundColor).toBe('rgb(245, 158, 11)')
+    })
   })
 
   test('styles persist after hydration', async ({ page, baseURL }) => {
