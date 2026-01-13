@@ -6,3 +6,4 @@ export default function Route(id: string) {
     component: () => HeavyComponent,
   })
 }
+

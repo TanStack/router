@@ -31,7 +31,6 @@ interface BlockerTestOpts {
   ignoreBlocker?: boolean
 }
 
-// Props of the test
 const BLOCKER_OPTIONS_TOKEN = new Angular.InjectionToken<InjectBlockerOpts>(
   'BLOCKER_OPTIONS',
 )
@@ -124,6 +123,7 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
   })
 
   expect(window.location.pathname).toBe('/')
+
   const postsLink = await screen.findByRole('link', { name: 'link to posts' })
   const fooLink = await screen.findByRole('link', { name: 'link to foo' })
   const button = await screen.findByRole('button', { name: 'button' })
