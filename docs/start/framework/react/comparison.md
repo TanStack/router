@@ -66,7 +66,7 @@ Feature/Capability Key:
 | Serverless Support                                                | ✅                                               | ✅                                            | ✅                                         |
 | Node.js Support                                                   | ✅                                               | ✅                                            | ✅                                         |
 | Docker Support                                                    | ✅                                               | ✅                                            | ✅                                         |
-| Static Export                                                     | ✅                                               | ✅                                            | ✅                                         |
+| Static Export                                                     | ✅                                               | 🟡 (App Router does not support useParams() on client)  | ✅                                         |
 | Official Cloudflare Support                                       | ✅                                               | 🟡                                            | ✅                                         |
 | Official Netlify Support                                          | ✅                                               | 🟡                                            | ✅                                         |
 | Official Vercel Support                                           | ✅ (via Nitro)                                   | ✅                                            | ✅                                         |
