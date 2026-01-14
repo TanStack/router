@@ -66,7 +66,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 }
 ```
 
-### Prerendering Localized Routes
+#### Prerendering Localized Routes
 
 ```ts
 import { localizeHref } from './paraglide/runtime'
