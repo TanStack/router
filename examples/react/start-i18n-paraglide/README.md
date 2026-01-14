@@ -33,7 +33,7 @@ const router = createRouter({
 
 #### Type-safe Translated Pathnames
 
-If you use translated pathnames, you can derive them directly from the TanStack Router route tree to ensure every route has translations. 
+If you use translated pathnames, you can derive them directly from the TanStack Router route tree to ensure every route has translations.
 
 ```ts
 import { Locale } from "@reland/i18n/runtime"
