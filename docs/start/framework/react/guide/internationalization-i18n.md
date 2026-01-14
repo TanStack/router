@@ -17,7 +17,7 @@ This guide covers:
 
 The base of this guide is built with TansTack Router. Check out the guide on integrating [i18n in TanStack Router](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n).
 
-If you already set up the TanStack Router with i18n. This guide will be suitable when:
+If you have already set up TanStack Router with i18n, this guide will be suitable when:
 
 - You use TanStack Start
 - You need SSR or streaming

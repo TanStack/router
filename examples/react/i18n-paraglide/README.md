@@ -48,7 +48,7 @@ If you use TanStack Start and do not need offline capabilities, you don't need t
 
 #### Type-safe Translated Pathnames
 
-If you use translated pathnames. To ensure every route has translations, you can derive translated pathnames directly from the TanStack Router route tree.
+If you use translated pathnames, you can derive them directly from the TanStack Router route tree to ensure every route has translations.
 
 ```ts
 import { Locale } from "@reland/i18n/runtime"
@@ -105,7 +105,7 @@ export const translatedPathnames = createTranslatedPathnames({
   "/about": {
     en: "/about",
     es: "/nosotros"
-  }
+  })
 ```
 
 Use in vite.config.ts:
