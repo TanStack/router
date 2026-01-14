@@ -36,7 +36,12 @@ export default defineConfig((env) =>
   mergeConfig(
     config(env),
     tanstackViteConfig({
-      entry: ['./src/index.tsx', './src/ssr/client.ts', './src/ssr/server.ts'],
+      entry: [
+        './src/index.tsx',
+        './src/index.dev.tsx',
+        './src/ssr/client.ts',
+        './src/ssr/server.ts',
+      ],
       srcDir: './src',
     }),
   ),

@@ -346,7 +346,8 @@ export type {
 export { ScriptOnce } from './ScriptOnce'
 
 export { Asset } from './Asset'
-export { HeadContent, useTags } from './HeadContent'
+export { HeadContent } from './HeadContent'
+export { useTags } from './headContentUtils'
 export { Scripts } from './Scripts'
 export { composeRewrites } from '@tanstack/router-core'
 export type {

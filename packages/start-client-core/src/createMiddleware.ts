@@ -1,5 +1,6 @@
 import type { StartInstanceOptions } from './createStart'
 import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
+import type { ClientFnMeta, ServerFnMeta } from './constants'
 import type {
   AnyContext,
   Assign,
@@ -511,8 +512,7 @@ export interface FunctionMiddlewareServerFnOptions<
     TServerSendContext
   >
   method: Method
-  filename: string
-  functionId: string
+  serverFnMeta: ServerFnMeta
   signal: AbortSignal
 }
 
@@ -608,9 +608,8 @@ export interface FunctionMiddlewareClientFnOptions<
   sendContext: Expand<AssignAllServerSendContext<TMiddlewares>>
   method: Method
   signal: AbortSignal
+  serverFnMeta: ClientFnMeta
   next: FunctionMiddlewareClientNextFn<TRegister, TMiddlewares>
-  filename: string
-  functionId: string
 }
 
 export type FunctionMiddlewareClientFnResult<
@@ -754,6 +753,12 @@ export interface RequestServerOptions<TRegister, TMiddlewares> {
   pathname: string
   context: Expand<AssignAllServerRequestContext<TRegister, TMiddlewares>>
   next: RequestServerNextFn<TRegister, TMiddlewares>
+  /**
+   * Metadata about the server function being invoked.
+   * This is only present when the request is handling a server function call.
+   * For regular page requests, this will be undefined.
+   */
+  serverFnMeta?: ServerFnMeta
 }
 
 export type RequestServerNextFn<TRegister, TMiddlewares> = <

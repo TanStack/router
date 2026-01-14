@@ -156,3 +156,66 @@ export const Route = createRootRoute({
   ),
 })
 ```
+
+## Inline Scripts with ScriptOnce
+
+For scripts that must run before React hydrates (like theme detection), use `ScriptOnce`. This is particularly useful for avoiding flash of unstyled content (FOUC) or theme flicker.
+
+```tsx
+import { ScriptOnce } from '@tanstack/react-router'
+
+const themeScript = `(function() {
+  try {
+    const theme = localStorage.getItem('theme') || 'auto';
+    const resolved = theme === 'auto'
+      ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : theme;
+    document.documentElement.classList.add(resolved);
+  } catch (e) {}
+})();`
+
+function ThemeProvider({ children }) {
+  return (
+    <>
+      <ScriptOnce children={themeScript} />
+      {children}
+    </>
+  )
+}
+```
+
+### How ScriptOnce Works
+
+1. During SSR, renders a `<script>` tag with the provided code
+2. The script executes immediately when the browser parses the HTML (before React hydrates)
+3. After execution, the script removes itself from the DOM
+4. On client-side navigation, nothing is rendered (prevents duplicate execution)
+
+### Preventing Hydration Warnings
+
+If your script modifies the DOM before hydration (like adding a class to `<html>`), use `suppressHydrationWarning` to prevent React warnings:
+
+```tsx
+export const Route = createRootRoute({
+  component: () => (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <ThemeProvider>
+          <Outlet />
+        </ThemeProvider>
+        <Scripts />
+      </body>
+    </html>
+  ),
+})
+```
+
+### Common Use Cases
+
+- **Theme/dark mode detection** - Apply theme class before hydration to prevent flash
+- **Feature detection** - Check browser capabilities before rendering
+- **Analytics initialization** - Initialize tracking before user interaction
+- **Critical path setup** - Any JavaScript that must run before hydration

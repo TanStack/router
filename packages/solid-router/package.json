@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-router",
-  "version": "1.147.1",
+  "version": "1.149.3",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -48,14 +48,17 @@
     ".": {
       "solid": {
         "types": "./dist/source/index.d.ts",
+        "development": "./dist/source/index.dev.jsx",
         "default": "./dist/source/index.jsx"
       },
       "import": {
         "types": "./dist/esm/index.d.ts",
+        "development": "./dist/esm/index.dev.js",
         "default": "./dist/esm/index.js"
       },
       "require": {
         "types": "./dist/cjs/index.d.cts",
+        "development": "./dist/cjs/index.dev.cjs",
         "default": "./dist/cjs/index.cjs"
       }
     },

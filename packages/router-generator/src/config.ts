@@ -4,6 +4,21 @@ import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
 
+const tokenJsonRegexSchema = z.object({
+  regex: z.string(),
+  flags: z.string().optional(),
+})
+
+const tokenMatcherSchema = z.union([
+  z.string(),
+  z.instanceof(RegExp),
+  tokenJsonRegexSchema,
+])
+
+export type TokenMatcherJson = string | z.infer<typeof tokenJsonRegexSchema>
+
+export type TokenMatcher = z.infer<typeof tokenMatcherSchema>
+
 export const baseConfigSchema = z.object({
   target: z.enum(['react', 'solid', 'vue']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
@@ -22,8 +37,8 @@ export const baseConfigSchema = z.object({
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols',
     ]),
-  indexToken: z.string().optional().default('index'),
-  routeToken: z.string().optional().default('route'),
+  indexToken: tokenMatcherSchema.optional().default('index'),
+  routeToken: tokenMatcherSchema.optional().default('route'),
   pathParamsAllowedCharacters: z
     .array(z.enum([';', ':', '@', '&', '=', '+', '$', ',']))
     .optional(),
@@ -84,10 +99,16 @@ export function getConfig(
   let config: Config
 
   if (exists) {
-    config = configSchema.parse({
-      ...JSON.parse(readFileSync(configFilePathJson, 'utf-8')),
+    // Parse file config (allows JSON regex-object form)
+    const fileConfigRaw = JSON.parse(readFileSync(configFilePathJson, 'utf-8'))
+
+    // Merge raw configs (inline overrides file), then parse once to apply defaults
+    // This ensures file config values aren't overwritten by inline defaults
+    const merged = {
+      ...fileConfigRaw,
       ...inlineConfig,
-    })
+    }
+    config = configSchema.parse(merged)
   } else {
     config = configSchema.parse(inlineConfig)
   }
@@ -160,7 +181,9 @@ ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is n
     throw new Error(message)
   }
 
-  if (config.indexToken === config.routeToken) {
+  // Check that indexToken and routeToken are not identical
+  // Works for strings, RegExp, and JSON regex objects
+  if (areTokensEqual(config.indexToken, config.routeToken)) {
     throw new Error(
       `The "indexToken" and "routeToken" options must be different.`,
     )
@@ -176,4 +199,33 @@ ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is n
   }
 
   return config
+}
+
+/**
+ * Compares two token matchers for equality.
+ * Handles strings, RegExp instances, and JSON regex objects.
+ */
+function areTokensEqual(a: TokenMatcher, b: TokenMatcher): boolean {
+  // Both strings
+  if (typeof a === 'string' && typeof b === 'string') {
+    return a === b
+  }
+
+  // Both RegExp instances
+  if (a instanceof RegExp && b instanceof RegExp) {
+    return a.source === b.source && a.flags === b.flags
+  }
+
+  // Both JSON regex objects
+  if (
+    typeof a === 'object' &&
+    'regex' in a &&
+    typeof b === 'object' &&
+    'regex' in b
+  ) {
+    return a.regex === b.regex && (a.flags ?? '') === (b.flags ?? '')
+  }
+
+  // Mixed types - not equal
+  return false
 }

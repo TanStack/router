@@ -197,6 +197,12 @@ tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-
 
 **⚠️ The [`nitro/vite`](https://v3.nitro.build/) plugin natively integrates with Vite Environments API as the underlying build tool for TanStack Start. It is still under active development and receives regular updates. Please report any issues you encounter with reproduction so they can be investigated.**
 
+install the nightly version of nitro by specifying the following in your package.json
+
+```json
+"nitro": "npm:nitro-nightly@latest"
+```
+
 ```tsx
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
@@ -205,7 +211,6 @@ import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [tanstackStart(), nitro(), viteReact()],
-  nitro: {},
 })
 ```
 

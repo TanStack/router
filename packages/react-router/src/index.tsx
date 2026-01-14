@@ -343,6 +343,7 @@ export type {
 export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
+export { useTags } from './headContentUtils'
 export { Scripts } from './Scripts'
 export type * from './ssr/serializer'
 export { composeRewrites } from '@tanstack/router-core'

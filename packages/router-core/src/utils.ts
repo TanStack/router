@@ -219,10 +219,12 @@ const hasOwn = Object.prototype.hasOwnProperty
  * This can be used for structural sharing between immutable JSON values for example.
  * Do not use this with signals
  */
-export function replaceEqualDeep<T>(prev: any, _next: T): T {
+export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
   if (prev === _next) {
     return prev
   }
+
+  if (_depth > 500) return _next
 
   const next = _next as any
 
@@ -261,7 +263,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
       continue
     }
 
-    const v = replaceEqualDeep(p, n)
+    const v = replaceEqualDeep(p, n, _depth + 1)
     copy[key] = v
     if (v === p) equalItems++
   }

@@ -34,6 +34,10 @@
               "to": "framework/react/comparison"
             },
             {
+              "label": "Start vs Next.js",
+              "to": "framework/react/start-vs-nextjs"
+            },
+            {
               "label": "Migrate from Next.js",
               "to": "framework/react/migrate-from-next-js"
             }

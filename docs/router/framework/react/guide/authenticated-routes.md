@@ -51,6 +51,41 @@ export const Route = createFileRoute('/_authenticated')({
 > [!TIP]
 > The `redirect()` function takes all of the same options as the `navigate` function, so you can pass options like `replace: true` if you want to replace the current history entry instead of adding a new one.
 
+### Handling Auth Check Failures
+
+If your authentication check can throw errors (network failures, token validation, etc.), wrap it in try/catch:
+
+```tsx
+import { createFileRoute, redirect, isRedirect } from '@tanstack/react-router'
+
+// src/routes/_authenticated.tsx
+export const Route = createFileRoute('/_authenticated')({
+  beforeLoad: async ({ location }) => {
+    try {
+      const user = await verifySession() // might throw on network error
+      if (!user) {
+        throw redirect({
+          to: '/login',
+          search: { redirect: location.href },
+        })
+      }
+      return { user }
+    } catch (error) {
+      // Re-throw redirects (they're intentional, not errors)
+      if (isRedirect(error)) throw error
+
+      // Auth check failed (network error, etc.) - redirect to login
+      throw redirect({
+        to: '/login',
+        search: { redirect: location.href },
+      })
+    }
+  },
+})
+```
+
+The [`isRedirect()`](../api/router/isRedirectFunction.md) helper distinguishes between actual errors and intentional redirects.
+
 Once you have authenticated a user, it's also common practice to redirect them back to the page they were trying to access. To do this, you can utilize the `redirect` search param that we added in our original redirect. Since we'll be replacing the entire URL with what it was, `router.history.push` is better suited for this than `router.navigate`:
 
 ```tsx

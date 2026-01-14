@@ -113,6 +113,44 @@ test.describe('CSS styles in SSR (dev mode)', () => {
       const className = await element.getAttribute('class')
       expect(className).toBe('global-container')
     })
+
+    test('Sass mixin styles are applied on initial page load', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto(buildUrl(baseURL!, '/sass-mixin'))
+
+      const element = page.getByTestId('mixin-styled')
+      await expect(element).toBeVisible()
+
+      // Verify the mixin is applied (display: flex from center-mixin)
+      const display = await element.evaluate(
+        (el) => getComputedStyle(el).display,
+      )
+      expect(display).toBe('flex')
+
+      const justifyContent = await element.evaluate(
+        (el) => getComputedStyle(el).justifyContent,
+      )
+      expect(justifyContent).toBe('center')
+
+      const alignItems = await element.evaluate(
+        (el) => getComputedStyle(el).alignItems,
+      )
+      expect(alignItems).toBe('center')
+
+      // Verify other styles from mixin-consumer.scss
+      // #a855f7 (purple-500) in RGB is rgb(168, 85, 247)
+      const backgroundColor = await element.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(168, 85, 247)')
+
+      const padding = await element.evaluate(
+        (el) => getComputedStyle(el).padding,
+      )
+      expect(padding).toBe('24px')
+    })
   })
 
   test('styles persist after hydration', async ({ page, baseURL }) => {

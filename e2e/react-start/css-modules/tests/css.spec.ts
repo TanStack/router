@@ -113,6 +113,72 @@ test.describe('CSS styles in SSR (dev mode)', () => {
       const className = await element.getAttribute('class')
       expect(className).toBe('global-container')
     })
+
+    test('Sass mixin styles are applied on initial page load', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto(buildUrl(baseURL!, '/sass-mixin'))
+
+      const element = page.getByTestId('mixin-styled')
+      await expect(element).toBeVisible()
+
+      // Verify the mixin is applied (display: flex from center-mixin)
+      const display = await element.evaluate(
+        (el) => getComputedStyle(el).display,
+      )
+      expect(display).toBe('flex')
+
+      const justifyContent = await element.evaluate(
+        (el) => getComputedStyle(el).justifyContent,
+      )
+      expect(justifyContent).toBe('center')
+
+      const alignItems = await element.evaluate(
+        (el) => getComputedStyle(el).alignItems,
+      )
+      expect(alignItems).toBe('center')
+
+      // Verify other styles from mixin-consumer.scss
+      // #a855f7 (purple-500) in RGB is rgb(168, 85, 247)
+      const backgroundColor = await element.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(168, 85, 247)')
+
+      const padding = await element.evaluate(
+        (el) => getComputedStyle(el).padding,
+      )
+      expect(padding).toBe('24px')
+    })
+
+    test('CSS with quoted content is fully extracted', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto(buildUrl(baseURL!, '/quotes'))
+
+      // Verify the element using CSS with content:"..." is styled
+      const quoteElement = page.getByTestId('quote-styled')
+      await expect(quoteElement).toBeVisible()
+
+      // #ef4444 (red-500) in RGB is rgb(239, 68, 68)
+      const quoteBackgroundColor = await quoteElement.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(quoteBackgroundColor).toBe('rgb(239, 68, 68)')
+
+      // Verify styles AFTER the quoted content are also extracted
+      // This is the key test - the regex bug would cut off CSS at the first quote
+      const afterQuoteElement = page.getByTestId('after-quote-styled')
+      await expect(afterQuoteElement).toBeVisible()
+
+      // #f59e0b (amber-500) in RGB is rgb(245, 158, 11)
+      const afterQuoteBackgroundColor = await afterQuoteElement.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(afterQuoteBackgroundColor).toBe('rgb(245, 158, 11)')
+    })
   })
 
   test('styles persist after hydration', async ({ page, baseURL }) => {
