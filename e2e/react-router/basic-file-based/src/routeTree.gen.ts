@@ -60,8 +60,13 @@ import { Route as RelativeLinkRelativeLinkARouteImport } from './routes/relative
 import { Route as RedirectPreloadThirdRouteImport } from './routes/redirect/preload/third'
 import { Route as RedirectPreloadSecondRouteImport } from './routes/redirect/preload/second'
 import { Route as RedirectPreloadFirstRouteImport } from './routes/redirect/preload/first'
+import { Route as RedirectTargetViaRouteApiRedirectLoaderRouteImport } from './routes/redirect/$target/via-routeApi-redirect-loader'
+import { Route as RedirectTargetViaRouteApiRedirectBeforeLoadRouteImport } from './routes/redirect/$target/via-routeApi-redirect-beforeLoad'
+import { Route as RedirectTargetViaRouteRedirectLoaderRouteImport } from './routes/redirect/$target/via-route-redirect-loader'
+import { Route as RedirectTargetViaRouteRedirectBeforeLoadRouteImport } from './routes/redirect/$target/via-route-redirect-beforeLoad'
 import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
+import { Route as RedirectTargetDestinationRouteImport } from './routes/redirect/$target/destination'
 import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
 import { Route as PathlessLayoutLayoutChildRouteImport } from './routes/pathless-layout/_layout/child'
 import { Route as ParamsSingleValueRouteImport } from './routes/params.single.$value'
@@ -383,6 +388,30 @@ const RedirectPreloadFirstRoute = RedirectPreloadFirstRouteImport.update({
   path: '/redirect/preload/first',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RedirectTargetViaRouteApiRedirectLoaderRoute =
+  RedirectTargetViaRouteApiRedirectLoaderRouteImport.update({
+    id: '/via-routeApi-redirect-loader',
+    path: '/via-routeApi-redirect-loader',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+const RedirectTargetViaRouteApiRedirectBeforeLoadRoute =
+  RedirectTargetViaRouteApiRedirectBeforeLoadRouteImport.update({
+    id: '/via-routeApi-redirect-beforeLoad',
+    path: '/via-routeApi-redirect-beforeLoad',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+const RedirectTargetViaRouteRedirectLoaderRoute =
+  RedirectTargetViaRouteRedirectLoaderRouteImport.update({
+    id: '/via-route-redirect-loader',
+    path: '/via-route-redirect-loader',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+const RedirectTargetViaRouteRedirectBeforeLoadRoute =
+  RedirectTargetViaRouteRedirectBeforeLoadRouteImport.update({
+    id: '/via-route-redirect-beforeLoad',
+    path: '/via-route-redirect-beforeLoad',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
 const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
@@ -392,6 +421,12 @@ const RedirectTargetViaBeforeLoadRoute =
   RedirectTargetViaBeforeLoadRouteImport.update({
     id: '/via-beforeLoad',
     path: '/via-beforeLoad',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+const RedirectTargetDestinationRoute =
+  RedirectTargetDestinationRouteImport.update({
+    id: '/destination',
+    path: '/destination',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
 const PostsPostIdEditRoute = PostsPostIdEditRouteImport.update({
@@ -758,8 +793,13 @@ export interface FileRoutesByFullPath {
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/pathless-layout/child': typeof PathlessLayoutLayoutChildRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
+  '/redirect/$target/destination': typeof RedirectTargetDestinationRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/$target/via-route-redirect-beforeLoad': typeof RedirectTargetViaRouteRedirectBeforeLoadRoute
+  '/redirect/$target/via-route-redirect-loader': typeof RedirectTargetViaRouteRedirectLoaderRoute
+  '/redirect/$target/via-routeApi-redirect-beforeLoad': typeof RedirectTargetViaRouteApiRedirectBeforeLoadRoute
+  '/redirect/$target/via-routeApi-redirect-loader': typeof RedirectTargetViaRouteApiRedirectLoaderRoute
   '/redirect/preload/first': typeof RedirectPreloadFirstRoute
   '/redirect/preload/second': typeof RedirectPreloadSecondRoute
   '/redirect/preload/third': typeof RedirectPreloadThirdRoute
@@ -856,8 +896,13 @@ export interface FileRoutesByTo {
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/pathless-layout/child': typeof PathlessLayoutLayoutChildRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
+  '/redirect/$target/destination': typeof RedirectTargetDestinationRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/$target/via-route-redirect-beforeLoad': typeof RedirectTargetViaRouteRedirectBeforeLoadRoute
+  '/redirect/$target/via-route-redirect-loader': typeof RedirectTargetViaRouteRedirectLoaderRoute
+  '/redirect/$target/via-routeApi-redirect-beforeLoad': typeof RedirectTargetViaRouteApiRedirectBeforeLoadRoute
+  '/redirect/$target/via-routeApi-redirect-loader': typeof RedirectTargetViaRouteApiRedirectLoaderRoute
   '/redirect/preload/first': typeof RedirectPreloadFirstRoute
   '/redirect/preload/second': typeof RedirectPreloadSecondRoute
   '/redirect/preload/third': typeof RedirectPreloadThirdRoute
@@ -964,8 +1009,13 @@ export interface FileRoutesById {
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/pathless-layout/_layout/child': typeof PathlessLayoutLayoutChildRoute
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
+  '/redirect/$target/destination': typeof RedirectTargetDestinationRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/$target/via-route-redirect-beforeLoad': typeof RedirectTargetViaRouteRedirectBeforeLoadRoute
+  '/redirect/$target/via-route-redirect-loader': typeof RedirectTargetViaRouteRedirectLoaderRoute
+  '/redirect/$target/via-routeApi-redirect-beforeLoad': typeof RedirectTargetViaRouteApiRedirectBeforeLoadRoute
+  '/redirect/$target/via-routeApi-redirect-loader': typeof RedirectTargetViaRouteApiRedirectLoaderRoute
   '/redirect/preload/first': typeof RedirectPreloadFirstRoute
   '/redirect/preload/second': typeof RedirectPreloadSecondRoute
   '/redirect/preload/third': typeof RedirectPreloadThirdRoute
@@ -1072,8 +1122,13 @@ export interface FileRouteTypes {
     | '/params/single/$value'
     | '/pathless-layout/child'
     | '/posts/$postId/edit'
+    | '/redirect/$target/destination'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/redirect/$target/via-route-redirect-beforeLoad'
+    | '/redirect/$target/via-route-redirect-loader'
+    | '/redirect/$target/via-routeApi-redirect-beforeLoad'
+    | '/redirect/$target/via-routeApi-redirect-loader'
     | '/redirect/preload/first'
     | '/redirect/preload/second'
     | '/redirect/preload/third'
@@ -1170,8 +1225,13 @@ export interface FileRouteTypes {
     | '/params/single/$value'
     | '/pathless-layout/child'
     | '/posts/$postId/edit'
+    | '/redirect/$target/destination'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/redirect/$target/via-route-redirect-beforeLoad'
+    | '/redirect/$target/via-route-redirect-loader'
+    | '/redirect/$target/via-routeApi-redirect-beforeLoad'
+    | '/redirect/$target/via-routeApi-redirect-loader'
     | '/redirect/preload/first'
     | '/redirect/preload/second'
     | '/redirect/preload/third'
@@ -1277,8 +1337,13 @@ export interface FileRouteTypes {
     | '/params/single/$value'
     | '/pathless-layout/_layout/child'
     | '/posts_/$postId/edit'
+    | '/redirect/$target/destination'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/redirect/$target/via-route-redirect-beforeLoad'
+    | '/redirect/$target/via-route-redirect-loader'
+    | '/redirect/$target/via-routeApi-redirect-beforeLoad'
+    | '/redirect/$target/via-routeApi-redirect-loader'
     | '/redirect/preload/first'
     | '/redirect/preload/second'
     | '/redirect/preload/third'
@@ -1731,6 +1796,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectPreloadFirstRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/redirect/$target/via-routeApi-redirect-loader': {
+      id: '/redirect/$target/via-routeApi-redirect-loader'
+      path: '/via-routeApi-redirect-loader'
+      fullPath: '/redirect/$target/via-routeApi-redirect-loader'
+      preLoaderRoute: typeof RedirectTargetViaRouteApiRedirectLoaderRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/via-routeApi-redirect-beforeLoad': {
+      id: '/redirect/$target/via-routeApi-redirect-beforeLoad'
+      path: '/via-routeApi-redirect-beforeLoad'
+      fullPath: '/redirect/$target/via-routeApi-redirect-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaRouteApiRedirectBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/via-route-redirect-loader': {
+      id: '/redirect/$target/via-route-redirect-loader'
+      path: '/via-route-redirect-loader'
+      fullPath: '/redirect/$target/via-route-redirect-loader'
+      preLoaderRoute: typeof RedirectTargetViaRouteRedirectLoaderRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/via-route-redirect-beforeLoad': {
+      id: '/redirect/$target/via-route-redirect-beforeLoad'
+      path: '/via-route-redirect-beforeLoad'
+      fullPath: '/redirect/$target/via-route-redirect-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaRouteRedirectBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
     '/redirect/$target/via-loader': {
       id: '/redirect/$target/via-loader'
       path: '/via-loader'
@@ -1743,6 +1836,13 @@ declare module '@tanstack/react-router' {
       path: '/via-beforeLoad'
       fullPath: '/redirect/$target/via-beforeLoad'
       preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/destination': {
+      id: '/redirect/$target/destination'
+      path: '/destination'
+      fullPath: '/redirect/$target/destination'
+      preLoaderRoute: typeof RedirectTargetDestinationRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
     '/posts_/$postId/edit': {
@@ -2539,14 +2639,28 @@ const groupLayoutRouteWithChildren = groupLayoutRoute._addFileChildren(
 )
 
 interface RedirectTargetRouteChildren {
+  RedirectTargetDestinationRoute: typeof RedirectTargetDestinationRoute
   RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
   RedirectTargetViaLoaderRoute: typeof RedirectTargetViaLoaderRoute
+  RedirectTargetViaRouteRedirectBeforeLoadRoute: typeof RedirectTargetViaRouteRedirectBeforeLoadRoute
+  RedirectTargetViaRouteRedirectLoaderRoute: typeof RedirectTargetViaRouteRedirectLoaderRoute
+  RedirectTargetViaRouteApiRedirectBeforeLoadRoute: typeof RedirectTargetViaRouteApiRedirectBeforeLoadRoute
+  RedirectTargetViaRouteApiRedirectLoaderRoute: typeof RedirectTargetViaRouteApiRedirectLoaderRoute
   RedirectTargetIndexRoute: typeof RedirectTargetIndexRoute
 }
 
 const RedirectTargetRouteChildren: RedirectTargetRouteChildren = {
+  RedirectTargetDestinationRoute: RedirectTargetDestinationRoute,
   RedirectTargetViaBeforeLoadRoute: RedirectTargetViaBeforeLoadRoute,
   RedirectTargetViaLoaderRoute: RedirectTargetViaLoaderRoute,
+  RedirectTargetViaRouteRedirectBeforeLoadRoute:
+    RedirectTargetViaRouteRedirectBeforeLoadRoute,
+  RedirectTargetViaRouteRedirectLoaderRoute:
+    RedirectTargetViaRouteRedirectLoaderRoute,
+  RedirectTargetViaRouteApiRedirectBeforeLoadRoute:
+    RedirectTargetViaRouteApiRedirectBeforeLoadRoute,
+  RedirectTargetViaRouteApiRedirectLoaderRoute:
+    RedirectTargetViaRouteApiRedirectLoaderRoute,
   RedirectTargetIndexRoute: RedirectTargetIndexRoute,
 }
 
