@@ -1304,6 +1304,9 @@ export class RouterCore<
     })()
 
     const matches: Array<AnyRouteMatch> = []
+    const previousMatchesByRouteId = new Map(
+      this.state.matches.map((match) => [match.routeId, match]),
+    )
 
     const getParentContext = (parentMatch?: AnyRouteMatch) => {
       const parentMatchId = parentMatch?.id
@@ -1397,9 +1400,7 @@ export class RouterCore<
 
       const existingMatch = this.getMatch(matchId)
 
-      const previousMatch = this.state.matches.find(
-        (d) => d.routeId === route.id,
-      )
+      const previousMatch = previousMatchesByRouteId.get(route.id)
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
@@ -1533,8 +1534,13 @@ export class RouterCore<
       const route = this.looseRoutesById[match.routeId]!
       const existingMatch = this.getMatch(match.id)
 
-      // only execute `context` if we are not calling from router.buildLocation
+      // Update the match's params
+      const previousMatch = previousMatchesByRouteId.get(match.routeId)
+      match.params = previousMatch
+        ? replaceEqualDeep(previousMatch.params, routeParams)
+        : routeParams
 
+      // only execute `context` if we are not calling from router.buildLocation
       if (!existingMatch && opts?._buildLocation !== true) {
         const parentMatch = matches[index - 1]
         const parentContext = getParentContext(parentMatch)
