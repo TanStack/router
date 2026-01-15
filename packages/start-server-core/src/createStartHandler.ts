@@ -213,12 +213,13 @@ export function createStartHandler<TRegister = Register>(
 
     try {
       const origin = getOrigin(request)
-      // server and browser can decode/encode characters differently.
-      // Server generally strictly follows the WHATWG URL Standard, while browsers differ for legacy reasons.
-      // for example, "|" is not encoded on the server but is encoded on chromium while "대" is encoded on both sides.
-      // Another anomaly is that new URLSearchParams and new URL also decode/encode characters differently.
-      // we are encoding search params later on using the new URLSearchParams. This encodes "|" in turn while new URL does not.
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
+      // server and browser can decode/encode characters differently in paths and search params.
+      // Server generally strictly follows the WHATWG URL Standard, while browsers may differ for legacy reasons.
+      // for example, in paths "|" is not encoded on the server but is encoded on chromium (and not on firefox) while "대" is encoded on both sides.
+      // Another anomaly is that in Node new URLSearchParams and new URL also decode/encode characters differently.
+      // new URLSearchParams() encodes "|" while new URL() does not, and in this instance
+      // chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
       const decodedPath = decodePath(request.url.replace(origin, ''))
       const decodedURL = new URL(decodedPath, origin)
       const searchParams = new URLSearchParams(decodedURL.search)
