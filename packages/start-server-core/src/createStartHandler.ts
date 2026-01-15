@@ -6,6 +6,7 @@ import {
   safeObjectMerge,
 } from '@tanstack/start-client-core'
 import {
+  decodePath,
   executeRewriteInput,
   isRedirect,
   isResolvedRedirect,
@@ -211,14 +212,24 @@ export function createStartHandler<TRegister = Register>(
     let cbWillCleanup = false as boolean
 
     try {
+      const origin = getOrigin(request)
       // server and browser can decode/encode characters differently.
       // Server generally strictly follows the WHATWG URL Standard, while browsers differ for legacy reasons.
       // for example, "|" is not encoded on the server but is encoded on chromium while "대" is encoded on both sides.
-      // normalizing the pathname here for server, so we always deal with the same format during SSR.
-      const url = new URL(decodeURI(request.url))
-      const href = url.href.replace(url.origin, '')
+      // Another anomaly is that new URLSearchParams and new URL also decode/encode characters differently.
+      // we are encoding search params later on using the new URLSearchParams. This encodes "|" in turn while new URL does not.
+      // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
+      const decodedPath = decodePath(request.url.replace(origin, ''))
+      const decodedURL = new URL(decodedPath, origin)
+      const searchParams = new URLSearchParams(decodedURL.search)
+      const normalizedHref =
+        decodedURL.pathname +
+        (searchParams.size > 0 ? '?' : '') +
+        searchParams.toString() +
+        decodedURL.hash
 
-      const origin = getOrigin(request)
+      const url = new URL(normalizedHref, decodedURL.origin)
+      const href = url.href.replace(url.origin, '')
 
       const entries = await getEntries()
       const startOptions: AnyStartInstanceOptions =

@@ -92,7 +92,7 @@ test.describe('Unicode route rendering', () => {
 
       await link.click()
       await page.waitForURL(
-        `${baseURL}/specialChars/search?searchParam=%EB%8C%80|`,
+        `${baseURL}/specialChars/search?searchParam=%EB%8C%80%7C`,
       )
 
       const searchParam = await page
