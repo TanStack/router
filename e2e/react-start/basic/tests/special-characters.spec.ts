@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
-import { isPrerender } from './utils/isPrerender'
 
 test.use({
   whitelistErrors: [
