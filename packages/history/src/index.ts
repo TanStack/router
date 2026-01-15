@@ -58,7 +58,12 @@ export type ParsedHistoryState = HistoryState & {
   __TSR_index: number
 }
 
-type ShouldAllowNavigation = any
+export type ShouldBlockNavigation = boolean
+
+/**
+ * @deprecated Use `ShouldBlockNavigation`. Returning `true` blocks navigation.
+ */
+export type ShouldAllowNavigation = ShouldBlockNavigation
 
 export type HistoryAction = 'PUSH' | 'REPLACE' | 'FORWARD' | 'BACK' | 'GO'
 
@@ -70,7 +75,7 @@ export type BlockerFnArgs = {
 
 export type BlockerFn = (
   args: BlockerFnArgs,
-) => Promise<ShouldAllowNavigation> | ShouldAllowNavigation
+) => Promise<ShouldBlockNavigation> | ShouldBlockNavigation
 
 export type NavigationBlocker = {
   blockerFn: BlockerFn
@@ -149,6 +154,7 @@ export function createHistory(opts: {
           action: actionInfo.type,
         })
         if (isBlocked) {
+          // Truthy means the blocker wants to keep the navigation from proceeding.
           opts.onBlocked?.()
           return
         }
@@ -437,6 +443,7 @@ export function createBrowserHistory(opts?: {
             action,
           })
           if (isBlocked) {
+            // Truthy means the blocker wants to keep the navigation from proceeding.
             ignoreNextPop = true
             win.history.go(1)
             history.notify(notify)
