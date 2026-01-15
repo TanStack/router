@@ -5,5 +5,9 @@ export const Route = createFileRoute('/specialChars/대한민국')({
 })
 
 function RouteComponent() {
-  return <div data-testid="special-non-latin-heading">Hello "/대한민국"!</div>
+  return (
+    <div data-testid="special-non-latin-heading">
+      Hello "/specialChars/대한민국"!
+    </div>
+  )
 }

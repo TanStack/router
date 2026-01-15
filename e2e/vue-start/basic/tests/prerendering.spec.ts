@@ -18,7 +18,7 @@ test.describe('Prerender Static Path Discovery', () => {
       expect(existsSync(join(distDir, 'scripts/index.html'))).toBe(true)
       expect(existsSync(join(distDir, 'inline-scripts/index.html'))).toBe(true)
       expect(
-        existsSync(join(distDir, '/specialChars/대한민국/index.html')),
+        existsSync(join(distDir, 'specialChars/대한민국/index.html')),
       ).toBe(true)
 
       // Pathless layouts should NOT be prerendered (they start with _)

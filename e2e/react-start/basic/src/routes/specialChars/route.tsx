@@ -1,5 +1,4 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
-import * as React from 'react'
 
 export const Route = createFileRoute('/specialChars')({
   component: RouteComponent,

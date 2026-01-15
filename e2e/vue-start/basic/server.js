@@ -2,12 +2,13 @@ import { toNodeHandler } from 'srvx/node'
 import path from 'node:path'
 import express from 'express'
 import { createProxyMiddleware } from 'http-proxy-middleware'
-import { isSpaMode } from './tests/utils/isSpaMode.ts'
-import { isPrerender } from './tests/utils/isPrerender.ts'
 
 const port = process.env.PORT || 3000
 
 const startPort = process.env.START_PORT || 3001
+
+const isSpaMode = process.env.MODE === 'spa'
+const isPrerender = process.env.MODE === 'prerender'
 
 export async function createStartServer() {
   const server = (await import('./dist/server/server.js')).default
