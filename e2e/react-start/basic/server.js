@@ -3,6 +3,7 @@ import path from 'node:path'
 import express from 'express'
 import { createProxyMiddleware } from 'http-proxy-middleware'
 import { isSpaMode } from './tests/utils/isSpaMode.ts'
+import { isPrerender } from './tests/utils/isPrerender.ts'
 
 const port = process.env.PORT || 3000
 
@@ -14,7 +15,9 @@ export async function createStartServer() {
 
   const app = express()
 
-  app.use(express.static('./dist/client'))
+  // to keep testing uniform stop express from redirecting /posts to /posts/
+  // when serving pre-rendered pages
+  app.use(express.static('./dist/client', { redirect: !isPrerender }))
 
   app.use(async (req, res, next) => {
     try {

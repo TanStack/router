@@ -18,7 +18,7 @@ test.describe('Unicode route rendering', () => {
   }) => {
     await page.goto('/specialChars/대한민국')
     await page.waitForURL(
-      `${baseURL}/specialChars/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD${isPrerender ? '/' : ''}`,
+      `${baseURL}/specialChars/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD`,
     )
 
     await expect(page.getByTestId('special-non-latin-heading')).toBeInViewport()
