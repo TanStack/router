@@ -1756,6 +1756,25 @@ export class BaseRoute<
     this._id = id as TId
     this._fullPath = fullPath as TFullPath
     this._to = fullPath as TrimPathRight<TFullPath>
+
+    if (process.env.NODE_ENV !== 'production') {
+      if (this.parentRoute) {
+        invariant(
+          this.parentRoute.isRoot || !this.parentRoute.fullPath.endsWith('/'),
+          `Parent route with id '${this.parentRoute.id}' returned by getParentRoute on '${this.id}' is an index route and cannot have child routes.`,
+        )
+        invariant(
+          this.parentRoute.children && this.parentRoute.children.includes(this),
+          `Parent route with id '${this.parentRoute.id}' returned by getParentRoute has no child route with id '${this.id}'. Did you forget to call .addChildren()?`,
+        )
+      }
+      if (this.children) {
+        invariant(
+          this.isRoot || !this.fullPath.endsWith('/'),
+          `Cannot add children to index route '${this.id}'. Index routes cannot have child routes.`,
+        )
+      }
+    }
   }
 
   addChildren: RouteAddChildrenFn<
