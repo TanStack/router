@@ -2,6 +2,7 @@ import { toNodeHandler } from 'srvx/node'
 import path from 'node:path'
 import express from 'express'
 import { createProxyMiddleware } from 'http-proxy-middleware'
+import { isSpaMode } from './tests/utils/isSpaMode.ts'
 
 const port = process.env.PORT || 3000
 
@@ -54,14 +55,22 @@ export async function createSpaServer() {
   return { app }
 }
 
-createSpaServer().then(async ({ app }) =>
-  app.listen(port, () => {
-    console.info(`Client Server: http://localhost:${port}`)
-  }),
-)
+if (isSpaMode) {
+  createSpaServer().then(async ({ app }) =>
+    app.listen(port, () => {
+      console.info(`Client Server: http://localhost:${port}`)
+    }),
+  )
 
-createStartServer().then(async ({ app }) =>
-  app.listen(startPort, () => {
-    console.info(`Start Server: http://localhost:${startPort}`)
-  }),
-)
+  createStartServer().then(async ({ app }) =>
+    app.listen(startPort, () => {
+      console.info(`Start Server: http://localhost:${startPort}`)
+    }),
+  )
+} else {
+  createStartServer().then(async ({ app }) =>
+    app.listen(port, () => {
+      console.info(`Start Server: http://localhost:${port}`)
+    }),
+  )
+}

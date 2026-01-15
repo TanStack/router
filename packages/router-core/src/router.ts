@@ -1779,7 +1779,7 @@ export class RouterCore<
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
 
       // Create the new href with full origin
-      const url = new URL(fullPath, this.origin)
+      const url = new URL(decodeURIComponent(fullPath), this.origin)
 
       // If a rewrite function is provided, use it to rewrite the URL
       const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
@@ -1787,7 +1787,7 @@ export class RouterCore<
       return {
         publicHref:
           rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
-        href: fullPath,
+        href: url.href.replace(url.origin, ''),
         url: rewrittenUrl,
         pathname: nextPathname,
         search: nextSearch,

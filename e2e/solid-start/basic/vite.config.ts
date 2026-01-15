@@ -22,6 +22,7 @@ const prerenderConfiguration = {
       '/i-do-not-exist',
       '/not-found/via-beforeLoad',
       '/not-found/via-loader',
+      '/specialChars/search',
       '/search-params/default',
       '/transition',
       '/users',

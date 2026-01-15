@@ -82,12 +82,7 @@ function getEntries() {
   return entriesPromise
 }
 
-function getManifest(matchedRoutes?: ReadonlyArray<AnyRoute>) {
-  // In dev mode, always get fresh manifest (no caching) to include route-specific dev styles
-  if (process.env.TSS_DEV_SERVER === 'true') {
-    return getStartManifest(matchedRoutes)
-  }
-  // In prod, cache the manifest
+function getManifest() {
   if (!manifestPromise) {
     manifestPromise = getStartManifest()
   }
@@ -216,8 +211,13 @@ export function createStartHandler<TRegister = Register>(
     let cbWillCleanup = false as boolean
 
     try {
-      const url = new URL(request.url)
+      // server and browser can decode/encode characters differently.
+      // Server generally strictly follows the WHATWG URL Standard, while browsers differ for legacy reasons.
+      // for example, "|" is not encoded on the server but is encoded on chromium while "대" is encoded on both sides.
+      // normalizing the pathname here for server, so we always deal with the same format during SSR.
+      const url = new URL(decodeURI(request.url))
       const href = url.href.replace(url.origin, '')
+
       const origin = getOrigin(request)
 
       const entries = await getEntries()
@@ -318,10 +318,7 @@ export function createStartHandler<TRegister = Register>(
       }
 
       // Router execution function
-      const executeRouter = async (
-        serverContext: TODO,
-        matchedRoutes?: ReadonlyArray<AnyRoute>,
-      ): Promise<Response> => {
+      const executeRouter = async (serverContext: TODO): Promise<Response> => {
         const acceptHeader = request.headers.get('Accept') || '*/*'
         const acceptParts = acceptHeader.split(',')
         const supportedMimeTypes = ['*/*', 'text/html']
@@ -337,7 +334,7 @@ export function createStartHandler<TRegister = Register>(
           )
         }
 
-        const manifest = await getManifest(matchedRoutes)
+        const manifest = await getManifest()
         const routerInstance = await getRouter()
 
         attachRouterServerSsrUtils({
@@ -485,10 +482,7 @@ async function handleServerRoutes({
   getRouter: () => Promise<AnyRouter>
   request: Request
   url: URL
-  executeRouter: (
-    serverContext: any,
-    matchedRoutes?: ReadonlyArray<AnyRoute>,
-  ) => Promise<Response>
+  executeRouter: (serverContext: any) => Promise<Response>
   context: any
   executedRequestMiddlewares: Set<AnyRequestMiddleware>
 }): Promise<Response> {
@@ -552,10 +546,8 @@ async function handleServerRoutes({
     }
   }
 
-  // Final middleware: execute router with matched routes for dev styles
-  routeMiddlewares.push((ctx: TODO) =>
-    executeRouter(ctx.context, matchedRoutes),
-  )
+  // Final middleware: execute router
+  routeMiddlewares.push((ctx: TODO) => executeRouter(ctx.context))
 
   const ctx = await executeMiddleware(routeMiddlewares, {
     request,
