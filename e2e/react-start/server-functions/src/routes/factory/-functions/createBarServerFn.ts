@@ -17,7 +17,7 @@ export const barFnInsideFactoryFile = createBarServerFn().handler(
     return {
       name: 'barFnInsideFactoryFile',
       context,
-      method
+      method,
     }
   },
 )

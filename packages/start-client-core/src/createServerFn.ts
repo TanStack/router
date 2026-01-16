@@ -402,7 +402,12 @@ export type ServerFn<
   ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator>,
 ) => ServerFnReturnType<TRegister, TResponse>
 
-export interface ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator> {
+export interface ServerFnCtx<
+  TRegister,
+  TMethod,
+  TMiddlewares,
+  TInputValidator,
+> {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
   method: TMethod

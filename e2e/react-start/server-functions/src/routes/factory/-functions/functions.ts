@@ -107,13 +107,15 @@ export const composedFn = composeFactory()
 
 // Test that re-exported factories (using `export { foo } from './module'`) work correctly
 // The middleware from reexportFactory should execute and add { reexport: 'reexport-middleware-executed' } to context
-export const reexportedFactoryFn = reexportFactory().handler(({ context, method }) => {
-  return {
-    name: 'reexportedFactoryFn',
-    context,
-    method,
-  }
-})
+export const reexportedFactoryFn = reexportFactory().handler(
+  ({ context, method }) => {
+    return {
+      name: 'reexportedFactoryFn',
+      context,
+      method,
+    }
+  },
+)
 
 // Test that star re-exported factories (using `export * from './module'`) work correctly
 // The middleware from starReexportFactory should execute and add { starReexport: 'star-reexport-middleware-executed' } to context
