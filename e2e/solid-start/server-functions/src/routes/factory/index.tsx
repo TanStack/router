@@ -19,12 +19,14 @@ export const Route = createFileRoute('/factory/')({
   component: RouteComponent,
 })
 
-const fnInsideRoute = createServerFn({ method: 'GET' }).handler(({ method }) => {
-  return {
-    name: 'fnInsideRoute',
-    method,
-  }
-})
+const fnInsideRoute = createServerFn({ method: 'GET' }).handler(
+  ({ method }) => {
+    return {
+      name: 'fnInsideRoute',
+      method,
+    }
+  },
+)
 
 const functions = {
   fnInsideRoute: {
