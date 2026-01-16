@@ -27,11 +27,11 @@ export const fooFnPOST = createFooServerFn({ method: 'POST' }).handler(
   },
 )
 
-export const barFn = createBarServerFn().handler(({ context }) => {
+export const barFn = createBarServerFn().handler(({ context, method }) => {
   return {
     name: 'barFn',
     context,
-    method: 'GET',
+    method,
   }
 })
 
