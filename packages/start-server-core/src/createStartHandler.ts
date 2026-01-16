@@ -83,7 +83,12 @@ function getEntries() {
   return entriesPromise
 }
 
-function getManifest() {
+function getManifest(matchedRoutes?: ReadonlyArray<AnyRoute>) {
+  // In dev mode, always get fresh manifest (no caching) to include route-specific dev styles
+  if (process.env.TSS_DEV_SERVER === 'true') {
+    return getStartManifest(matchedRoutes)
+  }
+  // In prod, cache the manifest
   if (!manifestPromise) {
     manifestPromise = getStartManifest()
   }
@@ -330,7 +335,10 @@ export function createStartHandler<TRegister = Register>(
       }
 
       // Router execution function
-      const executeRouter = async (serverContext: TODO): Promise<Response> => {
+      const executeRouter = async (
+        serverContext: TODO,
+        matchedRoutes?: ReadonlyArray<AnyRoute>,
+      ): Promise<Response> => {
         const acceptHeader = request.headers.get('Accept') || '*/*'
         const acceptParts = acceptHeader.split(',')
         const supportedMimeTypes = ['*/*', 'text/html']
@@ -346,7 +354,7 @@ export function createStartHandler<TRegister = Register>(
           )
         }
 
-        const manifest = await getManifest()
+        const manifest = await getManifest(matchedRoutes)
         const routerInstance = await getRouter()
 
         attachRouterServerSsrUtils({
@@ -494,7 +502,10 @@ async function handleServerRoutes({
   getRouter: () => Promise<AnyRouter>
   request: Request
   url: URL
-  executeRouter: (serverContext: any) => Promise<Response>
+  executeRouter: (
+    serverContext: any,
+    matchedRoutes?: ReadonlyArray<AnyRoute>,
+  ) => Promise<Response>
   context: any
   executedRequestMiddlewares: Set<AnyRequestMiddleware>
 }): Promise<Response> {
@@ -558,8 +569,10 @@ async function handleServerRoutes({
     }
   }
 
-  // Final middleware: execute router
-  routeMiddlewares.push((ctx: TODO) => executeRouter(ctx.context))
+  // Final middleware: execute router with matched routes for dev styles
+  routeMiddlewares.push((ctx: TODO) =>
+    executeRouter(ctx.context, matchedRoutes),
+  )
 
   const ctx = await executeMiddleware(routeMiddlewares, {
     request,
