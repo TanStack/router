@@ -82,6 +82,8 @@ describe('beforeLoad skip or exec', () => {
     const beforeLoad = vi.fn(() => Promise.resolve({ hello: 'world' }))
     const router = setup({ beforeLoad })
     const navigation = router.navigate({ to: '/foo' })
+    // With async history.push, load() runs after a microtask
+    await Promise.resolve()
     expect(beforeLoad).toHaveBeenCalledTimes(1)
     expect(router.state.pendingMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
@@ -264,6 +266,8 @@ describe('loader skip or exec', () => {
     const loader = vi.fn(() => Promise.resolve({ hello: 'world' }))
     const router = setup({ loader })
     const navigation = router.navigate({ to: '/foo' })
+    // With async history.push, load() runs after a microtask
+    await Promise.resolve()
     expect(loader).toHaveBeenCalledTimes(1)
     expect(router.state.pendingMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),

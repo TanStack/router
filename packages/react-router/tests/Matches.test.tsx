@@ -344,7 +344,7 @@ describe('matching on different param types', () => {
 
       await act(() => render(<RouterProvider router={router} />))
 
-      act(() => router.history.push(nav))
+      await act(() => router.history.push(nav))
 
       const paramsToCheck = await screen.findByTestId('params')
       const matchesToCheck = await screen.findByTestId('matches')
