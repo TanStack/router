@@ -399,12 +399,13 @@ export type ServerFn<
   TInputValidator,
   TResponse,
 > = (
-  ctx: ServerFnCtx<TRegister, TMiddlewares, TInputValidator>,
+  ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator>,
 ) => ServerFnReturnType<TRegister, TResponse>
 
-export interface ServerFnCtx<TRegister, TMiddlewares, TInputValidator> {
+export interface ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator> {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
+  method: TMethod
   signal: AbortSignal
 }
 

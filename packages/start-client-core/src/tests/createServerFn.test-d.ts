@@ -20,6 +20,7 @@ test('createServerFn without middleware', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: undefined
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -42,6 +43,7 @@ test('createServerFn with validator function', () => {
       data: {
         a: string
       }
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -68,6 +70,7 @@ test('createServerFn with async validator function', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -96,6 +99,7 @@ test('createServerFn with validator with parse method', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -124,6 +128,7 @@ test('createServerFn with async validator with parse method', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -169,6 +174,7 @@ test('createServerFn with standard validator', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -215,6 +221,7 @@ test('createServerFn with async standard validator', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -277,6 +284,7 @@ test('createServerFn with middleware and context', () => {
         readonly d: 'd'
       }
       data: undefined
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -319,6 +327,7 @@ describe('createServerFn with middleware and validator', () => {
             readonly outputB: 'outputB'
             readonly outputC: 'outputC'
           }
+          method: "GET"
           signal: AbortSignal
         }>()
 
@@ -415,6 +424,7 @@ test('createServerFn where validator is a primitive', () => {
       expectTypeOf(options).toEqualTypeOf<{
         context: undefined
         data: 'c'
+        method: "GET"
         signal: AbortSignal
       }>()
     })
@@ -427,6 +437,7 @@ test('createServerFn where validator is optional if object is optional', () => {
       expectTypeOf(options).toEqualTypeOf<{
         context: undefined
         data: 'c' | undefined
+        method: "GET"
         signal: AbortSignal
       }>()
     })
@@ -448,6 +459,7 @@ test('createServerFn where data is optional if there is no validator', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: undefined
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -639,6 +651,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
         readonly a: 'a'
       }
       data: undefined
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -659,6 +672,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
         readonly b: 'b'
       }
       data: undefined
+      method: "POST"
       signal: AbortSignal
     }>()
   })
@@ -680,6 +694,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
         readonly c: 'c'
       }
       data: undefined
+      method: "GET"
       signal: AbortSignal
     }>()
   })
@@ -712,6 +727,7 @@ test('compose middlewares and server function factories', () => {
         readonly b: 'b'
       }
       data: undefined
+      method: "GET"
       signal: AbortSignal
     }>()
   })
