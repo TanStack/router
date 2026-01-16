@@ -225,16 +225,16 @@ export function createStartHandler<TRegister = Register>(
       // Another anomaly is that in Node new URLSearchParams and new URL also decode/encode characters differently.
       // new URLSearchParams() encodes "|" while new URL() does not, and in this instance
       // chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
-      const decodedPath = decodePath(request.url.replace(origin, ''))
-      const decodedURL = new URL(decodedPath, origin)
-      const searchParams = new URLSearchParams(decodedURL.search)
+      const rawUrl = new URL(request.url, origin)
+      const decodedPathname = decodePath(rawUrl.pathname)
+      const searchParams = new URLSearchParams(rawUrl.search)
       const normalizedHref =
-        decodedURL.pathname +
+        decodedPathname +
         (searchParams.size > 0 ? '?' : '') +
         searchParams.toString() +
-        decodedURL.hash
+        rawUrl.hash
 
-      const url = new URL(normalizedHref, decodedURL.origin)
+      const url = new URL(normalizedHref, rawUrl.origin)
       const href = url.href.replace(url.origin, '')
 
       const entries = await getEntries()
