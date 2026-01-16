@@ -15,12 +15,14 @@ import {
 import { computed, defineComponent, ref } from 'vue'
 import type { PropType } from 'vue'
 
-const fnInsideRoute = createServerFn({ method: 'GET' }).handler(({ method }) => {
-  return {
-    name: 'fnInsideRoute',
-    method,
-  }
-})
+const fnInsideRoute = createServerFn({ method: 'GET' }).handler(
+  ({ method }) => {
+    return {
+      name: 'fnInsideRoute',
+      method,
+    }
+  },
+)
 
 const functions = {
   fnInsideRoute: {
