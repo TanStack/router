@@ -98,7 +98,7 @@ const Test = defineComponent({
 const RouteComponent = defineComponent({
   setup() {
     return () => (
-      <div class="p-2 m-2 grid gap-2" data-testid="factory-route-component">
+      <div class="p-2 m-2 grid gap-2" data-testid="method-route-component">
         <h1 class="font-bold text-lg">Server functions methods E2E tests</h1>
         <div>
           <Link class="inline" to="/factory"><h2>Go to Factory Functions and request method E2E test</h2></Link>
