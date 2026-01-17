@@ -719,7 +719,18 @@ export const inferFullPath = (routeNode: RouteNode): string => {
     ),
   )
 
+  if (fullPath === '') {
+    return '/'
+  }
+
   return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')
+}
+
+const shouldPreferIndexRoute = (
+  current: RouteNode,
+  existing: RouteNode,
+): boolean => {
+  return existing.cleanedPath === '/' && current.cleanedPath !== '/'
 }
 
 /**
@@ -728,9 +739,22 @@ export const inferFullPath = (routeNode: RouteNode): string => {
 export const createRouteNodesByFullPath = (
   routeNodes: Array<RouteNode>,
 ): Map<string, RouteNode> => {
-  return new Map(
-    routeNodes.map((routeNode) => [inferFullPath(routeNode), routeNode]),
-  )
+  const map = new Map<string, RouteNode>()
+
+  for (const routeNode of routeNodes) {
+    const fullPath = inferFullPath(routeNode)
+
+    if (fullPath === '/' && map.has('/')) {
+      const existing = map.get('/')!
+      if (shouldPreferIndexRoute(routeNode, existing)) {
+        continue
+      }
+    }
+
+    map.set(fullPath, routeNode)
+  }
+
+  return map
 }
 
 /**
@@ -739,12 +763,22 @@ export const createRouteNodesByFullPath = (
 export const createRouteNodesByTo = (
   routeNodes: Array<RouteNode>,
 ): Map<string, RouteNode> => {
-  return new Map(
-    dedupeBranchesAndIndexRoutes(routeNodes).map((routeNode) => [
-      inferTo(routeNode),
-      routeNode,
-    ]),
-  )
+  const map = new Map<string, RouteNode>()
+
+  for (const routeNode of dedupeBranchesAndIndexRoutes(routeNodes)) {
+    const to = inferTo(routeNode)
+
+    if (to === '/' && map.has('/')) {
+      const existing = map.get('/')!
+      if (shouldPreferIndexRoute(routeNode, existing)) {
+        continue
+      }
+    }
+
+    map.set(to, routeNode)
+  }
+
+  return map
 }
 
 /**
@@ -803,6 +837,15 @@ export function checkRouteFullPathUniqueness(
   _routes: Array<RouteNode>,
   config: Config,
 ) {
+  const emptyPathRoutes = _routes.filter((d) => d.routePath === '')
+  if (emptyPathRoutes.length) {
+    const errorMessage = `Invalid route path "" was found. Root routes must be defined via __root.tsx (createRootRoute), not createFileRoute('') or a route file that resolves to an empty path.
+Conflicting files: \n ${emptyPathRoutes
+      .map((d) => path.resolve(config.routesDirectory, d.filePath))
+      .join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+
   const routes = _routes.map((d) => {
     const inferredFullPath = inferFullPath(d)
     return { ...d, inferredFullPath }
