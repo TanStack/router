@@ -1,9 +1,10 @@
 import { Link, createFileRoute, deepEqual } from '@tanstack/vue-router'
+import { computed, defineComponent, ref } from 'vue'
 import {
   getServerFnCallingPost,
   postServerFnCallingGet,
 } from './-functions/serverFnCallingServerFn'
-import { PropType, computed, defineComponent, ref } from 'vue'
+import type { PropType} from 'vue';
 
 const functions = {
   getServerFnCallingPost: {
@@ -58,7 +59,6 @@ const Test = defineComponent({
         data-testid={`test-${props.expected.name}`}
         class="p-2 border border-gray-200 rounded-md"
       >
-        <h2 class="font-bold text-lg"></h2>
         <div>
           It should return{' '}
           <code>

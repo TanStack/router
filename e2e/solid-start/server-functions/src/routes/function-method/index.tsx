@@ -42,7 +42,7 @@ function RouteComponent() {
         </Link>
       </div>
       <For each={Object.entries(functions)}>
-        {([name, testCase]) => <Test {...testCase} />}
+        {([, testCase]) => <Test {...testCase} />}
       </For>
     </div>
   )
@@ -67,7 +67,6 @@ function Test({ fn, expected }: TestCase) {
       data-testid={`test-${expected.name}`}
       class="p-2 border border-gray-200 rounded-md"
     >
-      <h2 class="font-bold text-lg"></h2>
       <div>
         It should return{' '}
         <code>
