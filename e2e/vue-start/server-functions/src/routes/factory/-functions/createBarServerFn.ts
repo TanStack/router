@@ -13,10 +13,11 @@ const barMiddleware = createMiddleware({ type: 'function' }).server(
 export const createBarServerFn = createFooServerFn().middleware([barMiddleware])
 
 export const barFnInsideFactoryFile = createBarServerFn().handler(
-  ({ context }) => {
+  ({ context, method }) => {
     return {
       name: 'barFnInsideFactoryFile',
       context,
+      method,
     }
   },
 )

@@ -252,7 +252,7 @@ function shouldThrow(folderName: string) {
     return `Conflicting configuration paths were found for the following routes: "/", "/".`
   }
   if (folderName === 'virtual-physical-empty-path-conflict-root') {
-    return `Conflicting configuration paths were found for the following routes: "/__root", "/__root".`
+    return 'Invalid route path "" was found.'
   }
   if (folderName === 'virtual-physical-empty-path-conflict-virtual') {
     return `Conflicting configuration paths were found for the following routes: "/about", "/about".`

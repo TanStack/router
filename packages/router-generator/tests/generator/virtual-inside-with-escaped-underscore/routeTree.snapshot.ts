@@ -37,7 +37,7 @@ const nestedHomeRoute = nestedHomeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/nested': typeof nestedHomeRoute
+  '/nested/': typeof nestedHomeRoute
   '/nested/_auth': typeof nestedAuthRoute
   '/nested/_callback': typeof nestedCallbackRoute
 }
@@ -56,7 +56,7 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/nested' | '/nested/_auth' | '/nested/_callback'
+  fullPaths: '/' | '/nested/' | '/nested/_auth' | '/nested/_callback'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/nested' | '/nested/_auth' | '/nested/_callback'
   id: '__root__' | '/' | '/nested/' | '/nested/_auth' | '/nested/_callback'
@@ -95,7 +95,7 @@ declare module '@tanstack/react-router' {
     '/nested/': {
       id: '/nested/'
       path: '/nested'
-      fullPath: '/nested'
+      fullPath: '/nested/'
       preLoaderRoute: typeof nestedHomeRouteImport
       parentRoute: typeof rootRouteImport
     }

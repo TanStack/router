@@ -375,11 +375,11 @@ export interface FileRoutesByFullPath {
   '/specialChars/search': typeof SpecialCharsSearchRoute
   '/specialChars/대한민국': typeof SpecialCharsChar45824Char54620Char48124Char44397Route
   '/users/$userId': typeof UsersUserIdRoute
-  '/multi-cookie-redirect': typeof MultiCookieRedirectIndexRoute
+  '/multi-cookie-redirect/': typeof MultiCookieRedirectIndexRoute
   '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/raw-stream/': typeof RawStreamIndexRoute
-  '/redirect': typeof RedirectIndexRoute
+  '/redirect/': typeof RedirectIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -393,7 +393,7 @@ export interface FileRoutesByFullPath {
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
-  '/redirect/$target/serverFn': typeof RedirectTargetServerFnIndexRoute
+  '/redirect/$target/serverFn/': typeof RedirectTargetServerFnIndexRoute
   '/foo/$bar/$qux/': typeof FooBarQuxHereIndexRoute
 }
 export interface FileRoutesByTo {
@@ -535,11 +535,11 @@ export interface FileRouteTypes {
     | '/specialChars/search'
     | '/specialChars/대한민국'
     | '/users/$userId'
-    | '/multi-cookie-redirect'
+    | '/multi-cookie-redirect/'
     | '/not-found/'
     | '/posts/'
     | '/raw-stream/'
-    | '/redirect'
+    | '/redirect/'
     | '/search-params/'
     | '/users/'
     | '/layout-a'
@@ -553,7 +553,7 @@ export interface FileRouteTypes {
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
-    | '/redirect/$target/serverFn'
+    | '/redirect/$target/serverFn/'
     | '/foo/$bar/$qux/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -760,7 +760,7 @@ declare module '@tanstack/react-router' {
     '/_layout': {
       id: '/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -809,7 +809,7 @@ declare module '@tanstack/react-router' {
     '/redirect/': {
       id: '/redirect/'
       path: '/redirect'
-      fullPath: '/redirect'
+      fullPath: '/redirect/'
       preLoaderRoute: typeof RedirectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -837,7 +837,7 @@ declare module '@tanstack/react-router' {
     '/multi-cookie-redirect/': {
       id: '/multi-cookie-redirect/'
       path: '/multi-cookie-redirect'
-      fullPath: '/multi-cookie-redirect'
+      fullPath: '/multi-cookie-redirect/'
       preLoaderRoute: typeof MultiCookieRedirectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -970,7 +970,7 @@ declare module '@tanstack/react-router' {
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
@@ -1026,7 +1026,7 @@ declare module '@tanstack/react-router' {
     '/redirect/$target/serverFn/': {
       id: '/redirect/$target/serverFn/'
       path: '/serverFn'
-      fullPath: '/redirect/$target/serverFn'
+      fullPath: '/redirect/$target/serverFn/'
       preLoaderRoute: typeof RedirectTargetServerFnIndexRouteImport
       parentRoute: typeof RedirectTargetRoute
     }

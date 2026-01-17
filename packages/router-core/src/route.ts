@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant'
-import { joinPaths, trimPathLeft } from './path'
+import { joinPaths, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
@@ -1755,7 +1755,7 @@ export class BaseRoute<
     this._path = path as TPath
     this._id = id as TId
     this._fullPath = fullPath as TFullPath
-    this._to = fullPath as TrimPathRight<TFullPath>
+    this._to = trimPathRight(fullPath) as TrimPathRight<TFullPath>
   }
 
   addChildren: RouteAddChildrenFn<
