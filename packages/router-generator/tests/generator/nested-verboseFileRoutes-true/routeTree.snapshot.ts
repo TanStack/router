@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PathlessLayoutRouteImport } from './routes/_pathlessLayout'
 import { Route as PostsRouteRouteImport } from './routes/posts/route'
 import { Route as BlogRouteRouteImport } from './routes/blog/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,6 +17,7 @@ import { Route as PostsIndexRouteImport } from './routes/posts/index'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as BlogStatsRouteImport } from './routes/blog_/stats'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
+import { Route as PathlessLayoutSettingsRouteImport } from './routes/_pathlessLayout/settings'
 import { Route as BlogBlogIdRouteRouteImport } from './routes/blog_/$blogId/route'
 import { Route as PostsPostIdIndexRouteImport } from './routes/posts/$postId/index'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts/$postId/deep'
@@ -23,6 +25,10 @@ import { Route as BlogBlogIdEditRouteImport } from './routes/blog_/$blogId_/edit
 import { Route as BlogBlogIdSlugRouteRouteImport } from './routes/blog_/$blogId/$slug/route'
 import { Route as BlogBlogIdSlugBarRouteImport } from './routes/blog_/$blogId/$slug_/bar'
 
+const PathlessLayoutRoute = PathlessLayoutRouteImport.update({
+  id: '/_pathlessLayout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsRouteRoute = PostsRouteRouteImport.update({
   id: '/posts',
   path: '/posts',
@@ -57,6 +63,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => BlogRouteRoute,
+} as any)
+const PathlessLayoutSettingsRoute = PathlessLayoutSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => PathlessLayoutRoute,
 } as any)
 const BlogBlogIdRouteRoute = BlogBlogIdRouteRouteImport.update({
   id: '/blog_/$blogId',
@@ -94,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/blog': typeof BlogRouteRouteWithChildren
   '/posts': typeof PostsRouteRouteWithChildren
   '/blog/$blogId': typeof BlogBlogIdRouteRouteWithChildren
+  '/settings': typeof PathlessLayoutSettingsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/stats': typeof BlogStatsRoute
   '/blog/': typeof BlogIndexRoute
@@ -107,6 +119,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/blog/$blogId': typeof BlogBlogIdRouteRouteWithChildren
+  '/settings': typeof PathlessLayoutSettingsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/stats': typeof BlogStatsRoute
   '/blog': typeof BlogIndexRoute
@@ -122,7 +135,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/blog': typeof BlogRouteRouteWithChildren
   '/posts': typeof PostsRouteRouteWithChildren
+  '/_pathlessLayout': typeof PathlessLayoutRouteWithChildren
   '/blog_/$blogId': typeof BlogBlogIdRouteRouteWithChildren
+  '/_pathlessLayout/settings': typeof PathlessLayoutSettingsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog_/stats': typeof BlogStatsRoute
   '/blog/': typeof BlogIndexRoute
@@ -140,6 +155,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/posts'
     | '/blog/$blogId'
+    | '/settings'
     | '/blog/$slug'
     | '/blog/stats'
     | '/blog/'
@@ -153,6 +169,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/blog/$blogId'
+    | '/settings'
     | '/blog/$slug'
     | '/blog/stats'
     | '/blog'
@@ -167,7 +184,9 @@ export interface FileRouteTypes {
     | '/'
     | '/blog'
     | '/posts'
+    | '/_pathlessLayout'
     | '/blog_/$blogId'
+    | '/_pathlessLayout/settings'
     | '/blog/$slug'
     | '/blog_/stats'
     | '/blog/'
@@ -183,6 +202,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BlogRouteRoute: typeof BlogRouteRouteWithChildren
   PostsRouteRoute: typeof PostsRouteRouteWithChildren
+  PathlessLayoutRoute: typeof PathlessLayoutRouteWithChildren
   BlogBlogIdRouteRoute: typeof BlogBlogIdRouteRouteWithChildren
   BlogStatsRoute: typeof BlogStatsRoute
   BlogBlogIdEditRoute: typeof BlogBlogIdEditRoute
@@ -190,6 +210,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_pathlessLayout': {
+      id: '/_pathlessLayout'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PathlessLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
@@ -238,6 +265,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/blog/$slug'
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRouteRoute
+    }
+    '/_pathlessLayout/settings': {
+      id: '/_pathlessLayout/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof PathlessLayoutSettingsRouteImport
+      parentRoute: typeof PathlessLayoutRoute
     }
     '/blog_/$blogId': {
       id: '/blog_/$blogId'
@@ -314,6 +348,18 @@ const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
   PostsRouteRouteChildren,
 )
 
+interface PathlessLayoutRouteChildren {
+  PathlessLayoutSettingsRoute: typeof PathlessLayoutSettingsRoute
+}
+
+const PathlessLayoutRouteChildren: PathlessLayoutRouteChildren = {
+  PathlessLayoutSettingsRoute: PathlessLayoutSettingsRoute,
+}
+
+const PathlessLayoutRouteWithChildren = PathlessLayoutRoute._addFileChildren(
+  PathlessLayoutRouteChildren,
+)
+
 interface BlogBlogIdRouteRouteChildren {
   BlogBlogIdSlugRouteRoute: typeof BlogBlogIdSlugRouteRoute
   BlogBlogIdSlugBarRoute: typeof BlogBlogIdSlugBarRoute
@@ -332,6 +378,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BlogRouteRoute: BlogRouteRouteWithChildren,
   PostsRouteRoute: PostsRouteRouteWithChildren,
+  PathlessLayoutRoute: PathlessLayoutRouteWithChildren,
   BlogBlogIdRouteRoute: BlogBlogIdRouteRouteWithChildren,
   BlogStatsRoute: BlogStatsRoute,
   BlogBlogIdEditRoute: BlogBlogIdEditRoute,
