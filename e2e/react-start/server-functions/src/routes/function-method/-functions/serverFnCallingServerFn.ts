@@ -16,9 +16,9 @@ export const getServerFnCallingPost = createServerFn({ method: "GET" }).handler(
     const innerFnResult = await postServerFn({});
 
     return {
+        name: 'getServerFnCallingPost',
         method,
         innerFnResult,
-        name: 'getServerFnCallingPost',
     }
 })
 
@@ -26,8 +26,8 @@ export const postServerFnCallingGet = createServerFn({ method: "POST" }).handler
     const innerFnResult = await getServerFn({});
 
     return {
+        name: 'postServerFnCallingGet',
         method,
         innerFnResult,
-        name: 'postServerFnCallingGet',
     }
 })

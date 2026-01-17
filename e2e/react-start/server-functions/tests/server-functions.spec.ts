@@ -885,7 +885,7 @@ test('function middleware receives serverFnMeta in options', async ({
 })
 
 test('methods', async ({ page }) => {
-  await page.goto('/function-method')
+  await page.goto('/function-method', { waitUntil: 'networkidle' })
 
   await expect(page.getByTestId('method-route-component')).toBeInViewport()
 
@@ -923,9 +923,7 @@ test('server function receives serverFnMeta in options', async ({ page }) => {
   // 1. Server functions receive `serverFnMeta` with full { id, name, filename }
   // 2. No1 works even when the said server function is called from another server function
 
-  await page.goto('/function-metadata');
-
-  await page.waitForLoadState('networkidle');
+  await page.goto('/function-metadata', { waitUntil: 'networkidle' });
 
   // Test for no1
   const loaderNormalGet = await page
