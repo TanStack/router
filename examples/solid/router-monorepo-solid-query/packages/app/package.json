@@ -17,7 +17,7 @@
   "devDependencies": {
     "vite-plugin-solid": "^2.11.10",
     "typescript": "^5.7.2",
-    "@tanstack/solid-router-devtools": "^1.151.0",
+    "@tanstack/solid-router-devtools": "^1.151.1",
     "tailwindcss": "4.1.18",
     "vite": "^7.1.7",
     "vite-plugin-dts": "^4.5.4",
