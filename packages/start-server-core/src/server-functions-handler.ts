@@ -90,7 +90,6 @@ export const handleServerAction = async ({
           const params = {
             context,
             data: formData,
-            method,
           }
           if (typeof serializedContext === 'string') {
             try {
@@ -131,7 +130,6 @@ export const handleServerAction = async ({
             ? parsePayload(JSON.parse(payloadParam))
             : {}
           payload.context = safeObjectMerge(context, payload.context)
-          payload.method = method
           // Send it through!
           return await action(payload, signal)
         }
@@ -147,7 +145,6 @@ export const handleServerAction = async ({
 
         const payload = jsonPayload ? parsePayload(jsonPayload) : {}
         payload.context = safeObjectMerge(payload.context, context)
-        payload.method = method
         return await action(payload, signal)
       })()
 
