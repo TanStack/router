@@ -214,16 +214,16 @@ export interface FileRoutesByFullPath {
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
-  '/abort-signal': typeof AbortSignalIndexRoute
-  '/cookies': typeof CookiesIndexRoute
-  '/factory': typeof FactoryIndexRoute
-  '/formdata-redirect': typeof FormdataRedirectIndexRoute
-  '/function-metadata': typeof FunctionMetadataIndexRoute
-  '/function-method': typeof FunctionMethodIndexRoute
-  '/middleware': typeof MiddlewareIndexRoute
-  '/primitives': typeof PrimitivesIndexRoute
-  '/redirect-test-ssr': typeof RedirectTestSsrIndexRoute
-  '/redirect-test': typeof RedirectTestIndexRoute
+  '/abort-signal/': typeof AbortSignalIndexRoute
+  '/cookies/': typeof CookiesIndexRoute
+  '/factory/': typeof FactoryIndexRoute
+  '/formdata-redirect/': typeof FormdataRedirectIndexRoute
+  '/function-metadata/': typeof FunctionMetadataIndexRoute
+  '/function-method/': typeof FunctionMethodIndexRoute
+  '/middleware/': typeof MiddlewareIndexRoute
+  '/primitives/': typeof PrimitivesIndexRoute
+  '/redirect-test-ssr/': typeof RedirectTestSsrIndexRoute
+  '/redirect-test/': typeof RedirectTestIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
 export interface FileRoutesByTo {
@@ -313,16 +313,16 @@ export interface FileRouteTypes {
     | '/middleware/send-serverFn'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
-    | '/abort-signal'
-    | '/cookies'
-    | '/factory'
-    | '/formdata-redirect'
-    | '/function-metadata'
-    | '/function-method'
-    | '/middleware'
-    | '/primitives'
-    | '/redirect-test-ssr'
-    | '/redirect-test'
+    | '/abort-signal/'
+    | '/cookies/'
+    | '/factory/'
+    | '/formdata-redirect/'
+    | '/function-metadata/'
+    | '/function-method/'
+    | '/middleware/'
+    | '/primitives/'
+    | '/redirect-test-ssr/'
+    | '/redirect-test/'
     | '/formdata-redirect/target/$name'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -512,70 +512,70 @@ declare module '@tanstack/solid-router' {
     '/redirect-test/': {
       id: '/redirect-test/'
       path: '/redirect-test'
-      fullPath: '/redirect-test'
+      fullPath: '/redirect-test/'
       preLoaderRoute: typeof RedirectTestIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/redirect-test-ssr/': {
       id: '/redirect-test-ssr/'
       path: '/redirect-test-ssr'
-      fullPath: '/redirect-test-ssr'
+      fullPath: '/redirect-test-ssr/'
       preLoaderRoute: typeof RedirectTestSsrIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/primitives/': {
       id: '/primitives/'
       path: '/primitives'
-      fullPath: '/primitives'
+      fullPath: '/primitives/'
       preLoaderRoute: typeof PrimitivesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/middleware/': {
       id: '/middleware/'
       path: '/middleware'
-      fullPath: '/middleware'
+      fullPath: '/middleware/'
       preLoaderRoute: typeof MiddlewareIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/function-method/': {
       id: '/function-method/'
       path: '/function-method'
-      fullPath: '/function-method'
+      fullPath: '/function-method/'
       preLoaderRoute: typeof FunctionMethodIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/function-metadata/': {
       id: '/function-metadata/'
       path: '/function-metadata'
-      fullPath: '/function-metadata'
+      fullPath: '/function-metadata/'
       preLoaderRoute: typeof FunctionMetadataIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/formdata-redirect/': {
       id: '/formdata-redirect/'
       path: '/formdata-redirect'
-      fullPath: '/formdata-redirect'
+      fullPath: '/formdata-redirect/'
       preLoaderRoute: typeof FormdataRedirectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/factory/': {
       id: '/factory/'
       path: '/factory'
-      fullPath: '/factory'
+      fullPath: '/factory/'
       preLoaderRoute: typeof FactoryIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cookies/': {
       id: '/cookies/'
       path: '/cookies'
-      fullPath: '/cookies'
+      fullPath: '/cookies/'
       preLoaderRoute: typeof CookiesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/abort-signal/': {
       id: '/abort-signal/'
       path: '/abort-signal'
-      fullPath: '/abort-signal'
+      fullPath: '/abort-signal/'
       preLoaderRoute: typeof AbortSignalIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
