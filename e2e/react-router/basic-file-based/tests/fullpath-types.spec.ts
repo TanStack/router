@@ -48,6 +48,19 @@ test.describe('FullPath type/runtime match (Issues #4892, #2675, #6403)', () => 
     })
   })
 
+  test.describe('Route.to should NOT have trailing slash (Issue #3005)', () => {
+    test('index route Route.to should not have trailing slash', async ({
+      page,
+    }) => {
+      await page.goto('/fullpath-test')
+      // Route.to should be '/fullpath-test' (without trailing slash)
+      // while Route.fullPath is '/fullpath-test/' (with trailing slash)
+      await expect(page.getByTestId('index-route-to')).toHaveText(
+        '/fullpath-test',
+      )
+    })
+  })
+
   test.describe('Existing pathless layout routes', () => {
     test('existing pathless layout index shows correct fullPath at runtime', async ({
       page,

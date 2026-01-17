@@ -16,6 +16,7 @@ function IndexComponent() {
       <div data-testid="index-route-fullpath">
         {indexMatch?.fullPath ?? 'undefined'}
       </div>
+      <div data-testid="index-route-to">{Route.to}</div>
       <div data-testid="fullpath-test-index">FullPath Test Index</div>
     </div>
   )
