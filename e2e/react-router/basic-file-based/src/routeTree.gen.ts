@@ -23,6 +23,7 @@ import { Route as Char45824Char54620Char48124Char44397RouteRouteImport } from '.
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as PathlessLayoutRouteRouteImport } from './routes/pathless-layout/route'
 import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
+import { Route as FullpathTestRouteRouteImport } from './routes/fullpath-test/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RelativeIndexRouteImport } from './routes/relative/index'
@@ -47,10 +48,12 @@ import { Route as NonNestedPrefixRouteRouteImport } from './routes/non-nested/pr
 import { Route as NonNestedPathRouteRouteImport } from './routes/non-nested/path/route'
 import { Route as NonNestedNamedRouteRouteImport } from './routes/non-nested/named/route'
 import { Route as NonNestedDeepRouteRouteImport } from './routes/non-nested/deep/route'
+import { Route as FullpathTestLayoutRouteRouteImport } from './routes/fullpath-test/_layout/route'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
 import { Route as PathlessLayoutLayoutIndexRouteImport } from './routes/pathless-layout/_layout/index'
 import { Route as ParamsPsWildcardIndexRouteImport } from './routes/params-ps/wildcard/index'
 import { Route as ParamsPsNamedIndexRouteImport } from './routes/params-ps/named/index'
+import { Route as FullpathTestLayoutIndexRouteImport } from './routes/fullpath-test/_layout/index'
 import { Route as Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport } from './routes/대한민국/🚀.$id'
 import { Route as Char45824Char54620Char48124Char44397WildcardSplatRouteImport } from './routes/대한민국/wildcard.$'
 import { Route as RelativeUseNavigateRelativeUseNavigateBRouteImport } from './routes/relative/useNavigate/relative-useNavigate-b'
@@ -79,6 +82,7 @@ import { Route as ParamsPsNamedChar123fooChar125suffixRouteImport } from './rout
 import { Route as ParamsPsNamedPrefixChar123fooChar125RouteImport } from './routes/params-ps/named/prefix{$foo}'
 import { Route as MasksPublicUsernameRouteImport } from './routes/masks.public.$username'
 import { Route as MasksAdminUserIdRouteImport } from './routes/masks.admin.$userId'
+import { Route as FullpathTestLayoutIdRouteImport } from './routes/fullpath-test/_layout/$id'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
@@ -191,6 +195,11 @@ const PathlessLayoutRouteRoute = PathlessLayoutRouteRouteImport.update({
 const NonNestedRouteRoute = NonNestedRouteRouteImport.update({
   id: '/non-nested',
   path: '/non-nested',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FullpathTestRouteRoute = FullpathTestRouteRouteImport.update({
+  id: '/fullpath-test',
+  path: '/fullpath-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -316,6 +325,10 @@ const NonNestedDeepRouteRoute = NonNestedDeepRouteRouteImport.update({
   path: '/deep',
   getParentRoute: () => NonNestedRouteRoute,
 } as any)
+const FullpathTestLayoutRouteRoute = FullpathTestLayoutRouteRouteImport.update({
+  id: '/_layout',
+  getParentRoute: () => FullpathTestRouteRoute,
+} as any)
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -336,6 +349,11 @@ const ParamsPsNamedIndexRoute = ParamsPsNamedIndexRouteImport.update({
   id: '/params-ps/named/',
   path: '/params-ps/named/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const FullpathTestLayoutIndexRoute = FullpathTestLayoutIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FullpathTestLayoutRouteRoute,
 } as any)
 const Char45824Char54620Char48124Char44397Char55357Char56960IdRoute =
   Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport.update({
@@ -495,6 +513,11 @@ const MasksAdminUserIdRoute = MasksAdminUserIdRouteImport.update({
   id: '/admin/$userId',
   path: '/admin/$userId',
   getParentRoute: () => MasksRoute,
+} as any)
+const FullpathTestLayoutIdRoute = FullpathTestLayoutIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => FullpathTestLayoutRouteRoute,
 } as any)
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
@@ -737,6 +760,7 @@ const NonNestedDeepBazBarFooQuxRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/fullpath-test': typeof FullpathTestLayoutRouteRouteWithChildren
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/pathless-layout': typeof PathlessLayoutLayoutRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
@@ -765,10 +789,10 @@ export interface FileRoutesByFullPath {
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
-  '/params-ps': typeof ParamsPsIndexRoute
+  '/params-ps/': typeof ParamsPsIndexRoute
   '/posts/': typeof PostsIndexRoute
-  '/redirect': typeof RedirectIndexRoute
-  '/relative': typeof RelativeIndexRoute
+  '/redirect/': typeof RedirectIndexRoute
+  '/relative/': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
   '/non-nested/deep/$baz': typeof NonNestedDeepBazRouteRouteWithChildren
   '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
@@ -781,6 +805,7 @@ export interface FileRoutesByFullPath {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/fullpath-test/$id': typeof FullpathTestLayoutIdRoute
   '/masks/admin/$userId': typeof MasksAdminUserIdRoute
   '/masks/public/$username': typeof MasksPublicUsernameRoute
   '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
@@ -809,8 +834,9 @@ export interface FileRoutesByFullPath {
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/대한민국/wildcard/$': typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
   '/대한민국/🚀/$id': typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
-  '/params-ps/named': typeof ParamsPsNamedIndexRoute
-  '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
+  '/fullpath-test/': typeof FullpathTestLayoutIndexRoute
+  '/params-ps/named/': typeof ParamsPsNamedIndexRoute
+  '/params-ps/wildcard/': typeof ParamsPsWildcardIndexRoute
   '/pathless-layout/': typeof PathlessLayoutLayoutIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/non-nested/deep/$baz/bar': typeof NonNestedDeepBazBarRouteRouteWithChildren
@@ -829,25 +855,26 @@ export interface FileRoutesByFullPath {
   '/non-nested/path/baz/': typeof NonNestedPathBazIndexRoute
   '/non-nested/prefix/prefix{$baz}/': typeof NonNestedPrefixPrefixChar123bazChar125IndexRoute
   '/non-nested/suffix/{$baz}suffix/': typeof NonNestedSuffixChar123bazChar125suffixIndexRoute
-  '/relative/link/nested': typeof RelativeLinkNestedIndexRoute
-  '/relative/link/path': typeof RelativeLinkPathIndexRoute
-  '/relative/link/with-search': typeof RelativeLinkWithSearchIndexRoute
-  '/relative/useNavigate/nested': typeof RelativeUseNavigateNestedIndexRoute
-  '/relative/useNavigate/path': typeof RelativeUseNavigatePathIndexRoute
-  '/relative/useNavigate/with-search': typeof RelativeUseNavigateWithSearchIndexRoute
+  '/relative/link/nested/': typeof RelativeLinkNestedIndexRoute
+  '/relative/link/path/': typeof RelativeLinkPathIndexRoute
+  '/relative/link/with-search/': typeof RelativeLinkWithSearchIndexRoute
+  '/relative/useNavigate/nested/': typeof RelativeUseNavigateNestedIndexRoute
+  '/relative/useNavigate/path/': typeof RelativeUseNavigatePathIndexRoute
+  '/relative/useNavigate/with-search/': typeof RelativeUseNavigateWithSearchIndexRoute
   '/non-nested/deep/$baz/bar/$foo': typeof NonNestedDeepBazBarFooRouteRouteWithChildren
   '/non-nested/deep/$baz/bar/qux': typeof NonNestedDeepBazBarQuxRoute
   '/params-ps/named/$foo/$bar/$baz': typeof ParamsPsNamedFooBarBazRoute
   '/non-nested/deep/$baz/bar/': typeof NonNestedDeepBazBarIndexRoute
-  '/relative/link/nested/deep': typeof RelativeLinkNestedDeepIndexRoute
-  '/relative/link/path/$path': typeof RelativeLinkPathPathIndexRoute
-  '/relative/useNavigate/nested/deep': typeof RelativeUseNavigateNestedDeepIndexRoute
-  '/relative/useNavigate/path/$path': typeof RelativeUseNavigatePathPathIndexRoute
+  '/relative/link/nested/deep/': typeof RelativeLinkNestedDeepIndexRoute
+  '/relative/link/path/$path/': typeof RelativeLinkPathPathIndexRoute
+  '/relative/useNavigate/nested/deep/': typeof RelativeUseNavigateNestedDeepIndexRoute
+  '/relative/useNavigate/path/$path/': typeof RelativeUseNavigatePathPathIndexRoute
   '/non-nested/deep/$baz/bar/$foo/qux': typeof NonNestedDeepBazBarFooQuxRoute
   '/non-nested/deep/$baz/bar/$foo/': typeof NonNestedDeepBazBarFooIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/fullpath-test': typeof FullpathTestLayoutIndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/pathless-layout': typeof PathlessLayoutLayoutIndexRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
@@ -884,6 +911,7 @@ export interface FileRoutesByTo {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/fullpath-test/$id': typeof FullpathTestLayoutIdRoute
   '/masks/admin/$userId': typeof MasksAdminUserIdRoute
   '/masks/public/$username': typeof MasksPublicUsernameRoute
   '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
@@ -949,6 +977,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/fullpath-test': typeof FullpathTestRouteRouteWithChildren
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/pathless-layout': typeof PathlessLayoutRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
@@ -963,6 +992,7 @@ export interface FileRoutesById {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/fullpath-test/_layout': typeof FullpathTestLayoutRouteRouteWithChildren
   '/non-nested/deep': typeof NonNestedDeepRouteRouteWithChildren
   '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
   '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
@@ -997,6 +1027,7 @@ export interface FileRoutesById {
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/fullpath-test/_layout/$id': typeof FullpathTestLayoutIdRoute
   '/masks/admin/$userId': typeof MasksAdminUserIdRoute
   '/masks/public/$username': typeof MasksPublicUsernameRoute
   '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
@@ -1025,6 +1056,7 @@ export interface FileRoutesById {
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/대한민국/wildcard/$': typeof Char45824Char54620Char48124Char44397WildcardSplatRoute
   '/대한민국/🚀/$id': typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRoute
+  '/fullpath-test/_layout/': typeof FullpathTestLayoutIndexRoute
   '/params-ps/named/': typeof ParamsPsNamedIndexRoute
   '/params-ps/wildcard/': typeof ParamsPsWildcardIndexRoute
   '/pathless-layout/_layout/': typeof PathlessLayoutLayoutIndexRoute
@@ -1066,6 +1098,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/fullpath-test'
     | '/non-nested'
     | '/pathless-layout'
     | '/search-params'
@@ -1094,10 +1127,10 @@ export interface FileRouteTypes {
     | '/redirect/$target'
     | '/search-params/default'
     | '/structural-sharing/$enabled'
-    | '/params-ps'
+    | '/params-ps/'
     | '/posts/'
-    | '/redirect'
-    | '/relative'
+    | '/redirect/'
+    | '/relative/'
     | '/search-params/'
     | '/non-nested/deep/$baz'
     | '/non-nested/named/$baz'
@@ -1110,6 +1143,7 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/fullpath-test/$id'
     | '/masks/admin/$userId'
     | '/masks/public/$username'
     | '/params-ps/named/prefix{$foo}'
@@ -1138,8 +1172,9 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/대한민국/wildcard/$'
     | '/대한민국/🚀/$id'
-    | '/params-ps/named'
-    | '/params-ps/wildcard'
+    | '/fullpath-test/'
+    | '/params-ps/named/'
+    | '/params-ps/wildcard/'
     | '/pathless-layout/'
     | '/redirect/$target/'
     | '/non-nested/deep/$baz/bar'
@@ -1158,25 +1193,26 @@ export interface FileRouteTypes {
     | '/non-nested/path/baz/'
     | '/non-nested/prefix/prefix{$baz}/'
     | '/non-nested/suffix/{$baz}suffix/'
-    | '/relative/link/nested'
-    | '/relative/link/path'
-    | '/relative/link/with-search'
-    | '/relative/useNavigate/nested'
-    | '/relative/useNavigate/path'
-    | '/relative/useNavigate/with-search'
+    | '/relative/link/nested/'
+    | '/relative/link/path/'
+    | '/relative/link/with-search/'
+    | '/relative/useNavigate/nested/'
+    | '/relative/useNavigate/path/'
+    | '/relative/useNavigate/with-search/'
     | '/non-nested/deep/$baz/bar/$foo'
     | '/non-nested/deep/$baz/bar/qux'
     | '/params-ps/named/$foo/$bar/$baz'
     | '/non-nested/deep/$baz/bar/'
-    | '/relative/link/nested/deep'
-    | '/relative/link/path/$path'
-    | '/relative/useNavigate/nested/deep'
-    | '/relative/useNavigate/path/$path'
+    | '/relative/link/nested/deep/'
+    | '/relative/link/path/$path/'
+    | '/relative/useNavigate/nested/deep/'
+    | '/relative/useNavigate/path/$path/'
     | '/non-nested/deep/$baz/bar/$foo/qux'
     | '/non-nested/deep/$baz/bar/$foo/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/fullpath-test'
     | '/non-nested'
     | '/pathless-layout'
     | '/대한민국'
@@ -1213,6 +1249,7 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/fullpath-test/$id'
     | '/masks/admin/$userId'
     | '/masks/public/$username'
     | '/params-ps/named/prefix{$foo}'
@@ -1277,6 +1314,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/fullpath-test'
     | '/non-nested'
     | '/pathless-layout'
     | '/search-params'
@@ -1291,6 +1329,7 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/fullpath-test/_layout'
     | '/non-nested/deep'
     | '/non-nested/named'
     | '/non-nested/path'
@@ -1325,6 +1364,7 @@ export interface FileRouteTypes {
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/fullpath-test/_layout/$id'
     | '/masks/admin/$userId'
     | '/masks/public/$username'
     | '/params-ps/named/prefix{$foo}'
@@ -1353,6 +1393,7 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/대한민국/wildcard/$'
     | '/대한민국/🚀/$id'
+    | '/fullpath-test/_layout/'
     | '/params-ps/named/'
     | '/params-ps/wildcard/'
     | '/pathless-layout/_layout/'
@@ -1393,6 +1434,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FullpathTestRouteRoute: typeof FullpathTestRouteRouteWithChildren
   NonNestedRouteRoute: typeof NonNestedRouteRouteWithChildren
   PathlessLayoutRouteRoute: typeof PathlessLayoutRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
@@ -1505,7 +1547,7 @@ declare module '@tanstack/react-router' {
     '/_layout': {
       id: '/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -1537,6 +1579,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NonNestedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/fullpath-test': {
+      id: '/fullpath-test'
+      path: '/fullpath-test'
+      fullPath: '/fullpath-test'
+      preLoaderRoute: typeof FullpathTestRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -1554,14 +1603,14 @@ declare module '@tanstack/react-router' {
     '/relative/': {
       id: '/relative/'
       path: '/relative'
-      fullPath: '/relative'
+      fullPath: '/relative/'
       preLoaderRoute: typeof RelativeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/redirect/': {
       id: '/redirect/'
       path: '/redirect'
-      fullPath: '/redirect'
+      fullPath: '/redirect/'
       preLoaderRoute: typeof RedirectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -1575,7 +1624,7 @@ declare module '@tanstack/react-router' {
     '/params-ps/': {
       id: '/params-ps/'
       path: '/params-ps'
-      fullPath: '/params-ps'
+      fullPath: '/params-ps/'
       preLoaderRoute: typeof ParamsPsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -1610,7 +1659,7 @@ declare module '@tanstack/react-router' {
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
@@ -1705,6 +1754,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NonNestedDeepRouteRouteImport
       parentRoute: typeof NonNestedRouteRoute
     }
+    '/fullpath-test/_layout': {
+      id: '/fullpath-test/_layout'
+      path: ''
+      fullPath: '/fullpath-test'
+      preLoaderRoute: typeof FullpathTestLayoutRouteRouteImport
+      parentRoute: typeof FullpathTestRouteRoute
+    }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
@@ -1722,16 +1778,23 @@ declare module '@tanstack/react-router' {
     '/params-ps/wildcard/': {
       id: '/params-ps/wildcard/'
       path: '/params-ps/wildcard'
-      fullPath: '/params-ps/wildcard'
+      fullPath: '/params-ps/wildcard/'
       preLoaderRoute: typeof ParamsPsWildcardIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/params-ps/named/': {
       id: '/params-ps/named/'
       path: '/params-ps/named'
-      fullPath: '/params-ps/named'
+      fullPath: '/params-ps/named/'
       preLoaderRoute: typeof ParamsPsNamedIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/fullpath-test/_layout/': {
+      id: '/fullpath-test/_layout/'
+      path: '/'
+      fullPath: '/fullpath-test/'
+      preLoaderRoute: typeof FullpathTestLayoutIndexRouteImport
+      parentRoute: typeof FullpathTestLayoutRouteRoute
     }
     '/대한민국/🚀/$id': {
       id: '/대한민국/🚀/$id'
@@ -1929,6 +1992,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MasksAdminUserIdRouteImport
       parentRoute: typeof MasksRoute
     }
+    '/fullpath-test/_layout/$id': {
+      id: '/fullpath-test/_layout/$id'
+      path: '/$id'
+      fullPath: '/fullpath-test/$id'
+      preLoaderRoute: typeof FullpathTestLayoutIdRouteImport
+      parentRoute: typeof FullpathTestLayoutRouteRoute
+    }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
       path: '/layout-b'
@@ -2009,42 +2079,42 @@ declare module '@tanstack/react-router' {
     '/relative/useNavigate/with-search/': {
       id: '/relative/useNavigate/with-search/'
       path: '/with-search'
-      fullPath: '/relative/useNavigate/with-search'
+      fullPath: '/relative/useNavigate/with-search/'
       preLoaderRoute: typeof RelativeUseNavigateWithSearchIndexRouteImport
       parentRoute: typeof RelativeUseNavigateRouteRoute
     }
     '/relative/useNavigate/path/': {
       id: '/relative/useNavigate/path/'
       path: '/path'
-      fullPath: '/relative/useNavigate/path'
+      fullPath: '/relative/useNavigate/path/'
       preLoaderRoute: typeof RelativeUseNavigatePathIndexRouteImport
       parentRoute: typeof RelativeUseNavigateRouteRoute
     }
     '/relative/useNavigate/nested/': {
       id: '/relative/useNavigate/nested/'
       path: '/nested'
-      fullPath: '/relative/useNavigate/nested'
+      fullPath: '/relative/useNavigate/nested/'
       preLoaderRoute: typeof RelativeUseNavigateNestedIndexRouteImport
       parentRoute: typeof RelativeUseNavigateRouteRoute
     }
     '/relative/link/with-search/': {
       id: '/relative/link/with-search/'
       path: '/with-search'
-      fullPath: '/relative/link/with-search'
+      fullPath: '/relative/link/with-search/'
       preLoaderRoute: typeof RelativeLinkWithSearchIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
     '/relative/link/path/': {
       id: '/relative/link/path/'
       path: '/path'
-      fullPath: '/relative/link/path'
+      fullPath: '/relative/link/path/'
       preLoaderRoute: typeof RelativeLinkPathIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
     '/relative/link/nested/': {
       id: '/relative/link/nested/'
       path: '/nested'
-      fullPath: '/relative/link/nested'
+      fullPath: '/relative/link/nested/'
       preLoaderRoute: typeof RelativeLinkNestedIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
@@ -2163,28 +2233,28 @@ declare module '@tanstack/react-router' {
     '/relative/useNavigate/path/$path/': {
       id: '/relative/useNavigate/path/$path/'
       path: '/path/$path'
-      fullPath: '/relative/useNavigate/path/$path'
+      fullPath: '/relative/useNavigate/path/$path/'
       preLoaderRoute: typeof RelativeUseNavigatePathPathIndexRouteImport
       parentRoute: typeof RelativeUseNavigateRouteRoute
     }
     '/relative/useNavigate/nested/deep/': {
       id: '/relative/useNavigate/nested/deep/'
       path: '/nested/deep'
-      fullPath: '/relative/useNavigate/nested/deep'
+      fullPath: '/relative/useNavigate/nested/deep/'
       preLoaderRoute: typeof RelativeUseNavigateNestedDeepIndexRouteImport
       parentRoute: typeof RelativeUseNavigateRouteRoute
     }
     '/relative/link/path/$path/': {
       id: '/relative/link/path/$path/'
       path: '/path/$path'
-      fullPath: '/relative/link/path/$path'
+      fullPath: '/relative/link/path/$path/'
       preLoaderRoute: typeof RelativeLinkPathPathIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
     '/relative/link/nested/deep/': {
       id: '/relative/link/nested/deep/'
       path: '/nested/deep'
-      fullPath: '/relative/link/nested/deep'
+      fullPath: '/relative/link/nested/deep/'
       preLoaderRoute: typeof RelativeLinkNestedDeepIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
@@ -2232,6 +2302,33 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface FullpathTestLayoutRouteRouteChildren {
+  FullpathTestLayoutIdRoute: typeof FullpathTestLayoutIdRoute
+  FullpathTestLayoutIndexRoute: typeof FullpathTestLayoutIndexRoute
+}
+
+const FullpathTestLayoutRouteRouteChildren: FullpathTestLayoutRouteRouteChildren =
+  {
+    FullpathTestLayoutIdRoute: FullpathTestLayoutIdRoute,
+    FullpathTestLayoutIndexRoute: FullpathTestLayoutIndexRoute,
+  }
+
+const FullpathTestLayoutRouteRouteWithChildren =
+  FullpathTestLayoutRouteRoute._addFileChildren(
+    FullpathTestLayoutRouteRouteChildren,
+  )
+
+interface FullpathTestRouteRouteChildren {
+  FullpathTestLayoutRouteRoute: typeof FullpathTestLayoutRouteRouteWithChildren
+}
+
+const FullpathTestRouteRouteChildren: FullpathTestRouteRouteChildren = {
+  FullpathTestLayoutRouteRoute: FullpathTestLayoutRouteRouteWithChildren,
+}
+
+const FullpathTestRouteRouteWithChildren =
+  FullpathTestRouteRoute._addFileChildren(FullpathTestRouteRouteChildren)
 
 interface NonNestedDeepBazRouteRouteChildren {
   NonNestedDeepBazIndexRoute: typeof NonNestedDeepBazIndexRoute
@@ -2697,6 +2794,7 @@ const ParamsPsNamedFooRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FullpathTestRouteRoute: FullpathTestRouteRouteWithChildren,
   NonNestedRouteRoute: NonNestedRouteRouteWithChildren,
   PathlessLayoutRouteRoute: PathlessLayoutRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
