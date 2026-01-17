@@ -67,7 +67,6 @@ function Test({ fn, expected }: TestCase) {
       data-testid={`test-${expected.name}`}
       className="p-2 border border-gray-200 rounded-md"
     >
-      <h2 className="font-bold text-lg"></h2>
       <div>
         It should return{' '}
         <code>
