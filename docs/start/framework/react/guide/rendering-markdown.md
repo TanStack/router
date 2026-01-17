@@ -256,7 +256,7 @@ export const Route = createFileRoute('/blog/')({
 function BlogIndex() {
   // Posts are sorted by published date
   const sortedPosts = allPosts.sort(
-    (a, b) => new Date(b.published).getTime() - new Date(a.published).getTime()
+    (a, b) => new Date(b.published).getTime() - new Date(a.published).getTime(),
   )
 
   return (
@@ -276,7 +276,7 @@ function BlogIndex() {
     </div>
   )
 }
-````
+```
 
 ### Rendering a Single Post
 
