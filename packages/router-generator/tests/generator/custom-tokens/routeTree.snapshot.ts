@@ -67,7 +67,7 @@ export interface FileRoutesByFullPath {
   '/blog/': typeof Blog1nd3xRoute
   '/posts/': typeof Posts1nd3xRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
-  '/posts/$postId': typeof PostsPostId1nd3xRoute
+  '/posts/$postId/': typeof PostsPostId1nd3xRoute
 }
 export interface FileRoutesByTo {
   '/': typeof R1nd3xRoute
@@ -98,7 +98,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/posts/'
     | '/posts/$postId/deep'
-    | '/posts/$postId'
+    | '/posts/$postId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -172,7 +172,7 @@ declare module '@tanstack/react-router' {
     '/posts/$postId/': {
       id: '/posts/$postId/'
       path: '/$postId'
-      fullPath: '/posts/$postId'
+      fullPath: '/posts/$postId/'
       preLoaderRoute: typeof PostsPostId1nd3xRouteImport
       parentRoute: typeof PostsR0ut3Route
     }

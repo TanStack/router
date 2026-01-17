@@ -700,9 +700,10 @@ export function isRouteNodeValidForAugmentation(
  * Infers the path for use by TS
  */
 export const inferPath = (routeNode: RouteNode): string => {
-  return routeNode.cleanedPath === '/'
-    ? routeNode.cleanedPath
-    : (routeNode.cleanedPath?.replace(/\/$/, '') ?? '')
+  if (routeNode.cleanedPath === '/') {
+    return routeNode.cleanedPath ?? ''
+  }
+  return routeNode.cleanedPath?.replace(/\/$/, '') ?? ''
 }
 
 /**
@@ -723,7 +724,14 @@ export const inferFullPath = (routeNode: RouteNode): string => {
     return '/'
   }
 
-  return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')
+  // Preserve trailing slash for index routes (routePath ends with '/')
+  // This ensures types match runtime behavior
+  const isIndexRoute = routeNode.routePath?.endsWith('/')
+  if (isIndexRoute) {
+    return fullPath
+  }
+
+  return fullPath.replace(/\/$/, '')
 }
 
 const shouldPreferIndexRoute = (

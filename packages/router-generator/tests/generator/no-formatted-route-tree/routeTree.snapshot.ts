@@ -24,7 +24,7 @@ const NestedChildRoute = NestedChildRouteImport.update({
           }as any)
 
 export interface FileRoutesByFullPath {
-'/': typeof IndexRoute,'/nested/child': typeof NestedChildRoute,'/nested': typeof NestedIndexRoute
+'/': typeof IndexRoute,'/nested/child': typeof NestedChildRoute,'/nested/': typeof NestedIndexRoute
 }
 export interface FileRoutesByTo {
 '/': typeof IndexRoute,'/nested/child': typeof NestedChildRoute,'/nested': typeof NestedIndexRoute
@@ -35,7 +35,7 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
 fileRoutesByFullPath: FileRoutesByFullPath
-fullPaths: '/'|'/nested/child'|'/nested'
+fullPaths: '/'|'/nested/child'|'/nested/'
 fileRoutesByTo: FileRoutesByTo
 to: '/'|'/nested/child'|'/nested'
 id: '__root__'|'/'|'/nested/child'|'/nested/'
@@ -57,7 +57,7 @@ declare module '@tanstack/react-router' {
 '/nested/': {
           id: '/nested/'
           path: '/nested'
-          fullPath: '/nested'
+          fullPath: '/nested/'
           preLoaderRoute: typeof NestedIndexRouteImport
           parentRoute: typeof rootRouteImport
         }

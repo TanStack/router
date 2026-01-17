@@ -42,6 +42,13 @@ test('when navigating to the root', () => {
   expectTypeOf<
     FileRoutesByPath['/posts/']['fullPath']
   >().toEqualTypeOf<'/posts/'>()
+  // Issue #6403: Index routes should have trailing slash in fullPath to match runtime
+  expectTypeOf<
+    FileRoutesByPath['/posts/$postId/']['fullPath']
+  >().toEqualTypeOf<'/posts/$postId/'>()
+  expectTypeOf<
+    FileRoutesByPath['/blog/']['fullPath']
+  >().toEqualTypeOf<'/blog/'>()
   // Verify empty string is not in fullPaths union
   expectTypeOf<''>().not.toMatchTypeOf<FileRouteTypes['fullPaths']>()
   // Verify pathless layout's fullPath is '/' (not '')
@@ -156,7 +163,7 @@ test('when navigating to the root', () => {
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
-      | '/posts/$postId'
+      | '/posts/$postId/'
       | '/settings'
       | undefined
     >()
@@ -289,7 +296,7 @@ test('when navigating a index route with search and params', () => {
     .toHaveProperty('from')
     .toEqualTypeOf<
       | '/'
-      | '/posts/$postId'
+      | '/posts/$postId/'
       | '/blog'
       | '/posts'
       | '/blog/$blogId'
@@ -395,12 +402,12 @@ test('when navigating a index route with search and params', () => {
 })
 
 test('when navigating from a index route with search and params', () => {
-  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId', undefined>)
+  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId/', undefined>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
       | '/'
-      | '/posts/$postId'
+      | '/posts/$postId/'
       | '/blog'
       | '/posts'
       | '/blog/$blogId'
@@ -416,7 +423,7 @@ test('when navigating from a index route with search and params', () => {
       | undefined
     >()
 
-  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId', undefined>)
+  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId/', undefined>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)

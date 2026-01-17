@@ -42,6 +42,13 @@ test('when navigating to the root', () => {
   expectTypeOf<
     FileRoutesByPath['/posts/']['fullPath']
   >().toEqualTypeOf<'/posts/'>()
+  // Issue #6403: Index routes should have trailing slash in fullPath to match runtime
+  expectTypeOf<
+    FileRoutesByPath['/posts/$postId/']['fullPath']
+  >().toEqualTypeOf<'/posts/$postId/'>()
+  expectTypeOf<
+    FileRoutesByPath['/blog/']['fullPath']
+  >().toEqualTypeOf<'/blog/'>()
   // Verify empty string is not in fullPaths union
   expectTypeOf<''>().not.toMatchTypeOf<FileRouteTypes['fullPaths']>()
   // Verify pathless layout's fullPath is '/' (not '')
@@ -135,8 +142,8 @@ test('when navigating to the root', () => {
       | '/blog/stats/'
       | '/posts/$postId/deep/'
       | '/posts/$postId/'
-      | '/settings'
       | '/settings/'
+      | '/settings'
       | undefined
     >()
 
@@ -156,7 +163,7 @@ test('when navigating to the root', () => {
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
-      | '/posts/$postId'
+      | '/posts/$postId/'
       | '/settings'
       | undefined
     >()
@@ -289,7 +296,7 @@ test('when navigating a index route with search and params', () => {
     .toHaveProperty('from')
     .toEqualTypeOf<
       | '/'
-      | '/posts/$postId'
+      | '/posts/$postId/'
       | '/blog'
       | '/posts'
       | '/blog/$blogId'
@@ -395,12 +402,12 @@ test('when navigating a index route with search and params', () => {
 })
 
 test('when navigating from a index route with search and params', () => {
-  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId', undefined>)
+  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId/', undefined>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
       | '/'
-      | '/posts/$postId'
+      | '/posts/$postId/'
       | '/blog'
       | '/posts'
       | '/blog/$blogId'
@@ -416,7 +423,7 @@ test('when navigating from a index route with search and params', () => {
       | undefined
     >()
 
-  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId', undefined>)
+  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId/', undefined>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
@@ -476,7 +483,6 @@ test('when using useSearch from a route with no search', () => {
       | '__root__'
       | '/'
       | '/blog'
-      | '/blog/'
       | '/posts'
       | '/blog/$slug'
       | '/blog_/$blogId'
@@ -484,6 +490,7 @@ test('when using useSearch from a route with no search', () => {
       | '/blog_/$blogId/$slug'
       | '/blog_/$blogId/$slug_/bar'
       | '/blog_/stats'
+      | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
@@ -502,7 +509,6 @@ test('when using useSearch from a route with search', () => {
       | '__root__'
       | '/'
       | '/blog'
-      | '/blog/'
       | '/posts'
       | '/blog/$slug'
       | '/blog_/$blogId'
@@ -510,6 +516,7 @@ test('when using useSearch from a route with search', () => {
       | '/blog_/$blogId/$slug'
       | '/blog_/$blogId/$slug_/bar'
       | '/blog_/stats'
+      | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
@@ -530,14 +537,14 @@ test('when using useLoaderData from a route with loaderData', () => {
       | '__root__'
       | '/'
       | '/blog'
-      | '/blog/'
       | '/posts'
+      | '/blog/$slug'
       | '/blog_/$blogId'
       | '/blog_/$blogId_/edit'
       | '/blog_/$blogId/$slug'
       | '/blog_/$blogId/$slug_/bar'
-      | '/blog/$slug'
       | '/blog_/stats'
+      | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
@@ -558,7 +565,6 @@ test('when using useLoaderDeps from a route with loaderDeps', () => {
       | '__root__'
       | '/'
       | '/blog'
-      | '/blog/'
       | '/posts'
       | '/blog/$slug'
       | '/blog_/$blogId'
@@ -566,6 +572,7 @@ test('when using useLoaderDeps from a route with loaderDeps', () => {
       | '/blog_/$blogId/$slug'
       | '/blog_/$blogId/$slug_/bar'
       | '/blog_/stats'
+      | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
@@ -586,7 +593,6 @@ test('when using useMatch from a route', () => {
       | '__root__'
       | '/'
       | '/blog'
-      | '/blog/'
       | '/posts'
       | '/blog/$slug'
       | '/blog_/$blogId'
@@ -594,6 +600,7 @@ test('when using useMatch from a route', () => {
       | '/blog_/$blogId/$slug'
       | '/blog_/$blogId/$slug_/bar'
       | '/blog_/stats'
+      | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
@@ -616,7 +623,6 @@ test('when using useParams from a route', () => {
       | '__root__'
       | '/'
       | '/blog'
-      | '/blog/'
       | '/posts'
       | '/blog/$slug'
       | '/blog_/$blogId'
@@ -624,6 +630,7 @@ test('when using useParams from a route', () => {
       | '/blog_/$blogId/$slug'
       | '/blog_/$blogId/$slug_/bar'
       | '/blog_/stats'
+      | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
@@ -644,7 +651,6 @@ test('when using useRouteContext from a route', () => {
       | '__root__'
       | '/'
       | '/blog'
-      | '/blog/'
       | '/posts'
       | '/blog/$slug'
       | '/blog_/$blogId'
@@ -652,6 +658,7 @@ test('when using useRouteContext from a route', () => {
       | '/blog_/$blogId/$slug'
       | '/blog_/$blogId/$slug_/bar'
       | '/blog_/stats'
+      | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
