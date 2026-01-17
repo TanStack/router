@@ -25,6 +25,7 @@ const prerenderConfiguration = {
       '/specialChars/search',
       '/specialChars/malformed',
       '/search-params/default',
+      '/search-params/hash',
       '/transition',
       '/users',
     ].some((p) => page.path.includes(p)),
