@@ -1,18 +1,19 @@
 import { createFileRoute } from '@tanstack/vue-router'
+import { defineComponent } from 'vue'
 import { getServerFn, postServerFn } from './-functions/normalServerFn'
-import { getServerFnCallingServerFn, postServerFnCallingServerFn } from './-functions/serverFnCallingServerFn';
-import { defineComponent } from 'vue';
+import {
+  getServerFnCallingServerFn,
+  postServerFnCallingServerFn,
+} from './-functions/serverFnCallingServerFn'
 
 const RouteComponent = defineComponent({
   setup() {
-    const loaderData = Route.useLoaderData();
+    const loaderData = Route.useLoaderData()
 
-
-  return () => <div class="p-2 m-2 grid gap-2" data-testid="method-route-component">
-      <h1 class="font-bold text-lg">
-        Server functions metadata E2E tests
-      </h1>
-     <br />
+    return () => (
+      <div class="p-2 m-2 grid gap-2" data-testid="metadata-route-component">
+        <h1 class="font-bold text-lg">Server functions metadata E2E tests</h1>
+        <br />
         <div data-testid="loader-data">
           <h3>Loader Data (SSR)</h3>
           <h4>Server Captured Metadata:</h4>
@@ -41,18 +42,18 @@ const RouteComponent = defineComponent({
             </span>
           </div>
         </div>
-  </div>
-
-  }
+      </div>
+    )
+  },
 })
 
 export const Route = createFileRoute('/function-metadata/')({
   component: RouteComponent,
   loader: async () => {
-    const normalGet = await getServerFn();
-    const normalPost = await postServerFn();
-    const nestingGet = await getServerFnCallingServerFn();
-    const nestingPost = await postServerFnCallingServerFn();
+    const normalGet = await getServerFn()
+    const normalPost = await postServerFn()
+    const nestingGet = await getServerFnCallingServerFn()
+    const nestingPost = await postServerFnCallingServerFn()
 
     return {
       normalGet,
@@ -60,6 +61,5 @@ export const Route = createFileRoute('/function-metadata/')({
       nestingGet,
       nestingPost,
     }
-  }
+  },
 })
-

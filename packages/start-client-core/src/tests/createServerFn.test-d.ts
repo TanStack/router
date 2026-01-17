@@ -2,7 +2,7 @@ import { describe, expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
 import { TSS_SERVER_FUNCTION } from '../constants'
-import type { ServerFnMeta} from '../constants';
+import type { ServerFnMeta } from '../constants'
 import type {
   Constrain,
   Register,

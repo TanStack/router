@@ -1,31 +1,32 @@
 import { Link, createFileRoute, deepEqual } from '@tanstack/vue-router'
-import { getServerFnCallingPost, postServerFnCallingGet } from './-functions/serverFnCallingServerFn'
+import {
+  getServerFnCallingPost,
+  postServerFnCallingGet,
+} from './-functions/serverFnCallingServerFn'
 import { PropType, computed, defineComponent, ref } from 'vue'
 
 const functions = {
-    getServerFnCallingPost: {
-        fn: getServerFnCallingPost,
-        expected: {
-						name: 'getServerFnCallingPost',
-            method: 'GET',
-            innerFnResult: {
-                method: 'POST'
-            }
-        }
+  getServerFnCallingPost: {
+    fn: getServerFnCallingPost,
+    expected: {
+      name: 'getServerFnCallingPost',
+      method: 'GET',
+      innerFnResult: {
+        method: 'POST',
+      },
     },
-		postServerFnCallingGet: {
-        fn: postServerFnCallingGet,
-        expected: {
-						name: 'postServerFnCallingGet',
-            method: 'POST',
-            innerFnResult: {
-                method: 'GET'
-            }
-        }
-    }
+  },
+  postServerFnCallingGet: {
+    fn: postServerFnCallingGet,
+    expected: {
+      name: 'postServerFnCallingGet',
+      method: 'POST',
+      innerFnResult: {
+        method: 'GET',
+      },
+    },
+  },
 } satisfies Record<string, TestCase>
-
-
 
 interface TestCase {
   fn: () => Promise<any>
@@ -70,9 +71,7 @@ const Test = defineComponent({
           fn returns:
           <br />
           <span data-testid={`fn-result-${props.expected.name}`}>
-            {result.value
-              ? JSON.stringify(result.value)
-              : 'Loading...'}
+            {result.value ? JSON.stringify(result.value) : 'Loading...'}
           </span>{' '}
           <span data-testid={`fn-comparison-${props.expected.name}`}>
             {comparison.value}
@@ -101,7 +100,9 @@ const RouteComponent = defineComponent({
       <div class="p-2 m-2 grid gap-2" data-testid="method-route-component">
         <h1 class="font-bold text-lg">Server functions methods E2E tests</h1>
         <div>
-          <Link class="inline" to="/factory"><h2>Go to Factory Functions and request method E2E test</h2></Link>
+          <Link class="inline" to="/factory">
+            <h2>Go to Factory Functions and request method E2E test</h2>
+          </Link>
         </div>
         {Object.entries(functions).map(([name, testCase]) => (
           <Test key={name} {...testCase} />
@@ -110,7 +111,6 @@ const RouteComponent = defineComponent({
     )
   },
 })
-
 
 export const Route = createFileRoute('/function-method/')({
   component: RouteComponent,

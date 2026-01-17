@@ -1,48 +1,52 @@
 import { Link, createFileRoute, deepEqual } from '@tanstack/react-router'
 import { useState } from 'react'
-import { getServerFnCallingPost, postServerFnCallingGet } from './-functions/serverFnCallingServerFn'
+import {
+  getServerFnCallingPost,
+  postServerFnCallingGet,
+} from './-functions/serverFnCallingServerFn'
 
 export const Route = createFileRoute('/function-method/')({
   component: RouteComponent,
 })
 
 const functions = {
-    getServerFnCallingPost: {
-        fn: getServerFnCallingPost,
-        expected: {
-						name: 'getServerFnCallingPost',
-            method: 'GET',
-            innerFnResult: {
-                method: 'POST'
-            }
-        }
+  getServerFnCallingPost: {
+    fn: getServerFnCallingPost,
+    expected: {
+      name: 'getServerFnCallingPost',
+      method: 'GET',
+      innerFnResult: {
+        method: 'POST',
+      },
     },
-		postServerFnCallingGet: {
-        fn: postServerFnCallingGet,
-        expected: {
-						name: 'postServerFnCallingGet',
-            method: 'POST',
-            innerFnResult: {
-                method: 'GET'
-            }
-        }
-    }
+  },
+  postServerFnCallingGet: {
+    fn: postServerFnCallingGet,
+    expected: {
+      name: 'postServerFnCallingGet',
+      method: 'POST',
+      innerFnResult: {
+        method: 'GET',
+      },
+    },
+  },
 } satisfies Record<string, TestCase>
 
 function RouteComponent() {
-  return <div className="p-2 m-2 grid gap-2" data-testid="method-route-component">
-      <h1 className="font-bold text-lg">
-        Server functions methods E2E tests
-      </h1>
-			<div>
-				<Link className="inline" to="/factory"><h2>Go to Factory Functions and request method E2E test</h2></Link>
-			</div>
+  return (
+    <div className="p-2 m-2 grid gap-2" data-testid="method-route-component">
+      <h1 className="font-bold text-lg">Server functions methods E2E tests</h1>
+      <div>
+        <Link className="inline" to="/factory">
+          <h2>Go to Factory Functions and request method E2E test</h2>
+        </Link>
+      </div>
       {Object.entries(functions).map(([name, testCase]) => (
         <Test key={name} {...testCase} />
       ))}
     </div>
+  )
 }
-
 
 interface TestCase {
   fn: () => Promise<any>
@@ -76,9 +80,7 @@ function Test({ fn, expected }: TestCase) {
         fn returns:
         <br />
         <span data-testid={`fn-result-${expected.name}`}>
-          {result
-            ? JSON.stringify(result)
-            : 'Loading...'}
+          {result ? JSON.stringify(result) : 'Loading...'}
         </span>{' '}
         <span data-testid={`fn-comparison-${expected.name}`}>
           {comparison()}

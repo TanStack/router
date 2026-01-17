@@ -1,33 +1,39 @@
-import { createServerFn } from "@tanstack/vue-start";
+import { createServerFn } from '@tanstack/vue-start'
 
-const postServerFn = createServerFn({ method: "POST" }).handler(({ method }) => {
+const postServerFn = createServerFn({ method: 'POST' }).handler(
+  ({ method }) => {
     return {
-        method,
+      method,
     }
+  },
+)
+
+const getServerFn = createServerFn({ method: 'GET' }).handler(({ method }) => {
+  return {
+    method,
+  }
 })
 
-const getServerFn = createServerFn({ method: "GET" }).handler(({ method }) => {
-    return {
-        method,
-    }
-})
-
-export const getServerFnCallingPost = createServerFn({ method: "GET" }).handler(async ({ method }) => {
-    const innerFnResult = await postServerFn({});
+export const getServerFnCallingPost = createServerFn({ method: 'GET' }).handler(
+  async ({ method }) => {
+    const innerFnResult = await postServerFn({})
 
     return {
-        name: 'getServerFnCallingPost',
-        method,
-        innerFnResult,
+      name: 'getServerFnCallingPost',
+      method,
+      innerFnResult,
     }
-})
+  },
+)
 
-export const postServerFnCallingGet = createServerFn({ method: "POST" }).handler(async ({ method }) => {
-    const innerFnResult = await getServerFn({});
+export const postServerFnCallingGet = createServerFn({
+  method: 'POST',
+}).handler(async ({ method }) => {
+  const innerFnResult = await getServerFn({})
 
-    return {
-        name: 'postServerFnCallingGet',
-        method,
-        innerFnResult,
-    }
+  return {
+    name: 'postServerFnCallingGet',
+    method,
+    innerFnResult,
+  }
 })

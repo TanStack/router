@@ -105,9 +105,7 @@ function Home() {
           </Link>
         </li>
         <li>
-          <Link to="/function-method">
-            Server Functions method E2E tests
-          </Link>
+          <Link to="/function-method">Server Functions method E2E tests</Link>
         </li>
         <li>
           <Link to="/function-metadata">

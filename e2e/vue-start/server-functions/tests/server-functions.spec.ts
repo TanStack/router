@@ -496,8 +496,9 @@ test('redirect in server function called in query during SSR', async ({
   expect(page.url()).toContain('/redirect-test-ssr/target')
 })
 
-
-test('server function is called with correct method option', async ({ page }) => {
+test('server function is called with correct method option', async ({
+  page,
+}) => {
   await page.goto('/function-method', { waitUntil: 'networkidle' })
 
   await expect(page.getByTestId('method-route-component')).toBeInViewport()
@@ -536,7 +537,9 @@ test('server function receives serverFnMeta in options', async ({ page }) => {
   // 1. Server functions receive `serverFnMeta` with full { id, name, filename }
   // 2. No1 works even when the said server function is called from another server function
 
-  await page.goto('/function-metadata', { waitUntil: 'networkidle' });
+  await page.goto('/function-metadata', { waitUntil: 'networkidle' })
+
+  await expect(page.getByTestId('metadata-route-component')).toBeInViewport()
 
   // Test for no1
   const loaderNormalGet = await page
@@ -547,7 +550,7 @@ test('server function receives serverFnMeta in options', async ({ page }) => {
     .textContent()
 
   // stringified metadata should not be empty string
-  expect(loaderNormalGet).toBeTruthy();
+  expect(loaderNormalGet).toBeTruthy()
   // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
   const normalGetMetadata = JSON.parse(loaderNormalGet!)
   expect(normalGetMetadata).toHaveProperty('id')
@@ -561,7 +564,7 @@ test('server function receives serverFnMeta in options', async ({ page }) => {
   expect(normalGetMetadata.filename.length).toBeGreaterThan(0)
 
   // stringified metadata should not be empty string
-  expect(loaderNormalPost).toBeTruthy();
+  expect(loaderNormalPost).toBeTruthy()
   // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
   const normalPostMetadata = JSON.parse(loaderNormalPost!)
   expect(normalPostMetadata).toHaveProperty('id')
