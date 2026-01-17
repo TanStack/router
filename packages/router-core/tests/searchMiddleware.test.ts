@@ -9,36 +9,39 @@ describe('searchMiddleware - mutation prevention', () => {
 
       const middleware = retainSearchParams(['id', 'filter'])
 
+      // next() returns object without 'id' and 'filter' keys
+      // so retainSearchParams should add them from search
       const result = middleware({
         search: originalSearch,
-        next: (search) => ({ id: search.id, filter: '', page: '' }),
+        next: () => ({ page: 'new' }) as any,
       })
 
       expect(originalSearch).toEqual(originalCopy)
       expect(originalSearch).toEqual({ id: '1', filter: 'active', page: '2' })
-      expect(result).toEqual({ id: '1', filter: 'active', page: '' })
+      expect(result).toEqual({ id: '1', filter: 'active', page: 'new' })
       expect(result).not.toBe(originalSearch)
     })
 
     test('should work correctly when same reference is reused', () => {
       const sharedSearch = { id: '1', filter: 'active', page: '1' }
-      const middleware = retainSearchParams(['id'])
+      const middleware = retainSearchParams(['id', 'filter'])
 
+      // next() returns object without 'id' and 'filter' keys
       const result1 = middleware({
         search: sharedSearch,
-        next: () => ({ id: '', filter: '', page: '' }),
+        next: () => ({ page: '2' }) as any,
       })
 
       expect(sharedSearch).toEqual({ id: '1', filter: 'active', page: '1' })
-      expect(result1).toEqual({ id: '1', filter: '', page: '' })
+      expect(result1).toEqual({ id: '1', filter: 'active', page: '2' })
 
       const result2 = middleware({
         search: sharedSearch,
-        next: () => ({ id: '', filter: '', page: '' }),
+        next: () => ({ page: '3' }) as any,
       })
 
       expect(sharedSearch).toEqual({ id: '1', filter: 'active', page: '1' })
-      expect(result2).toEqual({ id: '1', filter: '', page: '' })
+      expect(result2).toEqual({ id: '1', filter: 'active', page: '3' })
     })
 
     test('should handle retainSearchParams(true) correctly', () => {
@@ -49,7 +52,7 @@ describe('searchMiddleware - mutation prevention', () => {
 
       const result = middleware({
         search: originalSearch,
-        next: () => ({ id: '2', filter: '' }),
+        next: () => ({ id: '2' }) as any,
       })
 
       expect(originalSearch).toEqual(originalCopy)
