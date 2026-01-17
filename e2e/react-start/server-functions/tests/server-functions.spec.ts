@@ -884,7 +884,7 @@ test('function middleware receives serverFnMeta in options', async ({
   )
 })
 
-test('methods', async ({ page }) => {
+test('server function is called with correct method option', async ({ page }) => {
   await page.goto('/function-method', { waitUntil: 'networkidle' })
 
   await expect(page.getByTestId('method-route-component')).toBeInViewport()

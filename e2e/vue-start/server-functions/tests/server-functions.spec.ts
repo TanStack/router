@@ -495,3 +495,138 @@ test('redirect in server function called in query during SSR', async ({
   await expect(page.getByTestId('redirect-target-ssr')).toBeVisible()
   expect(page.url()).toContain('/redirect-test-ssr/target')
 })
+
+
+test('server function is called with correct method option', async ({ page }) => {
+  await page.goto('/function-method', { waitUntil: 'networkidle' })
+
+  await expect(page.getByTestId('method-route-component')).toBeInViewport()
+
+  const buttons = await page
+    .locator('[data-testid^="btn-fn-"]')
+    .elementHandles()
+  for (const button of buttons) {
+    const testId = await button.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('Button is missing data-testid')
+    }
+
+    const suffix = testId.replace('btn-fn-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-fn-result-${suffix}`).textContent()) ||
+      ''
+    expect(expected).not.toBe('')
+
+    await button.click()
+
+    await expect(page.getByTestId(`fn-result-${suffix}`)).toContainText(
+      expected,
+    )
+
+    await expect(page.getByTestId(`fn-comparison-${suffix}`)).toContainText(
+      'equal',
+    )
+  }
+})
+
+test('server function receives serverFnMeta in options', async ({ page }) => {
+  // This test verifies that:
+  // 1. Server functions receive `serverFnMeta` with full { id, name, filename }
+  // 2. No1 works even when the said server function is called from another server function
+
+  await page.goto('/function-metadata', { waitUntil: 'networkidle' });
+
+  // Test for no1
+  const loaderNormalGet = await page
+    .getByTestId('loader-normal-get-function-metadata')
+    .textContent()
+  const loaderNormalPost = await page
+    .getByTestId('loader-normal-post-function-metadata')
+    .textContent()
+
+  // stringified metadata should not be empty string
+  expect(loaderNormalGet).toBeTruthy();
+  // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
+  const normalGetMetadata = JSON.parse(loaderNormalGet!)
+  expect(normalGetMetadata).toHaveProperty('id')
+  expect(normalGetMetadata).toHaveProperty('name')
+  expect(normalGetMetadata).toHaveProperty('filename')
+  expect(typeof normalGetMetadata.id).toBe('string')
+  expect(normalGetMetadata.id.length).toBeGreaterThan(0)
+  expect(typeof normalGetMetadata.name).toBe('string')
+  expect(normalGetMetadata.name.length).toBeGreaterThan(0)
+  expect(typeof normalGetMetadata.filename).toBe('string')
+  expect(normalGetMetadata.filename.length).toBeGreaterThan(0)
+
+  // stringified metadata should not be empty string
+  expect(loaderNormalPost).toBeTruthy();
+  // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
+  const normalPostMetadata = JSON.parse(loaderNormalPost!)
+  expect(normalPostMetadata).toHaveProperty('id')
+  expect(normalPostMetadata).toHaveProperty('name')
+  expect(normalPostMetadata).toHaveProperty('filename')
+  expect(typeof normalPostMetadata.id).toBe('string')
+  expect(normalPostMetadata.id.length).toBeGreaterThan(0)
+  expect(typeof normalPostMetadata.name).toBe('string')
+  expect(normalPostMetadata.name.length).toBeGreaterThan(0)
+  expect(typeof normalPostMetadata.filename).toBe('string')
+  expect(normalPostMetadata.filename.length).toBeGreaterThan(0)
+
+  // Test for no2
+  const loaderNestingGet = await page
+    .getByTestId('loader-nesting-get-function-metadata')
+    .textContent()
+  const loaderNestingPost = await page
+    .getByTestId('loader-nesting-post-function-metadata')
+    .textContent()
+
+  // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
+  const nestingGetMetadata = JSON.parse(loaderNestingGet!)
+  expect(nestingGetMetadata).toHaveProperty('meta.id')
+  expect(nestingGetMetadata).toHaveProperty('meta.name')
+  expect(nestingGetMetadata).toHaveProperty('meta.filename')
+  expect(typeof nestingGetMetadata.meta.id).toBe('string')
+  expect(nestingGetMetadata.meta.id.length).toBeGreaterThan(0)
+  expect(typeof nestingGetMetadata.meta.name).toBe('string')
+  expect(nestingGetMetadata.meta.name.length).toBeGreaterThan(0)
+  expect(typeof nestingGetMetadata.meta.filename).toBe('string')
+  expect(nestingGetMetadata.meta.filename.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata).toHaveProperty('inner.get.id')
+  expect(nestingGetMetadata).toHaveProperty('inner.get.name')
+  expect(nestingGetMetadata).toHaveProperty('inner.get.filename')
+  expect(nestingGetMetadata.inner.get.id.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata.inner.get.name.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata.inner.get.filename.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata).toHaveProperty('inner.post.id')
+  expect(nestingGetMetadata).toHaveProperty('inner.post.name')
+  expect(nestingGetMetadata).toHaveProperty('inner.post.filename')
+  expect(nestingGetMetadata.inner.post.id.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata.inner.post.name.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata.inner.post.filename.length).toBeGreaterThan(0)
+
+  // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
+  const nestingPostMetadata = JSON.parse(loaderNestingPost!)
+  expect(nestingPostMetadata).toHaveProperty('meta.id')
+  expect(nestingPostMetadata).toHaveProperty('meta.name')
+  expect(nestingPostMetadata).toHaveProperty('meta.filename')
+  expect(typeof nestingPostMetadata.meta.id).toBe('string')
+  expect(nestingPostMetadata.meta.id.length).toBeGreaterThan(0)
+  expect(typeof nestingPostMetadata.meta.name).toBe('string')
+  expect(nestingPostMetadata.meta.name.length).toBeGreaterThan(0)
+  expect(typeof nestingPostMetadata.meta.filename).toBe('string')
+  expect(nestingPostMetadata.meta.filename.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata).toHaveProperty('inner.get.id')
+  expect(nestingPostMetadata).toHaveProperty('inner.get.name')
+  expect(nestingPostMetadata).toHaveProperty('inner.get.filename')
+  expect(nestingPostMetadata.inner.get.id.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata.inner.get.name.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata.inner.get.filename.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata).toHaveProperty('inner.post.id')
+  expect(nestingPostMetadata).toHaveProperty('inner.post.name')
+  expect(nestingPostMetadata).toHaveProperty('inner.post.filename')
+  expect(nestingPostMetadata.inner.post.id.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata.inner.post.name.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata.inner.post.filename.length).toBeGreaterThan(0)
+})
