@@ -240,8 +240,6 @@ console.log('Hello, world!')
 ```
 ````
 
-````
-
 ### Using the Collection
 
 Access your posts through the generated collection:
