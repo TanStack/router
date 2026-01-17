@@ -409,6 +409,7 @@ export interface ServerFnCtx<
   TInputValidator,
 > {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
+  serverFnMeta: ServerFnMeta
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
   method: TMethod
   signal: AbortSignal

@@ -2,6 +2,7 @@ import { describe, expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
 import { TSS_SERVER_FUNCTION } from '../constants'
+import type { ServerFnMeta} from '../constants';
 import type {
   Constrain,
   Register,
@@ -22,6 +23,7 @@ test('createServerFn without middleware', () => {
       data: undefined
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 })
@@ -45,6 +47,7 @@ test('createServerFn with validator function', () => {
       }
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -72,6 +75,7 @@ test('createServerFn with async validator function', () => {
       data: string
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -101,6 +105,7 @@ test('createServerFn with validator with parse method', () => {
       data: string
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -130,6 +135,7 @@ test('createServerFn with async validator with parse method', () => {
       data: string
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -176,6 +182,7 @@ test('createServerFn with standard validator', () => {
       data: string
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -223,6 +230,7 @@ test('createServerFn with async standard validator', () => {
       data: string
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -286,6 +294,7 @@ test('createServerFn with middleware and context', () => {
       data: undefined
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 })
@@ -329,6 +338,7 @@ describe('createServerFn with middleware and validator', () => {
           }
           method: 'GET'
           signal: AbortSignal
+          serverFnMeta: ServerFnMeta
         }>()
 
         return 'some-data' as const
@@ -426,6 +436,7 @@ test('createServerFn where validator is a primitive', () => {
         data: 'c'
         method: 'GET'
         signal: AbortSignal
+        serverFnMeta: ServerFnMeta
       }>()
     })
 })
@@ -439,6 +450,7 @@ test('createServerFn where validator is optional if object is optional', () => {
         data: 'c' | undefined
         method: 'GET'
         signal: AbortSignal
+        serverFnMeta: ServerFnMeta
       }>()
     })
 
@@ -461,6 +473,7 @@ test('createServerFn where data is optional if there is no validator', () => {
       data: undefined
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -653,6 +666,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
       data: undefined
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -674,6 +688,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
       data: undefined
       method: 'POST'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -696,6 +711,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
       data: undefined
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 })
@@ -729,6 +745,7 @@ test('compose middlewares and server function factories', () => {
       data: undefined
       method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 })

@@ -240,7 +240,7 @@ function RouteComponent() {
   return (
     <div className="p-2 m-2 grid gap-2" data-testid="factory-route-component">
       <h1 className="font-bold text-lg">
-        Server functions middleware E2E tests
+        Server functions factory E2E tests
       </h1>
       {Object.entries(functions).map(([name, testCase]) => (
         <Test key={name} {...testCase} />

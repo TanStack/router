@@ -104,6 +104,16 @@ function Home() {
             Server Functions Middleware Unhandled Exception E2E tests
           </Link>
         </li>
+        <li>
+          <Link to="/function-method">
+            Server Functions method E2E tests
+          </Link>
+        </li>
+        <li>
+          <Link to="/function-metadata">
+            Server Functions metadata E2E tests
+          </Link>
+        </li>
       </ul>
     </div>
   )
