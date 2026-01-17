@@ -50,6 +50,7 @@ export const handleServerAction = async ({
   request.signal.addEventListener('abort', abort)
 
   const method = request.method
+  const methodUpper = method.toUpperCase()
   const methodLower = method.toLowerCase()
   const url = new URL(request.url)
 
@@ -90,6 +91,7 @@ export const handleServerAction = async ({
           const params = {
             context,
             data: formData,
+            method: methodUpper,
           }
           if (typeof serializedContext === 'string') {
             try {
@@ -130,6 +132,7 @@ export const handleServerAction = async ({
             ? parsePayload(JSON.parse(payloadParam))
             : {}
           payload.context = safeObjectMerge(context, payload.context)
+          payload.method = methodUpper
           // Send it through!
           return await action(payload, signal)
         }
@@ -145,6 +148,7 @@ export const handleServerAction = async ({
 
         const payload = jsonPayload ? parsePayload(jsonPayload) : {}
         payload.context = safeObjectMerge(payload.context, context)
+        payload.method = methodUpper
         return await action(payload, signal)
       })()
 

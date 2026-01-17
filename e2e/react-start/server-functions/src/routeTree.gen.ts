@@ -29,6 +29,8 @@ import { Route as RedirectTestIndexRouteImport } from './routes/redirect-test/in
 import { Route as RedirectTestSsrIndexRouteImport } from './routes/redirect-test-ssr/index'
 import { Route as PrimitivesIndexRouteImport } from './routes/primitives/index'
 import { Route as MiddlewareIndexRouteImport } from './routes/middleware/index'
+import { Route as FunctionMethodIndexRouteImport } from './routes/function-method/index'
+import { Route as FunctionMetadataIndexRouteImport } from './routes/function-metadata/index'
 import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-redirect/index'
 import { Route as FactoryIndexRouteImport } from './routes/factory/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
@@ -146,6 +148,16 @@ const PrimitivesIndexRoute = PrimitivesIndexRouteImport.update({
 const MiddlewareIndexRoute = MiddlewareIndexRouteImport.update({
   id: '/middleware/',
   path: '/middleware/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FunctionMethodIndexRoute = FunctionMethodIndexRouteImport.update({
+  id: '/function-method/',
+  path: '/function-method/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FunctionMetadataIndexRoute = FunctionMetadataIndexRouteImport.update({
+  id: '/function-metadata/',
+  path: '/function-metadata/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FormdataRedirectIndexRoute = FormdataRedirectIndexRouteImport.update({
@@ -280,6 +292,8 @@ export interface FileRoutesByFullPath {
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
+  '/function-metadata': typeof FunctionMetadataIndexRoute
+  '/function-method': typeof FunctionMethodIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
   '/primitives': typeof PrimitivesIndexRoute
   '/redirect-test-ssr': typeof RedirectTestSsrIndexRoute
@@ -320,6 +334,8 @@ export interface FileRoutesByTo {
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
+  '/function-metadata': typeof FunctionMetadataIndexRoute
+  '/function-method': typeof FunctionMethodIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
   '/primitives': typeof PrimitivesIndexRoute
   '/redirect-test-ssr': typeof RedirectTestSsrIndexRoute
@@ -361,6 +377,8 @@ export interface FileRoutesById {
   '/cookies/': typeof CookiesIndexRoute
   '/factory/': typeof FactoryIndexRoute
   '/formdata-redirect/': typeof FormdataRedirectIndexRoute
+  '/function-metadata/': typeof FunctionMetadataIndexRoute
+  '/function-method/': typeof FunctionMethodIndexRoute
   '/middleware/': typeof MiddlewareIndexRoute
   '/primitives/': typeof PrimitivesIndexRoute
   '/redirect-test-ssr/': typeof RedirectTestSsrIndexRoute
@@ -403,6 +421,8 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/factory'
     | '/formdata-redirect'
+    | '/function-metadata'
+    | '/function-method'
     | '/middleware'
     | '/primitives'
     | '/redirect-test-ssr'
@@ -443,6 +463,8 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/factory'
     | '/formdata-redirect'
+    | '/function-metadata'
+    | '/function-method'
     | '/middleware'
     | '/primitives'
     | '/redirect-test-ssr'
@@ -483,6 +505,8 @@ export interface FileRouteTypes {
     | '/cookies/'
     | '/factory/'
     | '/formdata-redirect/'
+    | '/function-metadata/'
+    | '/function-method/'
     | '/middleware/'
     | '/primitives/'
     | '/redirect-test-ssr/'
@@ -524,6 +548,8 @@ export interface RootRouteChildren {
   CookiesIndexRoute: typeof CookiesIndexRoute
   FactoryIndexRoute: typeof FactoryIndexRoute
   FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
+  FunctionMetadataIndexRoute: typeof FunctionMetadataIndexRoute
+  FunctionMethodIndexRoute: typeof FunctionMethodIndexRoute
   MiddlewareIndexRoute: typeof MiddlewareIndexRoute
   PrimitivesIndexRoute: typeof PrimitivesIndexRoute
   RedirectTestSsrIndexRoute: typeof RedirectTestSsrIndexRoute
@@ -673,6 +699,20 @@ declare module '@tanstack/react-router' {
       path: '/middleware'
       fullPath: '/middleware'
       preLoaderRoute: typeof MiddlewareIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/function-method/': {
+      id: '/function-method/'
+      path: '/function-method'
+      fullPath: '/function-method'
+      preLoaderRoute: typeof FunctionMethodIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/function-metadata/': {
+      id: '/function-metadata/'
+      path: '/function-metadata'
+      fullPath: '/function-metadata'
+      preLoaderRoute: typeof FunctionMetadataIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/formdata-redirect/': {
@@ -836,6 +876,8 @@ const rootRouteChildren: RootRouteChildren = {
   CookiesIndexRoute: CookiesIndexRoute,
   FactoryIndexRoute: FactoryIndexRoute,
   FormdataRedirectIndexRoute: FormdataRedirectIndexRoute,
+  FunctionMetadataIndexRoute: FunctionMetadataIndexRoute,
+  FunctionMethodIndexRoute: FunctionMethodIndexRoute,
   MiddlewareIndexRoute: MiddlewareIndexRoute,
   PrimitivesIndexRoute: PrimitivesIndexRoute,
   RedirectTestSsrIndexRoute: RedirectTestSsrIndexRoute,
