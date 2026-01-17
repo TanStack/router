@@ -583,6 +583,27 @@ const executeHead = (
   })
 }
 
+const executeAllHeadFns = async (inner: InnerLoadContext) => {
+  // Serially execute head functions for all matches
+  // Each execution is wrapped in try-catch to ensure all heads run even if one fails
+  for (const match of inner.matches) {
+    const { id: matchId, routeId } = match
+    const route = inner.router.looseRoutesById[routeId]!
+    try {
+      const headResult = executeHead(inner, matchId, route)
+      if (headResult) {
+        const head = await headResult
+        inner.updateMatch(matchId, (prev) => ({
+          ...prev,
+          ...head,
+        }))
+      }
+    } catch (err) {
+      console.error(`Error executing head for route ${routeId}:`, err)
+    }
+  }
+}
+
 const getLoaderContext = (
   inner: InnerLoadContext,
   matchId: string,
@@ -824,17 +845,21 @@ const loadRouteMatch = async (
       } else if (loaderShouldRunAsync && !inner.sync) {
         loaderIsRunningAsync = true
         ;(async () => {
+          // Capture match reference before try block, because redirect navigation removes it
+          const matchForCleanup = inner.router.getMatch(matchId)!
           try {
             await runLoader(inner, matchId, index, route)
             commitContext()
-            const match = inner.router.getMatch(matchId)!
-            match._nonReactive.loaderPromise?.resolve()
-            match._nonReactive.loadPromise?.resolve()
-            match._nonReactive.loaderPromise = undefined
           } catch (err) {
             if (isRedirect(err)) {
               await inner.router.navigate(err.options)
             }
+          } finally {
+            // Always resolve promises to allow Promise.allSettled to complete
+            // Use captured reference since navigation might have removed the match
+            matchForCleanup._nonReactive.loaderPromise?.resolve()
+            matchForCleanup._nonReactive.loadPromise?.resolve()
+            matchForCleanup._nonReactive.loaderPromise = undefined
           }
         })()
       } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
@@ -928,24 +953,33 @@ export async function loadMatches(arg: {
       }
     }
 
-    // serially execute head functions after all loaders have completed (successfully or not)
-    // Each head execution is wrapped in try-catch to ensure all heads run even if one fails
-    for (const match of inner.matches) {
-      const { id: matchId, routeId } = match
-      const route = inner.router.looseRoutesById[routeId]!
-      try {
-        const headResult = executeHead(inner, matchId, route)
-        if (headResult) {
-          const head = await headResult
-          inner.updateMatch(matchId, (prev) => ({
-            ...prev,
-            ...head,
-          }))
+    // Execute head functions after all loaders have completed (successfully or not)
+    await executeAllHeadFns(inner)
+
+    // Detect if any async loaders are running and schedule re-execution of all head() functions
+    // This ensures head() functions get fresh loaderData after async loaders complete
+    const asyncLoaderPromises = inner.matches
+      .map((match) => {
+        const currentMatch = inner.router.getMatch(match.id)
+        return currentMatch?._nonReactive.loaderPromise
+      })
+      .filter(Boolean)
+
+    if (asyncLoaderPromises.length > 0) {
+      // Schedule re-execution after all async loaders complete (non-blocking)
+      // Use allSettled to handle both successful and failed loaders
+      const rerunPromise: Promise<void> = Promise.allSettled(
+        asyncLoaderPromises,
+      ).then(async () => {
+        // Only execute if this is still the latest scheduled re-run
+        // This handles both:
+        // 1. Navigation to a different location
+        // 2. Route invalidation on the same location (new loader dispatch)
+        if (inner.router.latestHeadRerunPromise === rerunPromise) {
+          await executeAllHeadFns(inner)
         }
-      } catch (err) {
-        // Log error but continue executing other head functions
-        console.error(`Error executing head for route ${routeId}:`, err)
-      }
+      })
+      inner.router.latestHeadRerunPromise = rerunPromise
     }
 
     // Throw notFound after head execution

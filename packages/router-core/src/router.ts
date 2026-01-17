@@ -899,6 +899,15 @@ export class RouterCore<
   viewTransitionPromise?: ControlledPromise<true>
   isScrollRestoring = false
   isScrollRestorationSetup = false
+  /**
+   * Internal: Tracks the latest scheduled head() re-run promise.
+   * Used to detect when a head re-run has been superseded by a newer one.
+   *
+   * When async loaders complete, we schedule a head re-run. If a new navigation
+   * or invalidation starts before the re-run executes, a new promise is assigned.
+   * The old re-run checks if it's still the latest before executing.
+   */
+  latestHeadRerunPromise?: Promise<void>
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -2195,6 +2204,7 @@ export class RouterCore<
             onReady: async () => {
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
+                // eslint-disable-next-line @typescript-eslint/require-await
                 this.startViewTransition(async () => {
                   // this.viewTransitionPromise = createControlledPromise<true>()
 
