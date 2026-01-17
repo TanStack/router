@@ -1,5 +1,6 @@
 import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
 import invariant from 'tiny-invariant'
+import { decodePath } from '../utils'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
@@ -347,4 +348,23 @@ export function getOrigin(request: Request) {
     return new URL(request.url).origin
   } catch {}
   return 'http://localhost'
+}
+
+// server and browser can decode/encode characters differently in paths and search params.
+// Server generally strictly follows the WHATWG URL Standard, while browsers may differ for legacy reasons.
+// for example, in paths "|" is not encoded on the server but is encoded on chromium (and not on firefox) while "대" is encoded on both sides.
+// Another anomaly is that in Node new URLSearchParams and new URL also decode/encode characters differently.
+// new URLSearchParams() encodes "|" while new URL() does not, and in this instance
+// chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
+export function getNormalizedURL(url: string | URL, base?: string | URL) {
+  const rawUrl = new URL(url, base)
+  const decodedPathname = decodePath(rawUrl.pathname)
+  const searchParams = new URLSearchParams(rawUrl.search)
+  const normalizedHref =
+    decodedPathname +
+    (searchParams.size > 0 ? '?' : '') +
+    searchParams.toString() +
+    rawUrl.hash
+
+  return new URL(normalizedHref, rawUrl.origin)
 }

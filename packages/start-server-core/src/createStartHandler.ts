@@ -6,13 +6,13 @@ import {
   safeObjectMerge,
 } from '@tanstack/start-client-core'
 import {
-  decodePath,
   executeRewriteInput,
   isRedirect,
   isResolvedRedirect,
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
+  getNormalizedURL,
   getOrigin,
 } from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
@@ -217,25 +217,10 @@ export function createStartHandler<TRegister = Register>(
     let cbWillCleanup = false as boolean
 
     try {
-      const origin = getOrigin(request)
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
-      // server and browser can decode/encode characters differently in paths and search params.
-      // Server generally strictly follows the WHATWG URL Standard, while browsers may differ for legacy reasons.
-      // for example, in paths "|" is not encoded on the server but is encoded on chromium (and not on firefox) while "대" is encoded on both sides.
-      // Another anomaly is that in Node new URLSearchParams and new URL also decode/encode characters differently.
-      // new URLSearchParams() encodes "|" while new URL() does not, and in this instance
-      // chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
-      const rawUrl = new URL(request.url, origin)
-      const decodedPathname = decodePath(rawUrl.pathname)
-      const searchParams = new URLSearchParams(rawUrl.search)
-      const normalizedHref =
-        decodedPathname +
-        (searchParams.size > 0 ? '?' : '') +
-        searchParams.toString() +
-        rawUrl.hash
-
-      const url = new URL(normalizedHref, rawUrl.origin)
+      const url = getNormalizedURL(request.url)
       const href = url.href.replace(url.origin, '')
+      const origin = getOrigin(request)
 
       const entries = await getEntries()
       const startOptions: AnyStartInstanceOptions =
