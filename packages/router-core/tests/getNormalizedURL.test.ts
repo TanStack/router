@@ -18,9 +18,51 @@ describe('getNormalizedURL', () => {
     expect(new URL(url1).search).not.toBe(new URL(url2).search)
   })
 
-  test('should treat encoded URL specific characters correctly', () => {
-    const url = 'https://example.com/ab%3F|%23abc/path?query=%EB%8C%80|#hash'
-    const normalizedUrl = getNormalizedURL(url)
-    expect(normalizedUrl.pathname).toBe('/ab%3F|%23abc/path')
-  })
+  const testCases = [
+    {
+      url: 'https://example.com/%3Fstart?query=value',
+      expectedPathName: '/%3Fstart',
+      expectedSearchParams: '?query=value',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/end%3F?query=value',
+      expectedPathName: '/end%3F',
+      expectedSearchParams: '?query=value',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/%23?query=value',
+      expectedPathName: '/%23',
+      expectedSearchParams: '?query=value',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/a%3Fb%3Fc%23d?query=value',
+      expectedPathName: '/a%3Fb%3Fc%23d',
+      expectedSearchParams: '?query=value',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/path?query=value#section%3Fpart',
+      expectedPathName: '/path',
+      expectedSearchParams: '?query=value',
+      expectedHash: '#section%3Fpart',
+    },
+    {
+      url: 'https://example.com/start%3Fmiddle%23end?key=value%23part&other=%3Fdata#section%3Fpart',
+      expectedPathName: '/start%3Fmiddle%23end',
+      expectedSearchParams: '?key=value%23part&other=%3Fdata',
+      expectedHash: '#section%3Fpart',
+    },
+  ]
+  test.each(testCases)(
+    'should treat encoded URL specific characters correctly',
+    ({ url, expectedPathName, expectedHash, expectedSearchParams }) => {
+      const normalizedUrl = getNormalizedURL(url)
+      expect(normalizedUrl.pathname).toBe(expectedPathName)
+      expect(normalizedUrl.search).toBe(expectedSearchParams)
+      expect(normalizedUrl.hash).toBe(expectedHash)
+    },
+  )
 })
