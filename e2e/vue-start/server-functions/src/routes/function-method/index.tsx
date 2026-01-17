@@ -4,7 +4,7 @@ import {
   getServerFnCallingPost,
   postServerFnCallingGet,
 } from './-functions/serverFnCallingServerFn'
-import type { PropType} from 'vue';
+import type { PropType } from 'vue'
 
 const functions = {
   getServerFnCallingPost: {
