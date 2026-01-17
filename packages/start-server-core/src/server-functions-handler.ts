@@ -50,7 +50,7 @@ export const handleServerAction = async ({
   request.signal.addEventListener('abort', abort)
 
   const method = request.method
-  const methodUpper = method.toUpperCase();
+  const methodUpper = method.toUpperCase()
   const methodLower = method.toLowerCase()
   const url = new URL(request.url)
 
