@@ -187,6 +187,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         }
 
         const assetContext = {
+          ssr: router.options.ssr,
           matches: router.state.matches,
           match,
           params: match.params,

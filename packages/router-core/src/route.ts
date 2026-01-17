@@ -1141,6 +1141,9 @@ type AssetFnContextOptions<
   in out TBeforeLoadFn,
   in out TLoaderDeps,
 > = {
+  ssr?: {
+    nonce?: string
+  }
   matches: Array<
     RouteMatch<
       TRouteId,
@@ -1332,7 +1335,7 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => Awaitable<Record<string, string>>
+  ) => Awaitable<Record<string, string> | undefined>
   head?: (
     ctx: AssetFnContextOptions<
       TRouteId,

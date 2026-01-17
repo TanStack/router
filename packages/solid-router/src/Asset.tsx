@@ -17,7 +17,7 @@ export function Asset({
     case 'link':
       return <Link {...attrs} />
     case 'style':
-      return <Style {...attrs} innerHTML={children} />
+      return <Style {...attrs}>{children}</Style>
     case 'script':
       return <Script attrs={attrs}>{children}</Script>
     default:
