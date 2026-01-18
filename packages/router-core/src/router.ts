@@ -138,8 +138,7 @@ export type DefaultRemountDepsFn<TRouteTree extends AnyRoute> = (
 
 export interface DefaultRouterOptionsExtensions {}
 
-export interface RouterOptionsExtensions
-  extends DefaultRouterOptionsExtensions {}
+export interface RouterOptionsExtensions extends DefaultRouterOptionsExtensions {}
 
 export type SSROption = boolean | 'data-only'
 

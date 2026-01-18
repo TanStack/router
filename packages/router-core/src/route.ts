@@ -1122,7 +1122,9 @@ export interface BeforeLoadContextOptions<
   in out TRouteContextFn,
   in out TServerMiddlewares,
   in out THandlers,
-> extends ContextOptions<TParentRoute, TParams>,
+>
+  extends
+    ContextOptions<TParentRoute, TParams>,
     FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
     BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>
@@ -1185,8 +1187,7 @@ export interface DefaultUpdatableRouteOptionsExtensions {
   pendingComponent?: unknown
 }
 
-export interface UpdatableRouteOptionsExtensions
-  extends DefaultUpdatableRouteOptionsExtensions {}
+export interface UpdatableRouteOptionsExtensions extends DefaultUpdatableRouteOptionsExtensions {}
 
 export interface UpdatableRouteOptions<
   in out TParentRoute extends AnyRoute,
@@ -1199,8 +1200,8 @@ export interface UpdatableRouteOptions<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TBeforeLoadFn,
-> extends UpdatableStaticRouteOption,
-    UpdatableRouteOptionsExtensions {
+>
+  extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
   /**
    * Options to control route matching behavior with runtime code.
    *
@@ -1447,8 +1448,7 @@ export interface DefaultRootRouteOptionsExtensions {
   shellComponent?: unknown
 }
 
-export interface RootRouteOptionsExtensions
-  extends DefaultRootRouteOptionsExtensions {}
+export interface RootRouteOptionsExtensions extends DefaultRootRouteOptionsExtensions {}
 
 export interface RootRouteOptions<
   TRegister = unknown,
@@ -1461,7 +1461,9 @@ export interface RootRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
-> extends Omit<
+>
+  extends
+    Omit<
       RouteOptions<
         TRegister,
         any, // TParentRoute
@@ -1965,25 +1967,25 @@ export interface RootRoute<
   in out TServerMiddlewares = unknown,
   in out THandlers = undefined,
 > extends Route<
-    TRegister,
-    any, // TParentRoute
-    '/', // TPath
-    '/', // TFullPath
-    string, // TCustomId
-    RootRouteId, // TId
-    TSearchValidator, // TSearchValidator
-    {}, // TParams
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren, // TChildren
-    TFileRouteTypes,
-    TSSR,
-    TServerMiddlewares,
-    THandlers
-  > {}
+  TRegister,
+  any, // TParentRoute
+  '/', // TPath
+  '/', // TFullPath
+  string, // TCustomId
+  RootRouteId, // TId
+  TSearchValidator, // TSearchValidator
+  {}, // TParams
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren, // TChildren
+  TFileRouteTypes,
+  TSSR,
+  TServerMiddlewares,
+  THandlers
+> {}
 
 export class BaseRootRoute<
   in out TRegister = Register,
