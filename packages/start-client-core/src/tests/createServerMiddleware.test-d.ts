@@ -1,7 +1,7 @@
 import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import type { RequestServerNextFn } from '../createMiddleware'
-import type { ConstrainValidator } from '../createServerFn'
+import type { ConstrainValidator, CustomFetch } from '../createServerFn'
 import type { Register } from '@tanstack/router-core'
 import type { ServerFnMeta } from '../constants'
 
@@ -156,6 +156,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         context: { a: boolean }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -173,6 +174,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         context: { b: string }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -191,6 +193,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         context: { a: boolean; b: string; c: number }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -214,6 +217,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         context: { a: boolean; b: string; c: number }
         sendContext: { a: boolean; b: string; c: number; d: 5 }
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -302,6 +306,7 @@ test('createMiddleware merges server context and client context, sends server co
         context: { fromClient1: string }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -341,6 +346,7 @@ test('createMiddleware merges server context and client context, sends server co
         context: { fromClient2: string }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -388,6 +394,7 @@ test('createMiddleware merges server context and client context, sends server co
         }
         sendContext: undefined
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -445,6 +452,7 @@ test('createMiddleware merges server context and client context, sends server co
         }
         sendContext: { toServer1: 'toServer1' }
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result
@@ -512,6 +520,7 @@ test('createMiddleware merges server context and client context, sends server co
         }
         sendContext: { toServer1: 'toServer1'; toServer2: 'toServer2' }
         headers: HeadersInit
+        fetch?: CustomFetch
       }>()
 
       return result

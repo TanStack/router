@@ -1,5 +1,10 @@
 import type { StartInstanceOptions } from './createStart'
-import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
+import type {
+  AnyServerFn,
+  ConstrainValidator,
+  CustomFetch,
+  Method,
+} from './createServerFn'
 import type { ClientFnMeta, ServerFnMeta } from './constants'
 import type {
   AnyContext,
@@ -405,6 +410,7 @@ export type FunctionMiddlewareClientNextFn<TRegister, TMiddlewares> = <
   context?: TNewClientContext
   sendContext?: ValidateSerializableInput<TRegister, TSendContext>
   headers?: HeadersInit
+  fetch?: CustomFetch
 }) => Promise<
   FunctionClientResultWithContext<TMiddlewares, TSendContext, TNewClientContext>
 >
@@ -612,6 +618,8 @@ export interface FunctionMiddlewareClientFnOptions<
   signal: AbortSignal
   serverFnMeta: ClientFnMeta
   next: FunctionMiddlewareClientNextFn<TRegister, TMiddlewares>
+  filename: string
+  fetch?: CustomFetch
 }
 
 export type FunctionMiddlewareClientFnResult<
@@ -637,6 +645,7 @@ export type FunctionClientResultWithContext<
   context: Expand<AssignAllClientContextAfterNext<TMiddlewares, TClientContext>>
   sendContext: Expand<AssignAllServerSendContext<TMiddlewares, TSendContext>>
   headers: HeadersInit
+  fetch?: CustomFetch
 }
 
 export interface FunctionMiddlewareAfterClient<

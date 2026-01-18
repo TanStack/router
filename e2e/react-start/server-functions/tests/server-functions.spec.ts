@@ -1043,3 +1043,95 @@ test('middleware can catch errors thrown by server function handlers', async ({
     'This error should be caught by middleware',
   )
 })
+
+test('server function with custom fetch implementation passed directly', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-direct-custom-fetch-btn').click()
+  await page.waitForSelector(
+    '[data-testid="direct-custom-fetch-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('direct-custom-fetch-result')
+    .textContent()
+  expect(result).toContain('x-custom-fetch-direct')
+})
+
+test('server function with custom fetch implementation via middleware', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-middleware-custom-fetch-btn').click()
+  await page.waitForSelector(
+    '[data-testid="middleware-custom-fetch-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('middleware-custom-fetch-result')
+    .textContent()
+  expect(result).toContain('x-custom-fetch-middleware')
+})
+
+test('server function with chained middleware - later middleware overrides earlier', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-chained-middleware-btn').click()
+  await page.waitForSelector(
+    '[data-testid="chained-middleware-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('chained-middleware-result')
+    .textContent()
+  // Second middleware should override first, so only x-middleware-second should be present
+  expect(result).toContain('x-middleware-second')
+  expect(result).not.toContain('x-middleware-first')
+})
+
+test('server function with direct fetch overrides middleware fetch', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-direct-override-btn').click()
+  await page.waitForSelector(
+    '[data-testid="direct-override-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page.getByTestId('direct-override-result').textContent()
+  // Direct fetch should override middleware, so x-direct-override should be present
+  // and x-custom-fetch-middleware should NOT be present
+  expect(result).toContain('x-direct-override')
+  expect(result).not.toContain('x-custom-fetch-middleware')
+})
+
+test('server function without custom fetch uses default fetch', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-no-custom-fetch-btn').click()
+  await page.waitForLoadState('networkidle')
+  await page.waitForSelector(
+    '[data-testid="no-custom-fetch-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page.getByTestId('no-custom-fetch-result').textContent()
+  // No custom headers should be present
+  expect(result).not.toContain('x-custom-fetch-direct')
+  expect(result).not.toContain('x-custom-fetch-middleware')
+  expect(result).not.toContain('x-middleware-first')
+  expect(result).not.toContain('x-middleware-second')
+  expect(result).not.toContain('x-direct-override')
+})
