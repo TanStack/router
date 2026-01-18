@@ -13,16 +13,13 @@ import React from 'react'
  */
 const clientEarlyReturnMiddleware = createMiddleware({
   type: 'function',
-}).client(
-  // @ts-expect-error - types currently require returning next() result
-  async () => {
-    return {
-      source: 'client-middleware',
-      message: 'Early return from client middleware',
-      timestamp: Date.now(),
-    }
-  },
-)
+}).client(async () => {
+  return {
+    source: 'client-middleware',
+    message: 'Early return from client middleware',
+    timestamp: Date.now(),
+  }
+})
 
 const serverFn = createServerFn()
   .middleware([clientEarlyReturnMiddleware])

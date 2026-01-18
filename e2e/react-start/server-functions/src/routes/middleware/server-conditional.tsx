@@ -13,23 +13,20 @@ const serverConditionalMiddleware = createMiddleware({
   .inputValidator(
     (input: { shouldShortCircuit: boolean; value: string }) => input,
   )
-  .server(
-    // @ts-expect-error - types don't support union of next() result and arbitrary value
-    async ({ data, next }) => {
-      if (data.shouldShortCircuit) {
-        return {
-          source: 'middleware',
-          message: 'Conditional early return from server middleware',
-          condition: 'shouldShortCircuit=true',
-        }
+  .server(async ({ data, next }) => {
+    if (data.shouldShortCircuit) {
+      return {
+        source: 'middleware',
+        message: 'Conditional early return from server middleware',
+        condition: 'shouldShortCircuit=true',
       }
-      return next({
-        context: {
-          passedThroughMiddleware: true,
-        },
-      })
-    },
-  )
+    }
+    return next({
+      context: {
+        passedThroughMiddleware: true,
+      },
+    })
+  })
 
 const serverFn = createServerFn()
   .middleware([serverConditionalMiddleware])

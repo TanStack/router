@@ -29,9 +29,18 @@ import type {
   FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
+  UnionAllMiddleware,
 } from './createMiddleware'
 
 type TODO = any
+
+/**
+ * Extracts all possible early return types from a middleware chain.
+ * This includes both server and client early returns from all middleware.
+ */
+export type AllMiddlewareEarlyReturns<TMiddlewares> =
+  | UnionAllMiddleware<TMiddlewares, 'allServerEarlyReturns'>
+  | UnionAllMiddleware<TMiddlewares, 'allClientEarlyReturns'>
 
 export type CreateServerFn<TRegister> = <
   TMethod extends Method,
@@ -380,7 +389,7 @@ export interface OptionalFetcher<
 > extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<Awaited<TResponse>>
+  ): Promise<Awaited<TResponse> | AllMiddlewareEarlyReturns<TMiddlewares>>
 }
 
 export interface RequiredFetcher<
@@ -390,7 +399,7 @@ export interface RequiredFetcher<
 > extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<Awaited<TResponse>>
+  ): Promise<Awaited<TResponse> | AllMiddlewareEarlyReturns<TMiddlewares>>
 }
 
 export type CustomFetch = typeof globalThis.fetch
@@ -805,6 +814,7 @@ function serverFnBaseToMiddleware(
         const res = await options.extractedFn?.(payload)
 
         return next(res) as unknown as FunctionMiddlewareClientFnResult<
+          any,
           any,
           any,
           any
