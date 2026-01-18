@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from './utils/isSpaMode'
 
 test.use({
   whitelistErrors: [
@@ -99,6 +100,73 @@ test.describe('Unicode route rendering', () => {
         .textContent()
 
       expect(searchParam).toBe('대|')
+    })
+  })
+
+  test.describe('malformed paths', () => {
+    test.use({
+      whitelistErrors: [
+        'Failed to load resource: the server responded with a status of 404',
+        'Failed to load resource: the server responded with a status of 400 (Bad Request)',
+      ],
+    })
+
+    test('un-matched malformed paths should return not found on direct navigation', async ({
+      page,
+    }) => {
+      const res = await page.goto('/specialChars/malformed/%E0%A4')
+
+      await page.waitForLoadState(`load`)
+
+      // in spa mode this is caught and handled at server level
+      if (!isSpaMode) {
+        expect(res!.status()).toBe(404)
+
+        await expect(
+          page.getByTestId('default-not-found-component'),
+        ).toBeInViewport()
+      } else {
+        expect(res!.status()).toBe(400)
+      }
+    })
+
+    test('malformed path params should return not found on router link', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto('/specialChars/malformed')
+      await page.waitForURL(`${baseURL}/specialChars/malformed`)
+
+      const link = page.getByTestId('special-malformed-path-link')
+
+      await link.click()
+
+      await page.waitForLoadState('load')
+
+      await expect(
+        page.getByTestId('default-not-found-component'),
+      ).toBeInViewport()
+    })
+
+    test('un-matched malformed paths should return not found on direct navigation in search params', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.goto('/specialChars/malformed/search?searchParam=%E0%A4')
+
+      await page.waitForURL(
+        `${baseURL}/specialChars/malformed/search?searchParam=%E0%A4`,
+      )
+
+      await expect(
+        page.getByTestId('special-malformed-search-param'),
+      ).toBeInViewport()
+
+      const searchParam = await page
+        .getByTestId('special-malformed-search-param')
+        .textContent()
+
+      expect(searchParam).toBe('�')
     })
   })
 })

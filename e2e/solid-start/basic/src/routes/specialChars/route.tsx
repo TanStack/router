@@ -37,6 +37,15 @@ function RouteComponent() {
       >
         Unicode search param
       </Link>{' '}
+      <Link
+        to="/specialChars/malformed"
+        activeProps={{
+          class: 'font-bold',
+        }}
+        data-testid="special-malformed-link"
+      >
+        Malformed paths
+      </Link>{' '}
       <hr />
       <Outlet />
     </div>

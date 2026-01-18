@@ -23,6 +23,7 @@ const prerenderConfiguration = {
       '/not-found/via-beforeLoad',
       '/not-found/via-loader',
       '/specialChars/search',
+      '/specialChars/malformed',
       '/search-params', // search-param routes have dynamic content based on query params
       '/transition',
       '/users',

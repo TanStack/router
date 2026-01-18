@@ -50,7 +50,10 @@ import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/vi
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as SpecialCharsMalformedRouteRouteImport } from './routes/specialChars/malformed/route'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as SpecialCharsMalformedSearchRouteImport } from './routes/specialChars/malformed/search'
+import { Route as SpecialCharsMalformedParamRouteImport } from './routes/specialChars/malformed/$param'
 import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
@@ -271,11 +274,29 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
+const SpecialCharsMalformedRouteRoute =
+  SpecialCharsMalformedRouteRouteImport.update({
+    id: '/malformed',
+    path: '/malformed',
+    getParentRoute: () => SpecialCharsRouteRoute,
+  } as any)
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
+const SpecialCharsMalformedSearchRoute =
+  SpecialCharsMalformedSearchRouteImport.update({
+    id: '/search',
+    path: '/search',
+    getParentRoute: () => SpecialCharsMalformedRouteRoute,
+  } as any)
+const SpecialCharsMalformedParamRoute =
+  SpecialCharsMalformedParamRouteImport.update({
+    id: '/$param',
+    path: '/$param',
+    getParentRoute: () => SpecialCharsMalformedRouteRoute,
+  } as any)
 const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
@@ -357,6 +378,7 @@ export interface FileRoutesByFullPath {
   '/stream': typeof StreamRoute
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
+  '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
@@ -388,6 +410,8 @@ export interface FileRoutesByFullPath {
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/specialChars/malformed/$param': typeof SpecialCharsMalformedParamRoute
+  '/specialChars/malformed/search': typeof SpecialCharsMalformedSearchRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/foo/$bar/$qux': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
@@ -406,6 +430,7 @@ export interface FileRoutesByTo {
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/type-only-reexport': typeof TypeOnlyReexportRoute
+  '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
@@ -436,6 +461,8 @@ export interface FileRoutesByTo {
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/specialChars/malformed/$param': typeof SpecialCharsMalformedParamRoute
+  '/specialChars/malformed/search': typeof SpecialCharsMalformedSearchRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
@@ -460,6 +487,7 @@ export interface FileRoutesById {
   '/stream': typeof StreamRoute
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
+  '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
@@ -492,6 +520,8 @@ export interface FileRoutesById {
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/specialChars/malformed/$param': typeof SpecialCharsMalformedParamRoute
+  '/specialChars/malformed/search': typeof SpecialCharsMalformedSearchRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/foo/$bar/$qux/_here': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
@@ -517,6 +547,7 @@ export interface FileRouteTypes {
     | '/stream'
     | '/type-only-reexport'
     | '/users'
+    | '/specialChars/malformed'
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
@@ -548,6 +579,8 @@ export interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/specialChars/malformed/$param'
+    | '/specialChars/malformed/search'
     | '/redirect/$target/'
     | '/foo/$bar/$qux'
     | '/redirect/$target/serverFn/via-beforeLoad'
@@ -566,6 +599,7 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/stream'
     | '/type-only-reexport'
+    | '/specialChars/malformed'
     | '/api/users'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
@@ -596,6 +630,8 @@ export interface FileRouteTypes {
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/specialChars/malformed/$param'
+    | '/specialChars/malformed/search'
     | '/redirect/$target'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
@@ -619,6 +655,7 @@ export interface FileRouteTypes {
     | '/stream'
     | '/type-only-reexport'
     | '/users'
+    | '/specialChars/malformed'
     | '/_layout/_layout-2'
     | '/api/users'
     | '/multi-cookie-redirect/target'
@@ -651,6 +688,8 @@ export interface FileRouteTypes {
     | '/posts_/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
+    | '/specialChars/malformed/$param'
+    | '/specialChars/malformed/search'
     | '/redirect/$target/'
     | '/foo/$bar/$qux/_here'
     | '/redirect/$target/serverFn/via-beforeLoad'
@@ -974,12 +1013,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/specialChars/malformed': {
+      id: '/specialChars/malformed'
+      path: '/malformed'
+      fullPath: '/specialChars/malformed'
+      preLoaderRoute: typeof SpecialCharsMalformedRouteRouteImport
+      parentRoute: typeof SpecialCharsRouteRoute
+    }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
       fullPath: '/redirect/$target/'
       preLoaderRoute: typeof RedirectTargetIndexRouteImport
       parentRoute: typeof RedirectTargetRoute
+    }
+    '/specialChars/malformed/search': {
+      id: '/specialChars/malformed/search'
+      path: '/search'
+      fullPath: '/specialChars/malformed/search'
+      preLoaderRoute: typeof SpecialCharsMalformedSearchRouteImport
+      parentRoute: typeof SpecialCharsMalformedRouteRoute
+    }
+    '/specialChars/malformed/$param': {
+      id: '/specialChars/malformed/$param'
+      path: '/$param'
+      fullPath: '/specialChars/malformed/$param'
+      preLoaderRoute: typeof SpecialCharsMalformedParamRouteImport
+      parentRoute: typeof SpecialCharsMalformedRouteRoute
     }
     '/redirect/$target/via-loader': {
       id: '/redirect/$target/via-loader'
@@ -1099,13 +1159,31 @@ const SearchParamsRouteRouteChildren: SearchParamsRouteRouteChildren = {
 const SearchParamsRouteRouteWithChildren =
   SearchParamsRouteRoute._addFileChildren(SearchParamsRouteRouteChildren)
 
+interface SpecialCharsMalformedRouteRouteChildren {
+  SpecialCharsMalformedParamRoute: typeof SpecialCharsMalformedParamRoute
+  SpecialCharsMalformedSearchRoute: typeof SpecialCharsMalformedSearchRoute
+}
+
+const SpecialCharsMalformedRouteRouteChildren: SpecialCharsMalformedRouteRouteChildren =
+  {
+    SpecialCharsMalformedParamRoute: SpecialCharsMalformedParamRoute,
+    SpecialCharsMalformedSearchRoute: SpecialCharsMalformedSearchRoute,
+  }
+
+const SpecialCharsMalformedRouteRouteWithChildren =
+  SpecialCharsMalformedRouteRoute._addFileChildren(
+    SpecialCharsMalformedRouteRouteChildren,
+  )
+
 interface SpecialCharsRouteRouteChildren {
+  SpecialCharsMalformedRouteRoute: typeof SpecialCharsMalformedRouteRouteWithChildren
   SpecialCharsParamRoute: typeof SpecialCharsParamRoute
   SpecialCharsSearchRoute: typeof SpecialCharsSearchRoute
   SpecialCharsChar45824Char54620Char48124Char44397Route: typeof SpecialCharsChar45824Char54620Char48124Char44397Route
 }
 
 const SpecialCharsRouteRouteChildren: SpecialCharsRouteRouteChildren = {
+  SpecialCharsMalformedRouteRoute: SpecialCharsMalformedRouteRouteWithChildren,
   SpecialCharsParamRoute: SpecialCharsParamRoute,
   SpecialCharsSearchRoute: SpecialCharsSearchRoute,
   SpecialCharsChar45824Char54620Char48124Char44397Route:

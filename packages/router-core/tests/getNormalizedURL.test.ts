@@ -55,6 +55,18 @@ describe('getNormalizedURL', () => {
       expectedSearchParams: '?key=value%23part&other=%3Fdata',
       expectedHash: '#section%3Fpart',
     },
+    {
+      url: 'https://example.com/%E0%A4',
+      expectedPathName: '/%E0%A4',
+      expectedSearchParams: '',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/%ZZ',
+      expectedPathName: '/%ZZ',
+      expectedSearchParams: '',
+      expectedHash: '',
+    },
   ]
   test.each(testCases)(
     'should treat encoded URL specific characters correctly',
