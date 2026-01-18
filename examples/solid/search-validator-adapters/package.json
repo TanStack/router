@@ -15,7 +15,7 @@
     "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-router": "^1.151.3",
     "@tanstack/solid-router-devtools": "^1.151.3",
-    "@tanstack/router-plugin": "^1.151.3",
+    "@tanstack/router-plugin": "^1.151.4",
     "@tanstack/valibot-adapter": "^1.151.3",
     "@tanstack/zod-adapter": "^1.151.3",
     "arktype": "^2.1.7",
