@@ -247,9 +247,10 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
               'server',
               ctx,
             ).then((d) => ({
-              // Only send the result and sendContext back to the client
+              // Only send the result, headers and sendContext back to the client
               result: d.result,
               error: d.error,
+              headers: d.headers,
               context: d.sendContext,
             }))
 

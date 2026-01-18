@@ -40,6 +40,8 @@ export const Route = createFileRoute('/middleware/server-early-return-headers')(
 
 function RouteComponent() {
   const [resultValue, setResultValue] = React.useState<any>(null)
+  const [capturedResponseHeaders, setCapturedResponseHeaders] =
+    React.useState<Record<string, string> | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
   return (
@@ -58,12 +60,25 @@ function RouteComponent() {
         onClick={async () => {
           setError(null)
           setResultValue(null)
+          setCapturedResponseHeaders(null)
 
           try {
+            const captureHeadersFetch : typeof fetch = async (
+              url,
+              init
+            ) => {
+              const response = await fetch(url, init)
+              setCapturedResponseHeaders(
+                Object.fromEntries(response.headers.entries()),
+              )
+              return response
+            }
+
             const res = await serverFn({
               headers: {
                 'x-test-request': 'ok',
               },
+              fetch: captureHeadersFetch,
             })
 
             setResultValue(res)
@@ -82,6 +97,15 @@ function RouteComponent() {
             {resultValue
               ? JSON.stringify(resultValue, null, 2)
               : 'Not called yet'}
+          </pre>
+        </div>
+
+        <div>
+          <h3 className="font-semibold">Captured Response Headers:</h3>
+          <pre data-testid="captured-response-headers" className="text-xs">
+            {capturedResponseHeaders
+              ? JSON.stringify(capturedResponseHeaders, null, 2)
+              : 'Not captured yet'}
           </pre>
         </div>
 
