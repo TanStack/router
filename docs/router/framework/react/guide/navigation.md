@@ -290,6 +290,15 @@ const link = (
 )
 ```
 
+> ⚠️ When directly navigating to a URL with a hash fragment, the fragment is only available on the client; the browser does not send the fragment to the server as part of the request url. 
+> 
+> This means that if you are using a server-side rendering approach, the hash fragment will not be available on the server-side, and hydration mismatches can occur when using the hash for rendering markup. 
+> 
+> Examples of this would be: 
+> * returning the hash value in the markup, 
+> * conditional rendering based on the hash value, or 
+> * setting the Link as active based on the hash value.
+
 ### Navigating with Optional Parameters
 
 Optional path parameters provide flexible navigation patterns where you can include or omit parameters as needed. Optional parameters use the `{-$paramName}` syntax and offer fine-grained control over URL structure.
