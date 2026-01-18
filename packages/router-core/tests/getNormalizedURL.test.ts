@@ -67,6 +67,54 @@ describe('getNormalizedURL', () => {
       expectedSearchParams: '',
       expectedHash: '',
     },
+    {
+      url: 'https://example.com/path?a=1&a=2',
+      expectedPathName: '/path',
+      expectedSearchParams: '?a=1&a=2',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/path+a',
+      expectedPathName: '/path+a',
+      expectedSearchParams: '',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/path a',
+      expectedPathName: '/path%20a',
+      expectedSearchParams: '',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/path%20a',
+      expectedPathName: '/path%20a',
+      expectedSearchParams: '',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/path%25a',
+      expectedPathName: '/path%25a',
+      expectedSearchParams: '',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/path%25a',
+      expectedPathName: '/path%25a',
+      expectedSearchParams: '',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/path\\a',
+      expectedPathName: '/path%5Ca',
+      expectedSearchParams: '',
+      expectedHash: '',
+    },
+    {
+      url: 'https://example.com/path%5Ca',
+      expectedPathName: '/path%5Ca',
+      expectedSearchParams: '',
+      expectedHash: '',
+    },
   ]
   test.each(testCases)(
     'should treat encoded URL specific characters correctly',
