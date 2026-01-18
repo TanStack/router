@@ -718,7 +718,10 @@ export type GetMatchRoutesFn = (pathname: string) => {
 
 export type EmitFn = (routerEvent: RouterEvent) => void
 
-export type LoadFn = (opts?: { sync?: boolean }) => Promise<void>
+export type LoadFn = (opts?: {
+  sync?: boolean
+  _skipUpdateLatestLocation?: boolean
+}) => Promise<void>
 
 export type CommitLocationFn = ({
   viewTransition,
@@ -901,22 +904,12 @@ export class RouterCore<
   tempLocationKey: string | undefined = `${Math.round(
     Math.random() * 10000000,
   )}`
-  resetNextScroll = true
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
   viewTransitionPromise?: ControlledPromise<true>
   isScrollRestoring = false
   isScrollRestorationSetup = false
-
-  /**
-   * Pre-computed location from internal navigation (push/replace via router).
-   * Used to skip parseLocation() when Transitioner calls load().
-   * Cleared after use or on external navigation (pop, direct history.push).
-   */
-  _precomputedLocation?: ParsedLocation & {
-    __TSR_marker: typeof INTERNAL_NAV_MARKER
-  }
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -1124,15 +1117,6 @@ export class RouterCore<
   }
 
   updateLatestLocation = () => {
-    // Fast path: if we have a precomputed location from internal navigation,
-    // it's already set on latestLocation - skip re-parsing
-    const precomputed = this._precomputedLocation
-    if (precomputed?.__TSR_marker === INTERNAL_NAV_MARKER) {
-      // Already set by commitLocation, nothing to do
-      return
-    }
-
-    // Slow path: parse location from history (pop events, external pushes, initial load)
     this.latestLocation = this.parseLocation(
       this.history.location,
       this.latestLocation,
@@ -1610,7 +1594,7 @@ export class RouterCore<
     // Cache validated searches in snapshot for future pop navigations
     // Only update if we computed fresh values (not using cached)
     if (!canUseCachedSearch && validatedSearchesToCache.length > 0) {
-      const existingSnapshot = next.state.__TSR_matches as
+      const existingSnapshot = next.state?.__TSR_matches as
         | MatchSnapshot
         | undefined
       if (existingSnapshot) {
@@ -1781,8 +1765,15 @@ export class RouterCore<
         params: nextParams,
       }).interpolatedPath
 
-      const destMatchResult = this.getMatchedRoutes(interpolatedNextTo)
-      const destRoutes = destMatchResult.matchedRoutes as AnyRoute[]
+      const destMatches = this.matchRoutes(interpolatedNextTo, undefined, {
+        _buildLocation: true,
+      })
+      const destRoutes = destMatches.map(
+        (d) => this.looseRoutesById[d.routeId]!,
+      )
+
+      // Check if any match indicates global not found
+      const globalNotFoundMatch = destMatches.find((m) => m.globalNotFound)
 
       // If there are any params, we need to stringify them
       if (Object.keys(nextParams).length > 0) {
@@ -1865,13 +1856,12 @@ export class RouterCore<
       nextState = replaceEqualDeep(currentLocation.state, nextState)
 
       // Build match snapshot for fast-path on back/forward navigation
-      // Reuse destMatchResult - routes are the same, just use nextPathname for the snapshot
-      const matchSnapshot = buildMatchSnapshot({
-        matchResult: destMatchResult,
-        pathname: nextPathname,
+      // Use destRoutes and nextParams directly (after stringify)
+      const matchSnapshot = buildMatchSnapshotFromRoutes({
+        routes: destRoutes,
+        params: nextParams,
         searchStr,
-        notFoundRoute: this.options.notFoundRoute,
-        notFoundMode: this.options.notFoundMode,
+        globalNotFoundRouteId: globalNotFoundMatch?.routeId,
       })
 
       // Create the full path of the location
@@ -1883,10 +1873,13 @@ export class RouterCore<
       // If a rewrite function is provided, use it to rewrite the URL
       const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
 
+      // Use encoded URL path for href (consistent with parseLocation)
+      const encodedHref = url.href.replace(url.origin, '')
+
       return {
         publicHref:
           rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
-        href: fullPath,
+        href: encodedHref,
         url: rewrittenUrl,
         pathname: nextPathname,
         search: nextSearch,
@@ -1997,8 +1990,6 @@ export class RouterCore<
       previousCommitPromise?.resolve()
     })
 
-    this.resetNextScroll = next.resetScroll ?? true
-
     // Don't commit to history if nothing changed
     if (isSameUrl && isSameState()) {
       this.load()
@@ -2044,6 +2035,9 @@ export class RouterCore<
     nextHistory.state.__hashScrollIntoViewOptions =
       hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true
 
+    // Store resetScroll in history state so it survives back/forward navigation
+    nextHistory.state.__TSR_resetScroll = next.resetScroll ?? true
+
     this.shouldViewTransition = viewTransition
 
     // Use match snapshot from buildLocation if available, otherwise compute it
@@ -2070,33 +2064,33 @@ export class RouterCore<
       __TSR_marker: INTERNAL_NAV_MARKER,
     }
 
-    // Store precomputed location for Transitioner to use (avoids parseLocation)
-    this._precomputedLocation = precomputedLocation
-
     // Await push/replace to handle blockers before proceeding
+    // Pass skipTransitionerLoad so Transitioner doesn't call load() - we handle it below
     const result = await this.history[next.replace ? 'replace' : 'push'](
       nextHistory.publicHref,
       nextHistory.state,
-      { ignoreBlocker },
+      { ignoreBlocker, skipTransitionerLoad: true },
     )
 
-    // If blocked, clear precomputed location and resolve promise
+    // If blocked, resolve promise and return
     if (result.type === 'BLOCKED') {
-      this._precomputedLocation = undefined
       this.commitLocationPromise?.resolve()
       return this.commitLocationPromise
     }
 
-    // Success: set latestLocation directly (Transitioner skips load for internal nav)
+    // Check if another navigation has superseded this one while we awaited
+    // If so, let the newer navigation handle things - don't overwrite latestLocation
+    if (this.history.location.href !== nextHistory.publicHref) {
+      return this.commitLocationPromise
+    }
+
+    // Success: set latestLocation directly (we skip updateLatestLocation in load)
     this.latestLocation = precomputedLocation as unknown as ParsedLocation<
       FullSearchSchema<TRouteTree>
     >
 
-    // Call load() - Transitioner skips this for internal nav, so we handle it here
-    this.load()
-
-    // Clear precomputed location after load() has used it
-    this._precomputedLocation = undefined
+    // Call load() with _skipUpdateLatestLocation since we already set latestLocation
+    this.load({ _skipUpdateLatestLocation: true })
 
     return this.commitLocationPromise
   }
@@ -2249,10 +2243,14 @@ export class RouterCore<
 
   latestLoadPromise: undefined | Promise<void>
 
-  beforeLoad = () => {
+  beforeLoad = (opts?: { _skipUpdateLatestLocation?: boolean }) => {
     // Cancel any pending matches
     this.cancelMatches()
-    this.updateLatestLocation()
+    if (!opts?._skipUpdateLatestLocation) {
+      this.updateLatestLocation()
+    } else {
+      // Already have latestLocation from commitLocation, skip parsing
+    }
 
     if (this.isServer) {
       // for SPAs on the initial load, this is handled by the Transitioner
@@ -2295,7 +2293,10 @@ export class RouterCore<
     }))
   }
 
-  load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
+  load: LoadFn = async (opts?: {
+    sync?: boolean
+    _skipUpdateLatestLocation?: boolean
+  }): Promise<void> => {
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
@@ -2304,7 +2305,9 @@ export class RouterCore<
     loadPromise = new Promise<void>((resolve) => {
       this.startTransition(async () => {
         try {
-          this.beforeLoad()
+          this.beforeLoad({
+            _skipUpdateLatestLocation: opts?._skipUpdateLatestLocation,
+          })
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
 
@@ -2967,6 +2970,44 @@ export function buildMatchSnapshot({
         snapshot.globalNotFoundRouteId = rootRouteId
       }
     }
+  }
+
+  return snapshot
+}
+
+/**
+ * Build a MatchSnapshot from routes and params directly.
+ * Used by buildLocation to avoid duplicate getMatchedRoutes call.
+ */
+export function buildMatchSnapshotFromRoutes({
+  routes,
+  params,
+  searchStr,
+  globalNotFoundRouteId,
+}: {
+  routes: ReadonlyArray<AnyRoute>
+  params: Record<string, unknown>
+  searchStr?: string
+  globalNotFoundRouteId?: string
+}): MatchSnapshot {
+  // Convert all params to strings for snapshot storage
+  // (params from path matching are always strings)
+  const stringParams: Record<string, string> = {}
+  for (const key in params) {
+    const value = params[key]
+    if (value != null) {
+      stringParams[key] = String(value)
+    }
+  }
+
+  const snapshot: MatchSnapshot = {
+    routeIds: routes.map((r) => r.id),
+    params: stringParams,
+    searchStr,
+  }
+
+  if (globalNotFoundRouteId) {
+    snapshot.globalNotFoundRouteId = globalNotFoundRouteId
   }
 
   return snapshot

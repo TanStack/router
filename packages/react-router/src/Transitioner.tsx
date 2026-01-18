@@ -1,6 +1,6 @@
 import * as React from 'react'
+import type { SubscriberArgs } from '@tanstack/history'
 import {
-  INTERNAL_NAV_MARKER,
   getLocationChangeInfo,
   handleHashScroll,
   trimPathRight,
@@ -42,18 +42,17 @@ export function Transitioner() {
   // Subscribe to location changes
   // and try to load the new location
   React.useEffect(() => {
-    const unsub = router.history.subscribe(() => {
-      // Check if this is an internal navigation (push/replace via router).
-      // If so, commitLocation handles load() - skip to avoid double loading.
-      const precomputed = router._precomputedLocation
-      if (precomputed?.__TSR_marker === INTERNAL_NAV_MARKER) {
-        // Internal navigation: commitLocation will call load() after await completes
-        return
-      }
+    const unsub = router.history.subscribe(
+      ({ navigateOpts }: SubscriberArgs) => {
+        // If commitLocation initiated this navigation, it handles load() itself
+        if (navigateOpts?.skipTransitionerLoad) {
+          return
+        }
 
-      // External navigation (pop, direct history.push, etc): call load normally
-      router.load()
-    })
+        // External navigation (pop, direct history.push, etc): call load normally
+        router.load()
+      },
+    )
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,

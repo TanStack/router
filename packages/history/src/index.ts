@@ -4,6 +4,8 @@
 
 export interface NavigateOptions {
   ignoreBlocker?: boolean
+  /** When true, Transitioner should skip calling load() - commitLocation handles it */
+  skipTransitionerLoad?: boolean
 }
 
 /** Result of a navigation attempt (push/replace) */
@@ -18,9 +20,10 @@ type SubscriberHistoryAction =
       index: number
     }
 
-type SubscriberArgs = {
+export type SubscriberArgs = {
   location: HistoryLocation
   action: SubscriberHistoryAction
+  navigateOpts?: NavigateOptions
 }
 
 export interface RouterHistory {
@@ -67,6 +70,8 @@ export type ParsedHistoryState = HistoryState & {
   key?: string // TODO: Remove in v2 - use __TSR_key instead
   __TSR_key?: string
   __TSR_index: number
+  /** Whether to reset scroll position on this navigation (default: true) */
+  __TSR_resetScroll?: boolean
   /** Match snapshot for fast-path on back/forward navigation */
   __TSR_matches?: {
     routeIds: Array<string>
@@ -138,9 +143,14 @@ export function createHistory(opts: {
   let location = opts.getLocation()
   const subscribers = new Set<(opts: SubscriberArgs) => void>()
 
-  const notify = (action: SubscriberHistoryAction) => {
+  const notify = (
+    action: SubscriberHistoryAction,
+    navigateOpts?: NavigateOptions,
+  ) => {
     location = opts.getLocation()
-    subscribers.forEach((subscriber) => subscriber({ location, action }))
+    subscribers.forEach((subscriber) =>
+      subscriber({ location, action, navigateOpts }),
+    )
   }
 
   const handleIndexChange = (action: SubscriberHistoryAction) => {
@@ -202,7 +212,7 @@ export function createHistory(opts: {
       return tryNavigation({
         task: () => {
           opts.pushState(path, state)
-          notify({ type: 'PUSH' })
+          notify({ type: 'PUSH' }, navigateOpts)
         },
         navigateOpts,
         type: 'PUSH',
@@ -216,7 +226,7 @@ export function createHistory(opts: {
       return tryNavigation({
         task: () => {
           opts.replaceState(path, state)
-          notify({ type: 'REPLACE' })
+          notify({ type: 'REPLACE' }, navigateOpts)
         },
         navigateOpts,
         type: 'REPLACE',
