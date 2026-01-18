@@ -238,7 +238,7 @@ Here's some content with **bold** and _italic_ text.
 ```javascript
 console.log('Hello, world!')
 ```
-````
+
 
 ### Using the Collection
 
