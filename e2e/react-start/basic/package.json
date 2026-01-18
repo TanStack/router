@@ -18,7 +18,7 @@
     "test:e2e:ssrMode": "rm -rf port*.txt; playwright test --project=chromium",
     "test:e2e:prerender": "rm -rf port*.txt; MODE=prerender playwright test --project=chromium",
     "test:e2e:preview": "rm -rf port*.txt; MODE=preview playwright test --project=chromium",
-    "test:e2e": "pnpm run test:e2e:spaMode && pnpm run test:e2e:ssrMode && pnpm run test:e2e:prerender && pnpm run test:e2e:preview"
+    "test:e2e": "node -e \"console.log('Should be run with Nx')\""
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

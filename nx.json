@@ -4,6 +4,7 @@
   "nxCloudId": "6442f7de8226a6291646a813",
   "useInferencePlugins": false,
   "parallel": 5,
+  "bust": 1,
   "tui": {
     "enabled": false
   },
@@ -41,6 +42,32 @@
       "outputs": ["{projectRoot}/coverage"]
     },
     "test:e2e": {
+      "cache": true,
+      "dependsOn": [
+        "^build",
+        "test:e2e:spaMode",
+        "test:e2e:ssrMode",
+        "test:e2e:prerender",
+        "test:e2e:preview"
+      ],
+      "inputs": ["default", "^production"]
+    },
+    "test:e2e:spaMode": {
+      "cache": true,
+      "dependsOn": ["^build", "test:e2e:ssrMode"],
+      "inputs": ["default", "^production"]
+    },
+    "test:e2e:ssrMode": {
+      "cache": true,
+      "dependsOn": ["^build", "test:e2e:prerender"],
+      "inputs": ["default", "^production"]
+    },
+    "test:e2e:prerender": {
+      "cache": true,
+      "dependsOn": ["^build", "test:e2e:preview"],
+      "inputs": ["default", "^production"]
+    },
+    "test:e2e:preview": {
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
