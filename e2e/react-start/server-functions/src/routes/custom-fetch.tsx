@@ -22,7 +22,10 @@ import type { CustomFetch } from '@tanstack/react-start'
  * 3. **Earlier middleware fetch** - Middlewares earlier in the chain have lower priority.
  *    Their fetch will be used only if no later middleware or direct call provides one.
  *
- * 4. **Default global fetch** - If no custom fetch is provided anywhere, the global
+ * 4. **Global serverFnFetch** - When `createStart({ serverFnFetch })` is configured,
+ *    it's used if no middleware or call-site fetch is provided.
+ *
+ * 5. **Default global fetch** - If no custom fetch is provided anywhere, the global
  *    `fetch` function is used.
  *
  * ## Why This Design?
@@ -33,6 +36,9 @@ import type { CustomFetch } from '@tanstack/react-start'
  * - **Later middleware wins**: Follows the middleware chain execution order. Each
  *   middleware can see and override what previous middlewares set, similar to how
  *   middleware can modify context or headers.
+ *
+ * - **Global serverFnFetch**: Provides a default for all server functions that can
+ *   still be overridden per-function or per-call.
  *
  * - **Fallback to default**: Ensures backward compatibility. Existing code without
  *   custom fetch continues to work as expected.
@@ -177,6 +183,14 @@ function CustomFetchComponent() {
     string,
     string
   > | null>(null)
+  const [globalFetchResult, setGlobalFetchResult] = React.useState<Record<
+    string,
+    string
+  > | null>(null)
+  const [middlewareOverridesGlobalResult, setMiddlewareOverridesGlobalResult] =
+    React.useState<Record<string, string> | null>(null)
+  const [directOverridesGlobalResult, setDirectOverridesGlobalResult] =
+    React.useState<Record<string, string> | null>(null)
 
   /**
    * Test 1: Direct Custom Fetch
@@ -260,17 +274,73 @@ function CustomFetchComponent() {
    * Test 5: No Custom Fetch (Default Behavior)
    *
    * Calls a server function with NO middleware and NO direct fetch.
-   * This tests the fallback to the default global fetch.
+   * This tests the fallback to the global serverFnFetch from createStart.
    *
    * Expected:
+   * - 'x-global-fetch: true' SHOULD be present (from createStart serverFnFetch)
    * - Neither 'x-custom-fetch-direct' nor 'x-custom-fetch-middleware' should be present
-   * - Request should succeed using the default fetch
+   * - Request should succeed using the global fetch from start.ts
    *
-   * Precedence: No custom fetch anywhere → Default global fetch is used
+   * Precedence: No call-site or middleware fetch → Global serverFnFetch is used
    */
   const handleNoCustomFetch = async () => {
     const result = await getHeaders()
     setNoCustomFetchResult(result)
+  }
+
+  /**
+   * Test 6: Global Fetch from createStart
+   *
+   * Calls a server function with NO middleware and NO direct fetch.
+   * Verifies that the global serverFnFetch from createStart is used.
+   *
+   * Expected:
+   * - 'x-global-fetch: true' SHOULD be present (from createStart serverFnFetch)
+   *
+   * This explicitly tests the global serverFnFetch feature.
+   */
+  const handleGlobalFetch = async () => {
+    const result = await getHeaders()
+    setGlobalFetchResult(result)
+  }
+
+  /**
+   * Test 7: Middleware Overrides Global Fetch
+   *
+   * Calls a server function with middleware that provides custom fetch.
+   * Verifies that middleware fetch takes precedence over global serverFnFetch.
+   *
+   * Expected:
+   * - 'x-custom-fetch-middleware: true' SHOULD be present (middleware wins)
+   * - 'x-global-fetch' should NOT be present (overridden by middleware)
+   *
+   * Precedence: Middleware > Global serverFnFetch
+   */
+  const handleMiddlewareOverridesGlobal = async () => {
+    const result = await getHeadersWithMiddleware()
+    setMiddlewareOverridesGlobalResult(result)
+  }
+
+  /**
+   * Test 8: Direct Fetch Overrides Global Fetch
+   *
+   * Calls a server function with direct fetch at call site.
+   * Verifies that call-site fetch takes precedence over global serverFnFetch.
+   *
+   * Expected:
+   * - 'x-direct-override-global: true' SHOULD be present (call-site wins)
+   * - 'x-global-fetch' should NOT be present (overridden by call-site)
+   *
+   * Precedence: Call-site > Global serverFnFetch
+   */
+  const handleDirectOverridesGlobal = async () => {
+    const customFetch: CustomFetch = (input, init) => {
+      const headers = new Headers(init?.headers)
+      headers.set('x-direct-override-global', 'true')
+      return fetch(input, { ...init, headers })
+    }
+    const result = await getHeaders({ fetch: customFetch })
+    setDirectOverridesGlobalResult(result)
   }
 
   return (
@@ -278,7 +348,8 @@ function CustomFetchComponent() {
       <h3>Custom Fetch Implementation Test</h3>
       <p className="text-sm text-gray-600">
         Tests custom fetch override precedence: Direct call &gt; Later
-        middleware &gt; Earlier middleware &gt; Default fetch
+        middleware &gt; Earlier middleware &gt; Global serverFnFetch &gt;
+        Default fetch
       </p>
 
       <div>
@@ -357,9 +428,10 @@ function CustomFetchComponent() {
       </div>
 
       <div>
-        <h4>Test 5: No Custom Fetch (Default)</h4>
+        <h4>Test 5: No Custom Fetch (Uses Global)</h4>
         <p className="text-xs text-gray-500">
-          Expected: No custom headers, uses default fetch
+          Expected: x-global-fetch header present (from createStart
+          serverFnFetch)
         </p>
         <button
           type="button"
@@ -372,6 +444,67 @@ function CustomFetchComponent() {
         <pre data-testid="no-custom-fetch-result">
           {noCustomFetchResult
             ? JSON.stringify(noCustomFetchResult, null, 2)
+            : 'null'}
+        </pre>
+      </div>
+
+      <div>
+        <h4>Test 6: Global Fetch from createStart</h4>
+        <p className="text-xs text-gray-500">
+          Expected: x-global-fetch header present
+        </p>
+        <button
+          type="button"
+          data-testid="test-global-fetch-btn"
+          onClick={handleGlobalFetch}
+          className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        >
+          Test Global Fetch
+        </button>
+        <pre data-testid="global-fetch-result">
+          {globalFetchResult
+            ? JSON.stringify(globalFetchResult, null, 2)
+            : 'null'}
+        </pre>
+      </div>
+
+      <div>
+        <h4>Test 7: Middleware Overrides Global Fetch</h4>
+        <p className="text-xs text-gray-500">
+          Expected: x-custom-fetch-middleware present, x-global-fetch NOT
+          present
+        </p>
+        <button
+          type="button"
+          data-testid="test-middleware-overrides-global-btn"
+          onClick={handleMiddlewareOverridesGlobal}
+          className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        >
+          Test Middleware Overrides Global
+        </button>
+        <pre data-testid="middleware-overrides-global-result">
+          {middlewareOverridesGlobalResult
+            ? JSON.stringify(middlewareOverridesGlobalResult, null, 2)
+            : 'null'}
+        </pre>
+      </div>
+
+      <div>
+        <h4>Test 8: Direct Fetch Overrides Global Fetch</h4>
+        <p className="text-xs text-gray-500">
+          Expected: x-direct-override-global present, x-global-fetch NOT present
+        </p>
+        <button
+          type="button"
+          data-testid="test-direct-overrides-global-btn"
+          onClick={handleDirectOverridesGlobal}
+          className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        >
+          Test Direct Overrides Global
+        </button>
+        <pre data-testid="direct-overrides-global-result">
+          {directOverridesGlobalResult
+            ? JSON.stringify(directOverridesGlobalResult, null, 2)
             : 'null'}
         </pre>
       </div>

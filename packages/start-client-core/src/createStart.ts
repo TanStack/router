@@ -5,6 +5,7 @@ import type {
   AnyRequestMiddleware,
   CreateMiddlewareFn,
 } from './createMiddleware'
+import type { CustomFetch } from './createServerFn'
 import type {
   AnySerializationAdapter,
   Register,
@@ -27,6 +28,25 @@ export interface StartInstanceOptions<
   defaultSsr?: TDefaultSsr
   requestMiddleware?: TRequestMiddlewares
   functionMiddleware?: TFunctionMiddlewares
+  /**
+   * Configuration options for server functions.
+   */
+  serverFns?: {
+    /**
+     * A custom fetch implementation to use for all server function calls.
+     * This can be overridden by middleware or at the call site.
+     *
+     * Precedence (highest to lowest):
+     * 1. Call site: `serverFn({ fetch: customFetch })`
+     * 2. Later middleware: Last middleware in chain that provides `fetch`
+     * 3. Earlier middleware: First middleware in chain that provides `fetch`
+     * 4. createStart: `createStart({ serverFns: { fetch: customFetch } })`
+     * 5. Default: Global `fetch` function
+     *
+     * @note Only applies on the client side. During SSR, server functions are called directly.
+     */
+    fetch?: CustomFetch
+  }
 }
 
 export interface StartInstance<
