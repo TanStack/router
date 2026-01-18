@@ -20,6 +20,7 @@ export interface CommitLocationOptions {
    **/
   startTransition?: boolean
   ignoreBlocker?: boolean
+  scrollRestorationBehavior?: ScrollBehavior
 }
 
 export type NavigateFn = <
