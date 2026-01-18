@@ -1,7 +1,7 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { isRedirect, parseRedirect } from '@tanstack/router-core'
-import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
+import { TSS_MIDDLEWARE_RESULT, TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
 import { createNullProtoObject, safeObjectMerge } from './safeObjectMerge'
@@ -272,6 +272,10 @@ export async function executeMiddleware(
             throw result.error
           }
 
+          // Mark this result as coming from next() so we can distinguish
+          // it from early returns by the middleware
+          ;(result as any)[TSS_MIDDLEWARE_RESULT] = true
+
           return result
         }
 
@@ -303,7 +307,22 @@ export async function executeMiddleware(
           )
         }
 
-        return result
+        // Check if the result came from calling next() by looking for our marker symbol.
+        // This is more robust than duck-typing (e.g., checking for 'method' property)
+        // because user code could return an object that happens to have similar properties.
+        if (
+          typeof result === 'object' &&
+          result !== null &&
+          TSS_MIDDLEWARE_RESULT in result
+        ) {
+          return result
+        }
+
+        // Early return from middleware - wrap the value as the result
+        return {
+          ...ctx,
+          result,
+        }
       }
 
       return callNextMiddleware(ctx)

@@ -3,6 +3,13 @@ export const TSS_SERVER_FUNCTION = Symbol.for('TSS_SERVER_FUNCTION')
 export const TSS_SERVER_FUNCTION_FACTORY = Symbol.for(
   'TSS_SERVER_FUNCTION_FACTORY',
 )
+/**
+ * Symbol used to mark middleware results that came from calling next().
+ * This allows us to distinguish between early returns (user values) and
+ * proper middleware chain results without relying on duck-typing which
+ * could cause false positives if user returns an object with similar shape.
+ */
+export const TSS_MIDDLEWARE_RESULT = Symbol.for('TSS_MIDDLEWARE_RESULT')
 
 export const X_TSS_SERIALIZED = 'x-tss-serialized'
 export const X_TSS_RAW_RESPONSE = 'x-tss-raw'
