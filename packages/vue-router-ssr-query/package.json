@@ -69,6 +69,7 @@
   },
   "peerDependencies": {
     "@tanstack/query-core": ">=5.90.0",
+    "@tanstack/router-core": ">=1.127.0",
     "@tanstack/vue-query": ">=5.90.0",
     "@tanstack/vue-router": ">=1.127.0",
     "vue": "^3.3.0"

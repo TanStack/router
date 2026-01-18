@@ -11539,6 +11539,9 @@ importers:
       '@tanstack/query-core':
         specifier: ^5.90.7
         version: 5.90.7
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/router-ssr-query-core':
         specifier: workspace:*
         version: link:../router-ssr-query-core
@@ -11992,6 +11995,9 @@ importers:
       '@tanstack/query-core':
         specifier: ^5.90.7
         version: 5.90.7
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/router-ssr-query-core':
         specifier: workspace:*
         version: link:../router-ssr-query-core
@@ -12361,6 +12367,9 @@ importers:
       '@tanstack/query-core':
         specifier: ^5.90.7
         version: 5.90.7
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/router-ssr-query-core':
         specifier: workspace:*
         version: link:../router-ssr-query-core
