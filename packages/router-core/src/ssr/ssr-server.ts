@@ -357,6 +357,9 @@ export function getOrigin(request: Request) {
 // new URLSearchParams() encodes "|" while new URL() does not, and in this instance
 // chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
 export function getNormalizedURL(url: string | URL, base?: string | URL) {
+  // ensure backslashes are encoded correctly in the URL
+  if (typeof url === 'string') url = url.replace('\\', '%5C')
+
   const rawUrl = new URL(url, base)
   const decodedPathname = decodePath(rawUrl.pathname)
   const searchParams = new URLSearchParams(rawUrl.search)
