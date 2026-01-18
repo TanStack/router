@@ -22,7 +22,7 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4",
     "@tailwindcss/vite": "^4.1.18",
     "tailwindcss": "^4.1.18",

@@ -81,8 +81,8 @@ function dedupeSerializationAdapters(
 }
 
 export const createStart = <
-  const TSerializationAdapters extends
-    ReadonlyArray<AnySerializationAdapter> = [],
+  const TSerializationAdapters extends ReadonlyArray<AnySerializationAdapter> =
+    [],
   TDefaultSsr extends SSROption = SSROption,
   const TRequestMiddlewares extends ReadonlyArray<AnyRequestMiddleware> = [],
   const TFunctionMiddlewares extends ReadonlyArray<AnyFunctionMiddleware> = [],

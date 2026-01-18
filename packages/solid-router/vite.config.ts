@@ -14,6 +14,11 @@ const config = defineConfig(({ mode }) => {
         watch: false,
         environment: 'node',
         typecheck: { enabled: true },
+        server: {
+          deps: {
+            inline: [/@solidjs/, /@tanstack\/solid-store/],
+          },
+        },
       },
     }
   }
@@ -28,6 +33,11 @@ const config = defineConfig(({ mode }) => {
       environment: 'jsdom',
       typecheck: { enabled: true },
       setupFiles: ['./tests/setupTests.tsx'],
+      server: {
+        deps: {
+          inline: [/@solidjs/, /@tanstack\/solid-store/],
+        },
+      },
     },
   }
 })

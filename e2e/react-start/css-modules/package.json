@@ -43,7 +43,7 @@
     "sass": "^1.97.2",
     "srvx": "^0.10.0",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4",
     "wrangler": "^4.22.0"
   }
