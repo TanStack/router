@@ -44,6 +44,7 @@ import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middle
 import { Route as MiddlewareMiddlewareFactoryRouteImport } from './routes/middleware/middleware-factory'
 import { Route as MiddlewareFunctionMetadataRouteImport } from './routes/middleware/function-metadata'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
+import { Route as MiddlewareCatchHandlerErrorRouteImport } from './routes/middleware/catch-handler-error'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as AbortSignalMethodRouteImport } from './routes/abort-signal/$method'
 import { Route as MiddlewareRedirectWithMiddlewareIndexRouteImport } from './routes/middleware/redirect-with-middleware/index'
@@ -231,6 +232,12 @@ const MiddlewareClientMiddlewareRouterRoute =
     path: '/middleware/client-middleware-router',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MiddlewareCatchHandlerErrorRoute =
+  MiddlewareCatchHandlerErrorRouteImport.update({
+    id: '/middleware/catch-handler-error',
+    path: '/middleware/catch-handler-error',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CookiesSetRoute = CookiesSetRouteImport.update({
   id: '/cookies/set',
   path: '/cookies/set',
@@ -279,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
+  '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
   '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
@@ -321,6 +329,7 @@ export interface FileRoutesByTo {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
+  '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
   '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
@@ -364,6 +373,7 @@ export interface FileRoutesById {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
+  '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
   '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/abort-signal/$method'
     | '/cookies/set'
+    | '/middleware/catch-handler-error'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
     | '/middleware/middleware-factory'
@@ -450,6 +461,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/abort-signal/$method'
     | '/cookies/set'
+    | '/middleware/catch-handler-error'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
     | '/middleware/middleware-factory'
@@ -492,6 +504,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/abort-signal/$method'
     | '/cookies/set'
+    | '/middleware/catch-handler-error'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
     | '/middleware/middleware-factory'
@@ -535,6 +548,7 @@ export interface RootRouteChildren {
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
   AbortSignalMethodRoute: typeof AbortSignalMethodRoute
   CookiesSetRoute: typeof CookiesSetRoute
+  MiddlewareCatchHandlerErrorRoute: typeof MiddlewareCatchHandlerErrorRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareFunctionMetadataRoute: typeof MiddlewareFunctionMetadataRoute
   MiddlewareMiddlewareFactoryRoute: typeof MiddlewareMiddlewareFactoryRoute
@@ -806,6 +820,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiddlewareClientMiddlewareRouterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/catch-handler-error': {
+      id: '/middleware/catch-handler-error'
+      path: '/middleware/catch-handler-error'
+      fullPath: '/middleware/catch-handler-error'
+      preLoaderRoute: typeof MiddlewareCatchHandlerErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cookies/set': {
       id: '/cookies/set'
       path: '/cookies/set'
@@ -863,6 +884,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
   AbortSignalMethodRoute: AbortSignalMethodRoute,
   CookiesSetRoute: CookiesSetRoute,
+  MiddlewareCatchHandlerErrorRoute: MiddlewareCatchHandlerErrorRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareFunctionMetadataRoute: MiddlewareFunctionMetadataRoute,
   MiddlewareMiddlewareFactoryRoute: MiddlewareMiddlewareFactoryRoute,

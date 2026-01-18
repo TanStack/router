@@ -266,14 +266,13 @@ export async function executeMiddleware(
             error: userCtx.error ?? (ctx as any).error,
           }
 
-          try {
-            return await callNextMiddleware(nextCtx)
-          } catch (error: any) {
-            return {
-              ...nextCtx,
-              error,
-            }
+          const result = await callNextMiddleware(nextCtx)
+
+          if (result.error) {
+            throw result.error
           }
+
+          return result
         }
 
         // Execute the middleware

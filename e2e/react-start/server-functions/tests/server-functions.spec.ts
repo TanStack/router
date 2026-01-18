@@ -1021,3 +1021,25 @@ test('server function receives serverFnMeta in options', async ({ page }) => {
   expect(nestingPostMetadata.inner.post.name.length).toBeGreaterThan(0)
   expect(nestingPostMetadata.inner.post.filename.length).toBeGreaterThan(0)
 })
+
+test('middleware can catch errors thrown by server function handlers', async ({
+  page,
+}) => {
+  await page.goto('/middleware/catch-handler-error')
+
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('catch-handler-error-title')).toBeVisible()
+
+  await page.getByTestId('trigger-error-btn').click()
+
+  await expect(page.getByTestId('transformed-error')).toBeVisible()
+
+  await expect(page.getByTestId('transformed-error')).toContainText(
+    'Middleware caught and transformed',
+  )
+
+  await expect(page.getByTestId('transformed-error')).toContainText(
+    'This error should be caught by middleware',
+  )
+})
