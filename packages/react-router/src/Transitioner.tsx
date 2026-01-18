@@ -1,5 +1,4 @@
 import * as React from 'react'
-import type { SubscriberArgs } from '@tanstack/history'
 import {
   getLocationChangeInfo,
   handleHashScroll,
@@ -8,6 +7,7 @@ import {
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
+import type { SubscriberArgs } from '@tanstack/history'
 
 export function Transitioner() {
   const router = useRouter()
