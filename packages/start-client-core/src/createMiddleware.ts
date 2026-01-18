@@ -617,7 +617,6 @@ export interface FunctionMiddlewareClientFnOptions<
   serverFnMeta: ClientFnMeta
   next: FunctionMiddlewareClientNextFn<TRegister, TMiddlewares>
   filename: string
-  functionId: string
   fetch?: CustomFetch
 }
 

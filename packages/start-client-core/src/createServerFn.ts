@@ -709,7 +709,6 @@ export type ServerFnMiddlewareOptions = {
   sendContext?: any
   context?: any
   serverFnMeta: ClientFnMeta
-  functionId: string
   fetch?: CustomFetch
   /** @internal - Preserves the call-site fetch to ensure it has highest priority over middleware */
   _callSiteFetch?: CustomFetch
