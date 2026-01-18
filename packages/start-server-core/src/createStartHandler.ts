@@ -219,7 +219,7 @@ export function createStartHandler<TRegister = Register>(
     try {
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
       const url = getNormalizedURL(request.url)
-      const href = url.href.replace(url.origin, '')
+      const href = url.pathname + url.search + url.hash
       const origin = getOrigin(request)
 
       const entries = await getEntries()
