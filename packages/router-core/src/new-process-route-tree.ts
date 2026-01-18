@@ -740,8 +740,12 @@ export function findRouteMatch<
       processedTree.segmentTree,
       fuzzy,
     ) as RouteMatch<T> | null
-  } catch {
-    result = null
+  } catch (err) {
+    if (err instanceof URIError) {
+      result = null
+    } else {
+      throw err
+    }
   }
 
   if (result) result.branch = buildRouteBranch(result.route)
