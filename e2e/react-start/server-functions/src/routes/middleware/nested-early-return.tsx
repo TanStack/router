@@ -23,67 +23,58 @@ type EarlyReturnInput = {
 // Deepest level - conditionally returns early based on input
 const deepMiddleware = createMiddleware({ type: 'function' })
   .inputValidator((input: EarlyReturnInput) => input)
-  .server(
-    // @ts-expect-error - types don't support early return
-    async ({ data, next }) => {
-      if (data.earlyReturnLevel === 'deep') {
-        return {
-          returnedFrom: 'deepMiddleware',
-          message: 'Early return from deepest middleware',
-          level: 3,
-        }
+  .server(async ({ data, next }) => {
+    if (data.earlyReturnLevel === 'deep') {
+      return {
+        returnedFrom: 'deepMiddleware',
+        message: 'Early return from deepest middleware',
+        level: 3,
       }
-      return next({
-        context: {
-          deepMiddlewarePassed: true,
-        },
-      })
-    },
-  )
+    }
+    return next({
+      context: {
+        deepMiddlewarePassed: true,
+      },
+    })
+  })
 
 // Middle level - wraps deep middleware, may also return early
 const middleMiddleware = createMiddleware({ type: 'function' })
   .middleware([deepMiddleware])
-  .server(
-    // @ts-expect-error - types don't support early return or receiving non-next result from inner middleware
-    async ({ data, next, context }) => {
-      if (data.earlyReturnLevel === 'middle') {
-        return {
-          returnedFrom: 'middleMiddleware',
-          message: 'Early return from middle middleware',
-          level: 2,
-          deepContext: context,
-        }
+  .server(async ({ data, next, context }) => {
+    if (data.earlyReturnLevel === 'middle') {
+      return {
+        returnedFrom: 'middleMiddleware',
+        message: 'Early return from middle middleware',
+        level: 2,
+        deepContext: context,
       }
-      return next({
-        context: {
-          middleMiddlewarePassed: true,
-        },
-      })
-    },
-  )
+    }
+    return next({
+      context: {
+        middleMiddlewarePassed: true,
+      },
+    })
+  })
 
 // Outer level - wraps middle middleware, may also return early
 const outerMiddleware = createMiddleware({ type: 'function' })
   .middleware([middleMiddleware])
-  .server(
-    // @ts-expect-error - types don't support early return or receiving non-next result from inner middleware
-    async ({ data, next, context }) => {
-      if (data.earlyReturnLevel === 'outer') {
-        return {
-          returnedFrom: 'outerMiddleware',
-          message: 'Early return from outer middleware',
-          level: 1,
-          middleContext: context,
-        }
+  .server(async ({ data, next, context }) => {
+    if (data.earlyReturnLevel === 'outer') {
+      return {
+        returnedFrom: 'outerMiddleware',
+        message: 'Early return from outer middleware',
+        level: 1,
+        middleContext: context,
       }
-      return next({
-        context: {
-          outerMiddlewarePassed: true,
-        },
-      })
-    },
-  )
+    }
+    return next({
+      context: {
+        outerMiddlewarePassed: true,
+      },
+    })
+  })
 
 const serverFn = createServerFn()
   .middleware([outerMiddleware])
