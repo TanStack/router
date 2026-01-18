@@ -124,7 +124,7 @@ test.describe('Unicode route rendering', () => {
         .getByTestId('special-hash-link')
         .evaluate((e) => e.classList.value)
 
-      await expect(el).toContain('font-bold')
+      expect(el).toContain('font-bold')
 
       expect(hashValue).toBe('대|')
     })
