@@ -102,7 +102,7 @@
   "devDependencies": {
     "@tanstack/router-utils": "workspace:*",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vue": "^3.5.25"
   },
   "peerDependencies": {
