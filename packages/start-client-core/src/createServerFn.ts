@@ -1,7 +1,11 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { isRedirect, parseRedirect } from '@tanstack/router-core'
-import { TSS_MIDDLEWARE_RESULT, TSS_SERVER_FUNCTION_FACTORY } from './constants'
+import {
+  TSS_MIDDLEWARE_EARLY_RESULT,
+  TSS_MIDDLEWARE_RESULT,
+  TSS_SERVER_FUNCTION_FACTORY,
+} from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
 import { createNullProtoObject, safeObjectMerge } from './safeObjectMerge'
@@ -27,20 +31,88 @@ import type {
   AssignAllServerFnContext,
   FunctionMiddlewareClientFnResult,
   FunctionMiddlewareServerFnResult,
+  HasNextReturn,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
-  UnionAllMiddleware,
 } from './createMiddleware'
 
 type TODO = any
 
 /**
- * Extracts all possible early return types from a middleware chain.
- * This includes both server and client early returns from all middleware.
+ * Type-level fold over a middleware chain to compute *reachable* early returns.
+ *
+ * Rules:
+ * - A middleware can short-circuit by returning `result({ data })`.
+ * - A middleware continues by returning the result of `next()`.
+ * - If a middleware cannot return `next()`, the chain cannot continue past it.
+ * - If a middleware returns a union of `next()` and `result(...)`, later middleware
+ *   (and the handler) are still reachable, but early returns from this middleware
+ *   must be included.
  */
+type MiddlewareEarlyReturnType<
+  TMw,
+  TEnv extends 'clientEarlyReturn' | 'serverEarlyReturn',
+> = TMw extends { '~types': infer TTypes }
+  ? TTypes extends { [K in TEnv]: infer TEarly }
+    ? TEarly
+    : never
+  : never
+
+type MiddlewareCanContinue<
+  TMw,
+  TEnv extends 'client' | 'server',
+> = TMw extends { options: infer TOpts }
+  ? TOpts extends { client: infer TClient }
+    ? TEnv extends 'client'
+      ? HasNextReturn<ReturnType<Extract<TClient, (...args: any) => any>>>
+      : false
+    : TOpts extends { server: infer TServer }
+      ? TEnv extends 'server'
+        ? HasNextReturn<ReturnType<Extract<TServer, (...args: any) => any>>>
+        : false
+      : true
+  : true
+
+export type ReachableMiddlewareEarlyReturns<
+  TMiddlewares,
+  TEnv extends 'clientEarlyReturn' | 'serverEarlyReturn',
+  TCanContinue extends boolean = true,
+  TRuntimeEnv extends 'client' | 'server' = TEnv extends 'clientEarlyReturn'
+    ? 'client'
+    : 'server',
+> = TMiddlewares extends readonly [infer TFirst, ...infer TRest]
+  ? TFirst extends AnyFunctionMiddleware | AnyRequestMiddleware
+    ?
+        | (TCanContinue extends true
+            ? MiddlewareEarlyReturnType<TFirst, TEnv>
+            : never)
+        | ReachableMiddlewareEarlyReturns<
+            TRest,
+            TEnv,
+            TCanContinue extends true
+              ? MiddlewareCanContinue<TFirst, TRuntimeEnv>
+              : false,
+            TRuntimeEnv
+          >
+    : ReachableMiddlewareEarlyReturns<TRest, TEnv, TCanContinue, TRuntimeEnv>
+  : never
+
+type ChainCanContinue<
+  TMiddlewares,
+  TEnv extends 'client' | 'server',
+> = TMiddlewares extends readonly [infer TFirst, ...infer TRest]
+  ? TFirst extends AnyFunctionMiddleware | AnyRequestMiddleware
+    ? MiddlewareCanContinue<TFirst, TEnv> extends true
+      ? ChainCanContinue<TRest, TEnv>
+      : false
+    : ChainCanContinue<TRest, TEnv>
+  : true
+
 export type AllMiddlewareEarlyReturns<TMiddlewares> =
-  | UnionAllMiddleware<TMiddlewares, 'allServerEarlyReturns'>
-  | UnionAllMiddleware<TMiddlewares, 'allClientEarlyReturns'>
+  | ReachableMiddlewareEarlyReturns<TMiddlewares, 'clientEarlyReturn'>
+  | (ChainCanContinue<TMiddlewares, 'client'> extends true
+      ? ReachableMiddlewareEarlyReturns<TMiddlewares, 'serverEarlyReturn'>
+      : never)
 
 export type CreateServerFn<TRegister> = <
   TMethod extends Method,
@@ -291,10 +363,23 @@ export async function executeMiddleware(
           return result
         }
 
+        // Create the result() function for explicit early returns
+        const userResult = <TData>(options: {
+          data: TData
+          headers?: HeadersInit
+        }) => {
+          return {
+            [TSS_MIDDLEWARE_EARLY_RESULT]: true,
+            _data: options.data,
+            _headers: options.headers,
+          }
+        }
+
         // Execute the middleware
         const result = await middlewareFn({
           ...ctx,
           next: userNext as any,
+          result: userResult as any,
         } as any)
 
         // If result is NOT a ctx object, we need to return it as
@@ -330,7 +415,25 @@ export async function executeMiddleware(
           return result
         }
 
-        // Early return from middleware - wrap the value as the result
+        // Check if the result came from calling result() for explicit early returns
+        if (
+          typeof result === 'object' &&
+          result !== null &&
+          TSS_MIDDLEWARE_EARLY_RESULT in result
+        ) {
+          // Extract data and headers from the result() return value
+          const earlyResult = result as unknown as {
+            _data: unknown
+            _headers?: HeadersInit
+          }
+          return {
+            ...ctx,
+            result: earlyResult._data,
+            headers: mergeHeaders(ctx.headers, earlyResult._headers),
+          }
+        }
+
+        // Legacy: Early return from middleware without using result() - wrap the value as the result
         return {
           ...ctx,
           result,

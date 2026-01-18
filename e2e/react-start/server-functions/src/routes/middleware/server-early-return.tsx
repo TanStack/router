@@ -11,11 +11,13 @@ import React from 'react'
  */
 const serverEarlyReturnMiddleware = createMiddleware({
   type: 'function',
-}).server(async () => {
-  return {
-    source: 'middleware',
-    message: 'Early return from server middleware',
-  }
+}).server(async ({ result }) => {
+  return result({
+    data: {
+      source: 'middleware',
+      message: 'Early return from server middleware',
+    },
+  })
 })
 
 const serverFn = createServerFn()
@@ -35,13 +37,15 @@ const serverFn = createServerFn()
  */
 const methodPropertyMiddleware = createMiddleware({
   type: 'function',
-}).server(async () => {
-  return {
-    source: 'middleware',
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json' },
-    message: 'Early return with method property',
-  }
+}).server(async ({ result }) => {
+  return result({
+    data: {
+      source: 'middleware',
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      message: 'Early return with method property',
+    },
+  })
 })
 
 const serverFnWithMethodProperty = createServerFn()

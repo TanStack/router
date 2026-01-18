@@ -18,6 +18,73 @@ import type {
   ValidateSerializableInput,
 } from '@tanstack/router-core'
 
+/**
+ * Branded type for result() returns. This allows the type system to:
+ * 1. Distinguish result() returns from next() returns
+ * 2. Track the exact data type of early returns through the middleware chain
+ * 3. Include headers in early return responses
+ */
+export type FunctionMiddlewareResultReturn<TData> = {
+  'use functions must return the result of result()': true
+  _data: TData
+}
+
+/**
+ * The result function type that middleware receives.
+ * Call result() to short-circuit the middleware chain with an early return value.
+ * The data must be serializable.
+ */
+export type FunctionMiddlewareResultFn<TRegister> = <TData>(
+  options: FunctionMiddlewareResultOptions<TRegister, TData>,
+) => FunctionMiddlewareResultReturn<TData>
+
+/**
+ * Options for the result() function in middleware.
+ */
+export interface FunctionMiddlewareResultOptions<TRegister, TData> {
+  /** The data to return. Must be serializable. */
+  data: ValidateSerializableInput<TRegister, TData>
+  /** Optional headers to include in the response */
+  headers?: HeadersInit
+}
+
+/**
+ * Extract the data type from a FunctionMiddlewareResultReturn.
+ */
+export type ExtractResultData<T> =
+  T extends FunctionMiddlewareResultReturn<infer TData> ? TData : never
+
+/**
+ * Brand for the value returned by calling next().
+ */
+export type MiddlewareNextReturn = {
+  'use functions must return the result of next()': true
+}
+
+/**
+ * Extract early return types from a middleware function's return type.
+ * This extracts TData from FunctionMiddlewareResultReturn<TData> in the return union,
+ * excluding the next() result type.
+ */
+export type ExtractEarlyReturnFromResult<TReturn> = TReturn extends
+  | Promise<infer TPromiseReturn>
+  | infer TDirectReturn
+  ? ExtractResultData<
+      Exclude<TPromiseReturn | TDirectReturn, MiddlewareNextReturn>
+    >
+  : never
+
+/**
+ * Extract whether a middleware return type contains next() result.
+ */
+export type HasNextReturn<TReturn> = TReturn extends
+  | Promise<infer TPromiseReturn>
+  | infer TDirectReturn
+  ? MiddlewareNextReturn extends TPromiseReturn | TDirectReturn
+    ? true
+    : false
+  : false
+
 export type CreateMiddlewareFn<TRegister> = <TType extends MiddlewareType>(
   options?: {
     type?: TType
@@ -469,25 +536,74 @@ export interface FunctionMiddlewareServer<
   TInputValidator,
   TServerSendContext,
   TClientContext,
+  TClientEarlyReturn = never,
 > {
-  server: <TNewServerContext = undefined, TSendContext = undefined>(
-    server: FunctionMiddlewareServerFn<
+  server: {
+    <
+      TNewServerContext = undefined,
+      TSendContext = undefined,
+      TReturn extends FunctionMiddlewareServerFnResult<
+        TRegister,
+        TMiddlewares,
+        TServerSendContext,
+        TNewServerContext,
+        TSendContext,
+        any
+      > = FunctionMiddlewareServerFnResult<
+        TRegister,
+        TMiddlewares,
+        TServerSendContext,
+        TNewServerContext,
+        TSendContext,
+        any
+      >,
+    >(
+      server: (
+        options: FunctionMiddlewareServerFnOptions<
+          TRegister,
+          TMiddlewares,
+          TInputValidator,
+          TServerSendContext
+        >,
+      ) => TReturn,
+    ): FunctionMiddlewareAfterServer<
       TRegister,
       TMiddlewares,
       TInputValidator,
-      TServerSendContext,
       TNewServerContext,
-      TSendContext
-    >,
-  ) => FunctionMiddlewareAfterServer<
-    TRegister,
-    TMiddlewares,
-    TInputValidator,
-    TNewServerContext,
-    TServerSendContext,
-    TClientContext,
-    TSendContext
-  >
+      TServerSendContext,
+      TClientContext,
+      TSendContext,
+      ExtractEarlyReturnFromResult<TReturn>,
+      TClientEarlyReturn
+    >
+
+    <
+      TNewServerContext = undefined,
+      TSendContext = undefined,
+      TServerEarlyReturn = never,
+    >(
+      server: FunctionMiddlewareServerFn<
+        TRegister,
+        TMiddlewares,
+        TInputValidator,
+        TServerSendContext,
+        TNewServerContext,
+        TSendContext,
+        TServerEarlyReturn
+      >,
+    ): FunctionMiddlewareAfterServer<
+      TRegister,
+      TMiddlewares,
+      TInputValidator,
+      TNewServerContext,
+      TServerSendContext,
+      TClientContext,
+      TSendContext,
+      TServerEarlyReturn,
+      TClientEarlyReturn
+    >
+  }
 }
 
 export type FunctionMiddlewareServerFn<
@@ -497,6 +613,7 @@ export type FunctionMiddlewareServerFn<
   TServerSendContext,
   TNewServerContext,
   TSendContext,
+  TServerEarlyReturn = never,
 > = (
   options: FunctionMiddlewareServerFnOptions<
     TRegister,
@@ -509,7 +626,8 @@ export type FunctionMiddlewareServerFn<
   TMiddlewares,
   TServerSendContext,
   TNewServerContext,
-  TSendContext
+  TSendContext,
+  TServerEarlyReturn
 >
 
 export type FunctionMiddlewareServerNextFn<
@@ -552,16 +670,6 @@ export type FunctionServerResultWithContext<
   sendContext: Expand<AssignAllClientSendContext<TMiddlewares, TSendContext>>
 }
 
-/**
- * Extract only the early return types from a middleware function's return type,
- * excluding the next() result type (which has the branded property).
- */
-export type ExtractEarlyReturn<T> = T extends {
-  'use functions must return the result of next()': true
-}
-  ? never
-  : T
-
 export interface FunctionMiddlewareServerFnOptions<
   in out TRegister,
   in out TMiddlewares,
@@ -577,6 +685,8 @@ export interface FunctionMiddlewareServerFnOptions<
     TMiddlewares,
     TServerSendContext
   >
+  /** Short-circuit the middleware chain with an early return value */
+  result: FunctionMiddlewareResultFn<TRegister>
   method: Method
   serverFnMeta: ServerFnMeta
   signal: AbortSignal
@@ -588,6 +698,7 @@ export type FunctionMiddlewareServerFnResult<
   TServerSendContext,
   TServerContext,
   TSendContext,
+  TServerEarlyReturn = never,
 > =
   | Promise<
       | FunctionServerResultWithContext<
@@ -597,7 +708,7 @@ export type FunctionMiddlewareServerFnResult<
           TServerContext,
           TSendContext
         >
-      | ValidateSerializableInput<TRegister, unknown>
+      | FunctionMiddlewareResultReturn<TServerEarlyReturn>
     >
   | FunctionServerResultWithContext<
       TRegister,
@@ -606,7 +717,7 @@ export type FunctionMiddlewareServerFnResult<
       TServerContext,
       TSendContext
     >
-  | ValidateSerializableInput<TRegister, unknown>
+  | FunctionMiddlewareResultReturn<TServerEarlyReturn>
 
 export interface FunctionMiddlewareAfterServer<
   TRegister,
@@ -617,6 +728,7 @@ export interface FunctionMiddlewareAfterServer<
   TClientContext,
   TClientSendContext,
   TServerEarlyReturn = never,
+  TClientEarlyReturn = never,
 > extends FunctionMiddlewareWithTypes<
   TRegister,
   TMiddlewares,
@@ -626,7 +738,7 @@ export interface FunctionMiddlewareAfterServer<
   TClientContext,
   TClientSendContext,
   TServerEarlyReturn,
-  never
+  TClientEarlyReturn
 > {}
 
 export interface FunctionMiddlewareClient<
@@ -634,26 +746,62 @@ export interface FunctionMiddlewareClient<
   TMiddlewares,
   TInputValidator,
 > {
-  client: <TSendServerContext = undefined, TNewClientContext = undefined>(
-    client: (
-      options: FunctionMiddlewareClientFnOptions<
+  client: {
+    <
+      TSendServerContext = undefined,
+      TNewClientContext = undefined,
+      TReturn extends FunctionMiddlewareClientFnResult<
         TRegister,
         TMiddlewares,
-        TInputValidator
+        TSendServerContext,
+        TNewClientContext,
+        any
+      > = FunctionMiddlewareClientFnResult<
+        TRegister,
+        TMiddlewares,
+        TSendServerContext,
+        TNewClientContext,
+        any
       >,
-    ) => FunctionMiddlewareClientFnResult<
+    >(
+      client: (
+        options: FunctionMiddlewareClientFnOptions<
+          TRegister,
+          TMiddlewares,
+          TInputValidator
+        >,
+      ) => TReturn,
+    ): FunctionMiddlewareAfterClient<
       TRegister,
       TMiddlewares,
+      TInputValidator,
       TSendServerContext,
-      TNewClientContext
-    >,
-  ) => FunctionMiddlewareAfterClient<
-    TRegister,
-    TMiddlewares,
-    TInputValidator,
-    TSendServerContext,
-    TNewClientContext
-  >
+      TNewClientContext,
+      ExtractEarlyReturnFromResult<TReturn>
+    >
+
+    <
+      TSendServerContext = undefined,
+      TNewClientContext = undefined,
+      TClientEarlyReturn = never,
+    >(
+      client: FunctionMiddlewareClientFn<
+        TRegister,
+        TMiddlewares,
+        TInputValidator,
+        TSendServerContext,
+        TNewClientContext,
+        TClientEarlyReturn
+      >,
+    ): FunctionMiddlewareAfterClient<
+      TRegister,
+      TMiddlewares,
+      TInputValidator,
+      TSendServerContext,
+      TNewClientContext,
+      TClientEarlyReturn
+    >
+  }
 }
 
 export type FunctionMiddlewareClientFn<
@@ -662,6 +810,7 @@ export type FunctionMiddlewareClientFn<
   TInputValidator,
   TSendContext,
   TClientContext,
+  TClientEarlyReturn = never,
 > = (
   options: FunctionMiddlewareClientFnOptions<
     TRegister,
@@ -672,7 +821,8 @@ export type FunctionMiddlewareClientFn<
   TRegister,
   TMiddlewares,
   TSendContext,
-  TClientContext
+  TClientContext,
+  TClientEarlyReturn
 >
 
 export interface FunctionMiddlewareClientFnOptions<
@@ -687,7 +837,8 @@ export interface FunctionMiddlewareClientFnOptions<
   signal: AbortSignal
   serverFnMeta: ClientFnMeta
   next: FunctionMiddlewareClientNextFn<TRegister, TMiddlewares>
-  filename: string
+  /** Short-circuit the middleware chain with an early return value */
+  result: FunctionMiddlewareResultFn<TRegister>
   fetch?: CustomFetch
 }
 
@@ -696,6 +847,7 @@ export type FunctionMiddlewareClientFnResult<
   TMiddlewares,
   TSendContext,
   TClientContext,
+  TClientEarlyReturn = never,
 > =
   | Promise<
       | FunctionClientResultWithContext<
@@ -703,10 +855,10 @@ export type FunctionMiddlewareClientFnResult<
           TSendContext,
           TClientContext
         >
-      | ValidateSerializableInput<TRegister, unknown>
+      | FunctionMiddlewareResultReturn<TClientEarlyReturn>
     >
   | FunctionClientResultWithContext<TMiddlewares, TSendContext, TClientContext>
-  | ValidateSerializableInput<TRegister, unknown>
+  | FunctionMiddlewareResultReturn<TClientEarlyReturn>
 
 export type FunctionClientResultWithContext<
   in out TMiddlewares,
@@ -726,6 +878,7 @@ export interface FunctionMiddlewareAfterClient<
   TInputValidator,
   TServerSendContext,
   TClientContext,
+  TClientEarlyReturn = never,
 >
   extends
     FunctionMiddlewareWithTypes<
@@ -737,14 +890,15 @@ export interface FunctionMiddlewareAfterClient<
       TClientContext,
       undefined,
       never,
-      never
+      TClientEarlyReturn
     >,
     FunctionMiddlewareServer<
       TRegister,
       TMiddlewares,
       TInputValidator,
       TServerSendContext,
-      TClientContext
+      TClientContext,
+      TClientEarlyReturn
     > {}
 
 export interface FunctionMiddlewareValidator<TRegister, TMiddlewares> {

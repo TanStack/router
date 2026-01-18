@@ -23,13 +23,15 @@ type EarlyReturnInput = {
 // Deepest level - conditionally returns early based on input
 const deepMiddleware = createMiddleware({ type: 'function' })
   .inputValidator((input: EarlyReturnInput) => input)
-  .server(async ({ data, next }) => {
+  .server(async ({ data, next, result }) => {
     if (data.earlyReturnLevel === 'deep') {
-      return {
-        returnedFrom: 'deepMiddleware',
-        message: 'Early return from deepest middleware',
-        level: 3,
-      }
+      return result({
+        data: {
+          returnedFrom: 'deepMiddleware',
+          message: 'Early return from deepest middleware',
+          level: 3,
+        },
+      })
     }
     return next({
       context: {
@@ -41,14 +43,16 @@ const deepMiddleware = createMiddleware({ type: 'function' })
 // Middle level - wraps deep middleware, may also return early
 const middleMiddleware = createMiddleware({ type: 'function' })
   .middleware([deepMiddleware])
-  .server(async ({ data, next, context }) => {
+  .server(async ({ data, next, context, result }) => {
     if (data.earlyReturnLevel === 'middle') {
-      return {
-        returnedFrom: 'middleMiddleware',
-        message: 'Early return from middle middleware',
-        level: 2,
-        deepContext: context,
-      }
+      return result({
+        data: {
+          returnedFrom: 'middleMiddleware',
+          message: 'Early return from middle middleware',
+          level: 2,
+          deepContext: context,
+        },
+      })
     }
     return next({
       context: {
@@ -60,14 +64,16 @@ const middleMiddleware = createMiddleware({ type: 'function' })
 // Outer level - wraps middle middleware, may also return early
 const outerMiddleware = createMiddleware({ type: 'function' })
   .middleware([middleMiddleware])
-  .server(async ({ data, next, context }) => {
+  .server(async ({ data, next, context, result }) => {
     if (data.earlyReturnLevel === 'outer') {
-      return {
-        returnedFrom: 'outerMiddleware',
-        message: 'Early return from outer middleware',
-        level: 1,
-        middleContext: context,
-      }
+      return result({
+        data: {
+          returnedFrom: 'outerMiddleware',
+          message: 'Early return from outer middleware',
+          level: 1,
+          middleContext: context,
+        },
+      })
     }
     return next({
       context: {

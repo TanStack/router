@@ -13,13 +13,15 @@ const serverConditionalMiddleware = createMiddleware({
   .inputValidator(
     (input: { shouldShortCircuit: boolean; value: string }) => input,
   )
-  .server(async ({ data, next }) => {
+  .server(async ({ data, next, result }) => {
     if (data.shouldShortCircuit) {
-      return {
-        source: 'middleware',
-        message: 'Conditional early return from server middleware',
-        condition: 'shouldShortCircuit=true',
-      }
+      return result({
+        data: {
+          source: 'middleware',
+          message: 'Conditional early return from server middleware',
+          condition: 'shouldShortCircuit=true',
+        },
+      })
     }
     return next({
       context: {

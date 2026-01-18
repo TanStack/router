@@ -11,6 +11,15 @@ export const TSS_SERVER_FUNCTION_FACTORY = Symbol.for(
  */
 export const TSS_MIDDLEWARE_RESULT = Symbol.for('TSS_MIDDLEWARE_RESULT')
 
+/**
+ * Symbol used to mark middleware results that came from calling result().
+ * This allows middleware to explicitly short-circuit the chain with a typed
+ * early return value that gets tracked through the type system.
+ */
+export const TSS_MIDDLEWARE_EARLY_RESULT = Symbol.for(
+  'TSS_MIDDLEWARE_EARLY_RESULT',
+)
+
 export const X_TSS_SERIALIZED = 'x-tss-serialized'
 export const X_TSS_RAW_RESPONSE = 'x-tss-raw'
 export const X_TSS_CONTEXT = 'x-tss-context'

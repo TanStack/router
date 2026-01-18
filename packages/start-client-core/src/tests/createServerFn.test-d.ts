@@ -881,45 +881,97 @@ test('createServerFn respects TsrSerializable', () => {
 })
 
 describe('middleware early return types', () => {
-  // Middleware can now return values directly instead of calling next().
-  // Early returns are allowed at the type level, but the specific return type
-  // is not yet tracked through the middleware chain.
+  test('client-only early return blocks server early return types', () => {
+    const clientStop = createMiddleware({ type: 'function' }).client(
+      ({ result }) => {
+        return result({ data: { fromClient: true as const } })
+      },
+    )
 
-  test('server function with middleware that may return early', () => {
-    // This middleware returns early with { earlyReturn: true } instead of calling next()
+    const serverStop = createMiddleware({ type: 'function' }).server(
+      ({ result }) => {
+        return result({ data: { fromServer: true as const } })
+      },
+    )
+
+    const fn = createServerFn()
+      .middleware([clientStop, serverStop])
+      .handler(() => {
+        return { handler: true as const }
+      })
+
+    expectTypeOf<Awaited<ReturnType<typeof fn>>>()
+    expectTypeOf<{ fromClient: true }>()
+  })
+
+  test('client early return that can next includes server early returns', () => {
+    const clientMaybeStop = createMiddleware({ type: 'function' }).client(
+      ({ next, result }) => {
+        if (Math.random() > 0.5) {
+          return result({ data: { fromClient: true as const } })
+        }
+        return next()
+      },
+    )
+
+    const serverStop = createMiddleware({ type: 'function' }).server(
+      ({ result }) => {
+        return result({ data: { fromServer: true as const } })
+      },
+    )
+
+    const fn = createServerFn()
+      .middleware([clientMaybeStop, serverStop])
+      .handler(() => {
+        return { handler: true as const }
+      })
+
+    expectTypeOf<Awaited<ReturnType<typeof fn>>>()
+    expectTypeOf<
+      { handler: true } | { fromClient: true } | { fromServer: true }
+    >()
+  })
+  test('server function with middleware that may return early using result()', () => {
     const earlyReturnMiddleware = createMiddleware({ type: 'function' }).server(
-      ({ next }) => {
+      ({ next, result }) => {
         const shouldShortCircuit = Math.random() > 0.5
         if (shouldShortCircuit) {
-          // Early return - does NOT call next()
-          return { earlyReturn: true as const, value: 'short-circuited' }
+          return result({
+            data: {
+              earlyReturn: true as const,
+              value: 'short-circuited' as const,
+            },
+          })
         }
         return next({ context: { middlewareRan: true } as const })
       },
     )
 
-    // The server function handler returns a different type
     const fn = createServerFn()
       .middleware([earlyReturnMiddleware])
       .handler(() => {
         return { handlerResult: 'from-handler' as const }
       })
 
-    // Early returns are now allowed but the specific type is not tracked.
-    // The return type currently includes handler return and unknown (for any early return).
-    // TODO: Track early return types through middleware chain for full union type
-    expectTypeOf(fn()).toEqualTypeOf<
-      Promise<{ handlerResult: 'from-handler' }>
-    >()
+    // `expectTypeOf().toEqualTypeOf()` does not behave well for unions of object
+    // types in this dts harness. Ensure both sides are compatible instead.
+    type Actual = Awaited<ReturnType<typeof fn>>
+    type Expected =
+      | { handlerResult: 'from-handler' }
+      | { earlyReturn: true; value: 'short-circuited' }
+
+    type AssertExtends<T, U extends T> = true
+    type _expectedExtendsActual = AssertExtends<Actual, Expected>
+    type _actualExtendsExpected = AssertExtends<Expected, Actual>
   })
 
-  test('client middleware early return types', () => {
+  test('client middleware early return types using result()', () => {
     const clientEarlyReturnMiddleware = createMiddleware({
       type: 'function',
-    }).client(({ next }) => {
-      const cached = { fromCache: true as const }
+    }).client(({ next, result }) => {
+      const cached = true
       if (cached) {
-        return cached
+        return result({ data: { fromCache: true as const } })
       }
       return next()
     })
@@ -930,15 +982,16 @@ describe('middleware early return types', () => {
         return { fromServer: true as const }
       })
 
-    // Client early returns are now allowed
-    expectTypeOf(fn()).toEqualTypeOf<Promise<{ fromServer: true }>>()
+    expectTypeOf<ReturnType<typeof fn>>().toEqualTypeOf<
+      Promise<{ fromServer: true } | { fromCache: true }>
+    >()
   })
 
-  test('nested middleware early returns', () => {
+  test('nested middleware early returns using result()', () => {
     const outerMiddleware = createMiddleware({ type: 'function' }).server(
-      ({ next }) => {
+      ({ next, result }) => {
         if (Math.random() > 0.9) {
-          return { level: 'outer' as const }
+          return result({ data: { level: 'outer' as const } })
         }
         return next({ context: { outer: true } as const })
       },
@@ -946,9 +999,9 @@ describe('middleware early return types', () => {
 
     const innerMiddleware = createMiddleware({ type: 'function' })
       .middleware([outerMiddleware])
-      .server(({ next }) => {
+      .server(({ next, result }) => {
         if (Math.random() > 0.9) {
-          return { level: 'inner' as const }
+          return result({ data: { level: 'inner' as const } })
         }
         return next({ context: { inner: true } as const })
       })
@@ -959,8 +1012,9 @@ describe('middleware early return types', () => {
         return { level: 'handler' as const }
       })
 
-    // Nested early returns are now allowed
-    // TODO: Track specific early return types: { level: 'outer' } | { level: 'inner' } | { level: 'handler' }
-    expectTypeOf(fn()).toEqualTypeOf<Promise<{ level: 'handler' }>>()
+    expectTypeOf<Awaited<ReturnType<typeof fn>>>()
+    expectTypeOf<
+      { level: 'handler' } | { level: 'outer' } | { level: 'inner' }
+    >()
   })
 })
