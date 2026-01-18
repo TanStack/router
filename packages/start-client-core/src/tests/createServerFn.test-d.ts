@@ -879,3 +879,89 @@ test('createServerFn respects TsrSerializable', () => {
     Promise<{ nested: { custom: MyCustomTypeSerializable } }>
   >()
 })
+
+describe('middleware early return types', () => {
+  // NOTE: These tests document that the types currently do NOT support middleware
+  // early returns. The @ts-expect-error directives mark where type errors occur.
+  // Once proper type support is added, these @ts-expect-error directives should be
+  // removed and the tests updated to verify proper union types.
+
+  test('server function with middleware that may return early - types currently do not support this', () => {
+    // This middleware returns early with { earlyReturn: true } instead of calling next()
+    const earlyReturnMiddleware = createMiddleware({ type: 'function' })
+      // @ts-expect-error - Types currently require next() to be called, early returns are not typed
+      .server(({ next }) => {
+        const shouldShortCircuit = Math.random() > 0.5
+        if (shouldShortCircuit) {
+          // Early return - does NOT call next()
+          return { earlyReturn: true as const, value: 'short-circuited' }
+        }
+        return next({ context: { middlewareRan: true } as const })
+      })
+
+    // The server function handler returns a different type
+    const fn = createServerFn()
+      .middleware([earlyReturnMiddleware])
+      .handler(() => {
+        return { handlerResult: 'from-handler' as const }
+      })
+
+    // Currently, the type only includes the handler return type.
+    // Ideally, it should be a union: { earlyReturn: true, value: string } | { handlerResult: 'from-handler' }
+    expectTypeOf(fn()).toEqualTypeOf<
+      Promise<{ handlerResult: 'from-handler' }>
+    >()
+  })
+
+  test('client middleware early return types - not currently supported', () => {
+    const clientEarlyReturnMiddleware = createMiddleware({ type: 'function' })
+      // @ts-expect-error - Types currently require next() to be called, early returns are not typed
+      .client(({ next }) => {
+        const cached = { fromCache: true as const }
+        if (cached) {
+          return cached
+        }
+        return next()
+      })
+
+    const fn = createServerFn()
+      .middleware([clientEarlyReturnMiddleware])
+      .handler(() => {
+        return { fromServer: true as const }
+      })
+
+    // Currently only includes handler return type
+    expectTypeOf(fn()).toEqualTypeOf<Promise<{ fromServer: true }>>()
+  })
+
+  test('nested middleware early returns - not currently typed', () => {
+    const outerMiddleware = createMiddleware({ type: 'function' })
+      // @ts-expect-error - Types currently require next() to be called
+      .server(({ next }) => {
+        if (Math.random() > 0.9) {
+          return { level: 'outer' as const }
+        }
+        return next({ context: { outer: true } as const })
+      })
+
+    const innerMiddleware = createMiddleware({ type: 'function' })
+      .middleware([outerMiddleware])
+      // @ts-expect-error - Types currently require next() to be called
+      .server(({ next }) => {
+        if (Math.random() > 0.9) {
+          return { level: 'inner' as const }
+        }
+        return next({ context: { inner: true } as const })
+      })
+
+    const fn = createServerFn()
+      .middleware([innerMiddleware])
+      .handler(() => {
+        return { level: 'handler' as const }
+      })
+
+    // Currently only includes handler return type
+    // Ideally: { level: 'outer' } | { level: 'inner' } | { level: 'handler' }
+    expectTypeOf(fn()).toEqualTypeOf<Promise<{ level: 'handler' }>>()
+  })
+})

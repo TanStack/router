@@ -808,3 +808,140 @@ test('createMiddleware with type request can return sync Response', () => {
     })
   })
 })
+
+// =============================================================================
+// Middleware Early Return Tests (Expected Type Failures)
+// These tests document the expected behavior when middleware returns early
+// without calling next(). Currently types don't support this, so we use
+// ts-expect-error directives to mark expected failures.
+// =============================================================================
+
+test('createMiddleware server can return early without calling next', () => {
+  // @ts-expect-error - types currently require returning next() result
+  createMiddleware({ type: 'function' }).server(async () => {
+    // Returning a value directly without calling next()
+    return { earlyReturn: true, message: 'Short-circuited' }
+  })
+})
+
+test('createMiddleware server can conditionally call next or return value', () => {
+  createMiddleware({ type: 'function' })
+    .inputValidator((input: { shouldShortCircuit: boolean }) => input)
+    // @ts-expect-error - types don't support returning arbitrary value instead of next() result
+    .server(async ({ data, next }) => {
+      if (data.shouldShortCircuit) {
+        return { earlyReturn: true, message: 'Short-circuited' }
+      }
+      return next({ context: { passedThrough: true } })
+    })
+})
+
+test('createMiddleware client can return early without calling next', () => {
+  // @ts-expect-error - types currently require returning next() result
+  createMiddleware({ type: 'function' }).client(async () => {
+    // Returning a value directly without calling next()
+    return { earlyReturn: true, message: 'Client short-circuited' }
+  })
+})
+
+test('createMiddleware client can conditionally call next or return value', () => {
+  createMiddleware({ type: 'function' })
+    .inputValidator((input: { shouldShortCircuit: boolean }) => input)
+    // @ts-expect-error - types don't support returning arbitrary value
+    .client(async ({ data, next }) => {
+      if (data.shouldShortCircuit) {
+        return { earlyReturn: true, message: 'Client short-circuited' }
+      }
+      return next({ sendContext: { fromClient: true } })
+    })
+})
+
+test('nested middleware where inner middleware returns early', () => {
+  const innerMiddleware = createMiddleware({ type: 'function' })
+    .inputValidator((input: { level: string }) => input)
+    // @ts-expect-error - types don't support returning arbitrary value
+    .server(async ({ data, next }) => {
+      if (data.level === 'inner') {
+        return { returnedFrom: 'inner', level: 2 }
+      }
+      return next({ context: { innerPassed: true } })
+    })
+
+  const outerMiddleware = createMiddleware({ type: 'function' })
+    .middleware([innerMiddleware])
+    // @ts-expect-error - types don't support returning arbitrary value
+    .server(async ({ data, next, context }) => {
+      // Context should potentially include early return value from inner middleware
+      // but currently types don't support this
+      if (data.level === 'outer') {
+        return { returnedFrom: 'outer', level: 1, innerContext: context }
+      }
+      return next({ context: { outerPassed: true } })
+    })
+
+  // Just verify middleware is created successfully
+  expectTypeOf(outerMiddleware).toHaveProperty('options')
+})
+
+test('deeply nested middleware chain with early return at each level', () => {
+  const deepMiddleware = createMiddleware({ type: 'function' })
+    .inputValidator(
+      (input: { earlyReturnLevel: 'none' | 'deep' | 'middle' | 'outer' }) =>
+        input,
+    )
+    // @ts-expect-error - types don't support returning arbitrary value
+    .server(async ({ data, next }) => {
+      if (data.earlyReturnLevel === 'deep') {
+        return { returnedFrom: 'deep', level: 3 }
+      }
+      return next({ context: { deepPassed: true } })
+    })
+
+  const middleMiddleware = createMiddleware({ type: 'function' })
+    .middleware([deepMiddleware])
+    // @ts-expect-error - types don't support returning arbitrary value
+    .server(async ({ data, next, context }) => {
+      if (data.earlyReturnLevel === 'middle') {
+        return { returnedFrom: 'middle', level: 2, deepContext: context }
+      }
+      return next({ context: { middlePassed: true } })
+    })
+
+  const outerMiddleware = createMiddleware({ type: 'function' })
+    .middleware([middleMiddleware])
+    // @ts-expect-error - types don't support returning arbitrary value
+    .server(async ({ data, next, context }) => {
+      if (data.earlyReturnLevel === 'outer') {
+        return { returnedFrom: 'outer', level: 1, middleContext: context }
+      }
+      return next({ context: { outerPassed: true } })
+    })
+
+  // Verify the chain is created
+  expectTypeOf(outerMiddleware).toHaveProperty('options')
+})
+
+test('client middleware early return prevents server call', () => {
+  const clientEarlyReturnMiddleware = createMiddleware({ type: 'function' })
+    .inputValidator((input: { skipServer: boolean }) => input)
+    // @ts-expect-error - types don't support returning arbitrary value
+    .client(async ({ data, next }) => {
+      if (data.skipServer) {
+        // This should prevent any network request to the server
+        return { source: 'client', message: 'Skipped server entirely' }
+      }
+      return next({ sendContext: { clientCalled: true } })
+    })
+
+  // Chain with server middleware that should never be reached
+  const withServerMiddleware = createMiddleware({ type: 'function' })
+    .middleware([clientEarlyReturnMiddleware])
+    .server(async ({ next, context }) => {
+      // If client returned early, this should never execute
+      return next({
+        context: { serverReached: true, clientContext: context },
+      })
+    })
+
+  expectTypeOf(withServerMiddleware).toHaveProperty('options')
+})
