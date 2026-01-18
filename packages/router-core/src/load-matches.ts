@@ -139,6 +139,7 @@ const handleRedirectAndNotFound = (
     inner.updateMatch(match.id, (prev) => ({
       ...prev,
       status,
+      context: buildMatchContext(inner, match.index),
       isFetching: false,
       error: err,
     }))
@@ -556,6 +557,7 @@ const executeHead = (
     return
   }
   const assetContext = {
+    ssr: inner.router.options.ssr,
     matches: inner.matches,
     match,
     params: match.params,
@@ -692,6 +694,7 @@ const runLoader = async (
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
         error: undefined,
+        context: buildMatchContext(inner, index),
         status: 'success',
         isFetching: false,
         updatedAt: Date.now(),
@@ -704,6 +707,7 @@ const runLoader = async (
           ...prev,
           status: prev.status === 'pending' ? 'success' : prev.status,
           isFetching: false,
+          context: buildMatchContext(inner, index),
         }))
         return
       }
@@ -730,6 +734,7 @@ const runLoader = async (
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
         error,
+        context: buildMatchContext(inner, index),
         status: 'error',
         isFetching: false,
       }))
@@ -752,13 +757,6 @@ const loadRouteMatch = async (
   let loaderShouldRunAsync = false
   let loaderIsRunningAsync = false
   const route = inner.router.looseRoutesById[routeId]!
-
-  const commitContext = () => {
-    inner.updateMatch(matchId, (prev) => ({
-      ...prev,
-      context: buildMatchContext(inner, index),
-    }))
-  }
 
   if (shouldSkipLoader(inner, matchId)) {
     if (inner.router.isServer) {
@@ -826,7 +824,6 @@ const loadRouteMatch = async (
         ;(async () => {
           try {
             await runLoader(inner, matchId, index, route)
-            commitContext()
             const match = inner.router.getMatch(matchId)!
             match._nonReactive.loaderPromise?.resolve()
             match._nonReactive.loadPromise?.resolve()
@@ -852,12 +849,6 @@ const loadRouteMatch = async (
   match._nonReactive.pendingTimeout = undefined
   if (!loaderIsRunningAsync) match._nonReactive.loaderPromise = undefined
   match._nonReactive.dehydrated = undefined
-
-  // Commit context now that loader has completed (or was skipped)
-  // For async loaders, this was already done in the async callback
-  if (!loaderIsRunningAsync) {
-    commitContext()
-  }
 
   const nextIsFetching = loaderIsRunningAsync ? match.isFetching : false
   if (nextIsFetching !== match.isFetching || match.invalid !== false) {

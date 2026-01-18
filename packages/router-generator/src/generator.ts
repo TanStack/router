@@ -1422,19 +1422,33 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
   ) {
     let parentRoute = hasParentRoute(prefixMap, node, node.routePath)
 
-    // Fallback: check acc.routeNodesByPath for parents not in prefixMap
-    // This handles virtual routes created from lazy-only files that weren't
-    // in the initial prefixMap build
-    if (!parentRoute && node.routePath) {
-      let searchPath = node.routePath
-      while (searchPath.length > 0) {
-        const lastSlash = searchPath.lastIndexOf('/')
-        if (lastSlash <= 0) break
-        searchPath = searchPath.substring(0, lastSlash)
-        const candidate = acc.routeNodesByPath.get(searchPath)
-        if (candidate && candidate.routePath !== node.routePath) {
+    // Check routeNodesByPath for a closer parent that may not be in prefixMap.
+    //
+    // Why: The prefixMap excludes lazy routes by design. When lazy-only routes are
+    // nested inside a pathless layout, the virtual route created from the lazy file
+    // won't be in the prefixMap, but it will be in routeNodesByPath.
+    //
+    // Example: Given files _layout/path.lazy.tsx and _layout/path.index.lazy.tsx:
+    //   - prefixMap contains: /_layout (from route.tsx)
+    //   - routeNodesByPath contains: /_layout AND /_layout/path (virtual from lazy)
+    //   - For /_layout/path/, hasParentRoute returns /_layout (wrong)
+    //   - But the correct parent is /_layout/path (the virtual route from path.lazy.tsx)
+    //
+    // Optimization: Only search if we might find a closer parent. The search walks
+    // up from the immediate parent path, so if the first candidate matches what
+    // prefixMap found, there's no closer parent to find.
+    if (node.routePath) {
+      const lastSlash = node.routePath.lastIndexOf('/')
+      if (lastSlash > 0) {
+        const immediateParentPath = node.routePath.substring(0, lastSlash)
+        const candidate = acc.routeNodesByPath.get(immediateParentPath)
+        if (
+          candidate &&
+          candidate.routePath !== node.routePath &&
+          candidate !== parentRoute
+        ) {
+          // Found a closer parent in routeNodesByPath that differs from prefixMap result
           parentRoute = candidate
-          break
         }
       }
     }

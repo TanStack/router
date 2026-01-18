@@ -39,9 +39,8 @@ export async function getStartManifest(
 
   let script = `import('${startManifest.clientEntry}')`
   if (process.env.TSS_DEV_SERVER === 'true') {
-    const { injectedHeadScripts } = await import(
-      'tanstack-start-injected-head-scripts:v'
-    )
+    const { injectedHeadScripts } =
+      await import('tanstack-start-injected-head-scripts:v')
     if (injectedHeadScripts) {
       script = `${injectedHeadScripts + ';'}${script}`
     }

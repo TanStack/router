@@ -12,9 +12,9 @@
   "dependencies": {
     "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-query-devtools": "^5.90.0",
-    "@tanstack/solid-router": "^1.151.0",
-    "@tanstack/solid-router-devtools": "^1.151.0",
-    "@tanstack/router-plugin": "^1.151.0",
+    "@tanstack/solid-router": "^1.151.3",
+    "@tanstack/solid-router-devtools": "^1.151.3",
+    "@tanstack/router-plugin": "^1.151.5",
     "solid-js": "^1.9.10",
     "redaxios": "^0.5.1"
   },
@@ -22,7 +22,7 @@
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.10",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vite-plugin-dts": "^4.5.4"
   },
   "keywords": [],

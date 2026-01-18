@@ -14,9 +14,9 @@
     "@libsql/client": "^0.15.15",
     "@prisma/adapter-libsql": "^7.0.0",
     "@prisma/client": "^7.0.0",
-    "@tanstack/solid-router": "^1.151.0",
-    "@tanstack/solid-router-devtools": "^1.151.0",
-    "@tanstack/solid-start": "^1.151.0",
+    "@tanstack/solid-router": "^1.151.3",
+    "@tanstack/solid-router-devtools": "^1.151.3",
+    "@tanstack/solid-start": "^1.151.5",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0"
@@ -28,7 +28,7 @@
     "prisma": "^7.0.0",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vite-plugin-solid": "^2.11.10",
     "vite-tsconfig-paths": "^5.1.4"
   }

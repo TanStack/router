@@ -475,8 +475,8 @@ export function isPromise<T>(
 ): value is Promise<Awaited<T>> {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      typeof (value as Promise<T>).then === 'function',
+    typeof value === 'object' &&
+    typeof (value as Promise<T>).then === 'function',
   )
 }
 

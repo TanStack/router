@@ -153,32 +153,32 @@ export class RouteApi<
 }
 
 export class Route<
-    in out TRegister = unknown,
-    in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
-    in out TPath extends RouteConstraints['TPath'] = '/',
-    in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-      TParentRoute,
-      TPath
-    >,
-    in out TCustomId extends RouteConstraints['TCustomId'] = string,
-    in out TId extends RouteConstraints['TId'] = ResolveId<
-      TParentRoute,
-      TCustomId,
-      TPath
-    >,
-    in out TSearchValidator = undefined,
-    in out TParams = ResolveParams<TPath>,
-    in out TRouterContext = AnyContext,
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out TMiddlewares = unknown,
-    in out THandlers = undefined,
-  >
+  in out TRegister = unknown,
+  in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+  in out TPath extends RouteConstraints['TPath'] = '/',
+  in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+    TParentRoute,
+    TPath
+  >,
+  in out TCustomId extends RouteConstraints['TCustomId'] = string,
+  in out TId extends RouteConstraints['TId'] = ResolveId<
+    TParentRoute,
+    TCustomId,
+    TPath
+  >,
+  in out TSearchValidator = undefined,
+  in out TParams = ResolveParams<TPath>,
+  in out TRouterContext = AnyContext,
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out TMiddlewares = unknown,
+  in out THandlers = undefined,
+>
   extends BaseRoute<
     TRegister,
     TParentRoute,
@@ -430,18 +430,18 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-    in out TRegister = Register,
-    in out TSearchValidator = undefined,
-    in out TRouterContext = {},
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out THandlers = undefined,
-  >
+  in out TRegister = Register,
+  in out TSearchValidator = undefined,
+  in out TRouterContext = {},
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out THandlers = undefined,
+>
   extends BaseRootRoute<
     TRegister,
     TSearchValidator,

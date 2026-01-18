@@ -14,9 +14,9 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
-    "@tanstack/solid-router": "^1.151.0",
-    "@tanstack/solid-router-devtools": "^1.151.0",
-    "@tanstack/solid-start": "^1.151.0",
+    "@tanstack/solid-router": "^1.151.3",
+    "@tanstack/solid-router-devtools": "^1.151.3",
+    "@tanstack/solid-start": "^1.151.5",
     "solid-js": "^1.9.9",
     "redaxios": "^0.5.1"
   },
@@ -25,7 +25,7 @@
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vite-plugin-solid": "^2.11.10",
     "vite-tsconfig-paths": "^5.1.4"
   }

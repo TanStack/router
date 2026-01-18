@@ -22,47 +22,60 @@ import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { Config } from './config'
 import type {
-  UnpluginContextMeta,
   UnpluginFactory,
   TransformResult as UnpluginTransformResult,
 } from 'unplugin'
 
-type BannedBeforeExternalPlugin = {
-  identifier: string
+const PLUGIN_NAME = 'unplugin:router-code-splitter'
+const CODE_SPLITTER_PLUGIN_NAME =
+  'tanstack-router:code-splitter:compile-reference-file'
+
+type TransformationPluginInfo = {
+  pluginNames: Array<string>
   pkg: string
   usage: string
-  frameworks: Array<UnpluginContextMeta['framework']>
 }
 
-const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = [
-  {
-    identifier: '@react-refresh',
-    pkg: '@vitejs/plugin-react',
-    usage: 'viteReact()',
-    frameworks: ['vite'],
-  },
-]
-
-class FoundPluginInBeforeCode extends Error {
-  constructor(
-    externalPlugin: BannedBeforeExternalPlugin,
-    pluginFramework: string,
-  ) {
-    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin/${pluginFramework}'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
-e.g.
-plugins: [
-  tanstackRouter(), // Place this before ${externalPlugin.usage}
-  ${externalPlugin.usage},
-]
-`)
-  }
+/**
+ * JSX transformation plugins grouped by framework.
+ * These plugins must come AFTER the TanStack Router plugin in the Vite config.
+ */
+const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
+  string,
+  Array<TransformationPluginInfo>
+> = {
+  react: [
+    {
+      // Babel-based React plugin
+      pluginNames: ['vite:react-babel', 'vite:react-refresh'],
+      pkg: '@vitejs/plugin-react',
+      usage: 'react()',
+    },
+    {
+      // SWC-based React plugin
+      pluginNames: ['vite:react-swc', 'vite:react-swc:resolve-runtime'],
+      pkg: '@vitejs/plugin-react-swc',
+      usage: 'reactSwc()',
+    },
+    {
+      // OXC-based React plugin (deprecated but should still be handled)
+      pluginNames: ['vite:react-oxc:config', 'vite:react-oxc:refresh-runtime'],
+      pkg: '@vitejs/plugin-react-oxc',
+      usage: 'reactOxc()',
+    },
+  ],
+  solid: [
+    {
+      pluginNames: ['solid'],
+      pkg: 'vite-plugin-solid',
+      usage: 'solid()',
+    },
+  ],
 }
-
-const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
-> = (options = {}, { framework }) => {
+> = (options = {}, { framework: _framework }) => {
   let ROOT: string = process.cwd()
   let userConfig: Config
 
@@ -219,16 +232,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
             generatorFileInfo &&
             includedCode.some((included) => code.includes(included))
           ) {
-            for (const externalPlugin of bannedBeforeExternalPlugins) {
-              if (!externalPlugin.frameworks.includes(framework)) {
-                continue
-              }
-
-              if (code.includes(externalPlugin.identifier)) {
-                throw new FoundPluginInBeforeCode(externalPlugin, framework)
-              }
-            }
-
             return handleCompilingReferenceFile(
               code,
               normalizedId,
@@ -244,6 +247,38 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         configResolved(config) {
           ROOT = config.root
           initUserConfig()
+
+          // Validate plugin order - router must come before JSX transformation plugins
+          const routerPluginIndex = config.plugins.findIndex(
+            (p) => p.name === CODE_SPLITTER_PLUGIN_NAME,
+          )
+
+          if (routerPluginIndex === -1) return
+
+          const frameworkPlugins =
+            TRANSFORMATION_PLUGINS_BY_FRAMEWORK[userConfig.target]
+          if (!frameworkPlugins) return
+
+          for (const transformPlugin of frameworkPlugins) {
+            const transformPluginIndex = config.plugins.findIndex((p) =>
+              transformPlugin.pluginNames.includes(p.name),
+            )
+
+            if (
+              transformPluginIndex !== -1 &&
+              transformPluginIndex < routerPluginIndex
+            ) {
+              throw new Error(
+                `Plugin order error: '${transformPlugin.pkg}' is placed before '@tanstack/router-plugin'.\n\n` +
+                  `The TanStack Router plugin must come BEFORE JSX transformation plugins.\n\n` +
+                  `Please update your Vite config:\n\n` +
+                  `  plugins: [\n` +
+                  `    tanstackRouter(),\n` +
+                  `    ${transformPlugin.usage},\n` +
+                  `  ]\n`,
+              )
+            }
+          }
         },
         applyToEnvironment(environment) {
           if (userConfig.plugin?.vite?.environmentName) {
