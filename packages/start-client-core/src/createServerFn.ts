@@ -354,15 +354,21 @@ export interface FetcherBase {
   }) => Promise<unknown>
 }
 
-export interface OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
-  extends FetcherBase {
+export interface OptionalFetcher<
+  TMiddlewares,
+  TInputValidator,
+  TResponse,
+> extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
   ): Promise<Awaited<TResponse>>
 }
 
-export interface RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
-  extends FetcherBase {
+export interface RequiredFetcher<
+  TMiddlewares,
+  TInputValidator,
+  TResponse,
+> extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
   ): Promise<Awaited<TResponse>>
@@ -376,13 +382,17 @@ export type FetcherBaseOptions = {
   fetch?: CustomFetch
 }
 
-export interface OptionalFetcherDataOptions<TMiddlewares, TInputValidator>
-  extends FetcherBaseOptions {
+export interface OptionalFetcherDataOptions<
+  TMiddlewares,
+  TInputValidator,
+> extends FetcherBaseOptions {
   data?: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
-export interface RequiredFetcherDataOptions<TMiddlewares, TInputValidator>
-  extends FetcherBaseOptions {
+export interface RequiredFetcherDataOptions<
+  TMiddlewares,
+  TInputValidator,
+> extends FetcherBaseOptions {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
@@ -529,7 +539,9 @@ export interface ServerFnAfterMiddleware<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
@@ -568,7 +580,9 @@ export interface ServerFnAfterValidator<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
@@ -583,7 +597,9 @@ export interface ServerFnAfterTyper<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
@@ -611,13 +627,8 @@ export interface ServerFnHandler<
 }
 
 export interface ServerFnBuilder<TRegister, TMethod extends Method = 'GET'>
-  extends ServerFnWithTypes<
-      TRegister,
-      TMethod,
-      undefined,
-      undefined,
-      undefined
-    >,
+  extends
+    ServerFnWithTypes<TRegister, TMethod, undefined, undefined, undefined>,
     ServerFnMiddleware<TRegister, TMethod, undefined, undefined>,
     ServerFnValidator<TRegister, TMethod, undefined>,
     ServerFnHandler<TRegister, TMethod, undefined, undefined> {

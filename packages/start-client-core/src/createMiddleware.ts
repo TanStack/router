@@ -75,8 +75,9 @@ export type CreateMiddlewareResult<
   ? RequestMiddleware<TRegister>
   : FunctionMiddleware<TRegister>
 
-export interface FunctionMiddleware<TRegister>
-  extends FunctionMiddlewareAfterMiddleware<TRegister, unknown> {
+export interface FunctionMiddleware<
+  TRegister,
+> extends FunctionMiddlewareAfterMiddleware<TRegister, unknown> {
   middleware: <const TNewMiddlewares = undefined>(
     middlewares: Constrain<
       TNewMiddlewares,
@@ -86,7 +87,8 @@ export interface FunctionMiddleware<TRegister>
 }
 
 export interface FunctionMiddlewareAfterMiddleware<TRegister, TMiddlewares>
-  extends FunctionMiddlewareWithTypes<
+  extends
+    FunctionMiddlewareWithTypes<
       TRegister,
       TMiddlewares,
       undefined,
@@ -555,14 +557,14 @@ export interface FunctionMiddlewareAfterServer<
   TClientContext,
   TClientSendContext,
 > extends FunctionMiddlewareWithTypes<
-    TRegister,
-    TMiddlewares,
-    TInputValidator,
-    TServerContext,
-    TServerSendContext,
-    TClientContext,
-    TClientSendContext
-  > {}
+  TRegister,
+  TMiddlewares,
+  TInputValidator,
+  TServerContext,
+  TServerSendContext,
+  TClientContext,
+  TClientSendContext
+> {}
 
 export interface FunctionMiddlewareClient<
   TRegister,
@@ -652,7 +654,9 @@ export interface FunctionMiddlewareAfterClient<
   TInputValidator,
   TServerSendContext,
   TClientContext,
-> extends FunctionMiddlewareWithTypes<
+>
+  extends
+    FunctionMiddlewareWithTypes<
       TRegister,
       TMiddlewares,
       TInputValidator,
@@ -679,7 +683,9 @@ export interface FunctionMiddlewareAfterValidator<
   TRegister,
   TMiddlewares,
   TInputValidator,
-> extends FunctionMiddlewareWithTypes<
+>
+  extends
+    FunctionMiddlewareWithTypes<
       TRegister,
       TMiddlewares,
       TInputValidator,
@@ -697,8 +703,9 @@ export interface FunctionMiddlewareAfterValidator<
     >,
     FunctionMiddlewareClient<TRegister, TMiddlewares, TInputValidator> {}
 
-export interface RequestMiddleware<TRegister>
-  extends RequestMiddlewareAfterMiddleware<TRegister, undefined> {
+export interface RequestMiddleware<
+  TRegister,
+> extends RequestMiddlewareAfterMiddleware<TRegister, undefined> {
   middleware: <const TMiddlewares = undefined>(
     middlewares: Constrain<TMiddlewares, ReadonlyArray<AnyRequestMiddleware>>,
   ) => RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares>
@@ -744,7 +751,8 @@ export interface RequestMiddlewareTypes<
 }
 
 export interface RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares>
-  extends RequestMiddlewareWithTypes<TRegister, TMiddlewares, undefined>,
+  extends
+    RequestMiddlewareWithTypes<TRegister, TMiddlewares, undefined>,
     RequestMiddlewareServer<TRegister, TMiddlewares> {}
 
 export interface RequestMiddlewareServer<TRegister, TMiddlewares> {
@@ -781,9 +789,8 @@ export interface RequestServerNextFnOptions<TServerContext> {
 }
 
 export type RequestServerNextFnResult<TRegister, TMiddlewares, TServerContext> =
-
-    | Promise<RequestServerResult<TRegister, TMiddlewares, TServerContext>>
-    | RequestServerResult<TRegister, TMiddlewares, TServerContext>
+  | Promise<RequestServerResult<TRegister, TMiddlewares, TServerContext>>
+  | RequestServerResult<TRegister, TMiddlewares, TServerContext>
 
 export type RequestMiddlewareServerFnResult<
   TRegister,
