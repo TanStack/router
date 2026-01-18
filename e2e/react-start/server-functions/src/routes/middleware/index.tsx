@@ -76,6 +76,14 @@ function RouteComponent() {
         </li>
         <li>
           <Route.Link
+            to="/middleware/server-early-return-headers"
+            data-testid="server-early-return-headers-link"
+          >
+            Server middleware early return with headers
+          </Route.Link>
+        </li>
+        <li>
+          <Route.Link
             to="./server-conditional"
             data-testid="server-conditional-link"
           >

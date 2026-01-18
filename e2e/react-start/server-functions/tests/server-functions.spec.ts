@@ -236,6 +236,31 @@ test('server function correctly passes context when using FormData', async ({
   expect(simpleResult.testString).toContain('context-from-middleware')
 })
 
+test('server function can short-circuit middleware with result({ headers })', async ({
+  page,
+}) => {
+  await page.goto('/middleware/server-early-return-headers')
+  await page.waitForLoadState('networkidle')
+
+  const serverFnResponsePromise = page.waitForResponse((response) => {
+    const url = response.url()
+    return (
+      url.includes('/_serverFn/') &&
+      url.includes('serverEarlyReturnHeadersMiddleware')
+    )
+  })
+
+  await page.getByTestId('invoke-btn').click()
+
+  const response = await serverFnResponsePromise
+  const responseHeaders = response.headers()
+
+  expect(responseHeaders['x-middleware-early-return']).toBe('true')
+  expect(responseHeaders['x-middleware-early-return-value']).toBe('hello')
+
+  await expect(page.getByTestId('result-data')).toContainText('middleware')
+})
+
 test('server function can correctly send and receive headers', async ({
   page,
 }) => {
