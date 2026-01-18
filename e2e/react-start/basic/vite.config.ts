@@ -22,6 +22,8 @@ const prerenderConfiguration = {
       '/i-do-not-exist',
       '/not-found/via-beforeLoad',
       '/not-found/via-loader',
+      '/specialChars/search',
+      '/specialChars/malformed',
       '/users',
     ].some((p) => page.path.includes(p)),
   maxRedirects: 100,

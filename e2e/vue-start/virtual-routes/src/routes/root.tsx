@@ -70,6 +70,15 @@ function RootComponent() {
             Subtree
           </Link>{' '}
           <Link
+            data-testid="special-pipe-link"
+            to="/special|pipe"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Pipe
+          </Link>{' '}
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{

@@ -12,6 +12,7 @@ import {
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
+  getNormalizedURL,
   getOrigin,
 } from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
@@ -216,8 +217,9 @@ export function createStartHandler<TRegister = Register>(
     let cbWillCleanup = false as boolean
 
     try {
-      const url = new URL(request.url)
-      const href = url.href.replace(url.origin, '')
+      // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
+      const url = getNormalizedURL(request.url)
+      const href = url.pathname + url.search + url.hash
       const origin = getOrigin(request)
 
       const entries = await getEntries()

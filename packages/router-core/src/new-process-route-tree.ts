@@ -732,11 +732,22 @@ export function findRouteMatch<
   const cached = processedTree.matchCache.get(key)
   if (cached !== undefined) return cached
   path ||= '/'
-  const result = findMatch(
-    path,
-    processedTree.segmentTree,
-    fuzzy,
-  ) as RouteMatch<T> | null
+  let result: RouteMatch<T> | null
+
+  try {
+    result = findMatch(
+      path,
+      processedTree.segmentTree,
+      fuzzy,
+    ) as RouteMatch<T> | null
+  } catch (err) {
+    if (err instanceof URIError) {
+      result = null
+    } else {
+      throw err
+    }
+  }
+
   if (result) result.branch = buildRouteBranch(result.route)
   processedTree.matchCache.set(key, result)
   return result
