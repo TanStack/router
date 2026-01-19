@@ -7,6 +7,7 @@ import {
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
+import type { SubscriberArgs } from '@tanstack/history'
 
 // Track mount state per router to avoid double-loading
 let mountLoadForRouter = { router: null as any, mounted: false }
@@ -112,7 +113,17 @@ export function useTransitionerSetup() {
   let unsubscribe: (() => void) | undefined
 
   Vue.onMounted(() => {
-    unsubscribe = router.history.subscribe(router.load)
+    unsubscribe = router.history.subscribe(
+      ({ navigateOpts }: SubscriberArgs) => {
+        // If commitLocation initiated this navigation, it handles load() itself
+        if (navigateOpts?.skipTransitionerLoad) {
+          return
+        }
+
+        // External navigation (pop, direct history.push, etc): call load normally
+        router.load()
+      },
+    )
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,

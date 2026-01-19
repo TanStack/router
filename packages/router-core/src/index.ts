@@ -69,7 +69,11 @@ export type {
   CreateLazyFileRoute,
 } from './fileRoute'
 
-export type { ParsedLocation } from './location'
+export type {
+  MatchSnapshot,
+  ParsedLocation,
+  ValidatedSearchEntry,
+} from './location'
 export type { Manifest, RouterManagedTag } from './manifest'
 export { isMatch } from './Matches'
 export type {

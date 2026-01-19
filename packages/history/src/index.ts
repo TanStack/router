@@ -4,7 +4,12 @@
 
 export interface NavigateOptions {
   ignoreBlocker?: boolean
+  /** When true, Transitioner should skip calling load() - commitLocation handles it */
+  skipTransitionerLoad?: boolean
 }
+
+/** Result of a navigation attempt (push/replace) */
+export type NavigationResult = { type: 'SUCCESS' } | { type: 'BLOCKED' }
 
 type SubscriberHistoryAction =
   | {
@@ -15,9 +20,10 @@ type SubscriberHistoryAction =
       index: number
     }
 
-type SubscriberArgs = {
+export type SubscriberArgs = {
   location: HistoryLocation
   action: SubscriberHistoryAction
+  navigateOpts?: NavigateOptions
 }
 
 export interface RouterHistory {
@@ -25,8 +31,16 @@ export interface RouterHistory {
   length: number
   subscribers: Set<(opts: SubscriberArgs) => void>
   subscribe: (cb: (opts: SubscriberArgs) => void) => () => void
-  push: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
-  replace: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
+  push: (
+    path: string,
+    state?: any,
+    navigateOpts?: NavigateOptions,
+  ) => Promise<NavigationResult>
+  replace: (
+    path: string,
+    state?: any,
+    navigateOpts?: NavigateOptions,
+  ) => Promise<NavigationResult>
   go: (index: number, navigateOpts?: NavigateOptions) => void
   back: (navigateOpts?: NavigateOptions) => void
   forward: (navigateOpts?: NavigateOptions) => void
@@ -56,6 +70,21 @@ export type ParsedHistoryState = HistoryState & {
   key?: string // TODO: Remove in v2 - use __TSR_key instead
   __TSR_key?: string
   __TSR_index: number
+  /** Whether to reset scroll position on this navigation (default: true) */
+  __TSR_resetScroll?: boolean
+  /** Session id for cached TSR internals */
+  __TSR_sessionId?: string
+  /** Match snapshot for fast-path on back/forward navigation */
+  __TSR_matches?: {
+    routeIds: Array<string>
+    params: Record<string, string>
+    globalNotFoundRouteId?: string
+    searchStr?: string
+    validatedSearches?: Array<{
+      search: Record<string, unknown>
+      strictSearch: Record<string, unknown>
+    }>
+  }
 }
 
 type ShouldAllowNavigation = any
@@ -116,9 +145,14 @@ export function createHistory(opts: {
   let location = opts.getLocation()
   const subscribers = new Set<(opts: SubscriberArgs) => void>()
 
-  const notify = (action: SubscriberHistoryAction) => {
+  const notify = (
+    action: SubscriberHistoryAction,
+    navigateOpts?: NavigateOptions,
+  ) => {
     location = opts.getLocation()
-    subscribers.forEach((subscriber) => subscriber({ location, action }))
+    subscribers.forEach((subscriber) =>
+      subscriber({ location, action, navigateOpts }),
+    )
   }
 
   const handleIndexChange = (action: SubscriberHistoryAction) => {
@@ -130,11 +164,11 @@ export function createHistory(opts: {
     task,
     navigateOpts,
     ...actionInfo
-  }: TryNavigateArgs) => {
+  }: TryNavigateArgs): Promise<NavigationResult> => {
     const ignoreBlocker = navigateOpts?.ignoreBlocker ?? false
     if (ignoreBlocker) {
       task()
-      return
+      return { type: 'SUCCESS' }
     }
 
     const blockers = opts.getBlockers?.() ?? []
@@ -150,12 +184,13 @@ export function createHistory(opts: {
         })
         if (isBlocked) {
           opts.onBlocked?.()
-          return
+          return { type: 'BLOCKED' }
         }
       }
     }
 
     task()
+    return { type: 'SUCCESS' }
   }
 
   return {
@@ -176,10 +211,10 @@ export function createHistory(opts: {
     push: (path, state, navigateOpts) => {
       const currentIndex = location.state[stateIndexKey]
       state = assignKeyAndIndex(currentIndex + 1, state)
-      tryNavigation({
+      return tryNavigation({
         task: () => {
           opts.pushState(path, state)
-          notify({ type: 'PUSH' })
+          notify({ type: 'PUSH' }, navigateOpts)
         },
         navigateOpts,
         type: 'PUSH',
@@ -190,10 +225,10 @@ export function createHistory(opts: {
     replace: (path, state, navigateOpts) => {
       const currentIndex = location.state[stateIndexKey]
       state = assignKeyAndIndex(currentIndex, state)
-      tryNavigation({
+      return tryNavigation({
         task: () => {
           opts.replaceState(path, state)
-          notify({ type: 'REPLACE' })
+          notify({ type: 'REPLACE' }, navigateOpts)
         },
         navigateOpts,
         type: 'REPLACE',
