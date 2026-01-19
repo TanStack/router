@@ -218,10 +218,7 @@ Finally, let's create the main component that consumes the loader data:
 ```tsx
 // MoviesPage component
 const MoviesPage = () => {
-  const { movies, error } = Route.useLoaderData()<{
-    movies: Movie[]
-    error: string | null
-  }>()
+  const { movies, error } = Route.useLoaderData()
 
   return (
     <div
