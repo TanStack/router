@@ -97,6 +97,12 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
+  // subscribe to href to re-build location if it changes
+  const currentHash = useRouterState({
+    select: (s) => s.location.hash,
+    structuralSharing: true as any,
+  })
+
   const from = options.from
 
   const _options = React.useMemo(
@@ -219,7 +225,7 @@ export function useLinkProps<
         }
       }
 
-      if (activeOptions?.includeHash) {
+      if (activeOptions?.includeHash && !router.isServer) {
         return s.location.hash === next.hash
       }
       return true
