@@ -482,6 +482,14 @@ export interface RouterOptions<
   ssr?: {
     nonce?: string
   }
+  /**
+   * When enabled, caches route match snapshots in history state for use during
+   * back/forward navigation (popstate). This can improve performance but may
+   * cause issues if routes change between navigations (e.g., new bundle deploy).
+   *
+   * @default false
+   */
+  cacheMatchesInHistory?: boolean
 }
 
 export type LocationRewrite = {
@@ -1277,9 +1285,7 @@ export class RouterCore<
   ): Array<AnyRouteMatch> {
     // Fast-path: use snapshot hint if valid (all route IDs must exist)
     // NOTE: This check is not sufficient to detect when a new bundle is deployed
-    // with additional routes that would change route matching. A proper fix would
-    // require a build ID or route tree hash that changes on deploy but not on
-    // lazy route discovery. Postponed for now.
+    // with additional routes that would change route matching.
     const snapshot = opts?.snapshot
     const snapshotValid =
       snapshot &&
@@ -2046,15 +2052,18 @@ export class RouterCore<
 
     // Use match snapshot from buildLocation if available, otherwise compute it
     // This avoids re-matching routes that were already matched in buildLocation
-    nextHistory.state.__TSR_matches =
-      next._matchSnapshot ??
-      buildMatchSnapshot({
-        matchResult: this.getMatchedRoutes(next.pathname),
-        pathname: next.pathname,
-        searchStr: next.searchStr,
-        notFoundRoute: this.options.notFoundRoute,
-        notFoundMode: this.options.notFoundMode,
-      })
+    // Only store in history state if cacheMatchesInHistory is enabled
+    if (this.options.cacheMatchesInHistory) {
+      nextHistory.state.__TSR_matches =
+        next._matchSnapshot ??
+        buildMatchSnapshot({
+          matchResult: this.getMatchedRoutes(next.pathname),
+          pathname: next.pathname,
+          searchStr: next.searchStr,
+          notFoundRoute: this.options.notFoundRoute,
+          notFoundMode: this.options.notFoundMode,
+        })
+    }
 
     // Build the pre-computed ParsedLocation to avoid re-parsing after push
     // Spread next (which has href, pathname, search, etc.) and override with final state
@@ -2278,7 +2287,7 @@ export class RouterCore<
     }
 
     // Match the routes
-    // Use snapshot from history state for fast-path on back/forward navigation
+    // Use snapshot from history state for fast-path if available
     const snapshot = this.latestLocation.state.__TSR_matches
     const pendingMatches = this.matchRoutes(this.latestLocation, { snapshot })
 
