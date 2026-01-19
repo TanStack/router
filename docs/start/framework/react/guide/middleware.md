@@ -641,12 +641,13 @@ await myServerFn({
 
 When custom fetch implementations are provided at multiple levels, the following precedence applies (highest to lowest priority):
 
-| Priority    | Source             | Description                                     |
-| ----------- | ------------------ | ----------------------------------------------- |
-| 1 (highest) | Call site          | `serverFn({ fetch: customFetch })`              |
-| 2           | Later middleware   | Last middleware in chain that provides `fetch`  |
-| 3           | Earlier middleware | First middleware in chain that provides `fetch` |
-| 4 (lowest)  | Default            | Global `fetch` function                         |
+| Priority    | Source             | Description                                          |
+| ----------- | ------------------ | ---------------------------------------------------- |
+| 1 (highest) | Call site          | `serverFn({ fetch: customFetch })`                   |
+| 2           | Later middleware   | Last middleware in chain that provides `fetch`       |
+| 3           | Earlier middleware | First middleware in chain that provides `fetch`      |
+| 4           | createStart        | `createStart({ serverFns: { fetch: customFetch } })` |
+| 5 (lowest)  | Default            | Global `fetch` function                              |
 
 **Key principle:** The call site always wins. This allows you to override middleware behavior for specific calls when needed.
 
@@ -714,6 +715,32 @@ const myServerFn = createServerFn()
     return { message: 'Hello' }
   })
 ```
+
+**Global Fetch via createStart:**
+
+You can set a default custom fetch for all server functions in your application by providing `serverFns.fetch` in `createStart`. This is useful for adding global request interceptors, retry logic, or telemetry:
+
+```tsx
+// src/start.ts
+import { createStart } from '@tanstack/react-start'
+import type { CustomFetch } from '@tanstack/react-start'
+
+const globalFetch: CustomFetch = async (url, init) => {
+  console.log('Global fetch:', url)
+  // Add retry logic, telemetry, etc.
+  return fetch(url, init)
+}
+
+export const startInstance = createStart(() => {
+  return {
+    serverFns: {
+      fetch: globalFetch,
+    },
+  }
+})
+```
+
+This global fetch has lower priority than middleware and call-site fetch, so you can still override it for specific server functions or calls when needed.
 
 > [!NOTE]
 > Custom fetch only applies on the client side. During SSR, server functions are called directly without going through fetch.
