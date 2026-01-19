@@ -103,6 +103,54 @@ test.describe('Unicode route rendering', () => {
     })
   })
 
+  test.describe('Special characters in url hash', () => {
+    test('should render route correctly on direct navigation', async ({
+      page,
+      baseURL,
+    }) => {
+      await expect(page.getByTestId('special-hash-link')).not.toHaveClass(
+        'font-bold',
+      )
+      await page.goto('/specialChars/hash#대|')
+
+      await page.waitForURL(`${baseURL}/specialChars/hash#%EB%8C%80|`)
+      await page.waitForLoadState('load')
+
+      await expect(page.getByTestId('special-hash-heading')).toBeInViewport()
+
+      const hashValue = await page.getByTestId('special-hash').textContent()
+
+      await expect(page.getByTestId('special-hash-link')).toHaveClass(
+        'font-bold',
+      )
+      expect(hashValue).toBe('대|')
+    })
+
+    test('should render route correctly on router navigation', async ({
+      page,
+      baseURL,
+    }) => {
+      await expect(page.getByTestId('special-hash-link')).not.toHaveClass(
+        'font-bold',
+      )
+      const link = page.getByTestId('special-hash-link')
+
+      await link.click()
+
+      await page.waitForURL(`${baseURL}/specialChars/hash#%EB%8C%80|`)
+      await page.waitForLoadState('load')
+
+      await expect(page.getByTestId('special-hash-heading')).toBeInViewport()
+
+      const hashValue = await page.getByTestId('special-hash').textContent()
+
+      await expect(page.getByTestId('special-hash-link')).toHaveClass(
+        'font-bold',
+      )
+      expect(hashValue).toBe('대|')
+    })
+  })
+
   test.describe('malformed paths', () => {
     test.use({
       whitelistErrors: [

@@ -34,6 +34,7 @@ import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-coo
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as SpecialCharsChar45824Char54620Char48124Char44397RouteImport } from './routes/specialChars/대한민국'
 import { Route as SpecialCharsSearchRouteImport } from './routes/specialChars/search'
+import { Route as SpecialCharsHashRouteImport } from './routes/specialChars/hash'
 import { Route as SpecialCharsParamRouteImport } from './routes/specialChars/$param'
 import { Route as SearchParamsLoaderThrowsRedirectRouteImport } from './routes/search-params/loader-throws-redirect'
 import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
@@ -191,6 +192,11 @@ const SpecialCharsChar45824Char54620Char48124Char44397Route =
 const SpecialCharsSearchRoute = SpecialCharsSearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => SpecialCharsRouteRoute,
+} as any)
+const SpecialCharsHashRoute = SpecialCharsHashRouteImport.update({
+  id: '/hash',
+  path: '/hash',
   getParentRoute: () => SpecialCharsRouteRoute,
 } as any)
 const SpecialCharsParamRoute = SpecialCharsParamRouteImport.update({
@@ -394,6 +400,7 @@ export interface FileRoutesByFullPath {
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/specialChars/$param': typeof SpecialCharsParamRoute
+  '/specialChars/hash': typeof SpecialCharsHashRoute
   '/specialChars/search': typeof SpecialCharsSearchRoute
   '/specialChars/대한민국': typeof SpecialCharsChar45824Char54620Char48124Char44397Route
   '/users/$userId': typeof UsersUserIdRoute
@@ -445,6 +452,7 @@ export interface FileRoutesByTo {
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/specialChars/$param': typeof SpecialCharsParamRoute
+  '/specialChars/hash': typeof SpecialCharsHashRoute
   '/specialChars/search': typeof SpecialCharsSearchRoute
   '/specialChars/대한민국': typeof SpecialCharsChar45824Char54620Char48124Char44397Route
   '/users/$userId': typeof UsersUserIdRoute
@@ -504,6 +512,7 @@ export interface FileRoutesById {
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/specialChars/$param': typeof SpecialCharsParamRoute
+  '/specialChars/hash': typeof SpecialCharsHashRoute
   '/specialChars/search': typeof SpecialCharsSearchRoute
   '/specialChars/대한민국': typeof SpecialCharsChar45824Char54620Char48124Char44397Route
   '/users/$userId': typeof UsersUserIdRoute
@@ -563,6 +572,7 @@ export interface FileRouteTypes {
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/specialChars/$param'
+    | '/specialChars/hash'
     | '/specialChars/search'
     | '/specialChars/대한민국'
     | '/users/$userId'
@@ -614,6 +624,7 @@ export interface FileRouteTypes {
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/specialChars/$param'
+    | '/specialChars/hash'
     | '/specialChars/search'
     | '/specialChars/대한민국'
     | '/users/$userId'
@@ -672,6 +683,7 @@ export interface FileRouteTypes {
     | '/search-params/default'
     | '/search-params/loader-throws-redirect'
     | '/specialChars/$param'
+    | '/specialChars/hash'
     | '/specialChars/search'
     | '/specialChars/대한민국'
     | '/users/$userId'
@@ -899,6 +911,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/specialChars/search'
       preLoaderRoute: typeof SpecialCharsSearchRouteImport
+      parentRoute: typeof SpecialCharsRouteRoute
+    }
+    '/specialChars/hash': {
+      id: '/specialChars/hash'
+      path: '/hash'
+      fullPath: '/specialChars/hash'
+      preLoaderRoute: typeof SpecialCharsHashRouteImport
       parentRoute: typeof SpecialCharsRouteRoute
     }
     '/specialChars/$param': {
@@ -1178,6 +1197,7 @@ const SpecialCharsMalformedRouteRouteWithChildren =
 interface SpecialCharsRouteRouteChildren {
   SpecialCharsMalformedRouteRoute: typeof SpecialCharsMalformedRouteRouteWithChildren
   SpecialCharsParamRoute: typeof SpecialCharsParamRoute
+  SpecialCharsHashRoute: typeof SpecialCharsHashRoute
   SpecialCharsSearchRoute: typeof SpecialCharsSearchRoute
   SpecialCharsChar45824Char54620Char48124Char44397Route: typeof SpecialCharsChar45824Char54620Char48124Char44397Route
 }
@@ -1185,6 +1205,7 @@ interface SpecialCharsRouteRouteChildren {
 const SpecialCharsRouteRouteChildren: SpecialCharsRouteRouteChildren = {
   SpecialCharsMalformedRouteRoute: SpecialCharsMalformedRouteRouteWithChildren,
   SpecialCharsParamRoute: SpecialCharsParamRoute,
+  SpecialCharsHashRoute: SpecialCharsHashRoute,
   SpecialCharsSearchRoute: SpecialCharsSearchRoute,
   SpecialCharsChar45824Char54620Char48124Char44397Route:
     SpecialCharsChar45824Char54620Char48124Char44397Route,

@@ -38,6 +38,19 @@ function RouteComponent() {
         Unicode search param
       </Link>{' '}
       <Link
+        to="/specialChars/hash"
+        activeOptions={{
+          includeHash: true,
+        }}
+        activeProps={{
+          className: 'font-bold',
+        }}
+        hash={'대|'}
+        data-testid="special-hash-link"
+      >
+        Unicode Hash
+      </Link>{' '}
+      <Link
         to="/specialChars/malformed"
         activeProps={{
           className: 'font-bold',

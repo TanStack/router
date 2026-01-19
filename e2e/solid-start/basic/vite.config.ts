@@ -23,6 +23,7 @@ const prerenderConfiguration = {
       '/not-found/via-beforeLoad',
       '/not-found/via-loader',
       '/specialChars/search',
+      '/specialChars/hash',
       '/specialChars/malformed',
       '/search-params/default',
       '/transition',
