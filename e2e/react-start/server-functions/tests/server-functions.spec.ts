@@ -1115,7 +1115,7 @@ test('server function with direct fetch overrides middleware fetch', async ({
   expect(result).not.toContain('x-custom-fetch-middleware')
 })
 
-test('server function without custom fetch uses default fetch', async ({
+test('server function without custom fetch uses global serverFnFetch from createStart', async ({
   page,
 }) => {
   await page.goto('/custom-fetch')
@@ -1128,10 +1128,68 @@ test('server function without custom fetch uses default fetch', async ({
   )
 
   const result = await page.getByTestId('no-custom-fetch-result').textContent()
-  // No custom headers should be present
+  // Global serverFnFetch header should be present
+  expect(result).toContain('x-global-fetch')
+  // No other custom headers should be present
   expect(result).not.toContain('x-custom-fetch-direct')
   expect(result).not.toContain('x-custom-fetch-middleware')
   expect(result).not.toContain('x-middleware-first')
   expect(result).not.toContain('x-middleware-second')
   expect(result).not.toContain('x-direct-override')
+})
+
+test('server function uses global serverFnFetch from createStart', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-global-fetch-btn').click()
+  await page.waitForSelector(
+    '[data-testid="global-fetch-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page.getByTestId('global-fetch-result').textContent()
+  // Global serverFnFetch header should be present
+  expect(result).toContain('x-global-fetch')
+})
+
+test('middleware fetch overrides global serverFnFetch from createStart', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-middleware-overrides-global-btn').click()
+  await page.waitForSelector(
+    '[data-testid="middleware-overrides-global-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('middleware-overrides-global-result')
+    .textContent()
+  // Middleware fetch should override global, so x-custom-fetch-middleware should be present
+  expect(result).toContain('x-custom-fetch-middleware')
+  // Global fetch header should NOT be present (overridden by middleware)
+  expect(result).not.toContain('x-global-fetch')
+})
+
+test('direct fetch overrides global serverFnFetch from createStart', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-direct-overrides-global-btn').click()
+  await page.waitForSelector(
+    '[data-testid="direct-overrides-global-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('direct-overrides-global-result')
+    .textContent()
+  // Direct fetch should override global, so x-direct-override-global should be present
+  expect(result).toContain('x-direct-override-global')
+  // Global fetch header should NOT be present (overridden by direct fetch)
+  expect(result).not.toContain('x-global-fetch')
 })
