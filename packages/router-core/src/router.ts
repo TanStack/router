@@ -95,13 +95,6 @@ import type {
 } from './ssr/serializer/transformer'
 // import type { AnyRouterConfig } from './config'
 
-/**
- * Symbol marker for internal navigation. Non-serializable, so won't survive
- * history serialization (page refresh, session restore). Used to skip
- * redundant parseLocation() on forward navigation.
- */
-export const INTERNAL_NAV_MARKER = Symbol('__TSR_internal_nav')
-
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
   reject: (value?: any) => void
@@ -482,14 +475,6 @@ export interface RouterOptions<
   ssr?: {
     nonce?: string
   }
-  /**
-   * When enabled, caches route match snapshots in history state for use during
-   * back/forward navigation (popstate). This can improve performance but may
-   * cause issues if routes change between navigations (e.g., new bundle deploy).
-   *
-   * @default false
-   */
-  cacheMatchesInHistory?: boolean
 }
 
 export type LocationRewrite = {
@@ -936,6 +921,8 @@ export class RouterCore<
   origin?: string
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   pendingBuiltLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
+  /** Session id for cached history snapshots */
+  private sessionId!: string
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
@@ -956,6 +943,11 @@ export class RouterCore<
       TDehydrated
     >,
   ) {
+    this.sessionId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
     this.update({
       defaultPreloadDelay: 50,
       defaultPendingMs: 1000,
@@ -1283,9 +1275,7 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    // Fast-path: use snapshot hint if valid (all route IDs must exist)
-    // NOTE: This check is not sufficient to detect when a new bundle is deployed
-    // with additional routes that would change route matching.
+    // Fast-path: use snapshot hint if valid
     const snapshot = opts?.snapshot
     const snapshotValid =
       snapshot &&
@@ -2050,31 +2040,28 @@ export class RouterCore<
 
     this.shouldViewTransition = viewTransition
 
-    // Use match snapshot from buildLocation if available, otherwise compute it
-    // This avoids re-matching routes that were already matched in buildLocation
-    // Only store in history state if cacheMatchesInHistory is enabled
-    if (this.options.cacheMatchesInHistory) {
-      nextHistory.state.__TSR_matches =
-        next._matchSnapshot ??
-        buildMatchSnapshot({
-          matchResult: this.getMatchedRoutes(next.pathname),
-          pathname: next.pathname,
-          searchStr: next.searchStr,
-          notFoundRoute: this.options.notFoundRoute,
-          notFoundMode: this.options.notFoundMode,
-        })
-    }
+    // Store session id for this router lifetime
+    nextHistory.state.__TSR_sessionId = this.sessionId
+
+    // Use match snapshot from buildLocation if available, otherwise compute it.
+    // Stored in history state for pop/back/forward fast-path.
+    nextHistory.state.__TSR_matches =
+      next._matchSnapshot ??
+      buildMatchSnapshot({
+        matchResult: this.getMatchedRoutes(next.pathname),
+        pathname: next.pathname,
+        searchStr: next.searchStr,
+        notFoundRoute: this.options.notFoundRoute,
+        notFoundMode: this.options.notFoundMode,
+      })
 
     // Build the pre-computed ParsedLocation to avoid re-parsing after push
     // Spread next (which has href, pathname, search, etc.) and override with final state
-    const precomputedLocation: ParsedLocation & {
-      __TSR_marker: typeof INTERNAL_NAV_MARKER
-    } = {
+    const precomputedLocation: ParsedLocation = {
       ...next,
       publicHref: nextHistory.publicHref,
       state: nextHistory.state,
       maskedLocation,
-      __TSR_marker: INTERNAL_NAV_MARKER,
     }
 
     // Await push/replace to handle blockers before proceeding
@@ -2287,8 +2274,11 @@ export class RouterCore<
     }
 
     // Match the routes
-    // Use snapshot from history state for fast-path if available
-    const snapshot = this.latestLocation.state.__TSR_matches
+    // Use snapshot from history state for fast-path only within same router lifetime
+    const snapshot =
+      this.latestLocation.state.__TSR_sessionId === this.sessionId
+        ? this.latestLocation.state.__TSR_matches
+        : undefined
     const pendingMatches = this.matchRoutes(this.latestLocation, { snapshot })
 
     // Ingest the new matches
