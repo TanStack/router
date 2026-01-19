@@ -20,6 +20,8 @@ export interface MatchSnapshot {
   routeIds: Array<string>
   /** Raw path params extracted from the URL */
   params: Record<string, string>
+  /** Parsed/validated path params */
+  parsedParams: Record<string, unknown>
   /** Route ID that should show global not found, if any */
   globalNotFoundRouteId?: string
   /** Search string when snapshot was created (for cache invalidation) */

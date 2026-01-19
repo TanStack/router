@@ -711,7 +711,7 @@ export type GetMatchRoutesFn = (pathname: string) => {
   /** exhaustive params, still in their string form */
   routeParams: Record<string, string>
   /** partial params, parsed from routeParams during matching */
-  parsedParams: Record<string, unknown> | undefined
+  parsedParams: Record<string, unknown>
   foundRoute: AnyRoute | undefined
   parseError?: unknown
 }
@@ -1276,6 +1276,10 @@ export class RouterCore<
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
     // Fast-path: use snapshot hint if valid (all route IDs must exist)
+    // NOTE: This check is not sufficient to detect when a new bundle is deployed
+    // with additional routes that would change route matching. A proper fix would
+    // require a build ID or route tree hash that changes on deploy but not on
+    // lazy route discovery. Postponed for now.
     const snapshot = opts?.snapshot
     const snapshotValid =
       snapshot &&
@@ -1285,14 +1289,14 @@ export class RouterCore<
     let matchedRoutes: ReadonlyArray<AnyRoute>
     let routeParams: Record<string, string>
     let globalNotFoundRouteId: string | undefined
-    let parsedParams: Record<string, unknown> | undefined
+    let parsedParams: Record<string, unknown>
 
     if (snapshotValid) {
       // Rebuild matched routes from snapshot
       matchedRoutes = snapshot.routeIds.map((id) => this.routesById[id]!)
       routeParams = { ...snapshot.params }
       globalNotFoundRouteId = snapshot.globalNotFoundRouteId
-      parsedParams = undefined // Not available from snapshot, will re-parse if needed
+      parsedParams = snapshot.parsedParams
     } else {
       // Normal path matching
       const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
@@ -2915,7 +2919,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   const trimmedPath = trimPathRight(pathname)
 
   let foundRoute: TRouteLike | undefined = undefined
-  let parsedParams: Record<string, unknown> | undefined = undefined
+  let parsedParams: Record<string, unknown> = {}
   const match = findRouteMatch<TRouteLike>(trimmedPath, processedTree, true)
   if (match) {
     foundRoute = match.route
@@ -2948,6 +2952,7 @@ export function buildMatchSnapshot({
   const snapshot: MatchSnapshot = {
     routeIds: matchResult.matchedRoutes.map((r) => r.id),
     params: matchResult.routeParams,
+    parsedParams: matchResult.parsedParams,
     searchStr,
   }
 
@@ -2956,7 +2961,10 @@ export function buildMatchSnapshot({
     : trimPathRight(pathname)
 
   if (isGlobalNotFound) {
-    if (!notFoundRoute) {
+    if (notFoundRoute) {
+      // Custom notFoundRoute provided - use its id
+      snapshot.globalNotFoundRouteId = notFoundRoute.id
+    } else {
       if (notFoundMode !== 'root') {
         for (let i = matchResult.matchedRoutes.length - 1; i >= 0; i--) {
           const route = matchResult.matchedRoutes[i]!
@@ -3003,6 +3011,7 @@ export function buildMatchSnapshotFromRoutes({
   const snapshot: MatchSnapshot = {
     routeIds: routes.map((r) => r.id),
     params: stringParams,
+    parsedParams: params,
     searchStr,
   }
 
