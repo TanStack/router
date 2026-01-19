@@ -108,7 +108,7 @@ test.describe('Unicode route rendering', () => {
       page,
       baseURL,
     }) => {
-      await expect(page.getByTestId('special-hash-link')).not.toHaveClass(
+      await expect(page.getByTestId('special-hash-link')).not.toContainClass(
         'font-bold',
       )
       await page.goto('/specialChars/hash#대|')
@@ -118,13 +118,13 @@ test.describe('Unicode route rendering', () => {
 
       await expect(page.getByTestId('special-hash-heading')).toBeInViewport()
 
+      await expect(page.getByTestId('special-hash-link')).toContainClass(
+        'font-bold',
+      )
+
+      await page.getByTestId('toggle-hash-button').click()
+
       const hashValue = await page.getByTestId('special-hash').textContent()
-
-      const el = await page
-        .getByTestId('special-hash-link')
-        .evaluate((e) => e.classList.value)
-
-      expect(el).toContain('font-bold')
 
       expect(hashValue).toBe('대|')
     })
@@ -133,7 +133,7 @@ test.describe('Unicode route rendering', () => {
       page,
       baseURL,
     }) => {
-      await expect(page.getByTestId('special-hash-link')).not.toHaveClass(
+      await expect(page.getByTestId('special-hash-link')).not.toContainClass(
         'font-bold',
       )
       const link = page.getByTestId('special-hash-link')
@@ -145,11 +145,14 @@ test.describe('Unicode route rendering', () => {
 
       await expect(page.getByTestId('special-hash-heading')).toBeInViewport()
 
-      const hashValue = await page.getByTestId('special-hash').textContent()
-
-      await expect(page.getByTestId('special-hash-link')).toHaveClass(
+      await expect(page.getByTestId('special-hash-link')).toContainClass(
         'font-bold',
       )
+
+      await page.getByTestId('toggle-hash-button').click()
+
+      const hashValue = await page.getByTestId('special-hash').textContent()
+
       expect(hashValue).toBe('대|')
     })
   })
