@@ -458,5 +458,4 @@ export {
   executeRewriteInput,
   executeRewriteOutput,
 } from './rewrite'
-export { INTERNAL_NAV_MARKER } from './router'
 export type { LocationRewrite, LocationRewriteFunction } from './router'
