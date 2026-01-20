@@ -157,7 +157,7 @@ For example, given the following routes:
 routes/
 ├── __root.tsx <-- Renders the <Root> component
 ├── posts.tsx <-- Renders the <Posts> component
-├── posts.$postId.tsx <-- Renders the <Post> component
+├── posts/$postId.tsx <-- Renders the <Post> component
 ```
 
 And the URL: `/posts/123`
