@@ -703,12 +703,18 @@ const runLoader = async (
       let error = e
 
       if ((error as any)?.name === 'AbortError') {
-        inner.updateMatch(matchId, (prev) => ({
-          ...prev,
-          status: prev.status === 'pending' ? 'success' : prev.status,
-          isFetching: false,
-          context: buildMatchContext(inner, index),
-        }))
+        const wasAbortedByNavigation = match.abortController?.signal.aborted === true
+
+        if (!wasAbortedByNavigation) {
+          inner.updateMatch(matchId, (prev) => ({
+            ...prev,
+            status: prev.status === 'pending' ? 'success' : prev.status,
+            isFetching: false,
+          }))
+          return
+        }
+        match._nonReactive.loaderPromise?.resolve()
+        match._nonReactive.loaderPromise = undefined
         return
       }
 
@@ -773,12 +779,17 @@ const loadRouteMatch = async (
         return prevMatch
       }
       await prevMatch._nonReactive.loaderPromise
-      const match = inner.router.getMatch(matchId)!
-      const error = match._nonReactive.error || match.error
+      const matchAfterWait = inner.router.getMatch(matchId)!
+      const error = matchAfterWait._nonReactive.error || matchAfterWait.error
       if (error) {
-        handleRedirectAndNotFound(inner, match, error)
+        handleRedirectAndNotFound(inner, matchAfterWait, error)
       }
-    } else {
+
+      if (matchAfterWait.status !== 'pending') {
+        return matchAfterWait
+      }
+    }
+    {
       // This is where all of the stale-while-revalidate magic happens
       const age = Date.now() - prevMatch.updatedAt
 
