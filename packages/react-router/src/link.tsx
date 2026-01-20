@@ -177,7 +177,7 @@ export function useLinkProps<
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  const isActive = useRouterState({
+  const activeState = useRouterState({
     select: (s) => {
       if (externalLink) return false
       if (activeOptions?.exact) {
@@ -219,12 +219,19 @@ export function useLinkProps<
         }
       }
 
-      if (activeOptions?.includeHash && !router.isServer) {
+      if (activeOptions?.includeHash) {
         return s.location.hash === next.hash
       }
       return true
     },
+    structuralSharing: true,
   })
+
+  const isActive = React.useSyncExternalStore(
+    React.useCallback(() => () => {}, []),
+    () => activeState,
+    () => (activeOptions?.includeHash && _hash ? false : activeState), // server snapshot
+  )
 
   const doPreload = React.useCallback(() => {
     router.preloadRoute({ ..._options } as any).catch((err) => {
