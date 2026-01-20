@@ -1,12 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
-import { Link, linkOptions } from '@tanstack/react-router'
+import { Link, linkOptions, useNavigate } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
   component: HomeComponent,
 })
 
 function HomeComponent() {
+  const navigate = useNavigate()
+
   return (
     <div className="p-2 grid gap-2">
       <h3>Welcome Home!</h3>
@@ -27,12 +29,59 @@ function HomeComponent() {
         <div key={`index-page-tests-${options.to}-${i}`} className="border p-2">
           <h4>{options.to} tests</h4>
           <p>
-            <Link {...options} hash="at-the-bottom">
+            <Link
+              {...options}
+              hash="at-the-bottom"
+              data-testid={`index-${options.to}-hash-link`}
+            >
               {options.to}#at-the-bottom
             </Link>
           </p>
         </div>
       ))}
+      <div className="border p-2">
+        <h4>scrollRestorationBehavior tests (Link)</h4>
+        <p>
+          <Link
+            to="/normal-page"
+            scrollRestorationBehavior="smooth"
+            data-testid="smooth-scroll-link"
+          >
+            /normal-page (smooth scroll)
+          </Link>
+        </p>
+        <p>
+          <Link to="/lazy-page" data-testid="default-scroll-link">
+            /lazy-page (default scroll)
+          </Link>
+        </p>
+      </div>
+      <div className="border p-2">
+        <h4>scrollRestorationBehavior tests (navigate)</h4>
+        <p>
+          <button
+            type="button"
+            data-testid="smooth-scroll-navigate-btn"
+            onClick={() =>
+              navigate({
+                to: '/normal-page',
+                scrollRestorationBehavior: 'smooth',
+              })
+            }
+          >
+            navigate to /normal-page (smooth scroll)
+          </button>
+        </p>
+        <p>
+          <button
+            type="button"
+            data-testid="default-scroll-navigate-btn"
+            onClick={() => navigate({ to: '/lazy-page' })}
+          >
+            navigate to /lazy-page (default scroll)
+          </button>
+        </p>
+      </div>
     </div>
   )
 }
