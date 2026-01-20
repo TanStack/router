@@ -703,7 +703,8 @@ const runLoader = async (
       let error = e
 
       if ((error as any)?.name === 'AbortError') {
-        const wasAbortedByNavigation = match.abortController?.signal.aborted === true
+        const wasAbortedByNavigation =
+          match.abortController?.signal.aborted === true
 
         if (!wasAbortedByNavigation) {
           inner.updateMatch(matchId, (prev) => ({
