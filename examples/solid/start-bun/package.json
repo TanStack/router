@@ -18,7 +18,7 @@
     "@tanstack/solid-router": "^1.153.2",
     "@tanstack/solid-router-devtools": "^1.153.2",
     "@tanstack/solid-router-ssr-query": "^1.153.2",
-    "@tanstack/solid-start": "^1.153.2",
+    "@tanstack/solid-start": "^1.154.0",
     "@tanstack/router-plugin": "^1.153.2",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.1.18",
