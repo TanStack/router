@@ -436,23 +436,6 @@ export const startInstance = createStart(() => {
 })
 ```
 
-### Global Middleware Type Safety
-
-Global middleware types are inherently **detached** from server functions themselves. This means that if a global middleware supplies additional context to server functions or other server function specific middleware, the types will not be automatically passed through to the server function or other server function specific middleware.
-
-To solve this, add the global middleware you are trying to reference to the server function's middleware array. **The global middleware will be deduped to a single entry (the global instance), and your server function will receive the correct types.**
-
-```tsx
-import { authMiddleware } from './authMiddleware'
-
-const fn = createServerFn()
-  .middleware([authMiddleware])
-  .handler(async ({ context }) => {
-    console.log(context.user) // <-- Now this will be typed!
-    // ...
-  })
-```
-
 ### Middleware Execution Order
 
 Middleware is executed dependency-first, starting with global middleware, followed by server function middleware. The following example will log in this order:

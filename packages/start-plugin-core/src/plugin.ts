@@ -301,6 +301,10 @@ export function TanStackStartVitePluginCore(
             ...defineReplaceEnv('TSS_ROUTER_BASEPATH', startConfig.router.basepath),
             ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
             ...defineReplaceEnv('TSS_DEV_SERVER', command === 'serve' ? 'true' : 'false'),
+            // Replace NODE_ENV during build (unless opted out) for dead code elimination in server bundles
+            ...(command === 'build' && startConfig.server.build.staticNodeEnv ? {
+              'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || viteConfig.mode || 'production'),
+            } : {}),
           },
           builder: {
             sharedPlugins: true,

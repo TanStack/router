@@ -179,6 +179,53 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Defaults to `/`
 - The basepath for the entire router. This is useful for mounting a router instance at a subpath.
 
+### `rewrite` property
+
+- Type: `LocationRewrite`
+- Optional
+- Configures bidirectional URL transformation between the browser URL and the router's internal URL.
+- See the [URL Rewrites guide](../../guide/url-rewrites.md) for detailed usage and patterns.
+
+The `LocationRewrite` type has the following shape:
+
+```tsx
+type LocationRewrite = {
+  input?: LocationRewriteFunction
+  output?: LocationRewriteFunction
+}
+
+type LocationRewriteFunction = (opts: { url: URL }) => undefined | string | URL
+```
+
+- `input`: Transforms the URL before the router interprets it (browser → router)
+- `output`: Transforms the URL before it's written to browser history (router → browser)
+
+**Example**
+
+```tsx
+import { createRouter } from '@tanstack/react-router'
+
+const router = createRouter({
+  routeTree,
+  rewrite: {
+    input: ({ url }) => {
+      // Strip locale prefix: /en/about → /about
+      if (url.pathname.startsWith('/en')) {
+        url.pathname = url.pathname.replace(/^\/en/, '') || '/'
+      }
+      return url
+    },
+    output: ({ url }) => {
+      // Add locale prefix: /about → /en/about
+      url.pathname = `/en${url.pathname === '/' ? '' : url.pathname}`
+      return url
+    },
+  },
+})
+```
+
+When both `basepath` and `rewrite` are configured, they are automatically composed. The basepath rewrite runs first on input (stripping the basepath) and last on output (adding it back).
+
 ### `context` property
 
 - Type: `any`
