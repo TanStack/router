@@ -10,23 +10,6 @@ export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
 const SEGMENT_TYPE_INDEX = 4
 const SEGMENT_TYPE_PATHLESS = 5 // only used in matching to represent pathless routes that need to carry more information
 
-function nodeTypeToString(kind: ExtendedSegmentKind) {
-  switch (kind) {
-    case SEGMENT_TYPE_PATHNAME:
-      return 'PATHNAME'
-    case SEGMENT_TYPE_PARAM:
-      return 'PARAM'
-    case SEGMENT_TYPE_WILDCARD:
-      return 'WILDCARD'
-    case SEGMENT_TYPE_OPTIONAL_PARAM:
-      return 'OPTIONAL_PARAM'
-    case SEGMENT_TYPE_INDEX:
-      return 'INDEX'
-    case SEGMENT_TYPE_PATHLESS:
-      return 'PATHLESS'
-  }
-}
-
 /**
  * All the kinds of segments that can be present in a route path.
  */
