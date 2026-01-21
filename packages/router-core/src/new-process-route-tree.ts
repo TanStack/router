@@ -10,6 +10,23 @@ export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
 const SEGMENT_TYPE_INDEX = 4
 const SEGMENT_TYPE_PATHLESS = 5 // only used in matching to represent pathless routes that need to carry more information
 
+function nodeTypeToString(kind: ExtendedSegmentKind) {
+  switch (kind) {
+    case SEGMENT_TYPE_PATHNAME:
+      return 'PATHNAME'
+    case SEGMENT_TYPE_PARAM:
+      return 'PARAM'
+    case SEGMENT_TYPE_WILDCARD:
+      return 'WILDCARD'
+    case SEGMENT_TYPE_OPTIONAL_PARAM:
+      return 'OPTIONAL_PARAM'
+    case SEGMENT_TYPE_INDEX:
+      return 'INDEX'
+    case SEGMENT_TYPE_PATHLESS:
+      return 'PATHLESS'
+  }
+}
+
 /**
  * All the kinds of segments that can be present in a route path.
  */
@@ -846,6 +863,8 @@ function findMatch<T extends RouteLike>(
   }
 }
 
+type ParamExtractionState = { part: number; node: number; path: number }
+
 /**
  * This function is "resumable":
  * - the `leaf` input can contain `extract` and `rawParams` properties from a previous `extractParams` call
@@ -859,27 +878,34 @@ function extractParams<T extends RouteLike>(
   leaf: {
     node: AnySegmentNode<T>
     skipped: number
-    extract?: { part: number; node: number; path: number }
+    extract?: ParamExtractionState
     rawParams?: Record<string, string>
   },
-): [
-  rawParams: Record<string, string>,
-  state: { part: number; node: number; path: number },
-] {
+): [rawParams: Record<string, string>, state: ParamExtractionState] {
   const list = buildBranch(leaf.node)
   let nodeParts: Array<string> | null = null
   const rawParams: Record<string, string> = {}
+  /** which segment of the path we're currently processing */
   let partIndex = leaf.extract?.part ?? 0
+  /** which node of the route tree branch we're currently processing */
   let nodeIndex = leaf.extract?.node ?? 0
+  /** index of the 1st character of the segment we're processing in the path string */
   let pathIndex = leaf.extract?.path ?? 0
   for (; nodeIndex < list.length; partIndex++, nodeIndex++, pathIndex++) {
     const node = list[nodeIndex]!
+    if (node.kind === SEGMENT_TYPE_INDEX) continue
+    if (node.kind === SEGMENT_TYPE_PATHLESS) {
+      // pathless nodes do not consume a path segment
+      partIndex--
+      pathIndex--
+      continue
+    }
     const part = parts[partIndex]
     const currentPathIndex = pathIndex
     if (part) pathIndex += part.length
     if (node.kind === SEGMENT_TYPE_PARAM) {
       nodeParts ??= leaf.node.fullPath.split('/')
-      const nodePart = nodeParts[nodeIndex]!
+      const nodePart = nodeParts[partIndex]!
       const preLength = node.prefix?.length ?? 0
       // we can't rely on the presence of prefix/suffix to know whether it's curly-braced or not, because `/{$param}/` is valid, but has no prefix/suffix
       const isCurlyBraced = nodePart.charCodeAt(preLength) === 123 // '{'
@@ -903,7 +929,7 @@ function extractParams<T extends RouteLike>(
         continue
       }
       nodeParts ??= leaf.node.fullPath.split('/')
-      const nodePart = nodeParts[nodeIndex]!
+      const nodePart = nodeParts[partIndex]!
       const preLength = node.prefix?.length ?? 0
       const sufLength = node.suffix?.length ?? 0
       const name = nodePart.substring(
@@ -968,7 +994,7 @@ type MatchStackFrame<T extends RouteLike> = {
   dynamics: number
   optionals: number
   /** intermediary state for param extraction */
-  extract?: { part: number; node: number; path: number }
+  extract?: ParamExtractionState
   /** intermediary params from param extraction */
   rawParams?: Record<string, string>
   parsedParams?: Record<string, unknown>

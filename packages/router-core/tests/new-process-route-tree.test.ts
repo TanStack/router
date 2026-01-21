@@ -1109,6 +1109,40 @@ describe('findRouteMatch', () => {
         }
       `)
     })
+    it('does not consume a path segment during param extraction', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/$foo/_layout',
+            fullPath: '/$foo',
+            path: '$foo',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => params,
+              },
+              // force the creation of a pathless node
+              skipRouteOnParseError: { params: true },
+            },
+            children: [
+              {
+                id: '/$foo/_layout/$bar',
+                fullPath: '/$foo/$bar',
+                path: '$bar',
+                options: {},
+              },
+            ],
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const result = findRouteMatch('/abc/def', processedTree)
+      expect(result?.route.id).toBe('/$foo/_layout/$bar')
+      expect(result?.rawParams).toEqual({ foo: 'abc', bar: 'def' })
+    })
   })
 })
 
