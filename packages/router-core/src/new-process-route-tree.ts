@@ -899,6 +899,7 @@ function extractParams<T extends RouteLike>(
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
       if (leaf.skipped & (1 << nodeIndex)) {
         partIndex-- // stay on the same part
+        pathIndex = currentPathIndex - 1 // undo pathIndex advancement; -1 to account for loop increment
         continue
       }
       nodeParts ??= leaf.node.fullPath.split('/')
