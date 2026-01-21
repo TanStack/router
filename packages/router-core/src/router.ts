@@ -594,6 +594,12 @@ export interface MatchRoutesOpts {
   snapshot?: MatchSnapshot
 }
 
+export interface MatchRoutesResult {
+  matches: Array<AnyRouteMatch>
+  /** Raw string params extracted from path (before parsing) */
+  rawParams: Record<string, string>
+}
+
 export type InferRouterContext<TRouteTree extends AnyRoute> =
   TRouteTree['types']['routerContext']
 
@@ -1265,16 +1271,17 @@ export class RouterCore<
           search: locationSearchOrOpts,
         } as ParsedLocation,
         opts,
-      )
+      ).matches
     }
 
     return this.matchRoutesInternal(pathnameOrNext, locationSearchOrOpts)
+      .matches
   }
 
   private matchRoutesInternal(
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
-  ): Array<AnyRouteMatch> {
+  ): MatchRoutesResult {
     // Fast-path: use snapshot hint if valid
     const snapshot = opts?.snapshot
     const snapshotValid =
@@ -1284,6 +1291,7 @@ export class RouterCore<
 
     let matchedRoutes: ReadonlyArray<AnyRoute>
     let routeParams: Record<string, string>
+    let rawParams: Record<string, string>
     let globalNotFoundRouteId: string | undefined
     let parsedParams: Record<string, unknown>
 
@@ -1291,6 +1299,7 @@ export class RouterCore<
       // Rebuild matched routes from snapshot
       matchedRoutes = snapshot.routeIds.map((id) => this.routesById[id]!)
       routeParams = { ...snapshot.params }
+      rawParams = { ...snapshot.params }
       globalNotFoundRouteId = snapshot.globalNotFoundRouteId
       parsedParams = snapshot.parsedParams
     } else {
@@ -1298,6 +1307,7 @@ export class RouterCore<
       const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
       const { foundRoute, routeParams: rp } = matchedRoutesResult
       routeParams = rp
+      rawParams = { ...rp } // Capture before routeParams gets modified
       matchedRoutes = matchedRoutesResult.matchedRoutes
       parsedParams = matchedRoutesResult.parsedParams
 
@@ -1642,7 +1652,7 @@ export class RouterCore<
       }
     })
 
-    return matches
+    return { matches, rawParams }
   }
 
   getMatchedRoutes: GetMatchRoutesFn = (pathname) => {
@@ -1765,9 +1775,10 @@ export class RouterCore<
         params: nextParams,
       }).interpolatedPath
 
-      const destMatches = this.matchRoutes(interpolatedNextTo, undefined, {
-        _buildLocation: true,
-      })
+      const { matches: destMatches, rawParams } = this.matchRoutesInternal(
+        { pathname: interpolatedNextTo } as ParsedLocation,
+        { _buildLocation: true },
+      )
       const destRoutes = destMatches.map(
         (d) => this.looseRoutesById[d.routeId]!,
       )
@@ -1856,10 +1867,15 @@ export class RouterCore<
       nextState = replaceEqualDeep(currentLocation.state, nextState)
 
       // Build match snapshot for fast-path on back/forward navigation
-      // Use destRoutes and nextParams directly (after stringify)
+      // Use raw params captured during matchRoutesInternal (needed for literal path navigation
+      // where nextParams may be empty but path contains param values)
+      const snapshotParams = {
+        ...rawParams,
+        ...nextParams,
+      }
       const matchSnapshot = buildMatchSnapshotFromRoutes({
         routes: destRoutes,
-        params: nextParams,
+        params: snapshotParams,
         searchStr,
         globalNotFoundRouteId: globalNotFoundMatch?.routeId,
       })
