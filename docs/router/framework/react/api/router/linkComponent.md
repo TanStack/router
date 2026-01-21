@@ -36,7 +36,7 @@ function Component() {
 }
 ```
 
-By default, passing param value with characters such as `@`, it will be encoded in the URL:
+By default, param values with characters such as `@` will be encoded in the URL:
 
 ```tsx
 // url path will be `/%40foo` 
