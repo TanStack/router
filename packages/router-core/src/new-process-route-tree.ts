@@ -548,16 +548,16 @@ function createDynamicNode<T extends RouteLike>(
 
 type StaticSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-  | typeof SEGMENT_TYPE_PATHNAME
-  | typeof SEGMENT_TYPE_PATHLESS
-  | typeof SEGMENT_TYPE_INDEX
+    | typeof SEGMENT_TYPE_PATHNAME
+    | typeof SEGMENT_TYPE_PATHLESS
+    | typeof SEGMENT_TYPE_INDEX
 }
 
 type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-  | typeof SEGMENT_TYPE_PARAM
-  | typeof SEGMENT_TYPE_WILDCARD
-  | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+    | typeof SEGMENT_TYPE_PARAM
+    | typeof SEGMENT_TYPE_WILDCARD
+    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   prefix?: string
   suffix?: string
   caseSensitive: boolean
@@ -846,7 +846,12 @@ function findMatch<T extends RouteLike>(
   }
 }
 
-type ParamExtractionState = { part: number; node: number; path: number; segment: number }
+type ParamExtractionState = {
+  part: number
+  node: number
+  path: number
+  segment: number
+}
 
 /**
  * This function is "resumable":
@@ -876,7 +881,11 @@ function extractParams<T extends RouteLike>(
   let pathIndex = leaf.extract?.path ?? 0
   /** which fullPath segment we're currently processing */
   let segmentCount = leaf.extract?.segment ?? 0
-  for (; nodeIndex < list.length; partIndex++, nodeIndex++, pathIndex++, segmentCount++) {
+  for (
+    ;
+    nodeIndex < list.length;
+    partIndex++, nodeIndex++, pathIndex++, segmentCount++
+  ) {
     const node = list[nodeIndex]!
     // index nodes are terminating nodes, nothing to extract, just leave
     if (node.kind === SEGMENT_TYPE_INDEX) break
@@ -942,7 +951,15 @@ function extractParams<T extends RouteLike>(
     }
   }
   if (leaf.rawParams) Object.assign(rawParams, leaf.rawParams)
-  return [rawParams, { part: partIndex, node: nodeIndex, path: pathIndex, segment: segmentCount }]
+  return [
+    rawParams,
+    {
+      part: partIndex,
+      node: nodeIndex,
+      path: pathIndex,
+      segment: segmentCount,
+    },
+  ]
 }
 
 function buildRouteBranch<T extends RouteLike>(route: T) {
