@@ -93,8 +93,7 @@ export function useLinkProps<
 
   // subscribe to search params to re-build location if it changes
   const currentSearch = useRouterState({
-    select: (s) =>
-      options.search ? s.location.search : null,
+    select: (s) => (options.search ? s.location.search : null),
     structuralSharing: true as any,
   })
 
