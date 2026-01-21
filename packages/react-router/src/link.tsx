@@ -13,6 +13,7 @@ import { useRouter } from './useRouter'
 
 import { useForwardedRef, useIntersectionObserver } from './utils'
 
+import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
@@ -52,6 +53,7 @@ export function useLinkProps<
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
+  const isHydrated = useHydrated()
 
   const {
     // custom props
@@ -177,7 +179,7 @@ export function useLinkProps<
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  const activeState = useRouterState({
+  const isActive = useRouterState({
     select: (s) => {
       if (externalLink) return false
       if (activeOptions?.exact) {
@@ -220,18 +222,11 @@ export function useLinkProps<
       }
 
       if (activeOptions?.includeHash) {
-        return s.location.hash === next.hash
+        return !isHydrated ? false : s.location.hash === next.hash
       }
       return true
     },
   })
-
-  const isActive = React.useSyncExternalStore(
-    React.useCallback(() => () => {}, []),
-    () => activeState,
-    // url hash is not available on server, so do not evaluate this here when on server
-    () => (activeOptions?.includeHash && _hash ? false : activeState), // server snapshot
-  )
 
   const doPreload = React.useCallback(() => {
     router.preloadRoute({ ..._options } as any).catch((err) => {
