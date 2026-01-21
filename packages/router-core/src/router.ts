@@ -1775,16 +1775,38 @@ export class RouterCore<
         params: nextParams,
       }).interpolatedPath
 
-      const { matches: destMatches, rawParams } = this.matchRoutesInternal(
-        { pathname: interpolatedNextTo } as ParsedLocation,
-        { _buildLocation: true },
-      )
-      const destRoutes = destMatches.map(
-        (d) => this.looseRoutesById[d.routeId]!,
-      )
+      // Use lightweight getMatchedRoutes instead of matchRoutesInternal
+      // This avoids creating full match objects (AbortController, ControlledPromise, etc.)
+      // which are expensive and not needed for buildLocation
+      const destMatchResult = this.getMatchedRoutes(interpolatedNextTo)
+      const destRoutes = destMatchResult.matchedRoutes as Array<AnyRoute>
+      const rawParams = destMatchResult.routeParams
 
-      // Check if any match indicates global not found
-      const globalNotFoundMatch = destMatches.find((m) => m.globalNotFound)
+      // Compute globalNotFoundRouteId using the same logic as matchRoutesInternal
+      const isGlobalNotFound = destMatchResult.foundRoute
+        ? destMatchResult.foundRoute.path !== '/' &&
+          destMatchResult.routeParams['**']
+        : trimPathRight(interpolatedNextTo)
+
+      let globalNotFoundRouteId: string | undefined
+      if (isGlobalNotFound) {
+        if (this.options.notFoundRoute) {
+          globalNotFoundRouteId = this.options.notFoundRoute.id
+        } else if (this.options.notFoundMode !== 'root') {
+          for (let i = destRoutes.length - 1; i >= 0; i--) {
+            const route = destRoutes[i]!
+            if (route.children) {
+              globalNotFoundRouteId = route.id
+              break
+            }
+          }
+          if (!globalNotFoundRouteId) {
+            globalNotFoundRouteId = rootRouteId
+          }
+        } else {
+          globalNotFoundRouteId = rootRouteId
+        }
+      }
 
       // If there are any params, we need to stringify them
       if (Object.keys(nextParams).length > 0) {
@@ -1877,7 +1899,7 @@ export class RouterCore<
         routes: destRoutes,
         params: snapshotParams,
         searchStr,
-        globalNotFoundRouteId: globalNotFoundMatch?.routeId,
+        globalNotFoundRouteId,
       })
 
       // Create the full path of the location
