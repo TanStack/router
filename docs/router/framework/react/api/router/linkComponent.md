@@ -35,3 +35,21 @@ function Component() {
   )
 }
 ```
+
+By default, passing param value with characters such as `@`, it will be encoded in the URL:
+
+```tsx
+// url path will be `/%40foo` 
+<Link to="/$username" params={{ username: "@foo" }} />
+```
+
+To opt‑out, update the `pathParamsAllowedCharacters` config on the router
+
+```tsx
+import { createRouter } from '@tanstack/react-router'
+
+const router = createRouter({
+  routeTree,
+  pathParamsAllowedCharacters: ['@'],
+})
+```
