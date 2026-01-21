@@ -1856,10 +1856,13 @@ export class RouterCore<
       nextState = replaceEqualDeep(currentLocation.state, nextState)
 
       // Build match snapshot for fast-path on back/forward navigation
-      // Use destRoutes and nextParams directly (after stringify)
+      // Extract params from the interpolated path to ensure correct params
+      // even when navigating with string URLs (where dest.params is undefined)
+      const { routeParams: extractedParams } =
+        this.getMatchedRoutes(nextPathname)
       const matchSnapshot = buildMatchSnapshotFromRoutes({
         routes: destRoutes,
-        params: nextParams,
+        params: extractedParams,
         searchStr,
         globalNotFoundRouteId: globalNotFoundMatch?.routeId,
       })
