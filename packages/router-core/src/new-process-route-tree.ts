@@ -548,16 +548,16 @@ function createDynamicNode<T extends RouteLike>(
 
 type StaticSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-    | typeof SEGMENT_TYPE_PATHNAME
-    | typeof SEGMENT_TYPE_PATHLESS
-    | typeof SEGMENT_TYPE_INDEX
+  | typeof SEGMENT_TYPE_PATHNAME
+  | typeof SEGMENT_TYPE_PATHLESS
+  | typeof SEGMENT_TYPE_INDEX
 }
 
 type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
   kind:
-    | typeof SEGMENT_TYPE_PARAM
-    | typeof SEGMENT_TYPE_WILDCARD
-    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+  | typeof SEGMENT_TYPE_PARAM
+  | typeof SEGMENT_TYPE_WILDCARD
+  | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   prefix?: string
   suffix?: string
   caseSensitive: boolean
@@ -846,7 +846,7 @@ function findMatch<T extends RouteLike>(
   }
 }
 
-type ParamExtractionState = { part: number; node: number; path: number }
+type ParamExtractionState = { part: number; node: number; path: number; segment: number }
 
 /**
  * This function is "resumable":
@@ -874,11 +874,15 @@ function extractParams<T extends RouteLike>(
   let nodeIndex = leaf.extract?.node ?? 0
   /** index of the 1st character of the segment we're processing in the path string */
   let pathIndex = leaf.extract?.path ?? 0
-  for (; nodeIndex < list.length; partIndex++, nodeIndex++, pathIndex++) {
+  /** which fullPath segment we're currently processing */
+  let segmentCount = leaf.extract?.segment ?? 0
+  for (; nodeIndex < list.length; partIndex++, nodeIndex++, pathIndex++, segmentCount++) {
     const node = list[nodeIndex]!
-    if (node.kind === SEGMENT_TYPE_INDEX) continue
+    // index nodes are terminating nodes, nothing to extract, just leave
+    if (node.kind === SEGMENT_TYPE_INDEX) break
+    // pathless nodes do not consume a path segment
     if (node.kind === SEGMENT_TYPE_PATHLESS) {
-      // pathless nodes do not consume a path segment
+      segmentCount--
       partIndex--
       pathIndex--
       continue
@@ -888,7 +892,7 @@ function extractParams<T extends RouteLike>(
     if (part) pathIndex += part.length
     if (node.kind === SEGMENT_TYPE_PARAM) {
       nodeParts ??= leaf.node.fullPath.split('/')
-      const nodePart = nodeParts[partIndex]!
+      const nodePart = nodeParts[segmentCount]!
       const preLength = node.prefix?.length ?? 0
       // we can't rely on the presence of prefix/suffix to know whether it's curly-braced or not, because `/{$param}/` is valid, but has no prefix/suffix
       const isCurlyBraced = nodePart.charCodeAt(preLength) === 123 // '{'
@@ -912,7 +916,7 @@ function extractParams<T extends RouteLike>(
         continue
       }
       nodeParts ??= leaf.node.fullPath.split('/')
-      const nodePart = nodeParts[partIndex]!
+      const nodePart = nodeParts[segmentCount]!
       const preLength = node.prefix?.length ?? 0
       const sufLength = node.suffix?.length ?? 0
       const name = nodePart.substring(
@@ -938,7 +942,7 @@ function extractParams<T extends RouteLike>(
     }
   }
   if (leaf.rawParams) Object.assign(rawParams, leaf.rawParams)
-  return [rawParams, { part: partIndex, node: nodeIndex, path: pathIndex }]
+  return [rawParams, { part: partIndex, node: nodeIndex, path: pathIndex, segment: segmentCount }]
 }
 
 function buildRouteBranch<T extends RouteLike>(route: T) {
