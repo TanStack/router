@@ -230,6 +230,7 @@ export function useLinkProps<
   const isActive = React.useSyncExternalStore(
     React.useCallback(() => () => {}, []),
     () => activeState,
+    // url hash is not available on server, so do not evaluate this here when on server
     () => (activeOptions?.includeHash && _hash ? false : activeState), // server snapshot
   )
 
