@@ -222,7 +222,7 @@ export function useLinkProps<
       }
 
       if (activeOptions?.includeHash) {
-        return !isHydrated ? false : s.location.hash === next.hash
+        return isHydrated && s.location.hash === next.hash
       }
       return true
     },
