@@ -864,6 +864,28 @@ describe('findRouteMatch', () => {
         expect(result?.route.id).toBe('/_pathless/{-$language}/')
         expect(result?.rawParams).toEqual({ language: 'sv' })
       })
+      it('skipped optional, ends with wildcard', () => {
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/{-$foo}/bar/$',
+              fullPath: '/{-$foo}/bar/$',
+              path: '{-$foo}/bar/$',
+              isRoot: false,
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch(`/bar/rest`, processedTree)
+        expect(result?.route.id).toBe('/{-$foo}/bar/$')
+        expect(result?.rawParams).toEqual({ '*': 'rest', _splat: 'rest' })
+      })
     })
   })
   describe('pathless routes', () => {
