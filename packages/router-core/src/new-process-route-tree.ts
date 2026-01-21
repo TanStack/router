@@ -1067,18 +1067,21 @@ function getNodeMatch<T extends RouteLike>(
         rawParams,
         parsedParams,
       }
+      let indexValid = true
       if (node.index.skipOnParamError) {
         const result = validateMatchParams(path, parts, indexFrame)
-        if (!result) continue
+        if (!result) indexValid = false
       }
-      // perfect match, no need to continue
-      // this is an optimization, algorithm should work correctly without this block
-      if (statics === partsLength && !dynamics && !optionals && !skipped) {
-        return indexFrame
-      }
-      if (isFrameMoreSpecific(bestMatch, indexFrame)) {
-        // index matches skip the stack because they cannot have children
-        bestMatch = indexFrame
+      if (indexValid) {
+        // perfect match, no need to continue
+        // this is an optimization, algorithm should work correctly without this block
+        if (statics === partsLength && !dynamics && !optionals && !skipped) {
+          return indexFrame
+        }
+        if (isFrameMoreSpecific(bestMatch, indexFrame)) {
+          // index matches skip the stack because they cannot have children
+          bestMatch = indexFrame
+        }
       }
     }
 
