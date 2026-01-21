@@ -9,9 +9,9 @@
     "start": "dev"
   },
   "dependencies": {
-    "@tanstack/router-plugin": "^1.153.2",
-    "@tanstack/solid-router": "^1.153.2",
-    "@tanstack/solid-router-devtools": "^1.153.2",
+    "@tanstack/router-plugin": "^1.154.5",
+    "@tanstack/solid-router": "^1.154.4",
+    "@tanstack/solid-router-devtools": "^1.154.4",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.1.18",

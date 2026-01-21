@@ -158,6 +158,11 @@ export function useLinkProps<
       }
       return hrefOption.href
     }
+    const isSafeInternal =
+      typeof to === 'string' &&
+      to.charCodeAt(0) === 47 && // '/'
+      to.charCodeAt(1) !== 47 // but not '//'
+    if (isSafeInternal) return undefined
     try {
       new URL(to as any)
       // Block dangerous protocols like javascript:, data:, vbscript:

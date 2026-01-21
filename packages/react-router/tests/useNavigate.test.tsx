@@ -2795,3 +2795,59 @@ describe('encoded and unicode paths', () => {
     },
   )
 })
+
+test('when navigating to /auth/sign-in with literal path (no params)', async () => {
+  const rootRoute = createRootRoute()
+
+  const IndexComponent = () => {
+    const navigate = useNavigate()
+    return (
+      <>
+        <h1>Index</h1>
+        <button
+          data-testid="navigate-btn"
+          onClick={() => navigate({ to: '/auth/sign-in' })}
+        >
+          Navigate to Sign In
+        </button>
+      </>
+    )
+  }
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: IndexComponent,
+  })
+
+  const authRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/auth/$path',
+    component: () => {
+      const params = authRoute.useParams()
+      return (
+        <div>
+          <h1 data-testid="auth-heading">Auth Route</h1>
+          <span data-testid="path-param">{params.path}</span>
+        </div>
+      )
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, authRoute]),
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+
+  const btn = await screen.findByTestId('navigate-btn')
+
+  // First click should navigate successfully
+  await act(() => fireEvent.click(btn))
+
+  // Should be at /auth/sign-in with correct params
+  expect(window.location.pathname).toBe('/auth/sign-in')
+  expect(await screen.findByTestId('auth-heading')).toBeInTheDocument()
+  expect((await screen.findByTestId('path-param')).textContent).toBe('sign-in')
+})
