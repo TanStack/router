@@ -224,7 +224,6 @@ export function useLinkProps<
       }
       return true
     },
-    structuralSharing: true,
   })
 
   const isActive = React.useSyncExternalStore(
