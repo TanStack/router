@@ -1883,20 +1883,48 @@ export class RouterCore<
       // Create the full path of the location
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
 
-      // Create the new href with full origin
-      const url = new URL(fullPath, this.origin)
+      // Compute href and publicHref without URL construction when no rewrite
+      // URL is only constructed lazily when .url is accessed (for tests/edge cases)
+      let href: string
+      let publicHref: string
+      let _cachedUrl: URL | undefined
 
-      // If a rewrite function is provided, use it to rewrite the URL
-      const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
+      if (this.rewrite) {
+        // With rewrite, we need to construct URL to apply the rewrite
+        const url = new URL(fullPath, this.origin)
+        const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
+        href = url.href.replace(url.origin, '')
+        // If rewrite changed the origin, publicHref needs full URL
+        // Otherwise just use the path components
+        if (rewrittenUrl.origin !== this.origin) {
+          publicHref = rewrittenUrl.href
+        } else {
+          publicHref =
+            rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash
+        }
+        _cachedUrl = rewrittenUrl
+      } else {
+        // Fast path: no rewrite, skip URL construction entirely
+        // fullPath is already the correct href (origin-stripped)
+        href = fullPath
+        publicHref = fullPath
+      }
 
-      // Use encoded URL path for href (consistent with parseLocation)
-      const encodedHref = url.href.replace(url.origin, '')
+      const origin = this.origin
+      const rewrite = this.rewrite
 
       return {
-        publicHref:
-          rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
-        href: encodedHref,
-        url: rewrittenUrl,
+        publicHref,
+        href,
+        // Lazy URL getter - only constructs URL when accessed
+        // This eliminates URL construction from hot link rendering path
+        get url(): URL {
+          if (!_cachedUrl) {
+            const url = new URL(fullPath, origin)
+            _cachedUrl = rewrite ? executeRewriteOutput(rewrite, url) : url
+          }
+          return _cachedUrl
+        },
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
@@ -2203,8 +2231,9 @@ export class RouterCore<
       // be a complete path (possibly with basepath)
       if (to !== undefined || !href) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = href ?? location.url.href
-        publicHref = publicHref ?? location.url.href
+        // Use publicHref which contains the path (origin-stripped is fine for reload)
+        href = href ?? location.publicHref
+        publicHref = publicHref ?? location.publicHref
       }
 
       // Use publicHref when available and href is not a full URL,
@@ -2279,10 +2308,9 @@ export class RouterCore<
         _includeValidateSearch: true,
       })
 
-      if (
-        this.latestLocation.publicHref !== nextLocation.publicHref ||
-        nextLocation.url.origin !== this.origin
-      ) {
+      // Check if location changed - origin check is unnecessary since buildLocation
+      // always uses this.origin when constructing URLs
+      if (this.latestLocation.publicHref !== nextLocation.publicHref) {
         const href = this.getParsedLocationHref(nextLocation)
 
         throw redirect({ href })
@@ -2616,11 +2644,8 @@ export class RouterCore<
   }
 
   getParsedLocationHref = (location: ParsedLocation) => {
-    let href = location.url.href
-    if (this.origin && location.url.origin === this.origin) {
-      href = href.replace(this.origin, '') || '/'
-    }
-    return href
+    // location.href is already origin-stripped by buildLocation
+    return location.href || '/'
   }
 
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {

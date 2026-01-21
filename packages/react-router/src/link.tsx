@@ -128,20 +128,27 @@ export function useLinkProps<
     if (disabled) {
       return undefined
     }
-    let href = next.maskedLocation
-      ? next.maskedLocation.url.href
-      : next.url.href
+    // Use publicHref - it contains the correct href for display
+    // When a rewrite changes the origin, publicHref is the full URL
+    // Otherwise it's the origin-stripped path
+    // This avoids constructing URL objects in the hot path
+    const publicHref = next.maskedLocation
+      ? next.maskedLocation.publicHref
+      : next.publicHref
 
-    let external = false
-    if (router.origin) {
-      if (href.startsWith(router.origin)) {
-        href = router.history.createHref(href.replace(router.origin, '')) || '/'
-      } else {
-        external = true
-      }
+    // Check if publicHref is a full URL (different origin from rewrite)
+    const isFullUrl =
+      publicHref.startsWith('http://') || publicHref.startsWith('https://')
+    if (isFullUrl) {
+      // Full URL means rewrite changed the origin - treat as external-like
+      return { href: publicHref, external: false }
     }
-    return { href, external }
-  }, [disabled, next.maskedLocation, next.url, router.origin, router.history])
+
+    return {
+      href: router.history.createHref(publicHref) || '/',
+      external: false,
+    }
+  }, [disabled, next.maskedLocation, next.publicHref, router.history])
 
   const externalLink = React.useMemo(() => {
     if (hrefOption?.external) {
