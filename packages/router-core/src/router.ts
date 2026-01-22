@@ -1884,7 +1884,6 @@ export class RouterCore<
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
 
       // Compute href and publicHref without URL construction when no rewrite
-      // URL is only constructed lazily when .url is accessed (for tests/edge cases)
       let href: string
       let publicHref: string
       let external = false
