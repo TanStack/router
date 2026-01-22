@@ -60,7 +60,7 @@
     "node": ">=22.12"
   },
   "dependencies": {
-    "nitropack": "^2.12.6",
+    "nitropack": "^2.13.1",
     "pathe": "^2.0.3"
   },
   "peerDependencies": {

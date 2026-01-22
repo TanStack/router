@@ -82,8 +82,8 @@
     "@tanstack/history": "workspace:*",
     "@tanstack/store": "^0.8.0",
     "cookie-es": "^2.0.0",
-    "seroval": "^1.4.1",
-    "seroval-plugins": "^1.4.0",
+    "seroval": "^1.4.2",
+    "seroval-plugins": "^1.4.2",
     "tiny-invariant": "^1.3.3",
     "tiny-warning": "^1.0.3"
   },
