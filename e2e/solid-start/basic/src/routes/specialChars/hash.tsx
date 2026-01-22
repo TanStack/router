@@ -1,5 +1,5 @@
 import { createFileRoute, useLocation } from '@tanstack/solid-router'
-import { createEffect, createSignal } from 'solid-js'
+import { createSignal } from 'solid-js'
 
 export const Route = createFileRoute('/specialChars/hash')({
   component: RouteComponent,
@@ -7,16 +7,27 @@ export const Route = createFileRoute('/specialChars/hash')({
 
 function RouteComponent() {
   const location = useLocation()
-  const [getHash, setHash] = createSignal('')
-
-  createEffect(() => {
-    setHash(location().hash)
-  })
+  const [toggleHashValue, setToggleHashValue] = createSignal(false)
 
   return (
     <div data-testid="special-hash-heading">
-      Hello "/specialChars/hash"!
-      <span data-testid="special-hash">{getHash()}</span>
+      <div>Hello "/specialChars/hash"!</div>
+      <button
+        class={
+          'mt-2 mb-2 px-1 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition duration-200'
+        }
+        data-testid="toggle-hash-button"
+        onClick={() => setToggleHashValue(!toggleHashValue())}
+      >
+        Toggle HashValue
+      </button>
+      <div>
+        {toggleHashValue() && (
+          <div>
+            Hash Value<span data-testid="special-hash">{location().hash}</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
