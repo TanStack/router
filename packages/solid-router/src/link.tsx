@@ -230,8 +230,7 @@ export function useLinkProps<
         }
       }
 
-      // url hash is not available on server, so do not evaluate this here when on server
-      if (local.activeOptions?.includeHash && !router.isServer) {
+      if (local.activeOptions?.includeHash) {
         return s.location.hash === next().hash
       }
       return true
