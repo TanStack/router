@@ -10,8 +10,8 @@
     "bench:run": "concurrently -k -s first \"pnpm start:prof\" \"sleep 3 && node ./tests/bench.js\""
   },
   "dependencies": {
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-start": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
     "express": "^4.21.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
