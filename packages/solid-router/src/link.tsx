@@ -167,16 +167,22 @@ export function useLinkProps<
       }
       return _href.href
     }
+    const to = _options().to
+    const isSafeInternal =
+      typeof to === 'string' &&
+      to.charCodeAt(0) === 47 && // '/'
+      to.charCodeAt(1) !== 47 // but not '//'
+    if (isSafeInternal) return undefined
     try {
-      new URL(_options().to as any)
+      new URL(to as any)
       // Block dangerous protocols like javascript:, data:, vbscript:
-      if (isDangerousProtocol(_options().to as string)) {
+      if (isDangerousProtocol(to as string)) {
         if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Blocked Link with dangerous protocol: ${_options().to}`)
+          console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
         return undefined
       }
-      return _options().to
+      return to
     } catch {}
     return undefined
   })
