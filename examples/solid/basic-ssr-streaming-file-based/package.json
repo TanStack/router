@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/solid-router": "^1.154.8",
-    "@tanstack/solid-router-devtools": "^1.154.8",
+    "@tanstack/solid-router": "^1.154.9",
+    "@tanstack/solid-router-devtools": "^1.154.9",
     "compression": "^1.8.0",
     "express": "^4.21.2",
     "get-port": "^7.1.0",
