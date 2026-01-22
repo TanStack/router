@@ -352,7 +352,6 @@ describe('redirect', () => {
     expect(currentRedirect.options).toEqual({
       _fromLocation: {
         publicHref: '/',
-        url: new URL('http://localhost/'),
         hash: '',
         href: '/',
         pathname: '/',

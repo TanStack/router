@@ -2626,8 +2626,9 @@ export class RouterCore<
   }
 
   getParsedLocationHref = (location: ParsedLocation) => {
-    // location.href is already origin-stripped by buildLocation
-    return location.href || '/'
+    // For redirects and external use, we need publicHref (with rewrite output applied)
+    // href is the internal path after rewrite input, publicHref is user-facing
+    return location.publicHref || '/'
   }
 
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
