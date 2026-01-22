@@ -1766,7 +1766,7 @@ export class RouterCore<
       // This avoids creating full match objects (AbortController, ControlledPromise, etc.)
       // which are expensive and not needed for buildLocation
       const destMatchResult = this.getMatchedRoutes(interpolatedNextTo)
-      const destRoutes = destMatchResult.matchedRoutes
+      let destRoutes = destMatchResult.matchedRoutes
       const rawParams = destMatchResult.routeParams
 
       // Compute globalNotFoundRouteId using the same logic as matchRoutesInternal
@@ -1778,7 +1778,7 @@ export class RouterCore<
       let globalNotFoundRouteId: string | undefined
       if (isGlobalNotFound) {
         if (this.options.notFoundRoute) {
-          globalNotFoundRouteId = this.options.notFoundRoute.id
+          destRoutes = [...destRoutes, this.options.notFoundRoute]
         } else {
           globalNotFoundRouteId = findGlobalNotFoundRouteId(
             this.options.notFoundMode,
