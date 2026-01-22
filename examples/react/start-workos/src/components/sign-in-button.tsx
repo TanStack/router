@@ -7,7 +7,9 @@ export default function SignInButton({ large, user, url }: { large?: boolean; us
     return (
       <Flex gap="3">
         <Button asChild size={large ? '3' : '2'}>
-          <Link to="/logout">Sign Out</Link>
+          <Link to="/logout" reloadDocument>
+            Sign Out
+          </Link>
         </Button>
       </Flex>
     );
