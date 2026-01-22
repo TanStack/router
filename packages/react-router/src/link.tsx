@@ -13,6 +13,7 @@ import { useRouter } from './useRouter'
 
 import { useForwardedRef, useIntersectionObserver } from './utils'
 
+import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
@@ -52,6 +53,7 @@ export function useLinkProps<
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
+  const isHydrated = useHydrated()
 
   const {
     // custom props
@@ -225,7 +227,7 @@ export function useLinkProps<
       }
 
       if (activeOptions?.includeHash) {
-        return s.location.hash === next.hash
+        return isHydrated && s.location.hash === next.hash
       }
       return true
     },
