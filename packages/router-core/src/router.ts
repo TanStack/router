@@ -1330,22 +1330,9 @@ export class RouterCore<
         }
       }
 
-      globalNotFoundRouteId = (() => {
-        if (!isGlobalNotFound) {
-          return undefined
-        }
-
-        if (this.options.notFoundMode !== 'root') {
-          for (let i = matchedRoutes.length - 1; i >= 0; i--) {
-            const route = matchedRoutes[i]!
-            if (route.children) {
-              return route.id
-            }
-          }
-        }
-
-        return rootRouteId
-      })()
+      globalNotFoundRouteId = isGlobalNotFound
+        ? findGlobalNotFoundRouteId(this.options.notFoundMode, matchedRoutes)
+        : undefined
     }
 
     const matches: Array<AnyRouteMatch> = []
@@ -1775,16 +1762,30 @@ export class RouterCore<
         params: nextParams,
       }).interpolatedPath
 
-      const { matches: destMatches, rawParams } = this.matchRoutesInternal(
-        { pathname: interpolatedNextTo } as ParsedLocation,
-        { _buildLocation: true },
-      )
-      const destRoutes = destMatches.map(
-        (d) => this.looseRoutesById[d.routeId]!,
-      )
+      // Use lightweight getMatchedRoutes instead of matchRoutesInternal
+      // This avoids creating full match objects (AbortController, ControlledPromise, etc.)
+      // which are expensive and not needed for buildLocation
+      const destMatchResult = this.getMatchedRoutes(interpolatedNextTo)
+      let destRoutes = destMatchResult.matchedRoutes
+      const rawParams = destMatchResult.routeParams
 
-      // Check if any match indicates global not found
-      const globalNotFoundMatch = destMatches.find((m) => m.globalNotFound)
+      // Compute globalNotFoundRouteId using the same logic as matchRoutesInternal
+      const isGlobalNotFound = destMatchResult.foundRoute
+        ? destMatchResult.foundRoute.path !== '/' &&
+          destMatchResult.routeParams['**']
+        : trimPathRight(interpolatedNextTo)
+
+      let globalNotFoundRouteId: string | undefined
+      if (isGlobalNotFound) {
+        if (this.options.notFoundRoute) {
+          destRoutes = [...destRoutes, this.options.notFoundRoute]
+        } else {
+          globalNotFoundRouteId = findGlobalNotFoundRouteId(
+            this.options.notFoundMode,
+            destRoutes,
+          )
+        }
+      }
 
       // If there are any params, we need to stringify them
       if (Object.keys(nextParams).length > 0) {
@@ -1877,7 +1878,7 @@ export class RouterCore<
         routes: destRoutes,
         params: snapshotParams,
         searchStr,
-        globalNotFoundRouteId: globalNotFoundMatch?.routeId,
+        globalNotFoundRouteId,
       })
 
       // Create the full path of the location
@@ -3045,7 +3046,7 @@ function applySearchMiddleware({
 }: {
   search: any
   dest: BuildNextOptions
-  destRoutes: Array<AnyRoute>
+  destRoutes: ReadonlyArray<AnyRoute>
   _includeValidateSearch: boolean | undefined
 }) {
   const allMiddlewares =
@@ -3150,4 +3151,19 @@ function applySearchMiddleware({
 
   // Start applying middlewares
   return applyNext(0, search)
+}
+
+function findGlobalNotFoundRouteId(
+  notFoundMode: 'root' | 'fuzzy' | undefined,
+  routes: ReadonlyArray<AnyRoute>,
+) {
+  if (notFoundMode !== 'root') {
+    for (let i = routes.length - 1; i >= 0; i--) {
+      const route = routes[i]!
+      if (route.children) {
+        return route.id
+      }
+    }
+  }
+  return rootRouteId
 }
