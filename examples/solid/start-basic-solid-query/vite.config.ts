@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
 import viteSolid from 'vite-plugin-solid'
 import tailwindcss from '@tailwindcss/vite'
+import netlify from '@netlify/vite-plugin-tanstack-start'
 
 export default defineConfig({
   server: {
@@ -15,5 +16,6 @@ export default defineConfig({
     }),
     tanstackStart(),
     viteSolid({ ssr: true }),
+    netlify(),
   ],
 })
