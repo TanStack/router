@@ -1766,7 +1766,7 @@ export class RouterCore<
       // This avoids creating full match objects (AbortController, ControlledPromise, etc.)
       // which are expensive and not needed for buildLocation
       const destMatchResult = this.getMatchedRoutes(interpolatedNextTo)
-      const destRoutes = destMatchResult.matchedRoutes as Array<AnyRoute>
+      const destRoutes = destMatchResult.matchedRoutes
       const rawParams = destMatchResult.routeParams
 
       // Compute globalNotFoundRouteId using the same logic as matchRoutesInternal
@@ -3046,7 +3046,7 @@ function applySearchMiddleware({
 }: {
   search: any
   dest: BuildNextOptions
-  destRoutes: Array<AnyRoute>
+  destRoutes: ReadonlyArray<AnyRoute>
   _includeValidateSearch: boolean | undefined
 }) {
   const allMiddlewares =
