@@ -1330,22 +1330,9 @@ export class RouterCore<
         }
       }
 
-      globalNotFoundRouteId = (() => {
-        if (!isGlobalNotFound) {
-          return undefined
-        }
-
-        if (this.options.notFoundMode !== 'root') {
-          for (let i = matchedRoutes.length - 1; i >= 0; i--) {
-            const route = matchedRoutes[i]!
-            if (route.children) {
-              return route.id
-            }
-          }
-        }
-
-        return rootRouteId
-      })()
+      globalNotFoundRouteId = isGlobalNotFound
+        ? findGlobalNotFoundRouteId(this.options.notFoundMode, matchedRoutes)
+        : undefined
     }
 
     const matches: Array<AnyRouteMatch> = []
@@ -1792,19 +1779,11 @@ export class RouterCore<
       if (isGlobalNotFound) {
         if (this.options.notFoundRoute) {
           globalNotFoundRouteId = this.options.notFoundRoute.id
-        } else if (this.options.notFoundMode !== 'root') {
-          for (let i = destRoutes.length - 1; i >= 0; i--) {
-            const route = destRoutes[i]!
-            if (route.children) {
-              globalNotFoundRouteId = route.id
-              break
-            }
-          }
-          if (!globalNotFoundRouteId) {
-            globalNotFoundRouteId = rootRouteId
-          }
         } else {
-          globalNotFoundRouteId = rootRouteId
+          globalNotFoundRouteId = findGlobalNotFoundRouteId(
+            this.options.notFoundMode,
+            destRoutes,
+          )
         }
       }
 
@@ -3172,4 +3151,19 @@ function applySearchMiddleware({
 
   // Start applying middlewares
   return applyNext(0, search)
+}
+
+function findGlobalNotFoundRouteId(
+  notFoundMode: 'root' | 'fuzzy' | undefined,
+  routes: ReadonlyArray<AnyRoute>,
+) {
+  if (notFoundMode !== 'root') {
+    for (let i = routes.length - 1; i >= 0; i--) {
+      const route = routes[i]!
+      if (route.children) {
+        return route.id
+      }
+    }
+  }
+  return rootRouteId
 }
