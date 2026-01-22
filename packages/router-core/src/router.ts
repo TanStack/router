@@ -1213,7 +1213,6 @@ export class RouterCore<
       return {
         href: fullPath,
         publicHref: href,
-        url: url,
         pathname: decodePath(url.pathname),
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
@@ -1887,7 +1886,6 @@ export class RouterCore<
       // URL is only constructed lazily when .url is accessed (for tests/edge cases)
       let href: string
       let publicHref: string
-      let _cachedUrl: URL | undefined
 
       if (this.rewrite) {
         // With rewrite, we need to construct URL to apply the rewrite
@@ -1902,7 +1900,6 @@ export class RouterCore<
           publicHref =
             rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash
         }
-        _cachedUrl = rewrittenUrl
       } else {
         // Fast path: no rewrite, skip URL construction entirely
         // fullPath is already the correct href (origin-stripped)
@@ -1910,21 +1907,9 @@ export class RouterCore<
         publicHref = fullPath
       }
 
-      const origin = this.origin
-      const rewrite = this.rewrite
-
       return {
         publicHref,
         href,
-        // Lazy URL getter - only constructs URL when accessed
-        // This eliminates URL construction from hot link rendering path
-        get url(): URL {
-          if (!_cachedUrl) {
-            const url = new URL(fullPath, origin)
-            _cachedUrl = rewrite ? executeRewriteOutput(rewrite, url) : url
-          }
-          return _cachedUrl
-        },
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
@@ -2045,9 +2030,6 @@ export class RouterCore<
       maskedLocation,
       // eslint-disable-next-line prefer-const
       hashScrollIntoView,
-      // don't pass url into history since it is a URL instance that cannot be serialized
-      // eslint-disable-next-line prefer-const
-      url: _url,
       ...nextHistory
     } = next
 

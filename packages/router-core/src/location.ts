@@ -72,12 +72,6 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    */
   publicHref: string
   /**
-   * @private
-   * @description The full URL of the location.
-   * @private
-   */
-  url: URL
-  /**
    * @internal
    * @description Match snapshot for fast-path on back/forward navigation.
    * Contains route IDs and params from buildLocation to avoid re-matching.
