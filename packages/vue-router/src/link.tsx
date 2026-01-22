@@ -478,17 +478,10 @@ export function useLinkProps<
     // Otherwise it's the origin-stripped path
     // This avoids constructing URL objects in the hot path
     const publicHref = location?.publicHref
-    if (!publicHref) {
-      return undefined
-    }
+    if (!publicHref) return undefined
 
-    // Check if publicHref is a full URL (different origin from rewrite)
-    const isFullUrl =
-      publicHref.startsWith('http://') || publicHref.startsWith('https://')
-    if (isFullUrl) {
-      // Full URL means rewrite changed the origin
-      return publicHref
-    }
+    const external = location?.external
+    if (external) return publicHref
 
     return router.history.createHref(publicHref) || '/'
   })

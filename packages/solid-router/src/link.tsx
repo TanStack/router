@@ -134,22 +134,17 @@ export function useLinkProps<
   })
 
   const hrefOption = Solid.createMemo(() => {
-    if (_options().disabled) {
-      return undefined
-    }
+    if (_options().disabled) return undefined
     // Use publicHref - it contains the correct href for display
     // When a rewrite changes the origin, publicHref is the full URL
     // Otherwise it's the origin-stripped path
     // This avoids constructing URL objects in the hot path
     const location = next().maskedLocation ?? next()
     const publicHref = location.publicHref
+    const external = location.external
 
-    // Check if publicHref is a full URL (different origin from rewrite)
-    const isFullUrl =
-      publicHref.startsWith('http://') || publicHref.startsWith('https://')
-    if (isFullUrl) {
-      // Full URL means rewrite changed the origin - treat as external-like
-      return { href: publicHref, external: false }
+    if (external) {
+      return { href: publicHref, external: true }
     }
 
     return {
