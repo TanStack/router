@@ -329,7 +329,9 @@ function RouteComponent() {
             Sign Out (Client-Side useAuth)
           </Button>
           <Button asChild color="red" variant="soft">
-            <Link to="/logout">Sign Out (Route Loader)</Link>
+            <Link to="/logout" reloadDocument>
+              Sign Out (Route Loader)
+            </Link>
           </Button>
         </Flex>
         <Callout.Root color="blue">
