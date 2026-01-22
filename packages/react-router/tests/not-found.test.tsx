@@ -245,3 +245,75 @@ test('defaultNotFoundComponent and notFoundComponent receives data props via spr
   const errorMessageComponent = await screen.findByTestId('message')
   expect(errorMessageComponent).toHaveTextContent(customData.message)
 })
+
+test('pathless layout route notFoundComponent is used when child has none (issue #6351)', async () => {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <div data-testid="root">
+        <Outlet />
+      </div>
+    ),
+  })
+
+  const authenticatedRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_authenticated',
+    component: () => (
+      <div data-testid="authenticated-layout">
+        <Outlet />
+      </div>
+    ),
+    notFoundComponent: () => (
+      <div data-testid="authenticated-not-found">
+        Authenticated Not Found
+      </div>
+    ),
+  })
+
+  const agentsRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: 'agents',
+    component: () => (
+      <div data-testid="agents-layout">
+        <Outlet />
+      </div>
+    ),
+  })
+
+  const agentsIndexRoute = createRoute({
+    getParentRoute: () => agentsRoute,
+    path: '/',
+    component: () => <div data-testid="agents-index">Agents Index</div>,
+  })
+
+  const skillAgentRoute = createRoute({
+    getParentRoute: () => agentsRoute,
+    path: 'skill-agent',
+    component: () => <div data-testid="skill-agent">Skill Agent</div>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      authenticatedRoute.addChildren([
+        agentsRoute.addChildren([agentsIndexRoute, skillAgentRoute]),
+      ]),
+    ]),
+    history,
+    defaultNotFoundComponent: () => (
+      <div data-testid="default-not-found">Default Not Found</div>
+    ),
+  })
+
+  window.history.replaceState(null, '', '/agents/non-existent')
+
+  render(<RouterProvider router={router} />)
+  await router.load()
+
+  const notFound = await screen.findByTestId(
+    'authenticated-not-found',
+    {},
+    { timeout: 1000 },
+  )
+  expect(notFound).toBeInTheDocument()
+  expect(screen.queryByTestId('default-not-found')).not.toBeInTheDocument()
+})
