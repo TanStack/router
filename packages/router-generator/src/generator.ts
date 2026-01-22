@@ -1453,6 +1453,21 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       }
     }
 
+    // Virtual routes may have an explicit parent from virtual config.
+    // If we can find that exact parent, use it to prevent auto-nesting siblings
+    // based on path prefix matching. If the explicit parent is not found (e.g.,
+    // it was a virtual file-less route that got filtered out), keep using the
+    // path-based parent we already computed above.
+    if (node._virtualParentRoutePath !== undefined) {
+      const explicitParent =
+        acc.routeNodesByPath.get(node._virtualParentRoutePath) ??
+        prefixMap.get(node._virtualParentRoutePath)
+      if (explicitParent) {
+        parentRoute = explicitParent
+      }
+      // If not found, parentRoute stays as the path-based result (fallback)
+    }
+
     if (parentRoute) node.parent = parentRoute
 
     node.path = determineNodePath(node)
