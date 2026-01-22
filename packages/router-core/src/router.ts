@@ -1214,6 +1214,7 @@ export class RouterCore<
         href: fullPath,
         publicHref: href,
         pathname: decodePath(url.pathname),
+        external: !!this.rewrite && url.origin !== this.origin,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: decodePath(url.hash.split('#').reverse()[0] ?? ''),
@@ -1886,6 +1887,7 @@ export class RouterCore<
       // URL is only constructed lazily when .url is accessed (for tests/edge cases)
       let href: string
       let publicHref: string
+      let external = false
 
       if (this.rewrite) {
         // With rewrite, we need to construct URL to apply the rewrite
@@ -1896,6 +1898,7 @@ export class RouterCore<
         // Otherwise just use the path components
         if (rewrittenUrl.origin !== this.origin) {
           publicHref = rewrittenUrl.href
+          external = true
         } else {
           publicHref =
             rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash
@@ -1915,6 +1918,7 @@ export class RouterCore<
         searchStr,
         state: nextState as any,
         hash: hash ?? '',
+        external,
         unmaskOnReload: dest.unmaskOnReload,
         _matchSnapshot: matchSnapshot,
       }

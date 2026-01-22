@@ -72,6 +72,11 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    */
   publicHref: string
   /**
+   * @private
+   * @description Whether the publicHref is external (different origin from rewrite).
+   */
+  external: boolean
+  /**
    * @internal
    * @description Match snapshot for fast-path on back/forward navigation.
    * Contains route IDs and params from buildLocation to avoid re-matching.
