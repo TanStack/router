@@ -19,12 +19,12 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@netlify/vite-plugin-tanstack-start": "^1.2.7",
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.6.0",
-    "nitro": "3.0.1-alpha.2",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",

@@ -15,7 +15,7 @@
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "@netlify/vite-plugin-tanstack-start": "^1.1.4",
+    "@netlify/vite-plugin-tanstack-start": "^1.2.7",
     "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.1.18",
