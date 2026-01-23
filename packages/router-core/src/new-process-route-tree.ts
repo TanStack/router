@@ -135,10 +135,10 @@ export function parseSegment(
         // Validate param name exists
         if (paramStart < paramEnd) {
           output[0] = SEGMENT_TYPE_OPTIONAL_PARAM
-          output[1] = openBrace
-          output[2] = paramStart
-          output[3] = paramEnd
-          output[4] = closeBrace + 1
+          output[1] = start + openBrace
+          output[2] = start + paramStart
+          output[3] = start + paramEnd
+          output[4] = start + closeBrace + 1
           output[5] = end
           return output as ParsedSegment
         }
@@ -153,10 +153,10 @@ export function parseSegment(
         // prefix{$}suffix
         // /^([^{]*)\{\$\}([^}]*)$/
         output[0] = SEGMENT_TYPE_WILDCARD
-        output[1] = openBrace
-        output[2] = dollarPos
-        output[3] = afterDollar
-        output[4] = closeBrace + 1
+        output[1] = start + openBrace
+        output[2] = start + dollarPos
+        output[3] = start + afterDollar
+        output[4] = start + closeBrace + 1
         output[5] = path.length
         return output as ParsedSegment
       }
@@ -164,10 +164,10 @@ export function parseSegment(
       // prefix{$paramName}suffix
       // /^([^{]*)\{\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/
       output[0] = SEGMENT_TYPE_PARAM
-      output[1] = openBrace
-      output[2] = afterDollar
-      output[3] = closeBrace
-      output[4] = closeBrace + 1
+      output[1] = start + openBrace
+      output[2] = start + afterDollar
+      output[3] = start + closeBrace
+      output[4] = start + closeBrace + 1
       output[5] = end
       return output as ParsedSegment
     }
