@@ -356,7 +356,9 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     restoreScroll({
       storageKey,
       key: cacheKey,
-      behavior: router.options.scrollRestorationBehavior,
+      behavior:
+        event.toLocation.state.__TSR_scrollRestorationBehavior ??
+        router.options.scrollRestorationBehavior,
       shouldScrollRestoration: router.isScrollRestoring,
       scrollToTopSelectors: router.options.scrollToTopSelectors,
       location: router.history.location,

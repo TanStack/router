@@ -72,6 +72,8 @@ export type ParsedHistoryState = HistoryState & {
   __TSR_index: number
   /** Whether to reset scroll position on this navigation (default: true) */
   __TSR_resetScroll?: boolean
+  /** Scroll restoration behavior override for this navigation */
+  __TSR_scrollRestorationBehavior?: ScrollBehavior
   /** Session id for cached TSR internals */
   __TSR_sessionId?: string
   /** Match snapshot for fast-path on back/forward navigation */

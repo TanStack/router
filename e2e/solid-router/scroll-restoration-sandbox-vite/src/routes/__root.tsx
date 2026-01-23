@@ -37,6 +37,7 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
           class: 'font-bold',
         }}
         activeOptions={{ exact: true }}
+        data-testid={`${prefix}-home-link`}
       >
         {prefix}-/
       </Link>{' '}
@@ -54,6 +55,7 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
           activeProps={{
             class: 'font-bold',
           }}
+          data-testid={`${prefix}-${options.to}-link`}
         >
           {prefix}-{options.to}
         </Link>

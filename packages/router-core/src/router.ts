@@ -1977,6 +1977,7 @@ export class RouterCore<
   commitLocation: CommitLocationFn = async ({
     viewTransition,
     ignoreBlocker,
+    scrollRestorationBehavior,
     ...next
   }) => {
     const isSameState = () => {
@@ -2052,6 +2053,10 @@ export class RouterCore<
     nextHistory.state.__hashScrollIntoViewOptions =
       hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true
 
+    // Store scrollRestorationBehavior in history state so it survives back/forward navigation
+    nextHistory.state.__TSR_scrollRestorationBehavior =
+      scrollRestorationBehavior
+
     // Store resetScroll in history state so it survives back/forward navigation
     nextHistory.state.__TSR_resetScroll = next.resetScroll ?? true
 
@@ -2119,6 +2124,7 @@ export class RouterCore<
     hashScrollIntoView,
     viewTransition,
     ignoreBlocker,
+    scrollRestorationBehavior,
     href,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
@@ -2157,6 +2163,7 @@ export class RouterCore<
       resetScroll,
       hashScrollIntoView,
       ignoreBlocker,
+      scrollRestorationBehavior,
     })
 
     // Clear pending location after commit starts

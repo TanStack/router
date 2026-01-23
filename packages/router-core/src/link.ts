@@ -349,6 +349,12 @@ export interface NavigateOptionProps {
    */
   reloadDocument?: boolean
   /**
+   * The scroll behavior to use for scroll restoration on this navigation.
+   * If provided, this will override `router.options.scrollRestorationBehavior` for this navigation only.
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#scrollrestorationbehavior)
+   */
+  scrollRestorationBehavior?: ScrollBehavior
+  /**
    * This can be used instead of `to` to navigate to a fully built href, e.g. pointing to an external target.
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#href)
    */
