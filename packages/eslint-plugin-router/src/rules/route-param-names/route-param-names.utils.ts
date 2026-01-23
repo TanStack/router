@@ -101,51 +101,6 @@ export function extractParamsFromPath(path: string): Array<ExtractedParam> {
 }
 
 /**
- * Converts a file path to a route path for param extraction.
- *
- * This is a simplified version that:
- * - Removes the file extension
- * - Replaces dots with slashes for segment separation
- * - Extracts the path relative to a routes directory
- *
- * @param filePath - The full file path
- * @returns The derived route path, or null if not determinable
- */
-export function filePathToRoutePath(filePath: string): string | null {
-  if (!filePath) {
-    return null
-  }
-
-  // Normalize path separators
-  let normalized = filePath.replace(/\\/g, '/')
-
-  // Remove file extension
-  normalized = normalized.replace(/\.(tsx?|jsx?|vue)$/, '')
-
-  // Try to find the routes directory and extract the path after it
-  const routesMatch = normalized.match(/\/routes\/(.+)$/)
-  if (routesMatch) {
-    let routePath = routesMatch[1]!
-
-    // Replace dots with slashes (file-based routing convention)
-    // But be careful not to replace dots in param names or escape sequences
-    routePath = routePath.replace(/\.(?![^[]*\])/g, '/')
-
-    // Add leading slash
-    return `/${routePath}`
-  }
-
-  // If no routes directory found, just use the filename for param extraction
-  const lastSlash = normalized.lastIndexOf('/')
-  const fileName = lastSlash >= 0 ? normalized.slice(lastSlash + 1) : normalized
-
-  // Replace dots with slashes
-  const routePath = fileName.replace(/\./g, '/')
-
-  return `/${routePath}`
-}
-
-/**
  * Validates a single param name.
  *
  * @param paramName - The param name to validate (without $ prefix)

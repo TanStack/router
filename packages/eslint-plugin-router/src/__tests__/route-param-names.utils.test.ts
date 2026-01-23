@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   extractParamsFromPath,
   extractParamsFromSegment,
-  filePathToRoutePath,
   getInvalidParams,
   isValidParamName,
 } from '../rules/route-param-names/route-param-names.utils'
@@ -171,40 +170,5 @@ describe('getInvalidParams', () => {
     expect(result).toHaveLength(2)
     expect(result[0]?.paramName).toBe('1id')
     expect(result[1]?.paramName).toBe('post-id')
-  })
-})
-
-describe('filePathToRoutePath', () => {
-  it('should return null for empty path', () => {
-    expect(filePathToRoutePath('')).toBe(null)
-  })
-
-  it('should extract path from routes directory', () => {
-    expect(filePathToRoutePath('/app/routes/users/$userId.tsx')).toBe(
-      '/users/$userId',
-    )
-  })
-
-  it('should handle nested routes', () => {
-    expect(
-      filePathToRoutePath('/app/routes/users/$userId/posts/$postId.tsx'),
-    ).toBe('/users/$userId/posts/$postId')
-  })
-
-  it('should replace dots with slashes for segment separation', () => {
-    expect(filePathToRoutePath('/app/routes/users.$userId.tsx')).toBe(
-      '/users/$userId',
-    )
-  })
-
-  it('should handle Windows-style paths', () => {
-    expect(filePathToRoutePath('C:\\app\\routes\\users\\$userId.tsx')).toBe(
-      '/users/$userId',
-    )
-  })
-
-  it('should handle file without routes directory', () => {
-    const result = filePathToRoutePath('/some/path/$userId.tsx')
-    expect(result).toBe('/$userId')
   })
 })

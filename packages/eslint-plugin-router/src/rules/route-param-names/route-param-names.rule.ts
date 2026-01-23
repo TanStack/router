@@ -3,13 +3,11 @@ import { AST_NODE_TYPES, ESLintUtils } from '@typescript-eslint/utils'
 import { getDocsUrl } from '../../utils/get-docs-url'
 import { detectTanstackRouterImports } from '../../utils/detect-router-imports'
 import {
-  filePathToRoutePath,
   getInvalidParams,
 } from './route-param-names.utils'
 import {
   pathAsFirstArgFunctions,
   pathAsPropertyFunctions,
-  pathFromFileNameFunctions,
 } from './constants'
 import type { TSESTree } from '@typescript-eslint/utils'
 import type { ExtraRuleDocs } from '../../types'
@@ -18,7 +16,6 @@ const createRule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)
 
 const pathAsFirstArgSet = new Set<string>(pathAsFirstArgFunctions)
 const pathAsPropertySet = new Set<string>(pathAsPropertyFunctions)
-const pathFromFileNameSet = new Set<string>(pathFromFileNameFunctions)
 
 export const name = 'route-param-names'
 
@@ -93,27 +90,6 @@ export const rule = createRule({
                   if (pathValue) {
                     reportInvalidParams(prop.value, pathValue)
                   }
-                }
-              }
-            }
-            return
-          }
-
-          // Case: createFileRoute({ ... }) - path from file name
-          if (pathFromFileNameSet.has(funcName)) {
-            const arg = node.arguments[0]
-            // If first argument is an object (not a string), derive path from file name
-            if (arg?.type === AST_NODE_TYPES.ObjectExpression) {
-              const filePath = context.filename
-              const routePath = filePathToRoutePath(filePath)
-              if (routePath) {
-                const invalidParams = getInvalidParams(routePath)
-                for (const param of invalidParams) {
-                  context.report({
-                    node: node.callee,
-                    messageId: 'invalidParamName',
-                    data: { paramName: param.paramName },
-                  })
                 }
               }
             }

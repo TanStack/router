@@ -19,15 +19,6 @@ export const pathAsPropertyFunctions = ['createRoute'] as const
 export type PathAsPropertyFunction = (typeof pathAsPropertyFunctions)[number]
 
 /**
- * Functions that can derive the path from the file name when called directly with options
- * e.g., createFileRoute({ ... }) - no string first argument
- */
-export const pathFromFileNameFunctions = ['createFileRoute'] as const
-
-export type PathFromFileNameFunction =
-  (typeof pathFromFileNameFunctions)[number]
-
-/**
  * All route functions that need param name validation
  */
 export const allRouteFunctions = [
