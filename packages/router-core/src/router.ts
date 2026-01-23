@@ -588,7 +588,6 @@ export type SubscribeFn = <TType extends keyof RouterEvents>(
 export interface MatchRoutesOpts {
   preload?: boolean
   throwOnError?: boolean
-  _buildLocation?: boolean
   dest?: BuildNextOptions
   /** Optional match snapshot hint for fast-path (skips path matching) */
   snapshot?: MatchSnapshot
@@ -1606,7 +1605,7 @@ export class RouterCore<
 
       // only execute `context` if we are not calling from router.buildLocation
 
-      if (!existingMatch && opts?._buildLocation !== true) {
+      if (!existingMatch) {
         const parentMatch = matches[index - 1]
         const parentContext = getParentContext(parentMatch)
 
@@ -1648,6 +1647,84 @@ export class RouterCore<
       routesById: this.routesById,
       processedTree: this.processedTree,
     })
+  }
+
+  /**
+   * Lightweight route matching for buildLocation.
+   * Only computes fullPath, accumulated search, and params - skipping expensive
+   * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
+   */
+  private matchRoutesLightweight(location: ParsedLocation): {
+    matchedRoutes: ReadonlyArray<AnyRoute>
+    fullPath: string
+    search: Record<string, unknown>
+    params: Record<string, unknown>
+  } {
+    const { matchedRoutes, routeParams, parsedParams } = this.getMatchedRoutes(
+      location.pathname,
+    )
+    const lastRoute = last(matchedRoutes)!
+
+    // Accumulate search validation through the route chain
+    let accumulatedSearch: Record<string, unknown> = location.search as Record<
+      string,
+      unknown
+    >
+    for (const route of matchedRoutes) {
+      try {
+        const validatedSearch =
+          validateSearch(route.options.validateSearch, {
+            ...accumulatedSearch,
+          }) ?? {}
+        accumulatedSearch = { ...accumulatedSearch, ...validatedSearch }
+      } catch {
+        // Ignore validation errors - they'll be caught later during full matching
+      }
+    }
+
+    // Determine params: reuse from state if possible, otherwise parse
+    const stateMatches = this.state.matches
+    const lastStateMatch = stateMatches.length > 0 ? last(stateMatches) : null
+    const canReuseStateMatch =
+      lastStateMatch &&
+      lastStateMatch.routeId === lastRoute.id &&
+      location.pathname === this.state.location.pathname
+    let params: Record<string, unknown>
+    if (canReuseStateMatch) {
+      params = lastStateMatch.params
+    } else {
+      // Parse params through the route chain
+      const accumulatedParams: Record<string, unknown> = { ...routeParams }
+      for (const route of matchedRoutes) {
+        const parseParams =
+          route.options.params?.parse ?? route.options.parseParams
+        if (parseParams) {
+          try {
+            const parsed = parseParams(
+              accumulatedParams as Record<string, string>,
+            )
+            Object.assign(accumulatedParams, parsed)
+          } catch {
+            // Ignore parse errors - they'll be caught later during full matching
+          }
+        } else if (route.options.skipRouteOnParseError) {
+          // Use pre-parsed params from route matching for skipRouteOnParseError routes
+          for (const key in accumulatedParams) {
+            if (key in parsedParams) {
+              accumulatedParams[key] = parsedParams[key]
+            }
+          }
+        }
+      }
+      params = accumulatedParams
+    }
+
+    return {
+      matchedRoutes,
+      fullPath: lastRoute.fullPath,
+      search: accumulatedSearch,
+      params,
+    }
   }
 
   cancelMatch = (id: string) => {
@@ -1694,13 +1771,9 @@ export class RouterCore<
       const currentLocation =
         dest._fromLocation || this.pendingBuiltLocation || this.latestLocation
 
-      const allCurrentLocationMatches = this.matchRoutes(currentLocation, {
-        _buildLocation: true,
-      })
-
-      // Now let's find the starting pathname
-      // This should default to the current location if no from is provided
-      const lastMatch = last(allCurrentLocationMatches)!
+      // Use lightweight matching - only computes what buildLocation needs
+      // (fullPath, search, params) without creating full match objects
+      const lightweightResult = this.matchRoutesLightweight(currentLocation)
 
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
@@ -1711,12 +1784,12 @@ export class RouterCore<
       ) {
         const allFromMatches = this.getMatchedRoutes(dest.from).matchedRoutes
 
-        const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
+        const matchedFrom = findLast(lightweightResult.matchedRoutes, (d) => {
           return comparePaths(d.fullPath, dest.from!)
         })
 
         const matchedCurrent = findLast(allFromMatches, (d) => {
-          return comparePaths(d.fullPath, lastMatch.fullPath)
+          return comparePaths(d.fullPath, lightweightResult.fullPath)
         })
 
         // for from to be invalid it shouldn't just be unmatched to currentLocation
@@ -1729,15 +1802,15 @@ export class RouterCore<
       const defaultedFromPath =
         dest.unsafeRelative === 'path'
           ? currentLocation.pathname
-          : (dest.from ?? lastMatch.fullPath)
+          : (dest.from ?? lightweightResult.fullPath)
 
       // ensure this includes the basePath if set
       const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
       // From search should always use the current location
-      const fromSearch = lastMatch.search
+      const fromSearch = lightweightResult.search
       // Same with params. It can't hurt to provide as many as possible
-      const fromParams = { ...lastMatch.params }
+      const fromParams = { ...lightweightResult.params }
 
       // Resolve the next to
       // ensure this includes the basePath if set
