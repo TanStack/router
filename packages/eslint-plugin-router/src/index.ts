@@ -26,6 +26,7 @@ Object.assign(plugin.configs, {
     plugins: ['@tanstack/eslint-plugin-router'],
     rules: {
       '@tanstack/router/create-route-property-order': 'warn',
+      '@tanstack/router/route-param-names': 'error',
     },
   },
   'flat/recommended': [
@@ -35,6 +36,7 @@ Object.assign(plugin.configs, {
       },
       rules: {
         '@tanstack/router/create-route-property-order': 'warn',
+        '@tanstack/router/route-param-names': 'error',
       },
     },
   ],

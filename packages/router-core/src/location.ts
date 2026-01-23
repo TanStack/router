@@ -1,35 +1,6 @@
 import type { ParsedHistoryState } from '@tanstack/history'
 import type { AnySchema } from './validators'
 
-/**
- * Per-route validated search result cached in snapshot.
- */
-export interface ValidatedSearchEntry {
-  /** Merged search (parent + this route's validated) */
-  search: Record<string, unknown>
-  /** Strict search (only this route's validated fields) */
-  strictSearch: Record<string, unknown>
-}
-
-/**
- * Match snapshot stored in history state for fast-path on back/forward navigation.
- * Allows skipping path matching by storing route IDs and params.
- */
-export interface MatchSnapshot {
-  /** Ordered route IDs that matched */
-  routeIds: Array<string>
-  /** Raw path params extracted from the URL */
-  params: Record<string, string>
-  /** Parsed/validated path params */
-  parsedParams: Record<string, unknown>
-  /** Route ID that should show global not found, if any */
-  globalNotFoundRouteId?: string
-  /** Search string when snapshot was created (for cache invalidation) */
-  searchStr?: string
-  /** Per-route validated search results (parallel to routeIds) */
-  validatedSearches?: Array<ValidatedSearchEntry>
-}
-
 export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
   /**
    * The full path of the location, including pathname, search, and hash.
@@ -76,10 +47,4 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    * @description Whether the publicHref is external (different origin from rewrite).
    */
   external: boolean
-  /**
-   * @internal
-   * @description Match snapshot for fast-path on back/forward navigation.
-   * Contains route IDs and params from buildLocation to avoid re-matching.
-   */
-  _matchSnapshot?: MatchSnapshot
 }

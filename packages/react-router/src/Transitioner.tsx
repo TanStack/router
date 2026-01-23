@@ -7,7 +7,6 @@ import {
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
-import type { SubscriberArgs } from '@tanstack/history'
 
 export function Transitioner() {
   const router = useRouter()
@@ -42,17 +41,7 @@ export function Transitioner() {
   // Subscribe to location changes
   // and try to load the new location
   React.useEffect(() => {
-    const unsub = router.history.subscribe(
-      ({ navigateOpts }: SubscriberArgs) => {
-        // If commitLocation initiated this navigation, it handles load() itself
-        if (navigateOpts?.skipTransitionerLoad) {
-          return
-        }
-
-        // External navigation (pop, direct history.push, etc): call load normally
-        router.load()
-      },
-    )
+    const unsub = router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,

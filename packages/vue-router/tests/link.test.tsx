@@ -3991,13 +3991,10 @@ describe('Link', () => {
     const onPostsText = await screen.findByText('On Posts')
     expect(onPostsText).toBeInTheDocument()
 
-    // Wait for the UI to update after navigation
-    await waitFor(() => {
-      // Query for 'From invoices' link again after navigation - it should not exist
-      expect(
-        screen.queryByRole('link', { name: 'From invoices' }),
-      ).not.toBeInTheDocument()
-    })
+    // Query for 'From invoices' link again after navigation - it should not exist
+    expect(
+      screen.queryByRole('link', { name: 'From invoices' }),
+    ).not.toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -5725,21 +5722,14 @@ describe('relative links to current route', () => {
       render(<RouterProvider router={router} />)
 
       const postButton = await screen.findByTestId('posts-link')
+      const searchButton = await screen.findByTestId('search-link')
+      const searchButton2 = await screen.findByTestId('search2-link')
 
       fireEvent.click(postButton)
 
       await waitFor(() => {
         expect(window.location.pathname).toBe(`/post${tail}`)
       })
-
-      // Wait for Vue to update the Links with new hrefs after navigation
-      await waitFor(() => {
-        const searchLink = screen.getByTestId('search-link')
-        expect(searchLink.getAttribute('href')).toContain('/post')
-      })
-
-      const searchButton = await screen.findByTestId('search-link')
-      const searchButton2 = await screen.findByTestId('search2-link')
 
       fireEvent.click(searchButton)
 

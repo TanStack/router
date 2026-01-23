@@ -13,6 +13,7 @@ import { useRouter } from './useRouter'
 
 import { useForwardedRef, useIntersectionObserver } from './utils'
 
+import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
@@ -52,6 +53,7 @@ export function useLinkProps<
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
+  const isHydrated = useHydrated()
 
   const {
     // custom props
@@ -230,7 +232,7 @@ export function useLinkProps<
       }
 
       if (activeOptions?.includeHash) {
-        return s.location.hash === next.hash
+        return isHydrated && s.location.hash === next.hash
       }
       return true
     },
@@ -596,11 +598,7 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
-    const {
-      type: _type,
-      ref: innerRef,
-      ...linkProps
-    } = useLinkProps(rest as any, ref)
+    const { type: _type, ...linkProps } = useLinkProps(rest as any, ref)
 
     const children =
       typeof rest.children === 'function'
@@ -609,20 +607,13 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
           })
         : rest.children
 
-    if (_asChild === undefined) {
+    if (!_asChild) {
       // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
       // @ts-expect-error
-      delete linkProps.disabled
+      const { disabled: _, ...rest } = linkProps
+      return React.createElement('a', rest, children)
     }
-
-    return React.createElement(
-      _asChild ? _asChild : 'a',
-      {
-        ...linkProps,
-        ref: innerRef,
-      },
-      children,
-    )
+    return React.createElement(_asChild, linkProps, children)
   },
 ) as any
 

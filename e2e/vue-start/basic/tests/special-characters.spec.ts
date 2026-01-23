@@ -108,9 +108,13 @@ test.describe('Unicode route rendering', () => {
       page,
       baseURL,
     }) => {
-      await expect(page.getByTestId('special-hash-link')).not.toHaveClass(
+      await expect(page.getByTestId('special-hash-link-1')).not.toContainClass(
         'font-bold',
       )
+      await expect(page.getByTestId('special-hash-link-2')).not.toContainClass(
+        'font-bold',
+      )
+
       await page.goto('/specialChars/hash#대|')
 
       await page.waitForURL(`${baseURL}/specialChars/hash#%EB%8C%80|`)
@@ -118,11 +122,18 @@ test.describe('Unicode route rendering', () => {
 
       await expect(page.getByTestId('special-hash-heading')).toBeInViewport()
 
-      const hashValue = await page.getByTestId('special-hash').textContent()
-
-      await expect(page.getByTestId('special-hash-link')).toHaveClass(
+      await expect(page.getByTestId('special-hash-link-1')).toContainClass(
         'font-bold',
       )
+
+      await expect(page.getByTestId('special-hash-link-2')).not.toContainClass(
+        'font-bold',
+      )
+
+      await page.getByTestId('toggle-hash-button').click()
+
+      const hashValue = await page.getByTestId('special-hash').textContent()
+
       expect(hashValue).toBe('대|')
     })
 
@@ -130,10 +141,15 @@ test.describe('Unicode route rendering', () => {
       page,
       baseURL,
     }) => {
-      await expect(page.getByTestId('special-hash-link')).not.toHaveClass(
+      await expect(page.getByTestId('special-hash-link-1')).not.toContainClass(
         'font-bold',
       )
-      const link = page.getByTestId('special-hash-link')
+
+      await expect(page.getByTestId('special-hash-link-2')).not.toContainClass(
+        'font-bold',
+      )
+
+      const link = page.getByTestId('special-hash-link-1')
 
       await link.click()
 
@@ -142,11 +158,18 @@ test.describe('Unicode route rendering', () => {
 
       await expect(page.getByTestId('special-hash-heading')).toBeInViewport()
 
-      const hashValue = await page.getByTestId('special-hash').textContent()
-
-      await expect(page.getByTestId('special-hash-link')).toHaveClass(
+      await expect(page.getByTestId('special-hash-link-1')).toContainClass(
         'font-bold',
       )
+
+      await expect(page.getByTestId('special-hash-link-2')).not.toContainClass(
+        'font-bold',
+      )
+
+      await page.getByTestId('toggle-hash-button').click()
+
+      const hashValue = await page.getByTestId('special-hash').textContent()
+
       expect(hashValue).toBe('대|')
     })
   })
