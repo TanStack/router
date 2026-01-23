@@ -4,7 +4,7 @@ import { Generator, getConfig } from '../src'
 
 describe('validateRouteParams via generator', () => {
   it('should warn for invalid param names when running the generator', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { })
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     const folderName = 'invalid-param-names'
     const dir = join(process.cwd(), 'tests', 'generator', folderName)
@@ -26,7 +26,9 @@ describe('validateRouteParams via generator', () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('user-name'))
 
     // Should NOT have warned about $validParam
-    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('validParam'))
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('validParam'),
+    )
 
     warnSpy.mockRestore()
   })
