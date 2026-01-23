@@ -4,9 +4,10 @@ const BASE_URL = 'http://localhost:3000'
 
 const instance = autocannon({
   url: BASE_URL,
-  connections: 100, // concurrent connections
+  overallRate: 3000, // requests per second
+  // connections: 100, // concurrent connections
   duration: 30, // seconds
-  pipelining: 1, // requests per connection
+  // pipelining: 1, // requests per connection
   requests: [
     {
       setupRequest: (req) => {
