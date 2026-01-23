@@ -589,7 +589,6 @@ export type SubscribeFn = <TType extends keyof RouterEvents>(
 export interface MatchRoutesOpts {
   preload?: boolean
   throwOnError?: boolean
-  _buildLocation?: boolean
   dest?: BuildNextOptions
 }
 
@@ -1390,35 +1389,19 @@ export class RouterCore<
       let paramsError: unknown = undefined
 
       if (!existingMatch) {
-        if (route.options.skipRouteOnParseError) {
-          for (const key in usedParams) {
-            if (key in parsedParams!) {
-              strictParams[key] = parsedParams![key]
-            }
+        try {
+          extractStrictParams(route, usedParams, parsedParams!, strictParams)
+        } catch (err: any) {
+          if (isNotFound(err) || isRedirect(err)) {
+            paramsError = err
+          } else {
+            paramsError = new PathParamError(err.message, {
+              cause: err,
+            })
           }
-        } else {
-          const strictParseParams =
-            route.options.params?.parse ?? route.options.parseParams
 
-          if (strictParseParams) {
-            try {
-              Object.assign(
-                strictParams,
-                strictParseParams(strictParams as Record<string, string>),
-              )
-            } catch (err: any) {
-              if (isNotFound(err) || isRedirect(err)) {
-                paramsError = err
-              } else {
-                paramsError = new PathParamError(err.message, {
-                  cause: err,
-                })
-              }
-
-              if (opts?.throwOnError) {
-                throw paramsError
-              }
-            }
+          if (opts?.throwOnError) {
+            throw paramsError
           }
         }
       }
@@ -1519,7 +1502,7 @@ export class RouterCore<
 
       // only execute `context` if we are not calling from router.buildLocation
 
-      if (!existingMatch && opts?._buildLocation !== true) {
+      if (!existingMatch) {
         const parentMatch = matches[index - 1]
         const parentContext = getParentContext(parentMatch)
 
@@ -1561,6 +1544,80 @@ export class RouterCore<
       routesById: this.routesById,
       processedTree: this.processedTree,
     })
+  }
+
+  /**
+   * Lightweight route matching for buildLocation.
+   * Only computes fullPath, accumulated search, and params - skipping expensive
+   * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
+   */
+  private matchRoutesLightweight(location: ParsedLocation): {
+    matchedRoutes: ReadonlyArray<AnyRoute>
+    fullPath: string
+    search: Record<string, unknown>
+    params: Record<string, unknown>
+  } {
+    const { matchedRoutes, routeParams, parsedParams } = this.getMatchedRoutes(
+      location.pathname,
+    )
+    const lastRoute = last(matchedRoutes)!
+
+    // I don't know if we should run the full search middleware chain, or just validateSearch
+    // // Accumulate search validation through the route chain
+    // const accumulatedSearch: Record<string, unknown> = applySearchMiddleware({
+    //   search: { ...location.search },
+    //   dest: location,
+    //   destRoutes: matchedRoutes,
+    //   _includeValidateSearch: true,
+    // })
+
+    // Accumulate search validation through route chain
+    const accumulatedSearch = { ...location.search }
+    for (const route of matchedRoutes) {
+      try {
+        Object.assign(
+          accumulatedSearch,
+          validateSearch(route.options.validateSearch, accumulatedSearch),
+        )
+      } catch {
+        // Ignore errors, we're not actually routing
+      }
+    }
+
+    // Determine params: reuse from state if possible, otherwise parse
+    const lastStateMatch = last(this.state.matches)
+    const canReuseParams =
+      lastStateMatch &&
+      lastStateMatch.routeId === lastRoute.id &&
+      location.pathname === this.state.location.pathname
+
+    let params: Record<string, unknown>
+    if (canReuseParams) {
+      params = lastStateMatch.params
+    } else {
+      // Parse params through the route chain
+      const strictParams: Record<string, unknown> = { ...routeParams }
+      for (const route of matchedRoutes) {
+        try {
+          extractStrictParams(
+            route,
+            routeParams,
+            parsedParams ?? {},
+            strictParams,
+          )
+        } catch {
+          // Ignore errors, we're not actually routing
+        }
+      }
+      params = strictParams
+    }
+
+    return {
+      matchedRoutes,
+      fullPath: lastRoute.fullPath,
+      search: accumulatedSearch,
+      params,
+    }
   }
 
   cancelMatch = (id: string) => {
@@ -1607,13 +1664,9 @@ export class RouterCore<
       const currentLocation =
         dest._fromLocation || this.pendingBuiltLocation || this.latestLocation
 
-      const allCurrentLocationMatches = this.matchRoutes(currentLocation, {
-        _buildLocation: true,
-      })
-
-      // Now let's find the starting pathname
-      // This should default to the current location if no from is provided
-      const lastMatch = last(allCurrentLocationMatches)!
+      // Use lightweight matching - only computes what buildLocation needs
+      // (fullPath, search, params) without creating full match objects
+      const lightweightResult = this.matchRoutesLightweight(currentLocation)
 
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
@@ -1624,12 +1677,12 @@ export class RouterCore<
       ) {
         const allFromMatches = this.getMatchedRoutes(dest.from).matchedRoutes
 
-        const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
+        const matchedFrom = findLast(lightweightResult.matchedRoutes, (d) => {
           return comparePaths(d.fullPath, dest.from!)
         })
 
         const matchedCurrent = findLast(allFromMatches, (d) => {
-          return comparePaths(d.fullPath, lastMatch.fullPath)
+          return comparePaths(d.fullPath, lightweightResult.fullPath)
         })
 
         // for from to be invalid it shouldn't just be unmatched to currentLocation
@@ -1642,15 +1695,15 @@ export class RouterCore<
       const defaultedFromPath =
         dest.unsafeRelative === 'path'
           ? currentLocation.pathname
-          : (dest.from ?? lastMatch.fullPath)
+          : (dest.from ?? lightweightResult.fullPath)
 
       // ensure this includes the basePath if set
       const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
       // From search should always use the current location
-      const fromSearch = lastMatch.search
+      const fromSearch = lightweightResult.search
       // Same with params. It can't hurt to provide as many as possible
-      const fromParams = { ...lastMatch.params }
+      const fromParams = { ...lightweightResult.params }
 
       // Resolve the next to
       // ensure this includes the basePath if set
@@ -2799,7 +2852,7 @@ function applySearchMiddleware({
   _includeValidateSearch,
 }: {
   search: any
-  dest: BuildNextOptions
+  dest: { search?: unknown }
   destRoutes: ReadonlyArray<AnyRoute>
   _includeValidateSearch: boolean | undefined
 }) {
@@ -2933,4 +2986,26 @@ function findGlobalNotFoundRouteId(
     }
   }
   return rootRouteId
+}
+
+function extractStrictParams(
+  route: AnyRoute,
+  referenceParams: Record<string, unknown>,
+  parsedParams: Record<string, unknown>,
+  accumulatedParams: Record<string, unknown>,
+) {
+  const parseParams = route.options.params?.parse ?? route.options.parseParams
+  if (parseParams) {
+    if (route.options.skipRouteOnParseError) {
+      // Use pre-parsed params from route matching for skipRouteOnParseError routes
+      for (const key in referenceParams) {
+        if (key in parsedParams) {
+          accumulatedParams[key] = parsedParams[key]
+        }
+      }
+    } else {
+      const result = parseParams(accumulatedParams as Record<string, string>)
+      Object.assign(accumulatedParams, result)
+    }
+  }
 }
