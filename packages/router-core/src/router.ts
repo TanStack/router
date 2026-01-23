@@ -1562,25 +1562,27 @@ export class RouterCore<
     )
     const lastRoute = last(matchedRoutes)!
 
-    // Accumulate search validation through the route chain
-    const accumulatedSearch: Record<string, unknown> = applySearchMiddleware({
-      search: { ...location.search },
-      dest: location,
-      destRoutes: matchedRoutes,
-      _includeValidateSearch: true,
-    })
     // I don't know if we should run the full search middleware chain, or just validateSearch
-    // let accumulatedSearch = { ...location.search }
-    // for (const route of matchedRoutes) {
-    //   try {
-    //     Object.assign(
-    //       accumulatedSearch,
-    //       validateSearch(route.options.validateSearch, accumulatedSearch),
-    //     )
-    //   } catch {
-    //     // Ignore errors, we're not actually routing
-    //   }
-    // }
+    // // Accumulate search validation through the route chain
+    // const accumulatedSearch: Record<string, unknown> = applySearchMiddleware({
+    //   search: { ...location.search },
+    //   dest: location,
+    //   destRoutes: matchedRoutes,
+    //   _includeValidateSearch: true,
+    // })
+    
+    // Accumulate search validation through route chain
+    const accumulatedSearch = { ...location.search }
+    for (const route of matchedRoutes) {
+      try {
+        Object.assign(
+          accumulatedSearch,
+          validateSearch(route.options.validateSearch, accumulatedSearch),
+        )
+      } catch {
+        // Ignore errors, we're not actually routing
+      }
+    }
 
     // Determine params: reuse from state if possible, otherwise parse
     const lastStateMatch = last(this.state.matches)
@@ -1597,7 +1599,7 @@ export class RouterCore<
       const strictParams: Record<string, unknown> = { ...routeParams }
       for (const route of matchedRoutes) {
         try {
-          extractStrictParams(route, routeParams, parsedParams, strictParams)
+          extractStrictParams(route, routeParams, parsedParams ?? {}, strictParams)
         } catch {
           // Ignore errors, we're not actually routing
         }
