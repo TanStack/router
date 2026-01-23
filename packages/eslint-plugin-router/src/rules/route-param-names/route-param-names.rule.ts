@@ -52,10 +52,12 @@ export const rule = createRule({
       }
       if (
         node.type === AST_NODE_TYPES.TemplateLiteral &&
-        node.quasis.length === 1 &&
-        node.quasis[0]?.value.cooked
+        node.quasis.length === 1
       ) {
-        return node.quasis[0].value.cooked
+        const cooked = node.quasis[0]?.value.cooked
+        if (cooked != null) {
+          return cooked
+        }
       }
       return null
     }
@@ -71,19 +73,22 @@ export const rule = createRule({
             return
           }
 
-          // Case: createRoute({ path: '/path/$param' })
+          // Case: createRoute({ path: '/path/$param' }) or createRoute({ 'path': '/path/$param' })
           if (pathAsPropertySet.has(funcName)) {
             const arg = node.arguments[0]
             if (arg?.type === AST_NODE_TYPES.ObjectExpression) {
               for (const prop of arg.properties) {
-                if (
-                  prop.type === AST_NODE_TYPES.Property &&
-                  prop.key.type === AST_NODE_TYPES.Identifier &&
-                  prop.key.name === 'path'
-                ) {
-                  const pathValue = getStringLiteralValue(prop.value)
-                  if (pathValue) {
-                    reportInvalidParams(prop.value, pathValue)
+                if (prop.type === AST_NODE_TYPES.Property) {
+                  const isPathKey =
+                    (prop.key.type === AST_NODE_TYPES.Identifier &&
+                      prop.key.name === 'path') ||
+                    (prop.key.type === AST_NODE_TYPES.Literal &&
+                      prop.key.value === 'path')
+                  if (isPathKey) {
+                    const pathValue = getStringLiteralValue(prop.value)
+                    if (pathValue) {
+                      reportInvalidParams(prop.value, pathValue)
+                    }
                   }
                 }
               }
