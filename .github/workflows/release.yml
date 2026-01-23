@@ -9,10 +9,6 @@ on:
   push:
     branches: [main, alpha, beta]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
-  cancel-in-progress: true
-
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   SERVER_PRESET: 'node-server'
@@ -23,10 +19,15 @@ permissions:
   pull-requests: write
 
 jobs:
-  release:
-    name: Release
+  
+  # anything before publishing can be interrupted by a new incoming release
+  test:
+    name: Test
     if: github.repository_owner == 'TanStack'
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-test-${{ github.event.number || github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.1
@@ -41,6 +42,23 @@ jobs:
       - name: Stop Nx Agents
         if: ${{ always() }}
         run: npx nx-cloud stop-all-agents
+
+  # publishing should never be cancelled if it has started, queue infinity items if you have to
+  publish:
+    name: Publish
+    needs: test
+    if: github.repository_owner == 'TanStack'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-publish-${{ github.event.number || github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+        with:
+          fetch-depth: 0
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
       - name: Publish
         run: |
           git config --global user.name 'Tanner Linsley'
