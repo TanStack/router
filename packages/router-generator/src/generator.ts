@@ -43,6 +43,7 @@ import {
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
 import { transform } from './transform/transform'
+import { validateRouteParams } from './validate-route-params'
 import type { GeneratorPlugin } from './plugin/types'
 import type { TargetTemplate } from './template'
 import type {
@@ -1054,6 +1055,10 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     const existingRouteFile = await this.fs.readFile(node.fullPath)
     if (existingRouteFile === 'file-not-existing') {
       throw new Error(`⚠️ File ${node.fullPath} does not exist`)
+    }
+
+    if (node.routePath) {
+      validateRouteParams(node.routePath, node.filePath, this.logger)
     }
 
     const updatedCacheEntry: RouteNodeCacheEntry = {
