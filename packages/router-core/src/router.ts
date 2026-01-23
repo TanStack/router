@@ -25,7 +25,7 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
-import { createLRUCache, LRUCache } from './lru-cache'
+import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
@@ -38,9 +38,10 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
+import type { LRUCache } from './lru-cache';
 import type {
-  ProcessedTree,
   ProcessRouteTreeResult,
+  ProcessedTree,
 } from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
@@ -877,6 +878,7 @@ export type CreateRouterFn = <
 >
 
 declare global {
+  // eslint-disable-next-line no-var
   var __TSR_CACHE__:
     | {
         routeTree: AnyRoute
