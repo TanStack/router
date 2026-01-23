@@ -22,7 +22,9 @@ export interface ExtractedParam {
  * - prefix{-$paramName}suffix      -> extract "paramName" (optional)
  * - $ or {$}                       -> wildcard, skip validation
  */
-export function extractParamsFromSegment(segment: string): Array<ExtractedParam> {
+export function extractParamsFromSegment(
+  segment: string,
+): Array<ExtractedParam> {
   const params: Array<ExtractedParam> = []
 
   // Skip empty segments

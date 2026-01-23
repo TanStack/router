@@ -24,7 +24,8 @@ export type PathAsPropertyFunction = (typeof pathAsPropertyFunctions)[number]
  */
 export const pathFromFileNameFunctions = ['createFileRoute'] as const
 
-export type PathFromFileNameFunction = (typeof pathFromFileNameFunctions)[number]
+export type PathFromFileNameFunction =
+  (typeof pathFromFileNameFunctions)[number]
 
 /**
  * All route functions that need param name validation

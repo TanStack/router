@@ -140,7 +140,9 @@ describe('extractParamsFromPath', () => {
   })
 
   it('should extract params with various formats', () => {
-    const result = extractParamsFromPath('/a/$simple/b/{$braces}/c/{-$optional}')
+    const result = extractParamsFromPath(
+      '/a/$simple/b/{$braces}/c/{-$optional}',
+    )
     expect(result).toHaveLength(3)
     expect(result[0]?.paramName).toBe('simple')
     expect(result[0]?.isOptional).toBe(false)

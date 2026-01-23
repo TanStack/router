@@ -2,7 +2,10 @@ import { AST_NODE_TYPES, ESLintUtils } from '@typescript-eslint/utils'
 
 import { getDocsUrl } from '../../utils/get-docs-url'
 import { detectTanstackRouterImports } from '../../utils/detect-router-imports'
-import { filePathToRoutePath, getInvalidParams } from './route-param-names.utils'
+import {
+  filePathToRoutePath,
+  getInvalidParams,
+} from './route-param-names.utils'
 import {
   pathAsFirstArgFunctions,
   pathAsPropertyFunctions,
@@ -24,8 +27,7 @@ export const rule = createRule({
   meta: {
     type: 'problem',
     docs: {
-      description:
-        'Ensure route param names are valid JavaScript identifiers',
+      description: 'Ensure route param names are valid JavaScript identifiers',
       recommended: 'error',
     },
     messages: {
@@ -37,10 +39,7 @@ export const rule = createRule({
   defaultOptions: [],
 
   create: detectTanstackRouterImports((context, _, helpers) => {
-    function reportInvalidParams(
-      node: TSESTree.Node,
-      path: string,
-    ) {
+    function reportInvalidParams(node: TSESTree.Node, path: string) {
       const invalidParams = getInvalidParams(path)
 
       for (const param of invalidParams) {
@@ -52,10 +51,11 @@ export const rule = createRule({
       }
     }
 
-    function getStringLiteralValue(
-      node: TSESTree.Node,
-    ): string | null {
-      if (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') {
+    function getStringLiteralValue(node: TSESTree.Node): string | null {
+      if (
+        node.type === AST_NODE_TYPES.Literal &&
+        typeof node.value === 'string'
+      ) {
         return node.value
       }
       if (
