@@ -38,7 +38,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
-import type { LRUCache } from './lru-cache';
+import type { LRUCache } from './lru-cache'
 import type {
   ProcessRouteTreeResult,
   ProcessedTree,
