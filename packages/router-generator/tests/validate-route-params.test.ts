@@ -6,7 +6,9 @@ describe('validateRouteParams', () => {
   const warn = vi.fn()
   const logger = { warn } as unknown as Logger
 
-  beforeEach(() => { warn.mockClear() })
+  beforeEach(() => {
+    warn.mockClear()
+  })
 
   describe('valid param names', () => {
     it('should not warn for valid simple params', () => {
@@ -51,7 +53,9 @@ describe('validateRouteParams', () => {
       validateRouteParams('/users/$123', 'users/$123.tsx', logger)
       expect(warn).toHaveBeenCalledTimes(1)
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('123'))
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('Invalid param name'))
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid param name'),
+      )
     })
 
     it('should warn for params with hyphens', () => {
@@ -79,7 +83,9 @@ describe('validateRouteParams', () => {
 
     it('should include file path in warning message', () => {
       validateRouteParams('/users/$123', 'users/$123.tsx', logger)
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('users/$123.tsx'))
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('users/$123.tsx'),
+      )
     })
 
     it('should include route path in warning message', () => {
