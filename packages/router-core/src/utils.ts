@@ -188,7 +188,7 @@ export type LooseAsyncReturnType<T> = T extends (
  * Return the last element of an array.
  * Intended for non-empty arrays used within router internals.
  */
-export function last<T>(arr: Array<T>) {
+export function last<T>(arr: ReadonlyArray<T>) {
   return arr[arr.length - 1]
 }
 
