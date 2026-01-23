@@ -46,6 +46,7 @@ You need to create a CSS file to configure Tailwind CSS instead of the configura
 ```css
 /* src/styles/app.css */
 @import 'tailwindcss';
+@source "../";
 ```
 
 ## Import the CSS file in your `__root.tsx` file
