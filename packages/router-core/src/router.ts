@@ -19,6 +19,7 @@ import {
 } from './new-process-route-tree'
 import {
   cleanPath,
+  compileDecodeCharMap,
   interpolatePath,
   resolvePath,
   trimPath,
@@ -923,7 +924,7 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
   isServer!: boolean
-  pathParamsDecodeCharMap?: Map<string, string>
+  pathParamsDecoder?: (encoded: string) => string
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -992,14 +993,10 @@ export class RouterCore<
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
-    this.pathParamsDecodeCharMap = this.options.pathParamsAllowedCharacters
-      ? new Map(
-          this.options.pathParamsAllowedCharacters.map((char) => [
-            encodeURIComponent(char),
-            char,
-          ]),
-        )
-      : undefined
+    if (this.options.pathParamsAllowedCharacters)
+      this.pathParamsDecoder = compileDecodeCharMap(
+        this.options.pathParamsAllowedCharacters,
+      )
 
     if (
       !this.history ||
@@ -1365,7 +1362,7 @@ export class RouterCore<
       const { interpolatedPath, usedParams } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
-        decodeCharMap: this.pathParamsDecodeCharMap,
+        decoder: this.pathParamsDecoder,
       })
 
       // Waste not, want not. If we already have a match for this route,
@@ -1721,7 +1718,7 @@ export class RouterCore<
             interpolatePath({
               path: nextTo,
               params: nextParams,
-              decodeCharMap: this.pathParamsDecodeCharMap,
+              decoder: this.pathParamsDecoder,
             }).interpolatedPath,
           )
 
