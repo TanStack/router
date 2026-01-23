@@ -666,6 +666,322 @@ describe('decodePath', () => {
   })
 })
 
+/**
+ * Tests for getEnumerableOwnKeys behavior (internal function).
+ * Tested indirectly through replaceEqualDeep since getEnumerableOwnKeys is not exported.
+ *
+ * getEnumerableOwnKeys should:
+ * 1. Return array of all enumerable own keys (strings + symbols)
+ * 2. Return false if any property is non-enumerable
+ * 3. Handle objects with no symbols efficiently (optimization target)
+ */
+describe('getEnumerableOwnKeys behavior (via replaceEqualDeep)', () => {
+  describe('plain objects with string keys only', () => {
+    it('should handle empty objects', () => {
+      const prev = {}
+      const next = {}
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with single key', () => {
+      const prev = { a: 1 }
+      const next = { a: 1 }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with many keys', () => {
+      const prev = {
+        a: 1,
+        b: 2,
+        c: 3,
+        d: 4,
+        e: 5,
+        f: 6,
+        g: 7,
+        h: 8,
+        i: 9,
+        j: 10,
+      }
+      const next = {
+        a: 1,
+        b: 2,
+        c: 3,
+        d: 4,
+        e: 5,
+        f: 6,
+        g: 7,
+        h: 8,
+        i: 9,
+        j: 10,
+      }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with numeric string keys', () => {
+      const prev = { '0': 'a', '1': 'b', '2': 'c' }
+      const next = { '0': 'a', '1': 'b', '2': 'c' }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with special string keys', () => {
+      const prev = {
+        'key-with-dash': 1,
+        'key.with.dot': 2,
+        'key with space': 3,
+      }
+      const next = {
+        'key-with-dash': 1,
+        'key.with.dot': 2,
+        'key with space': 3,
+      }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should detect differences in objects with string keys', () => {
+      const prev = { a: 1, b: 2, c: 3 }
+      const next = { a: 1, b: 99, c: 3 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result).toEqual(next)
+    })
+  })
+
+  describe('objects with symbol keys', () => {
+    it('should handle objects with single symbol key', () => {
+      const sym = Symbol('test')
+      const prev = { [sym]: 1 }
+      const next = { [sym]: 1 }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should handle objects with multiple symbol keys', () => {
+      const sym1 = Symbol('a')
+      const sym2 = Symbol('b')
+      const sym3 = Symbol('c')
+      const prev = { [sym1]: 1, [sym2]: 2, [sym3]: 3 }
+      const next = { [sym1]: 1, [sym2]: 2, [sym3]: 3 }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should detect differences in symbol values', () => {
+      const sym = Symbol('test')
+      const prev = { [sym]: 1 }
+      const next = { [sym]: 2 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result[sym]).toBe(2)
+    })
+
+    it('should handle global symbols', () => {
+      const sym = Symbol.for('global.test.key')
+      const prev = { [sym]: 'value' }
+      const next = { [sym]: 'value' }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+  })
+
+  describe('objects with mixed string and symbol keys', () => {
+    it('should handle objects with both string and symbol keys', () => {
+      const sym = Symbol('test')
+      const prev = { a: 1, b: 2, [sym]: 3 }
+      const next = { a: 1, b: 2, [sym]: 3 }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should detect differences in string keys when symbols present', () => {
+      const sym = Symbol('test')
+      const prev = { a: 1, b: 2, [sym]: 3 }
+      const next = { a: 1, b: 99, [sym]: 3 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result.b).toBe(99)
+      expect(result[sym]).toBe(3)
+    })
+
+    it('should detect differences in symbol keys when strings present', () => {
+      const sym = Symbol('test')
+      const prev = { a: 1, b: 2, [sym]: 3 }
+      const next = { a: 1, b: 2, [sym]: 99 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result.a).toBe(1)
+      expect(result[sym]).toBe(99)
+    })
+
+    it('should handle complex nested objects with symbols', () => {
+      const sym = Symbol('nested')
+      const prev = { outer: { inner: 1, [sym]: { deep: 'value' } } }
+      const next = { outer: { inner: 1, [sym]: { deep: 'value' } } }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+  })
+
+  describe('non-enumerable properties', () => {
+    it('should treat objects with non-enumerable string property as non-plain', () => {
+      const prev: Record<string, number> = { a: 1 }
+      Object.defineProperty(prev, 'hidden', { value: 2, enumerable: false })
+      const next: Record<string, number> = { a: 1 }
+      Object.defineProperty(next, 'hidden', { value: 2, enumerable: false })
+
+      // Non-plain objects should return next, not prev (no structural sharing)
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(next)
+    })
+
+    it('should treat objects with non-enumerable symbol property as non-plain', () => {
+      const sym = Symbol('hidden')
+      const prev: Record<string | symbol, number> = { a: 1 }
+      Object.defineProperty(prev, sym, { value: 2, enumerable: false })
+      const next: Record<string | symbol, number> = { a: 1 }
+      Object.defineProperty(next, sym, { value: 2, enumerable: false })
+
+      // Non-plain objects should return next, not prev
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(next)
+    })
+
+    it('should handle mix of enumerable and non-enumerable properties', () => {
+      const prev: Record<string, number> = { visible: 1 }
+      Object.defineProperty(prev, 'hidden', { value: 2, enumerable: false })
+      const next = { visible: 1 }
+
+      // prev is non-plain (has non-enumerable), next is plain
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(next)
+    })
+
+    it('should handle non-enumerable property that shadows a string key', () => {
+      const prev = Object.create(null)
+      prev.a = 1
+      Object.defineProperty(prev, 'b', { value: 2, enumerable: false })
+
+      const next = Object.create(null)
+      next.a = 1
+      next.b = 2 // enumerable version
+
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(next)
+    })
+  })
+
+  describe('edge cases for key enumeration', () => {
+    it('should handle frozen objects as non-plain (configurable is false)', () => {
+      const prev = Object.freeze({ a: 1, b: 2 })
+      const next = Object.freeze({ a: 1, b: 2 })
+
+      // Frozen objects have all properties as non-configurable but still enumerable
+      // They should still work with replaceEqualDeep
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+
+    it('should handle sealed objects', () => {
+      const prev = Object.seal({ a: 1, b: 2 })
+      const next = Object.seal({ a: 1, b: 2 })
+
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+
+    it('should handle objects created with Object.create(null)', () => {
+      const prev = Object.create(null)
+      prev.a = 1
+      prev.b = 2
+
+      const next = Object.create(null)
+      next.a = 1
+      next.b = 2
+
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+
+    it('should handle objects with inherited properties (only own props checked)', () => {
+      const proto = { inherited: 'value' }
+      const prev = Object.create(proto)
+      prev.own = 1
+
+      const next = Object.create(proto)
+      next.own = 1
+
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+
+    it('should not be confused by Object.prototype properties', () => {
+      // Ensure hasOwnProperty, toString, etc. don't interfere
+      const prev = { hasOwnProperty: 1, toString: 2, valueOf: 3 }
+      const next = { hasOwnProperty: 1, toString: 2, valueOf: 3 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toBe(prev)
+    })
+  })
+
+  describe('performance-critical scenarios (typical router state)', () => {
+    it('should efficiently handle typical router location object', () => {
+      const prev = {
+        pathname: '/users/123',
+        search: '?tab=settings',
+        hash: '#section',
+        state: { key: 'abc123' },
+      }
+      const next = {
+        pathname: '/users/123',
+        search: '?tab=settings',
+        hash: '#section',
+        state: { key: 'abc123' },
+      }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should efficiently handle typical router match object', () => {
+      const prev = {
+        id: 'route-1',
+        routeId: '/users/$userId',
+        pathname: '/users/123',
+        params: { userId: '123' },
+        search: {},
+        fullPath: '/users/$userId',
+        loaderData: { user: { name: 'John' } },
+      }
+      const next = {
+        id: 'route-1',
+        routeId: '/users/$userId',
+        pathname: '/users/123',
+        params: { userId: '123' },
+        search: {},
+        fullPath: '/users/$userId',
+        loaderData: { user: { name: 'John' } },
+      }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('should efficiently handle array of matches', () => {
+      const prev = [
+        { id: '1', routeId: '__root__', pathname: '/', params: {} },
+        { id: '2', routeId: '/users', pathname: '/users', params: {} },
+        {
+          id: '3',
+          routeId: '/users/$userId',
+          pathname: '/users/123',
+          params: { userId: '123' },
+        },
+      ]
+      const next = [
+        { id: '1', routeId: '__root__', pathname: '/', params: {} },
+        { id: '2', routeId: '/users', pathname: '/users', params: {} },
+        {
+          id: '3',
+          routeId: '/users/$userId',
+          pathname: '/users/123',
+          params: { userId: '123' },
+        },
+      ]
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+  })
+})
+
 describe('escapeHtml', () => {
   it('should escape less-than sign', () => {
     expect(escapeHtml('<')).toBe('\\u003c')

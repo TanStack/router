@@ -197,11 +197,33 @@ export function resolvePath({
   return result
 }
 
+/**
+ * Create a pre-compiled decode config from allowed characters.
+ * This should be called once at router initialization.
+ */
+export function compileDecodeCharMap(
+  pathParamsAllowedCharacters: ReadonlyArray<string>,
+) {
+  const charMap = new Map(
+    pathParamsAllowedCharacters.map((char) => [encodeURIComponent(char), char]),
+  )
+  // Escape special regex characters and join with |
+  const pattern = Array.from(charMap.keys())
+    .map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')
+  const regex = new RegExp(pattern, 'g')
+  return (encoded: string) =>
+    encoded.replace(regex, (match) => charMap.get(match) ?? match)
+}
+
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
-  // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
-  decodeCharMap?: Map<string, string>
+  /**
+   * A function that decodes a path parameter value.
+   * Obtained from `compileDecodeCharMap(pathParamsAllowedCharacters)`.
+   */
+  decoder?: (encoded: string) => string
 }
 
 type InterPolatePathResult = {
@@ -213,7 +235,7 @@ type InterPolatePathResult = {
 function encodeParam(
   key: string,
   params: InterpolatePathOptions['params'],
-  decodeCharMap: InterpolatePathOptions['decodeCharMap'],
+  decoder: InterpolatePathOptions['decoder'],
 ): any {
   const value = params[key]
   if (typeof value !== 'string') return value
@@ -222,7 +244,7 @@ function encodeParam(
     // the splat/catch-all routes shouldn't have the '/' encoded out
     return encodeURI(value)
   } else {
-    return encodePathParam(value, decodeCharMap)
+    return encodePathParam(value, decoder)
   }
 }
 
@@ -235,7 +257,7 @@ function encodeParam(
 export function interpolatePath({
   path,
   params,
-  decodeCharMap,
+  decoder,
 }: InterpolatePathOptions): InterPolatePathResult {
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
@@ -286,7 +308,7 @@ export function interpolatePath({
         continue
       }
 
-      const value = encodeParam('_splat', params, decodeCharMap)
+      const value = encodeParam('_splat', params, decoder)
       joined += '/' + prefix + value + suffix
       continue
     }
@@ -300,7 +322,7 @@ export function interpolatePath({
 
       const prefix = path.substring(start, segment[1])
       const suffix = path.substring(segment[4], end)
-      const value = encodeParam(key, params, decodeCharMap) ?? 'undefined'
+      const value = encodeParam(key, params, decoder) ?? 'undefined'
       joined += '/' + prefix + value + suffix
       continue
     }
@@ -316,7 +338,7 @@ export function interpolatePath({
 
       const prefix = path.substring(start, segment[1])
       const suffix = path.substring(segment[4], end)
-      const value = encodeParam(key, params, decodeCharMap) ?? ''
+      const value = encodeParam(key, params, decoder) ?? ''
       joined += '/' + prefix + value + suffix
       continue
     }
@@ -329,12 +351,10 @@ export function interpolatePath({
   return { usedParams, interpolatedPath, isMissingParams }
 }
 
-function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
-  let encoded = encodeURIComponent(value)
-  if (decodeCharMap) {
-    for (const [encodedChar, char] of decodeCharMap) {
-      encoded = encoded.replaceAll(encodedChar, char)
-    }
-  }
-  return encoded
+function encodePathParam(
+  value: string,
+  decoder?: InterpolatePathOptions['decoder'],
+) {
+  const encoded = encodeURIComponent(value)
+  return decoder?.(encoded) ?? encoded
 }
