@@ -1648,32 +1648,35 @@ export class RouterCore<
       location.pathname,
     )
     const lastRoute = last(matchedRoutes)!
+    const lastStateMatch = last(this.state.matches)
+    const isSameRoute =
+      lastStateMatch && lastStateMatch.routeId === lastRoute.id
+    const isSameParams =
+      isSameRoute && location.pathname === this.state.location.pathname
+    const isSameSearch =
+      isSameParams && location.searchStr === this.state.location.searchStr
 
     // Accumulate search validation through the route chain
-    let accumulatedSearch: Record<string, unknown> = location.search as Record<
-      string,
-      unknown
-    >
-    for (const route of matchedRoutes) {
-      try {
-        const validatedSearch =
-          validateSearch(route.options.validateSearch, {
-            ...accumulatedSearch,
-          }) ?? {}
-        accumulatedSearch = { ...accumulatedSearch, ...validatedSearch }
-      } catch {
-        // Ignore validation errors - they'll be caught later during full matching
+    let accumulatedSearch: Record<string, unknown>
+    if (isSameSearch) {
+      accumulatedSearch = lastStateMatch.search
+    } else {
+      accumulatedSearch = { ...location.search }
+      for (const route of matchedRoutes) {
+        try {
+          Object.assign(
+            accumulatedSearch,
+            validateSearch(route.options.validateSearch, accumulatedSearch),
+          )
+        } catch {
+          // Ignore validation errors - they'll be caught later during full matching
+        }
       }
     }
 
     // Determine params: reuse from state if possible, otherwise parse
-    const lastStateMatch = last(this.state.matches)
     let params: Record<string, unknown>
-    if (
-      lastStateMatch &&
-      lastStateMatch.routeId === lastRoute.id &&
-      location.pathname === this.state.location.pathname
-    ) {
+    if (isSameParams) {
       params = lastStateMatch.params
     } else {
       // Parse params through the route chain
