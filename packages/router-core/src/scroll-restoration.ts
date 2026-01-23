@@ -340,8 +340,8 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 
     // If the user doesn't want to restore the scroll position,
     // we don't need to do anything.
-    const resetScroll = event.toLocation.state.__TSR_resetScroll ?? true
-    if (!resetScroll) {
+    if (!router.resetNextScroll) {
+      router.resetNextScroll = true
       return
     }
     if (typeof router.options.scrollRestoration === 'function') {

@@ -7,7 +7,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react'
 
 import { z } from 'zod'
@@ -1317,11 +1316,9 @@ test('when setting search params with 2 parallel navigate calls', async () => {
   })
 
   render(<RouterProvider router={router} />)
-  await waitFor(() => {
-    expect(router.state.location.search).toEqual({
-      param1: 'param1-default',
-      param2: 'param2-default',
-    })
+  expect(router.state.location.search).toEqual({
+    param1: 'param1-default',
+    param2: 'param2-default',
   })
 
   const postsButton = await screen.findByRole('button', { name: 'search' })
@@ -1330,12 +1327,7 @@ test('when setting search params with 2 parallel navigate calls', async () => {
 
   expect(await screen.findByTestId('param1')).toHaveTextContent('foo')
   expect(await screen.findByTestId('param2')).toHaveTextContent('bar')
-  await waitFor(() => {
-    expect(router.state.location.search).toEqual({
-      param1: 'foo',
-      param2: 'bar',
-    })
-  })
+  expect(router.state.location.search).toEqual({ param1: 'foo', param2: 'bar' })
   const search = new URLSearchParams(window.location.search)
   expect(search.get('param1')).toEqual('foo')
   expect(search.get('param2')).toEqual('bar')
@@ -1455,27 +1447,21 @@ test.each([true, false])(
 
     fireEvent.click(postButton)
 
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/post${tail}`)
-    })
+    expect(router.state.location.pathname).toBe(`/post${tail}`)
 
     const searchButton = await screen.findByTestId('search-btn')
 
     fireEvent.click(searchButton)
 
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/post${tail}`)
-      expect(router.state.location.search).toEqual({ param1: 'value1' })
-    })
+    expect(router.state.location.pathname).toBe(`/post${tail}`)
+    expect(router.state.location.search).toEqual({ param1: 'value1' })
 
     const searchButton2 = await screen.findByTestId('search2-btn')
 
     fireEvent.click(searchButton2)
 
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/post${tail}`)
-      expect(router.state.location.search).toEqual({ param1: 'value2' })
-    })
+    expect(router.state.location.pathname).toBe(`/post${tail}`)
+    expect(router.state.location.search).toEqual({ param1: 'value2' })
   },
 )
 
@@ -1774,28 +1760,22 @@ test.each([true, false])(
 
     fireEvent.click(detail1AddBtn)
 
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
-      expect(router.state.location.search).toEqual({ _test: true })
-    })
+    expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
+    expect(router.state.location.search).toEqual({ _test: true })
 
     const detail1RemoveBtn = await screen.findByTestId('detail-btn-remove-1')
 
     fireEvent.click(detail1RemoveBtn)
 
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
-      expect(router.state.location.search).toEqual({})
-    })
+    expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
+    expect(router.state.location.search).toEqual({})
 
     const detail2AddBtn = await screen.findByTestId('detail-btn-add-2')
 
     fireEvent.click(detail2AddBtn)
 
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
-      expect(router.state.location.search).toEqual({ _test: true })
-    })
+    expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
+    expect(router.state.location.search).toEqual({ _test: true })
   },
 )
 
