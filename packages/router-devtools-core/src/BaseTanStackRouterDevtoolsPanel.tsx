@@ -354,6 +354,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 'subscribers',
                 'latestLoadPromise',
                 'navigateTimeout',
+                'resetNextScroll',
                 'tempLocationKey',
                 'latestLocation',
                 'routeTree',
