@@ -1570,7 +1570,7 @@ export class RouterCore<
     //   destRoutes: matchedRoutes,
     //   _includeValidateSearch: true,
     // })
-    
+
     // Accumulate search validation through route chain
     const accumulatedSearch = { ...location.search }
     for (const route of matchedRoutes) {
@@ -1599,7 +1599,12 @@ export class RouterCore<
       const strictParams: Record<string, unknown> = { ...routeParams }
       for (const route of matchedRoutes) {
         try {
-          extractStrictParams(route, routeParams, parsedParams ?? {}, strictParams)
+          extractStrictParams(
+            route,
+            routeParams,
+            parsedParams ?? {},
+            strictParams,
+          )
         } catch {
           // Ignore errors, we're not actually routing
         }
