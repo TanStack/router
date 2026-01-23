@@ -1648,35 +1648,36 @@ export class RouterCore<
       location.pathname,
     )
     const lastRoute = last(matchedRoutes)!
-    const lastStateMatch = last(this.state.matches)
-    const isSameRoute =
-      lastStateMatch && lastStateMatch.routeId === lastRoute.id
-    const isSameParams =
-      isSameRoute && location.pathname === this.state.location.pathname
-    const isSameSearch =
-      isSameParams && location.searchStr === this.state.location.searchStr
 
     // Accumulate search validation through the route chain
-    let accumulatedSearch: Record<string, unknown>
-    if (isSameSearch) {
-      accumulatedSearch = lastStateMatch.search
-    } else {
-      accumulatedSearch = { ...location.search }
-      for (const route of matchedRoutes) {
-        try {
-          Object.assign(
-            accumulatedSearch,
-            validateSearch(route.options.validateSearch, accumulatedSearch),
-          )
-        } catch {
-          // Ignore errors, we're not actually routing
-        }
-      }
-    }
+    const accumulatedSearch: Record<string, unknown> = applySearchMiddleware({
+      search: { ...location.search },
+      dest: location,
+      destRoutes: matchedRoutes,
+      _includeValidateSearch: true,
+    })
+    // I don't know if we should run the full search middleware chain, or just validateSearch
+    // let accumulatedSearch = { ...location.search }
+    // for (const route of matchedRoutes) {
+    //   try {
+    //     Object.assign(
+    //       accumulatedSearch,
+    //       validateSearch(route.options.validateSearch, accumulatedSearch),
+    //     )
+    //   } catch {
+    //     // Ignore errors, we're not actually routing
+    //   }
+    // }
 
     // Determine params: reuse from state if possible, otherwise parse
+    const lastStateMatch = last(this.state.matches)
+    const canReuseParams =
+      lastStateMatch &&
+      lastStateMatch.routeId === lastRoute.id &&
+      location.pathname === this.state.location.pathname
+
     let params: Record<string, unknown>
-    if (isSameParams) {
+    if (canReuseParams) {
       params = lastStateMatch.params
     } else {
       // Parse params through the route chain
@@ -3094,7 +3095,7 @@ function applySearchMiddleware({
   _includeValidateSearch,
 }: {
   search: any
-  dest: BuildNextOptions
+  dest: { search?: unknown }
   destRoutes: ReadonlyArray<AnyRoute>
   _includeValidateSearch: boolean | undefined
 }) {
