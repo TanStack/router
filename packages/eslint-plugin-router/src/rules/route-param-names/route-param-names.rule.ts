@@ -2,13 +2,8 @@ import { AST_NODE_TYPES, ESLintUtils } from '@typescript-eslint/utils'
 
 import { getDocsUrl } from '../../utils/get-docs-url'
 import { detectTanstackRouterImports } from '../../utils/detect-router-imports'
-import {
-  getInvalidParams,
-} from './route-param-names.utils'
-import {
-  pathAsFirstArgFunctions,
-  pathAsPropertyFunctions,
-} from './constants'
+import { getInvalidParams } from './route-param-names.utils'
+import { pathAsFirstArgFunctions, pathAsPropertyFunctions } from './constants'
 import type { TSESTree } from '@typescript-eslint/utils'
 import type { ExtraRuleDocs } from '../../types'
 
