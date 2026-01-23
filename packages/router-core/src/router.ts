@@ -1464,35 +1464,19 @@ export class RouterCore<
       let paramsError: unknown = undefined
 
       if (!existingMatch) {
-        if (route.options.skipRouteOnParseError) {
-          for (const key in usedParams) {
-            if (key in parsedParams!) {
-              strictParams[key] = parsedParams![key]
-            }
+        try {
+          extractStrictParams(route, usedParams, parsedParams!, strictParams)
+        } catch (err: any) {
+          if (isNotFound(err) || isRedirect(err)) {
+            paramsError = err
+          } else {
+            paramsError = new PathParamError(err.message, {
+              cause: err,
+            })
           }
-        } else {
-          const strictParseParams =
-            route.options.params?.parse ?? route.options.parseParams
 
-          if (strictParseParams) {
-            try {
-              Object.assign(
-                strictParams,
-                strictParseParams(strictParams as Record<string, string>),
-              )
-            } catch (err: any) {
-              if (isNotFound(err) || isRedirect(err)) {
-                paramsError = err
-              } else {
-                paramsError = new PathParamError(err.message, {
-                  cause: err,
-                })
-              }
-
-              if (opts?.throwOnError) {
-                throw paramsError
-              }
-            }
+          if (opts?.throwOnError) {
+            throw paramsError
           }
         }
       }
@@ -1683,40 +1667,21 @@ export class RouterCore<
     }
 
     // Determine params: reuse from state if possible, otherwise parse
-    const stateMatches = this.state.matches
-    const lastStateMatch = stateMatches.length > 0 ? last(stateMatches) : null
-    const canReuseStateMatch =
+    const lastStateMatch = last(this.state.matches)
+    let params: Record<string, unknown>
+    if (
       lastStateMatch &&
       lastStateMatch.routeId === lastRoute.id &&
       location.pathname === this.state.location.pathname
-    let params: Record<string, unknown>
-    if (canReuseStateMatch) {
+    ) {
       params = lastStateMatch.params
     } else {
       // Parse params through the route chain
-      const accumulatedParams: Record<string, unknown> = { ...routeParams }
+      const strictParams: Record<string, unknown> = { ...routeParams }
       for (const route of matchedRoutes) {
-        const parseParams =
-          route.options.params?.parse ?? route.options.parseParams
-        if (parseParams) {
-          try {
-            const parsed = parseParams(
-              accumulatedParams as Record<string, string>,
-            )
-            Object.assign(accumulatedParams, parsed)
-          } catch {
-            // Ignore parse errors - they'll be caught later during full matching
-          }
-        } else if (route.options.skipRouteOnParseError) {
-          // Use pre-parsed params from route matching for skipRouteOnParseError routes
-          for (const key in accumulatedParams) {
-            if (key in parsedParams) {
-              accumulatedParams[key] = parsedParams[key]
-            }
-          }
-        }
+        extractStrictParams(route, routeParams, parsedParams, strictParams)
       }
-      params = accumulatedParams
+      params = strictParams
     }
 
     return {
@@ -3256,4 +3221,26 @@ function findGlobalNotFoundRouteId(
     }
   }
   return rootRouteId
+}
+
+function extractStrictParams(
+  route: AnyRoute,
+  referenceParams: Record<string, unknown>,
+  parsedParams: Record<string, unknown>,
+  accumulatedParams: Record<string, unknown>,
+) {
+  const parseParams = route.options.params?.parse ?? route.options.parseParams
+  if (parseParams) {
+    if (route.options.skipRouteOnParseError) {
+      // Use pre-parsed params from route matching for skipRouteOnParseError routes
+      for (const key in referenceParams) {
+        if (key in parsedParams) {
+          accumulatedParams[key] = parsedParams[key]
+        }
+      }
+    } else {
+      const result = parseParams(accumulatedParams as Record<string, string>)
+      Object.assign(accumulatedParams, result)
+    }
+  }
 }
