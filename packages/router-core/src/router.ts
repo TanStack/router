@@ -25,7 +25,7 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
-import { createLRUCache } from './lru-cache'
+import { createLRUCache, LRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
@@ -38,7 +38,10 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
-import type { ProcessedTree } from './new-process-route-tree'
+import type {
+  ProcessedTree,
+  ProcessRouteTreeResult,
+} from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -873,6 +876,16 @@ export type CreateRouterFn = <
   TDehydrated
 >
 
+declare global {
+  var __TSR_CACHE__:
+    | {
+        routeTree: AnyRoute
+        processRouteTreeResult: ProcessRouteTreeResult<AnyRoute>
+        resolvePathCache: LRUCache<string, string>
+      }
+    | undefined
+}
+
 /**
  * Core, framework-agnostic router engine that powers TanStack Router.
  *
@@ -923,6 +936,7 @@ export class RouterCore<
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
+  resolvePathCache!: LRUCache<string, string>
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
 
@@ -1027,7 +1041,28 @@ export class RouterCore<
 
     if (this.options.routeTree !== this.routeTree) {
       this.routeTree = this.options.routeTree as TRouteTree
-      this.buildRouteTree()
+      let processRouteTreeResult: ProcessRouteTreeResult<TRouteTree>
+      if (
+        this.isServer &&
+        globalThis.__TSR_CACHE__ &&
+        globalThis.__TSR_CACHE__.routeTree === this.routeTree
+      ) {
+        const cached = globalThis.__TSR_CACHE__
+        this.resolvePathCache = cached.resolvePathCache
+        processRouteTreeResult = cached.processRouteTreeResult as any
+      } else {
+        this.resolvePathCache = createLRUCache(1000)
+        processRouteTreeResult = this.buildRouteTree()
+        // only cache if nothing else is cached yet
+        if (this.isServer && globalThis.__TSR_CACHE__ === undefined) {
+          globalThis.__TSR_CACHE__ = {
+            routeTree: this.routeTree,
+            processRouteTreeResult: processRouteTreeResult as any,
+            resolvePathCache: this.resolvePathCache,
+          }
+        }
+      }
+      this.setRoutes(processRouteTreeResult)
     }
 
     if (!this.__store && this.latestLocation) {
@@ -1110,7 +1145,7 @@ export class RouterCore<
   }
 
   buildRouteTree = () => {
-    const { routesById, routesByPath, processedTree } = processRouteTree(
+    const result = processRouteTree(
       this.routeTree,
       this.options.caseSensitive,
       (route, i) => {
@@ -1120,9 +1155,17 @@ export class RouterCore<
       },
     )
     if (this.options.routeMasks) {
-      processRouteMasks(this.options.routeMasks, processedTree)
+      processRouteMasks(this.options.routeMasks, result.processedTree)
     }
 
+    return result
+  }
+
+  setRoutes({
+    routesById,
+    routesByPath,
+    processedTree,
+  }: ProcessRouteTreeResult<TRouteTree>) {
     this.routesById = routesById as RoutesById<TRouteTree>
     this.routesByPath = routesByPath as RoutesByPath<TRouteTree>
     this.processedTree = processedTree
@@ -1221,8 +1264,6 @@ export class RouterCore<
     }
     return location
   }
-
-  resolvePathCache = createLRUCache<string, string>(1000)
 
   /** Resolve a path against the router basepath and trailing-slash policy. */
   resolvePathWithBase = (from: string, path: string) => {

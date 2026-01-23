@@ -778,6 +778,17 @@ export function trimPathRight(path: string) {
   return path === '/' ? path : path.replace(/\/{1,}$/, '')
 }
 
+export interface ProcessRouteTreeResult<
+  TRouteLike extends Extract<RouteLike, { fullPath: string }> & { id: string },
+> {
+  /** Should be considered a black box, needs to be provided to all matching functions in this module. */
+  processedTree: ProcessedTree<TRouteLike, any, any>
+  /** A lookup map of routes by their unique IDs. */
+  routesById: Record<string, TRouteLike>
+  /** A lookup map of routes by their trimmed full paths. */
+  routesByPath: Record<string, TRouteLike>
+}
+
 /**
  * Processes a route tree into a segment trie for efficient path matching.
  * Also builds lookup maps for routes by ID and by trimmed full path.
@@ -791,14 +802,7 @@ export function processRouteTree<
   caseSensitive: boolean = false,
   /** Optional callback invoked for each route during processing. */
   initRoute?: (route: TRouteLike, index: number) => void,
-): {
-  /** Should be considered a black box, needs to be provided to all matching functions in this module. */
-  processedTree: ProcessedTree<TRouteLike, any, any>
-  /** A lookup map of routes by their unique IDs. */
-  routesById: Record<string, TRouteLike>
-  /** A lookup map of routes by their trimmed full paths. */
-  routesByPath: Record<string, TRouteLike>
-} {
+): ProcessRouteTreeResult<TRouteLike> {
   const segmentTree = createStaticNode<TRouteLike>(routeTree.fullPath)
   const data = new Uint16Array(6)
   const routesById = {} as Record<string, TRouteLike>
