@@ -4,7 +4,9 @@ import { Generator, getConfig } from '../src'
 
 describe('validateRouteParams via generator', () => {
   const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  afterAll(() => { warnSpy.mockRestore() })
+  afterAll(() => {
+    warnSpy.mockRestore()
+  })
 
   it('should warn for invalid param names when running the generator', async () => {
     const folderName = 'invalid-param-names'
