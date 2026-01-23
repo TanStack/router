@@ -1669,7 +1669,7 @@ export class RouterCore<
             validateSearch(route.options.validateSearch, accumulatedSearch),
           )
         } catch {
-          // Ignore validation errors - they'll be caught later during full matching
+          // Ignore errors, we're not actually routing
         }
       }
     }
@@ -1682,7 +1682,11 @@ export class RouterCore<
       // Parse params through the route chain
       const strictParams: Record<string, unknown> = { ...routeParams }
       for (const route of matchedRoutes) {
-        extractStrictParams(route, routeParams, parsedParams, strictParams)
+        try {
+          extractStrictParams(route, routeParams, parsedParams, strictParams)
+        } catch {
+          // Ignore errors, we're not actually routing
+        }
       }
       params = strictParams
     }
