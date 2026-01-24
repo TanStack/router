@@ -8,6 +8,12 @@ import { getRouter } from '#tanstack-router-entry'
 // eslint-disable-next-line import/no-duplicates,import/order
 import { startInstance } from '#tanstack-start-entry'
 
+declare global {
+  interface Window {
+    __TSS_SPA_SHELL__?: boolean
+  }
+}
+
 export async function hydrateStart(): Promise<AnyRouter> {
   const router = await getRouter()
 
@@ -36,7 +42,17 @@ export async function hydrateStart(): Promise<AnyRouter> {
     ...{ serializationAdapters },
   })
   if (!router.state.matches.length) {
-    await hydrate(router)
+    if (
+      window.__TSS_SPA_SHELL__ &&
+      window.location.pathname !== (router.options.basepath || '/')
+    ) {
+      // If we are loading the SPA shell (index.html) and the path is not the root,
+      // it means we are in a fallback scenario (e.g. Cloudflare SPA fallback).
+      // The server-rendered content (Shell) will not match the client-side expected content (Deep Link).
+      // We skip hydration and let the RouterProvider mount the router freshly (Client Render).
+    } else {
+      await hydrate(router)
+    }
   }
 
   return router

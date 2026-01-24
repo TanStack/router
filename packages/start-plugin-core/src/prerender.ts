@@ -234,7 +234,29 @@ export async function prerender({
             routerBasePath,
           )
 
-          const html = await res.text()
+          let html = await res.text()
+
+          if (isSpaShell) {
+            // Inject SPA shell marker for client-side detection
+            const headCloseTag = '</head>'
+            if (html.includes(headCloseTag)) {
+              html = html.replace(
+                headCloseTag,
+                '<script>window.__TSS_SPA_SHELL__ = true</script>' +
+                  headCloseTag,
+              )
+            } else {
+              // Fallback: inject at the beginning of body if </head> not found
+              const bodyOpenTag = '<body'
+              if (html.includes(bodyOpenTag)) {
+                html = html.replace(
+                  bodyOpenTag,
+                  '<script>window.__TSS_SPA_SHELL__ = true</script>' +
+                    bodyOpenTag,
+                )
+              }
+            }
+          }
 
           const filepath = path.join(outputDir, filename)
 
