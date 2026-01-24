@@ -424,7 +424,7 @@ export function useLinkProps<
   const hrefOptionExternal = next.maskedLocation
     ? next.maskedLocation.external
     : next.external
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const hrefOption = React.useMemo(
     () =>
       getHrefOption(
