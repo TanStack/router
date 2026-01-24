@@ -142,6 +142,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Scripts
           </Link>{' '}
           <Link
+            to="/async-scripts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Async Scripts
+          </Link>{' '}
+          <Link
             to="/inline-scripts"
             activeProps={{
               className: 'font-bold',

@@ -144,7 +144,7 @@ function Script({
   }, [attrs, children])
 
   if (!router.isServer) {
-    const { src, ...rest } = attrs || {}
+    const { src: _src, async: _async, defer: _defer, ...rest } = attrs || {}
     // render an empty script on the client just to avoid hydration errors
     return (
       <script
