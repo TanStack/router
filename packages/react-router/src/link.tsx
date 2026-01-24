@@ -504,8 +504,8 @@ export function useLinkProps<
         }
       }
 
-      if (activeOptions?.includeHash) {
-        return isHydrated && s.location.hash === next.hash
+      if (isHydrated && activeOptions?.includeHash) {
+        return s.location.hash === next.hash
       }
       return true
     },
