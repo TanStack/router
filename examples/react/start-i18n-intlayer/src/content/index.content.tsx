@@ -1,7 +1,6 @@
-import { type Dictionary, t } from 'intlayer';
+import { type Dictionary, t } from 'intlayer'
 
 const appContent = {
-  key: 'app',
   content: {
     helloWorld: t({
       en: 'Hello World',
@@ -9,6 +8,7 @@ const appContent = {
       fr: 'Bonjour le monde',
     }),
   },
-} satisfies Dictionary;
+  key: 'app',
+} satisfies Dictionary
 
-export default appContent;
+export default appContent
