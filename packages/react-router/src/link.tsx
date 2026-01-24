@@ -362,9 +362,24 @@ export function useLinkProps<
     }
   }
 
+  // ==========================================================================
+  // CLIENT-ONLY CODE
+  // Everything below this point only runs on the client. The `isServer` check
+  // above is a compile-time constant that bundlers use for dead code elimination,
+  // so this entire section is removed from server bundles.
+  //
+  // We disable the rules-of-hooks lint rule because these hooks appear after
+  // an early return. This is safe because:
+  // 1. `isServer` is a compile-time constant from conditional exports
+  // 2. In server bundles, this code is completely eliminated by the bundler
+  // 3. In client bundles, `isServer` is `false`, so the early return never executes
+  // ==========================================================================
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
 
   // subscribe to search params to re-build location if it changes
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const currentSearch = useRouterState({
     select: (s) => s.location.search,
     structuralSharing: true as any,
@@ -372,6 +387,7 @@ export function useLinkProps<
 
   const from = options.from
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
     () => {
       return { ...options, from }
@@ -392,6 +408,7 @@ export function useLinkProps<
     ],
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const next = React.useMemo(
     () => router.buildLocation({ ..._options } as any),
     [router, _options],
@@ -407,6 +424,7 @@ export function useLinkProps<
   const hrefOptionExternal = next.maskedLocation
     ? next.maskedLocation.external
     : next.external
+    // eslint-disable-next-line react-hooks/rules-of-hooks
   const hrefOption = React.useMemo(
     () =>
       getHrefOption(
@@ -418,6 +436,7 @@ export function useLinkProps<
     [disabled, hrefOptionExternal, hrefOptionPublicHref, router.history],
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const externalLink = React.useMemo(() => {
     if (hrefOption?.external) {
       // Block dangerous protocols for external links
@@ -450,6 +469,7 @@ export function useLinkProps<
     return undefined
   }, [to, hrefOption])
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const isActive = useRouterState({
     select: (s) => {
       if (externalLink) return false
@@ -525,19 +545,6 @@ export function useLinkProps<
     ...resolvedActiveProps.style,
     ...resolvedInactiveProps.style,
   }
-
-  // ==========================================================================
-  // CLIENT-ONLY CODE
-  // Everything below this point only runs on the client. The `isServer` check
-  // above is a compile-time constant that bundlers use for dead code elimination,
-  // so this entire section is removed from server bundles.
-  //
-  // We disable the rules-of-hooks lint rule because these hooks appear after
-  // an early return. This is safe because:
-  // 1. `isServer` is a compile-time constant from conditional exports
-  // 2. In server bundles, this code is completely eliminated by the bundler
-  // 3. In client bundles, `isServer` is `false`, so the early return never executes
-  // ==========================================================================
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [isTransitioning, setIsTransitioning] = React.useState(false)
