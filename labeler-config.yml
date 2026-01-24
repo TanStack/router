@@ -43,9 +43,6 @@
 'package: router-generator':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-generator/**/*'
-'package: router-is-server':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/router-is-server/**/*'
 'package: router-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-plugin/**/*'
