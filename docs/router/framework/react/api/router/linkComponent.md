@@ -39,11 +39,11 @@ function Component() {
 By default, param values with characters such as `@` will be encoded in the URL:
 
 ```tsx
-// url path will be `/%40foo` 
-<Link to="/$username" params={{ username: "@foo" }} />
+// url path will be `/%40foo`
+<Link to="/$username" params={{ username: '@foo' }} />
 ```
 
-To opt-out, update the [pathParamsAllowedCharacters](../router/RouterOptionsType#pathparamsallowedcharacters-property)  config on the router
+To opt-out, update the [pathParamsAllowedCharacters](../router/RouterOptionsType#pathparamsallowedcharacters-property) config on the router
 
 ```tsx
 import { createRouter } from '@tanstack/react-router'
