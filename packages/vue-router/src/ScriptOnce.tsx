@@ -1,4 +1,5 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 
 export const ScriptOnce = Vue.defineComponent({
@@ -12,7 +13,7 @@ export const ScriptOnce = Vue.defineComponent({
   setup(props) {
     const router = useRouter()
 
-    if (router.isServer) {
+    if (isServer ?? router.isServer) {
       return () => (
         <script
           nonce={router.options.ssr?.nonce}

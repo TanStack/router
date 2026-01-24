@@ -2,6 +2,7 @@ import * as Vue from 'vue'
 import {
   getLocationChangeInfo,
   handleHashScroll,
+  isServer,
   trimPathRight,
 } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
@@ -25,7 +26,7 @@ export function useTransitionerSetup() {
   const router = useRouter()
 
   // Skip on server - no transitions needed
-  if (router.isServer) {
+  if (isServer ?? router.isServer) {
     return
   }
 

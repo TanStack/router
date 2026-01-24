@@ -25,6 +25,7 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
+import { isServer } from './isServer'
 import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
@@ -1018,7 +1019,7 @@ export class RouterCore<
       (this.options.history && this.options.history !== this.history)
     ) {
       if (!this.options.history) {
-        if (!this.isServer) {
+        if (!(isServer ?? this.isServer)) {
           this.history = createBrowserHistory() as TRouterHistory
         }
       } else {
@@ -1028,7 +1029,11 @@ export class RouterCore<
 
     this.origin = this.options.origin
     if (!this.origin) {
-      if (!this.isServer && window?.origin && window.origin !== 'null') {
+      if (
+        !(isServer ?? this.isServer) &&
+        window?.origin &&
+        window.origin !== 'null'
+      ) {
         this.origin = window.origin
       } else {
         // fallback for the server, can be overridden by calling router.update({origin}) on the server
@@ -1044,7 +1049,7 @@ export class RouterCore<
       this.routeTree = this.options.routeTree as TRouteTree
       let processRouteTreeResult: ProcessRouteTreeResult<TRouteTree>
       if (
-        this.isServer &&
+        (isServer ?? this.isServer) &&
         globalThis.__TSR_CACHE__ &&
         globalThis.__TSR_CACHE__.routeTree === this.routeTree
       ) {
@@ -1055,7 +1060,10 @@ export class RouterCore<
         this.resolvePathCache = createLRUCache(1000)
         processRouteTreeResult = this.buildRouteTree()
         // only cache if nothing else is cached yet
-        if (this.isServer && globalThis.__TSR_CACHE__ === undefined) {
+        if (
+          (isServer ?? this.isServer) &&
+          globalThis.__TSR_CACHE__ === undefined
+        ) {
           globalThis.__TSR_CACHE__ = {
             routeTree: this.routeTree,
             processRouteTreeResult: processRouteTreeResult as any,
@@ -1479,7 +1487,7 @@ export class RouterCore<
 
         match = {
           id: matchId,
-          ssr: this.isServer ? undefined : route.options.ssr,
+          ssr: (isServer ?? this.isServer) ? undefined : route.options.ssr,
           index,
           routeId: route.id,
           params: previousMatch
@@ -2215,7 +2223,7 @@ export class RouterCore<
     this.cancelMatches()
     this.updateLatestLocation()
 
-    if (this.isServer) {
+    if (isServer ?? this.isServer) {
       // for SPAs on the initial load, this is handled by the Transitioner
       const nextLocation = this.buildLocation({
         to: this.latestLocation.pathname,
@@ -2365,7 +2373,7 @@ export class RouterCore<
         } catch (err) {
           if (isRedirect(err)) {
             redirect = err
-            if (!this.isServer) {
+            if (!(isServer ?? this.isServer)) {
               this.navigate({
                 ...redirect.options,
                 replace: true,

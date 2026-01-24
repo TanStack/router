@@ -2,6 +2,7 @@ import * as Solid from 'solid-js'
 import {
   getLocationChangeInfo,
   handleHashScroll,
+  isServer,
   trimPathRight,
 } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
@@ -15,7 +16,7 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
-  if (router.isServer) {
+  if (isServer ?? router.isServer) {
     return null
   }
 
