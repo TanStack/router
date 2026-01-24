@@ -1780,6 +1780,7 @@ export class RouterCore<
       // We look up the route by its template path and apply stringify functions from the route branch before interpolation
       const trimmedNextTo = trimPathRight(nextTo)
       const targetRoute = this.routesByPath[trimmedNextTo]
+      let prestringifiedParams: Record<string, unknown> | null = null
       if (targetRoute && Object.keys(nextParams).length > 0) {
         const routeBranch = buildRouteBranch<AnyRoute>(targetRoute)
         if (
@@ -1787,11 +1788,12 @@ export class RouterCore<
             (route) => route.options.skipRouteOnParseError?.params,
           )
         ) {
+          prestringifiedParams = { ...nextParams }
           for (const route of routeBranch) {
             const fn =
               route.options.params?.stringify ?? route.options.stringifyParams
             if (fn) {
-              Object.assign(nextParams, fn(nextParams))
+              Object.assign(prestringifiedParams!, fn(prestringifiedParams))
             }
           }
         }
@@ -1801,6 +1803,7 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams,
+        decoder: this.pathParamsDecoder,
       }).interpolatedPath
 
       // Use lightweight getMatchedRoutes instead of matchRoutesInternal
@@ -1808,6 +1811,12 @@ export class RouterCore<
       // which are expensive and not needed for buildLocation
       const destMatchResult = this.getMatchedRoutes(interpolatedNextTo)
       let destRoutes = destMatchResult.matchedRoutes
+      if (
+        !destMatchResult.foundRoute ||
+        destMatchResult.foundRoute.fullPath !== trimmedNextTo
+      ) {
+        prestringifiedParams = null
+      }
 
       // Compute globalNotFoundRouteId using the same logic as matchRoutesInternal
       const isGlobalNotFound = destMatchResult.foundRoute
@@ -1828,12 +1837,14 @@ export class RouterCore<
       }
 
       // If there are any params, we need to stringify them
-      if (Object.keys(nextParams).length > 0) {
+      let stringifiedParams = prestringifiedParams
+      if (!stringifiedParams && Object.keys(nextParams).length > 0) {
+        stringifiedParams = nextParams
         for (const route of destRoutes) {
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
-            Object.assign(nextParams, fn(nextParams))
+            Object.assign(stringifiedParams!, fn(stringifiedParams))
           }
         }
       }
@@ -1843,11 +1854,13 @@ export class RouterCore<
           // This preserves the original parameter syntax including optional parameters
           nextTo
         : decodePath(
-            interpolatePath({
-              path: nextTo,
-              params: nextParams,
-              decoder: this.pathParamsDecoder,
-            }).interpolatedPath,
+            prestringifiedParams
+              ? interpolatedNextTo
+              : interpolatePath({
+                  path: nextTo,
+                  params: stringifiedParams ?? {},
+                  decoder: this.pathParamsDecoder,
+                }).interpolatedPath,
           )
 
       // Resolve the next search
