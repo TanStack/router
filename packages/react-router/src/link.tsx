@@ -157,25 +157,22 @@ export function useLinkProps<
 
     const next = router.buildLocation({ ...options, from: options.from } as any)
 
-    const hrefOption = (() => {
-      if (disabled) {
-        return undefined
-      }
-      let href = next.maskedLocation
-        ? next.maskedLocation.url.href
-        : next.url.href
-
-      let external = false
-      if (router.origin) {
-        if (href.startsWith(router.origin)) {
-          href =
-            router.history.createHref(href.replace(router.origin, '')) || '/'
-        } else {
-          external = true
-        }
-      }
-      return { href, external }
-    })()
+    // Use publicHref - it contains the correct href for display
+    // When a rewrite changes the origin, publicHref is the full URL
+    // Otherwise it's the origin-stripped path
+    // This avoids constructing URL objects in the hot path
+    const hrefOptionPublicHref = next.maskedLocation
+      ? next.maskedLocation.publicHref
+      : next.publicHref
+    const hrefOptionExternal = next.maskedLocation
+      ? next.maskedLocation.external
+      : next.external
+    const hrefOption = getHrefOption(
+      hrefOptionPublicHref,
+      hrefOptionExternal,
+      router.history,
+      disabled,
+    )
 
     const externalLink = (() => {
       if (hrefOption?.external) {
@@ -410,19 +407,16 @@ export function useLinkProps<
   const hrefOptionExternal = next.maskedLocation
     ? next.maskedLocation.external
     : next.external
-  const hrefOption = React.useMemo(() => {
-    if (disabled) return undefined
-
-    // Full URL means rewrite changed the origin - treat as external-like
-    if (hrefOptionExternal) {
-      return { href: hrefOptionPublicHref, external: true }
-    }
-
-    return {
-      href: router.history.createHref(hrefOptionPublicHref) || '/',
-      external: false,
-    }
-  }, [disabled, hrefOptionExternal, hrefOptionPublicHref, router.history])
+  const hrefOption = React.useMemo(
+    () =>
+      getHrefOption(
+        hrefOptionPublicHref,
+        hrefOptionExternal,
+        router.history,
+        disabled,
+      ),
+    [disabled, hrefOptionExternal, hrefOptionPublicHref, router.history],
+  )
 
   const externalLink = React.useMemo(() => {
     if (hrefOption?.external) {
@@ -731,6 +725,23 @@ const composeHandlers =
       handler(e)
     }
   }
+
+function getHrefOption(
+  publicHref: string,
+  external: boolean,
+  history: AnyRouter['history'],
+  disabled: boolean | undefined,
+) {
+  if (disabled) return undefined
+  // Full URL means rewrite changed the origin - treat as external-like
+  if (external) {
+    return { href: publicHref, external: true }
+  }
+  return {
+    href: history.createHref(publicHref) || '/',
+    external: false,
+  }
+}
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
   ? React.JSX.IntrinsicElements[TComp]
