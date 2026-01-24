@@ -21,4 +21,4 @@
  * }
  * ```
  */
-export { isServer } from './isServer/development'
+export { isServer } from '@tanstack/router-core/isServer'
