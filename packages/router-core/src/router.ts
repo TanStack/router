@@ -26,7 +26,7 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
-import { isServer } from './isServer'
+import { isServer } from '@tanstack/router-core/isServer'
 import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'

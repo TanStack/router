@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/config/vite'
 import minifyScriptPlugin from './vite-minify-plugin'
@@ -12,6 +13,14 @@ const config = defineConfig({
     watch: false,
     environment: 'jsdom',
     typecheck: { enabled: true },
+    alias: {
+      // For tests only, resolve to development.ts which returns undefined
+      // so that router.isServer fallback is used
+      '@tanstack/router-core/isServer': path.resolve(
+        __dirname,
+        'src/isServer/development.ts',
+      ),
+    },
   },
 })
 

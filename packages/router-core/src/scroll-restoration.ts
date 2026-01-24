@@ -1,5 +1,5 @@
 import { functionalUpdate } from './utils'
-import { isServer } from './isServer'
+import { isServer } from '@tanstack/router-core/isServer'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
 import type { NonNullableUpdater } from './utils'

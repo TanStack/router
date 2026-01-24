@@ -4,7 +4,7 @@ import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
-import { isServer } from './isServer'
+import { isServer } from '@tanstack/router-core/isServer'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
 import type {
