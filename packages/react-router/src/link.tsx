@@ -106,6 +106,55 @@ export function useLinkProps<
   // Note: `location.hash` is not available on the server.
   // ==========================================================================
   if (_isServer) {
+    const isSafeInternal =
+      typeof to === 'string' &&
+      (to.charCodeAt(0) === 47
+        ? // '/'
+          to.charCodeAt(1) !== 47 // but not '//'
+        : // '.', '..', './', '../'
+          to.charCodeAt(0) === 46)
+
+    // If `to` is obviously an absolute URL, treat as external and avoid
+    // computing the internal location via `buildLocation`.
+    if (
+      typeof to === 'string' &&
+      !isSafeInternal &&
+      // Quick checks to avoid `new URL` in common internal-like cases
+      to.indexOf(':') > -1
+    ) {
+      try {
+        new URL(to)
+        if (isDangerousProtocol(to)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(`Blocked Link with dangerous protocol: ${to}`)
+          }
+          return {
+            ...propsSafeToSpread,
+            ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+            href: undefined,
+            ...(children && { children }),
+            ...(target && { target }),
+            ...(disabled && { disabled }),
+            ...(style && { style }),
+            ...(className && { className }),
+          }
+        }
+
+        return {
+          ...propsSafeToSpread,
+          ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+          href: to,
+          ...(children && { children }),
+          ...(target && { target }),
+          ...(disabled && { disabled }),
+          ...(style && { style }),
+          ...(className && { className }),
+        }
+      } catch {
+        // Not an absolute URL
+      }
+    }
+
     const next = router.buildLocation({ ...options, from: options.from } as any)
 
     const hrefOption = (() => {
@@ -140,21 +189,23 @@ export function useLinkProps<
         }
         return hrefOption.href
       }
-      const isSafeInternal =
-        typeof to === 'string' &&
-        to.charCodeAt(0) === 47 && // '/'
-        to.charCodeAt(1) !== 47 // but not '//'
+
       if (isSafeInternal) return undefined
-      try {
-        new URL(to as any)
-        if (isDangerousProtocol(to as string)) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn(`Blocked Link with dangerous protocol: ${to}`)
+
+      // Only attempt URL parsing when it looks like an absolute URL.
+      if (typeof to === 'string' && to.indexOf(':') > -1) {
+        try {
+          new URL(to)
+          if (isDangerousProtocol(to)) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn(`Blocked Link with dangerous protocol: ${to}`)
+            }
+            return undefined
           }
-          return undefined
-        }
-        return to
-      } catch {}
+          return to
+        } catch {}
+      }
+
       return undefined
     })()
 
@@ -163,7 +214,9 @@ export function useLinkProps<
 
       const currentLocation = router.state.location
 
-      if (activeOptions?.exact) {
+      const exact = activeOptions?.exact ?? false
+
+      if (exact) {
         const testExact = exactPathTest(
           currentLocation.pathname,
           next.pathname,
@@ -192,13 +245,27 @@ export function useLinkProps<
         }
       }
 
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(currentLocation.search, next.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
+      const includeSearch = activeOptions?.includeSearch ?? true
+      if (includeSearch) {
+        if (currentLocation.search !== next.search) {
+          const currentSearchEmpty =
+            !currentLocation.search ||
+            (typeof currentLocation.search === 'object' &&
+              Object.keys(currentLocation.search).length === 0)
+          const nextSearchEmpty =
+            !next.search ||
+            (typeof next.search === 'object' &&
+              Object.keys(next.search).length === 0)
+
+          if (!(currentSearchEmpty && nextSearchEmpty)) {
+            const searchTest = deepEqual(currentLocation.search, next.search, {
+              partial: !exact,
+              ignoreUndefined: !activeOptions?.explicitUndefined,
+            })
+            if (!searchTest) {
+              return false
+            }
+          }
         }
       }
 
@@ -229,30 +296,58 @@ export function useLinkProps<
         ? STATIC_EMPTY_OBJECT
         : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
 
-    const resolvedStyle = (style ||
-      resolvedActiveProps.style ||
-      resolvedInactiveProps.style) && {
-      ...style,
-      ...resolvedActiveProps.style,
-      ...resolvedInactiveProps.style,
-    }
+    const resolvedStyle = (() => {
+      const baseStyle = style
+      const activeStyle = resolvedActiveProps.style
+      const inactiveStyle = resolvedInactiveProps.style
+
+      if (!baseStyle && !activeStyle && !inactiveStyle) {
+        return undefined
+      }
+
+      if (baseStyle && !activeStyle && !inactiveStyle) {
+        return baseStyle
+      }
+
+      if (!baseStyle && activeStyle && !inactiveStyle) {
+        return activeStyle
+      }
+
+      if (!baseStyle && !activeStyle && inactiveStyle) {
+        return inactiveStyle
+      }
+
+      return {
+        ...baseStyle,
+        ...activeStyle,
+        ...inactiveStyle,
+      }
+    })()
 
     const resolvedClassName = (() => {
-      if (
-        !className &&
-        !resolvedActiveProps.className &&
-        !resolvedInactiveProps.className
-      ) {
+      const baseClassName = className
+      const activeClassName = resolvedActiveProps.className
+      const inactiveClassName = resolvedInactiveProps.className
+
+      if (!baseClassName && !activeClassName && !inactiveClassName) {
         return ''
       }
 
-      return [
-        className,
-        resolvedActiveProps.className,
-        resolvedInactiveProps.className,
-      ]
-        .filter(Boolean)
-        .join(' ')
+      let out = ''
+
+      if (baseClassName) {
+        out = baseClassName
+      }
+
+      if (activeClassName) {
+        out = out ? `${out} ${activeClassName}` : activeClassName
+      }
+
+      if (inactiveClassName) {
+        out = out ? `${out} ${inactiveClassName}` : inactiveClassName
+      }
+
+      return out
     })()
 
     return {
