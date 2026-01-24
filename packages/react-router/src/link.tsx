@@ -106,19 +106,13 @@ export function useLinkProps<
   // Note: `location.hash` is not available on the server.
   // ==========================================================================
   if (_isServer) {
-    const isSafeInternal =
-      typeof to === 'string' &&
-      (to.charCodeAt(0) === 47
-        ? // '/'
-          to.charCodeAt(1) !== 47 // but not '//'
-        : // '.', '..', './', '../'
-          to.charCodeAt(0) === 46)
+    const safeInternal = isSafeInternal(to)
 
     // If `to` is obviously an absolute URL, treat as external and avoid
     // computing the internal location via `buildLocation`.
     if (
       typeof to === 'string' &&
-      !isSafeInternal &&
+      !safeInternal &&
       // Quick checks to avoid `new URL` in common internal-like cases
       to.indexOf(':') > -1
     ) {
@@ -187,7 +181,7 @@ export function useLinkProps<
         return hrefOption.href
       }
 
-      if (isSafeInternal) return undefined
+      if (safeInternal) return undefined
 
       // Only attempt URL parsing when it looks like an absolute URL.
       if (typeof to === 'string' && to.indexOf(':') > -1) {
@@ -450,15 +444,13 @@ export function useLinkProps<
       }
       return hrefOption.href
     }
-    const isSafeInternal =
-      typeof to === 'string' &&
-      to.charCodeAt(0) === 47 && // '/'
-      to.charCodeAt(1) !== 47 // but not '//'
-    if (isSafeInternal) return undefined
+    const safeInternal = isSafeInternal(to)
+    if (safeInternal) return undefined
+    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
     try {
       new URL(to as any)
       // Block dangerous protocols like javascript:, data:, vbscript:
-      if (isDangerousProtocol(to as string)) {
+      if (isDangerousProtocol(to)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
@@ -748,6 +740,13 @@ function getHrefOption(
     href: history.createHref(publicHref) || '/',
     external: false,
   }
+}
+
+function isSafeInternal(to: unknown) {
+  if (typeof to !== 'string') return false
+  const zero = to.charCodeAt(0)
+  if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
+  return zero === 46 // '.', '..', './', '../'
 }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
