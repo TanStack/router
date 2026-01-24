@@ -134,25 +134,23 @@ export function useLinkProps<
   })
 
   const hrefOption = Solid.createMemo(() => {
-    if (_options().disabled) {
-      return undefined
+    if (_options().disabled) return undefined
+    // Use publicHref - it contains the correct href for display
+    // When a rewrite changes the origin, publicHref is the full URL
+    // Otherwise it's the origin-stripped path
+    // This avoids constructing URL objects in the hot path
+    const location = next().maskedLocation ?? next()
+    const publicHref = location.publicHref
+    const external = location.external
+
+    if (external) {
+      return { href: publicHref, external: true }
     }
-    let href
-    const maskedLocation = next().maskedLocation
-    if (maskedLocation) {
-      href = maskedLocation.url.href
-    } else {
-      href = next().url.href
+
+    return {
+      href: router.history.createHref(publicHref) || '/',
+      external: false,
     }
-    let external = false
-    if (router.origin) {
-      if (href.startsWith(router.origin)) {
-        href = router.history.createHref(href.replace(router.origin, ''))
-      } else {
-        external = true
-      }
-    }
-    return { href, external }
   })
 
   const externalLink = Solid.createMemo(() => {

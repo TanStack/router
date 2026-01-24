@@ -350,7 +350,7 @@ describe('encoding: path params', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.url.href.endsWith('/posts/tanner')).toBe(true)
+    expect(router.state.location.href.endsWith('/posts/tanner')).toBe(true)
     expect(router.state.location.href).toBe('/posts/tanner')
     expect(router.state.location.pathname).toBe('/posts/tanner')
   })
@@ -362,7 +362,7 @@ describe('encoding: path params', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.url.href.endsWith('/posts/%F0%9F%9A%80')).toBe(
+    expect(router.state.location.href.endsWith('/posts/%F0%9F%9A%80')).toBe(
       true,
     )
     expect(router.state.location.href).toBe('/posts/%F0%9F%9A%80')
@@ -383,9 +383,7 @@ describe('encoding: path params', () => {
       }),
     )
 
-    expect(router.state.location.url.href.endsWith('/posts/100%2525')).toBe(
-      true,
-    )
+    expect(router.state.location.href.endsWith('/posts/100%2525')).toBe(true)
     expect(router.state.location.href).toBe('/posts/100%2525')
     expect(router.state.location.pathname).toBe('/posts/100%2525')
   })
@@ -410,9 +408,7 @@ describe('encoding: path params', () => {
         )
 
         expect(
-          router.state.location.url.href.endsWith(
-            `/posts/${encodedValue}jane%25`,
-          ),
+          router.state.location.href.endsWith(`/posts/${encodedValue}jane%25`),
         ).toBe(true)
         expect(router.state.location.href).toBe(`/posts/${encodedValue}jane%25`)
         expect(router.state.location.pathname).toBe(
@@ -447,7 +443,7 @@ describe('encoding: path params', () => {
       )
 
       expect(
-        router.state.location.url.href.endsWith(`/posts/${character}jane%25`),
+        router.state.location.href.endsWith(`/posts/${character}jane%25`),
       ).toBe(true)
       expect(router.state.location.href).toBe(`/posts/${character}jane%25`)
       expect(router.state.location.pathname).toBe(`/posts/${character}jane%25`)
@@ -461,7 +457,7 @@ describe('encoding: path params', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.url.href.endsWith('/posts/%F0%9F%9A%80')).toBe(
+    expect(router.state.location.href.endsWith('/posts/%F0%9F%9A%80')).toBe(
       true,
     )
     expect(router.state.location.href).toBe('/posts/%F0%9F%9A%80')
@@ -480,7 +476,7 @@ describe('encoding: path params', () => {
     await act(() => router.load())
 
     expect(
-      router.state.location.url.href.endsWith(
+      router.state.location.href.endsWith(
         '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
       ),
     ).toBe(true)
@@ -627,7 +623,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
 
     await router.load()
 
-    expect(router.state.location.url.href.endsWith('/tanner')).toBe(true)
+    expect(router.state.location.href.endsWith('/tanner')).toBe(true)
     expect(router.state.location.href).toBe('/tanner')
     expect(router.state.location.pathname).toBe('/tanner')
   })
@@ -639,7 +635,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
 
     await router.load()
 
-    expect(router.state.location.url.href.endsWith('/%F0%9F%9A%80')).toBe(true)
+    expect(router.state.location.href.endsWith('/%F0%9F%9A%80')).toBe(true)
     expect(router.state.location.href).toBe('/%F0%9F%9A%80')
     expect(router.state.location.pathname).toBe('/🚀')
   })
@@ -657,7 +653,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
         await router.load()
 
         expect(
-          router.state.location.url.href.endsWith(`/100${encodedValue}100`),
+          router.state.location.href.endsWith(`/100${encodedValue}100`),
         ).toBe(true)
         expect(router.state.location.href).toBe(`/100${encodedValue}100`)
         expect(router.state.location.pathname).toBe(`/100${encodedValue}100`)
@@ -672,7 +668,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
 
     await router.load()
 
-    expect(router.state.location.url.href.endsWith('/%F0%9F%9A%80')).toBe(true)
+    expect(router.state.location.href.endsWith('/%F0%9F%9A%80')).toBe(true)
     expect(router.state.location.href).toBe('/%F0%9F%9A%80')
     expect(router.state.location.pathname).toBe('/🚀')
   })
@@ -689,7 +685,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
     await router.load()
 
     expect(
-      router.state.location.url.href.endsWith(
+      router.state.location.href.endsWith(
         '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
       ),
     ).toBe(true)
@@ -711,7 +707,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
     await router.load()
 
     expect(
-      router.state.location.url.href.endsWith(
+      router.state.location.href.endsWith(
         '/framework/react/guide/file-based-routing%20tanstack',
       ),
     ).toBe(true)
@@ -863,7 +859,6 @@ describe('encoding/decoding: URL path segment', () => {
 
     expect(router.state.location.pathname).toBe(path)
     expect(router.state.location.href).toBe(url)
-    expect(new URL(router.state.location.url).pathname).toBe(url)
   })
 })
 

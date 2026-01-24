@@ -4,6 +4,7 @@ import {
   createControlledPromise,
   decodePath,
   deepEqual,
+  encodeNonAscii,
   findLast,
   functionalUpdate,
   isDangerousProtocol,
@@ -1099,7 +1100,8 @@ export class RouterCore<
       this.basepath = nextBasepath
 
       const rewrites: Array<LocationRewrite> = []
-      if (trimPath(nextBasepath) !== '') {
+      const trimmed = trimPath(nextBasepath)
+      if (trimmed && trimmed !== '/') {
         rewrites.push(
           rewriteBasepath({
             basepath: nextBasepath,
@@ -1245,8 +1247,8 @@ export class RouterCore<
       return {
         href: fullPath,
         publicHref: href,
-        url: url,
         pathname: decodePath(url.pathname),
+        external: !!this.rewrite && url.origin !== this.origin,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: decodePath(url.hash.split('#').reverse()[0] ?? ''),
@@ -1886,22 +1888,43 @@ export class RouterCore<
       // Create the full path of the location
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
 
-      // Create the new href with full origin
-      const url = new URL(fullPath, this.origin)
+      // Compute href and publicHref without URL construction when no rewrite
+      let href: string
+      let publicHref: string
+      let external = false
 
-      // If a rewrite function is provided, use it to rewrite the URL
-      const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
+      if (this.rewrite) {
+        // With rewrite, we need to construct URL to apply the rewrite
+        const url = new URL(fullPath, this.origin)
+        const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
+        href = url.href.replace(url.origin, '')
+        // If rewrite changed the origin, publicHref needs full URL
+        // Otherwise just use the path components
+        if (rewrittenUrl.origin !== this.origin) {
+          publicHref = rewrittenUrl.href
+          external = true
+        } else {
+          publicHref =
+            rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash
+        }
+      } else {
+        // Fast path: no rewrite, skip URL construction entirely
+        // fullPath is already the correct href (origin-stripped)
+        // We need to encode non-ASCII (unicode) characters for the href
+        // since decodePath decoded them from the interpolated path
+        href = encodeNonAscii(fullPath)
+        publicHref = href
+      }
 
       return {
-        publicHref:
-          rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
-        href: fullPath,
-        url: rewrittenUrl,
+        publicHref,
+        href,
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
         state: nextState as any,
         hash: hash ?? '',
+        external,
         unmaskOnReload: dest.unmaskOnReload,
       }
     }
@@ -2014,9 +2037,6 @@ export class RouterCore<
         maskedLocation,
         // eslint-disable-next-line prefer-const
         hashScrollIntoView,
-        // don't pass url into history since it is a URL instance that cannot be serialized
-        // eslint-disable-next-line prefer-const
-        url: _url,
         ...nextHistory
       } = next
 
@@ -2162,8 +2182,9 @@ export class RouterCore<
       // be a complete path (possibly with basepath)
       if (to !== undefined || !href) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = href ?? location.url.href
-        publicHref = publicHref ?? location.url.href
+        // Use publicHref which contains the path (origin-stripped is fine for reload)
+        href = href ?? location.publicHref
+        publicHref = publicHref ?? location.publicHref
       }
 
       // Use publicHref when available and href is not a full URL,
@@ -2234,10 +2255,9 @@ export class RouterCore<
         _includeValidateSearch: true,
       })
 
-      if (
-        this.latestLocation.publicHref !== nextLocation.publicHref ||
-        nextLocation.url.origin !== this.origin
-      ) {
+      // Check if location changed - origin check is unnecessary since buildLocation
+      // always uses this.origin when constructing URLs
+      if (this.latestLocation.publicHref !== nextLocation.publicHref) {
         const href = this.getParsedLocationHref(nextLocation)
 
         throw redirect({ href })
@@ -2561,11 +2581,9 @@ export class RouterCore<
   }
 
   getParsedLocationHref = (location: ParsedLocation) => {
-    let href = location.url.href
-    if (this.origin && location.url.origin === this.origin) {
-      href = href.replace(this.origin, '') || '/'
-    }
-    return href
+    // For redirects and external use, we need publicHref (with rewrite output applied)
+    // href is the internal path after rewrite input, publicHref is user-facing
+    return location.publicHref || '/'
   }
 
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
