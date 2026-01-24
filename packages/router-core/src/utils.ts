@@ -188,7 +188,7 @@ export type LooseAsyncReturnType<T> = T extends (
  * Return the last element of an array.
  * Intended for non-empty arrays used within router internals.
  */
-export function last<T>(arr: Array<T>) {
+export function last<T>(arr: ReadonlyArray<T>) {
   return arr[arr.length - 1]
 }
 
@@ -212,6 +212,7 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
 }
 
 const hasOwn = Object.prototype.hasOwnProperty
+const isEnumerable = Object.prototype.propertyIsEnumerable
 
 /**
  * This function returns `prev` if `_next` is deeply equal.
@@ -274,17 +275,27 @@ export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
 /**
  * Equivalent to `Reflect.ownKeys`, but ensures that objects are "clone-friendly":
  * will return false if object has any non-enumerable properties.
+ *
+ * Optimized for the common case where objects have no symbol properties.
  */
 function getEnumerableOwnKeys(o: object) {
-  const keys = []
   const names = Object.getOwnPropertyNames(o)
+
+  // Fast path: check all string property names are enumerable
   for (const name of names) {
-    if (!Object.prototype.propertyIsEnumerable.call(o, name)) return false
-    keys.push(name)
+    if (!isEnumerable.call(o, name)) return false
   }
+
+  // Only check symbols if the object has any (most plain objects don't)
   const symbols = Object.getOwnPropertySymbols(o)
+
+  // Fast path: no symbols, return names directly (avoids array allocation/concat)
+  if (symbols.length === 0) return names
+
+  // Slow path: has symbols, need to check and merge
+  const keys: Array<string | symbol> = names
   for (const symbol of symbols) {
-    if (!Object.prototype.propertyIsEnumerable.call(o, symbol)) return false
+    if (!isEnumerable.call(o, symbol)) return false
     keys.push(symbol)
   }
   return keys
@@ -600,6 +611,21 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   }
 
   return result
+}
+
+/**
+ * Encodes non-ASCII (unicode) characters in a path while preserving
+ * already percent-encoded sequences. This is used to generate proper
+ * href values without constructing URL objects.
+ *
+ * Unlike encodeURI, this won't double-encode percent-encoded sequences
+ * like %2F or %25 because it only targets non-ASCII characters.
+ */
+export function encodeNonAscii(path: string): string {
+  // eslint-disable-next-line no-control-regex
+  if (!/[^\u0000-\u007F]/.test(path)) return path
+  // eslint-disable-next-line no-control-regex
+  return path.replace(/[^\u0000-\u007F]/gu, encodeURIComponent)
 }
 
 /**

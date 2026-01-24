@@ -43,6 +43,7 @@ import {
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
 import { transform } from './transform/transform'
+import { validateRouteParams } from './validate-route-params'
 import type { GeneratorPlugin } from './plugin/types'
 import type { TargetTemplate } from './template'
 import type {
@@ -1056,6 +1057,10 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       throw new Error(`⚠️ File ${node.fullPath} does not exist`)
     }
 
+    if (node.routePath) {
+      validateRouteParams(node.routePath, node.filePath, this.logger)
+    }
+
     const updatedCacheEntry: RouteNodeCacheEntry = {
       fileContent: existingRouteFile.fileContent,
       mtimeMs: existingRouteFile.stat.mtimeMs,
@@ -1451,6 +1456,21 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           parentRoute = candidate
         }
       }
+    }
+
+    // Virtual routes may have an explicit parent from virtual config.
+    // If we can find that exact parent, use it to prevent auto-nesting siblings
+    // based on path prefix matching. If the explicit parent is not found (e.g.,
+    // it was a virtual file-less route that got filtered out), keep using the
+    // path-based parent we already computed above.
+    if (node._virtualParentRoutePath !== undefined) {
+      const explicitParent =
+        acc.routeNodesByPath.get(node._virtualParentRoutePath) ??
+        prefixMap.get(node._virtualParentRoutePath)
+      if (explicitParent) {
+        parentRoute = explicitParent
+      }
+      // If not found, parentRoute stays as the path-based result (fallback)
     }
 
     if (parentRoute) node.parent = parentRoute

@@ -777,19 +777,13 @@ describe('Link', () => {
 
     await fireEvent.click(updateSearchLink)
 
-    // Wait for navigation to complete and UI to update
+    // Wait for navigation to complete and search params to update
     await waitFor(() => {
       expect(window.location.search).toBe('?page=2&filter=inactive')
     })
 
-    // Wait for the UI to reflect the new search params
-    await waitFor(() => {
-      const page = screen.getByTestId('current-page')
-      expect(page).toHaveTextContent('Page: 2')
-    })
-
-    const updatedPage = screen.getByTestId('current-page')
-    const updatedFilter = screen.getByTestId('current-filter')
+    const updatedPage = await screen.findByTestId('current-page')
+    const updatedFilter = await screen.findByTestId('current-filter')
 
     // Verify search was updated
     expect(window.location.pathname).toBe('/posts')

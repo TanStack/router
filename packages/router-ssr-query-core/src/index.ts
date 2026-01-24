@@ -2,7 +2,7 @@ import {
   dehydrate as queryDehydrate,
   hydrate as queryHydrate,
 } from '@tanstack/query-core'
-import { isRedirect } from '@tanstack/router-core'
+import { isRedirect, isServer } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
 import type {
   QueryClient,
@@ -35,7 +35,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   const ogHydrate = router.options.hydrate
   const ogDehydrate = router.options.dehydrate
 
-  if (router.isServer) {
+  if (isServer ?? router.isServer) {
     const sentQueries = new Set<string>()
     const queryStream = createPushableStream()
     let unsubscribe: (() => void) | undefined = undefined

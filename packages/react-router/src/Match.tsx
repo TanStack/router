@@ -6,6 +6,7 @@ import {
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
+  isServer,
   rootRouteId,
 } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -246,7 +247,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       const routerMatch = router.getMatch(match.id)
       if (routerMatch && !routerMatch._nonReactive.minPendingPromise) {
         // Create a promise that will resolve after the minPendingMs
-        if (!router.isServer) {
+        if (!(isServer ?? router.isServer)) {
           const minPendingPromise = createControlledPromise<void>()
 
           routerMatch._nonReactive.minPendingPromise = minPendingPromise
@@ -285,7 +286,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     // of a suspense boundary. This is the only way to get
     // renderToPipeableStream to not hang indefinitely.
     // We'll serialize the error and rethrow it on the client.
-    if (router.isServer) {
+    if (isServer ?? router.isServer) {
       const RouteErrorComponent =
         (route.options.errorComponent ??
           router.options.defaultErrorComponent) ||

@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 
 /**
@@ -5,7 +6,7 @@ import { useRouter } from './useRouter'
  */
 export function ScriptOnce({ children }: { children: string }) {
   const router = useRouter()
-  if (!router.isServer) {
+  if (!(isServer ?? router.isServer)) {
     return null
   }
 

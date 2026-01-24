@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { isServer } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -143,7 +144,7 @@ function Script({
     return undefined
   }, [attrs, children])
 
-  if (!router.isServer) {
+  if (!(isServer ?? router.isServer)) {
     const { src, ...rest } = attrs || {}
     // render an empty script on the client just to avoid hydration errors
     return (

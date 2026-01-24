@@ -69,11 +69,7 @@ export type {
   CreateLazyFileRoute,
 } from './fileRoute'
 
-export type {
-  MatchSnapshot,
-  ParsedLocation,
-  ValidatedSearchEntry,
-} from './location'
+export type { ParsedLocation } from './location'
 export type { Manifest, RouterManagedTag } from './manifest'
 export { isMatch } from './Matches'
 export type {
@@ -109,6 +105,7 @@ export {
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
+export { isServer } from './isServer'
 
 export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
 export type {

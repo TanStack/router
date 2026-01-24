@@ -1,6 +1,6 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
-import { rootRouteId } from '@tanstack/router-core'
+import { isServer, rootRouteId } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -56,13 +56,14 @@ export function Matches() {
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.ssr)
+    (isServer ?? router.isServer) ||
+    (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : React.Suspense
 
   const inner = (
     <ResolvedSuspense fallback={pendingElement}>
-      {!router.isServer && <Transitioner />}
+      {!(isServer ?? router.isServer) && <Transitioner />}
       <MatchesInner />
     </ResolvedSuspense>
   )

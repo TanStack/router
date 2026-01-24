@@ -27,11 +27,17 @@ type ExtendedSegmentKind =
   | typeof SEGMENT_TYPE_INDEX
   | typeof SEGMENT_TYPE_PATHLESS
 
-const PARAM_W_CURLY_BRACES_RE =
-  /^([^{]*)\{\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/ // prefix{$paramName}suffix
-const OPTIONAL_PARAM_W_CURLY_BRACES_RE =
-  /^([^{]*)\{-\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/ // prefix{-$paramName}suffix
-const WILDCARD_W_CURLY_BRACES_RE = /^([^{]*)\{\$\}([^}]*)$/ // prefix{$}suffix
+function getOpenAndCloseBraces(
+  part: string,
+): [openBrace: number, closeBrace: number] | null {
+  const openBrace = part.indexOf('{')
+  if (openBrace === -1) return null
+  const closeBrace = part.indexOf('}', openBrace)
+  if (closeBrace === -1) return null
+  const afterOpen = openBrace + 1
+  if (afterOpen >= part.length) return null
+  return [openBrace, closeBrace]
+}
 
 type ParsedSegment = Uint16Array & {
   /** segment type (0 = pathname, 1 = param, 2 = wildcard, 3 = optional param) */
@@ -110,47 +116,61 @@ export function parseSegment(
     return output as ParsedSegment
   }
 
-  const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
-  if (wildcardBracesMatch) {
-    const prefix = wildcardBracesMatch[1]!
-    const pLength = prefix.length
-    output[0] = SEGMENT_TYPE_WILDCARD
-    output[1] = start + pLength
-    output[2] = start + pLength + 1 // skip '{'
-    output[3] = start + pLength + 2 // '$'
-    output[4] = start + pLength + 3 // skip '}'
-    output[5] = path.length
-    return output as ParsedSegment
-  }
+  const braces = getOpenAndCloseBraces(part)
+  if (braces) {
+    const [openBrace, closeBrace] = braces
+    const firstChar = part.charCodeAt(openBrace + 1)
 
-  const optionalParamBracesMatch = part.match(OPTIONAL_PARAM_W_CURLY_BRACES_RE)
-  if (optionalParamBracesMatch) {
-    const prefix = optionalParamBracesMatch[1]!
-    const paramName = optionalParamBracesMatch[2]!
-    const suffix = optionalParamBracesMatch[3]!
-    const pLength = prefix.length
-    output[0] = SEGMENT_TYPE_OPTIONAL_PARAM
-    output[1] = start + pLength
-    output[2] = start + pLength + 3 // skip '{-$'
-    output[3] = start + pLength + 3 + paramName.length
-    output[4] = end - suffix.length
-    output[5] = end
-    return output as ParsedSegment
-  }
-
-  const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
-  if (paramBracesMatch) {
-    const prefix = paramBracesMatch[1]!
-    const paramName = paramBracesMatch[2]!
-    const suffix = paramBracesMatch[3]!
-    const pLength = prefix.length
-    output[0] = SEGMENT_TYPE_PARAM
-    output[1] = start + pLength
-    output[2] = start + pLength + 2 // skip '{$'
-    output[3] = start + pLength + 2 + paramName.length
-    output[4] = end - suffix.length
-    output[5] = end
-    return output as ParsedSegment
+    // Check for {-$...} (optional param)
+    // prefix{-$paramName}suffix
+    // /^([^{]*)\{-\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/
+    if (firstChar === 45) {
+      // '-'
+      if (
+        openBrace + 2 < part.length &&
+        part.charCodeAt(openBrace + 2) === 36 // '$'
+      ) {
+        const paramStart = openBrace + 3
+        const paramEnd = closeBrace
+        // Validate param name exists
+        if (paramStart < paramEnd) {
+          output[0] = SEGMENT_TYPE_OPTIONAL_PARAM
+          output[1] = start + openBrace
+          output[2] = start + paramStart
+          output[3] = start + paramEnd
+          output[4] = start + closeBrace + 1
+          output[5] = end
+          return output as ParsedSegment
+        }
+      }
+    } else if (firstChar === 36) {
+      // '$'
+      const dollarPos = openBrace + 1
+      const afterDollar = openBrace + 2
+      // Check for {$} (wildcard)
+      if (afterDollar === closeBrace) {
+        // For wildcard, value should be '$' (from dollarPos to afterDollar)
+        // prefix{$}suffix
+        // /^([^{]*)\{\$\}([^}]*)$/
+        output[0] = SEGMENT_TYPE_WILDCARD
+        output[1] = start + openBrace
+        output[2] = start + dollarPos
+        output[3] = start + afterDollar
+        output[4] = start + closeBrace + 1
+        output[5] = path.length
+        return output as ParsedSegment
+      }
+      // Regular param {$paramName} - value is the param name (after $)
+      // prefix{$paramName}suffix
+      // /^([^{]*)\{\$([a-zA-Z_$][a-zA-Z0-9_$]*)\}([^}]*)$/
+      output[0] = SEGMENT_TYPE_PARAM
+      output[1] = start + openBrace
+      output[2] = start + afterDollar
+      output[3] = start + closeBrace
+      output[4] = start + closeBrace + 1
+      output[5] = end
+      return output as ParsedSegment
+    }
   }
 
   // fallback to static pathname (should never happen)
@@ -758,6 +778,17 @@ export function trimPathRight(path: string) {
   return path === '/' ? path : path.replace(/\/{1,}$/, '')
 }
 
+export interface ProcessRouteTreeResult<
+  TRouteLike extends Extract<RouteLike, { fullPath: string }> & { id: string },
+> {
+  /** Should be considered a black box, needs to be provided to all matching functions in this module. */
+  processedTree: ProcessedTree<TRouteLike, any, any>
+  /** A lookup map of routes by their unique IDs. */
+  routesById: Record<string, TRouteLike>
+  /** A lookup map of routes by their trimmed full paths. */
+  routesByPath: Record<string, TRouteLike>
+}
+
 /**
  * Processes a route tree into a segment trie for efficient path matching.
  * Also builds lookup maps for routes by ID and by trimmed full path.
@@ -771,14 +802,7 @@ export function processRouteTree<
   caseSensitive: boolean = false,
   /** Optional callback invoked for each route during processing. */
   initRoute?: (route: TRouteLike, index: number) => void,
-): {
-  /** Should be considered a black box, needs to be provided to all matching functions in this module. */
-  processedTree: ProcessedTree<TRouteLike, any, any>
-  /** A lookup map of routes by their unique IDs. */
-  routesById: Record<string, TRouteLike>
-  /** A lookup map of routes by their trimmed full paths. */
-  routesByPath: Record<string, TRouteLike>
-} {
+): ProcessRouteTreeResult<TRouteLike> {
   const segmentTree = createStaticNode<TRouteLike>(routeTree.fullPath)
   const data = new Uint16Array(6)
   const routesById = {} as Record<string, TRouteLike>
