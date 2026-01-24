@@ -1,4 +1,4 @@
-import { dirname, resolve  } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, mergeConfig } from 'vitest/config'
 import vueJsx from '@vitejs/plugin-vue-jsx'
@@ -16,7 +16,7 @@ const config = defineConfig({
     },
     // Add 'development' condition for tests to resolve @tanstack/router-is-server
     // to the development export (isServer = undefined) instead of node (isServer = true)
-    conditions: process.env.VITEST ? ['development'] : [],
+    ...(process.env.VITEST && { conditions: ['development'] }),
   },
   test: {
     name: packageJson.name,
