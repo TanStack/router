@@ -51,14 +51,14 @@
           "default": "./dist/cjs/development.cjs"
         }
       },
-      "browser": {
+      "workerd": {
         "import": {
-          "types": "./dist/esm/client.d.ts",
-          "default": "./dist/esm/client.js"
+          "types": "./dist/esm/server.d.ts",
+          "default": "./dist/esm/server.js"
         },
         "require": {
-          "types": "./dist/cjs/client.d.cts",
-          "default": "./dist/cjs/client.cjs"
+          "types": "./dist/cjs/server.d.cts",
+          "default": "./dist/cjs/server.cjs"
         }
       },
       "worker": {
@@ -69,6 +69,16 @@
         "require": {
           "types": "./dist/cjs/server.d.cts",
           "default": "./dist/cjs/server.cjs"
+        }
+      },
+      "browser": {
+        "import": {
+          "types": "./dist/esm/client.d.ts",
+          "default": "./dist/esm/client.js"
+        },
+        "require": {
+          "types": "./dist/cjs/client.d.cts",
+          "default": "./dist/cjs/client.cjs"
         }
       },
       "deno": {
