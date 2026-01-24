@@ -623,9 +623,9 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
  */
 export function encodeNonAscii(path: string): string {
   // eslint-disable-next-line no-control-regex
-  if (!/[^\x00-\x7F]/.test(path)) return path
-  // eslint-disable-next-line no-control-regex
-  return path.replace(/[^\x00-\x7F]/gu, encodeURIComponent)
+	if (!/[^\u0000-\u007F]/.test(path)) return path
+	// eslint-disable-next-line no-control-regex
+	return path.replace(/[^\u0000-\u007F]/gu, encodeURIComponent)
 }
 
 /**
