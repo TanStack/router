@@ -52,8 +52,10 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <Header />
-        <LocaleSwitcher />
-        <IntlayerProvider locale={locale}>{children}</IntlayerProvider>
+        <IntlayerProvider locale={locale}>
+          <LocaleSwitcher />
+          {children}
+        </IntlayerProvider>
         <Scripts />
       </body>
     </html>
