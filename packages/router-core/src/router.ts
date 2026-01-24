@@ -4,6 +4,7 @@ import {
   createControlledPromise,
   decodePath,
   deepEqual,
+  encodeNonAscii,
   findLast,
   functionalUpdate,
   isDangerousProtocol,
@@ -1901,8 +1902,10 @@ export class RouterCore<
       } else {
         // Fast path: no rewrite, skip URL construction entirely
         // fullPath is already the correct href (origin-stripped)
-        href = fullPath
-        publicHref = fullPath
+        // We need to encode non-ASCII (unicode) characters for the href
+        // since decodePath decoded them from the interpolated path
+        href = encodeNonAscii(fullPath)
+        publicHref = href
       }
 
       return {

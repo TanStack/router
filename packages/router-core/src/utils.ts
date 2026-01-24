@@ -614,6 +614,21 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
 }
 
 /**
+ * Encodes non-ASCII (unicode) characters in a path while preserving
+ * already percent-encoded sequences. This is used to generate proper
+ * href values without constructing URL objects.
+ *
+ * Unlike encodeURI, this won't double-encode percent-encoded sequences
+ * like %2F or %25 because it only targets non-ASCII characters.
+ */
+export function encodeNonAscii(path: string): string {
+  // eslint-disable-next-line no-control-regex
+  if (!/[^\x00-\x7F]/.test(path)) return path
+  // eslint-disable-next-line no-control-regex
+  return path.replace(/[^\x00-\x7F]/gu, encodeURIComponent)
+}
+
+/**
  * Builds the dev-mode CSS styles URL for route-scoped CSS collection.
  * Used by HeadContent components in all framework implementations to construct
  * the URL for the `/@tanstack-start/styles.css` endpoint.
