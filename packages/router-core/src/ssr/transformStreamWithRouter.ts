@@ -271,11 +271,13 @@ export function transformStreamWithRouter(
       const html = router.serverSsr?.takeBufferedHtml()
       if (!html) return
 
-      if (isAppRendering) {
-        // Buffer for insertion at next valid position
+      if (isAppRendering || leftover) {
+        // Buffer when app is still rendering OR when there's leftover content
+        // that hasn't been flushed yet. This prevents race conditions where
+        // injected HTML appears before buffered app content
         pendingRouterHtmlParts.push(html)
       } else {
-        // App is done rendering, write directly to output
+        // App done rendering and no leftover - safe to write directly for better streaming
         safeEnqueue(html)
       }
     })
