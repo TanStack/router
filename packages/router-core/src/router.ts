@@ -1091,7 +1091,8 @@ export class RouterCore<
       this.basepath = nextBasepath
 
       const rewrites: Array<LocationRewrite> = []
-      if (trimPath(nextBasepath) !== '') {
+      const trimmed = trimPath(nextBasepath)
+      if (trimmed && trimmed !== '/') {
         rewrites.push(
           rewriteBasepath({
             basepath: nextBasepath,
