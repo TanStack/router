@@ -4,6 +4,7 @@ import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
+import { isServer } from './isServer'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
 import type {
@@ -169,11 +170,11 @@ const shouldSkipLoader = (
 ): boolean => {
   const match = inner.router.getMatch(matchId)!
   // upon hydration, we skip the loader if the match has been dehydrated on the server
-  if (!inner.router.isServer && match._nonReactive.dehydrated) {
+  if (!(isServer ?? inner.router.isServer) && match._nonReactive.dehydrated) {
     return true
   }
 
-  if (inner.router.isServer && match.ssr === false) {
+  if ((isServer ?? inner.router.isServer) && match.ssr === false) {
     return true
   }
 
@@ -306,7 +307,7 @@ const setupPendingTimeout = (
     route.options.pendingMs ?? inner.router.options.defaultPendingMs
   const shouldPending = !!(
     inner.onReady &&
-    !inner.router.isServer &&
+    !(isServer ?? inner.router.isServer) &&
     !resolvePreload(inner, matchId) &&
     (route.options.loader ||
       route.options.beforeLoad ||
@@ -520,7 +521,7 @@ const handleBeforeLoad = (
 
   const serverSsr = () => {
     // on the server, determine whether SSR the current match or not
-    if (inner.router.isServer) {
+    if (isServer ?? inner.router.isServer) {
       const maybePromise = isBeforeLoadSsr(inner, matchId, index, route)
       if (isPromise(maybePromise)) return maybePromise.then(queueExecution)
     }
@@ -635,7 +636,7 @@ const runLoader = async (
 
     // Actually run the loader and handle the result
     try {
-      if (!inner.router.isServer || match.ssr === true) {
+      if (!(isServer ?? inner.router.isServer) || match.ssr === true) {
         loadRouteChunk(route)
       }
 
@@ -759,7 +760,7 @@ const loadRouteMatch = async (
   const route = inner.router.looseRoutesById[routeId]!
 
   if (shouldSkipLoader(inner, matchId)) {
-    if (inner.router.isServer) {
+    if (isServer ?? inner.router.isServer) {
       return inner.router.getMatch(matchId)!
     }
   } else {
@@ -879,7 +880,7 @@ export async function loadMatches(arg: {
   // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
   // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
   if (
-    !inner.router.isServer &&
+    !(isServer ?? inner.router.isServer) &&
     inner.router.state.matches.some((d) => d._forcePending)
   ) {
     triggerOnReady(inner)

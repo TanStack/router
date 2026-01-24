@@ -1,5 +1,6 @@
 import * as Vue from 'vue'
 import warning from 'tiny-warning'
+import { isServer } from '@tanstack/router-core'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -69,7 +70,8 @@ export const Matches = Vue.defineComponent({
 
       // Do not render a root Suspense during SSR or hydrating from SSR
       const inner =
-        router?.isServer || (typeof document !== 'undefined' && router?.ssr)
+        (isServer ?? router?.isServer ?? false) ||
+        (typeof document !== 'undefined' && router?.ssr)
           ? Vue.h(MatchesContent)
           : Vue.h(
               Vue.Suspense,

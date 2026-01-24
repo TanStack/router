@@ -5,6 +5,11 @@ import packageJson from './package.json'
 
 const config = defineConfig({
   plugins: [react()],
+  resolve: {
+    // Add 'development' condition for tests to resolve @tanstack/router-is-server
+    // to the development export (isServer = undefined) instead of node (isServer = true)
+    conditions: process.env.VITEST ? ['development'] : [],
+  },
   test: {
     name: packageJson.name,
     dir: './tests',
