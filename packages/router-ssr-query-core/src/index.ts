@@ -5,6 +5,8 @@ import {
 import { isRedirect, isServer } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
 import type {
+  DehydrateOptions,
+  HydrateOptions,
   QueryClient,
   DehydratedState as QueryDehydratedState,
 } from '@tanstack/query-core'
@@ -20,6 +22,8 @@ export type RouterSsrQueryOptions<TRouter extends AnyRouter> = {
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction)
    */
   handleRedirects?: boolean
+  hydrateOptions?: Omit<HydrateOptions, 'shouldDehydrateQuery'>
+  dehydrateOptions?: DehydrateOptions
 }
 
 type DehydratedRouterQueryState = {
@@ -31,6 +35,8 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   router,
   queryClient,
   handleRedirects = true,
+  dehydrateOptions,
+  hydrateOptions,
 }: RouterSsrQueryOptions<TRouter>) {
   const ogHydrate = router.options.hydrate
   const ogDehydrate = router.options.dehydrate
@@ -54,7 +60,10 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
           queryStream: queryStream.stream,
         }
 
-        const dehydratedQueryClient = queryDehydrate(queryClient)
+        const dehydratedQueryClient = queryDehydrate(
+          queryClient,
+          dehydrateOptions,
+        )
         if (dehydratedQueryClient.queries.length > 0) {
           dehydratedQueryClient.queries.forEach((query) => {
             sentQueries.add(query.queryHash)
@@ -97,6 +106,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       sentQueries.add(event.query.queryHash)
       queryStream.enqueue(
         queryDehydrate(queryClient, {
+          ...dehydrateOptions,
           shouldDehydrateQuery: (query) => {
             if (query.queryHash === event.query.queryHash) {
               return (
@@ -114,7 +124,11 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       await ogHydrate?.(dehydrated)
       // hydrate the query client with the dehydrated data (if it was dehydrated on the server)
       if (dehydrated.dehydratedQueryClient) {
-        queryHydrate(queryClient, dehydrated.dehydratedQueryClient)
+        queryHydrate(
+          queryClient,
+          dehydrated.dehydratedQueryClient,
+          hydrateOptions,
+        )
       }
 
       // read the query stream and hydrate the queries as they come in
@@ -122,7 +136,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       reader
         .read()
         .then(async function handle({ done, value }) {
-          queryHydrate(queryClient, value)
+          queryHydrate(queryClient, value, hydrateOptions)
           if (done) {
             return
           }
