@@ -12,6 +12,7 @@ import {
   replaceEqualDeep,
 } from './utils'
 import {
+  buildRouteBranch,
   findFlatMatch,
   findRouteMatch,
   findSingleMatch,
@@ -1774,6 +1775,27 @@ export class RouterCore<
                 fromParams,
                 functionalUpdate(dest.params as any, fromParams),
               )
+
+      // Apply stringify BEFORE interpolating to ensure route matching works with skipRouteOnParseError.params: true
+      // We look up the route by its template path and apply stringify functions from the route branch before interpolation
+      const trimmedNextTo = trimPathRight(nextTo)
+      const targetRoute = this.routesByPath[trimmedNextTo]
+      if (targetRoute && Object.keys(nextParams).length > 0) {
+        const routeBranch = buildRouteBranch<AnyRoute>(targetRoute)
+        if (
+          routeBranch.some(
+            (route) => route.options.skipRouteOnParseError?.params,
+          )
+        ) {
+          for (const route of routeBranch) {
+            const fn =
+              route.options.params?.stringify ?? route.options.stringifyParams
+            if (fn) {
+              Object.assign(nextParams, fn(nextParams))
+            }
+          }
+        }
+      }
 
       // Interpolate the path first to get the actual resolved path, then match against that
       const interpolatedNextTo = interpolatePath({
