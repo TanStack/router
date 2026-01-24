@@ -1,4 +1,7 @@
 import { hydrate } from '@tanstack/router-core/ssr/client'
+import {
+  trimPathRight,
+} from '@tanstack/router-core'
 
 import { ServerFunctionSerializationAdapter } from './ServerFunctionSerializationAdapter'
 import type { AnyStartInstanceOptions } from '../createStart'
@@ -44,7 +47,8 @@ export async function hydrateStart(): Promise<AnyRouter> {
   if (!router.state.matches.length) {
     if (
       window.__TSS_SPA_SHELL__ &&
-      window.location.pathname !== (router.options.basepath || '/')
+      trimPathRight(window.location.pathname) !==
+        trimPathRight(router.options.basepath || '/')
     ) {
       // If we are loading the SPA shell (index.html) and the path is not the root,
       // it means we are in a fallback scenario (e.g. Cloudflare SPA fallback).

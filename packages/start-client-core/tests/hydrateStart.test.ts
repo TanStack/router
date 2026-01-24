@@ -98,16 +98,16 @@ describe('hydrateStart', () => {
   })
 
   describe('Custom basepath handling', () => {
-    it('should respect custom basepath when checking SPA shell fallback', async () => {
+    it('should hydrate when path matches basepath with trailing slash', async () => {
       window.__TSS_SPA_SHELL__ = true
-      window.history.pushState({}, '', '/app')
+      window.history.pushState({}, '', '/app/')
       
       mockGetRouter.mockResolvedValueOnce(createMockRouter({
         options: { basepath: '/app' }
       }))
       
       await hydrateStart()
-      expect(hydrate).toHaveBeenCalled() // /app matches basepath, so hydrate
+      expect(hydrate).toHaveBeenCalled() // /app/ matches basepath /app after normalization
     })
 
     it('should skip hydration when path is deeper than custom basepath', async () => {
