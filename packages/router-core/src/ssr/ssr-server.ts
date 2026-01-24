@@ -211,7 +211,7 @@ export function attachRouterServerSsrUtils({
       if (manifest) {
         // Prod-only caching; in dev manifests may be replaced/updated (HMR)
         const currentRouteIdsList = matchesToDehydrate.map((m) => m.routeId)
-        const manifestCacheKey = currentRouteIdsList.join('%%%')
+        const manifestCacheKey = currentRouteIdsList.join('\0')
 
         let filteredRoutes: FilteredRoutes | undefined
 
