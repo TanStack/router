@@ -5,6 +5,7 @@ import {
   exactPathTest,
   functionalUpdate,
   isDangerousProtocol,
+  isServer,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
@@ -50,10 +51,10 @@ export function useLinkProps<
   forwardedRef?: React.ForwardedRef<Element>,
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
-  const hasRenderFetched = React.useRef(false)
   const innerRef = useForwardedRef(forwardedRef)
-  const isHydrated = useHydrated()
+
+  // Determine if we're on the server - used for tree-shaking client-only code
+  const _isServer = isServer ?? router.isServer
 
   const {
     // custom props
@@ -92,6 +93,184 @@ export function useLinkProps<
     _fromLocation,
     ...propsSafeToSpread
   } = options
+
+  // ==========================================================================
+  // SERVER EARLY RETURN
+  // On the server, we return static props without any event handlers,
+  // effects, or client-side interactivity.
+  //
+  // For SSR parity (to avoid hydration errors), we still compute the link's
+  // active status on the server, but we avoid creating any router-state
+  // subscriptions by reading from `router.state` directly.
+  //
+  // Note: `location.hash` is not available on the server.
+  // ==========================================================================
+  if (_isServer) {
+    const next = router.buildLocation({ ...options, from: options.from } as any)
+
+    const hrefOption = (() => {
+      if (disabled) {
+        return undefined
+      }
+      let href = next.maskedLocation
+        ? next.maskedLocation.url.href
+        : next.url.href
+
+      let external = false
+      if (router.origin) {
+        if (href.startsWith(router.origin)) {
+          href =
+            router.history.createHref(href.replace(router.origin, '')) || '/'
+        } else {
+          external = true
+        }
+      }
+      return { href, external }
+    })()
+
+    const externalLink = (() => {
+      if (hrefOption?.external) {
+        if (isDangerousProtocol(hrefOption.href)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(
+              `Blocked Link with dangerous protocol: ${hrefOption.href}`,
+            )
+          }
+          return undefined
+        }
+        return hrefOption.href
+      }
+      const isSafeInternal =
+        typeof to === 'string' &&
+        to.charCodeAt(0) === 47 && // '/'
+        to.charCodeAt(1) !== 47 // but not '//'
+      if (isSafeInternal) return undefined
+      try {
+        new URL(to as any)
+        if (isDangerousProtocol(to as string)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(`Blocked Link with dangerous protocol: ${to}`)
+          }
+          return undefined
+        }
+        return to
+      } catch {}
+      return undefined
+    })()
+
+    const isActive = (() => {
+      if (externalLink) return false
+
+      const currentLocation = router.state.location
+
+      if (activeOptions?.exact) {
+        const testExact = exactPathTest(
+          currentLocation.pathname,
+          next.pathname,
+          router.basepath,
+        )
+        if (!testExact) {
+          return false
+        }
+      } else {
+        const currentPathSplit = removeTrailingSlash(
+          currentLocation.pathname,
+          router.basepath,
+        )
+        const nextPathSplit = removeTrailingSlash(
+          next.pathname,
+          router.basepath,
+        )
+
+        const pathIsFuzzyEqual =
+          currentPathSplit.startsWith(nextPathSplit) &&
+          (currentPathSplit.length === nextPathSplit.length ||
+            currentPathSplit[nextPathSplit.length] === '/')
+
+        if (!pathIsFuzzyEqual) {
+          return false
+        }
+      }
+
+      if (activeOptions?.includeSearch ?? true) {
+        const searchTest = deepEqual(currentLocation.search, next.search, {
+          partial: !activeOptions?.exact,
+          ignoreUndefined: !activeOptions?.explicitUndefined,
+        })
+        if (!searchTest) {
+          return false
+        }
+      }
+
+      // Hash is not available on the server
+      return true
+    })()
+
+    if (externalLink) {
+      return {
+        ...propsSafeToSpread,
+        ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+        href: externalLink,
+        ...(children && { children }),
+        ...(target && { target }),
+        ...(disabled && { disabled }),
+        ...(style && { style }),
+        ...(className && { className }),
+      }
+    }
+
+    const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+      isActive
+        ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
+        : STATIC_EMPTY_OBJECT
+
+    const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+      isActive
+        ? STATIC_EMPTY_OBJECT
+        : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
+
+    const resolvedStyle = (style ||
+      resolvedActiveProps.style ||
+      resolvedInactiveProps.style) && {
+      ...style,
+      ...resolvedActiveProps.style,
+      ...resolvedInactiveProps.style,
+    }
+
+    const resolvedClassName = (() => {
+      if (
+        !className &&
+        !resolvedActiveProps.className &&
+        !resolvedInactiveProps.className
+      ) {
+        return ''
+      }
+
+      return [
+        className,
+        resolvedActiveProps.className,
+        resolvedInactiveProps.className,
+      ]
+        .filter(Boolean)
+        .join(' ')
+    })()
+
+    return {
+      ...propsSafeToSpread,
+      ...resolvedActiveProps,
+      ...resolvedInactiveProps,
+      href: hrefOption?.href,
+      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+      disabled: !!disabled,
+      target,
+      ...(resolvedStyle && { style: resolvedStyle }),
+      ...(resolvedClassName && { className: resolvedClassName }),
+      ...(disabled && STATIC_DISABLED_PROPS),
+      ...(isActive && STATIC_ACTIVE_PROPS),
+    }
+  }
+
+  const isHydrated = useHydrated()
 
   // subscribe to search params to re-build location if it changes
   const currentSearch = useRouterState({
@@ -182,13 +361,6 @@ export function useLinkProps<
     return undefined
   }, [to, hrefOption])
 
-  const preload =
-    options.reloadDocument || externalLink
-      ? false
-      : (userPreload ?? router.options.defaultPreload)
-  const preloadDelay =
-    userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
-
   const isActive = useRouterState({
     select: (s) => {
       if (externalLink) return false
@@ -238,6 +410,59 @@ export function useLinkProps<
     },
   })
 
+  // Get the active props
+  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
+    ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
+    : STATIC_EMPTY_OBJECT
+
+  // Get the inactive props
+  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
+    isActive
+      ? STATIC_EMPTY_OBJECT
+      : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
+
+  const resolvedClassName = [
+    className,
+    resolvedActiveProps.className,
+    resolvedInactiveProps.className,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const resolvedStyle = (style ||
+    resolvedActiveProps.style ||
+    resolvedInactiveProps.style) && {
+    ...style,
+    ...resolvedActiveProps.style,
+    ...resolvedInactiveProps.style,
+  }
+
+  // ==========================================================================
+  // CLIENT-ONLY CODE
+  // Everything below this point only runs on the client. The `isServer` check
+  // above is a compile-time constant that bundlers use for dead code elimination,
+  // so this entire section is removed from server bundles.
+  //
+  // We disable the rules-of-hooks lint rule because these hooks appear after
+  // an early return. This is safe because:
+  // 1. `isServer` is a compile-time constant from conditional exports
+  // 2. In server bundles, this code is completely eliminated by the bundler
+  // 3. In client bundles, `isServer` is `false`, so the early return never executes
+  // ==========================================================================
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const [isTransitioning, setIsTransitioning] = React.useState(false)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const hasRenderFetched = React.useRef(false)
+
+  const preload =
+    options.reloadDocument || externalLink
+      ? false
+      : (userPreload ?? router.options.defaultPreload)
+  const preloadDelay =
+    userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const doPreload = React.useCallback(() => {
     router.preloadRoute({ ..._options } as any).catch((err) => {
       console.warn(err)
@@ -245,6 +470,7 @@ export function useLinkProps<
     })
   }, [router, _options])
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
       if (entry?.isIntersecting) {
@@ -254,6 +480,7 @@ export function useLinkProps<
     [doPreload],
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useIntersectionObserver(
     innerRef,
     preloadViewportIoCallback,
@@ -261,6 +488,7 @@ export function useLinkProps<
     { disabled: !!disabled || !(preload === 'viewport') },
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   React.useEffect(() => {
     if (hasRenderFetched.current) {
       return
@@ -329,7 +557,6 @@ export function useLinkProps<
     }
   }
 
-  // The click handler
   const handleFocus = (_: React.MouseEvent) => {
     if (disabled) return
     if (preload) {
@@ -367,33 +594,6 @@ export function useLinkProps<
     }
   }
 
-  // Get the active props
-  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
-    : STATIC_EMPTY_OBJECT
-
-  // Get the inactive props
-  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive
-      ? STATIC_EMPTY_OBJECT
-      : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
-
-  const resolvedClassName = [
-    className,
-    resolvedActiveProps.className,
-    resolvedInactiveProps.className,
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  const resolvedStyle = (style ||
-    resolvedActiveProps.style ||
-    resolvedInactiveProps.style) && {
-    ...style,
-    ...resolvedActiveProps.style,
-    ...resolvedInactiveProps.style,
-  }
-
   return {
     ...propsSafeToSpread,
     ...resolvedActiveProps,
@@ -411,7 +611,7 @@ export function useLinkProps<
     ...(resolvedClassName && { className: resolvedClassName }),
     ...(disabled && STATIC_DISABLED_PROPS),
     ...(isActive && STATIC_ACTIVE_PROPS),
-    ...(isTransitioning && STATIC_TRANSITIONING_PROPS),
+    ...(isHydrated && isTransitioning && STATIC_TRANSITIONING_PROPS),
   }
 }
 
