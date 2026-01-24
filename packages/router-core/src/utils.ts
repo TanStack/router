@@ -1,5 +1,6 @@
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
+import { isServer } from '@tanstack/router-core/isServer'
 
 export type Awaitable<T> = T | Promise<T>
 export type NoInfer<T> = [T][T extends any ? 0 : never]
@@ -221,6 +222,9 @@ const isEnumerable = Object.prototype.propertyIsEnumerable
  * Do not use this with signals
  */
 export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
+  if (isServer) {
+    return _next
+  }
   if (prev === _next) {
     return prev
   }
