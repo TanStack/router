@@ -11718,9 +11718,6 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
-      '@tanstack/router-is-server':
-        specifier: workspace:*
-        version: link:../router-is-server
       '@tanstack/store':
         specifier: ^0.8.0
         version: 0.8.0
@@ -11833,8 +11830,6 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
-
-  packages/router-is-server: {}
 
   packages/router-plugin:
     dependencies:

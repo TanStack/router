@@ -1,7 +1,7 @@
 /**
  * Static server/client detection for tree-shaking support.
  *
- * This file re-exports `isServer` from `@tanstack/router-is-server` which uses
+ * This re-exports `isServer` from the `isServer/` directory which uses
  * conditional exports to provide different values based on the environment:
  *
  * - `browser` condition → `false` (client)
@@ -21,4 +21,4 @@
  * }
  * ```
  */
-export { isServer } from '@tanstack/router-is-server'
+export { isServer } from './isServer/development'

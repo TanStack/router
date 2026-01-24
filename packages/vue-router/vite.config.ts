@@ -14,7 +14,7 @@ const config = defineConfig({
     alias: {
       '@tanstack/vue-router': resolve(__dirname, 'src'),
     },
-    // Add 'development' condition for tests to resolve @tanstack/router-is-server
+    // Add 'development' condition for tests to resolve @tanstack/router-core/isServer
     // to the development export (isServer = undefined) instead of node (isServer = true)
     ...(process.env.VITEST && { conditions: ['development'] }),
   },
