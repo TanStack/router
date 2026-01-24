@@ -1,6 +1,6 @@
-import { batch } from '@tanstack/store'
 import invariant from 'tiny-invariant'
 import { isServer } from '@tanstack/router-core/isServer'
+import { batch } from './utils/batch'
 import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
