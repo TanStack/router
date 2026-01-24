@@ -1,6 +1,6 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
-import { isServer } from '@tanstack/router-core/isServer'
 
 export type Awaitable<T> = T | Promise<T>
 export type NoInfer<T> = [T][T extends any ? 0 : never]
