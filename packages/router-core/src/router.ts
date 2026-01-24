@@ -1799,10 +1799,11 @@ export class RouterCore<
         }
       }
 
-      // Interpolate the path first to get the actual resolved path, then match against that
+      // Interpolate the path to get the actual resolved path for route matching
+      // When prestringifiedParams is available, use it for correct matching with skipRouteOnParseError
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
-        params: nextParams,
+        params: prestringifiedParams ?? nextParams,
         decoder: this.pathParamsDecoder,
       }).interpolatedPath
 
