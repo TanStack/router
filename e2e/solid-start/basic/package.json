@@ -39,7 +39,7 @@
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.10.2",
     "combinate": "^1.1.11",
-    "srvx": "^0.10.0",
+    "srvx": "^0.10.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.10",

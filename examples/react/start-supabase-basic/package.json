@@ -15,9 +15,9 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
-    "@tanstack/react-router": "^1.153.2",
-    "@tanstack/react-router-devtools": "^1.153.2",
-    "@tanstack/react-start": "^1.154.0",
+    "@tanstack/react-router": "^1.156.0",
+    "@tanstack/react-router-devtools": "^1.156.0",
+    "@tanstack/react-start": "^1.156.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1"
