@@ -261,6 +261,10 @@ export function useLinkProps<
       }
 
       // Hash is not available on the server
+      if (activeOptions?.includeHash) {
+        return false
+      }
+
       return true
     })()
 
@@ -504,8 +508,8 @@ export function useLinkProps<
         }
       }
 
-      if (isHydrated && activeOptions?.includeHash) {
-        return s.location.hash === next.hash
+      if (activeOptions?.includeHash) {
+        return isHydrated && s.location.hash === next.hash
       }
       return true
     },
