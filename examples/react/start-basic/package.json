@@ -10,9 +10,9 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.156.0",
-    "@tanstack/react-router-devtools": "^1.156.0",
-    "@tanstack/react-start": "^1.156.0",
+    "@tanstack/react-router": "^1.157.0",
+    "@tanstack/react-router-devtools": "^1.157.0",
+    "@tanstack/react-start": "^1.157.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^2.6.0",
