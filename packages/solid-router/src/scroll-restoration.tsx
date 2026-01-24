@@ -1,10 +1,10 @@
 import {
   defaultGetScrollRestorationKey,
   escapeHtml,
-  isServer,
   restoreScroll,
   storageKey,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { ScriptOnce } from './ScriptOnce'
 

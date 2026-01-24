@@ -1,5 +1,6 @@
 import { Store, batch } from '@tanstack/store'
 import { createBrowserHistory, parseHref } from '@tanstack/history'
+import { isServer } from '@tanstack/router-core/isServer'
 import {
   createControlledPromise,
   decodePath,
@@ -26,7 +27,6 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
-import { isServer } from './isServer'
 import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'

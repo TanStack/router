@@ -5,10 +5,10 @@ import {
   exactPathTest,
   functionalUpdate,
   isDangerousProtocol,
-  isServer,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 

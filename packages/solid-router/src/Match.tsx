@@ -6,9 +6,9 @@ import {
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
-  isServer,
   rootRouteId,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
-import { isServer, rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
