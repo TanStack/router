@@ -100,3 +100,46 @@ The server entry point is where you can configure server-specific behavior:
 - Logging and monitoring
 
 This flexibility allows you to customize how your TanStack Start application handles server-side rendering while maintaining the framework's conventions.
+
+## Extending with Cloudflare Workers Handlers
+
+`createServerEntry()` returns a plain object, so you can spread it and add other Workers handlers. This makes `server.ts` a full-fledged Cloudflare Worker entrypoint capable of:
+
+- **SSR + Server Functions** (fetch handler)
+- **Queue Consumer + Producer** (queue handler + server functions can send messages)
+- **Cron Jobs** (scheduled handler)
+- **Other Workers features** (Durable Objects via named exports, etc.)
+
+```tsx
+// src/server.ts
+import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
+
+// Durable Objects via named exports
+export { MyDurableObject } from './my-durable-object'
+
+const serverEntry = createServerEntry({
+  async fetch(request) {
+    return await handler.fetch(request)
+  },
+})
+
+export default {
+  ...serverEntry,
+
+  async queue(batch, env, ctx) {
+    for (const message of batch.messages) {
+      message.ack()
+    }
+  },
+
+  async scheduled(event, env, ctx) {
+    console.log('Cron triggered:', event.cron)
+  },
+}
+```
+
+**Testing locally** (with `@cloudflare/vite-plugin`):
+
+```bash
+curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"
+```
