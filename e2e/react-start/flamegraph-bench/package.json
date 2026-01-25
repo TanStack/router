@@ -6,8 +6,9 @@
     "build": "NODE_ENV=production vite build --mode=production",
     "start": "NODE_ENV=production node ./.output/server/index.mjs",
     "start:prof": "NODE_ENV=production flame run --md-format=detailed ./.output/server/index.mjs",
+    "start:prof:delayed": "NODE_ENV=production flame run --md-format=detailed --delay=6000 ./.output/server/index.mjs",
     "bench": "pnpm build && pnpm bench:run",
-    "bench:run": "concurrently -k -s first \"pnpm start:prof\" \"sleep 3 && node ./tests/bench.js\""
+    "bench:run": "concurrently -k -s first \"pnpm start:prof:delayed\" \"SERVER_URL=http://localhost:3000 node ./tests/bench.js\""
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",
