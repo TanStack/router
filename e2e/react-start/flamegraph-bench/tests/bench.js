@@ -26,7 +26,7 @@ const instance = autocannon({
         const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('')
         for (let i = alphabet.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1))
-            ;[alphabet[i], alphabet[j]] = [alphabet[j], alphabet[i]]
+          ;[alphabet[i], alphabet[j]] = [alphabet[j], alphabet[i]]
         }
         const path = '/nested/' + alphabet.join('/')
         return { ...req, path }
