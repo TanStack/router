@@ -287,7 +287,8 @@ export function interpolatePath({
 
       while (cursor < length) {
         // Skip slashes between segments.
-        while (cursor < length && path.charCodeAt(cursor) === 47) // '/' code is 47
+        while (cursor < length && path.charCodeAt(cursor) === 47)
+          // '/' code is 47
           cursor++
         if (cursor >= length) break
 
@@ -300,7 +301,8 @@ export function interpolatePath({
         if (!part) continue
 
         // `$id` or `$` (splat)
-        if (part.charCodeAt(0) === 36) { // '$' code is 36
+        if (part.charCodeAt(0) === 36) {
+          // '$' code is 36
           if (part.length === 1) {
             const splat = (params as any)._splat
             usedParams._splat = splat
