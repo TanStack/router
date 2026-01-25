@@ -233,7 +233,7 @@ export function RenderData({
       </div>
       <h3>Async Car</h3>
       <h4>expected</h4>
-      <div data-testid={`${id}-casync-ar-expected`}>
+      <div data-testid={`${id}-async-car-expected`}>
         {JSON.stringify({
           make: localData.asyncCar.singleInstance.make,
           model: localData.asyncCar.singleInstance.model,
