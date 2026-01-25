@@ -18,8 +18,8 @@ export const Route = createFileRoute('/ssr/data-only')({
 
     const honkState = loaderData.car.singleInstance.honk()
 
-    const exepctedAsyncHonkState = localData.asyncCar.singleInstance.honk();
-    const asyncHonkState = loaderData.asyncCar.singleInstance.honk();
+    const exepctedAsyncHonkState = localData.asyncCar.singleInstance.honk()
+    const asyncHonkState = loaderData.asyncCar.singleInstance.honk()
 
     return (
       <div data-testid="data-only-container">
