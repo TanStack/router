@@ -79,7 +79,7 @@ const loggingMiddleware = createMiddleware().server(async ({ next }) => {
 })
 ```
 
-The exception to always returning `next()` to this is throwing errors. By default, throwing an error will cause the router to short-circuit and return the data passed into the `Error` along with a 500 HTTP error code. If you want to return another error code, like with an authentication middlware, you can throw the `json` helper.
+The exception to always returning `next()` is throwing errors. By default, throwing an error will cause the router to short-circuit and return the data passed into the `Error` as a 500 HTTP error-code response. If you want to return another error code, like with an authentication middlware, you can throw the `json` helper.
 
 ```tsx
 import { createMiddleware, json } from "@tanstack/react-start";
@@ -90,7 +90,7 @@ const authMiddleware = createMiddleware().server(async ({ next, request }) => {
     throw new Error("Oh No!"); // returns a 500 HTTP response to the client
   }
   const sessionCookie = request.headers.get("Authorization");
-  const user = client.getUser(sessionCookie);
+  const user = await client.getUser(sessionCookie);
   if (!user) {
     throw json({
       message: "you shall not pass!"
