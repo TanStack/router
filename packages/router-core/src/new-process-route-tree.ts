@@ -986,7 +986,7 @@ function extractParams<T extends RouteLike>(
   ]
 }
 
-function buildRouteBranch<T extends RouteLike>(route: T) {
+export function buildRouteBranch<T extends RouteLike>(route: T) {
   const list = [route]
   while (route.parentRoute) {
     route = route.parentRoute as T
