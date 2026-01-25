@@ -1,5 +1,11 @@
 import { createStart } from '@tanstack/vue-start'
-import { asyncCarAdapter, asyncFooAdapter, carAdapter, fooAdapter, nestedOuterAdapter } from './data'
+import {
+  asyncCarAdapter,
+  asyncFooAdapter,
+  carAdapter,
+  fooAdapter,
+  nestedOuterAdapter,
+} from './data'
 import { customErrorAdapter } from './CustomError'
 
 export const startInstance = createStart(() => {

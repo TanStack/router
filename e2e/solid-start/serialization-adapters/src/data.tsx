@@ -46,7 +46,6 @@ export const carAdapter = createSerializationAdapter({
     makeCar(value),
 })
 
-
 class AsyncFoo {
   private readonly internalValue: string
   constructor(value: string) {

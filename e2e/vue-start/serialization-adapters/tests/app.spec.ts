@@ -17,7 +17,6 @@ async function checkData(page: Page, id: string) {
     expectedData!,
   )
 
-
   const expectedAsyncData = await page
     .getByTestId(`${id}-async-car-expected`)
     .textContent()

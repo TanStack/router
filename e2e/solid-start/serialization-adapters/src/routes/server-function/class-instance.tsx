@@ -15,9 +15,9 @@ export const Route = createFileRoute('/server-function/class-instance')({
 })
 
 function RouteComponent() {
-  const [resp, setResp] = createSignal<null | Awaited<ReturnType<typeof serverFn>>>(
-    null,
-  )
+  const [resp, setResp] = createSignal<null | Awaited<
+    ReturnType<typeof serverFn>
+  >>(null)
 
   return (
     <div>
