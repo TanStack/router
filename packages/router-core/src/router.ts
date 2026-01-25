@@ -1269,7 +1269,10 @@ export class RouterCore<
           pathname: decodePath(pathname),
           external: false,
           searchStr,
-          search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
+          search: replaceEqualDeep(
+            previousLocation?.search,
+            parsedSearch,
+          ) as any,
           hash: decodePath(hash.split('#').reverse()[0] ?? ''),
           state: replaceEqualDeep(previousLocation?.state, state),
         }
