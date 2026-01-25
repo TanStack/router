@@ -389,13 +389,6 @@ const executeBeforeLoad = (
 
   const abortController = new AbortController()
 
-  const parentMatchId = inner.matches[index - 1]?.id
-  const parentMatch = parentMatchId
-    ? inner.router.getMatch(parentMatchId)!
-    : undefined
-  const parentMatchContext =
-    parentMatch?.context ?? inner.router.options.context ?? undefined
-
   let isPending = false
   const pending = () => {
     if (isPending) return
