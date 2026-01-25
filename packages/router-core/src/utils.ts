@@ -593,7 +593,6 @@ export function escapeHtml(str: string): string {
   return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
 }
 
-
 export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   if (!path) return path
 
