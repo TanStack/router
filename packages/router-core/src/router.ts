@@ -1252,9 +1252,29 @@ export class RouterCore<
     previousLocation,
   ) => {
     const parse = ({
+      pathname,
+      search,
+      hash,
       href,
       state,
     }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
+      // Fast path: no rewrite configured, avoid URL construction
+      if (!this.rewrite) {
+        const parsedSearch = this.options.parseSearch(search)
+        const searchStr = this.options.stringifySearch(parsedSearch)
+
+        return {
+          href: pathname + searchStr + hash,
+          publicHref: href,
+          pathname: decodePath(pathname),
+          external: false,
+          searchStr,
+          search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
+          hash: decodePath(hash.split('#').reverse()[0] ?? ''),
+          state: replaceEqualDeep(previousLocation?.state, state),
+        }
+      }
+
       // Before we do any processing, we need to allow rewrites to modify the URL
       // build up the full URL by combining the href from history with the router's origin
       const fullUrl = new URL(href, this.origin)
@@ -1273,7 +1293,7 @@ export class RouterCore<
         href: fullPath,
         publicHref: href,
         pathname: decodePath(url.pathname),
-        external: !!this.rewrite && url.origin !== this.origin,
+        external: url.origin !== this.origin,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: decodePath(url.hash.split('#').reverse()[0] ?? ''),
