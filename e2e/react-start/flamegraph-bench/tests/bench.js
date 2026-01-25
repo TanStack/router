@@ -4,16 +4,32 @@ const BASE_URL = 'http://localhost:3000'
 
 const instance = autocannon({
   url: BASE_URL,
-  overallRate: 3000, // requests per second
-  // connections: 100, // concurrent connections
+  overallRate: 20000, // requests per second
   duration: 30, // seconds
-  // pipelining: 1, // requests per connection
+
+  // Test links
+  // requests: [
+  //   {
+  //     setupRequest: (req) => {
+  //       // Pick a random page for each request
+  //       const randomPage = '/page/' + Math.floor(Math.random() * 1000)
+  //       return { ...req, path: randomPage }
+  //     },
+  //   },
+  // ],
+
+  // Test nested routes + useParams
   requests: [
     {
       setupRequest: (req) => {
-        // Pick a random page for each request
-        const randomPage = '/page/' + Math.floor(Math.random() * 1000)
-        return { ...req, path: randomPage }
+        // Shuffle the alphabet for each request
+        const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('')
+        for (let i = alphabet.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+            ;[alphabet[i], alphabet[j]] = [alphabet[j], alphabet[i]]
+        }
+        const path = '/nested/' + alphabet.join('/')
+        return { ...req, path }
       },
     },
   ],
