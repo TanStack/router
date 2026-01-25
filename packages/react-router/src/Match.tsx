@@ -43,7 +43,7 @@ export const Match = React.memo(function MatchImpl({
         ssr: match.ssr,
         _displayPending: match._displayPending,
         resetKey: s.loadedAt,
-        parentRouteId: s.matches[matchIndex - 1]?.routeId as string
+        parentRouteId: s.matches[matchIndex - 1]?.routeId as string,
       }
     },
     structuralSharing: true as any,
@@ -128,7 +128,8 @@ export const Match = React.memo(function MatchImpl({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {matchState.parentRouteId === rootRouteId && router.options.scrollRestoration ? (
+      {matchState.parentRouteId === rootRouteId &&
+      router.options.scrollRestoration ? (
         <>
           <OnRendered />
           <ScrollRestoration />
