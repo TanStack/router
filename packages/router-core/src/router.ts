@@ -1,6 +1,7 @@
-import { Store, batch } from '@tanstack/store'
+import { Store } from '@tanstack/store'
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
+import { batch } from './utils/batch'
 import {
   createControlledPromise,
   decodePath,
@@ -898,6 +899,29 @@ declare global {
  *
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType
  */
+type RouterStateStore<TState> = {
+  state: TState
+  setState: (updater: (prev: TState) => TState) => void
+}
+
+function createServerStore<TState>(
+  initialState: TState,
+): RouterStateStore<TState> {
+  let state = initialState
+
+  return {
+    get state() {
+      return state
+    },
+    set state(next) {
+      state = next
+    },
+    setState: (updater: (prev: TState) => TState) => {
+      state = updater(state)
+    },
+  } as RouterStateStore<TState>
+}
+
 export class RouterCore<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
@@ -972,8 +996,8 @@ export class RouterCore<
     }
   }
 
-  // These are default implementations that can optionally be overridden
-  // by the router provider once rendered. We provide these so that the
+  // This is a default implementation that can optionally be overridden
+  // by the router provider once rendered. We provide this so that the
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
@@ -1076,18 +1100,24 @@ export class RouterCore<
     }
 
     if (!this.__store && this.latestLocation) {
-      this.__store = new Store(getInitialRouterState(this.latestLocation), {
-        onUpdate: () => {
-          this.__store.state = {
-            ...this.state,
-            cachedMatches: this.state.cachedMatches.filter(
-              (d) => !['redirected'].includes(d.status),
-            ),
-          }
-        },
-      })
+      if (isServer ?? this.isServer) {
+        this.__store = createServerStore(
+          getInitialRouterState(this.latestLocation),
+        ) as unknown as Store<any>
+      } else {
+        this.__store = new Store(getInitialRouterState(this.latestLocation), {
+          onUpdate: () => {
+            this.__store.state = {
+              ...this.state,
+              cachedMatches: this.state.cachedMatches.filter(
+                (d) => !['redirected'].includes(d.status),
+              ),
+            }
+          },
+        })
 
-      setupScrollRestoration(this)
+        setupScrollRestoration(this)
+      }
     }
 
     let needsLocationUpdate = false

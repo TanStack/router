@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
@@ -221,6 +222,9 @@ const isEnumerable = Object.prototype.propertyIsEnumerable
  * Do not use this with signals
  */
 export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
+  if (isServer) {
+    return _next
+  }
   if (prev === _next) {
     return prev
   }

@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant'
-import { batch } from '@tanstack/store'
+import { batch } from '../utils/batch'
 import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
