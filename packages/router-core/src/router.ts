@@ -907,19 +907,14 @@ type RouterStateStore<TState> = {
 function createServerStore<TState>(
   initialState: TState,
 ): RouterStateStore<TState> {
-  let state = initialState
-
-  return {
-    get state() {
-      return state
-    },
-    set state(next) {
-      state = next
-    },
+  const store = {
+    state: initialState,
     setState: (updater: (prev: TState) => TState) => {
-      state = updater(state)
+      store.state = updater(store.state)
     },
   } as RouterStateStore<TState>
+
+  return store
 }
 
 export class RouterCore<
