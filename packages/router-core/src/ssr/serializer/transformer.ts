@@ -10,6 +10,8 @@ import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 import type { RawStream } from './RawStream'
 
+type MaybePromise<T> = T | Promise<T>
+
 declare const TSR_SERIALIZABLE: unique symbol
 export type TSR_SERIALIZABLE = typeof TSR_SERIALIZABLE
 
@@ -63,12 +65,26 @@ export interface CreateSerializationAdapterOptions<
   key: string
   extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
+  /**
+   * Serialization function. This function will be used to serialize data synchronously or through a stream.
+   */
   toSerializable: (
     value: TInput,
   ) => ValidateSerializable<
     TOutput,
     Serializable | UnionizeSerializationAdaptersInput<TExtendsAdapters>
   >
+  /**
+   * Function to serialize data in a non-streaming context.
+   * 
+   * Default to `toSerializable` for backwards compatibility.
+   */
+  toSerializableAsync?: (
+    value: TInput,
+  ) => MaybePromise<ValidateSerializable<
+    TOutput,
+    Serializable | UnionizeSerializationAdaptersInput<TExtendsAdapters>
+  >>
   fromSerializable: (value: TOutput) => TInput
 }
 
@@ -146,6 +162,7 @@ export interface SerializationAdapter<
   extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
   toSerializable: (value: TInput) => TOutput
+  toSerializableAsync?: (value: TInput) => MaybePromise<TOutput>
   fromSerializable: (value: TOutput) => TInput
 }
 
@@ -170,7 +187,12 @@ export function makeSsrSerovalPlugin(
     tag: '$TSR/t/' + serializationAdapter.key,
     test: serializationAdapter.test,
     parse: {
+      async async(value, ctx) {
+        console.log('makeSsrSerovalPlugin async', await ctx.parse(await serializationAdapter.toSerializable(value)), await serializationAdapter.toSerializable(value))
+        return await ctx.parse(serializationAdapter.toSerializableAsync ? await serializationAdapter.toSerializableAsync(value) : serializationAdapter.toSerializable(value))
+      },
       stream(value, ctx) {
+        console.log('makeSsrSerovalPlugin stream', serializationAdapter.toSerializable(value))
         return ctx.parse(serializationAdapter.toSerializable(value))
       },
     },
@@ -202,7 +224,7 @@ export function makeSerovalPlugin(
         return ctx.parse(serializationAdapter.toSerializable(value))
       },
       async async(value, ctx) {
-        return await ctx.parse(serializationAdapter.toSerializable(value))
+        return await ctx.parse(serializationAdapter.toSerializableAsync ? await serializationAdapter.toSerializableAsync(value) : serializationAdapter.toSerializable(value))
       },
       stream(value, ctx) {
         return ctx.parse(serializationAdapter.toSerializable(value))
