@@ -1440,6 +1440,7 @@ export class RouterCore<
         path: route.fullPath,
         params: routeParams,
         decoder: this.pathParamsDecoder,
+        server: this.isServer,
       })
 
       // Waste not, want not. If we already have a match for this route,
@@ -1804,6 +1805,7 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams,
+        server: this.isServer,
       }).interpolatedPath
 
       // Use lightweight getMatchedRoutes instead of matchRoutesInternal
@@ -1850,6 +1852,7 @@ export class RouterCore<
               path: nextTo,
               params: nextParams,
               decoder: this.pathParamsDecoder,
+              server: this.isServer,
             }).interpolatedPath,
           )
 
