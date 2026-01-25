@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PageIdRouteImport } from './routes/page.$id'
 import { Route as NestedARouteImport } from './routes/nested/$a'
@@ -38,6 +39,11 @@ import { Route as NestedABCDEFGHIJKLMNOPQRSTUVWXRouteImport } from './routes/nes
 import { Route as NestedABCDEFGHIJKLMNOPQRSTUVWXYRouteImport } from './routes/nested/$a.$b.$c.$d.$e.$f.$g.$h.$i.$j.$k.$l.$m.$n.$o.$p.$q.$r.$s.$t.$u.$v.$w.$x.$y'
 import { Route as NestedABCDEFGHIJKLMNOPQRSTUVWXYZRouteImport } from './routes/nested/$a.$b.$c.$d.$e.$f.$g.$h.$i.$j.$k.$l.$m.$n.$o.$p.$q.$r.$s.$t.$u.$v.$w.$x.$y.$z'
 
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -190,6 +196,7 @@ const NestedABCDEFGHIJKLMNOPQRSTUVWXYZRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/search': typeof SearchRoute
   '/nested/$a': typeof NestedARouteWithChildren
   '/page/$id': typeof PageIdRoute
   '/nested/$a/$b': typeof NestedABRouteWithChildren
@@ -220,6 +227,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/search': typeof SearchRoute
   '/nested/$a': typeof NestedARouteWithChildren
   '/page/$id': typeof PageIdRoute
   '/nested/$a/$b': typeof NestedABRouteWithChildren
@@ -251,6 +259,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/search': typeof SearchRoute
   '/nested/$a': typeof NestedARouteWithChildren
   '/page/$id': typeof PageIdRoute
   '/nested/$a/$b': typeof NestedABRouteWithChildren
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/search'
     | '/nested/$a'
     | '/page/$id'
     | '/nested/$a/$b'
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/search'
     | '/nested/$a'
     | '/page/$id'
     | '/nested/$a/$b'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/search'
     | '/nested/$a'
     | '/page/$id'
     | '/nested/$a/$b'
@@ -374,12 +386,20 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SearchRoute: typeof SearchRoute
   NestedARoute: typeof NestedARouteWithChildren
   PageIdRoute: typeof PageIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -903,6 +923,7 @@ const NestedARouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SearchRoute: SearchRoute,
   NestedARoute: NestedARouteWithChildren,
   PageIdRoute: PageIdRoute,
 }
