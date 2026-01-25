@@ -190,22 +190,9 @@ export function makeSsrSerovalPlugin(
     test: serializationAdapter.test,
     parse: {
       async async(value, ctx) {
-        console.log(
-          'makeSsrSerovalPlugin async',
-          await ctx.parse(await serializationAdapter.toSerializable(value)),
-          await serializationAdapter.toSerializable(value),
-        )
-        return await ctx.parse(
-          serializationAdapter.toSerializableAsync
-            ? await serializationAdapter.toSerializableAsync(value)
-            : serializationAdapter.toSerializable(value),
-        )
+        return await ctx.parse(serializationAdapter.toSerializableAsync ? await serializationAdapter.toSerializableAsync(value) : serializationAdapter.toSerializable(value))
       },
       stream(value, ctx) {
-        console.log(
-          'makeSsrSerovalPlugin stream',
-          serializationAdapter.toSerializable(value),
-        )
         return ctx.parse(serializationAdapter.toSerializable(value))
       },
     },
