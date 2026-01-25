@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@auth/core": "^0.41.1",
-    "@tanstack/react-router": "^1.157.12",
-    "@tanstack/react-router-devtools": "^1.157.12",
-    "@tanstack/react-start": "^1.157.12",
+    "@tanstack/react-router": "^1.157.13",
+    "@tanstack/react-router-devtools": "^1.157.13",
+    "@tanstack/react-start": "^1.157.13",
     "start-authjs": "^1.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
