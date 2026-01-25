@@ -2284,8 +2284,11 @@ export class RouterCore<
       // always uses this.origin when constructing URLs
       if (this.latestLocation.publicHref !== nextLocation.publicHref) {
         const href = this.getParsedLocationHref(nextLocation)
-
-        throw redirect({ href })
+        if (nextLocation.external) {
+          throw redirect({ href })
+        } else {
+          throw redirect({ href, _builtLocation: nextLocation })
+        }
       }
     }
 
@@ -2614,8 +2617,9 @@ export class RouterCore<
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
     const locationHeader = redirect.headers.get('Location')
 
-    if (!redirect.options.href) {
-      const location = this.buildLocation(redirect.options)
+    if (!redirect.options.href || redirect.options._builtLocation) {
+      const location =
+        redirect.options._builtLocation ?? this.buildLocation(redirect.options)
       const href = this.getParsedLocationHref(location)
       redirect.options.href = href
       redirect.headers.set('Location', href)
