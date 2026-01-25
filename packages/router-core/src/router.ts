@@ -1805,6 +1805,7 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams,
+        decoder: this.pathParamsDecoder,
         server: this.isServer,
       }).interpolatedPath
 
@@ -1833,11 +1834,13 @@ export class RouterCore<
       }
 
       // If there are any params, we need to stringify them
+      let changedParams = false
       if (Object.keys(nextParams).length > 0) {
         for (const route of destRoutes) {
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
+            changedParams = true
             Object.assign(nextParams, fn(nextParams))
           }
         }
@@ -1848,12 +1851,14 @@ export class RouterCore<
           // This preserves the original parameter syntax including optional parameters
           nextTo
         : decodePath(
-            interpolatePath({
-              path: nextTo,
-              params: nextParams,
-              decoder: this.pathParamsDecoder,
-              server: this.isServer,
-            }).interpolatedPath,
+            !changedParams
+              ? interpolatedNextTo
+              : interpolatePath({
+                  path: nextTo,
+                  params: nextParams,
+                  decoder: this.pathParamsDecoder,
+                  server: this.isServer,
+                }).interpolatedPath,
           )
 
       // Resolve the next search
