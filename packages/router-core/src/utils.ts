@@ -593,8 +593,19 @@ export function escapeHtml(str: string): string {
   return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
 }
 
+
 export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   if (!path) return path
+
+  // Fast path: most paths are already decoded and safe.
+  // Only fall back to the slower scan/regex path when we see a '%' (encoded),
+  // a backslash (explicitly handled), a control character, or a protocol-relative
+  // prefix which needs collapsing.
+  // eslint-disable-next-line no-control-regex
+  if (!/[%\\\x00-\x1f\x7f]/.test(path) && !path.startsWith('//')) {
+    return path
+  }
+
   const re = decodeIgnore
     ? new RegExp(`${decodeIgnore.join('|')}`, 'gi')
     : /%25|%5C/gi
