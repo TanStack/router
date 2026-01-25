@@ -1838,7 +1838,11 @@ export class RouterCore<
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
-            Object.assign(nextParams, fn(nextParams))
+            try {
+              Object.assign(nextParams, fn(nextParams))
+            } catch (err) {
+              //
+            }
           }
         }
       }
