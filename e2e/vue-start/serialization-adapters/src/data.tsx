@@ -46,11 +46,94 @@ export const carAdapter = createSerializationAdapter({
     makeCar(value),
 })
 
-export function makeData() {
-  function makeFoo(suffix: string = '') {
-    return new Foo(typeof window === 'undefined' ? 'server' : 'client' + suffix)
+class AsyncFoo {
+  private readonly internalValue: string
+  constructor(value: string) {
+    this.internalValue = value
   }
+
+  get valueAsync() {
+    return new Promise<string>((resolve) => {
+      setTimeout(() => {
+        resolve(this.internalValue)
+      }, 1000)
+    })
+  }
+
+  get value() {
+    return this.internalValue
+  }
+
+  public echo() {
+    return { message: `echo`, value: this.internalValue }
+  }
+}
+
+export const asyncFooAdapter = createSerializationAdapter({
+  key: 'asyncFoo',
+  test: (value) => value instanceof AsyncFoo,
+  toSerializable: (foo) => foo.value,
+  toSerializableAsync: (foo) => foo.valueAsync,
+  fromSerializable: (value) => new AsyncFoo(value),
+})
+
+export interface AsyncCar {
+  __type: 'asynccar'
+  make: string
+  model: string
+  year: number
+  honk: () => { message: string; make: string; model: string; year: number }
+}
+
+export function makeAsyncCar(opts: {
+  make: string
+  model: string
+  year: number
+}): AsyncCar {
   return {
+    ...opts,
+    __type: 'asynccar',
+    honk: () => {
+      return { message: `Asynchronous Car Honk!`, ...opts }
+    },
+  }
+}
+
+export const asyncCarAdapter = createSerializationAdapter({
+  key: 'asyncCar',
+  test: (value: any): value is AsyncCar =>
+    '__type' in (value as AsyncCar) && value.__type === 'asynccar',
+  toSerializable: (car) => ({
+    make: car.make,
+    model: car.model,
+    year: car.year,
+  }),
+  fromSerializable: (value: { make: string; model: string; year: number }) =>
+    makeAsyncCar(value),
+})
+
+export function makeAsyncFoo(suffix: string = '') {
+  return new AsyncFoo(
+    (typeof window === 'undefined' ? 'server' : 'client') + '-async' + suffix,
+  )
+}
+
+export function makeFoo(suffix: string = '') {
+  return new Foo(typeof window === 'undefined' ? 'server' : 'client' + suffix)
+}
+
+export function makeData() {
+  return {
+    asyncFoo: {
+      singleInstance: makeAsyncFoo(),
+    },
+    asyncCar: {
+      singleInstance: makeAsyncCar({
+        make: 'Toyota',
+        model: 'Camry',
+        year: 2020,
+      }),
+    },
     foo: {
       singleInstance: makeFoo(),
       array: [makeFoo('0'), makeFoo('1'), makeFoo('2')],
@@ -148,10 +231,33 @@ export function RenderData({
           year: data.car.singleInstance.year,
         })}
       </div>
+      <h3>Async Car</h3>
+      <h4>expected</h4>
+      <div data-testid={`${id}-async-car-expected`}>
+        {JSON.stringify({
+          make: localData.asyncCar.singleInstance.make,
+          model: localData.asyncCar.singleInstance.model,
+          year: localData.asyncCar.singleInstance.year,
+        })}
+      </div>
+      <h4>actual</h4>
+      <div data-testid={`${id}-async-car-actual`}>
+        {JSON.stringify({
+          make: data.asyncCar.singleInstance.make,
+          model: data.asyncCar.singleInstance.model,
+          year: data.asyncCar.singleInstance.year,
+        })}
+      </div>
       <b>Foo</b>
       <div data-testid={`${id}-foo`}>
         {JSON.stringify({
           value: data.foo.singleInstance.value,
+        })}
+      </div>
+      <b>Async Foo</b>
+      <div data-testid={`${id}-async-foo`}>
+        {JSON.stringify({
+          value: data.asyncFoo.singleInstance.value,
         })}
       </div>
     </div>
