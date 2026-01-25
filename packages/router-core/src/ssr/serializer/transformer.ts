@@ -189,13 +189,6 @@ export function makeSsrSerovalPlugin(
     tag: '$TSR/t/' + serializationAdapter.key,
     test: serializationAdapter.test,
     parse: {
-      async async(value, ctx) {
-        return await ctx.parse(
-          serializationAdapter.toSerializableAsync
-            ? await serializationAdapter.toSerializableAsync(value)
-            : serializationAdapter.toSerializable(value),
-        )
-      },
       stream(value, ctx) {
         return ctx.parse(serializationAdapter.toSerializable(value))
       },
