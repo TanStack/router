@@ -18,7 +18,7 @@ export const Route = createFileRoute('/ssr/data-only')({
 
     const honkState = loaderData.car.singleInstance.honk()
 
-    const exepctedAsyncHonkState = localData.asyncCar.singleInstance.honk()
+    const expectedAsyncHonkState = localData.asyncCar.singleInstance.honk()
     const asyncHonkState = loaderData.asyncCar.singleInstance.honk()
 
     return (
@@ -53,7 +53,7 @@ export const Route = createFileRoute('/ssr/data-only')({
           <div>
             expected:{' '}
             <div data-testid="async-honk-expected-state">
-              {JSON.stringify(exepctedAsyncHonkState)}
+              {JSON.stringify(expectedAsyncHonkState)}
             </div>
           </div>
           <div>
