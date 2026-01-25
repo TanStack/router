@@ -46,11 +46,10 @@ export const carAdapter = createSerializationAdapter({
     makeCar(value),
 })
 
-
 class AsyncFoo {
-  private readonly internalValue: string;
+  private readonly internalValue: string
   constructor(value: string) {
-    this.internalValue = value;
+    this.internalValue = value
   }
 
   get valueAsync() {
@@ -62,7 +61,7 @@ class AsyncFoo {
   }
 
   get value() {
-    return this.internalValue;
+    return this.internalValue
   }
 
   public echo() {
@@ -75,7 +74,7 @@ export const asyncFooAdapter = createSerializationAdapter({
   test: (value) => value instanceof AsyncFoo,
   toSerializable: (foo) => foo.value,
   toSerializableAsync: (foo) => foo.valueAsync,
-  fromSerializable: (value) =>  new AsyncFoo(value)
+  fromSerializable: (value) => new AsyncFoo(value),
 })
 
 export interface AsyncCar {
@@ -114,7 +113,9 @@ export const asyncCarAdapter = createSerializationAdapter({
 })
 
 export function makeAsyncFoo(suffix: string = '') {
-  return new AsyncFoo((typeof window === 'undefined' ? 'server' : 'client') + '-async' + suffix)
+  return new AsyncFoo(
+    (typeof window === 'undefined' ? 'server' : 'client') + '-async' + suffix,
+  )
 }
 
 export function makeFoo(suffix: string = '') {
@@ -122,17 +123,16 @@ export function makeFoo(suffix: string = '') {
 }
 
 export function makeData() {
-
   return {
     asyncFoo: {
       singleInstance: makeAsyncFoo(),
     },
     asyncCar: {
       singleInstance: makeAsyncCar({
-              make: 'Toyota',
-              model: 'Camry',
-              year: 2020,
-            }),
+        make: 'Toyota',
+        model: 'Camry',
+        year: 2020,
+      }),
     },
     foo: {
       singleInstance: makeFoo(),

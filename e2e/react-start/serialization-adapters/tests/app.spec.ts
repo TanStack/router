@@ -97,12 +97,12 @@ test.describe('SSR serialization adapters', () => {
 
 test.describe('server functions serialization adapters', () => {
   test('class instance', async ({ page }) => {
-    await page.goto('/server-function/custom-error', { waitUntil: "networkidle" })
+    await page.goto('/server-function/custom-error', {
+      waitUntil: 'networkidle',
+    })
     await awaitPageLoaded(page)
 
-    await expect(
-      page.getByTestId('server-function-foo-response'),
-    ).toBeEmpty()
+    await expect(page.getByTestId('server-function-foo-response')).toBeEmpty()
     await expect(
       page.getByTestId('server-function-async-foo-response'),
     ).toBeEmpty()
@@ -115,7 +115,7 @@ test.describe('server functions serialization adapters', () => {
     await expect(
       page.getByTestId('server-function-async-foo-response'),
     ).toContainText('{"message":"echo","value":"server-async-serverFn"}')
-  });
+  })
 
   test('custom error', async ({ page }) => {
     await page.goto('/server-function/custom-error')

@@ -76,15 +76,17 @@ export interface CreateSerializationAdapterOptions<
   >
   /**
    * Function to serialize data in a non-streaming context.
-   * 
+   *
    * Default to `toSerializable` for backwards compatibility.
    */
   toSerializableAsync?: (
     value: TInput,
-  ) => MaybePromise<ValidateSerializable<
-    TOutput,
-    Serializable | UnionizeSerializationAdaptersInput<TExtendsAdapters>
-  >>
+  ) => MaybePromise<
+    ValidateSerializable<
+      TOutput,
+      Serializable | UnionizeSerializationAdaptersInput<TExtendsAdapters>
+    >
+  >
   fromSerializable: (value: TOutput) => TInput
 }
 
@@ -188,11 +190,22 @@ export function makeSsrSerovalPlugin(
     test: serializationAdapter.test,
     parse: {
       async async(value, ctx) {
-        console.log('makeSsrSerovalPlugin async', await ctx.parse(await serializationAdapter.toSerializable(value)), await serializationAdapter.toSerializable(value))
-        return await ctx.parse(serializationAdapter.toSerializableAsync ? await serializationAdapter.toSerializableAsync(value) : serializationAdapter.toSerializable(value))
+        console.log(
+          'makeSsrSerovalPlugin async',
+          await ctx.parse(await serializationAdapter.toSerializable(value)),
+          await serializationAdapter.toSerializable(value),
+        )
+        return await ctx.parse(
+          serializationAdapter.toSerializableAsync
+            ? await serializationAdapter.toSerializableAsync(value)
+            : serializationAdapter.toSerializable(value),
+        )
       },
       stream(value, ctx) {
-        console.log('makeSsrSerovalPlugin stream', serializationAdapter.toSerializable(value))
+        console.log(
+          'makeSsrSerovalPlugin stream',
+          serializationAdapter.toSerializable(value),
+        )
         return ctx.parse(serializationAdapter.toSerializable(value))
       },
     },
@@ -224,7 +237,11 @@ export function makeSerovalPlugin(
         return ctx.parse(serializationAdapter.toSerializable(value))
       },
       async async(value, ctx) {
-        return await ctx.parse(serializationAdapter.toSerializableAsync ? await serializationAdapter.toSerializableAsync(value) : serializationAdapter.toSerializable(value))
+        return await ctx.parse(
+          serializationAdapter.toSerializableAsync
+            ? await serializationAdapter.toSerializableAsync(value)
+            : serializationAdapter.toSerializable(value),
+        )
       },
       stream(value, ctx) {
         return ctx.parse(serializationAdapter.toSerializable(value))
