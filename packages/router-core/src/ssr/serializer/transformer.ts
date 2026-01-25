@@ -190,7 +190,11 @@ export function makeSsrSerovalPlugin(
     test: serializationAdapter.test,
     parse: {
       async async(value, ctx) {
-        return await ctx.parse(serializationAdapter.toSerializableAsync ? await serializationAdapter.toSerializableAsync(value) : serializationAdapter.toSerializable(value))
+        return await ctx.parse(
+          serializationAdapter.toSerializableAsync
+            ? await serializationAdapter.toSerializableAsync(value)
+            : serializationAdapter.toSerializable(value),
+        )
       },
       stream(value, ctx) {
         return ctx.parse(serializationAdapter.toSerializable(value))
