@@ -573,7 +573,6 @@ describe('interpolatePath', () => {
   )
 })
 
-
 describe('matchPathname', () => {
   const { processedTree } = processRouteTree({
     id: '__root__',
