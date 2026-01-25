@@ -15,7 +15,7 @@ export const Route = createFileRoute('/server-function/class-instance')({
 })
 
 function RouteComponent() {
-  const [resp, setResp] = useState<any>(null)
+  const [resp, setResp] = useState<null | Awaited<ReturnType<typeof serverFn>>>(null)
 
   return (
     <div>

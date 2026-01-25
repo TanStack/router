@@ -18,7 +18,7 @@ async function checkData(page: Page, id: string) {
   )
 
   const expectedAsyncData = await page
-    .getByTestId(`${id}-car-expected`)
+    .getByTestId(`${id}-async-car-expected`)
     .textContent()
   expect(expectedAsyncData).not.toBeNull()
   await expect(page.getByTestId(`${id}-async-car-actual`)).toContainText(
@@ -97,7 +97,7 @@ test.describe('SSR serialization adapters', () => {
 
 test.describe('server functions serialization adapters', () => {
   test('class instance', async ({ page }) => {
-    await page.goto('/server-function/custom-error', {
+    await page.goto('/server-function/class-instance', {
       waitUntil: 'networkidle',
     })
     await awaitPageLoaded(page)
