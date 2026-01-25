@@ -79,6 +79,27 @@ const loggingMiddleware = createMiddleware().server(async ({ next }) => {
 })
 ```
 
+The exception to always returning `next()` to this is throwing errors. By default, throwing an error will cause the router to short-circuit and return the data passed into the `Error` along with a 500 HTTP error code. If you want to return another error code, like with an authentication middlware, you can throw the `json` helper.
+
+```tsx
+import { createMiddleware, json } from "@tanstack/react-start";
+
+const authMiddleware = createMiddleware().server(async ({ next, request }) => {
+  const client = await getMyDb();
+  if (!client) {
+    throw new Error("Oh No!"); // returns a 500 HTTP response to the client
+  }
+  const sessionCookie = request.headers.get("Authorization");
+  const user = client.getUser(sessionCookie);
+  if (!user) {
+    throw json({
+      message: "you shall not pass!"
+    }, {status: 401})
+
+  return await next({ context: { user }}) // pass the user's information to the next middlware or server function
+})
+```
+
 ## Request Middleware
 
 Request middleware is used to customize the behavior of any server request that passes through it, including server routes, SSR and server functions.
