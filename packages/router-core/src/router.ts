@@ -929,6 +929,9 @@ export class RouterCore<
   in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
 > {
+  private __cachedStateMatchesRef?: Array<any>
+  private __cachedStateMatchedRoutes?: ReadonlyArray<AnyRoute>
+
   // Option-independent properties
   tempLocationKey: string | undefined = `${Math.round(
     Math.random() * 10000000,
@@ -1178,6 +1181,18 @@ export class RouterCore<
     return this.__store.state
   }
 
+  private getMatchedRoutesFromState(): ReadonlyArray<AnyRoute> {
+    const stateMatches = this.__store.state.matches as Array<any>
+    let matchedRoutes = this.__cachedStateMatchedRoutes
+    if (!matchedRoutes || this.__cachedStateMatchesRef !== stateMatches) {
+      this.__cachedStateMatchesRef = stateMatches
+      matchedRoutes = this.__cachedStateMatchedRoutes = stateMatches.map(
+        (m: any) => this.routesById[m.routeId]!,
+      )
+    }
+    return matchedRoutes
+  }
+
   updateLatestLocation = () => {
     this.latestLocation = this.parseLocation(
       this.history.location,
@@ -1308,9 +1323,12 @@ export class RouterCore<
 
   /** Resolve a path against the router basepath and trailing-slash policy. */
   resolvePathWithBase = (from: string, path: string) => {
+    // `cleanPath` is mostly for sanitizing concatenated segments; for already
+    // well-formed paths (common in navigation/buildLocation), skip the regex.
+    const maybeCleaned = path.indexOf('//') === -1 ? path : cleanPath(path)
     const resolvedPath = resolvePath({
       base: from,
-      to: cleanPath(path),
+      to: maybeCleaned,
       trailingSlash: this.options.trailingSlash,
       cache: this.resolvePathCache,
     })
@@ -1634,12 +1652,42 @@ export class RouterCore<
    * Only computes fullPath, accumulated search, and params - skipping expensive
    * operations like AbortController, ControlledPromise, loaderDeps, and full match objects.
    */
-  private matchRoutesLightweight(location: ParsedLocation): {
+  private matchRoutesLightweight(
+    location: ParsedLocation,
+    _includeValidateSearch: boolean,
+  ): {
     matchedRoutes: ReadonlyArray<AnyRoute>
     fullPath: string
     search: Record<string, unknown>
     params: Record<string, unknown>
   } {
+    // Fast path: when the incoming location is the current location, we can
+    // reuse the already-matched route chain and params from state.
+    // This is a big win for SSR where many Links call buildLocation for the
+    // same `currentLocation`.
+    // Note: during client navigations, `state.location` can update before
+    // `state.matches` reflects the new route chain (pendingMatches are separate).
+    // Prefer `resolvedLocation` when deciding if `matches` are safe to reuse.
+    const matchesLocation = this.state.resolvedLocation ?? this.state.location
+
+    if (
+      location.pathname === matchesLocation.pathname &&
+      this.state.matches.length
+    ) {
+      const stateMatches = this.state.matches as Array<any>
+      const matchedRoutes = this.getMatchedRoutesFromState()
+
+      const lastMatch = stateMatches[stateMatches.length - 1]!
+      const lastRoute = this.routesById[lastMatch.routeId]!
+
+      return {
+        matchedRoutes,
+        fullPath: lastRoute.fullPath,
+        search: location.search as any,
+        params: lastMatch.params as any,
+      }
+    }
+
     const { matchedRoutes, routeParams, parsedParams } = this.getMatchedRoutes(
       location.pathname,
     )
@@ -1654,16 +1702,24 @@ export class RouterCore<
     //   _includeValidateSearch: true,
     // })
 
-    // Accumulate search validation through route chain
-    const accumulatedSearch = { ...location.search }
-    for (const route of matchedRoutes) {
-      try {
-        Object.assign(
-          accumulatedSearch,
-          validateSearch(route.options.validateSearch, accumulatedSearch),
-        )
-      } catch {
-        // Ignore errors, we're not actually routing
+    // Accumulate search validation through route chain.
+    // Only do this work if the caller opted in and strict search is enabled.
+    let accumulatedSearch = location.search as Record<string, unknown>
+    if (_includeValidateSearch && this.options.search?.strict) {
+      for (const route of matchedRoutes) {
+        if (!route.options.validateSearch) continue
+        // Lazily clone so we don't allocate when nothing validates search.
+        if (accumulatedSearch === location.search) {
+          accumulatedSearch = { ...(location.search as any) }
+        }
+        try {
+          Object.assign(
+            accumulatedSearch,
+            validateSearch(route.options.validateSearch, accumulatedSearch),
+          )
+        } catch {
+          // Ignore errors, we're not actually routing
+        }
       }
     }
 
@@ -1672,27 +1728,18 @@ export class RouterCore<
     const canReuseParams =
       lastStateMatch &&
       lastStateMatch.routeId === lastRoute.id &&
-      location.pathname === this.state.location.pathname
+      location.pathname === matchesLocation.pathname
 
     let params: Record<string, unknown>
     if (canReuseParams) {
       params = lastStateMatch.params
     } else {
-      // Parse params through the route chain
-      const strictParams: Record<string, unknown> = { ...routeParams }
-      for (const route of matchedRoutes) {
-        try {
-          extractStrictParams(
-            route,
-            routeParams,
-            parsedParams ?? {},
-            strictParams,
-          )
-        } catch {
-          // Ignore errors, we're not actually routing
-        }
-      }
-      params = strictParams
+      // For buildLocation, avoid calling user-provided `params.parse` functions.
+      // Those functions can be expensive and/or have side effects, and buildLocation
+      // is called frequently during renders (eg. Links). Instead, use the raw params
+      // from path matching, and merge any pre-parsed params that were safely computed
+      // during matching for `skipRouteOnParseError` routes.
+      params = parsedParams ? { ...routeParams, ...parsedParams } : routeParams
     }
 
     return {
@@ -1749,7 +1796,10 @@ export class RouterCore<
 
       // Use lightweight matching - only computes what buildLocation needs
       // (fullPath, search, params) without creating full match objects
-      const lightweightResult = this.matchRoutesLightweight(currentLocation)
+      const lightweightResult = this.matchRoutesLightweight(
+        currentLocation,
+        !!opts._includeValidateSearch,
+      )
 
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
@@ -1836,7 +1886,13 @@ export class RouterCore<
       }
 
       // If there are any params, we need to stringify them
-      if (Object.keys(nextParams).length > 0) {
+      let hasNextParams = false
+      // eslint-disable-next-line guard-for-in
+      for (const _k in nextParams) {
+        hasNextParams = true
+        break
+      }
+      if (hasNextParams) {
         for (const route of destRoutes) {
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
@@ -2699,7 +2755,10 @@ export class RouterCore<
     TDefaultStructuralSharingOption,
     TRouterHistory
   > = async (opts) => {
-    const next = this.buildLocation(opts as any)
+    const next = this.buildLocation({
+      ...(opts as any),
+      _includeValidateSearch: true,
+    })
 
     let matches = this.matchRoutes(next, {
       throwOnError: true,

@@ -110,12 +110,7 @@ export function useLinkProps<
 
     // If `to` is obviously an absolute URL, treat as external and avoid
     // computing the internal location via `buildLocation`.
-    if (
-      typeof to === 'string' &&
-      !safeInternal &&
-      // Quick checks to avoid `new URL` in common internal-like cases
-      to.indexOf(':') > -1
-    ) {
+    if (typeof to === 'string' && !safeInternal && to.indexOf(':') > -1) {
       try {
         new URL(to)
         if (isDangerousProtocol(to)) {
@@ -149,7 +144,27 @@ export function useLinkProps<
       }
     }
 
-    const next = router.buildLocation({ ...options, from: options.from } as any)
+    // On the server, `Link` doesn't attach event handlers, so we can skip
+    // computing active state unless the user opted in.
+    const shouldComputeIsActive =
+      !!activeProps || !!inactiveProps || !!activeOptions
+
+    // Build only the fields `buildLocation` cares about (avoid spreading the
+    // entire `options` object, which includes many element-only props).
+    const next = router.buildLocation({
+      to,
+      from: _from,
+      params: _params,
+      search: _search,
+      hash: _hash,
+      state: _state,
+      mask: _mask,
+      unsafeRelative: _unsafeRelative,
+      _fromLocation,
+      // If we're not going to compute active state, we also don't need
+      // to validate search on the server.
+      _includeValidateSearch: shouldComputeIsActive,
+    } as any)
 
     // Use publicHref - it contains the correct href for display
     // When a rewrite changes the origin, publicHref is the full URL
@@ -168,21 +183,18 @@ export function useLinkProps<
       disabled,
     )
 
-    const externalLink = (() => {
-      if (hrefOption?.external) {
-        if (isDangerousProtocol(hrefOption.href)) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn(
-              `Blocked Link with dangerous protocol: ${hrefOption.href}`,
-            )
-          }
-          return undefined
+    let externalLink: string | undefined
+    if (hrefOption?.external) {
+      if (isDangerousProtocol(hrefOption.href)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `Blocked Link with dangerous protocol: ${hrefOption.href}`,
+          )
         }
-        return hrefOption.href
+      } else {
+        externalLink = hrefOption.href
       }
-
-      if (safeInternal) return undefined
-
+    } else if (!safeInternal) {
       // Only attempt URL parsing when it looks like an absolute URL.
       if (typeof to === 'string' && to.indexOf(':') > -1) {
         try {
@@ -191,31 +203,26 @@ export function useLinkProps<
             if (process.env.NODE_ENV !== 'production') {
               console.warn(`Blocked Link with dangerous protocol: ${to}`)
             }
-            return undefined
+          } else {
+            externalLink = to
           }
-          return to
-        } catch {}
+        } catch {
+          // Not an absolute URL
+        }
       }
+    }
 
-      return undefined
-    })()
-
-    const isActive = (() => {
-      if (externalLink) return false
-
+    let isActive = false
+    if (shouldComputeIsActive && !externalLink) {
       const currentLocation = router.state.location
-
       const exact = activeOptions?.exact ?? false
 
       if (exact) {
-        const testExact = exactPathTest(
+        isActive = exactPathTest(
           currentLocation.pathname,
           next.pathname,
           router.basepath,
         )
-        if (!testExact) {
-          return false
-        }
       } else {
         const currentPathSplit = removeTrailingSlash(
           currentLocation.pathname,
@@ -226,47 +233,33 @@ export function useLinkProps<
           router.basepath,
         )
 
-        const pathIsFuzzyEqual =
+        isActive =
           currentPathSplit.startsWith(nextPathSplit) &&
           (currentPathSplit.length === nextPathSplit.length ||
             currentPathSplit[nextPathSplit.length] === '/')
-
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
       }
 
-      const includeSearch = activeOptions?.includeSearch ?? true
-      if (includeSearch) {
+      if (isActive && (activeOptions?.includeSearch ?? true)) {
         if (currentLocation.search !== next.search) {
-          const currentSearchEmpty =
-            !currentLocation.search ||
-            (typeof currentLocation.search === 'object' &&
-              Object.keys(currentLocation.search).length === 0)
-          const nextSearchEmpty =
-            !next.search ||
-            (typeof next.search === 'object' &&
-              Object.keys(next.search).length === 0)
-
+          const currentSearchEmpty = isSearchEmpty(currentLocation.search)
+          const nextSearchEmpty = isSearchEmpty(next.search)
           if (!(currentSearchEmpty && nextSearchEmpty)) {
             const searchTest = deepEqual(currentLocation.search, next.search, {
               partial: !exact,
               ignoreUndefined: !activeOptions?.explicitUndefined,
             })
             if (!searchTest) {
-              return false
+              isActive = false
             }
           }
         }
       }
 
       // Hash is not available on the server
-      if (activeOptions?.includeHash) {
-        return false
+      if (isActive && activeOptions?.includeHash) {
+        isActive = false
       }
-
-      return true
-    })()
+    }
 
     if (externalLink) {
       return {
@@ -287,63 +280,47 @@ export function useLinkProps<
         : STATIC_EMPTY_OBJECT
 
     const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-      isActive
-        ? STATIC_EMPTY_OBJECT
-        : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
+      !isActive && inactiveProps
+        ? (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
+        : STATIC_EMPTY_OBJECT
 
-    const resolvedStyle = (() => {
+    // Skip style/className resolution entirely unless needed.
+    // This keeps the common SSR case (no active/inactive props) cheap.
+    let resolvedStyle: any = style
+    let resolvedClassName: any = className
+
+    if (resolvedActiveProps !== STATIC_EMPTY_OBJECT || inactiveProps) {
       const baseStyle = style
       const activeStyle = resolvedActiveProps.style
       const inactiveStyle = resolvedInactiveProps.style
 
-      if (!baseStyle && !activeStyle && !inactiveStyle) {
-        return undefined
-      }
+      resolvedStyle =
+        baseStyle && !activeStyle && !inactiveStyle
+          ? baseStyle
+          : !baseStyle && activeStyle && !inactiveStyle
+            ? activeStyle
+            : !baseStyle && !activeStyle && inactiveStyle
+              ? inactiveStyle
+              : baseStyle || activeStyle || inactiveStyle
+                ? { ...baseStyle, ...activeStyle, ...inactiveStyle }
+                : undefined
 
-      if (baseStyle && !activeStyle && !inactiveStyle) {
-        return baseStyle
-      }
-
-      if (!baseStyle && activeStyle && !inactiveStyle) {
-        return activeStyle
-      }
-
-      if (!baseStyle && !activeStyle && inactiveStyle) {
-        return inactiveStyle
-      }
-
-      return {
-        ...baseStyle,
-        ...activeStyle,
-        ...inactiveStyle,
-      }
-    })()
-
-    const resolvedClassName = (() => {
       const baseClassName = className
       const activeClassName = resolvedActiveProps.className
       const inactiveClassName = resolvedInactiveProps.className
 
-      if (!baseClassName && !activeClassName && !inactiveClassName) {
-        return ''
+      if (baseClassName || activeClassName || inactiveClassName) {
+        let out = baseClassName || ''
+        if (activeClassName)
+          out = out ? `${out} ${activeClassName}` : activeClassName
+        if (inactiveClassName) {
+          out = out ? `${out} ${inactiveClassName}` : inactiveClassName
+        }
+        resolvedClassName = out
+      } else {
+        resolvedClassName = ''
       }
-
-      let out = ''
-
-      if (baseClassName) {
-        out = baseClassName
-      }
-
-      if (activeClassName) {
-        out = out ? `${out} ${activeClassName}` : activeClassName
-      }
-
-      if (inactiveClassName) {
-        out = out ? `${out} ${inactiveClassName}` : inactiveClassName
-      }
-
-      return out
-    })()
+    }
 
     return {
       ...propsSafeToSpread,
@@ -499,12 +476,18 @@ export function useLinkProps<
       }
 
       if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
+        if (s.location.search !== next.search) {
+          const currentSearchEmpty = isSearchEmpty(s.location.search)
+          const nextSearchEmpty = isSearchEmpty(next.search)
+          if (!(currentSearchEmpty && nextSearchEmpty)) {
+            const searchTest = deepEqual(s.location.search, next.search, {
+              partial: !activeOptions?.exact,
+              ignoreUndefined: !activeOptions?.explicitUndefined,
+            })
+            if (!searchTest) {
+              return false
+            }
+          }
         }
       }
 
@@ -522,24 +505,46 @@ export function useLinkProps<
 
   // Get the inactive props
   const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive
-      ? STATIC_EMPTY_OBJECT
-      : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
+    !isActive && inactiveProps
+      ? (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
+      : STATIC_EMPTY_OBJECT
 
-  const resolvedClassName = [
-    className,
-    resolvedActiveProps.className,
-    resolvedInactiveProps.className,
-  ]
-    .filter(Boolean)
-    .join(' ')
+  // Skip style/className resolution entirely unless needed.
+  // This keeps the common case (no active/inactive props) cheap.
+  let resolvedStyle: any = style
+  let resolvedClassName: any = className
 
-  const resolvedStyle = (style ||
-    resolvedActiveProps.style ||
-    resolvedInactiveProps.style) && {
-    ...style,
-    ...resolvedActiveProps.style,
-    ...resolvedInactiveProps.style,
+  if (resolvedActiveProps !== STATIC_EMPTY_OBJECT || inactiveProps) {
+    const baseStyle = style
+    const activeStyle = resolvedActiveProps.style
+    const inactiveStyle = resolvedInactiveProps.style
+
+    resolvedStyle =
+      baseStyle && !activeStyle && !inactiveStyle
+        ? baseStyle
+        : !baseStyle && activeStyle && !inactiveStyle
+          ? activeStyle
+          : !baseStyle && !activeStyle && inactiveStyle
+            ? inactiveStyle
+            : baseStyle || activeStyle || inactiveStyle
+              ? { ...baseStyle, ...activeStyle, ...inactiveStyle }
+              : undefined
+
+    const baseClassName = className
+    const activeClassName = resolvedActiveProps.className
+    const inactiveClassName = resolvedInactiveProps.className
+
+    if (baseClassName || activeClassName || inactiveClassName) {
+      let out = baseClassName || ''
+      if (activeClassName)
+        out = out ? `${out} ${activeClassName}` : activeClassName
+      if (inactiveClassName) {
+        out = out ? `${out} ${inactiveClassName}` : inactiveClassName
+      }
+      resolvedClassName = out
+    } else {
+      resolvedClassName = ''
+    }
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -751,6 +756,14 @@ function isSafeInternal(to: unknown) {
   const zero = to.charCodeAt(0)
   if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
   return zero === 46 // '.', '..', './', '../'
+}
+
+function isSearchEmpty(search: unknown) {
+  if (!search) return true
+  if (typeof search === 'string') return search.length === 0
+  if (typeof search !== 'object') return true
+  for (const _k in search as any) return false
+  return true
 }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
