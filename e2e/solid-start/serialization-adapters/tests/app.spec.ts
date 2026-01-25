@@ -71,7 +71,7 @@ test.describe('SSR serialization adapters', () => {
     await expect(page.getByTestId('honk-actual-state')).toContainText(
       expectedHonkData!,
     )
-    
+
     const asyncExpectedHonkData = await page
       .getByTestId('async-honk-expected-state')
       .textContent()

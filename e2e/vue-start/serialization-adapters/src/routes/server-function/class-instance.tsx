@@ -19,9 +19,11 @@ const RouteComponent = defineComponent({
       <div>
         <button
           data-testid="server-function-btn"
-          onClick={() => serverFn().then((response) => {
-            resp.value = response;
-          })}
+          onClick={() =>
+            serverFn().then((response) => {
+              resp.value = response
+            })
+          }
         >
           trigger serverFn
         </button>
@@ -35,7 +37,6 @@ const RouteComponent = defineComponent({
     )
   },
 })
-
 
 export const Route = createFileRoute('/server-function/class-instance')({
   component: RouteComponent,
