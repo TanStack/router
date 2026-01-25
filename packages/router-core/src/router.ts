@@ -1821,16 +1821,8 @@ export class RouterCore<
           destMatchResult.routeParams['**']
         : trimPathRight(interpolatedNextTo)
 
-      let globalNotFoundRouteId: string | undefined
-      if (isGlobalNotFound) {
-        if (this.options.notFoundRoute) {
-          destRoutes = [...destRoutes, this.options.notFoundRoute]
-        } else {
-          globalNotFoundRouteId = findGlobalNotFoundRouteId(
-            this.options.notFoundMode,
-            destRoutes,
-          )
-        }
+      if (isGlobalNotFound && this.options.notFoundRoute) {
+        destRoutes = [...destRoutes, this.options.notFoundRoute]
       }
 
       // If there are any params, we need to stringify them
