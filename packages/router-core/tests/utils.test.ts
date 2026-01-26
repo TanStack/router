@@ -1056,16 +1056,16 @@ describe('encodeNonAscii', () => {
     )
   })
 
-  it('should preserve ASCII special characters unchanged', () => {
-    // encodeNonAscii only encodes non-ASCII, not ASCII special chars
-    expect(encodeNonAscii('/path/file name.pdf')).toBe('/path/file name.pdf')
+  it('should encode spaces but preserve other ASCII special characters', () => {
+    // encodeNonAscii encodes whitespace and non-ASCII, but not other ASCII special chars
+    expect(encodeNonAscii('/path/file name.pdf')).toBe('/path/file%20name.pdf')
     expect(encodeNonAscii('/path/file[1].pdf')).toBe('/path/file[1].pdf')
     expect(encodeNonAscii('/path#section')).toBe('/path#section')
   })
 
   it('should handle mixed ASCII and non-ASCII characters', () => {
     expect(encodeNonAscii('/path/caf\u00e9 (copy).pdf')).toBe(
-      '/path/caf%C3%A9 (copy).pdf',
+      '/path/caf%C3%A9%20(copy).pdf',
     )
   })
 

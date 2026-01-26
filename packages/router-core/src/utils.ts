@@ -636,10 +636,27 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
  * like %2F or %25 because it only targets non-ASCII characters.
  */
 export function encodeNonAscii(path: string): string {
+  // Encode non-ASCII characters and whitespace that should be encoded in URLs
+  // Split by / to preserve path separators, encode each segment
   // eslint-disable-next-line no-control-regex
-  if (!/[^\u0000-\u007F]/.test(path)) return path
-  // eslint-disable-next-line no-control-regex
-  return path.replace(/[^\u0000-\u007F]/gu, encodeURIComponent)
+  const needsEncoding = /\s|[^\u0000-\u007F]/
+  if (!needsEncoding.test(path)) return path
+  return path
+    .split('/')
+    .map((segment) => {
+      if (!needsEncoding.test(segment)) return segment
+      // Encode whitespace and non-ASCII characters
+      // Use spread operator to properly handle multi-byte unicode characters (emojis)
+      return [...segment]
+        .map((char) => {
+          if (needsEncoding.test(char)) {
+            return encodeURIComponent(char)
+          }
+          return char
+        })
+        .join('')
+    })
+    .join('/')
 }
 
 /**
