@@ -248,7 +248,9 @@ function encodeParam(
 
   if (key === '_splat') {
     // the splat/catch-all routes shouldn't have the '/' encoded out
-    return encodeURI(value)
+    // Use encodeURIComponent for each segment to properly encode spaces,
+    // plus signs, and other special characters that encodeURI leaves unencoded
+    return value.split('/').map((segment) => encodeURIComponent(segment)).join('/')
   } else {
     return encodePathParam(value, decoder)
   }

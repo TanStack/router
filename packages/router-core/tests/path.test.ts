@@ -440,6 +440,73 @@ describe.each([{ server: true }, { server: false }])(
       })
     })
 
+    describe('splat params with special characters', () => {
+      it.each([
+        {
+          name: 'should encode spaces in splat param',
+          path: '/$',
+          params: { _splat: 'file name.pdf' },
+          result: '/file%20name.pdf',
+        },
+        {
+          name: 'should preserve parentheses in splat param (RFC 3986 unreserved)',
+          path: '/$',
+          params: { _splat: 'file(1).pdf' },
+          result: '/file(1).pdf',
+        },
+        {
+          name: 'should encode brackets in splat param',
+          path: '/$',
+          params: { _splat: 'file[1].pdf' },
+          result: '/file%5B1%5D.pdf',
+        },
+        {
+          name: 'should encode spaces in nested splat param paths',
+          path: '/$',
+          params: { _splat: 'folder/sub folder/file name.pdf' },
+          result: '/folder/sub%20folder/file%20name.pdf',
+        },
+        {
+          name: 'should encode spaces and brackets but preserve parentheses',
+          path: '/$',
+          params: { _splat: 'docs/file (copy) [2].pdf' },
+          result: '/docs/file%20(copy)%20%5B2%5D.pdf',
+        },
+        {
+          name: 'should encode hash in splat param',
+          path: '/$',
+          params: { _splat: 'page#section' },
+          result: '/page%23section',
+        },
+        {
+          name: 'should handle splat param with prefix and special characters',
+          path: '/files/prefix{$}',
+          params: { _splat: 'my file.pdf' },
+          result: '/files/prefixmy%20file.pdf',
+        },
+        {
+          name: 'should encode plus signs in splat param',
+          path: '/$',
+          params: { _splat: 'file+name.pdf' },
+          result: '/file%2Bname.pdf',
+        },
+        {
+          name: 'should encode equals signs in splat param',
+          path: '/$',
+          params: { _splat: 'query=value' },
+          result: '/query%3Dvalue',
+        },
+      ])('$name', ({ path, params, result }) => {
+        expect(
+          interpolatePath({
+            path,
+            params,
+            server,
+          }).interpolatedPath,
+        ).toBe(result)
+      })
+    })
+
     describe('named params (prefix + suffix)', () => {
       it.each([
         {
