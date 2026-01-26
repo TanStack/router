@@ -26,7 +26,7 @@ This pattern relies exclusively on TanStack Router features. It is suitable when
 Optional path parameters are ideal for implementing locale-aware routing without duplicating routes.
 
 ```ts
-;/{-$locale}/abotu
+;/{-$locale}/about
 ```
 
 This single route matches:
