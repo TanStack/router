@@ -180,6 +180,10 @@
             {
               "label": "LLM Optimization (LLMO)",
               "to": "framework/react/guide/llmo"
+            },
+            {
+              "label": "Internationalization (i18n)",
+              "to": "framework/react/guide/internationalization-i18n"
             }
           ]
         },
