@@ -64,8 +64,8 @@ export const useTags = () => {
             // Skip invalid JSON-LD objects
           }
         } else {
-          // Deduplicate by name or property attribute
-          const key = m.name ?? m.property ?? ''
+          // Deduplicate
+          const key = `${m.name ?? m.property}\0${m.content}\0${m.media}`
           if (key) {
             if (seenMeta.has(key)) continue
             seenMeta.add(key)
@@ -112,8 +112,8 @@ export const useTags = () => {
         if (matchLinks) {
           for (const link of matchLinks) {
             if (!link) continue
-            // Deduplicate by rel:href before creating the object
-            const key = `${link.rel ?? ''}:${link.href ?? ''}`
+            // Deduplicate
+            const key = `${link.rel}\0${link.href}\0${link.media}\0${link.type}\0${link.as}`
             if (seen.has(key)) continue
             seen.add(key)
             result.push({
@@ -131,9 +131,10 @@ export const useTags = () => {
         if (assets) {
           for (const asset of assets) {
             if (asset.tag !== 'link') continue
-            // Deduplicate by rel:href before creating the object
             const attrs = asset.attrs
-            const key = `${attrs?.rel ?? ''}:${attrs?.href ?? ''}`
+            if (!attrs) continue
+            // Deduplicate
+            const key = `${attrs.rel}\0${attrs.href}\0${attrs.media}\0${attrs.type}\0${attrs.as}`
             if (seen.has(key)) continue
             seen.add(key)
             result.push({
@@ -198,9 +199,9 @@ export const useTags = () => {
 
         for (const style of matchStyles) {
           if (!style) continue
-          // Deduplicate by children (CSS content) before creating the object
+          // Deduplicate
           const { children, ...attrs } = style
-          const key = String(children ?? '')
+          const key = `${attrs.media}\0${children}`
           if (seen.has(key)) continue
           seen.add(key)
           result.push({
@@ -230,9 +231,9 @@ export const useTags = () => {
 
         for (const script of matchScripts) {
           if (!script) continue
-          // Deduplicate by src (external) or children (inline) before creating the object
+          // Deduplicate
           const { children, ...attrs } = script
-          const key = attrs.src ?? String(children ?? '')
+          const key = `${attrs.src}\0${attrs.type}\0${children}`
           if (seen.has(key)) continue
           seen.add(key)
           result.push({
@@ -260,16 +261,4 @@ export const useTags = () => {
     ...styles,
     ...headScripts,
   ] as Array<RouterManagedTag>
-}
-
-export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string): Array<T> {
-  const seen = new Set<string>()
-  const result: Array<T> = []
-  for (const item of arr) {
-    const key = fn(item)
-    if (seen.has(key)) continue
-    seen.add(key)
-    result.push(item)
-  }
-  return result
 }
