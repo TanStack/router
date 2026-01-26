@@ -706,12 +706,6 @@ describe('encoding/decoding: wildcard routes/params', () => {
 
     await router.load()
 
-    expect(
-      router.state.location.href.endsWith(
-        '/framework/react/guide/file-based-routing%20tanstack',
-      ),
-    ).toBe(true)
-
     expect(router.state.location.href).toBe(
       '/framework/react/guide/file-based-routing%20tanstack',
     )
