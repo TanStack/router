@@ -628,18 +628,33 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
 }
 
 /**
- * Encodes non-ASCII (unicode) characters in a path while preserving
- * already percent-encoded sequences. This is used to generate proper
- * href values without constructing URL objects.
+ * Encodes a path the same way `new URL()` would, but without the overhead of full URL parsing.
  *
- * Unlike encodeURI, this won't double-encode percent-encoded sequences
- * like %2F or %25 because it only targets non-ASCII characters.
+ * This function encodes:
+ * - Whitespace characters (spaces → %20, tabs → %09, etc.)
+ * - Non-ASCII/Unicode characters (emojis, accented characters, etc.)
+ *
+ * It preserves:
+ * - Already percent-encoded sequences (won't double-encode %2F, %25, etc.)
+ * - ASCII special characters valid in URL paths (@, $, &, +, etc.)
+ * - Forward slashes as path separators
+ *
+ * Used to generate proper href values for SSR without constructing URL objects.
+ *
+ * @example
+ * encodePathLikeUrl('/path/file name.pdf') // '/path/file%20name.pdf'
+ * encodePathLikeUrl('/path/日本語') // '/path/%E6%97%A5%E6%9C%AC%E8%AA%9E'
+ * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
  */
-export function encodeNonAscii(path: string): string {
+export function encodePathLikeUrl(path: string): string {
+  // Encode whitespace and non-ASCII characters that browsers encode in URLs
+
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
-  if (!/[^\u0000-\u007F]/.test(path)) return path
+  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
-  return path.replace(/[^\u0000-\u007F]/gu, encodeURIComponent)
+  return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
 }
 
 /**
