@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   decodePath,
   deepEqual,
-  encodeNonAscii,
+  encodePathLikeUrl,
   escapeHtml,
   isPlainArray,
   replaceEqualDeep,
@@ -1041,36 +1041,38 @@ describe('escapeHtml', () => {
   })
 })
 
-describe('encodeNonAscii', () => {
+describe('encodePathLikeUrl', () => {
   it('should return path unchanged if no non-ASCII characters', () => {
-    expect(encodeNonAscii('/foo/bar/baz')).toBe('/foo/bar/baz')
+    expect(encodePathLikeUrl('/foo/bar/baz')).toBe('/foo/bar/baz')
   })
 
   it('should encode non-ASCII characters', () => {
-    expect(encodeNonAscii('/path/caf\u00e9')).toBe('/path/caf%C3%A9')
+    expect(encodePathLikeUrl('/path/caf\u00e9')).toBe('/path/caf%C3%A9')
   })
 
   it('should encode unicode characters in path segments', () => {
-    expect(encodeNonAscii('/users/\u4e2d\u6587/profile')).toBe(
+    expect(encodePathLikeUrl('/users/\u4e2d\u6587/profile')).toBe(
       '/users/%E4%B8%AD%E6%96%87/profile',
     )
   })
 
   it('should encode spaces but preserve other ASCII special characters', () => {
-    // encodeNonAscii encodes whitespace and non-ASCII, but not other ASCII special chars
-    expect(encodeNonAscii('/path/file name.pdf')).toBe('/path/file%20name.pdf')
-    expect(encodeNonAscii('/path/file[1].pdf')).toBe('/path/file[1].pdf')
-    expect(encodeNonAscii('/path#section')).toBe('/path#section')
+    // encodePathLikeUrl encodes whitespace and non-ASCII, but not other ASCII special chars
+    expect(encodePathLikeUrl('/path/file name.pdf')).toBe(
+      '/path/file%20name.pdf',
+    )
+    expect(encodePathLikeUrl('/path/file[1].pdf')).toBe('/path/file[1].pdf')
+    expect(encodePathLikeUrl('/path#section')).toBe('/path#section')
   })
 
   it('should handle mixed ASCII and non-ASCII characters', () => {
-    expect(encodeNonAscii('/path/caf\u00e9 (copy).pdf')).toBe(
+    expect(encodePathLikeUrl('/path/caf\u00e9 (copy).pdf')).toBe(
       '/path/caf%C3%A9%20(copy).pdf',
     )
   })
 
   it('should handle emoji characters', () => {
-    expect(encodeNonAscii('/path/\u{1F600}/file')).toBe(
+    expect(encodePathLikeUrl('/path/\u{1F600}/file')).toBe(
       '/path/%F0%9F%98%80/file',
     )
   })

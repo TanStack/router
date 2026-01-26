@@ -6,7 +6,7 @@ import {
   createControlledPromise,
   decodePath,
   deepEqual,
-  encodeNonAscii,
+  encodePathLikeUrl,
   findLast,
   functionalUpdate,
   isDangerousProtocol,
@@ -1937,7 +1937,7 @@ export class RouterCore<
         // fullPath is already the correct href (origin-stripped)
         // We need to encode non-ASCII (unicode) characters for the href
         // since decodePath decoded them from the interpolated path
-        href = encodeNonAscii(fullPath)
+        href = encodePathLikeUrl(fullPath)
         publicHref = href
       }
 
