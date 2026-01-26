@@ -236,6 +236,29 @@ test('server function correctly passes context when using FormData', async ({
   expect(simpleResult.testString).toContain('context-from-middleware')
 })
 
+test('server function can short-circuit middleware with result({ headers })', async ({
+  page,
+}) => {
+  await page.goto('/middleware/server-early-return-headers')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('invoke-btn').click()
+
+  await expect(page.getByTestId('captured-response-headers')).not.toContainText(
+    'Not captured yet',
+    { timeout: 10000 },
+  )
+
+  const capturedHeaders = JSON.parse(
+    await page.getByTestId('captured-response-headers').innerText(),
+  )
+
+  expect(capturedHeaders['x-middleware-early-return']).toBe('true')
+  expect(capturedHeaders['x-middleware-early-return-value']).toBe('hello')
+
+  await expect(page.getByTestId('result-data')).toContainText('middleware')
+})
+
 test('server function can correctly send and receive headers', async ({
   page,
 }) => {
@@ -1042,6 +1065,272 @@ test('middleware can catch errors thrown by server function handlers', async ({
   await expect(page.getByTestId('transformed-error')).toContainText(
     'This error should be caught by middleware',
   )
+})
+
+// =============================================================================
+// Middleware Early Return Tests
+// These tests verify that middleware can return values without calling next()
+// =============================================================================
+
+test.describe('server middleware early return (no next() call)', () => {
+  test('middleware returns value instead of calling next()', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/server-early-return')
+    await page.waitForLoadState('networkidle')
+
+    // Check that loader result came from middleware, not handler
+    const loaderResult = await page.getByTestId('loader-result').textContent()
+    expect(loaderResult).toContain('middleware')
+    expect(loaderResult).toContain('Early return from server middleware')
+    expect(loaderResult).not.toContain('handler')
+
+    // Test client-side invocation
+    await page.getByTestId('invoke-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-result')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientResult = await page.getByTestId('client-result').textContent()
+    expect(clientResult).toContain('middleware')
+    expect(clientResult).toContain('Early return from server middleware')
+    expect(clientResult).not.toContain('handler')
+  })
+
+  test('middleware returns object with "method" property (tests Symbol-based detection)', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/server-early-return')
+    await page.waitForLoadState('networkidle')
+
+    // Check that loader result with method property came from middleware, not handler
+    // This tests that we use a Symbol to detect next() results, not duck-typing
+    const loaderResult = await page
+      .getByTestId('loader-result-method')
+      .textContent()
+    expect(loaderResult).toContain('middleware')
+    expect(loaderResult).toContain('Early return with method property')
+    expect(loaderResult).toContain('"method":"GET"')
+    expect(loaderResult).not.toContain('This should not be returned')
+
+    // Test client-side invocation
+    await page.getByTestId('invoke-btn-method').click()
+    await expect(page.getByTestId('client-result-method')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientResult = await page
+      .getByTestId('client-result-method')
+      .textContent()
+    expect(clientResult).toContain('middleware')
+    expect(clientResult).toContain('Early return with method property')
+    expect(clientResult).toContain('"method":"GET"')
+    expect(clientResult).not.toContain('This should not be returned')
+  })
+})
+
+test.describe('server middleware conditional return (next() OR value)', () => {
+  test('middleware returns early when condition is true', async ({ page }) => {
+    await page.goto('/middleware/server-conditional')
+    await page.waitForLoadState('networkidle')
+
+    // Check loader short-circuit result
+    const loaderShortCircuit = await page
+      .getByTestId('loader-short-circuit')
+      .textContent()
+    expect(loaderShortCircuit).toContain('middleware')
+    expect(loaderShortCircuit).toContain('Conditional early return')
+
+    // Test client-side short-circuit
+    await page.getByTestId('invoke-short-circuit-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-short-circuit')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientShortCircuit = await page
+      .getByTestId('client-short-circuit')
+      .textContent()
+    expect(clientShortCircuit).toContain('middleware')
+    expect(clientShortCircuit).toContain('Conditional early return')
+  })
+
+  test('middleware calls next() when condition is false', async ({ page }) => {
+    await page.goto('/middleware/server-conditional')
+    await page.waitForLoadState('networkidle')
+
+    // Check loader next result
+    const loaderNext = await page.getByTestId('loader-next').textContent()
+    expect(loaderNext).toContain('handler')
+    expect(loaderNext).toContain('Handler was called')
+
+    // Test client-side next() call
+    await page.getByTestId('invoke-next-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-next')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientNext = await page.getByTestId('client-next').textContent()
+    expect(clientNext).toContain('handler')
+    expect(clientNext).toContain('Handler was called')
+  })
+})
+
+test.describe('client middleware early return (no next() call)', () => {
+  test('client middleware returns value instead of calling next()', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/client-early-return')
+    await page.waitForLoadState('networkidle')
+
+    // Test client-side invocation - should return from client middleware
+    await page.getByTestId('invoke-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-result')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientResult = await page.getByTestId('client-result').textContent()
+    expect(clientResult).toContain('client-middleware')
+    expect(clientResult).toContain('Early return from client middleware')
+    expect(clientResult).not.toContain('handler')
+  })
+})
+
+test.describe('client middleware conditional return (next() OR value)', () => {
+  test('client middleware returns early when condition is true', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/client-conditional')
+    await page.waitForLoadState('networkidle')
+
+    // Test client-side short-circuit
+    await page.getByTestId('invoke-short-circuit-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-short-circuit')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientShortCircuit = await page
+      .getByTestId('client-short-circuit')
+      .textContent()
+    expect(clientShortCircuit).toContain('client-middleware')
+    expect(clientShortCircuit).toContain('Conditional early return')
+  })
+
+  test('client middleware calls next() when condition is false', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/client-conditional')
+    await page.waitForLoadState('networkidle')
+
+    // Test client-side next() call
+    await page.getByTestId('invoke-next-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-next')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientNext = await page.getByTestId('client-next').textContent()
+    expect(clientNext).toContain('handler')
+    expect(clientNext).toContain('Handler was called on server')
+  })
+})
+
+test.describe('nested middleware early return', () => {
+  test('deep middleware returns early', async ({ page }) => {
+    await page.goto('/middleware/nested-early-return')
+    await page.waitForLoadState('networkidle')
+
+    // Check loader result for deep early return
+    const loaderDeep = await page.getByTestId('loader-deep').textContent()
+    expect(loaderDeep).toContain('deepMiddleware')
+    expect(loaderDeep).toContain('Early return from deepest middleware')
+
+    // Test client-side invocation
+    await page.getByTestId('invoke-deep-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-deep')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientDeep = await page.getByTestId('client-deep').textContent()
+    expect(clientDeep).toContain('deepMiddleware')
+  })
+
+  test('middle middleware returns early', async ({ page }) => {
+    await page.goto('/middleware/nested-early-return')
+    await page.waitForLoadState('networkidle')
+
+    // Check loader result for middle early return
+    const loaderMiddle = await page.getByTestId('loader-middle').textContent()
+    expect(loaderMiddle).toContain('middleMiddleware')
+    expect(loaderMiddle).toContain('Early return from middle middleware')
+
+    // Test client-side invocation
+    await page.getByTestId('invoke-middle-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-middle')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientMiddle = await page.getByTestId('client-middle').textContent()
+    expect(clientMiddle).toContain('middleMiddleware')
+  })
+
+  test('outer middleware returns early', async ({ page }) => {
+    await page.goto('/middleware/nested-early-return')
+    await page.waitForLoadState('networkidle')
+
+    // Check loader result for outer early return
+    const loaderOuter = await page.getByTestId('loader-outer').textContent()
+    expect(loaderOuter).toContain('outerMiddleware')
+    expect(loaderOuter).toContain('Early return from outer middleware')
+
+    // Test client-side invocation
+    await page.getByTestId('invoke-outer-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-outer')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientOuter = await page.getByTestId('client-outer').textContent()
+    expect(clientOuter).toContain('outerMiddleware')
+  })
+
+  test('all middleware passes through to handler', async ({ page }) => {
+    await page.goto('/middleware/nested-early-return')
+    await page.waitForLoadState('networkidle')
+
+    // Check loader result for handler
+    const loaderHandler = await page.getByTestId('loader-handler').textContent()
+    expect(loaderHandler).toContain('handler')
+    expect(loaderHandler).toContain('Handler was called')
+
+    // Test client-side invocation
+    await page.getByTestId('invoke-handler-btn').click()
+    // Wait for the result to appear (not just networkidle)
+    await expect(page.getByTestId('client-handler')).not.toContainText(
+      'Not called yet',
+      { timeout: 10000 },
+    )
+
+    const clientHandler = await page.getByTestId('client-handler').textContent()
+    expect(clientHandler).toContain('handler')
+    expect(clientHandler).toContain('Handler was called')
+  })
 })
 
 test('server function with custom fetch implementation passed directly', async ({
