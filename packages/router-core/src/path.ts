@@ -250,7 +250,10 @@ function encodeParam(
     // the splat/catch-all routes shouldn't have the '/' encoded out
     // Use encodeURIComponent for each segment to properly encode spaces,
     // plus signs, and other special characters that encodeURI leaves unencoded
-    return value.split('/').map((segment) => encodeURIComponent(segment)).join('/')
+    return value
+      .split('/')
+      .map((segment) => encodePathParam(segment, decoder))
+      .join('/')
   } else {
     return encodePathParam(value, decoder)
   }
