@@ -32,7 +32,8 @@ export const Match = React.memo(function MatchImpl({
   const router = useRouter()
   const matchState = useRouterState({
     select: (s) => {
-      const match = s.matches.find((d) => d.id === matchId)
+      const matchIndex = s.matches.findIndex((d) => d.id === matchId)
+      const match = s.matches[matchIndex]
       invariant(
         match,
         `Could not find match for matchId "${matchId}". Please file an issue!`,
@@ -41,6 +42,8 @@ export const Match = React.memo(function MatchImpl({
         routeId: match.routeId,
         ssr: match.ssr,
         _displayPending: match._displayPending,
+        resetKey: s.loadedAt,
+        parentRouteId: s.matches[matchIndex - 1]?.routeId as string,
       }
     },
     structuralSharing: true as any,
@@ -83,17 +86,6 @@ export const Match = React.memo(function MatchImpl({
     ? CatchNotFound
     : SafeFragment
 
-  const resetKey = useRouterState({
-    select: (s) => s.loadedAt,
-  })
-
-  const parentRouteId = useRouterState({
-    select: (s) => {
-      const index = s.matches.findIndex((d) => d.id === matchId)
-      return s.matches[index - 1]?.routeId as string
-    },
-  })
-
   const ShellComponent = route.isRoot
     ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
     : SafeFragment
@@ -102,7 +94,7 @@ export const Match = React.memo(function MatchImpl({
       <matchContext.Provider value={matchId}>
         <ResolvedSuspenseBoundary fallback={pendingElement}>
           <ResolvedCatchBoundary
-            getResetKey={() => resetKey}
+            getResetKey={() => matchState.resetKey}
             errorComponent={routeErrorComponent || ErrorComponent}
             onCatch={(error, errorInfo) => {
               // Forward not found errors (we don't want to show the error component for these)
@@ -136,7 +128,8 @@ export const Match = React.memo(function MatchImpl({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {parentRouteId === rootRouteId && router.options.scrollRestoration ? (
+      {matchState.parentRouteId === rootRouteId &&
+      router.options.scrollRestoration ? (
         <>
           <OnRendered />
           <ScrollRestoration />
