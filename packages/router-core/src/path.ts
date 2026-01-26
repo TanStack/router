@@ -247,6 +247,8 @@ function encodeParam(
   if (typeof value !== 'string') return value
 
   if (key === '_splat') {
+    // Early return if value only contains URL-safe characters (performance optimization)
+    if (/^[a-zA-Z0-9\-._~!/]*$/.test(value)) return value
     // the splat/catch-all routes shouldn't have the '/' encoded out
     // Use encodeURIComponent for each segment to properly encode spaces,
     // plus signs, and other special characters that encodeURI leaves unencoded
