@@ -86,6 +86,8 @@ export default {
 }
 ```
 
+> **Important**: A custom `server.ts` entry point is required for Paraglide to work correctly. It handles locale detection from URLs, server-side rendering context. See the [Server Entry Point documentation](https://tanstack.com/start/latest/docs/framework/react/guide/server-entry-point) for setup instructions on different platforms, including Cloudflare Workers.
+
 In `__root.tsx` change the html lang attribute to the current locale.
 
 ```tsx
