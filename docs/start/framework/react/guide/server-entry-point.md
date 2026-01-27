@@ -143,3 +143,5 @@ export default {
 ```bash
 curl "http://localhost:5173/cdn-cgi/handler/scheduled?cron=*+*+*+*+*"
 ```
+
+For a comprehensive guide covering Durable Objects, Workflows, Service Bindings, and other Cloudflare-specific features, see the [Cloudflare Workers documentation for TanStack Start](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/#custom-entrypoints).
