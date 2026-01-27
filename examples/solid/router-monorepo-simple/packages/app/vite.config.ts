@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
 import solid from 'vite-plugin-solid'
+import tailwindcss from '@tailwindcss/vite'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -21,6 +22,7 @@ export default defineConfig({
     host: 'localhost',
   },
   plugins: [
+    tailwindcss(),
     dts({
       entryRoot: 'src',
       tsconfigPath: path.join(__dirname, 'tsconfig.json'),

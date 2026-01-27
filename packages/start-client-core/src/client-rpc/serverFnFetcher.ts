@@ -1,21 +1,47 @@
 import {
+  createRawStreamDeserializePlugin,
   encode,
   isNotFound,
-  isPlainObject,
   parseRedirect,
 } from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
+  TSS_CONTENT_TYPE_FRAMED,
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
+  validateFramedProtocolVersion,
 } from '../constants'
+import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
 let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
+
+/**
+ * Checks if an object has at least one own enumerable property.
+ * More efficient than Object.keys(obj).length > 0 as it short-circuits on first property.
+ */
+const hop = Object.prototype.hasOwnProperty
+function hasOwnProperties(obj: object): boolean {
+  for (const _ in obj) {
+    if (hop.call(obj, _)) {
+      return true
+    }
+  }
+  return false
+}
+// caller =>
+//   serverFnFetcher =>
+//     client =>
+//       server =>
+//         fn =>
+//       seroval =>
+//     client middleware =>
+//   serverFnFetcher =>
+// caller
 
 export async function serverFnFetcher(
   url: string,
@@ -27,80 +53,59 @@ export async function serverFnFetcher(
   }
   const _first = args[0]
 
-  // If createServerFn was used to wrap the fetcher,
-  // We need to handle the arguments differently
-  if (isPlainObject(_first) && _first.method) {
-    const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
-      headers: HeadersInit
-    }
-    const type = first.data instanceof FormData ? 'formData' : 'payload'
+  const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
+    headers?: HeadersInit
+  }
 
-    // Arrange the headers
-    const headers = new Headers({
-      'x-tsr-redirect': 'manual',
-      ...(first.headers instanceof Headers
-        ? Object.fromEntries(first.headers.entries())
-        : first.headers),
-    })
+  // Use custom fetch if provided, otherwise fall back to the passed handler (global fetch)
+  const fetchImpl = first.fetch ?? handler
 
-    if (type === 'payload') {
-      headers.set('accept', 'application/x-ndjson, application/json')
-    }
+  const type = first.data instanceof FormData ? 'formData' : 'payload'
 
-    // If the method is GET, we need to move the payload to the query string
-    if (first.method === 'GET') {
-      if (type === 'formData') {
-        throw new Error('FormData is not supported with GET requests')
-      }
-      const serializedPayload = await serializePayload(first)
-      if (serializedPayload !== undefined) {
-        const encodedPayload = encode({
-          payload: await serializePayload(first),
-        })
-        if (url.includes('?')) {
-          url += `&${encodedPayload}`
-        } else {
-          url += `?${encodedPayload}`
-        }
-      }
-    }
+  // Arrange the headers
+  const headers = first.headers ? new Headers(first.headers) : new Headers()
+  headers.set('x-tsr-serverFn', 'true')
 
-    if (url.includes('?')) {
-      url += `&createServerFn`
-    } else {
-      url += `?createServerFn`
-    }
-
-    let body = undefined
-    if (first.method === 'POST') {
-      const fetchBody = await getFetchBody(first)
-      if (fetchBody?.contentType) {
-        headers.set('content-type', fetchBody.contentType)
-      }
-      body = fetchBody?.body
-    }
-
-    return await getResponse(async () =>
-      handler(url, {
-        method: first.method,
-        headers,
-        signal: first.signal,
-        body,
-      }),
+  if (type === 'payload') {
+    headers.set(
+      'accept',
+      `${TSS_CONTENT_TYPE_FRAMED}, application/x-ndjson, application/json`,
     )
   }
 
-  // If not a custom fetcher, it was probably
-  // a `use server` function, so just proxy the arguments
-  // through as a POST request
-  return await getResponse(() =>
-    handler(url, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(args),
+  // If the method is GET, we need to move the payload to the query string
+  if (first.method === 'GET') {
+    if (type === 'formData') {
+      throw new Error('FormData is not supported with GET requests')
+    }
+    const serializedPayload = await serializePayload(first)
+    if (serializedPayload !== undefined) {
+      const encodedPayload = encode({
+        payload: serializedPayload,
+      })
+      if (url.includes('?')) {
+        url += `&${encodedPayload}`
+      } else {
+        url += `?${encodedPayload}`
+      }
+    }
+  }
+
+  let body = undefined
+  if (first.method === 'POST') {
+    const fetchBody = await getFetchBody(first)
+    if (fetchBody?.contentType) {
+      headers.set('content-type', fetchBody.contentType)
+    }
+    body = fetchBody?.body
+  }
+
+  return await getResponse(async () =>
+    fetchImpl(url, {
+      method: first.method,
+      headers,
+      signal: first.signal,
+      body,
     }),
   )
 }
@@ -116,7 +121,7 @@ async function serializePayload(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (opts.context && Object.keys(opts.context).length > 0) {
+  if (opts.context && hasOwnProperties(opts.context)) {
     payloadAvailable = true
     payloadToSerialize['context'] = opts.context
   }
@@ -139,7 +144,7 @@ async function getFetchBody(
   if (opts.data instanceof FormData) {
     let serializedContext = undefined
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (opts.context && Object.keys(opts.context).length > 0) {
+    if (opts.context && hasOwnProperties(opts.context)) {
       serializedContext = await serialize(opts.context)
     }
     if (serializedContext !== undefined) {
@@ -163,38 +168,60 @@ async function getFetchBody(
  * @throws If the response is invalid or an error occurs during processing.
  */
 async function getResponse(fn: () => Promise<Response>) {
-  const response = await (async () => {
-    try {
-      return await fn()
-    } catch (error) {
-      if (error instanceof Response) {
-        return error
-      }
+  let response: Response
+  try {
+    response = await fn() // client => server => fn => server => client
+  } catch (error) {
+    if (error instanceof Response) {
+      response = error
+    } else {
       console.log(error)
       throw error
     }
-  })()
+  }
 
   if (response.headers.get(X_TSS_RAW_RESPONSE) === 'true') {
     return response
   }
+
   const contentType = response.headers.get('content-type')
   invariant(contentType, 'expected content-type header to be set')
   const serializedByStart = !!response.headers.get(X_TSS_SERIALIZED)
-  // If the response is not ok, throw an error
-  if (!response.ok) {
-    if (serializedByStart && contentType.includes('application/json')) {
-      const jsonPayload = await response.json()
-      const result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
-      throw result
-    }
 
-    throw new Error(await response.text())
-  }
-
+  // If the response is serialized by the start server, we need to process it
+  // differently than a normal response.
   if (serializedByStart) {
     let result
-    if (contentType.includes('application/x-ndjson')) {
+
+    // If it's a framed response (contains RawStream), use frame decoder
+    if (contentType.includes(TSS_CONTENT_TYPE_FRAMED)) {
+      // Validate protocol version compatibility
+      validateFramedProtocolVersion(contentType)
+
+      if (!response.body) {
+        throw new Error('No response body for framed response')
+      }
+
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(
+        response.body,
+      )
+
+      // Create deserialize plugin that wires up the raw streams
+      const rawStreamPlugin =
+        createRawStreamDeserializePlugin(getOrCreateStream)
+      const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+
+      const refs = new Map()
+      result = await processFramedResponse({
+        jsonStream: jsonChunks,
+        onMessage: (msg: any) => fromCrossJSON(msg, { refs, plugins }),
+        onError(msg, error) {
+          console.error(msg, error)
+        },
+      })
+    }
+    // If it's a stream from the start serializer, process it as such
+    else if (contentType.includes('application/x-ndjson')) {
       const refs = new Map()
       result = await processServerFnResponse({
         response,
@@ -206,17 +233,22 @@ async function getResponse(fn: () => Promise<Response>) {
         },
       })
     }
-    if (contentType.includes('application/json')) {
+    // If it's a JSON response, it can be simpler
+    else if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
       result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
     }
+
     invariant(result, 'expected result to be resolved')
     if (result instanceof Error) {
       throw result
     }
+
     return result
   }
 
+  // If it wasn't processed by the start serializer, check
+  // if it's JSON
   if (contentType.includes('application/json')) {
     const jsonPayload = await response.json()
     const redirect = parseRedirect(jsonPayload)
@@ -229,6 +261,12 @@ async function getResponse(fn: () => Promise<Response>) {
     return jsonPayload
   }
 
+  // Otherwise, if it's not OK, throw the content
+  if (!response.ok) {
+    throw new Error(await response.text())
+  }
+
+  // Or return the response itself
   return response
 }
 
@@ -306,6 +344,53 @@ async function processServerFnResponse({
 
         if (done) {
           break
+        }
+      }
+    } catch (err) {
+      onError?.('Stream processing error:', err)
+    }
+  })()
+
+  return onMessage(firstObject)
+}
+
+/**
+ * Processes a framed response where each JSON chunk is a complete JSON string
+ * (already decoded by frame decoder).
+ */
+async function processFramedResponse({
+  jsonStream,
+  onMessage,
+  onError,
+}: {
+  jsonStream: ReadableStream<string>
+  onMessage: (msg: any) => any
+  onError?: (msg: string, error?: any) => void
+}) {
+  const reader = jsonStream.getReader()
+
+  // Read first JSON frame - this is the main result
+  const { value: firstValue, done: firstDone } = await reader.read()
+  if (firstDone || !firstValue) {
+    throw new Error('Stream ended before first object')
+  }
+
+  // Each frame is a complete JSON string
+  const firstObject = JSON.parse(firstValue)
+
+  // Process remaining frames asynchronously (for streaming refs like RawStream)
+  ;(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        if (value) {
+          try {
+            onMessage(JSON.parse(value))
+          } catch (e) {
+            onError?.(`Invalid JSON: ${value}`, e)
+          }
         }
       }
     } catch (err) {

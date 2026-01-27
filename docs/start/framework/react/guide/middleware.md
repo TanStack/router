@@ -398,9 +398,12 @@ const requestLogger = createMiddleware({ type: 'function' })
 
 Global middleware runs automatically for every request in your application. This is useful for functionality like authentication, logging, and monitoring that should apply to all requests.
 
+> [!NOTE]
+> The `src/start.ts` file is not included in the default TanStack Start template. You'll need to create this file when you want to configure global middleware or other Start-level options.
+
 ### Global Request Middleware
 
-To have a middleware run for **every request handled by Start**, you can create a middleware and return it as `requestMiddleware` in the `createStart` function in your `src/start.ts` file:
+To have a middleware run for **every request handled by Start**, create a `src/start.ts` file and use the `createStart` function to return your middleware configuration:
 
 ```tsx
 // src/start.ts
@@ -422,7 +425,7 @@ export const startInstance = createStart(() => {
 
 ### Global Server Function Middleware
 
-To have a middleware run for **every server function in your application**, you can create a middleware and return it to the `createStart` function as `functionMiddleware` in your `src/start.ts` file:
+To have a middleware run for **every server function in your application**, add it to the `functionMiddleware` array in your `src/start.ts` file:
 
 ```tsx
 // src/start.ts
@@ -434,23 +437,6 @@ export const startInstance = createStart(() => {
     functionMiddleware: [loggingMiddleware],
   }
 })
-```
-
-### Global Middleware Type Safety
-
-Global middleware types are inherently **detached** from server functions themselves. This means that if a global middleware supplies additional context to server functions or other server function specific middleware, the types will not be automatically passed through to the server function or other server function specific middleware.
-
-To solve this, add the global middleware you are trying to reference to the server function's middleware array. **The global middleware will be deduped to a single entry (the global instance), and your server function will receive the correct types.**
-
-```tsx
-import { authMiddleware } from './authMiddleware'
-
-const fn = createServerFn()
-  .middleware([authMiddleware])
-  .handler(async ({ context }) => {
-    console.log(context.user) // <-- Now this will be typed!
-    // ...
-  })
 ```
 
 ### Middleware Execution Order
@@ -520,11 +506,11 @@ Middleware that uses the `server` method executes in the same context as server 
 
 ### Modifying the Client Request
 
-Middleware that uses the `client` method executes in a **completely different client-side context** than server functions, so you can't use the same utilities to read and modify the request. However, you can still modify the request returning additional properties when calling the `next` function. Currently supported properties are:
+Middleware that uses the `client` method executes in a **completely different client-side context** than server functions, so you can't use the same utilities to read and modify the request. However, you can still modify the request by returning additional properties when calling the `next` function.
 
-- `headers`: An object containing headers to be added to the request.
+#### Setting Custom Headers
 
-Here's an example of adding an `Authorization` header any request using this middleware:
+You can add headers to the outgoing request by passing a `headers` object to `next`:
 
 ```tsx
 import { getToken } from 'my-auth-library'
@@ -539,6 +525,211 @@ const authMiddleware = createMiddleware({ type: 'function' }).client(
   },
 )
 ```
+
+#### Header Merging Across Middleware
+
+When multiple middlewares set headers, they are **merged together**. Later middlewares can add new headers or override headers set by earlier middlewares:
+
+```tsx
+const firstMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    return next({
+      headers: {
+        'X-Request-ID': '12345',
+        'X-Source': 'first-middleware',
+      },
+    })
+  },
+)
+
+const secondMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    return next({
+      headers: {
+        'X-Timestamp': Date.now().toString(),
+        'X-Source': 'second-middleware', // Overrides first middleware
+      },
+    })
+  },
+)
+
+// Final headers will include:
+// - X-Request-ID: '12345' (from first)
+// - X-Timestamp: '<timestamp>' (from second)
+// - X-Source: 'second-middleware' (second overrides first)
+```
+
+You can also set headers directly at the call site:
+
+```tsx
+await myServerFn({
+  data: { name: 'John' },
+  headers: {
+    'X-Custom-Header': 'call-site-value',
+  },
+})
+```
+
+**Header precedence (all headers are merged, later values override earlier):**
+
+1. Earlier middleware headers
+2. Later middleware headers (override earlier)
+3. Call-site headers (override all middleware headers)
+
+#### Custom Fetch Implementation
+
+For advanced use cases, you can provide a custom `fetch` implementation to control how server function requests are made. This is useful for:
+
+- Adding request interceptors or retry logic
+- Using a custom HTTP client
+- Testing and mocking
+- Adding telemetry or monitoring
+
+**Via Client Middleware:**
+
+```tsx
+import type { CustomFetch } from '@tanstack/react-start'
+
+const customFetchMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    const customFetch: CustomFetch = async (url, init) => {
+      console.log('Request starting:', url)
+      const start = Date.now()
+
+      const response = await fetch(url, init)
+
+      console.log('Request completed in', Date.now() - start, 'ms')
+      return response
+    }
+
+    return next({ fetch: customFetch })
+  },
+)
+```
+
+**Directly at Call Site:**
+
+```tsx
+import type { CustomFetch } from '@tanstack/react-start'
+
+const myFetch: CustomFetch = async (url, init) => {
+  // Add custom logic here
+  return fetch(url, init)
+}
+
+await myServerFn({
+  data: { name: 'John' },
+  fetch: myFetch,
+})
+```
+
+#### Fetch Override Precedence
+
+When custom fetch implementations are provided at multiple levels, the following precedence applies (highest to lowest priority):
+
+| Priority    | Source             | Description                                          |
+| ----------- | ------------------ | ---------------------------------------------------- |
+| 1 (highest) | Call site          | `serverFn({ fetch: customFetch })`                   |
+| 2           | Later middleware   | Last middleware in chain that provides `fetch`       |
+| 3           | Earlier middleware | First middleware in chain that provides `fetch`      |
+| 4           | createStart        | `createStart({ serverFns: { fetch: customFetch } })` |
+| 5 (lowest)  | Default            | Global `fetch` function                              |
+
+**Key principle:** The call site always wins. This allows you to override middleware behavior for specific calls when needed.
+
+```tsx
+// Middleware sets a fetch that adds logging
+const loggingMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    const loggingFetch: CustomFetch = async (url, init) => {
+      console.log('Middleware fetch:', url)
+      return fetch(url, init)
+    }
+    return next({ fetch: loggingFetch })
+  },
+)
+
+const myServerFn = createServerFn()
+  .middleware([loggingMiddleware])
+  .handler(async () => {
+    return { message: 'Hello' }
+  })
+
+// Uses middleware's loggingFetch
+await myServerFn()
+
+// Override with custom fetch for this specific call
+const testFetch: CustomFetch = async (url, init) => {
+  console.log('Test fetch:', url)
+  return fetch(url, init)
+}
+await myServerFn({ fetch: testFetch }) // Uses testFetch, NOT loggingFetch
+```
+
+**Chained Middleware Example:**
+
+When multiple middlewares provide fetch, the last one wins:
+
+```tsx
+const firstMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    const firstFetch: CustomFetch = (url, init) => {
+      const headers = new Headers(init?.headers)
+      headers.set('X-From', 'first-middleware')
+      return fetch(url, { ...init, headers })
+    }
+    return next({ fetch: firstFetch })
+  },
+)
+
+const secondMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    const secondFetch: CustomFetch = (url, init) => {
+      const headers = new Headers(init?.headers)
+      headers.set('X-From', 'second-middleware')
+      return fetch(url, { ...init, headers })
+    }
+    return next({ fetch: secondFetch })
+  },
+)
+
+const myServerFn = createServerFn()
+  .middleware([firstMiddleware, secondMiddleware])
+  .handler(async () => {
+    // Request will have X-From: 'second-middleware'
+    // because secondMiddleware's fetch overrides firstMiddleware's fetch
+    return { message: 'Hello' }
+  })
+```
+
+**Global Fetch via createStart:**
+
+You can set a default custom fetch for all server functions in your application by providing `serverFns.fetch` in `createStart`. This is useful for adding global request interceptors, retry logic, or telemetry:
+
+```tsx
+// src/start.ts
+import { createStart } from '@tanstack/react-start'
+import type { CustomFetch } from '@tanstack/react-start'
+
+const globalFetch: CustomFetch = async (url, init) => {
+  console.log('Global fetch:', url)
+  // Add retry logic, telemetry, etc.
+  return fetch(url, init)
+}
+
+export const startInstance = createStart(() => {
+  return {
+    serverFns: {
+      fetch: globalFetch,
+    },
+  }
+})
+```
+
+This global fetch has lower priority than middleware and call-site fetch, so you can still override it for specific server functions or calls when needed.
+
+> [!NOTE]
+> Custom fetch only applies on the client side. During SSR, server functions are called directly without going through fetch.
 
 ## Environment and Performance
 

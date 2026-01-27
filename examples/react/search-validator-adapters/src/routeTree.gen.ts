@@ -39,9 +39,9 @@ const UsersArktypeIndexRoute = UsersArktypeIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/users/arktype': typeof UsersArktypeIndexRoute
-  '/users/valibot': typeof UsersValibotIndexRoute
-  '/users/zod': typeof UsersZodIndexRoute
+  '/users/arktype/': typeof UsersArktypeIndexRoute
+  '/users/valibot/': typeof UsersValibotIndexRoute
+  '/users/zod/': typeof UsersZodIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -58,7 +58,7 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
+  fullPaths: '/' | '/users/arktype/' | '/users/valibot/' | '/users/zod/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
   id: '__root__' | '/' | '/users/arktype/' | '/users/valibot/' | '/users/zod/'
@@ -83,21 +83,21 @@ declare module '@tanstack/react-router' {
     '/users/zod/': {
       id: '/users/zod/'
       path: '/users/zod'
-      fullPath: '/users/zod'
+      fullPath: '/users/zod/'
       preLoaderRoute: typeof UsersZodIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/users/valibot/': {
       id: '/users/valibot/'
       path: '/users/valibot'
-      fullPath: '/users/valibot'
+      fullPath: '/users/valibot/'
       preLoaderRoute: typeof UsersValibotIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/users/arktype/': {
       id: '/users/arktype/'
       path: '/users/arktype'
-      fullPath: '/users/arktype'
+      fullPath: '/users/arktype/'
       preLoaderRoute: typeof UsersArktypeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }

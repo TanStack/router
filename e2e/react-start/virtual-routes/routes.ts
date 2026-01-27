@@ -21,4 +21,5 @@ export const routes = rootRoute('root.tsx', [
     ]),
   ]),
   physical('/classic', 'file-based-subtree'),
+  route('/special|pipe', 'pipe.tsx'),
 ])

@@ -20,6 +20,7 @@ import {
   createRouteNodesByFullPath,
   createRouteNodesById,
   createRouteNodesByTo,
+  createTokenRegex,
   determineNodePath,
   findParent,
   format,
@@ -28,19 +29,21 @@ import {
   getResolvedRouteNodeVariableName,
   hasParentRoute,
   isRouteNodeValidForAugmentation,
+  isSegmentPathless,
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
   removeGroups,
   removeLastSegmentFromPath,
-  removeLayoutSegments,
+  removeLayoutSegmentsWithEscape,
   removeTrailingSlash,
-  removeUnderscores,
+  removeUnderscoresWithEscape,
   replaceBackslash,
   trimPathLeft,
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
 import { transform } from './transform/transform'
+import { validateRouteParams } from './validate-route-params'
 import type { GeneratorPlugin } from './plugin/types'
 import type { TargetTemplate } from './template'
 import type {
@@ -190,8 +193,26 @@ export class Generator {
   private static routeGroupPatternRegex = /\(.+\)/
   private physicalDirectories: Array<string> = []
 
-  private indexTokenRegex: RegExp
-  private routeTokenRegex: RegExp
+  /**
+   * Token regexes are pre-compiled once here and reused throughout route processing.
+   * We need TWO types of regex for each token because they match against different inputs:
+   *
+   * 1. FILENAME regexes: Match token patterns within full file path strings.
+   *    Example: For file "routes/dashboard.index.tsx", we want to detect ".index."
+   *    Pattern: `[./](?:token)[.]` - matches token bounded by path separators/dots
+   *    Used in: sorting route nodes by file path
+   *
+   * 2. SEGMENT regexes: Match token against a single logical route segment.
+   *    Example: For segment "index" (extracted from path), match the whole segment
+   *    Pattern: `^(?:token)$` - matches entire segment exactly
+   *    Used in: route parsing, determining route types, escape detection
+   *
+   * We cannot reuse one for the other without false positives or missing matches.
+   */
+  private indexTokenFilenameRegex: RegExp
+  private routeTokenFilenameRegex: RegExp
+  private indexTokenSegmentRegex: RegExp
+  private routeTokenSegmentRegex: RegExp
   private static componentPieceRegex =
     /[./](component|errorComponent|notFoundComponent|pendingComponent|loader|lazy)[.]/
 
@@ -206,8 +227,19 @@ export class Generator {
     this.routesDirectoryPath = this.getRoutesDirectoryPath()
     this.plugins.push(...(opts.config.plugins || []))
 
-    this.indexTokenRegex = new RegExp(`[./]${this.config.indexToken}[.]`)
-    this.routeTokenRegex = new RegExp(`[./]${this.config.routeToken}[.]`)
+    // Create all token regexes once in constructor
+    this.indexTokenFilenameRegex = createTokenRegex(this.config.indexToken, {
+      type: 'filename',
+    })
+    this.routeTokenFilenameRegex = createTokenRegex(this.config.routeToken, {
+      type: 'filename',
+    })
+    this.indexTokenSegmentRegex = createTokenRegex(this.config.indexToken, {
+      type: 'segment',
+    })
+    this.routeTokenSegmentRegex = createTokenRegex(this.config.routeToken, {
+      type: 'segment',
+    })
 
     for (const plugin of this.plugins) {
       plugin.init?.({ generator: this })
@@ -329,9 +361,19 @@ export class Generator {
     let getRouteNodesResult: GetRouteNodesResult
 
     if (this.config.virtualRouteConfig) {
-      getRouteNodesResult = await virtualGetRouteNodes(this.config, this.root)
+      getRouteNodesResult = await virtualGetRouteNodes(this.config, this.root, {
+        indexTokenSegmentRegex: this.indexTokenSegmentRegex,
+        routeTokenSegmentRegex: this.routeTokenSegmentRegex,
+      })
     } else {
-      getRouteNodesResult = await physicalGetRouteNodes(this.config, this.root)
+      getRouteNodesResult = await physicalGetRouteNodes(
+        this.config,
+        this.root,
+        {
+          indexTokenSegmentRegex: this.indexTokenSegmentRegex,
+          routeTokenSegmentRegex: this.routeTokenSegmentRegex,
+        },
+      )
     }
 
     const {
@@ -353,9 +395,9 @@ export class Generator {
     const preRouteNodes = multiSortBy(beforeRouteNodes, [
       (d) => (d.routePath === '/' ? -1 : 1),
       (d) => d.routePath?.split('/').length,
-      (d) => (d.filePath.match(this.indexTokenRegex) ? 1 : -1),
+      (d) => (d.filePath.match(this.indexTokenFilenameRegex) ? 1 : -1),
       (d) => (d.filePath.match(Generator.componentPieceRegex) ? 1 : -1),
-      (d) => (d.filePath.match(this.routeTokenRegex) ? -1 : 1),
+      (d) => (d.filePath.match(this.routeTokenFilenameRegex) ? -1 : 1),
       (d) => (d.routePath?.endsWith('/') ? -1 : 1),
       (d) => d.routePath,
     ]).filter((d) => {
@@ -540,10 +582,20 @@ export class Generator {
 
     const { rootRouteNode, acc } = opts
 
+    // Use pre-compiled regex if config hasn't been overridden, otherwise create new one
+    const indexTokenSegmentRegex =
+      config.indexToken === this.config.indexToken
+        ? this.indexTokenSegmentRegex
+        : createTokenRegex(config.indexToken, { type: 'segment' })
+
     const sortedRouteNodes = multiSortBy(acc.routeNodes, [
       (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
       (d) => d.routePath?.split('/').length,
-      (d) => (d.routePath?.endsWith(config.indexToken) ? -1 : 1),
+      (d) => {
+        const segments = d.routePath?.split('/').filter(Boolean) ?? []
+        const last = segments[segments.length - 1] ?? ''
+        return indexTokenSegmentRegex.test(last) ? -1 : 1
+      },
       (d) => d,
     ])
 
@@ -1005,6 +1057,10 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       throw new Error(`⚠️ File ${node.fullPath} does not exist`)
     }
 
+    if (node.routePath) {
+      validateRouteParams(node.routePath, node.filePath, this.logger)
+    }
+
     const updatedCacheEntry: RouteNodeCacheEntry = {
       fileContent: existingRouteFile.fileContent,
       mtimeMs: existingRouteFile.stat.mtimeMs,
@@ -1089,9 +1145,22 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       })
 
       if (transformResult.result === 'no-route-export') {
-        this.logger.warn(
-          `Route file "${node.fullPath}" does not contain any route piece. This is likely a mistake.`,
-        )
+        const fileName = path.basename(node.fullPath)
+        const dirName = path.dirname(node.fullPath)
+        const ignorePrefix = this.config.routeFileIgnorePrefix
+        const ignorePattern = this.config.routeFileIgnorePattern
+        const suggestedFileName = `${ignorePrefix}${fileName}`
+        const suggestedFullPath = path.join(dirName, suggestedFileName)
+
+        let message = `Warning: Route file "${node.fullPath}" does not export a Route. This file will not be included in the route tree.`
+        message += `\n\nIf this file is not intended to be a route, you can exclude it using one of these options:`
+        message += `\n  1. Rename the file to "${suggestedFullPath}" (prefix with "${ignorePrefix}")`
+        message += `\n  2. Use 'routeFileIgnorePattern' in your config to match this file`
+        message += `\n\nCurrent configuration:`
+        message += `\n  routeFileIgnorePrefix: "${ignorePrefix}"`
+        message += `\n  routeFileIgnorePattern: ${ignorePattern ? `"${ignorePattern}"` : 'undefined'}`
+
+        this.logger.warn(message)
         return null
       }
       if (transformResult.result === 'error') {
@@ -1356,23 +1425,83 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     prefixMap: RoutePrefixMap,
     config?: Config,
   ) {
-    const parentRoute = hasParentRoute(prefixMap, node, node.routePath)
+    let parentRoute = hasParentRoute(prefixMap, node, node.routePath)
+
+    // Check routeNodesByPath for a closer parent that may not be in prefixMap.
+    //
+    // Why: The prefixMap excludes lazy routes by design. When lazy-only routes are
+    // nested inside a pathless layout, the virtual route created from the lazy file
+    // won't be in the prefixMap, but it will be in routeNodesByPath.
+    //
+    // Example: Given files _layout/path.lazy.tsx and _layout/path.index.lazy.tsx:
+    //   - prefixMap contains: /_layout (from route.tsx)
+    //   - routeNodesByPath contains: /_layout AND /_layout/path (virtual from lazy)
+    //   - For /_layout/path/, hasParentRoute returns /_layout (wrong)
+    //   - But the correct parent is /_layout/path (the virtual route from path.lazy.tsx)
+    //
+    // Optimization: Only search if we might find a closer parent. The search walks
+    // up from the immediate parent path, so if the first candidate matches what
+    // prefixMap found, there's no closer parent to find.
+    if (node.routePath) {
+      const lastSlash = node.routePath.lastIndexOf('/')
+      if (lastSlash > 0) {
+        const immediateParentPath = node.routePath.substring(0, lastSlash)
+        const candidate = acc.routeNodesByPath.get(immediateParentPath)
+        if (
+          candidate &&
+          candidate.routePath !== node.routePath &&
+          candidate !== parentRoute
+        ) {
+          // Found a closer parent in routeNodesByPath that differs from prefixMap result
+          parentRoute = candidate
+        }
+      }
+    }
+
+    // Virtual routes may have an explicit parent from virtual config.
+    // If we can find that exact parent, use it to prevent auto-nesting siblings
+    // based on path prefix matching. If the explicit parent is not found (e.g.,
+    // it was a virtual file-less route that got filtered out), keep using the
+    // path-based parent we already computed above.
+    if (node._virtualParentRoutePath !== undefined) {
+      const explicitParent =
+        acc.routeNodesByPath.get(node._virtualParentRoutePath) ??
+        prefixMap.get(node._virtualParentRoutePath)
+      if (explicitParent) {
+        parentRoute = explicitParent
+      }
+      // If not found, parentRoute stays as the path-based result (fallback)
+    }
 
     if (parentRoute) node.parent = parentRoute
 
     node.path = determineNodePath(node)
 
     const trimmedPath = trimPathLeft(node.path ?? '')
+    const trimmedOriginalPath = trimPathLeft(
+      node.originalRoutePath?.replace(
+        node.parent?.originalRoutePath ?? '',
+        '',
+      ) ?? '',
+    )
 
     const split = trimmedPath.split('/')
+    const originalSplit = trimmedOriginalPath.split('/')
     const lastRouteSegment = split[split.length - 1] ?? trimmedPath
+    const lastOriginalSegment =
+      originalSplit[originalSplit.length - 1] ?? trimmedOriginalPath
 
+    // A segment is non-path if it starts with underscore AND the underscore is not escaped
     node.isNonPath =
-      lastRouteSegment.startsWith('_') ||
+      isSegmentPathless(lastRouteSegment, lastOriginalSegment) ||
       split.every((part) => this.routeGroupPatternRegex.test(part))
 
+    // Use escape-aware functions to compute cleanedPath
     node.cleanedPath = removeGroups(
-      removeUnderscores(removeLayoutSegments(node.path)) ?? '',
+      removeUnderscoresWithEscape(
+        removeLayoutSegmentsWithEscape(node.path, node.originalRoutePath),
+        node.originalRoutePath,
+      ),
     )
 
     if (
@@ -1431,6 +1560,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     if (!node.isVirtual && isPathlessLayoutWithPath) {
       const immediateParentPath =
         removeLastSegmentFromPath(node.routePath) || '/'
+      const immediateParentOriginalPath =
+        removeLastSegmentFromPath(node.originalRoutePath) || '/'
       let searchPath = immediateParentPath
 
       // Find nearest real (non-virtual, non-index) parent
@@ -1442,8 +1573,19 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
             node.routePath?.replace(candidate.routePath ?? '', '') || '/'
           const pathRelativeToParent =
             immediateParentPath.replace(candidate.routePath ?? '', '') || '/'
+          const originalPathRelativeToParent =
+            immediateParentOriginalPath.replace(
+              candidate.originalRoutePath ?? '',
+              '',
+            ) || '/'
           node.cleanedPath = removeGroups(
-            removeUnderscores(removeLayoutSegments(pathRelativeToParent)) ?? '',
+            removeUnderscoresWithEscape(
+              removeLayoutSegmentsWithEscape(
+                pathRelativeToParent,
+                originalPathRelativeToParent,
+              ),
+              originalPathRelativeToParent,
+            ),
           )
           break
         }
@@ -1461,7 +1603,11 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     }
 
     acc.routeNodes.push(node)
-    if (node.routePath && !node.isVirtual) {
+    if (node.routePath) {
+      // Always register routes by path so child routes can find parents.
+      // Virtual routes (created from lazy-only files) also need to be registered
+      // so that index routes like path.index.lazy.tsx can find their parent path.lazy.tsx.
+      // If a non-virtual route is later processed for the same path, it will overwrite.
       acc.routeNodesByPath.set(node.routePath, node)
     }
   }

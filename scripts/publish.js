@@ -97,14 +97,6 @@ await publish({
       packageDir: 'packages/router-vite-plugin',
     },
     {
-      name: '@tanstack/directive-functions-plugin',
-      packageDir: 'packages/directive-functions-plugin',
-    },
-    {
-      name: '@tanstack/server-functions-plugin',
-      packageDir: 'packages/server-functions-plugin',
-    },
-    {
       name: '@tanstack/eslint-plugin-router',
       packageDir: 'packages/eslint-plugin-router',
     },
@@ -143,6 +135,10 @@ await publish({
     {
       name: '@tanstack/start-storage-context',
       packageDir: 'packages/start-storage-context',
+    },
+    {
+      name: '@tanstack/start-fn-stubs',
+      packageDir: 'packages/start-fn-stubs',
     },
     {
       name: '@tanstack/react-start',

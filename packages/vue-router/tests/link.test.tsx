@@ -2068,8 +2068,14 @@ describe('Link', () => {
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
-      path: '$postId/',
+      path: '$postId',
       component: PostComponent,
+    })
+
+    const postIndexRoute = createRoute({
+      getParentRoute: () => postRoute,
+      path: '/',
+      component: () => <div>Post Index</div>,
     })
 
     const DetailsComponent = () => {
@@ -2104,7 +2110,11 @@ describe('Link', () => {
         indexRoute,
         layoutRoute.addChildren([
           postsRoute.addChildren([
-            postRoute.addChildren([detailsRoute, informationRoute]),
+            postRoute.addChildren([
+              postIndexRoute,
+              detailsRoute,
+              informationRoute,
+            ]),
           ]),
         ]),
       ]),
@@ -6532,8 +6542,8 @@ describe('encoded and unicode paths', () => {
       name: 'with prefix',
       path: '/foo/prefix@대{$}',
       expectedPath:
-        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]',
-      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀@]',
+        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]',
+      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀%40]',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',
@@ -6543,8 +6553,8 @@ describe('encoded and unicode paths', () => {
       name: 'with suffix',
       path: '/foo/{$}대suffix@',
       expectedPath:
-        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]%EB%8C%80suffix@',
-      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀@]대suffix@',
+        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]%EB%8C%80suffix@',
+      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀%40]대suffix@',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',

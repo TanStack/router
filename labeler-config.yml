@@ -1,9 +1,6 @@
 'package: arktype-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/arktype-adapter/**/*'
-'package: directive-functions-plugin':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/directive-functions-plugin/**/*'
 'package: eslint-plugin-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/eslint-plugin-router/**/*'
@@ -58,9 +55,6 @@
 'package: router-vite-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-vite-plugin/**/*'
-'package: server-functions-plugin':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/server-functions-plugin/**/*'
 'package: solid-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-router/**/*'
@@ -82,6 +76,9 @@
 'package: start-client-core':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-client-core/**/*'
+'package: start-fn-stubs':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/start-fn-stubs/**/*'
 'package: start-plugin-core':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-plugin-core/**/*'

@@ -155,7 +155,7 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
           from,
           processedTree,
         )
-        const result = match ? match.params : undefined
+        const result = match ? match.rawParams : undefined
         if (options.to && !result) return
         return result ?? {}
       }

@@ -14,7 +14,7 @@ function Page() {
       </h1>
       <p data-testid="landing-page-version">version: {params.value.version}</p>
       <p>
-        <Link aria-label="Documentation" from="/$project/$version" to="./docs">
+        <Link aria-label="Documentation" from="/$project/$version/" to="./docs">
           Get started with our documentation.
         </Link>
       </p>

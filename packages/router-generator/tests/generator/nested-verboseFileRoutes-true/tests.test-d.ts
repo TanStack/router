@@ -10,9 +10,10 @@ import {
   useRouteContext,
   useSearch,
 } from '@tanstack/react-router'
+import type { FileRoutesByPath, MakeRouteMatch } from '@tanstack/react-router'
 import { expectTypeOf, test } from 'vitest'
 import { routeTree } from './routeTree.gen'
-import type { MakeRouteMatch } from '@tanstack/react-router'
+import type { FileRouteTypes } from './routeTree.gen'
 
 const defaultRouter = createRouter({
   routeTree,
@@ -36,6 +37,29 @@ const preserveTrailingSlashRouter = createRouter({
 })
 
 test('when navigating to the root', () => {
+  // Issue #4892: Pathless layout routes should have fullPath: '/' not ''
+  expectTypeOf<FileRoutesByPath['/']['fullPath']>().toEqualTypeOf<'/'>()
+  expectTypeOf<
+    FileRoutesByPath['/posts/']['fullPath']
+  >().toEqualTypeOf<'/posts/'>()
+  // Issue #6403: Index routes should have trailing slash in fullPath to match runtime
+  expectTypeOf<
+    FileRoutesByPath['/posts/$postId/']['fullPath']
+  >().toEqualTypeOf<'/posts/$postId/'>()
+  expectTypeOf<
+    FileRoutesByPath['/blog/']['fullPath']
+  >().toEqualTypeOf<'/blog/'>()
+  // Verify empty string is not in fullPaths union
+  expectTypeOf<''>().not.toMatchTypeOf<FileRouteTypes['fullPaths']>()
+  // Verify pathless layout's fullPath is '/' (not '')
+  expectTypeOf<
+    FileRoutesByPath['/_pathlessLayout']['fullPath']
+  >().toEqualTypeOf<'/'>()
+  // Child of pathless layout should have correct fullPath
+  expectTypeOf<
+    FileRoutesByPath['/_pathlessLayout/settings']['fullPath']
+  >().toEqualTypeOf<'/settings'>()
+
   expectTypeOf(Link<typeof defaultRouter, '/', '/'>)
     .parameter(0)
     .toHaveProperty('to')
@@ -51,6 +75,7 @@ test('when navigating to the root', () => {
       | '/blog/stats'
       | '/posts/$postId/deep'
       | '/posts/$postId'
+      | '/settings'
       | undefined
     >()
 
@@ -69,6 +94,7 @@ test('when navigating to the root', () => {
       | '/blog/stats/'
       | '/posts/$postId/deep/'
       | '/posts/$postId/'
+      | '/settings/'
       | undefined
     >()
 
@@ -87,6 +113,7 @@ test('when navigating to the root', () => {
       | '/blog/stats'
       | '/posts/$postId/deep'
       | '/posts/$postId'
+      | '/settings'
       | undefined
     >()
 
@@ -115,6 +142,8 @@ test('when navigating to the root', () => {
       | '/blog/stats/'
       | '/posts/$postId/deep/'
       | '/posts/$postId/'
+      | '/settings/'
+      | '/settings'
       | undefined
     >()
 
@@ -134,7 +163,8 @@ test('when navigating to the root', () => {
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
-      | '/posts/$postId'
+      | '/posts/$postId/'
+      | '/settings'
       | undefined
     >()
 
@@ -181,6 +211,7 @@ test('when navigating a index route with search and params', () => {
       | '/blog/stats'
       | '/posts/$postId/deep'
       | '/posts/$postId'
+      | '/settings'
     >()
 
   expectTypeOf(
@@ -202,6 +233,7 @@ test('when navigating a index route with search and params', () => {
       | '/blog/stats/'
       | '/posts/$postId/deep/'
       | '/posts/$postId/'
+      | '/settings/'
     >()
 
   expectTypeOf(Link<typeof neverTrailingSlashRouter, string, '/posts/$postId'>)
@@ -219,6 +251,7 @@ test('when navigating a index route with search and params', () => {
       | '/blog/stats'
       | '/posts/$postId/deep'
       | '/posts/$postId'
+      | '/settings'
       | '.'
       | '..'
     >()
@@ -254,6 +287,8 @@ test('when navigating a index route with search and params', () => {
       | '/blog/stats/'
       | '/posts/$postId/deep/'
       | '/posts/$postId/'
+      | '/settings'
+      | '/settings/'
     >()
 
   expectTypeOf(Link<typeof defaultRouter, '/', '/posts/$postId'>)
@@ -261,7 +296,7 @@ test('when navigating a index route with search and params', () => {
     .toHaveProperty('from')
     .toEqualTypeOf<
       | '/'
-      | '/posts/$postId'
+      | '/posts/$postId/'
       | '/blog'
       | '/posts'
       | '/blog/$blogId'
@@ -273,6 +308,7 @@ test('when navigating a index route with search and params', () => {
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
+      | '/settings'
       | undefined
     >()
 
@@ -366,12 +402,12 @@ test('when navigating a index route with search and params', () => {
 })
 
 test('when navigating from a index route with search and params', () => {
-  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId', undefined>)
+  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId/', undefined>)
     .parameter(0)
     .toHaveProperty('from')
     .toEqualTypeOf<
       | '/'
-      | '/posts/$postId'
+      | '/posts/$postId/'
       | '/blog'
       | '/posts'
       | '/blog/$blogId'
@@ -383,10 +419,11 @@ test('when navigating from a index route with search and params', () => {
       | '/blog/'
       | '/posts/'
       | '/posts/$postId/deep'
+      | '/settings'
       | undefined
     >()
 
-  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId', undefined>)
+  expectTypeOf(Link<typeof defaultRouter, '/posts/$postId/', undefined>)
     .parameter(0)
     .toHaveProperty('search')
     .parameter(0)
@@ -413,6 +450,7 @@ test('when using useNavigate', () => {
       | '/blog/stats'
       | '/posts/$postId/deep'
       | '/posts/$postId'
+      | '/settings'
     >()
 })
 
@@ -432,6 +470,7 @@ test('when using redirect', () => {
       | '/blog/$slug'
       | '/blog/stats'
       | '/posts/$postId/deep'
+      | '/settings'
       | undefined
     >()
 })
@@ -455,6 +494,8 @@ test('when using useSearch from a route with no search', () => {
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
+      | '/_pathlessLayout'
+      | '/_pathlessLayout/settings'
     >()
 
   expectTypeOf(useSearch<DefaultRouter, '/blog'>).returns.toEqualTypeOf<{}>()
@@ -479,6 +520,8 @@ test('when using useSearch from a route with search', () => {
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
+      | '/_pathlessLayout'
+      | '/_pathlessLayout/settings'
     >()
 
   expectTypeOf(
@@ -505,6 +548,8 @@ test('when using useLoaderData from a route with loaderData', () => {
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
+      | '/_pathlessLayout'
+      | '/_pathlessLayout/settings'
     >()
 
   expectTypeOf(
@@ -531,6 +576,8 @@ test('when using useLoaderDeps from a route with loaderDeps', () => {
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
+      | '/_pathlessLayout'
+      | '/_pathlessLayout/settings'
     >()
 
   expectTypeOf(
@@ -557,6 +604,8 @@ test('when using useMatch from a route', () => {
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
+      | '/_pathlessLayout'
+      | '/_pathlessLayout/settings'
     >()
 
   expectTypeOf(
@@ -585,6 +634,8 @@ test('when using useParams from a route', () => {
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
+      | '/_pathlessLayout'
+      | '/_pathlessLayout/settings'
     >()
 
   expectTypeOf(
@@ -611,6 +662,8 @@ test('when using useRouteContext from a route', () => {
       | '/posts/'
       | '/posts/$postId/deep'
       | '/posts/$postId/'
+      | '/_pathlessLayout'
+      | '/_pathlessLayout/settings'
     >()
 
   expectTypeOf(

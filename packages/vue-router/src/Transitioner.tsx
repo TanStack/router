@@ -4,6 +4,7 @@ import {
   handleHashScroll,
   trimPathRight,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
@@ -25,7 +26,7 @@ export function useTransitionerSetup() {
   const router = useRouter()
 
   // Skip on server - no transitions needed
-  if (router.isServer) {
+  if (isServer ?? router.isServer) {
     return
   }
 
@@ -123,9 +124,12 @@ export function useTransitionerSetup() {
       _includeValidateSearch: true,
     })
 
+    // Check if the current URL matches the canonical form.
+    // Compare publicHref (browser-facing URL) for consistency with
+    // the server-side redirect check in router.beforeLoad.
     if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
+      trimPathRight(router.latestLocation.publicHref) !==
+      trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
     }

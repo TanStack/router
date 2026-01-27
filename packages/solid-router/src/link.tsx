@@ -6,6 +6,7 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
@@ -133,35 +134,53 @@ export function useLinkProps<
   })
 
   const hrefOption = Solid.createMemo(() => {
-    if (_options().disabled) {
-      return undefined
+    if (_options().disabled) return undefined
+    // Use publicHref - it contains the correct href for display
+    // When a rewrite changes the origin, publicHref is the full URL
+    // Otherwise it's the origin-stripped path
+    // This avoids constructing URL objects in the hot path
+    const location = next().maskedLocation ?? next()
+    const publicHref = location.publicHref
+    const external = location.external
+
+    if (external) {
+      return { href: publicHref, external: true }
     }
-    let href
-    const maskedLocation = next().maskedLocation
-    if (maskedLocation) {
-      href = maskedLocation.url.href
-    } else {
-      href = next().url.href
+
+    return {
+      href: router.history.createHref(publicHref) || '/',
+      external: false,
     }
-    let external = false
-    if (router.origin) {
-      if (href.startsWith(router.origin)) {
-        href = router.history.createHref(href.replace(router.origin, ''))
-      } else {
-        external = true
-      }
-    }
-    return { href, external }
   })
 
   const externalLink = Solid.createMemo(() => {
     const _href = hrefOption()
     if (_href?.external) {
+      // Block dangerous protocols for external links
+      if (isDangerousProtocol(_href.href)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
+        }
+        return undefined
+      }
       return _href.href
     }
+    const to = _options().to
+    const isSafeInternal =
+      typeof to === 'string' &&
+      to.charCodeAt(0) === 47 && // '/'
+      to.charCodeAt(1) !== 47 // but not '//'
+    if (isSafeInternal) return undefined
     try {
-      new URL(_options().to as any)
-      return _options().to
+      new URL(to as any)
+      // Block dangerous protocols like javascript:, data:, vbscript:
+      if (isDangerousProtocol(to as string)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${to}`)
+        }
+        return undefined
+      }
+      return to
     } catch {}
     return undefined
   })
@@ -539,7 +558,7 @@ export type LinkComponent<
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
 > {
-  defaultFrom: TDefaultFrom
+  defaultFrom: TDefaultFrom;
   <
     TRouter extends AnyRouter = RegisteredRouter,
     const TTo extends string | undefined = undefined,

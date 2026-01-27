@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@tailwindcss/postcss": "^4.1.15",
+    "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/express": "^5.0.3",
     "@types/node": "^22.10.2",
@@ -29,12 +29,11 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "cross-env": "^10.0.0",
-    "postcss": "^8.5.1",
-    "srvx": "^0.9.8",
-    "tailwindcss": "^4.1.17",
+    "srvx": "^0.10.1",
+    "tailwindcss": "^4.1.18",
     "tsx": "^4.20.3",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

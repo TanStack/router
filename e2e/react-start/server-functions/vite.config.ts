@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 const FUNCTIONS_WITH_CONSTANT_ID = [
   'src/routes/submit-post-formdata.tsx/greetUser_createServerFn_handler',
@@ -10,6 +11,7 @@ const FUNCTIONS_WITH_CONSTANT_ID = [
 
 export default defineConfig({
   plugins: [
+    tailwindcss(),
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),

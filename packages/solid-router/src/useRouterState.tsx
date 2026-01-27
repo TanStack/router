@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 import { useStore } from '@tanstack/solid-store'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -54,6 +54,20 @@ export function useRouterState<
     warn: opts?.router === undefined,
   })
   const router = opts?.router || contextRouter
+
+  // During SSR we render exactly once and do not need reactivity.
+  // Avoid subscribing to the store on the server since the server store
+  // implementation does not provide subscribe() semantics.
+  const _isServer = isServer ?? router.isServer
+  if (_isServer) {
+    const state = router.state as RouterState<TRouter['routeTree']>
+    const selected = (
+      opts?.select ? opts.select(state) : state
+    ) as UseRouterStateResult<TRouter, TSelected>
+    return (() => selected) as Accessor<
+      UseRouterStateResult<TRouter, TSelected>
+    >
+  }
 
   return useStore(
     router.__store,

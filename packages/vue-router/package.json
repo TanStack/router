@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-router",
-  "version": "1.141.8",
+  "version": "1.157.16",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -43,6 +43,7 @@
     ".": {
       "import": {
         "types": "./dist/esm/index.d.ts",
+        "development": "./dist/esm/index.dev.js",
         "default": "./dist/esm/index.js"
       }
     },

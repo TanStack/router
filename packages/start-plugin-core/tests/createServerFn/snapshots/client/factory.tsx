@@ -1,3 +1,4 @@
+import { createClientRpc } from '@tanstack/react-start/client-rpc';
 import { createServerFn, createMiddleware } from '@tanstack/react-start';
 const authMiddleware = createMiddleware({
   type: 'function'
@@ -23,16 +24,8 @@ const adminMiddleware = createMiddleware({
 });
 export const createAuthServerFn = createServerFn().middleware([authMiddleware]);
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware]);
-export const myAuthedFn = createAuthServerFn().handler((opts, signal) => {
-  "use server";
-
-  return myAuthedFn.__executeServer(opts, signal);
-});
-export const deleteUserFn = createAdminServerFn().handler((opts, signal) => {
-  "use server";
-
-  return deleteUserFn.__executeServer(opts, signal);
-});
+export const myAuthedFn = createAuthServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJteUF1dGhlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));
+export const deleteUserFn = createAdminServerFn().handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJkZWxldGVVc2VyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));
 function createFakeFn() {
   return {
     handler: cb => {

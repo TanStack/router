@@ -4,23 +4,42 @@ import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { resolveViteId } from '../utils'
 import { extractHtmlScripts } from './extract-html-scripts'
+import {
+  CSS_MODULES_REGEX,
+  collectDevStyles,
+  normalizeCssModuleCacheKey,
+} from './dev-styles'
 import type { Connect, DevEnvironment, PluginOption } from 'vite'
-import type { TanStackStartOutputConfig } from '../schema'
+import type { GetConfigFn } from '../types'
 
 export function devServerPlugin({
   getConfig,
 }: {
-  getConfig: () => { startConfig: TanStackStartOutputConfig }
+  getConfig: GetConfigFn
 }): PluginOption {
   let isTest = false
 
   let injectedHeadScripts: string | undefined
+
+  // Cache CSS modules content during transform hook.
+  // For CSS modules, the transform hook receives the raw CSS content before
+  // Vite wraps it in JS. We capture this to use during SSR style collection.
+  const cssModulesCache: Record<string, string> = {}
 
   return [
     {
       name: 'tanstack-start-core:dev-server',
       config(_userConfig, { mode }) {
         isTest = isTest ? isTest : mode === 'test'
+      },
+      // Capture CSS modules content during transform
+      transform: {
+        filter: {
+          id: CSS_MODULES_REGEX,
+        },
+        handler(code, id) {
+          cssModulesCache[normalizeCssModuleCacheKey(id)] = code
+        },
       },
       async configureServer(viteDevServer) {
         if (isTest) {
@@ -38,6 +57,66 @@ export function devServerPlugin({
           .flatMap((script) => script.content ?? [])
           .join(';')
 
+        // CSS middleware registered in PRE-PHASE (before Vite's internal middlewares)
+        // This ensures it handles /@tanstack-start/styles.css before any catch-all middleware
+        // from other plugins (like nitro) that may be registered in the post-phase.
+        // This makes the CSS endpoint work regardless of plugin order in the Vite config.
+        // We check pathname.endsWith() to handle basepaths (e.g., /my-app/@tanstack-start/styles.css)
+        // since pre-phase runs before Vite's base middleware strips the basepath.
+        viteDevServer.middlewares.use(async (req, res, next) => {
+          const url = req.url ?? ''
+          const pathname = url.split('?')[0]
+          if (!pathname?.endsWith('/@tanstack-start/styles.css')) {
+            return next()
+          }
+
+          try {
+            // Parse route IDs from query param
+            const urlObj = new URL(url, 'http://localhost')
+            const routesParam = urlObj.searchParams.get('routes')
+            const routeIds = routesParam ? routesParam.split(',') : []
+
+            // Build entries list from route file paths
+            const entries: Array<string> = []
+
+            // Look up route file paths from manifest
+            // Only routes registered in the manifest are used - this prevents path injection
+            const routesManifest = (globalThis as any).TSS_ROUTES_MANIFEST as
+              | Record<string, { filePath: string; children?: Array<string> }>
+              | undefined
+
+            if (routesManifest && routeIds.length > 0) {
+              for (const routeId of routeIds) {
+                const route = routesManifest[routeId]
+                if (route?.filePath) {
+                  entries.push(route.filePath)
+                }
+              }
+            }
+
+            const css =
+              entries.length > 0
+                ? await collectDevStyles({
+                    viteDevServer,
+                    entries,
+                    cssModulesCache,
+                  })
+                : undefined
+
+            res.setHeader('Content-Type', 'text/css')
+            res.setHeader('Cache-Control', 'no-store')
+            res.end(css ?? '')
+          } catch (e) {
+            // Log error but still return valid CSS response to avoid MIME type issues
+            console.error('[tanstack-start] Error collecting dev styles:', e)
+            res.setHeader('Content-Type', 'text/css')
+            res.setHeader('Cache-Control', 'no-store')
+            res.end(
+              `/* Error collecting styles: ${e instanceof Error ? e.message : String(e)} */`,
+            )
+          }
+        })
+
         return () => {
           const serverEnv = viteDevServer.environments[
             VITE_ENVIRONMENT_NAMES.server
@@ -48,6 +127,7 @@ export function devServerPlugin({
               `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
             )
           }
+
           const { startConfig } = getConfig()
           const installMiddleware = startConfig.vite?.installDevServerMiddleware
           if (installMiddleware === false) {

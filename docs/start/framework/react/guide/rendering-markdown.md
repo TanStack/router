@@ -240,8 +240,6 @@ console.log('Hello, world!')
 ```
 ````
 
-````
-
 ### Using the Collection
 
 Access your posts through the generated collection:
@@ -258,7 +256,7 @@ export const Route = createFileRoute('/blog/')({
 function BlogIndex() {
   // Posts are sorted by published date
   const sortedPosts = allPosts.sort(
-    (a, b) => new Date(b.published).getTime() - new Date(a.published).getTime()
+    (a, b) => new Date(b.published).getTime() - new Date(a.published).getTime(),
   )
 
   return (
@@ -278,7 +276,7 @@ function BlogIndex() {
     </div>
   )
 }
-````
+```
 
 ### Rendering a Single Post
 
@@ -334,7 +332,7 @@ type FetchDocsParams = {
 }
 
 export const fetchDocs = createServerFn({ method: 'GET' })
-  .validator((params: FetchDocsParams) => params)
+  .inputValidator((params: FetchDocsParams) => params)
   .handler(async ({ data: { repo, branch, filePath } }) => {
     const url = `https://raw.githubusercontent.com/${repo}/${branch}/${filePath}`
 
@@ -366,7 +364,7 @@ For production, add appropriate cache headers:
 
 ```tsx
 export const fetchDocs = createServerFn({ method: 'GET' })
-  .validator((params: FetchDocsParams) => params)
+  .inputValidator((params: FetchDocsParams) => params)
   .handler(async ({ data: { repo, branch, filePath }, context }) => {
     // Set cache headers for CDN caching
     context.response.headers.set(
@@ -428,7 +426,9 @@ type GitHubContent = {
 }
 
 export const fetchRepoContents = createServerFn({ method: 'GET' })
-  .validator((params: { repo: string; branch: string; path: string }) => params)
+  .inputValidator(
+    (params: { repo: string; branch: string; path: string }) => params,
+  )
   .handler(async ({ data: { repo, branch, path } }) => {
     const url = `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`
 

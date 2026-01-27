@@ -34,6 +34,10 @@
               "to": "framework/react/comparison"
             },
             {
+              "label": "Start vs Next.js",
+              "to": "framework/react/start-vs-nextjs"
+            },
+            {
               "label": "Migrate from Next.js",
               "to": "framework/react/migrate-from-next-js"
             }
@@ -168,6 +172,14 @@
             {
               "label": "Rendering Markdown",
               "to": "framework/react/guide/rendering-markdown"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/react/guide/seo"
+            },
+            {
+              "label": "LLM Optimization (LLMO)",
+              "to": "framework/react/guide/llmo"
             }
           ]
         },
@@ -265,6 +277,14 @@
             {
               "label": "Tailwind CSS Integration",
               "to": "framework/solid/guide/tailwind-integration"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/solid/guide/seo"
+            },
+            {
+              "label": "LLM Optimization (LLMO)",
+              "to": "framework/solid/guide/llmo"
             }
           ]
         }

@@ -160,6 +160,28 @@ export const Route = createFileRoute('/posts')({
 })
 ```
 
+> [!WARNING]
+> **Only include dependencies you actually use in the loader.**
+>
+> A common mistake is returning the entire `search` object:
+>
+> ```tsx
+> // ❌ Don't do this - causes unnecessary cache invalidation
+> loaderDeps: ({ search }) => search,
+> loader: ({ deps }) => fetchPosts({ page: deps.page }), // only uses page!
+> ```
+>
+> This causes the route to reload whenever ANY search param changes, even params not used in the loader (like `viewMode` or `sortDirection`). Instead, extract only what you need:
+>
+> ```tsx
+> // ✅ Do this - only reload when used params change
+> loaderDeps: ({ search }) => ({
+>   page: search.page,
+>   limit: search.limit,
+> }),
+> loader: ({ deps }) => fetchPosts(deps),
+> ```
+
 ### Using `staleTime` to control how long data is considered fresh
 
 By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for preloads) which means that the route's data will always be considered stale and will always be reloaded in the background when the route is matched and navigated to.
@@ -321,7 +343,7 @@ export const Route = createFileRoute('/posts')({
     fetchPosts: () => console.info('foo'),
   }),
   loader: ({ context: { fetchPosts } }) => {
-    console.info(fetchPosts()) // 'foo'
+    fetchPosts() // 'foo'
 
     // ...
   },

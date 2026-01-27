@@ -1,12 +1,9 @@
 import { joinPaths } from '@tanstack/router-core'
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
-import { TanStackServerFnPlugin } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
 import { join } from 'pathe'
 import { escapePath } from 'tinyglobby'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
-import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
@@ -19,43 +16,18 @@ import {
   getServerOutputDirectory,
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
-import { createServerFnPlugin } from './create-server-fn-plugin/plugin'
+import { startCompilerPlugin } from './start-compiler-plugin/plugin'
+import type {
+  GetConfigFn,
+  ResolvedStartConfig,
+  TanStackStartVitePluginCoreOptions,
+} from './types'
 import type { ViteEnvironmentNames } from './constants'
 import type {
   TanStackStartInputConfig,
   TanStackStartOutputConfig,
 } from './schema'
 import type { PluginOption } from 'vite'
-import type { CompileStartFrameworkOptions } from './start-compiler-plugin/compilers'
-
-export interface TanStackStartVitePluginCoreOptions {
-  framework: CompileStartFrameworkOptions
-  defaultEntryPaths: {
-    client: string
-    server: string
-    start: string
-  }
-  serverFn?: {
-    directive?: string
-    ssr?: {
-      getServerFnById?: string
-    }
-    providerEnv?: string
-  }
-}
-
-export interface ResolvedStartConfig {
-  root: string
-  startFilePath: string | undefined
-  routerFilePath: string
-  srcDirectory: string
-  viteAppBase: string
-}
-
-export type GetConfigFn = () => {
-  startConfig: TanStackStartOutputConfig
-  resolvedStartConfig: ResolvedStartConfig
-}
 
 function isFullUrl(str: string): boolean {
   try {
@@ -70,15 +42,20 @@ export function TanStackStartVitePluginCore(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
   startPluginOpts: TanStackStartInputConfig,
 ): Array<PluginOption> {
+  // Determine the provider environment for server functions
+  // If providerEnv is set, use that; otherwise default to SSR as the provider
+  const serverFnProviderEnv =
+    corePluginOpts.serverFn?.providerEnv || VITE_ENVIRONMENT_NAMES.server
+  const ssrIsProvider = serverFnProviderEnv === VITE_ENVIRONMENT_NAMES.server
+
   const resolvedStartConfig: ResolvedStartConfig = {
     root: '',
     startFilePath: undefined,
     routerFilePath: '',
     srcDirectory: '',
     viteAppBase: '',
+    serverFnProviderEnv,
   }
-
-  const directive = corePluginOpts.serverFn?.directive ?? 'use server'
 
   let startConfig: TanStackStartOutputConfig | null
   const getConfig: GetConfigFn = () => {
@@ -92,7 +69,7 @@ export function TanStackStartVitePluginCore(
         resolvedStartConfig.root,
       )
     }
-    return { startConfig, resolvedStartConfig }
+    return { startConfig, resolvedStartConfig, corePluginOpts }
   }
 
   const capturedBundle: Partial<
@@ -324,6 +301,10 @@ export function TanStackStartVitePluginCore(
             ...defineReplaceEnv('TSS_ROUTER_BASEPATH', startConfig.router.basepath),
             ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
             ...defineReplaceEnv('TSS_DEV_SERVER', command === 'serve' ? 'true' : 'false'),
+            // Replace NODE_ENV during build (unless opted out) for dead code elimination in server bundles
+            ...(command === 'build' && startConfig.server.build.staticNodeEnv ? {
+              'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || viteConfig.mode || 'production'),
+            } : {}),
           },
           builder: {
             sharedPlugins: true,
@@ -347,10 +328,34 @@ export function TanStackStartVitePluginCore(
                 // Build the SSR bundle
                 await builder.build(server)
               }
+
+              // If a custom provider environment is configured (not SSR),
+              // build it last so the manifest includes functions from all environments
+              if (!ssrIsProvider) {
+                const providerEnv = builder.environments[serverFnProviderEnv]
+                if (!providerEnv) {
+                  throw new Error(
+                    `Provider environment "${serverFnProviderEnv}" not found`,
+                  )
+                }
+                if (!providerEnv.isBuilt) {
+                  // Build the provider environment last
+                  // This ensures all server functions are discovered from client/ssr builds
+                  await builder.build(providerEnv)
+                }
+              }
             },
           },
         }
       },
+    },
+    // Separate plugin for buildApp hook with enforce: 'post'
+    // This ensures proper ordering with other plugins that also have
+    // buildApp hooks with order: 'post'. The enforce: 'post' ensures this
+    // runs after other plugins (like Nitro) complete their builds.
+    {
+      name: 'tanstack-start-core:post-build',
+      enforce: 'post',
       buildApp: {
         order: 'post',
         async handler(builder) {
@@ -359,46 +364,19 @@ export function TanStackStartVitePluginCore(
         },
       },
     },
-    tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
-    // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPlugin
-    startCompilerPlugin({ framework: corePluginOpts.framework, environments }),
-    createServerFnPlugin({
+    // Server function plugin handles:
+    // 1. Identifying createServerFn().handler() calls
+    // 2. Extracting server functions to separate modules
+    // 3. Replacing call sites with RPC stubs
+    // 4. Generating the server function manifest
+    // Also handles createIsomorphicFn, createServerOnlyFn, createClientOnlyFn, createMiddleware
+    startCompilerPlugin({
       framework: corePluginOpts.framework,
-      directive,
       environments,
-    }),
-
-    TanStackServerFnPlugin({
-      // This is the ID that will be available to look up and import
-      // our server function manifest and resolve its module
-      manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
-      directive,
       generateFunctionId: startPluginOpts?.serverFns?.generateFunctionId,
-      callers: [
-        {
-          envConsumer: 'client',
-          getRuntimeCode: () =>
-            `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/client-rpc'`,
-          replacer: (d) => `createClientRpc('${d.functionId}')`,
-          envName: VITE_ENVIRONMENT_NAMES.client,
-        },
-        {
-          envConsumer: 'server',
-          getRuntimeCode: () =>
-            `import { createSsrRpc } from '@tanstack/${corePluginOpts.framework}-start/ssr-rpc'`,
-          envName: VITE_ENVIRONMENT_NAMES.server,
-          replacer: (d) => `createSsrRpc('${d.functionId}')`,
-          getServerFnById: corePluginOpts.serverFn?.ssr?.getServerFnById,
-        },
-      ],
-      provider: {
-        getRuntimeCode: () =>
-          `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-rpc'`,
-        replacer: (d) => `createServerRpc('${d.functionId}', ${d.fn})`,
-        envName:
-          corePluginOpts.serverFn?.providerEnv || VITE_ENVIRONMENT_NAMES.server,
-      },
+      providerEnvName: serverFnProviderEnv,
     }),
+    tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
     loadEnvPlugin(),
     startManifestPlugin({
       getClientBundle: () => getBundle(VITE_ENVIRONMENT_NAMES.client),

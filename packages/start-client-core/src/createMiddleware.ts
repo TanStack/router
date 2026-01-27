@@ -1,5 +1,11 @@
 import type { StartInstanceOptions } from './createStart'
-import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
+import type {
+  AnyServerFn,
+  ConstrainValidator,
+  CustomFetch,
+  Method,
+} from './createServerFn'
+import type { ClientFnMeta, ServerFnMeta } from './constants'
 import type {
   AnyContext,
   Assign,
@@ -69,8 +75,9 @@ export type CreateMiddlewareResult<
   ? RequestMiddleware<TRegister>
   : FunctionMiddleware<TRegister>
 
-export interface FunctionMiddleware<TRegister>
-  extends FunctionMiddlewareAfterMiddleware<TRegister, unknown> {
+export interface FunctionMiddleware<
+  TRegister,
+> extends FunctionMiddlewareAfterMiddleware<TRegister, unknown> {
   middleware: <const TNewMiddlewares = undefined>(
     middlewares: Constrain<
       TNewMiddlewares,
@@ -80,7 +87,8 @@ export interface FunctionMiddleware<TRegister>
 }
 
 export interface FunctionMiddlewareAfterMiddleware<TRegister, TMiddlewares>
-  extends FunctionMiddlewareWithTypes<
+  extends
+    FunctionMiddlewareWithTypes<
       TRegister,
       TMiddlewares,
       undefined,
@@ -227,7 +235,7 @@ export type IntersectAllValidatorOutputs<TMiddlewares, TInputValidator> =
       ? IntersectAllMiddleware<TMiddlewares, 'allOutput'>
       : IntersectAssign<
           IntersectAllMiddleware<TMiddlewares, 'allOutput'>,
-          ResolveValidatorOutput<TInputValidator>
+          Awaited<ResolveValidatorOutput<TInputValidator>>
         >
 
 /**
@@ -402,6 +410,7 @@ export type FunctionMiddlewareClientNextFn<TRegister, TMiddlewares> = <
   context?: TNewClientContext
   sendContext?: ValidateSerializableInput<TRegister, TSendContext>
   headers?: HeadersInit
+  fetch?: CustomFetch
 }) => Promise<
   FunctionClientResultWithContext<TMiddlewares, TSendContext, TNewClientContext>
 >
@@ -511,8 +520,7 @@ export interface FunctionMiddlewareServerFnOptions<
     TServerSendContext
   >
   method: Method
-  filename: string
-  functionId: string
+  serverFnMeta: ServerFnMeta
   signal: AbortSignal
 }
 
@@ -549,14 +557,14 @@ export interface FunctionMiddlewareAfterServer<
   TClientContext,
   TClientSendContext,
 > extends FunctionMiddlewareWithTypes<
-    TRegister,
-    TMiddlewares,
-    TInputValidator,
-    TServerContext,
-    TServerSendContext,
-    TClientContext,
-    TClientSendContext
-  > {}
+  TRegister,
+  TMiddlewares,
+  TInputValidator,
+  TServerContext,
+  TServerSendContext,
+  TClientContext,
+  TClientSendContext
+> {}
 
 export interface FunctionMiddlewareClient<
   TRegister,
@@ -608,9 +616,10 @@ export interface FunctionMiddlewareClientFnOptions<
   sendContext: Expand<AssignAllServerSendContext<TMiddlewares>>
   method: Method
   signal: AbortSignal
+  serverFnMeta: ClientFnMeta
   next: FunctionMiddlewareClientNextFn<TRegister, TMiddlewares>
   filename: string
-  functionId: string
+  fetch?: CustomFetch
 }
 
 export type FunctionMiddlewareClientFnResult<
@@ -636,6 +645,7 @@ export type FunctionClientResultWithContext<
   context: Expand<AssignAllClientContextAfterNext<TMiddlewares, TClientContext>>
   sendContext: Expand<AssignAllServerSendContext<TMiddlewares, TSendContext>>
   headers: HeadersInit
+  fetch?: CustomFetch
 }
 
 export interface FunctionMiddlewareAfterClient<
@@ -644,7 +654,9 @@ export interface FunctionMiddlewareAfterClient<
   TInputValidator,
   TServerSendContext,
   TClientContext,
-> extends FunctionMiddlewareWithTypes<
+>
+  extends
+    FunctionMiddlewareWithTypes<
       TRegister,
       TMiddlewares,
       TInputValidator,
@@ -671,7 +683,9 @@ export interface FunctionMiddlewareAfterValidator<
   TRegister,
   TMiddlewares,
   TInputValidator,
-> extends FunctionMiddlewareWithTypes<
+>
+  extends
+    FunctionMiddlewareWithTypes<
       TRegister,
       TMiddlewares,
       TInputValidator,
@@ -689,8 +703,9 @@ export interface FunctionMiddlewareAfterValidator<
     >,
     FunctionMiddlewareClient<TRegister, TMiddlewares, TInputValidator> {}
 
-export interface RequestMiddleware<TRegister>
-  extends RequestMiddlewareAfterMiddleware<TRegister, undefined> {
+export interface RequestMiddleware<
+  TRegister,
+> extends RequestMiddlewareAfterMiddleware<TRegister, undefined> {
   middleware: <const TMiddlewares = undefined>(
     middlewares: Constrain<TMiddlewares, ReadonlyArray<AnyRequestMiddleware>>,
   ) => RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares>
@@ -736,7 +751,8 @@ export interface RequestMiddlewareTypes<
 }
 
 export interface RequestMiddlewareAfterMiddleware<TRegister, TMiddlewares>
-  extends RequestMiddlewareWithTypes<TRegister, TMiddlewares, undefined>,
+  extends
+    RequestMiddlewareWithTypes<TRegister, TMiddlewares, undefined>,
     RequestMiddlewareServer<TRegister, TMiddlewares> {}
 
 export interface RequestMiddlewareServer<TRegister, TMiddlewares> {
@@ -754,6 +770,12 @@ export interface RequestServerOptions<TRegister, TMiddlewares> {
   pathname: string
   context: Expand<AssignAllServerRequestContext<TRegister, TMiddlewares>>
   next: RequestServerNextFn<TRegister, TMiddlewares>
+  /**
+   * Metadata about the server function being invoked.
+   * This is only present when the request is handling a server function call.
+   * For regular page requests, this will be undefined.
+   */
+  serverFnMeta?: ServerFnMeta
 }
 
 export type RequestServerNextFn<TRegister, TMiddlewares> = <
@@ -767,9 +789,8 @@ export interface RequestServerNextFnOptions<TServerContext> {
 }
 
 export type RequestServerNextFnResult<TRegister, TMiddlewares, TServerContext> =
-
-    | Promise<RequestServerResult<TRegister, TMiddlewares, TServerContext>>
-    | RequestServerResult<TRegister, TMiddlewares, TServerContext>
+  | Promise<RequestServerResult<TRegister, TMiddlewares, TServerContext>>
+  | RequestServerResult<TRegister, TMiddlewares, TServerContext>
 
 export type RequestMiddlewareServerFnResult<
   TRegister,

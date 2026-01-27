@@ -9,17 +9,16 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.15",
-    "@tanstack/react-router": "^1.141.8",
-    "@tanstack/react-router-devtools": "^1.141.8",
-    "@tanstack/router-plugin": "^1.141.8",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-router": "^1.157.16",
+    "@tanstack/react-router-devtools": "^1.157.16",
+    "@tanstack/router-plugin": "^1.157.16",
     "firebase": "^11.4.0",
-    "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "simple-icons": "^14.9.0",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^4.1.18",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -27,6 +26,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7"
+    "vite": "^7.3.1"
   }
 }

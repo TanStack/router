@@ -4,7 +4,7 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { tsrSplit } from '@tanstack/router-plugin'
 import { resolveViteId } from '../utils'
 import { ENTRY_POINTS } from '../constants'
-import type { GetConfigFn } from '../plugin'
+import type { GetConfigFn } from '../types'
 import type { PluginOption, Rollup } from 'vite'
 import type { Manifest, RouterManagedTag } from '@tanstack/router-core'
 
@@ -81,8 +81,10 @@ export function startManifestPlugin(opts: {
       handler(id) {
         const { resolvedStartConfig } = opts.getConfig()
         if (id === resolvedModuleId) {
-          if (this.environment.config.consumer !== 'server') {
-            // this will ultimately fail the build if the plugin is used outside the server environment
+          if (
+            this.environment.name !== resolvedStartConfig.serverFnProviderEnv
+          ) {
+            // this will ultimately fail the build if the plugin is used outside the provider environment
             // TODO: do we need special handling for `serve`?
             return `export default {}`
           }

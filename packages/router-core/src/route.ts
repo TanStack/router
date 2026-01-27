@@ -1,9 +1,11 @@
 import invariant from 'tiny-invariant'
-import { joinPaths, trimPathLeft } from './path'
+import { joinPaths, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
+import { redirect } from './redirect'
 import { rootRouteId } from './root'
 import type { LazyRoute } from './fileRoute'
 import type { NotFoundError } from './not-found'
+import type { RedirectFnRoute } from './redirect'
 import type { NavigateOptions, ParsePathParams } from './link'
 import type { ParsedLocation } from './location'
 import type {
@@ -773,6 +775,14 @@ export interface Route<
     TServerMiddlewares,
     THandlers
   >
+  /**
+   * Create a redirect with `from` automatically set to this route's path.
+   * Enables relative redirects like `Route.redirect({ to: './overview' })`.
+   * @param opts Redirect options (same as `redirect()` but without `from`)
+   * @returns A redirect Response that can be thrown from loaders/beforeLoad
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
+   */
+  redirect: RedirectFnRoute<TFullPath>
 }
 
 export type AnyRoute = Route<
@@ -1112,7 +1122,9 @@ export interface BeforeLoadContextOptions<
   in out TRouteContextFn,
   in out TServerMiddlewares,
   in out THandlers,
-> extends ContextOptions<TParentRoute, TParams>,
+>
+  extends
+    ContextOptions<TParentRoute, TParams>,
     FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
     BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>
@@ -1131,6 +1143,9 @@ type AssetFnContextOptions<
   in out TBeforeLoadFn,
   in out TLoaderDeps,
 > = {
+  ssr?: {
+    nonce?: string
+  }
   matches: Array<
     RouteMatch<
       TRouteId,
@@ -1172,8 +1187,7 @@ export interface DefaultUpdatableRouteOptionsExtensions {
   pendingComponent?: unknown
 }
 
-export interface UpdatableRouteOptionsExtensions
-  extends DefaultUpdatableRouteOptionsExtensions {}
+export interface UpdatableRouteOptionsExtensions extends DefaultUpdatableRouteOptionsExtensions {}
 
 export interface UpdatableRouteOptions<
   in out TParentRoute extends AnyRoute,
@@ -1186,11 +1200,48 @@ export interface UpdatableRouteOptions<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TBeforeLoadFn,
-> extends UpdatableStaticRouteOption,
-    UpdatableRouteOptionsExtensions {
-  // If true, this route will be matched as case-sensitive
+>
+  extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
+  /**
+   * Options to control route matching behavior with runtime code.
+   *
+   * @experimental 🚧 this feature is subject to change
+   *
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType
+   */
+  skipRouteOnParseError?: {
+    /**
+     * If `true`, skip this route during matching if `params.parse` fails.
+     *
+     * Without this option, a `/$param` route could match *any* value for `param`,
+     * and only later during the route lifecycle would `params.parse` run and potentially
+     * show the `errorComponent` if validation failed.
+     *
+     * With this option enabled, the route will only match if `params.parse` succeeds.
+     * If it fails, the router will continue trying to match other routes, potentially
+     * finding a different route that works, or ultimately showing the `notFoundComponent`.
+     *
+     * @default false
+     */
+    params?: boolean
+    /**
+     * In cases where multiple routes would need to run `params.parse` during matching
+     * to determine which route to pick, this priority number can be used as a tie-breaker
+     * for which route to try first. Higher number = higher priority.
+     *
+     * @default 0
+     */
+    priority?: number
+  }
+  /**
+   * If true, this route will be matched as case-sensitive
+   *
+   * @default false
+   */
   caseSensitive?: boolean
-  // If true, this route will be forcefully wrapped in a suspense boundary
+  /**
+   * If true, this route will be forcefully wrapped in a suspense boundary
+   */
   wrapInSuspense?: boolean
   // The content to be rendered when the route is matched. If no component is provided, defaults to `<Outlet />`
 
@@ -1285,7 +1336,7 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => Awaitable<Record<string, string>>
+  ) => Awaitable<Record<string, string> | undefined>
   head?: (
     ctx: AssetFnContextOptions<
       TRouteId,
@@ -1397,8 +1448,7 @@ export interface DefaultRootRouteOptionsExtensions {
   shellComponent?: unknown
 }
 
-export interface RootRouteOptionsExtensions
-  extends DefaultRootRouteOptionsExtensions {}
+export interface RootRouteOptionsExtensions extends DefaultRootRouteOptionsExtensions {}
 
 export interface RootRouteOptions<
   TRegister = unknown,
@@ -1411,7 +1461,9 @@ export interface RootRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
-> extends Omit<
+>
+  extends
+    Omit<
       RouteOptions<
         TRegister,
         any, // TParentRoute
@@ -1708,7 +1760,7 @@ export class BaseRoute<
     this._path = path as TPath
     this._id = id as TId
     this._fullPath = fullPath as TFullPath
-    this._to = fullPath as TrimPathRight<TFullPath>
+    this._to = trimPathRight(fullPath) as TrimPathRight<TFullPath>
   }
 
   addChildren: RouteAddChildrenFn<
@@ -1866,6 +1918,16 @@ export class BaseRoute<
     this.lazyFn = lazyFn
     return this
   }
+
+  /**
+   * Create a redirect with `from` automatically set to this route's fullPath.
+   * Enables relative redirects like `Route.redirect({ to: './overview' })`.
+   * @param opts Redirect options (same as `redirect()` but without `from`)
+   * @returns A redirect Response that can be thrown from loaders/beforeLoad
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
+   */
+  redirect: RedirectFnRoute<TFullPath> = (opts) =>
+    redirect({ from: this.fullPath, ...opts } as any)
 }
 
 export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
@@ -1878,6 +1940,17 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
   }
+
+  /**
+   * Create a redirect with `from` automatically set to this route's path.
+   * Enables relative redirects like `routeApi.redirect({ to: './overview' })`.
+   * @param opts Redirect options (same as `redirect()` but without `from`)
+   * @returns A redirect Response that can be thrown from loaders/beforeLoad
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
+   */
+  redirect: RedirectFnRoute<RouteTypesById<TRouter, TId>['fullPath']> = (
+    opts,
+  ) => redirect({ from: this.id as string, ...opts } as any)
 }
 
 export interface RootRoute<
@@ -1894,25 +1967,25 @@ export interface RootRoute<
   in out TServerMiddlewares = unknown,
   in out THandlers = undefined,
 > extends Route<
-    TRegister,
-    any, // TParentRoute
-    '/', // TPath
-    '/', // TFullPath
-    string, // TCustomId
-    RootRouteId, // TId
-    TSearchValidator, // TSearchValidator
-    {}, // TParams
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn,
-    TChildren, // TChildren
-    TFileRouteTypes,
-    TSSR,
-    TServerMiddlewares,
-    THandlers
-  > {}
+  TRegister,
+  any, // TParentRoute
+  '/', // TPath
+  '/', // TFullPath
+  string, // TCustomId
+  RootRouteId, // TId
+  TSearchValidator, // TSearchValidator
+  {}, // TParams
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  TChildren, // TChildren
+  TFileRouteTypes,
+  TSSR,
+  TServerMiddlewares,
+  THandlers
+> {}
 
 export class BaseRootRoute<
   in out TRegister = Register,

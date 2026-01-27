@@ -2,6 +2,7 @@ import * as Vue from 'vue'
 import {
   deepEqual,
   exactPathTest,
+  isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
@@ -250,6 +251,39 @@ export function useLinkProps<
   }
 
   if (type.value === 'external') {
+    // Block dangerous protocols like javascript:, data:, vbscript:
+    if (isDangerousProtocol(options.to as string)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${options.to}`)
+      }
+      // Return props without href to prevent navigation
+      const safeProps: Record<string, unknown> = {
+        ...getPropsSafeToSpread(),
+        ref,
+        // No href attribute - blocks the dangerous protocol
+        target: options.target,
+        disabled: options.disabled,
+        style: options.style,
+        class: options.class,
+        onClick: options.onClick,
+        onFocus: options.onFocus,
+        onMouseEnter: options.onMouseEnter,
+        onMouseLeave: options.onMouseLeave,
+        onMouseOver: options.onMouseOver,
+        onMouseOut: options.onMouseOut,
+        onTouchStart: options.onTouchStart,
+      }
+
+      // Remove undefined values
+      Object.keys(safeProps).forEach((key) => {
+        if (safeProps[key] === undefined) {
+          delete safeProps[key]
+        }
+      })
+
+      return safeProps as LinkHTMLAttributes
+    }
+
     // External links just have simple props
     const externalProps: Record<string, unknown> = {
       ...getPropsSafeToSpread(),
@@ -437,23 +471,19 @@ export function useLinkProps<
       return undefined
     }
     const nextLocation = next.value
-    const maskedLocation = nextLocation?.maskedLocation
+    const location = nextLocation?.maskedLocation ?? nextLocation
 
-    let hrefValue: string
-    if (maskedLocation) {
-      hrefValue = maskedLocation.url.href
-    } else {
-      hrefValue = nextLocation?.url.href
-    }
+    // Use publicHref - it contains the correct href for display
+    // When a rewrite changes the origin, publicHref is the full URL
+    // Otherwise it's the origin-stripped path
+    // This avoids constructing URL objects in the hot path
+    const publicHref = location?.publicHref
+    if (!publicHref) return undefined
 
-    // Handle origin stripping like Solid does
-    if (router.origin && hrefValue?.startsWith(router.origin)) {
-      hrefValue = router.history.createHref(
-        hrefValue.replace(router.origin, ''),
-      )
-    }
+    const external = location?.external
+    if (external) return publicHref
 
-    return hrefValue
+    return router.history.createHref(publicHref) || '/'
   })
 
   // Create static event handlers that don't change between renders
@@ -649,7 +679,7 @@ export type LinkComponent<
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
 > {
-  defaultFrom: TDefaultFrom
+  defaultFrom: TDefaultFrom;
   <
     TRouter extends AnyRouter = RegisteredRouter,
     const TTo extends string | undefined = undefined,

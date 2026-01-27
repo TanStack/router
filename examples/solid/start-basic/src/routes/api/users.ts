@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { createMiddleware, json } from '@tanstack/solid-start'
+import { createMiddleware } from '@tanstack/solid-start'
 import type { User } from '~/utils/users'
 
 const userLoggerMiddleware = createMiddleware().server(
@@ -50,7 +50,7 @@ export const Route = createFileRoute('/api/users')({
         }
         const data = (await res.json()) as Array<User>
         const list = data.slice(0, 10)
-        return json(
+        return Response.json(
           list.map((u) => ({ id: u.id, name: u.name, email: u.email })),
         )
       },

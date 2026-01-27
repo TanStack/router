@@ -66,6 +66,70 @@ function PostList() {
 }
 ```
 
+## File Organization
+
+For larger applications, consider organizing server-side code into separate files. Here's one approach:
+
+```
+src/utils/
+├── users.functions.ts   # Server function wrappers (createServerFn)
+├── users.server.ts      # Server-only helpers (DB queries, internal logic)
+└── schemas.ts           # Shared validation schemas (client-safe)
+```
+
+- **`.functions.ts`** - Export `createServerFn` wrappers, safe to import anywhere
+- **`.server.ts`** - Server-only code, only imported inside server function handlers
+- **`.ts`** (no suffix) - Client-safe code (types, schemas, constants)
+
+### Example
+
+```tsx
+// users.server.ts - Server-only helpers
+import { db } from '~/db'
+
+export async function findUserById(id: string) {
+  return db.query.users.findFirst({ where: eq(users.id, id) })
+}
+```
+
+```tsx
+// users.functions.ts - Server functions
+import { createServerFn } from '@tanstack/react-start'
+import { findUserById } from './users.server'
+
+export const getUser = createServerFn({ method: 'GET' })
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    return findUserById(data.id)
+  })
+```
+
+### Static Imports Are Safe
+
+Server functions can be statically imported in any file, including client components:
+
+```tsx
+// ✅ Safe - build process handles environment shaking
+import { getUser } from '~/utils/users.functions'
+
+function UserProfile({ id }) {
+  const { data } = useQuery({
+    queryKey: ['user', id],
+    queryFn: () => getUser({ data: { id } }),
+  })
+}
+```
+
+The build process replaces server function implementations with RPC stubs in client bundles. The actual server code never reaches the browser.
+
+> [!WARNING]
+> Avoid dynamic imports for server functions:
+>
+> ```tsx
+> // ❌ Can cause bundler issues
+> const { getUser } = await import('~/utils/users.functions')
+> ```
+
 ## Parameters & Validation
 
 Server functions accept a single `data` parameter. Since they cross the network boundary, validation ensures type safety and runtime correctness.
@@ -197,12 +261,46 @@ For more advanced server function patterns and features, see these dedicated gui
 
 ### Server Context & Request Handling
 
-Access request headers, cookies, and response customization:
+Access request headers, cookies, and customize responses:
 
-- `getRequest()` - Access the full request object
-- `getRequestHeader()` - Read specific headers
-- `setResponseHeader()` - Set custom response headers
-- `setResponseStatus()` - Custom status codes
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+import {
+  getRequest,
+  getRequestHeader,
+  setResponseHeaders,
+  setResponseStatus,
+} from '@tanstack/react-start/server'
+
+export const getCachedData = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    // Access the incoming request
+    const request = getRequest()
+    const authHeader = getRequestHeader('Authorization')
+
+    // Set response headers (e.g., for caching)
+    setResponseHeaders(
+      new Headers({
+        'Cache-Control': 'public, max-age=300',
+        'CDN-Cache-Control': 'max-age=3600, stale-while-revalidate=600',
+      }),
+    )
+
+    // Optionally set status code
+    setResponseStatus(200)
+
+    return fetchData()
+  },
+)
+```
+
+Available utilities:
+
+- `getRequest()` - Access the full Request object
+- `getRequestHeader(name)` - Read a specific request header
+- `setResponseHeader(name, value)` - Set a single response header
+- `setResponseHeaders(headers)` - Set multiple response headers via Headers object
+- `setResponseStatus(code)` - Set the HTTP status code
 
 ### Streaming
 

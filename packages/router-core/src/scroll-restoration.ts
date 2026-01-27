@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import { functionalUpdate } from './utils'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
@@ -66,10 +67,16 @@ function createScrollRestorationCache(): ScrollRestorationCache | null {
     // This setter is simply to make sure that we set the sessionStorage right
     // after the state is updated. It doesn't necessarily need to be a functional
     // update.
-    set: (updater) => (
-      (state = functionalUpdate(updater, state) || state),
-      safeSessionStorage.setItem(storageKey, JSON.stringify(state))
-    ),
+    set: (updater) => {
+      state = functionalUpdate(updater, state) || state
+      try {
+        safeSessionStorage.setItem(storageKey, JSON.stringify(state))
+      } catch {
+        console.warn(
+          '[ts-router] Could not persist scroll restoration state to sessionStorage.',
+        )
+      }
+    },
   }
 }
 
@@ -211,7 +218,7 @@ export function restoreScroll({
 /** Setup global listeners and hooks to support scroll restoration. */
 /** Setup global listeners and hooks to support scroll restoration. */
 export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
-  if (!scrollRestorationCache && !router.isServer) {
+  if (!scrollRestorationCache && !(isServer ?? router.isServer)) {
     return
   }
   const shouldScrollRestoration =
@@ -222,7 +229,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   }
 
   if (
-    router.isServer ||
+    (isServer ?? router.isServer) ||
     router.isScrollRestorationSetup ||
     !scrollRestorationCache
   ) {

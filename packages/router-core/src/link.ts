@@ -353,6 +353,8 @@ export interface NavigateOptionProps {
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#href)
    */
   href?: string
+  /** @internal */
+  publicHref?: string
 }
 
 export type ToOptions<

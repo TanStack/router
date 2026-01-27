@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
-import type { TanStackStartVitePluginCoreOptions } from './plugin'
+import type { TanStackStartVitePluginCoreOptions } from './types'
 
 const tsrConfig = configSchema
   .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
@@ -153,6 +153,12 @@ const tanstackStartOptionsSchema = z
     server: z
       .object({
         entry: z.string().optional(),
+        build: z
+          .object({
+            staticNodeEnv: z.boolean().optional().default(true),
+          })
+          .optional()
+          .default({}),
       })
       .optional()
       .default({}),
