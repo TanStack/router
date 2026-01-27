@@ -1535,8 +1535,8 @@ export type ErrorRouteProps = {
   reset: () => void
 }
 
-export type ErrorComponentProps<TError = Error> = {
-  error: TError
+export type ErrorComponentProps = {
+  error: Error
   info?: { componentStack: string }
   reset: () => void
 }
