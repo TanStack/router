@@ -28,7 +28,7 @@ Feature/Capability Key:
 |                                                                   | TanStack Start                                   | Next.js [_(Website)_][nextjs]                 | React Router [_(Website)_][react-router]   |
 | ----------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------- | ------------------------------------------ |
 | Github Repo / Stars                                               | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-nextjs]][gh-nextjs]                | [![][stars-react-router]][gh-react-router] |
-| Bundle Size                                                       | [![][bp-tanstack-router]][bpl-tanstack-router]   | ❓                                            | ❓                                         |
+| Bundle Size                                                       | [![][bp-tanstack-router]][bpl-tanstack-router]   | ❓                                            | [![][bp-react-router]][bpl-react-router]   |
 | --                                                                | --                                               | --                                            | --                                         |
 | **Routing Features** [_(See Full Comparison)_][router-comparison] | ✅ Built on TanStack Router                      | ✅ File-based App Router                      | ✅ File-based Nested Routes                |
 | --                                                                | --                                               | --                                            | --                                         |
@@ -322,16 +322,19 @@ While Next.js's production performance is excellent, the development experience 
 - **React Router**: Production-ready, powers millions of apps, v7 Framework Mode is the evolution of Remix
 - **TanStack Start**: Release Candidate stage, feature-complete, rapidly stabilizing toward v1
 
+[stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?style=flat&logo=github&color=%230891b2
+[gh-tanstack-router]: https://github.com/tanstack/router
 [bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router
 [bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router
-[gh-tanstack-router]: https://github.com/tanstack/router
-[stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
-[router-comparison]: /router/latest/docs/framework/react/comparison
 [_]: _
-[nextjs]: https://nextjs.org/
+[nextjs]: https://nextjs.org
+[stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?style=flat&logo=github&color=%23000
 [gh-nextjs]: https://github.com/vercel/next.js
-[stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?label=%F0%9F%8C%9F
 [_]: _
-[react-router]: https://reactrouter.com/
+[react-router]: https://reactrouter.com
+[stars-react-router]: https://img.shields.io/github/stars/remix-run/react-router?style=flat&logo=github&color=%23F44250
 [gh-react-router]: https://github.com/remix-run/react-router
-[stars-react-router]: https://img.shields.io/github/stars/remix-run/react-router?label=%F0%9F%8C%9F
+[bp-react-router]: https://badgen.net/bundlephobia/minzip/react-router
+[bpl-react-router]: https://bundlephobia.com/result?p=react-router
+[_]: _
+[router-comparison]: /router/latest/docs/framework/react/comparison
