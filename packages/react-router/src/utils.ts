@@ -123,3 +123,22 @@ export function useForwardedRef<T>(ref?: React.ForwardedRef<T>) {
   React.useImperativeHandle(ref, () => innerRef.current!, [])
   return innerRef
 }
+
+interface TanStackPolicy {
+  createHTML: (s: string) => string
+  createScript: (s: string) => string
+  createScriptURL: (s: string) => string
+}
+
+declare const trustedTypes: any
+
+const tanStackPolicy: TanStackPolicy = {
+  createHTML: (s: string) => s,
+  createScript: (s: string) => s,
+  createScriptURL: (s: string) => s,
+}
+
+export const trustedTanStackPolicy: TanStackPolicy =
+  typeof trustedTypes !== 'undefined'
+    ? trustedTypes.createPolicy('tanstack-internal', tanStackPolicy)
+    : tanStackPolicy

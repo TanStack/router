@@ -1,9 +1,29 @@
+/// <reference types="vite/client" />
+
 import {
   createRootRoute,
   HeadContent,
   Outlet,
   Scripts,
 } from '@tanstack/react-router'
+
+export const requiresTrustedTypes: boolean =
+  import.meta.env.VITE_CSP === 'strict'
+
+declare const trustedTypes: any
+
+function createPolicy<T>(name: string, policy: T): T {
+  if (!requiresTrustedTypes) return policy
+
+  if (typeof trustedTypes !== 'undefined') {
+    return trustedTypes.createPolicy(name, policy)
+  }
+  return policy
+}
+
+const policy = createPolicy('test-app', {
+  createHTML: (s: string) => s,
+})
 
 export const Route = createRootRoute({
   headers: ({ ssr }) => {
@@ -14,6 +34,7 @@ export const Route = createRootRoute({
         "default-src 'self'",
         `script-src 'self' 'nonce-${nonce}'`,
         `style-src 'self' 'nonce-${nonce}'`,
+        ...(requiresTrustedTypes ? ["require-trusted-types-for 'script'"] : []),
       ].join('; '),
     }
   },
@@ -26,7 +47,11 @@ export const Route = createRootRoute({
     links: [{ rel: 'stylesheet', href: '/external.css' }],
     scripts: [{ src: '/external.js' }],
     styles: [
-      { children: '.inline-styled { color: green; font-weight: bold; }' },
+      {
+        children: policy.createHTML(
+          '.inline-styled { color: green; font-weight: bold; }',
+        ),
+      },
     ],
   }),
   component: RootComponent,
