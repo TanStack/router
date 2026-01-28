@@ -49,7 +49,12 @@ export function createSerializationAdapter<
     | ReadonlyArray<AnySerializationAdapter>
     | never = never,
 >(
-  opts: CreateSerializationAdapterOptions<TInput, TOutput, TOutputAsync, TExtendsAdapters>,
+  opts: CreateSerializationAdapterOptions<
+    TInput,
+    TOutput,
+    TOutputAsync,
+    TExtendsAdapters
+  >,
 ): SerializationAdapter<TInput, TOutput, TOutputAsync, TExtendsAdapters> {
   return opts as unknown as SerializationAdapter<
     TInput,
