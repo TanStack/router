@@ -242,7 +242,12 @@ export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
 
-export { redirect, isRedirect, createRouterConfig } from '@tanstack/router-core'
+export {
+  redirect,
+  isRedirect,
+  createRouterConfig,
+  DEFAULT_PROTOCOL_BLOCKLIST,
+} from '@tanstack/router-core'
 
 export {
   RouteApi,
