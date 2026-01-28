@@ -879,3 +879,25 @@ test('createServerFn respects TsrSerializable', () => {
     Promise<{ nested: { custom: MyCustomTypeSerializable } }>
   >()
 })
+
+test('createServerFn POST with FormData union validator', () => {
+  const validator = createServerFn({ method: 'POST' }).inputValidator<
+    (input: FormData | { id: string }) => { id: 'string' }
+  >
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .parameter(0)
+    .toEqualTypeOf<FormData | { id: string }>()
+})
+
+test('createServerFn GET cannot use FormData union validator', () => {
+  const validator = createServerFn({ method: 'GET' }).inputValidator<
+    (input: FormData | { id: string }) => { output: 'string' }
+  >
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .parameter(0)
+    .not.toEqualTypeOf<FormData | { id: string }>()
+})

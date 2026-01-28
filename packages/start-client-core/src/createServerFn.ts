@@ -468,7 +468,7 @@ export type ValidateValidatorInput<
   TMethod extends Method,
   TInputValidator,
 > = TMethod extends 'POST'
-  ? ResolveValidatorInput<TInputValidator> extends FormData
+  ? FormData extends ResolveValidatorInput<TInputValidator> 
     ? ResolveValidatorInput<TInputValidator>
     : ValidateSerializable<
         ResolveValidatorInput<TInputValidator>,
