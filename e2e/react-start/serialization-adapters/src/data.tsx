@@ -53,9 +53,9 @@ export class AsyncFoo {
   }
 
   get valueAsync() {
-    return new Promise<string>((resolve) => {
+    return new Promise<[string]>((resolve) => {
       setTimeout(() => {
-        resolve(this.internalValue)
+        resolve([this.internalValue])
       }, 1000)
     })
   }
@@ -74,7 +74,7 @@ export const asyncFooAdapter = createSerializationAdapter({
   test: (value) => value instanceof AsyncFoo,
   toSerializable: (foo) => foo.value,
   toSerializableAsync: (foo) => foo.valueAsync,
-  fromSerializable: (value) => new AsyncFoo(value),
+  fromSerializable: (value) => new AsyncFoo(typeof value === "string" ? value : value[0]),
 })
 
 export interface AsyncCar {
