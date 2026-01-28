@@ -536,14 +536,42 @@ function decodeSegment(segment: string): string {
 }
 
 /**
- * List of URL protocols that are safe for navigation.
- * Only these protocols are allowed in redirects and navigation.
+ * Default list of URL protocols to block in links, redirects, and navigation.
+ * These protocols can be used to execute arbitrary code, access local files,
+ * or interact with browser internals in ways that could be exploited.
  */
-export const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+export const DEFAULT_PROTOCOL_BLOCKLIST = [
+  // Script execution protocols - can run arbitrary code
+  'javascript:', // Executes JavaScript in the current context (XSS vector)
+  'vbscript:', // Executes VBScript in IE/legacy browsers
+
+  // Local file access - can read sensitive files from the user's system
+  'file:', // Access to local filesystem (e.g., file:///etc/passwd)
+
+  // Data embedding protocols - can be used for XSS or data exfiltration
+  'blob:', // References blob URLs, can bypass CSP in some cases
+  'data:', // Inline data URLs, commonly used for XSS attacks
+
+  // Browser internal protocols - can access browser configuration/internals
+  'about:', // Browser internals (about:blank is safe, but about:config in Firefox could be targeted)
+
+  // Platform-specific protocols - can access app resources or extensions
+  'ms-appx:', // Windows UWP app local resources
+  'ms-appx-web:', // Windows UWP web app resources
+  'ms-browser-extension:', // Windows browser extension protocol
+  'chrome-extension:', // Chrome extension protocol (could trigger extension actions)
+  'moz-extension:', // Firefox extension protocol
+
+  // Archive/resource protocols - potential path traversal or information disclosure
+  'jar:', // Java archive protocol (path traversal attacks in some contexts)
+  'view-source:', // Information disclosure (reveals page source code)
+  'resource:', // Firefox internal resources
+  'wyciwyg:', // Firefox "what you cache is what you get" protocol
+]
 
 /**
- * Check if a URL string uses a protocol that is not in the safe list.
- * Returns true for dangerous protocols like javascript:, data:, vbscript:, etc.
+ * Check if a URL string uses a protocol that is in the blocklist.
+ * Returns true for blocked protocols like javascript:, blob:, data:, etc.
  *
  * The URL constructor correctly normalizes:
  * - Mixed case (JavaScript: → javascript:)
@@ -553,16 +581,20 @@ export const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
  * For relative URLs (no protocol), returns false (safe).
  *
  * @param url - The URL string to check
- * @returns true if the URL uses a dangerous (non-whitelisted) protocol
+ * @param blocklist - Set of protocols to block
+ * @returns true if the URL uses a blocked protocol
  */
-export function isDangerousProtocol(url: string): boolean {
+export function isDangerousProtocol(
+  url: string,
+  blocklist: Set<string>,
+): boolean {
   if (!url) return false
 
   try {
     // Use the URL constructor - it correctly normalizes protocols
     // per WHATWG URL spec, handling all bypass attempts automatically
     const parsed = new URL(url)
-    return !SAFE_URL_PROTOCOLS.includes(parsed.protocol)
+    return blocklist.has(parsed.protocol)
   } catch {
     // URL constructor throws for relative URLs (no protocol)
     // These are safe - they can't execute scripts

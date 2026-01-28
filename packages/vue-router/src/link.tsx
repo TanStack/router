@@ -251,8 +251,8 @@ export function useLinkProps<
   }
 
   if (type.value === 'external') {
-    // Block dangerous protocols like javascript:, data:, vbscript:
-    if (isDangerousProtocol(options.to as string)) {
+    // Block dangerous protocols like javascript:, blob:, data:
+    if (isDangerousProtocol(options.to as string, router.protocolBlocklist)) {
       if (process.env.NODE_ENV !== 'production') {
         console.warn(`Blocked Link with dangerous protocol: ${options.to}`)
       }
