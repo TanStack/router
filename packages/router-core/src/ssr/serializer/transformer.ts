@@ -168,7 +168,12 @@ export interface SerializationAdapter<
   TOutputAsync,
   TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
 > {
-  '~types': SerializationAdapterTypes<TInput, TOutput, TOutputAsync, TExtendsAdapters>
+  '~types': SerializationAdapterTypes<
+    TInput,
+    TOutput,
+    TOutputAsync,
+    TExtendsAdapters
+  >
   key: string
   extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
