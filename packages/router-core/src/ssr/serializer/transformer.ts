@@ -168,22 +168,23 @@ export interface SerializationAdapter<
   TOutputAsync,
   TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
 > {
-  '~types': SerializationAdapterTypes<TInput, TOutput, TExtendsAdapters>
+  '~types': SerializationAdapterTypes<TInput, TOutput, TOutputAsync, TExtendsAdapters>
   key: string
   extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
   toSerializable: (value: TInput) => TOutput
   toSerializableAsync?: (value: TInput) => MaybePromise<TOutputAsync>
-  fromSerializable: (value: TOutput) => TInput
+  fromSerializable: (value: TOutput | TOutputAsync) => TInput
 }
 
 export interface SerializationAdapterTypes<
   TInput,
   TOutput,
+  TOutputAsync,
   TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
 > {
   input: TInput | UnionizeSerializationAdaptersInput<TExtendsAdapters>
-  output: TOutput
+  output: TOutput | TOutputAsync
   extends: TExtendsAdapters
 }
 
