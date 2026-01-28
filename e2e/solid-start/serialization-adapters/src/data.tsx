@@ -74,7 +74,8 @@ export const asyncFooAdapter = createSerializationAdapter({
   test: (value) => value instanceof AsyncFoo,
   toSerializable: (foo) => foo.value,
   toSerializableAsync: (foo) => foo.valueAsync,
-  fromSerializable: (value) => new AsyncFoo(typeof value === "string" ? value : value[0]),
+  fromSerializable: (value) =>
+    new AsyncFoo(typeof value === 'string' ? value : value[0]),
 })
 
 export interface AsyncCar {
