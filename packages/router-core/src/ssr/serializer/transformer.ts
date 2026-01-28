@@ -44,15 +44,17 @@ export type UnionizeSerializationAdaptersInput<
 export function createSerializationAdapter<
   TInput = unknown,
   TOutput = unknown,
+  TOutputAsync = TOutput,
   const TExtendsAdapters extends
     | ReadonlyArray<AnySerializationAdapter>
     | never = never,
 >(
-  opts: CreateSerializationAdapterOptions<TInput, TOutput, TExtendsAdapters>,
-): SerializationAdapter<TInput, TOutput, TExtendsAdapters> {
+  opts: CreateSerializationAdapterOptions<TInput, TOutput, TOutputAsync, TExtendsAdapters>,
+): SerializationAdapter<TInput, TOutput, TOutputAsync, TExtendsAdapters> {
   return opts as unknown as SerializationAdapter<
     TInput,
     TOutput,
+    TOutputAsync,
     TExtendsAdapters
   >
 }
@@ -60,6 +62,7 @@ export function createSerializationAdapter<
 export interface CreateSerializationAdapterOptions<
   TInput,
   TOutput,
+  TOutputAsync,
   TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter> | never,
 > {
   key: string
@@ -83,11 +86,11 @@ export interface CreateSerializationAdapterOptions<
     value: TInput,
   ) => MaybePromise<
     ValidateSerializable<
-      TOutput,
+      TOutputAsync,
       Serializable | UnionizeSerializationAdaptersInput<TExtendsAdapters>
     >
   >
-  fromSerializable: (value: TOutput) => TInput
+  fromSerializable: (value: TOutput | TOutputAsync) => TInput
 }
 
 export type ValidateSerializable<T, TSerializable> =
@@ -157,6 +160,7 @@ export interface SerializerExtensions extends DefaultSerializerExtensions {}
 export interface SerializationAdapter<
   TInput,
   TOutput,
+  TOutputAsync,
   TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
 > {
   '~types': SerializationAdapterTypes<TInput, TOutput, TExtendsAdapters>
@@ -164,7 +168,7 @@ export interface SerializationAdapter<
   extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
   toSerializable: (value: TInput) => TOutput
-  toSerializableAsync?: (value: TInput) => MaybePromise<TOutput>
+  toSerializableAsync?: (value: TInput) => MaybePromise<TOutputAsync>
   fromSerializable: (value: TOutput) => TInput
 }
 
@@ -178,7 +182,7 @@ export interface SerializationAdapterTypes<
   extends: TExtendsAdapters
 }
 
-export type AnySerializationAdapter = SerializationAdapter<any, any, any>
+export type AnySerializationAdapter = SerializationAdapter<any, any, any, any>
 
 /** Create a Seroval plugin for server-side serialization only. */
 export function makeSsrSerovalPlugin(
