@@ -144,6 +144,41 @@ The `RouterOptions` type accepts an object with the following properties and met
 - When `true`, disables the global catch boundary that normally wraps all route matches. This allows unhandled errors to bubble up to top-level error handlers in the browser.
 - Useful for testing tools, error reporting services, and debugging scenarios.
 
+### `protocolBlocklist` property
+
+- Type: `Array<string>`
+- Optional
+- Defaults to `DEFAULT_PROTOCOL_BLOCKLIST` which includes:
+  - Script execution: `javascript:`, `vbscript:`
+  - Local file access: `file:`
+  - Data embedding: `blob:`, `data:`
+  - Browser internals: `about:`
+  - Platform-specific: `ms-appx:`, `ms-appx-web:`, `ms-browser-extension:`, `chrome-extension:`, `moz-extension:`
+  - Archive/resource: `jar:`, `view-source:`, `resource:`, `wyciwyg:`
+- An array of URL protocols to block in links, redirects, and navigation. URLs with these protocols will be rejected to prevent security vulnerabilities like XSS attacks.
+- The router creates a `Set` from this array internally for efficient lookup.
+
+**Example**
+
+```tsx
+import {
+  createRouter,
+  DEFAULT_PROTOCOL_BLOCKLIST,
+} from '@tanstack/react-router'
+
+// Use a custom blocklist (replaces the default)
+const router = createRouter({
+  routeTree,
+  protocolBlocklist: ['javascript:', 'data:'],
+})
+
+// Or extend the default blocklist
+const router = createRouter({
+  routeTree,
+  protocolBlocklist: [...DEFAULT_PROTOCOL_BLOCKLIST, 'ftp:', 'gopher:'],
+})
+```
+
 ### `defaultViewTransition` property
 
 - Type: `boolean | ViewTransitionOptions`
