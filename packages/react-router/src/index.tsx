@@ -105,7 +105,7 @@ export type {
   CreateFileRoute,
   SerializationAdapter,
   AnySerializationAdapter,
-  SerializableExtensions
+  SerializableExtensions,
 } from '@tanstack/router-core'
 
 export {
