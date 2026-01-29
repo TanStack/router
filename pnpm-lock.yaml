@@ -11491,6 +11491,8 @@ importers:
 
   packages/history: {}
 
+  packages/llm-docs: {}
+
   packages/nitro-v2-vite-plugin:
     dependencies:
       nitropack:
@@ -11508,6 +11510,9 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
+      '@tanstack/llm-docs':
+        specifier: workspace:*
+        version: link:../llm-docs
       '@tanstack/react-store':
         specifier: ^0.8.0
         version: 0.8.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -11601,6 +11606,9 @@ importers:
 
   packages/react-start:
     dependencies:
+      '@tanstack/llm-docs':
+        specifier: workspace:*
+        version: link:../llm-docs
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -11718,6 +11726,9 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
+      '@tanstack/llm-docs':
+        specifier: workspace:*
+        version: link:../llm-docs
       '@tanstack/store':
         specifier: ^0.8.0
         version: 0.8.0
@@ -11967,6 +11978,9 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
+      '@tanstack/llm-docs':
+        specifier: workspace:*
+        version: link:../llm-docs
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -12054,6 +12068,9 @@ importers:
 
   packages/solid-start:
     dependencies:
+      '@tanstack/llm-docs':
+        specifier: workspace:*
+        version: link:../llm-docs
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
@@ -12327,6 +12344,9 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
+      '@tanstack/llm-docs':
+        specifier: workspace:*
+        version: link:../llm-docs
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -12420,6 +12440,9 @@ importers:
 
   packages/vue-start:
     dependencies:
+      '@tanstack/llm-docs':
+        specifier: workspace:*
+        version: link:../llm-docs
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
