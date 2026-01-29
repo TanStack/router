@@ -72,6 +72,7 @@
   "dependencies": {
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
+    "@tanstack/llm-docs": "workspace:*",
     "@tanstack/vue-store": "^0.8.0",
     "@vue/runtime-dom": "^3.5.25",
     "isbot": "^5.1.22",
