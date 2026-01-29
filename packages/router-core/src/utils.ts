@@ -628,33 +628,35 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
 }
 
 /**
- * Encodes a path the same way `new URL()` would, but without the overhead of full URL parsing.
+ * Encodes a URL path to match the encoding behavior of `new URL()`.
+ * This is used to generate proper href values without the overhead of URL construction.
  *
- * This function encodes:
- * - Whitespace characters (spaces → %20, tabs → %09, etc.)
- * - Non-ASCII/Unicode characters (emojis, accented characters, etc.)
+ * Characters encoded (per WHATWG URL Standard path percent-encode set):
+ * - C0 controls (0x00-0x1F)
+ * - Space (0x20)
+ * - " (0x22), < (0x3C), > (0x3E)
+ * - ^ (0x5E), ` (0x60)
+ * - { (0x7B), | (0x7C), } (0x7D)
+ * - DEL (0x7F)
+ * - Non-ASCII (>= 0x80)
  *
- * It preserves:
- * - Already percent-encoded sequences (won't double-encode %2F, %25, etc.)
- * - ASCII special characters valid in URL paths (@, $, &, +, etc.)
- * - Forward slashes as path separators
+ * Preserved (not encoded):
+ * - URL structural characters: / ? # & = %
+ * - Alphanumerics, hyphen, dot, underscore, tilde
+ * - Already percent-encoded sequences (since % is preserved)
  *
- * Used to generate proper href values for SSR without constructing URL objects.
- *
- * @example
- * encodePathLikeUrl('/path/file name.pdf') // '/path/file%20name.pdf'
- * encodePathLikeUrl('/path/日本語') // '/path/%E6%97%A5%E6%9C%AC%E8%AA%9E'
- * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
+ * Note: Backslash (\) is not handled here since decodePath preserves %5C.
  */
 export function encodePathLikeUrl(path: string): string {
-  // Encode whitespace and non-ASCII characters that browsers encode in URLs
-
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
+  // Fast path: most paths contain only safe ASCII characters
   // eslint-disable-next-line no-control-regex
-  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
-  // eslint-disable-next-line no-control-regex
-  return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
+  if (!/[\x00-\x20"<>^`{|}\x7F]|[^\x00-\x7F]/.test(path)) return path
+  // Encode unsafe characters per WHATWG URL path percent-encode set
+  return path.replace(
+    // eslint-disable-next-line no-control-regex
+    /[\x00-\x20"<>^`{|}\x7F]|[^\x00-\x7F]/gu,
+    encodeURIComponent,
+  )
 }
 
 /**
