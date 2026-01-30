@@ -1,10 +1,12 @@
 import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
 import invariant from 'tiny-invariant'
 import { decodePath } from '../utils'
+import { createLRUCache } from '../lru-cache'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
+import type { LRUCache } from '../lru-cache'
 import type { DehydratedMatch, DehydratedRouter } from './types'
 import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter } from '../router'
@@ -27,6 +29,10 @@ declare module '../router' {
 }
 
 const SCOPE_ID = 'tsr'
+
+const TSR_PREFIX = GLOBAL_TSR + '.router='
+const P_PREFIX = GLOBAL_TSR + '.p(()=>'
+const P_SUFFIX = ')'
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   const dehydratedMatch: DehydratedMatch = {
@@ -116,6 +122,10 @@ class ScriptBuffer {
     if (bufferedScripts.length === 0) {
       return undefined
     }
+    // Optimization: if only one script, avoid join
+    if (bufferedScripts.length === 1) {
+      return bufferedScripts[0] + ';document.currentScript.remove()'
+    }
     // Append cleanup script and join - avoid push() to not mutate then iterate
     return bufferedScripts.join(';') + ';document.currentScript.remove()'
   }
@@ -137,6 +147,23 @@ class ScriptBuffer {
   }
 }
 
+const isProd = process.env.NODE_ENV === 'production'
+
+type FilteredRoutes = Manifest['routes']
+
+type ManifestLRU = LRUCache<string, FilteredRoutes>
+
+const MANIFEST_CACHE_SIZE = 100
+const manifestCaches = new WeakMap<Manifest, ManifestLRU>()
+
+function getManifestCache(manifest: Manifest): ManifestLRU {
+  const cache = manifestCaches.get(manifest)
+  if (cache) return cache
+  const newCache = createLRUCache<string, FilteredRoutes>(MANIFEST_CACHE_SIZE)
+  manifestCaches.set(manifest, newCache)
+  return newCache
+}
+
 export function attachRouterServerSsrUtils({
   router,
   manifest,
@@ -152,13 +179,13 @@ export function attachRouterServerSsrUtils({
   const renderFinishedListeners: Array<() => void> = []
   const serializationFinishedListeners: Array<() => void> = []
   const scriptBuffer = new ScriptBuffer(router)
-  let injectedHtmlBuffer: Array<string> = []
+  let injectedHtmlBuffer = ''
 
   router.serverSsr = {
     injectHtml: (html: string) => {
       if (!html) return
       // Buffer the HTML so it can be retrieved via takeBufferedHtml()
-      injectedHtmlBuffer.push(html)
+      injectedHtmlBuffer += html
       // Emit event to notify subscribers that new HTML is available
       router.emit({
         type: 'onInjectedHtml',
@@ -182,31 +209,41 @@ export function attachRouterServerSsrUtils({
       // For currently matched routes, send full manifest (preloads + assets)
       // For all other routes, only send assets (no preloads as they are handled via dynamic imports)
       if (manifest) {
-        const currentRouteIds = new Set(
-          router.state.matches.map((k) => k.routeId),
-        )
-        const filteredRoutes = Object.fromEntries(
-          Object.entries(manifest.routes).flatMap(
-            ([routeId, routeManifest]) => {
-              if (currentRouteIds.has(routeId)) {
-                return [[routeId, routeManifest]]
-              } else if (
-                routeManifest.assets &&
-                routeManifest.assets.length > 0
-              ) {
-                return [
-                  [
-                    routeId,
-                    {
-                      assets: routeManifest.assets,
-                    },
-                  ],
-                ]
+        // Prod-only caching; in dev manifests may be replaced/updated (HMR)
+        const currentRouteIdsList = matchesToDehydrate.map((m) => m.routeId)
+        const manifestCacheKey = currentRouteIdsList.join('\0')
+
+        let filteredRoutes: FilteredRoutes | undefined
+
+        if (isProd) {
+          filteredRoutes = getManifestCache(manifest).get(manifestCacheKey)
+        }
+
+        if (!filteredRoutes) {
+          const currentRouteIds = new Set(currentRouteIdsList)
+          const nextFilteredRoutes: FilteredRoutes = {}
+
+          for (const routeId in manifest.routes) {
+            const routeManifest = manifest.routes[routeId]!
+            if (currentRouteIds.has(routeId)) {
+              nextFilteredRoutes[routeId] = routeManifest
+            } else if (
+              routeManifest.assets &&
+              routeManifest.assets.length > 0
+            ) {
+              nextFilteredRoutes[routeId] = {
+                assets: routeManifest.assets,
               }
-              return []
-            },
-          ),
-        )
+            }
+          }
+
+          if (isProd) {
+            getManifestCache(manifest).set(manifestCacheKey, nextFilteredRoutes)
+          }
+
+          filteredRoutes = nextFilteredRoutes
+        }
+
         manifestToDehydrate = {
           routes: filteredRoutes,
         }
@@ -252,9 +289,9 @@ export function attachRouterServerSsrUtils({
         refs: new Map(),
         plugins,
         onSerialize: (data, initial) => {
-          let serialized = initial ? GLOBAL_TSR + '.router=' + data : data
+          let serialized = initial ? TSR_PREFIX + data : data
           if (trackPlugins.didRun) {
-            serialized = GLOBAL_TSR + '.p(()=>' + serialized + ')'
+            serialized = P_PREFIX + serialized + P_SUFFIX
           }
           scriptBuffer.enqueue(serialized)
         },
@@ -310,11 +347,11 @@ export function attachRouterServerSsrUtils({
       scriptBuffer.liftBarrier()
     },
     takeBufferedHtml() {
-      if (injectedHtmlBuffer.length === 0) {
+      if (!injectedHtmlBuffer) {
         return undefined
       }
-      const buffered = injectedHtmlBuffer.join('')
-      injectedHtmlBuffer = []
+      const buffered = injectedHtmlBuffer
+      injectedHtmlBuffer = ''
       return buffered
     },
     cleanup() {
@@ -322,7 +359,7 @@ export function attachRouterServerSsrUtils({
       if (!router.serverSsr) return
       renderFinishedListeners.length = 0
       serializationFinishedListeners.length = 0
-      injectedHtmlBuffer = []
+      injectedHtmlBuffer = ''
       scriptBuffer.cleanup()
       router.serverSsr = undefined
     },

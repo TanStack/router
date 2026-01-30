@@ -8,6 +8,7 @@ import {
   isRedirect,
   rootRouteId,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
@@ -93,7 +94,7 @@ export const Match = (props: { matchId: string }) => {
           component={ResolvedSuspenseBoundary()}
           fallback={
             // Don't show fallback on server when using no-ssr mode to avoid hydration mismatch
-            router.isServer || resolvedNoSsr ? undefined : (
+            (isServer ?? router.isServer) || resolvedNoSsr ? undefined : (
               <Dynamic component={resolvePendingComponent()} />
             )
           }
@@ -129,7 +130,7 @@ export const Match = (props: { matchId: string }) => {
               <Solid.Switch>
                 <Solid.Match when={resolvedNoSsr}>
                   <Solid.Show
-                    when={!router.isServer}
+                    when={!(isServer ?? router.isServer)}
                     fallback={<Dynamic component={resolvePendingComponent()} />}
                   >
                     <MatchInner matchId={props.matchId} />
@@ -271,7 +272,7 @@ export const MatchInner = (props: { matchId: string }): any => {
             const routerMatch = router.getMatch(match().id)
             if (routerMatch && !routerMatch._nonReactive.minPendingPromise) {
               // Create a promise that will resolve after the minPendingMs
-              if (!router.isServer) {
+              if (!(isServer ?? router.isServer)) {
                 const minPendingPromise = createControlledPromise<void>()
 
                 routerMatch._nonReactive.minPendingPromise = minPendingPromise
@@ -332,7 +333,7 @@ export const MatchInner = (props: { matchId: string }): any => {
       </Solid.Match>
       <Solid.Match when={match().status === 'error'}>
         {(_) => {
-          if (router.isServer) {
+          if (isServer ?? router.isServer) {
             const RouteErrorComponent =
               (route().options.errorComponent ??
                 router.options.defaultErrorComponent) ||

@@ -194,28 +194,31 @@ test.describe('CSS styles in SSR (dev mode)', () => {
   }) => {
     // Start from home
     await page.goto(buildUrl(baseURL!, '/'))
-    await page.waitForTimeout(1000)
 
-    // Verify initial styles
+    // Verify initial styles with retry to handle potential Vite dep optimization reload
     const globalElement = page.getByTestId('global-styled')
-    await expect(globalElement).toBeVisible()
-    let backgroundColor = await globalElement.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(59, 130, 246)')
+    await expect(async () => {
+      await expect(globalElement).toBeVisible()
+      const backgroundColor = await globalElement.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(59, 130, 246)')
+    }).toPass({ timeout: 10000 })
 
     // Navigate to modules page
     await page.getByTestId('nav-modules').click()
     // Use glob pattern to match with or without basepath
     await page.waitForURL('**/modules')
 
-    // Verify CSS modules styles
+    // Verify CSS modules styles with retry to handle potential Vite dep optimization reload
     const card = page.getByTestId('module-card')
-    await expect(card).toBeVisible()
-    backgroundColor = await card.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    await expect(async () => {
+      await expect(card).toBeVisible()
+      const backgroundColor = await card.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(240, 253, 244)')
+    }).toPass({ timeout: 10000 })
 
     // Navigate back to home
     await page.getByTestId('nav-home').click()
@@ -223,11 +226,13 @@ test.describe('CSS styles in SSR (dev mode)', () => {
     // Matches: /, /?, /my-app, /my-app/, /my-app?foo=bar
     await page.waitForURL(/\/([^/]*)(\/)?($|\?)/)
 
-    // Verify global styles still work
-    await expect(globalElement).toBeVisible()
-    backgroundColor = await globalElement.evaluate(
-      (el) => getComputedStyle(el).backgroundColor,
-    )
-    expect(backgroundColor).toBe('rgb(59, 130, 246)')
+    // Verify global styles still work with retry
+    await expect(async () => {
+      await expect(globalElement).toBeVisible()
+      const backgroundColor = await globalElement.evaluate(
+        (el) => getComputedStyle(el).backgroundColor,
+      )
+      expect(backgroundColor).toBe('rgb(59, 130, 246)')
+    }).toPass({ timeout: 10000 })
   })
 })

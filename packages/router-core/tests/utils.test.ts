@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   decodePath,
   deepEqual,
+  encodePathLikeUrl,
   escapeHtml,
   isPlainArray,
   replaceEqualDeep,
@@ -1036,6 +1037,43 @@ describe('escapeHtml', () => {
   it('should handle mixed content', () => {
     expect(escapeHtml('a<b>c&d\u2028e\u2029f')).toBe(
       'a\\u003cb\\u003ec\\u0026d\\u2028e\\u2029f',
+    )
+  })
+})
+
+describe('encodePathLikeUrl', () => {
+  it('should return path unchanged if no non-ASCII characters', () => {
+    expect(encodePathLikeUrl('/foo/bar/baz')).toBe('/foo/bar/baz')
+  })
+
+  it('should encode non-ASCII characters', () => {
+    expect(encodePathLikeUrl('/path/caf\u00e9')).toBe('/path/caf%C3%A9')
+  })
+
+  it('should encode unicode characters in path segments', () => {
+    expect(encodePathLikeUrl('/users/\u4e2d\u6587/profile')).toBe(
+      '/users/%E4%B8%AD%E6%96%87/profile',
+    )
+  })
+
+  it('should encode spaces but preserve other ASCII special characters', () => {
+    // encodePathLikeUrl encodes whitespace and non-ASCII, but not other ASCII special chars
+    expect(encodePathLikeUrl('/path/file name.pdf')).toBe(
+      '/path/file%20name.pdf',
+    )
+    expect(encodePathLikeUrl('/path/file[1].pdf')).toBe('/path/file[1].pdf')
+    expect(encodePathLikeUrl('/path#section')).toBe('/path#section')
+  })
+
+  it('should handle mixed ASCII and non-ASCII characters', () => {
+    expect(encodePathLikeUrl('/path/caf\u00e9 (copy).pdf')).toBe(
+      '/path/caf%C3%A9%20(copy).pdf',
+    )
+  })
+
+  it('should handle emoji characters', () => {
+    expect(encodePathLikeUrl('/path/\u{1F600}/file')).toBe(
+      '/path/%F0%9F%98%80/file',
     )
   })
 })

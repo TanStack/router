@@ -1,6 +1,7 @@
 import { SAFE_URL_PROTOCOLS, isDangerousProtocol } from './utils'
 import type { NavigateOptions } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
+import type { ParsedLocation } from './location'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
@@ -14,7 +15,13 @@ export type Redirect<
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = Response & {
-  options: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  options: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
+    /**
+     * @internal
+     * A **trusted** built location that can be used to redirect to.
+     */
+    _builtLocation?: ParsedLocation
+  }
   redirectHandled?: boolean
 }
 
@@ -45,6 +52,11 @@ export type RedirectOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RedirectType#headers-property)
    */
   headers?: HeadersInit
+  /**
+   * @internal
+   * A **trusted** built location that can be used to redirect to.
+   */
+  _builtLocation?: ParsedLocation
 } & NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type ResolvedRedirect<
@@ -113,13 +125,21 @@ export function redirect<
   opts.statusCode = opts.statusCode || opts.code || 307
 
   // Block dangerous protocols in redirect href
-  if (typeof opts.href === 'string' && isDangerousProtocol(opts.href)) {
+  if (
+    !opts._builtLocation &&
+    typeof opts.href === 'string' &&
+    isDangerousProtocol(opts.href)
+  ) {
     throw new Error(
       `Redirect blocked: unsafe protocol in href "${opts.href}". Only ${SAFE_URL_PROTOCOLS.join(', ')} protocols are allowed.`,
     )
   }
 
-  if (!opts.reloadDocument && typeof opts.href === 'string') {
+  if (
+    !opts._builtLocation &&
+    !opts.reloadDocument &&
+    typeof opts.href === 'string'
+  ) {
     try {
       new URL(opts.href)
       opts.reloadDocument = true
