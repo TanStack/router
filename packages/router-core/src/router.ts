@@ -1401,8 +1401,6 @@ export class RouterCore<
 
     const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
 
-
-
     for (let index = 0; index < matchedRoutes.length; index++) {
       const route = matchedRoutes[index]!
       // Take each matched route and resolve + validate its search params
@@ -1427,13 +1425,12 @@ export class RouterCore<
             validateSearch(route.options.validateSearch, { ...parentSearch }) ??
             undefined
 
-          
-            preMatchSearch={
-              ...parentSearch,
-              ...strictSearch,
-            }
-            strictMatchSearch={ ...parentStrictSearch, ...strictSearch }
-            searchError = undefined
+          preMatchSearch = {
+            ...parentSearch,
+            ...strictSearch,
+          }
+          strictMatchSearch = { ...parentStrictSearch, ...strictSearch }
+          searchError = undefined
         } catch (err: any) {
           let searchParamError = err
           if (!(err instanceof SearchParamError)) {
