@@ -937,6 +937,14 @@ export class RouterCore<
   private __pendingMatches?: Array<AnyRouteMatch>
   private __pendingMatchesIndex?: Map<string, number>
   /**
+   * Index map for committed matches (state.matches) for O(1) lookup.
+   */
+  private __matchesIndex = new Map<string, number>()
+  /**
+   * Index map for cached matches (state.cachedMatches) for O(1) lookup.
+   */
+  private __cachedMatchesIndex = new Map<string, number>()
+  /**
    * Unified map of all matches by ID for O(1) lookup in getMatch.
    * Kept in sync with __pendingMatches, state.matches, and state.cachedMatches.
    */
@@ -2595,18 +2603,24 @@ export class RouterCore<
   }
 
   /**
-   * Rebuild the unified __matchesById map from all match sources.
+   * Rebuild the unified __matchesById map and index maps from all match sources.
    * Called when state.matches or state.cachedMatches changes.
    */
   private rebuildMatchesById = () => {
     this.__matchesById.clear()
+    this.__matchesIndex.clear()
+    this.__cachedMatchesIndex.clear()
     // Add in reverse priority order so higher priority sources overwrite
     // Priority: cachedMatches < matches < pendingMatches
-    for (const match of this.state.cachedMatches) {
+    for (let i = 0; i < this.state.cachedMatches.length; i++) {
+      const match = this.state.cachedMatches[i]!
       this.__matchesById.set(match.id, match)
+      this.__cachedMatchesIndex.set(match.id, i)
     }
-    for (const match of this.state.matches) {
+    for (let i = 0; i < this.state.matches.length; i++) {
+      const match = this.state.matches[i]!
       this.__matchesById.set(match.id, match)
+      this.__matchesIndex.set(match.id, i)
     }
     if (this.__pendingMatches) {
       for (const match of this.__pendingMatches) {
@@ -2678,14 +2692,29 @@ export class RouterCore<
             cachedMatches: nextCachedMatches,
           }
         })
-        // Sync __matchesById with the updated store state
-        this.rebuildMatchesById()
+        // Rebuild only indices - __matchesById is already updated in updateMatchInternal
+        this.rebuildIndices()
       })
     })
   }
 
+  /**
+   * Rebuild only the index maps (not __matchesById which is already up-to-date).
+   * Called after flushMatchUpdates to sync indices with the new state arrays.
+   */
+  private rebuildIndices = () => {
+    this.__matchesIndex.clear()
+    this.__cachedMatchesIndex.clear()
+    for (let i = 0; i < this.state.matches.length; i++) {
+      this.__matchesIndex.set(this.state.matches[i]!.id, i)
+    }
+    for (let i = 0; i < this.state.cachedMatches.length; i++) {
+      this.__cachedMatchesIndex.set(this.state.cachedMatches[i]!.id, i)
+    }
+  }
+
   private updateMatchInternal = (id: string, updater: (prev: any) => any) => {
-    // Check pending matches first (highest priority)
+    // Check pending matches first (highest priority) - O(1) lookup
     const pendingIndex = this.__pendingMatchesIndex?.get(id)
     if (pendingIndex !== undefined && this.__pendingMatches) {
       const prev = this.__pendingMatches[pendingIndex]!
@@ -2697,10 +2726,13 @@ export class RouterCore<
       return
     }
 
-    // Check committed matches
-    const matchesIndex = this.state.matches.findIndex((m) => m.id === id)
-    if (matchesIndex !== -1) {
-      const prev = this.state.matches[matchesIndex]!
+    // Check committed matches using O(1) index lookup
+    const matchesIndex = this.__matchesIndex.get(id)
+    if (matchesIndex !== undefined) {
+      // Use any pending queued update as the base, otherwise use state.matches
+      // This ensures multiple updates accumulate correctly before flush
+      const prev =
+        this.__queuedMatchUpdates.get(id) ?? this.state.matches[matchesIndex]!
       const next = updater(prev)
       if (next !== prev) {
         this.__matchesById.set(id, next)
@@ -2709,10 +2741,13 @@ export class RouterCore<
       return
     }
 
-    // Check cached matches
-    const cachedIndex = this.state.cachedMatches.findIndex((m) => m.id === id)
-    if (cachedIndex !== -1) {
-      const prev = this.state.cachedMatches[cachedIndex]!
+    // Check cached matches using O(1) index lookup
+    const cachedIndex = this.__cachedMatchesIndex.get(id)
+    if (cachedIndex !== undefined) {
+      // Use any pending queued update as the base, otherwise use state.cachedMatches
+      const prev =
+        this.__queuedCachedMatchUpdates.get(id) ??
+        this.state.cachedMatches[cachedIndex]!
       const next = updater(prev)
       if (next !== prev) {
         this.__matchesById.set(id, next)
