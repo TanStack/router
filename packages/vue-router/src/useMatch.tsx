@@ -92,7 +92,7 @@ export function useMatch<
         shouldThrowError: false,
       }
     },
-  } as any) as Vue.Ref<{ match: any; shouldThrowError: boolean }>
+  })
 
   // Computed that throws when appropriate
   const result = Vue.computed(() => {
