@@ -9,18 +9,19 @@ Answers to common security questions about TanStack Start.
 
 Yes. TanStack Start includes built-in protections against common web vulnerabilities:
 
-| Attack Vector | Protection |
-|--------------|------------|
-| CSRF | POST enforcement, custom headers, SameSite cookie support |
+| Attack Vector         | Protection                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| CSRF                  | POST enforcement, custom headers, SameSite cookie support                                                    |
 | Serialization attacks | Hardened serializer tested against all known CVEs and proactively researched against emerging attack vectors |
-| SSRF | Origin derived from `request.url`, not client headers |
-| Open redirects | URL sanitization (CR/LF stripping, protocol-relative URL prevention) |
-| XSS | CSP nonce support for inline scripts |
-| DoS | Payload size limits on requests |
+| SSRF                  | Origin derived from `request.url`, not client headers                                                        |
+| Open redirects        | URL sanitization (CR/LF stripping, protocol-relative URL prevention)                                         |
+| XSS                   | CSP nonce support for inline scripts                                                                         |
+| DoS                   | Payload size limits on requests                                                                              |
 
 ## What's automatic vs what do I need to configure?
 
 **Automatic (zero configuration):**
+
 - POST enforcement for server function mutations
 - Custom header requirement (`x-tsr-serverFn`) on server function requests
 - Origin validation from `request.url`
@@ -29,6 +30,7 @@ Yes. TanStack Start includes built-in protections against common web vulnerabili
 - Payload size limits
 
 **You configure (app-specific):**
+
 - **SameSite cookie policy** - we provide the option, you choose `'lax'` or `'strict'` based on your app's cross-site requirements
 - **Input validation schemas** - we provide `.inputValidator()`, you define what valid data looks like for your domain
 - **CSP nonce** - we propagate your nonce to all scripts; you generate and configure it per-request
@@ -36,6 +38,7 @@ Yes. TanStack Start includes built-in protections against common web vulnerabili
 - **Rate limiting** - depends on your infrastructure and traffic patterns
 
 **Optional (if needed):**
+
 - **CSRF tokens** - only needed for legacy browsers that don't support SameSite cookies; implement via middleware if required
 
 We can't make every security decision for you because the right choice depends on your specific application. A banking app needs `sameSite: 'strict'`, while an app with legitimate cross-site embeds might need `'lax'`. Your validation schemas depend on your data model. Auth depends on your user system.
