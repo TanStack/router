@@ -521,7 +521,6 @@ export interface RouterState<
   isLoading: boolean
   isTransitioning: boolean
   matches: Array<TRouteMatch>
-  pendingMatches?: Array<TRouteMatch>
   cachedMatches: Array<TRouteMatch>
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
@@ -935,6 +934,15 @@ export class RouterCore<
   viewTransitionPromise?: ControlledPromise<true>
   isScrollRestoring = false
   isScrollRestorationSetup = false
+  private __pendingMatches?: Array<AnyRouteMatch>
+  private __pendingMatchesIndex?: Map<string, number>
+  private __matchesIndex?: Map<string, number>
+  private __matchesIndexFor?: Array<AnyRouteMatch>
+  private __cachedMatchesIndex?: Map<string, number>
+  private __cachedMatchesIndexFor?: Array<AnyRouteMatch>
+  private __queuedMatchUpdates = new Map<string, AnyRouteMatch>()
+  private __queuedCachedMatchUpdates = new Map<string, AnyRouteMatch>()
+  private __matchFlushScheduled = false
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
@@ -1743,7 +1751,7 @@ export class RouterCore<
       (match) => match.isFetching === 'loader',
     )
     const matchesToCancelArray = new Set([
-      ...(this.state.pendingMatches ?? []),
+      ...(this.__pendingMatches ?? []),
       ...currentPendingMatches,
       ...currentLoadingMatches,
     ])
@@ -2320,6 +2328,8 @@ export class RouterCore<
 
     // Match the routes
     const pendingMatches = this.matchRoutes(this.latestLocation)
+    this.__pendingMatches = pendingMatches
+    this.rebuildPendingMatchesIndex(pendingMatches)
 
     // Ingest the new matches
     this.__store.setState((s) => ({
@@ -2328,7 +2338,6 @@ export class RouterCore<
       statusCode: 200,
       isLoading: true,
       location: this.latestLocation,
-      pendingMatches,
       // If a cached moved to pendingMatches, remove it from cachedMatches
       cachedMatches: s.cachedMatches.filter(
         (d) => !pendingMatches.some((e) => e.id === d.id),
@@ -2370,14 +2379,13 @@ export class RouterCore<
           await loadMatches({
             router: this,
             sync: opts?.sync,
-            matches: this.state.pendingMatches as Array<AnyRouteMatch>,
+            matches: this.__pendingMatches ?? [],
             location: next,
             updateMatch: this.updateMatch,
-            // eslint-disable-next-line @typescript-eslint/require-await
-            onReady: async () => {
+            onReady: () => {
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
-                this.startViewTransition(async () => {
+                this.startViewTransition(() => {
                   // this.viewTransitionPromise = createControlledPromise<true>()
 
                   // Commit the pending matches. If a previous match was
@@ -2389,7 +2397,10 @@ export class RouterCore<
                   batch(() => {
                     this.__store.setState((s) => {
                       const previousMatches = s.matches
-                      const newMatches = s.pendingMatches || s.matches
+                      const newMatches =
+                        this.__pendingMatches && this.__pendingMatches.length
+                          ? this.__pendingMatches
+                          : s.matches
 
                       exitingMatches = previousMatches.filter(
                         (match) => !newMatches.some((d) => d.id === match.id),
@@ -2407,7 +2418,6 @@ export class RouterCore<
                         isLoading: false,
                         loadedAt: Date.now(),
                         matches: newMatches,
-                        pendingMatches: undefined,
                         /**
                          * When committing new matches, cache any exiting matches that are still usable.
                          * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
@@ -2425,6 +2435,8 @@ export class RouterCore<
                     })
                     this.clearExpiredCache()
                   })
+                  this.__pendingMatches = undefined
+                  this.rebuildPendingMatchesIndex(undefined)
 
                   //
                   ;(
@@ -2440,8 +2452,10 @@ export class RouterCore<
                       )
                     })
                   })
+                  return Promise.resolve()
                 })
               })
+              return Promise.resolve()
             },
           })
         } catch (err) {
@@ -2562,34 +2576,179 @@ export class RouterCore<
     }
   }
 
-  updateMatch: UpdateMatchFn = (id, updater) => {
-    this.startTransition(() => {
-      const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
-        ? 'pendingMatches'
-        : this.state.matches.some((d) => d.id === id)
-          ? 'matches'
-          : this.state.cachedMatches.some((d) => d.id === id)
-            ? 'cachedMatches'
-            : ''
+  private rebuildPendingMatchesIndex = (
+    matches: Array<AnyRouteMatch> | undefined,
+  ) => {
+    if (!matches) {
+      this.__pendingMatchesIndex = undefined
+      return
+    }
+    const index = new Map<string, number>()
+    matches.forEach((match, i) => {
+      index.set(match.id, i)
+    })
+    this.__pendingMatchesIndex = index
+  }
 
-      if (matchesKey) {
-        this.__store.setState((s) => ({
-          ...s,
-          [matchesKey]: s[matchesKey]?.map((d) =>
-            d.id === id ? updater(d) : d,
-          ),
-        }))
+  private getMatchesIndex = (
+    matches: Array<AnyRouteMatch>,
+    kind: 'matches' | 'cachedMatches',
+  ): Map<string, number> => {
+    if (kind === 'matches') {
+      if (this.__matchesIndexFor !== matches || !this.__matchesIndex) {
+        const index = new Map<string, number>()
+        matches.forEach((match, i) => {
+          index.set(match.id, i)
+        })
+        this.__matchesIndex = index
+        this.__matchesIndexFor = matches
       }
+      return this.__matchesIndex
+    }
+    if (
+      this.__cachedMatchesIndexFor !== matches ||
+      !this.__cachedMatchesIndex
+    ) {
+      const index = new Map<string, number>()
+      matches.forEach((match, i) => {
+        index.set(match.id, i)
+      })
+      this.__cachedMatchesIndex = index
+      this.__cachedMatchesIndexFor = matches
+    }
+    return this.__cachedMatchesIndex
+  }
+
+  private queueMatchUpdate = (
+    kind: 'matches' | 'cachedMatches',
+    id: string,
+    match: AnyRouteMatch,
+  ) => {
+    if (kind === 'matches') {
+      this.__queuedMatchUpdates.set(id, match)
+    } else {
+      this.__queuedCachedMatchUpdates.set(id, match)
+    }
+
+    if (this.__matchFlushScheduled) return
+    this.__matchFlushScheduled = true
+    Promise.resolve().then(() => {
+      this.__matchFlushScheduled = false
+      if (
+        this.__queuedMatchUpdates.size === 0 &&
+        this.__queuedCachedMatchUpdates.size === 0
+      ) {
+        return
+      }
+      const queuedMatches = new Map(this.__queuedMatchUpdates)
+      const queuedCached = new Map(this.__queuedCachedMatchUpdates)
+      this.__queuedMatchUpdates.clear()
+      this.__queuedCachedMatchUpdates.clear()
+      this.startTransition(() => {
+        this.__store.setState((s) => {
+          let nextMatches = s.matches
+          let nextCachedMatches = s.cachedMatches
+
+          if (queuedMatches.size) {
+            const index = this.getMatchesIndex(s.matches, 'matches')
+            nextMatches = s.matches.slice()
+            queuedMatches.forEach((match, queuedId) => {
+              const matchIndex = index.get(queuedId)
+              if (matchIndex !== undefined) {
+                nextMatches[matchIndex] = match
+              }
+            })
+          }
+
+          if (queuedCached.size) {
+            const index = this.getMatchesIndex(s.cachedMatches, 'cachedMatches')
+            nextCachedMatches = s.cachedMatches.slice()
+            queuedCached.forEach((match, queuedId) => {
+              const matchIndex = index.get(queuedId)
+              if (matchIndex !== undefined) {
+                nextCachedMatches[matchIndex] = match
+              }
+            })
+          }
+
+          if (
+            nextMatches === s.matches &&
+            nextCachedMatches === s.cachedMatches
+          ) {
+            return s
+          }
+
+          return {
+            ...s,
+            matches: nextMatches,
+            cachedMatches: nextCachedMatches,
+          }
+        })
+      })
     })
   }
 
+  private updateMatchInternal = (id: string, updater: (prev: any) => any) => {
+    const pendingIndex = this.__pendingMatchesIndex?.get(id)
+    if (pendingIndex !== undefined && this.__pendingMatches) {
+      const prev = this.__pendingMatches[pendingIndex]!
+      const next = updater(prev)
+      if (next !== prev) {
+        this.__pendingMatches[pendingIndex] = next
+      }
+      return
+    }
+
+    const matchesIndex = this.getMatchesIndex(
+      this.state.matches,
+      'matches',
+    ).get(id)
+    if (matchesIndex !== undefined) {
+      const prev = this.state.matches[matchesIndex]!
+      const next = updater(prev)
+      if (next !== prev) {
+        this.queueMatchUpdate('matches', id, next)
+      }
+      return
+    }
+
+    const cachedIndex = this.getMatchesIndex(
+      this.state.cachedMatches,
+      'cachedMatches',
+    ).get(id)
+    if (cachedIndex !== undefined) {
+      const prev = this.state.cachedMatches[cachedIndex]!
+      const next = updater(prev)
+      if (next !== prev) {
+        this.queueMatchUpdate('cachedMatches', id, next)
+      }
+    }
+  }
+
+  updateMatch: UpdateMatchFn = (id, updater) => {
+    this.updateMatchInternal(id, updater)
+  }
+
   getMatch: GetMatchFn = (matchId: string): AnyRouteMatch | undefined => {
-    const findFn = (d: { id: string }) => d.id === matchId
-    return (
-      this.state.cachedMatches.find(findFn) ??
-      this.state.pendingMatches?.find(findFn) ??
-      this.state.matches.find(findFn)
-    )
+    const pendingIndex = this.__pendingMatchesIndex?.get(matchId)
+    if (pendingIndex !== undefined && this.__pendingMatches) {
+      return this.__pendingMatches[pendingIndex]
+    }
+    const matchesIndex = this.getMatchesIndex(
+      this.state.matches,
+      'matches',
+    ).get(matchId)
+    if (matchesIndex !== undefined) {
+      return this.state.matches[matchesIndex]
+    }
+    const cachedIndex = this.getMatchesIndex(
+      this.state.cachedMatches,
+      'cachedMatches',
+    ).get(matchId)
+    if (cachedIndex !== undefined) {
+      return this.state.cachedMatches[cachedIndex]
+    }
+    return undefined
   }
 
   /**
@@ -2624,11 +2783,15 @@ export class RouterCore<
       return d
     }
 
+    if (this.__pendingMatches) {
+      this.__pendingMatches = this.__pendingMatches.map(invalidate)
+      this.rebuildPendingMatchesIndex(this.__pendingMatches)
+    }
+
     this.__store.setState((s) => ({
       ...s,
       matches: s.matches.map(invalidate),
       cachedMatches: s.cachedMatches.map(invalidate),
-      pendingMatches: s.pendingMatches?.map(invalidate),
     }))
 
     this.shouldViewTransition = false
@@ -2734,7 +2897,7 @@ export class RouterCore<
     })
 
     const activeMatchIds = new Set(
-      [...this.state.matches, ...(this.state.pendingMatches ?? [])].map(
+      [...this.state.matches, ...(this.__pendingMatches ?? [])].map(
         (d) => d.id,
       ),
     )
@@ -2902,7 +3065,6 @@ export function getInitialRouterState(
     resolvedLocation: undefined,
     location,
     matches: [],
-    pendingMatches: [],
     cachedMatches: [],
     statusCode: 200,
   }
