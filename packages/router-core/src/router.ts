@@ -1517,16 +1517,18 @@ export class RouterCore<
       let match: AnyRouteMatch
 
       if (existingMatch) {
-        match = Object.assign({}, existingMatch)
-        match.cause = cause
-        match.params = previousMatch
-          ? replaceEqualDeep(previousMatch.params, routeParams)
-          : routeParams
-        match._strictParams = strictParams
-        match.search = previousMatch
-          ? replaceEqualDeep(previousMatch.search, preMatchSearch)
-          : replaceEqualDeep(existingMatch.search, preMatchSearch)
-        match._strictSearch = strictMatchSearch
+        match = {
+          ...existingMatch,
+          cause,
+          params: previousMatch
+            ? replaceEqualDeep(previousMatch.params, routeParams)
+            : routeParams,
+          _strictParams: strictParams,
+          search: previousMatch
+            ? replaceEqualDeep(previousMatch.search, preMatchSearch)
+            : replaceEqualDeep(existingMatch.search, preMatchSearch),
+          _strictSearch: strictMatchSearch,
+        }
       } else {
         const status =
           route.options.loader ||
