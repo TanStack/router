@@ -8,6 +8,8 @@ import packageJson from './package.json'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
+const isTest = process.env.VITEST || process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === 'test'
+
 const config = defineConfig({
   plugins: [vueJsx()],
   resolve: {
@@ -16,7 +18,7 @@ const config = defineConfig({
     },
     // Add 'development' condition for tests to resolve @tanstack/router-core/isServer
     // to the development export (isServer = undefined) instead of node (isServer = true)
-    ...(process.env.VITEST && { conditions: ['development'] }),
+    ...(isTest && { conditions: ['development'] }),
   },
   test: {
     name: packageJson.name,

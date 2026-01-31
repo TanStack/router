@@ -4,6 +4,7 @@ import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 import type { ViteUserConfig } from 'vitest/config'
 
+
 const config = defineConfig(({ mode }) => {
   if (mode === 'server') {
     return {
@@ -23,11 +24,13 @@ const config = defineConfig(({ mode }) => {
     }
   }
 
+  const isTest = process.env.VITEST || process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === 'test'
+
   return {
     plugins: [solid()] as ViteUserConfig['plugins'],
     // Add 'development' condition for tests to resolve @tanstack/router-core/isServer
     // to the development export (isServer = undefined) instead of node (isServer = true)
-    ...(process.env.VITEST && {
+    ...(isTest && {
       resolve: {
         conditions: ['development'],
       },

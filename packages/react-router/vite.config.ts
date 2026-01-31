@@ -3,11 +3,13 @@ import { tanstackViteConfig } from '@tanstack/config/vite'
 import react from '@vitejs/plugin-react'
 import packageJson from './package.json'
 
+const isTest = process.env.VITEST || process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === 'test'
+
 const config = defineConfig({
   plugins: [react()],
   // Add 'development' condition for tests to resolve @tanstack/router-core/isServer
   // to the development export (isServer = undefined) instead of node (isServer = true)
-  ...(process.env.VITEST && {
+  ...(isTest && {
     resolve: {
       conditions: ['development'],
     },
