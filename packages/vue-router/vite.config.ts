@@ -8,7 +8,10 @@ import packageJson from './package.json'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const isTest = process.env.VITEST || process.env.NODE_TEST_CONTEXT || process.env.NODE_ENV === 'test'
+const isTest =
+  process.env.VITEST ||
+  process.env.NODE_TEST_CONTEXT ||
+  process.env.NODE_ENV === 'test'
 
 const config = defineConfig({
   plugins: [vueJsx()],
