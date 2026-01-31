@@ -1,7 +1,7 @@
 import { createPlugin } from 'seroval'
-import type { SerovalNode } from 'seroval'
+import type { PluginInfo, SerovalNode } from 'seroval'
 
-export interface ErrorNode {
+export interface ErrorNode extends PluginInfo {
   message: SerovalNode
 }
 

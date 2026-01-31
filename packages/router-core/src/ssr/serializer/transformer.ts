@@ -1,6 +1,6 @@
 import { createPlugin } from 'seroval'
 import { GLOBAL_TSR } from '../constants'
-import type { Plugin, SerovalNode } from 'seroval'
+import type { Plugin, PluginInfo, SerovalNode } from 'seroval'
 import type {
   RegisteredConfigType,
   RegisteredSsr,
@@ -161,27 +161,34 @@ export interface SerializationAdapterTypes<
 
 export type AnySerializationAdapter = SerializationAdapter<any, any, any>
 
+export interface AdapterNode extends PluginInfo {
+  v: SerovalNode
+}
+
 /** Create a Seroval plugin for server-side serialization only. */
+/* @__NO_SIDE_EFFECTS__ */
 export function makeSsrSerovalPlugin(
   serializationAdapter: AnySerializationAdapter,
   options: { didRun: boolean },
-): Plugin<any, SerovalNode> {
-  return createPlugin<any, SerovalNode>({
+): Plugin<any, AdapterNode> {
+  return /* @__PURE__ */ createPlugin<any, AdapterNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
     test: serializationAdapter.test,
     parse: {
-      stream(value, ctx) {
-        return ctx.parse(serializationAdapter.toSerializable(value))
+      stream(value, ctx, _data) {
+        return {
+          v: ctx.parse(serializationAdapter.toSerializable(value)),
+        }
       },
     },
-    serialize(node, ctx) {
+    serialize(node, ctx, _data) {
       options.didRun = true
       return (
         GLOBAL_TSR +
         '.t.get("' +
         serializationAdapter.key +
         '")(' +
-        ctx.serialize(node) +
+        ctx.serialize(node.v) +
         ')'
       )
     },
@@ -191,27 +198,34 @@ export function makeSsrSerovalPlugin(
 }
 
 /** Create a Seroval plugin for client/server symmetric (de)serialization. */
+/* @__NO_SIDE_EFFECTS__ */
 export function makeSerovalPlugin(
   serializationAdapter: AnySerializationAdapter,
-): Plugin<any, SerovalNode> {
-  return createPlugin<any, SerovalNode>({
+): Plugin<any, AdapterNode> {
+  return /* @__PURE__ */ createPlugin<any, AdapterNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
     test: serializationAdapter.test,
     parse: {
-      sync(value, ctx) {
-        return ctx.parse(serializationAdapter.toSerializable(value))
+      sync(value, ctx, _data) {
+        return {
+          v: ctx.parse(serializationAdapter.toSerializable(value)),
+        }
       },
-      async async(value, ctx) {
-        return await ctx.parse(serializationAdapter.toSerializable(value))
+      async async(value, ctx, _data) {
+        return {
+          v: await ctx.parse(serializationAdapter.toSerializable(value)),
+        }
       },
-      stream(value, ctx) {
-        return ctx.parse(serializationAdapter.toSerializable(value))
+      stream(value, ctx, _data) {
+        return {
+          v: ctx.parse(serializationAdapter.toSerializable(value)),
+        }
       },
     },
     // we don't generate JS code outside of SSR (for now)
     serialize: undefined as never,
-    deserialize(node, ctx) {
-      return serializationAdapter.fromSerializable(ctx.deserialize(node))
+    deserialize(node, ctx, _data) {
+      return serializationAdapter.fromSerializable(ctx.deserialize(node.v))
     },
   })
 }

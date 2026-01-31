@@ -1,5 +1,5 @@
 import { createPlugin, createStream } from 'seroval'
-import type { Plugin } from 'seroval'
+import type { Plugin, PluginData, PluginInfo, SerovalNode } from 'seroval'
 
 /**
  * Hint for RawStream encoding strategy during SSR serialization.
@@ -240,60 +240,70 @@ function toTextStream(readable: ReadableStream<Uint8Array>) {
 }
 
 // Factory plugin for binary mode
-const RawStreamFactoryBinaryPlugin = createPlugin<
+const RawStreamFactoryBinaryPlugin = /* @__PURE__ */ createPlugin<
   Record<string, never>,
-  undefined
+  PluginInfo
 >({
   tag: 'tss/RawStreamFactory',
   test(value) {
     return value === RAW_STREAM_FACTORY_BINARY
   },
   parse: {
-    sync() {
-      return undefined
+    sync(_value, _ctx, _data) {
+      return {}
     },
-    async() {
-      return Promise.resolve(undefined)
+    async async(_value, _ctx, _data) {
+      return {}
     },
-    stream() {
-      return undefined
+    stream(_value, _ctx, _data) {
+      return {}
     },
   },
-  serialize() {
+  serialize(_node, _ctx, _data) {
     return FACTORY_BINARY
   },
-  deserialize() {
+  deserialize(_node, _ctx, _data) {
     return RAW_STREAM_FACTORY_BINARY
   },
 })
 
 // Factory plugin for text mode
-const RawStreamFactoryTextPlugin = createPlugin<
+const RawStreamFactoryTextPlugin = /* @__PURE__ */ createPlugin<
   Record<string, never>,
-  undefined
+  PluginInfo
 >({
   tag: 'tss/RawStreamFactoryText',
   test(value) {
     return value === RAW_STREAM_FACTORY_TEXT
   },
   parse: {
-    sync() {
-      return undefined
+    sync(_value, _ctx, _data) {
+      return {}
     },
-    async() {
-      return Promise.resolve(undefined)
+    async async(_value, _ctx, _data) {
+      return {}
     },
-    stream() {
-      return undefined
+    stream(_value, _ctx, _data) {
+      return {}
     },
   },
-  serialize() {
+  serialize(_node, _ctx, _data) {
     return FACTORY_TEXT
   },
-  deserialize() {
+  deserialize(_node, _ctx, _data) {
     return RAW_STREAM_FACTORY_TEXT
   },
 })
+
+export interface RawStreamSSRNode extends PluginInfo {
+  hint: SerovalNode
+  factory: SerovalNode
+  stream: SerovalNode
+}
+
+export interface RawStreamRPCNode extends PluginInfo {
+  streamId: SerovalNode
+}
 
 /**
  * SSR Plugin - uses base64 or UTF-8+base64 encoding for chunks, delegates to seroval's stream mechanism.
@@ -303,7 +313,10 @@ const RawStreamFactoryTextPlugin = createPlugin<
  * - 'binary': Always base64 encode (default)
  * - 'text': Try UTF-8 first, fallback to base64 for invalid UTF-8
  */
-export const RawStreamSSRPlugin: Plugin<any, any> = createPlugin({
+export const RawStreamSSRPlugin = /* @__PURE__ */ createPlugin<
+  RawStream,
+  RawStreamSSRNode
+>({
   tag: 'tss/RawStream',
   extends: [RawStreamFactoryBinaryPlugin, RawStreamFactoryTextPlugin],
 
@@ -312,19 +325,19 @@ export const RawStreamSSRPlugin: Plugin<any, any> = createPlugin({
   },
 
   parse: {
-    sync(value: RawStream, ctx) {
+    sync(value: RawStream, ctx, _data) {
       // Sync parse not really supported for streams, return empty stream
       const factory =
         value.hint === 'text'
           ? RAW_STREAM_FACTORY_TEXT
           : RAW_STREAM_FACTORY_BINARY
       return {
-        hint: value.hint,
+        hint: ctx.parse(value.hint),
         factory: ctx.parse(factory),
         stream: ctx.parse(createStream()),
       }
     },
-    async async(value: RawStream, ctx) {
+    async async(value: RawStream, ctx, _data) {
       const factory =
         value.hint === 'text'
           ? RAW_STREAM_FACTORY_TEXT
@@ -334,12 +347,12 @@ export const RawStreamSSRPlugin: Plugin<any, any> = createPlugin({
           ? toTextStream(value.stream)
           : toBinaryStream(value.stream)
       return {
-        hint: value.hint,
+        hint: await ctx.parse(value.hint),
         factory: await ctx.parse(factory),
         stream: await ctx.parse(encodedStream),
       }
     },
-    stream(value: RawStream, ctx) {
+    stream(value: RawStream, ctx, _data) {
       const factory =
         value.hint === 'text'
           ? RAW_STREAM_FACTORY_TEXT
@@ -349,14 +362,14 @@ export const RawStreamSSRPlugin: Plugin<any, any> = createPlugin({
           ? toTextStream(value.stream)
           : toBinaryStream(value.stream)
       return {
-        hint: value.hint,
+        hint: ctx.parse(value.hint),
         factory: ctx.parse(factory),
         stream: ctx.parse(encodedStream),
       }
     },
   },
 
-  serialize(node: { hint: RawStreamHint; factory: any; stream: any }, ctx) {
+  serialize(node: RawStreamSSRNode, ctx, _data) {
     return (
       '(' +
       ctx.serialize(node.factory) +
@@ -366,23 +379,14 @@ export const RawStreamSSRPlugin: Plugin<any, any> = createPlugin({
     )
   },
 
-  deserialize(
-    node: { hint: RawStreamHint; factory: any; stream: any },
-    ctx,
-  ): any {
+  deserialize(node: RawStreamSSRNode, ctx, _data): any {
     const stream: ReturnType<typeof createStream> = ctx.deserialize(node.stream)
-    return node.hint === 'text'
+    const hint = ctx.deserialize(node.hint)
+    return hint === 'text'
       ? RAW_STREAM_FACTORY_CONSTRUCTOR_TEXT(stream)
       : RAW_STREAM_FACTORY_CONSTRUCTOR_BINARY(stream)
   },
-}) as Plugin<any, any>
-
-/**
- * Node type for RPC plugin serialization
- */
-interface RawStreamRPCNode {
-  streamId: number
-}
+})
 
 /**
  * Creates an RPC plugin instance that registers raw streams with a multiplexer.
@@ -391,13 +395,14 @@ interface RawStreamRPCNode {
  *
  * @param onRawStream Callback invoked when a RawStream is encountered during serialization
  */
+/* @__NO_SIDE_EFFECTS__ */
 export function createRawStreamRPCPlugin(
   onRawStream: OnRawStreamCallback,
-): Plugin<any, any> {
+) {
   // Own stream counter - sequential IDs starting at 1, independent of seroval internals
   let nextStreamId = 1
 
-  return createPlugin({
+  return /* @__PURE__ */ createPlugin<RawStream, RawStreamRPCNode>({
     tag: 'tss/RawStream',
 
     test(value: unknown) {
@@ -405,15 +410,15 @@ export function createRawStreamRPCPlugin(
     },
 
     parse: {
-      async(value: RawStream) {
+      async async(value: RawStream, ctx, _data: PluginData) {
         const streamId = nextStreamId++
         onRawStream(streamId, value.stream)
-        return Promise.resolve({ streamId })
+        return { streamId: await ctx.parse(streamId) }
       },
-      stream(value: RawStream) {
+      stream(value: RawStream, ctx, _data: PluginData) {
         const streamId = nextStreamId++
         onRawStream(streamId, value.stream)
-        return { streamId }
+        return { streamId: ctx.parse(streamId) }
       },
     },
 
@@ -431,7 +436,7 @@ export function createRawStreamRPCPlugin(
         'RawStreamRPCPlugin.deserialize should not be called. Use createRawStreamDeserializePlugin on client.',
       )
     },
-  }) as Plugin<any, any>
+  })
 }
 
 /**
@@ -442,8 +447,8 @@ export function createRawStreamRPCPlugin(
  */
 export function createRawStreamDeserializePlugin(
   getOrCreateStream: (id: number) => ReadableStream<Uint8Array>,
-): Plugin<any, any> {
-  return createPlugin({
+) {
+  return /* @__PURE__ */ createPlugin<any, RawStreamRPCNode>({
     tag: 'tss/RawStream',
 
     test: () => false, // Client never serializes RawStream
@@ -457,8 +462,14 @@ export function createRawStreamDeserializePlugin(
       )
     },
 
-    deserialize(node: RawStreamRPCNode) {
-      return getOrCreateStream(node.streamId)
+    deserialize(node, ctx, _data) {
+      // In normal seroval usage, ctx.deserialize exists.
+      // Some unit tests call plugin.deserialize directly with a minimal ctx.
+      const id =
+        typeof (ctx as any)?.deserialize === 'function'
+          ? (ctx as any).deserialize(node.streamId)
+          : (node as any).streamId
+      return getOrCreateStream(id as number)
     },
-  }) as Plugin<any, any>
+  })
 }
