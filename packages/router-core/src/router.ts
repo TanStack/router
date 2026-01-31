@@ -936,10 +936,11 @@ export class RouterCore<
   isScrollRestorationSetup = false
   private __pendingMatches?: Array<AnyRouteMatch>
   private __pendingMatchesIndex?: Map<string, number>
-  private __matchesIndex?: Map<string, number>
-  private __matchesIndexFor?: Array<AnyRouteMatch>
-  private __cachedMatchesIndex?: Map<string, number>
-  private __cachedMatchesIndexFor?: Array<AnyRouteMatch>
+  /**
+   * Unified map of all matches by ID for O(1) lookup in getMatch.
+   * Kept in sync with __pendingMatches, state.matches, and state.cachedMatches.
+   */
+  private __matchesById = new Map<string, AnyRouteMatch>()
   private __queuedMatchUpdates = new Map<string, AnyRouteMatch>()
   private __queuedCachedMatchUpdates = new Map<string, AnyRouteMatch>()
   private __matchFlushScheduled = false
@@ -2437,6 +2438,7 @@ export class RouterCore<
                   })
                   this.__pendingMatches = undefined
                   this.rebuildPendingMatchesIndex(undefined)
+                  this.rebuildMatchesById()
 
                   //
                   ;(
@@ -2586,37 +2588,31 @@ export class RouterCore<
     const index = new Map<string, number>()
     matches.forEach((match, i) => {
       index.set(match.id, i)
+      // Also add to unified lookup map
+      this.__matchesById.set(match.id, match)
     })
     this.__pendingMatchesIndex = index
   }
 
-  private getMatchesIndex = (
-    matches: Array<AnyRouteMatch>,
-    kind: 'matches' | 'cachedMatches',
-  ): Map<string, number> => {
-    if (kind === 'matches') {
-      if (this.__matchesIndexFor !== matches || !this.__matchesIndex) {
-        const index = new Map<string, number>()
-        matches.forEach((match, i) => {
-          index.set(match.id, i)
-        })
-        this.__matchesIndex = index
-        this.__matchesIndexFor = matches
+  /**
+   * Rebuild the unified __matchesById map from all match sources.
+   * Called when state.matches or state.cachedMatches changes.
+   */
+  private rebuildMatchesById = () => {
+    this.__matchesById.clear()
+    // Add in reverse priority order so higher priority sources overwrite
+    // Priority: cachedMatches < matches < pendingMatches
+    for (const match of this.state.cachedMatches) {
+      this.__matchesById.set(match.id, match)
+    }
+    for (const match of this.state.matches) {
+      this.__matchesById.set(match.id, match)
+    }
+    if (this.__pendingMatches) {
+      for (const match of this.__pendingMatches) {
+        this.__matchesById.set(match.id, match)
       }
-      return this.__matchesIndex
     }
-    if (
-      this.__cachedMatchesIndexFor !== matches ||
-      !this.__cachedMatchesIndex
-    ) {
-      const index = new Map<string, number>()
-      matches.forEach((match, i) => {
-        index.set(match.id, i)
-      })
-      this.__cachedMatchesIndex = index
-      this.__cachedMatchesIndexFor = matches
-    }
-    return this.__cachedMatchesIndex
   }
 
   private queueMatchUpdate = (
@@ -2650,25 +2646,23 @@ export class RouterCore<
           let nextCachedMatches = s.cachedMatches
 
           if (queuedMatches.size) {
-            const index = this.getMatchesIndex(s.matches, 'matches')
             nextMatches = s.matches.slice()
-            queuedMatches.forEach((match, queuedId) => {
-              const matchIndex = index.get(queuedId)
-              if (matchIndex !== undefined) {
-                nextMatches[matchIndex] = match
+            for (let i = 0; i < nextMatches.length; i++) {
+              const updated = queuedMatches.get(nextMatches[i]!.id)
+              if (updated) {
+                nextMatches[i] = updated
               }
-            })
+            }
           }
 
           if (queuedCached.size) {
-            const index = this.getMatchesIndex(s.cachedMatches, 'cachedMatches')
             nextCachedMatches = s.cachedMatches.slice()
-            queuedCached.forEach((match, queuedId) => {
-              const matchIndex = index.get(queuedId)
-              if (matchIndex !== undefined) {
-                nextCachedMatches[matchIndex] = match
+            for (let i = 0; i < nextCachedMatches.length; i++) {
+              const updated = queuedCached.get(nextCachedMatches[i]!.id)
+              if (updated) {
+                nextCachedMatches[i] = updated
               }
-            })
+            }
           }
 
           if (
@@ -2684,42 +2678,44 @@ export class RouterCore<
             cachedMatches: nextCachedMatches,
           }
         })
+        // Sync __matchesById with the updated store state
+        this.rebuildMatchesById()
       })
     })
   }
 
   private updateMatchInternal = (id: string, updater: (prev: any) => any) => {
+    // Check pending matches first (highest priority)
     const pendingIndex = this.__pendingMatchesIndex?.get(id)
     if (pendingIndex !== undefined && this.__pendingMatches) {
       const prev = this.__pendingMatches[pendingIndex]!
       const next = updater(prev)
       if (next !== prev) {
         this.__pendingMatches[pendingIndex] = next
+        this.__matchesById.set(id, next)
       }
       return
     }
 
-    const matchesIndex = this.getMatchesIndex(
-      this.state.matches,
-      'matches',
-    ).get(id)
-    if (matchesIndex !== undefined) {
+    // Check committed matches
+    const matchesIndex = this.state.matches.findIndex((m) => m.id === id)
+    if (matchesIndex !== -1) {
       const prev = this.state.matches[matchesIndex]!
       const next = updater(prev)
       if (next !== prev) {
+        this.__matchesById.set(id, next)
         this.queueMatchUpdate('matches', id, next)
       }
       return
     }
 
-    const cachedIndex = this.getMatchesIndex(
-      this.state.cachedMatches,
-      'cachedMatches',
-    ).get(id)
-    if (cachedIndex !== undefined) {
+    // Check cached matches
+    const cachedIndex = this.state.cachedMatches.findIndex((m) => m.id === id)
+    if (cachedIndex !== -1) {
       const prev = this.state.cachedMatches[cachedIndex]!
       const next = updater(prev)
       if (next !== prev) {
+        this.__matchesById.set(id, next)
         this.queueMatchUpdate('cachedMatches', id, next)
       }
     }
@@ -2730,25 +2726,7 @@ export class RouterCore<
   }
 
   getMatch: GetMatchFn = (matchId: string): AnyRouteMatch | undefined => {
-    const pendingIndex = this.__pendingMatchesIndex?.get(matchId)
-    if (pendingIndex !== undefined && this.__pendingMatches) {
-      return this.__pendingMatches[pendingIndex]
-    }
-    const matchesIndex = this.getMatchesIndex(
-      this.state.matches,
-      'matches',
-    ).get(matchId)
-    if (matchesIndex !== undefined) {
-      return this.state.matches[matchesIndex]
-    }
-    const cachedIndex = this.getMatchesIndex(
-      this.state.cachedMatches,
-      'cachedMatches',
-    ).get(matchId)
-    if (cachedIndex !== undefined) {
-      return this.state.cachedMatches[cachedIndex]
-    }
-    return undefined
+    return this.__matchesById.get(matchId)
   }
 
   /**
@@ -2793,6 +2771,7 @@ export class RouterCore<
       matches: s.matches.map(invalidate),
       cachedMatches: s.cachedMatches.map(invalidate),
     }))
+    this.rebuildMatchesById()
 
     this.shouldViewTransition = false
     return this.load({ sync: opts?.sync })
@@ -2852,6 +2831,7 @@ export class RouterCore<
         }
       })
     }
+    this.rebuildMatchesById()
   }
 
   clearExpiredCache = () => {
@@ -2908,6 +2888,7 @@ export class RouterCore<
     ])
 
     // If the matches are already loaded, we need to add them to the cachedMatches
+    let addedToCache = false
     batch(() => {
       matches.forEach((match) => {
         if (!loadedMatchIds.has(match.id)) {
@@ -2915,9 +2896,13 @@ export class RouterCore<
             ...s,
             cachedMatches: [...(s.cachedMatches as any), match],
           }))
+          addedToCache = true
         }
       })
     })
+    if (addedToCache) {
+      this.rebuildMatchesById()
+    }
 
     try {
       matches = await loadMatches({
