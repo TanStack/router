@@ -1,0 +1,1452 @@
+api/file-based-routing.md|7|2|Configuration options
+api/file-based-routing.md|34|3|`routesDirectory` (required)
+api/file-based-routing.md|44|3|`generatedRouteTree` (required)
+api/file-based-routing.md|56|3|`virtualRouteConfig`
+api/file-based-routing.md|62|3|`routeFilePrefix`
+api/file-based-routing.md|68|3|`routeFileIgnorePrefix`
+api/file-based-routing.md|85|3|`routeFileIgnorePattern`
+api/file-based-routing.md|91|3|`routeToken`
+api/file-based-routing.md|105|3|`indexToken`
+api/file-based-routing.md|118|3|`quoteStyle`
+api/file-based-routing.md|127|3|`semicolons`
+api/file-based-routing.md|136|3|`autoCodeSplitting`
+api/file-based-routing.md|147|3|`disableTypes`
+api/file-based-routing.md|155|3|`addExtensions`
+api/file-based-routing.md|161|3|`disableLogging`
+api/file-based-routing.md|167|3|`routeTreeFileHeader`
+api/file-based-routing.md|181|3|`routeTreeFileFooter`
+api/file-based-routing.md|191|3|`enableRouteTreeFormatting`
+api/file-based-routing.md|197|3|`tmpDir`
+framework/solid/quick-start.md|7|2|Using File-Based Route Generation
+framework/solid/quick-start.md|11|3|Scaffolding Your First TanStack Router Project
+framework/solid/quick-start.md|19|3|Manual Setup
+framework/solid/quick-start.md|23|4|Install TanStack Router, Vite Plugin, and the Router Devtools
+framework/solid/quick-start.md|28|1|or
+framework/solid/quick-start.md|31|1|or
+framework/solid/quick-start.md|34|1|or
+framework/solid/quick-start.md|37|1|or
+framework/solid/quick-start.md|41|4|Configure the Vite Plugin
+framework/solid/quick-start.md|72|4|`src/routes/__root.tsx`
+framework/solid/quick-start.md|97|4|`src/routes/index.tsx`
+framework/solid/quick-start.md|115|4|`src/routes/about.tsx`
+framework/solid/quick-start.md|129|4|`src/main.tsx`
+framework/solid/quick-start.md|161|2|Using Code-Based Route Configuration
+framework/solid/routing/file-based-routing.md|13|3|Configuration with Vite
+framework/solid/guide/custom-link.md|36|2|`createLink` with third party libraries
+framework/solid/guide/custom-link.md|40|3|Some Library example
+framework/react/decisions-on-dx.md|17|2|TanStack Router's origin story
+framework/react/decisions-on-dx.md|23|2|How does TanStack Router achieve this?
+framework/react/decisions-on-dx.md|37|2|1. Why is the Router's configuration done this way?
+framework/react/decisions-on-dx.md|98|2|2. Declaring the Router instance for type inference
+framework/react/decisions-on-dx.md|154|2|3. Why is file-based routing the preferred way to define routes?
+framework/react/devtools.md|11|2|Installation
+framework/react/devtools.md|37|2|Import the Devtools
+framework/react/devtools.md|43|2|Using Devtools in production
+framework/react/devtools.md|51|2|Using inside of the `RouterProvider`
+framework/react/devtools.md|78|2|Manually passing the Router Instance
+framework/react/devtools.md|93|2|Floating Mode
+framework/react/devtools.md|112|3|Devtools Options
+framework/react/devtools.md|135|2|Fixed Mode
+framework/react/devtools.md|154|2|Embedded Mode
+framework/react/devtools.md|175|3|DevtoolsPanel Options
+framework/react/faq.md|7|2|Should I commit my `routeTree.gen.ts` file into git?
+framework/react/faq.md|13|2|Can I conditionally render the Root Route component?
+framework/react/installation.md|11|1|or
+framework/react/installation.md|13|1|or
+framework/react/installation.md|15|1|or
+framework/react/installation.md|17|1|or
+framework/react/installation.md|23|3|Requirements
+framework/react/installation.md|39|3|LLM Assistance Support
+framework/react/installation.md|55|3|Usage with yarn workspaces
+framework/react/migrate-from-react-location.md|7|2|Differences between React Location and TanStack Router
+framework/react/migrate-from-react-location.md|16|2|Migration guide
+framework/react/migrate-from-react-location.md|23|3|Step 1: Swap over to TanStack Router's dependencies
+framework/react/migrate-from-react-location.md|37|3|Step 2: Use the file-based routing watcher
+framework/react/migrate-from-react-location.md|62|3|Step 3: Add the file-based configuration file to your project
+framework/react/migrate-from-react-location.md|75|3|Step 4: Create the routes directory
+framework/react/migrate-from-react-location.md|83|3|Step 5: Create the root route file
+framework/react/migrate-from-react-location.md|109|3|Step 6: Create the index route file
+framework/react/migrate-from-react-location.md|122|3|Step 7: Create the posts route file
+framework/react/migrate-from-react-location.md|161|3|Step 8: Create the posts index route file
+framework/react/migrate-from-react-location.md|174|3|Step 9: Create the posts id route file
+framework/react/migrate-from-react-location.md|198|3|Step 10: Generate the route tree
+framework/react/migrate-from-react-location.md|208|3|Step 11: Update the main entry file to render the Router
+framework/react/migrate-from-react-location.md|246|3|Finished!
+framework/react/overview.md|24|2|"A Fork in the Route"
+framework/react/overview.md|49|2|Why TanStack Router?
+framework/react/overview.md|78|2|100% Inferred TypeScript Support
+framework/react/overview.md|91|2|1st Class Search Parameters
+framework/react/overview.md|113|2|Built-In Caching and Friendly Data Loading
+framework/react/overview.md|123|3|Built-in Cache
+framework/react/overview.md|127|3|Flexible & Powerful Data Lifecycle APIs
+framework/react/overview.md|131|2|Inherited Route Context
+framework/react/overview.md|143|2|File-based and/or Code-Based Routing
+framework/react/overview.md|149|2|Acknowledgements
+framework/react/overview.md|160|2|Let's go!
+framework/react/quick-start.md|7|2|Using File-Based Route Generation
+framework/react/quick-start.md|11|3|Scaffolding Your First TanStack Router Project
+framework/react/quick-start.md|19|3|Manual Setup
+framework/react/quick-start.md|23|4|Install TanStack Router, Vite Plugin, and the Router Devtools
+framework/react/quick-start.md|28|1|or
+framework/react/quick-start.md|31|1|or
+framework/react/quick-start.md|34|1|or
+framework/react/quick-start.md|37|1|or
+framework/react/quick-start.md|41|4|Configure the Vite Plugin
+framework/react/quick-start.md|73|4|`src/routes/__root.tsx`
+framework/react/quick-start.md|98|4|`src/routes/index.tsx`
+framework/react/quick-start.md|116|4|`src/routes/about.tsx`
+framework/react/quick-start.md|130|4|`src/main.tsx`
+framework/react/quick-start.md|168|2|Using Code-Based Route Configuration
+framework/react/routing/code-based-routing.md|8|2|⚠️ Before You Start
+framework/react/routing/code-based-routing.md|13|2|Route Trees
+framework/react/routing/code-based-routing.md|114|2|Anatomy of a Route
+framework/react/routing/code-based-routing.md|147|2|Manually building the route tree
+framework/react/routing/code-based-routing.md|178|2|Routing Concepts for Code-Based Routing
+framework/react/routing/code-based-routing.md|195|2|The Root Route
+framework/react/routing/code-based-routing.md|219|2|Basic Routes
+framework/react/routing/code-based-routing.md|232|2|Index Routes
+framework/react/routing/code-based-routing.md|251|2|Dynamic Route Segments
+framework/react/routing/code-based-routing.md|274|2|Splat / Catch-All Routes
+framework/react/routing/code-based-routing.md|298|2|Layout Routes
+framework/react/routing/code-based-routing.md|349|2|Pathless Layout Routes
+framework/react/routing/code-based-routing.md|400|2|Non-Nested Routes
+framework/react/routing/file-based-routing.md|7|2|What is File-Based Routing?
+framework/react/routing/file-based-routing.md|18|2|`/`s or `.`s?
+framework/react/routing/file-based-routing.md|22|2|Directory Routes
+framework/react/routing/file-based-routing.md|54|2|Flat Routes
+framework/react/routing/file-based-routing.md|81|2|Mixed Flat and Directory Routes
+framework/react/routing/file-based-routing.md|108|2|Getting started with File-Based Routing
+framework/react/routing/file-naming-conventions.md|22|2|Dynamic Path Params
+framework/react/routing/file-naming-conventions.md|33|2|Pathless Routes
+framework/react/routing/installation-with-esbuild.md|36|2|Ignoring the generated route tree file
+framework/react/routing/installation-with-esbuild.md|67|2|Configuration
+framework/react/routing/installation-with-router-cli.md|34|2|Using the `generate` command
+framework/react/routing/installation-with-router-cli.md|42|2|Using the `watch` command
+framework/react/routing/installation-with-router-cli.md|54|2|Ignoring the generated route tree file
+framework/react/routing/installation-with-router-cli.md|85|2|Configuration
+framework/react/routing/installation-with-rspack.md|42|2|Ignoring the generated route tree file
+framework/react/routing/installation-with-rspack.md|73|2|Configuration
+framework/react/routing/installation-with-vite.md|44|2|Ignoring the generated route tree file
+framework/react/routing/installation-with-vite.md|75|2|Configuration
+framework/react/routing/installation-with-webpack.md|35|2|Ignoring the generated route tree file
+framework/react/routing/installation-with-webpack.md|66|2|Configuration
+framework/react/routing/route-trees.md|14|2|Route Trees
+framework/react/routing/route-trees.md|57|2|Route Tree Configuration
+framework/react/routing/routing-concepts.md|9|2|Anatomy of a Route
+framework/react/routing/routing-concepts.md|29|2|The Root Route
+framework/react/routing/routing-concepts.md|64|2|Basic Routes
+framework/react/routing/routing-concepts.md|85|2|Index Routes
+framework/react/routing/routing-concepts.md|107|2|Dynamic Route Segments
+framework/react/routing/routing-concepts.md|132|2|Splat / Catch-All Routes
+framework/react/routing/routing-concepts.md|148|2|Optional Path Parameters
+framework/react/routing/routing-concepts.md|182|2|Layout Routes
+framework/react/routing/routing-concepts.md|254|2|Pathless Layout Routes
+framework/react/routing/routing-concepts.md|331|2|Non-Nested Routes
+framework/react/routing/routing-concepts.md|355|2|Excluding Files and Folders from Routes
+framework/react/routing/routing-concepts.md|399|2|Pathless Route Group Directories
+framework/react/routing/virtual-file-routes.md|41|2|Configuration
+framework/react/routing/virtual-file-routes.md|48|2|Configuration via the TanStackRouter Plugin
+framework/react/routing/virtual-file-routes.md|87|2|Creating Virtual File Routes
+framework/react/routing/virtual-file-routes.md|97|2|Virtual Root Route
+framework/react/routing/virtual-file-routes.md|110|2|Virtual Route
+framework/react/routing/virtual-file-routes.md|139|2|Virtual Index Route
+framework/react/routing/virtual-file-routes.md|149|2|Virtual Pathless Route
+framework/react/routing/virtual-file-routes.md|177|2|Physical Virtual Routes
+framework/react/routing/virtual-file-routes.md|227|2|Virtual Routes inside of TanStack Router File Based routing
+framework/react/routing/virtual-file-routes.md|272|2|Inception
+framework/react/routing/virtual-file-routes.md|293|2|Configuration via the TanStack Router CLI
+framework/react/api/router/ActiveLinkOptionsType.md|19|2|ActiveLinkOptions properties
+framework/react/api/router/ActiveLinkOptionsType.md|23|3|`activeProps`
+framework/react/api/router/ActiveLinkOptionsType.md|29|3|`inactiveProps`
+framework/react/api/router/FileRouteClass.md|12|2|`FileRoute` constructor
+framework/react/api/router/FileRouteClass.md|16|3|Constructor options
+framework/react/api/router/FileRouteClass.md|22|3|Constructor returns
+framework/react/api/router/FileRouteClass.md|26|2|`FileRoute` methods
+framework/react/api/router/FileRouteClass.md|30|3|`.createRoute` method
+framework/react/api/router/FileRouteClass.md|34|4|.createRoute options
+framework/react/api/router/FileRouteClass.md|41|4|.createRoute returns
+framework/react/api/router/FileRouteClass.md|47|3|Examples
+framework/react/api/router/LinkOptionsType.md|18|2|LinkOptions properties
+framework/react/api/router/LinkOptionsType.md|22|3|`target`
+framework/react/api/router/LinkOptionsType.md|28|3|`activeOptions`
+framework/react/api/router/LinkOptionsType.md|34|3|`preload`
+framework/react/api/router/LinkOptionsType.md|41|3|`preloadDelay`
+framework/react/api/router/LinkOptionsType.md|47|3|`disabled`
+framework/react/api/router/LinkPropsType.md|17|2|LinkProps properties
+framework/react/api/router/LinkPropsType.md|22|4|`children`
+framework/react/api/router/MatchRouteOptionsType.md|17|2|MatchRouteOptions properties
+framework/react/api/router/MatchRouteOptionsType.md|21|3|`pending` property
+framework/react/api/router/MatchRouteOptionsType.md|27|3|`caseSensitive` property
+framework/react/api/router/MatchRouteOptionsType.md|33|3|`includeSearch` property
+framework/react/api/router/MatchRouteOptionsType.md|39|3|`fuzzy` property
+framework/react/api/router/NavigateOptionsType.md|20|2|NavigateOptions properties
+framework/react/api/router/NavigateOptionsType.md|24|3|`replace`
+framework/react/api/router/NavigateOptionsType.md|31|3|`resetScroll`
+framework/react/api/router/NavigateOptionsType.md|38|3|`hashScrollIntoView`
+framework/react/api/router/NavigateOptionsType.md|47|3|`viewTransition`
+framework/react/api/router/NavigateOptionsType.md|58|3|`ignoreBlocker`
+framework/react/api/router/NavigateOptionsType.md|65|3|`reloadDocument`
+framework/react/api/router/NavigateOptionsType.md|72|3|`href`
+framework/react/api/router/NotFoundErrorType.md|18|2|NotFoundError properties
+framework/react/api/router/NotFoundErrorType.md|22|3|`global` property (⚠️ deprecated, use `routeId: rootRouteId` instead)
+framework/react/api/router/NotFoundErrorType.md|28|3|`data` property
+framework/react/api/router/NotFoundErrorType.md|34|3|`throw` property
+framework/react/api/router/NotFoundErrorType.md|40|3|`route` property
+framework/react/api/router/NotFoundErrorType.md|46|3|`headers` property
+framework/react/api/router/NotFoundRouteClass.md|13|2|Constructor options
+framework/react/api/router/NotFoundRouteClass.md|35|2|Examples
+framework/react/api/router/RedirectType.md|18|2|Redirect properties
+framework/react/api/router/RedirectType.md|22|3|`statusCode` property
+framework/react/api/router/RedirectType.md|28|3|`throw` property
+framework/react/api/router/RedirectType.md|34|3|`headers` property
+framework/react/api/router/RedirectType.md|40|3|Navigation Properties
+framework/react/api/router/RegisterType.md|16|2|Examples
+framework/react/api/router/RootRouteClass.md|12|2|`RootRoute` constructor
+framework/react/api/router/RootRouteClass.md|16|3|Constructor options
+framework/react/api/router/RootRouteClass.md|37|2|Constructor returns
+framework/react/api/router/RootRouteClass.md|41|2|Examples
+framework/react/api/router/RouteApiClass.md|12|2|Constructor options
+framework/react/api/router/RouteApiClass.md|16|3|`opts.routeId` option
+framework/react/api/router/RouteApiClass.md|22|2|Constructor returns
+framework/react/api/router/RouteApiClass.md|26|2|Examples
+framework/react/api/router/RouteApiType.md|8|2|`RouteApi` properties and methods
+framework/react/api/router/RouteApiType.md|12|3|`useMatch` method
+framework/react/api/router/RouteApiType.md|35|3|`useRouteContext` method
+framework/react/api/router/RouteApiType.md|53|3|`useSearch` method
+framework/react/api/router/RouteApiType.md|76|3|`useParams` method
+framework/react/api/router/RouteApiType.md|99|3|`useLoaderData` method
+framework/react/api/router/RouteApiType.md|122|3|`useLoaderDeps` method
+framework/react/api/router/RouteApiType.md|145|3|`useNavigate` method
+framework/react/api/router/RouteClass.md|12|2|`Route` constructor
+framework/react/api/router/RouteClass.md|16|3|Constructor options
+framework/react/api/router/RouteClass.md|22|3|Constructor returns
+framework/react/api/router/RouteClass.md|26|2|Examples
+framework/react/api/router/RouteMaskType.md|8|2|RouteMask properties
+framework/react/api/router/RouteMaskType.md|12|3|`...ToOptions`
+framework/react/api/router/RouteMaskType.md|18|3|`options.routeTree`
+framework/react/api/router/RouteMaskType.md|24|3|`options.unmaskOnReload`
+framework/react/api/router/RouteOptionsType.md|8|2|RouteOptions properties
+framework/react/api/router/RouteOptionsType.md|12|3|`getParentRoute` method
+framework/react/api/router/RouteOptionsType.md|18|3|`path` property
+framework/react/api/router/RouteOptionsType.md|24|3|`id` property
+framework/react/api/router/RouteOptionsType.md|30|3|`component` property
+framework/react/api/router/RouteOptionsType.md|36|3|`errorComponent` property
+framework/react/api/router/RouteOptionsType.md|42|3|`pendingComponent` property
+framework/react/api/router/RouteOptionsType.md|48|3|`notFoundComponent` property
+framework/react/api/router/RouteOptionsType.md|54|3|`validateSearch` method
+framework/react/api/router/RouteOptionsType.md|61|3|`search.middlewares` property
+framework/react/api/router/RouteOptionsType.md|68|3|`parseParams` method (⚠️ deprecated, use `params.parse` instead)
+framework/react/api/router/RouteOptionsType.md|74|3|`stringifyParams` method (⚠️ deprecated, use `params.stringify` instead)
+framework/react/api/router/RouteOptionsType.md|80|3|`params.parse` method
+framework/react/api/router/RouteOptionsType.md|86|3|`params.stringify` method
+framework/react/api/router/RouteOptionsType.md|91|3|`beforeLoad` method
+framework/react/api/router/RouteOptionsType.md|120|3|`loader` method
+framework/react/api/router/RouteOptionsType.md|150|3|`loaderDeps` method
+framework/react/api/router/RouteOptionsType.md|163|3|`staleTime` property
+framework/react/api/router/RouteOptionsType.md|170|3|`preloadStaleTime` property
+framework/react/api/router/RouteOptionsType.md|177|3|`gcTime` property
+framework/react/api/router/RouteOptionsType.md|184|3|`shouldReload` property
+framework/react/api/router/RouteOptionsType.md|192|3|`caseSensitive` property
+framework/react/api/router/RouteOptionsType.md|198|3|`wrapInSuspense` property
+framework/react/api/router/RouteOptionsType.md|204|3|`pendingMs` property
+framework/react/api/router/RouteOptionsType.md|211|3|`pendingMinMs` property
+framework/react/api/router/RouteOptionsType.md|218|3|`preloadMaxAge` property
+framework/react/api/router/RouteOptionsType.md|225|3|`preSearchFilters` property (⚠️ deprecated, use `search.middlewares` instead)
+framework/react/api/router/RouteOptionsType.md|233|3|`postSearchFilters` property (⚠️ deprecated, use `search.middlewares` instead)
+framework/react/api/router/RouteOptionsType.md|241|3|`onError` property
+framework/react/api/router/RouteOptionsType.md|248|3|`onEnter` property
+framework/react/api/router/RouteOptionsType.md|254|3|`onStay` property
+framework/react/api/router/RouteOptionsType.md|260|3|`onLeave` property
+framework/react/api/router/RouteOptionsType.md|266|3|`onCatch` property
+framework/react/api/router/RouteOptionsType.md|272|3|`remountDeps` method
+framework/react/api/router/RouteOptionsType.md|304|3|`headers` method
+framework/react/api/router/RouteOptionsType.md|320|3|`head` method
+framework/react/api/router/RouteOptionsType.md|348|3|`scripts` method
+framework/react/api/router/RouteOptionsType.md|364|3|`codeSplitGroupings` property
+framework/react/api/router/RouteType.md|8|2|`Route` properties and methods
+framework/react/api/router/RouteType.md|12|3|`.addChildren` method
+framework/react/api/router/RouteType.md|17|3|`.update` method
+framework/react/api/router/RouteType.md|24|3|`.lazy` method
+framework/react/api/router/RouteType.md|29|3|...`RouteApi` methods
+framework/react/api/router/RouterClass.md|12|2|`Router` constructor
+framework/react/api/router/RouterClass.md|16|3|Constructor options
+framework/react/api/router/RouterClass.md|22|3|Constructor returns
+framework/react/api/router/RouterClass.md|26|2|Examples
+framework/react/api/router/RouterEventsType.md|57|2|RouterEvents properties
+framework/react/api/router/RouterEventsType.md|61|3|`type` property
+framework/react/api/router/RouterEventsType.md|67|3|`fromLocation` property
+framework/react/api/router/RouterEventsType.md|72|3|`toLocation` property
+framework/react/api/router/RouterEventsType.md|77|3|`pathChanged` property
+framework/react/api/router/RouterEventsType.md|82|3|`hrefChanged` property
+framework/react/api/router/RouterEventsType.md|87|2|Example
+framework/react/api/router/RouterOptionsType.md|8|2|RouterOptions properties
+framework/react/api/router/RouterOptionsType.md|12|3|`routeTree` property
+framework/react/api/router/RouterOptionsType.md|18|3|`history` property
+framework/react/api/router/RouterOptionsType.md|24|3|`stringifySearch` method
+framework/react/api/router/RouterOptionsType.md|31|3|`parseSearch` method
+framework/react/api/router/RouterOptionsType.md|38|3|`search.strict` property
+framework/react/api/router/RouterOptionsType.md|47|3|`defaultPreload` property
+framework/react/api/router/RouterOptionsType.md|57|3|`defaultPreloadDelay` property
+framework/react/api/router/RouterOptionsType.md|64|3|`defaultComponent` property
+framework/react/api/router/RouterOptionsType.md|71|3|`defaultErrorComponent` property
+framework/react/api/router/RouterOptionsType.md|78|3|`defaultNotFoundComponent` property
+framework/react/api/router/RouterOptionsType.md|85|3|`defaultPendingComponent` property
+framework/react/api/router/RouterOptionsType.md|91|3|`defaultPendingMs` property
+framework/react/api/router/RouterOptionsType.md|98|3|`defaultPendingMinMs` property
+framework/react/api/router/RouterOptionsType.md|105|3|`defaultStaleTime` property
+framework/react/api/router/RouterOptionsType.md|112|3|`defaultPreloadStaleTime` property
+framework/react/api/router/RouterOptionsType.md|119|3|`defaultPreloadGcTime` property
+framework/react/api/router/RouterOptionsType.md|126|3|`defaultGcTime` property
+framework/react/api/router/RouterOptionsType.md|133|3|`defaultOnCatch` property
+framework/react/api/router/RouterOptionsType.md|139|3|`disableGlobalCatchBoundary` property
+framework/react/api/router/RouterOptionsType.md|147|3|`defaultViewTransition` property
+framework/react/api/router/RouterOptionsType.md|159|3|`defaultHashScrollIntoView` property
+framework/react/api/router/RouterOptionsType.md|168|3|`caseSensitive` property
+framework/react/api/router/RouterOptionsType.md|175|3|`basepath` property
+framework/react/api/router/RouterOptionsType.md|182|3|`context` property
+framework/react/api/router/RouterOptionsType.md|188|3|`dehydrate` method
+framework/react/api/router/RouterOptionsType.md|194|3|`hydrate` method
+framework/react/api/router/RouterOptionsType.md|200|3|`routeMasks` property
+framework/react/api/router/RouterOptionsType.md|206|3|`unmaskOnReload` property
+framework/react/api/router/RouterOptionsType.md|213|3|`Wrap` property
+framework/react/api/router/RouterOptionsType.md|232|3|`InnerWrap` property
+framework/react/api/router/RouterOptionsType.md|257|3|`notFoundMode` property
+framework/react/api/router/RouterOptionsType.md|264|3|`notFoundRoute` property
+framework/react/api/router/RouterOptionsType.md|271|3|`trailingSlash` property
+framework/react/api/router/RouterOptionsType.md|278|3|`pathParamsAllowedCharacters` property
+framework/react/api/router/RouterOptionsType.md|284|3|`defaultStructuralSharing` property
+framework/react/api/router/RouterOptionsType.md|292|3|`defaultRemountDeps` property
+framework/react/api/router/RouterStateType.md|20|2|RouterState properties
+framework/react/api/router/RouterStateType.md|24|3|`status` property
+framework/react/api/router/RouterStateType.md|29|3|`isLoading` property
+framework/react/api/router/RouterStateType.md|34|3|`isTransitioning` property
+framework/react/api/router/RouterStateType.md|39|3|`matches` property
+framework/react/api/router/RouterStateType.md|44|3|`pendingMatches` property
+framework/react/api/router/RouterStateType.md|49|3|`location` property
+framework/react/api/router/RouterStateType.md|54|3|`resolvedLocation` property
+framework/react/api/router/RouterType.md|8|2|`Router` properties and methods
+framework/react/api/router/RouterType.md|12|3|`.update` method
+framework/react/api/router/RouterType.md|17|3|`state` property
+framework/react/api/router/RouterType.md|24|3|`.subscribe` method
+framework/react/api/router/RouterType.md|31|3|`.matchRoutes` method
+framework/react/api/router/RouterType.md|37|3|`.cancelMatch` method
+framework/react/api/router/RouterType.md|42|3|`.cancelMatches` method
+framework/react/api/router/RouterType.md|47|3|`.buildLocation` method
+framework/react/api/router/RouterType.md|86|3|`.commitLocation` method
+framework/react/api/router/RouterType.md|129|3|`.navigate` method
+framework/react/api/router/RouterType.md|138|3|`.invalidate` method
+framework/react/api/router/RouterType.md|150|3|`.clearCache` method
+framework/react/api/router/RouterType.md|158|3|`.load` method
+framework/react/api/router/RouterType.md|168|3|`.preloadRoute` method
+framework/react/api/router/RouterType.md|183|3|`.loadRouteChunk` method
+framework/react/api/router/RouterType.md|189|3|`.matchRoute` method
+framework/react/api/router/RouterType.md|207|3|`.dehydrate` method
+framework/react/api/router/RouterType.md|215|3|`.hydrate` method
+framework/react/api/router/ViewTransitionOptionsType.md|15|2|ViewTransitionOptions properties
+framework/react/api/router/ViewTransitionOptionsType.md|19|3|`types` property
+framework/react/api/router/awaitComponent.md|10|2|Await props
+framework/react/api/router/awaitComponent.md|14|3|`props.promise` prop
+framework/react/api/router/awaitComponent.md|20|3|`props.children` prop
+framework/react/api/router/awaitComponent.md|26|2|Await returns
+framework/react/api/router/awaitComponent.md|32|2|Examples
+framework/react/api/router/catchBoundaryComponent.md|8|2|CatchBoundary props
+framework/react/api/router/catchBoundaryComponent.md|12|3|`props.getResetKey` prop
+framework/react/api/router/catchBoundaryComponent.md|18|3|`props.children` prop
+framework/react/api/router/catchBoundaryComponent.md|24|3|`props.errorComponent` prop
+framework/react/api/router/catchBoundaryComponent.md|30|3|`props.onCatch` prop
+framework/react/api/router/catchBoundaryComponent.md|36|2|CatchBoundary returns
+framework/react/api/router/catchBoundaryComponent.md|41|2|Examples
+framework/react/api/router/catchNotFoundComponent.md|8|2|CatchNotFound props
+framework/react/api/router/catchNotFoundComponent.md|12|3|`props.children` prop
+framework/react/api/router/catchNotFoundComponent.md|18|3|`props.fallback` prop
+framework/react/api/router/catchNotFoundComponent.md|24|3|`props.onCatch` prop
+framework/react/api/router/catchNotFoundComponent.md|30|2|CatchNotFound returns
+framework/react/api/router/catchNotFoundComponent.md|35|2|Examples
+framework/react/api/router/clientOnlyComponent.md|8|2|Props
+framework/react/api/router/clientOnlyComponent.md|12|3|`props.fallback` prop
+framework/react/api/router/clientOnlyComponent.md|16|3|`props.children` prop
+framework/react/api/router/clientOnlyComponent.md|20|2|Returns
+framework/react/api/router/clientOnlyComponent.md|25|2|Examples
+framework/react/api/router/createFileRouteFunction.md|8|2|createFileRoute options
+framework/react/api/router/createFileRouteFunction.md|12|3|`path` option
+framework/react/api/router/createFileRouteFunction.md|18|2|createFileRoute returns
+framework/react/api/router/createFileRouteFunction.md|24|2|Examples
+framework/react/api/router/createLazyFileRouteFunction.md|8|2|createLazyFileRoute options
+framework/react/api/router/createLazyFileRouteFunction.md|12|3|`path`
+framework/react/api/router/createLazyFileRouteFunction.md|18|3|createLazyFileRoute returns
+framework/react/api/router/createLazyFileRouteFunction.md|35|3|Examples
+framework/react/api/router/createLazyRouteFunction.md|8|2|createLazyRoute options
+framework/react/api/router/createLazyRouteFunction.md|12|3|`id`
+framework/react/api/router/createLazyRouteFunction.md|18|3|createLazyRoute returns
+framework/react/api/router/createLazyRouteFunction.md|35|3|Examples
+framework/react/api/router/createRootRouteFunction.md|8|2|createRootRoute options
+framework/react/api/router/createRootRouteFunction.md|29|2|createRootRoute returns
+framework/react/api/router/createRootRouteFunction.md|33|2|Examples
+framework/react/api/router/createRootRouteWithContextFunction.md|8|2|createRootRouteWithContext generics
+framework/react/api/router/createRootRouteWithContextFunction.md|12|3|`TRouterContext` generic
+framework/react/api/router/createRootRouteWithContextFunction.md|18|2|createRootRouteWithContext returns
+framework/react/api/router/createRootRouteWithContextFunction.md|23|2|Examples
+framework/react/api/router/createRouteFunction.md|8|2|createRoute options
+framework/react/api/router/createRouteFunction.md|14|2|createRoute returns
+framework/react/api/router/createRouteFunction.md|18|2|Examples
+framework/react/api/router/createRouteMaskFunction.md|8|2|createRouteMask options
+framework/react/api/router/createRouteMaskFunction.md|14|2|createRouteMask returns
+framework/react/api/router/createRouteMaskFunction.md|18|2|Examples
+framework/react/api/router/createRouterFunction.md|8|2|createRouter options
+framework/react/api/router/createRouterFunction.md|14|2|createRouter returns
+framework/react/api/router/createRouterFunction.md|18|2|Examples
+framework/react/api/router/defaultGlobalNotFoundComponent.md|8|2|DefaultGlobalNotFound returns
+framework/react/api/router/deferFunction.md|13|2|defer options
+framework/react/api/router/deferFunction.md|19|2|defer returns
+framework/react/api/router/deferFunction.md|23|2|Examples
+framework/react/api/router/errorComponentComponent.md|8|2|ErrorComponent props
+framework/react/api/router/errorComponentComponent.md|12|3|`props.error` prop
+framework/react/api/router/errorComponentComponent.md|17|3|`props.info` prop
+framework/react/api/router/errorComponentComponent.md|23|3|`props.reset` prop
+framework/react/api/router/errorComponentComponent.md|28|2|ErrorComponent returns
+framework/react/api/router/getRouteApiFunction.md|8|2|getRouteApi options
+framework/react/api/router/getRouteApiFunction.md|12|3|`routeId` option
+framework/react/api/router/getRouteApiFunction.md|18|2|getRouteApi returns
+framework/react/api/router/getRouteApiFunction.md|22|2|Examples
+framework/react/api/router/isNotFoundFunction.md|8|2|isNotFound options
+framework/react/api/router/isNotFoundFunction.md|12|3|`input` option
+framework/react/api/router/isNotFoundFunction.md|18|2|isNotFound returns
+framework/react/api/router/isNotFoundFunction.md|24|2|Examples
+framework/react/api/router/isRedirectFunction.md|8|2|isRedirect options
+framework/react/api/router/isRedirectFunction.md|12|4|`input`
+framework/react/api/router/isRedirectFunction.md|18|2|isRedirect returns
+framework/react/api/router/isRedirectFunction.md|24|2|Examples
+framework/react/api/router/lazyRouteComponentFunction.md|11|2|lazyRouteComponent options
+framework/react/api/router/lazyRouteComponentFunction.md|15|3|`importer` option
+framework/react/api/router/lazyRouteComponentFunction.md|21|3|`exportName` option
+framework/react/api/router/lazyRouteComponentFunction.md|27|2|lazyRouteComponent returns
+framework/react/api/router/lazyRouteComponentFunction.md|31|2|Examples
+framework/react/api/router/linkComponent.md|8|2|Link props
+framework/react/api/router/linkComponent.md|12|3|`...props`
+framework/react/api/router/linkComponent.md|17|2|Link returns
+framework/react/api/router/linkComponent.md|21|2|Examples
+framework/react/api/router/linkOptions.md|8|2|linkOptions props
+framework/react/api/router/linkOptions.md|12|3|`...props`
+framework/react/api/router/linkOptions.md|17|2|`linkOptions` returns
+framework/react/api/router/linkOptions.md|21|2|Examples
+framework/react/api/router/matchRouteComponent.md|8|2|MatchRoute props
+framework/react/api/router/matchRouteComponent.md|12|3|`...props` prop
+framework/react/api/router/matchRouteComponent.md|16|3|`children` prop
+framework/react/api/router/matchRouteComponent.md|24|2|MatchRoute returns
+framework/react/api/router/matchRouteComponent.md|28|2|Examples
+framework/react/api/router/navigateComponent.md|8|2|Navigate props
+framework/react/api/router/navigateComponent.md|12|3|`...options`
+framework/react/api/router/navigateComponent.md|16|2|Navigate returns
+framework/react/api/router/notFoundFunction.md|8|2|notFound options
+framework/react/api/router/notFoundFunction.md|15|2|notFound returns
+framework/react/api/router/notFoundFunction.md|20|2|Examples
+framework/react/api/router/outletComponent.md|8|2|Outlet props
+framework/react/api/router/outletComponent.md|12|2|Outlet returns
+framework/react/api/router/redirectFunction.md|8|2|redirect options
+framework/react/api/router/redirectFunction.md|15|2|redirect returns
+framework/react/api/router/redirectFunction.md|20|2|Examples
+framework/react/api/router/retainSearchParamsFunction.md|8|2|retainSearchParams props
+framework/react/api/router/retainSearchParamsFunction.md|13|2|Examples
+framework/react/api/router/rootRouteWithContextFunction.md|12|2|rootRouteWithContext generics
+framework/react/api/router/rootRouteWithContextFunction.md|16|3|`TRouterContext` generic
+framework/react/api/router/rootRouteWithContextFunction.md|22|2|rootRouteWithContext returns
+framework/react/api/router/rootRouteWithContextFunction.md|27|2|Examples
+framework/react/api/router/stripSearchParamsFunction.md|8|2|stripSearchParams props
+framework/react/api/router/stripSearchParamsFunction.md|16|2|Examples
+framework/react/api/router/useAwaitedHook.md|8|2|useAwaited options
+framework/react/api/router/useAwaitedHook.md|12|3|`options.promise` option
+framework/react/api/router/useAwaitedHook.md|18|2|useAwaited returns
+framework/react/api/router/useAwaitedHook.md|24|2|Examples
+framework/react/api/router/useBlockerHook.md|10|2|useBlocker options
+framework/react/api/router/useBlockerHook.md|14|3|`options.shouldBlockFn` option
+framework/react/api/router/useBlockerHook.md|38|3|`options.disabled` option
+framework/react/api/router/useBlockerHook.md|44|3|`options.enableBeforeUnload` option
+framework/react/api/router/useBlockerHook.md|50|3|`options.withResolver` option
+framework/react/api/router/useBlockerHook.md|56|3|`options.blockerFn` option (⚠️ deprecated)
+framework/react/api/router/useBlockerHook.md|62|3|`options.condition` option (⚠️ deprecated)
+framework/react/api/router/useBlockerHook.md|68|2|useBlocker returns
+framework/react/api/router/useBlockerHook.md|83|2|Examples
+framework/react/api/router/useBlockerHook.md|87|3|Basic usage
+framework/react/api/router/useBlockerHook.md|103|3|Custom UI
+framework/react/api/router/useBlockerHook.md|133|3|Conditional blocking
+framework/react/api/router/useBlockerHook.md|163|3|Without resolver
+framework/react/api/router/useBlockerHook.md|186|3|Type narrowing
+framework/react/api/router/useCanGoBack.md|10|2|useCanGoBack returns
+framework/react/api/router/useCanGoBack.md|15|2|Limitations
+framework/react/api/router/useCanGoBack.md|19|2|Examples
+framework/react/api/router/useCanGoBack.md|21|3|Showing a back button
+framework/react/api/router/useChildMatchesHook.md|11|2|useChildMatches options
+framework/react/api/router/useChildMatchesHook.md|15|3|`opts.select` option
+framework/react/api/router/useChildMatchesHook.md|21|3|`opts.structuralSharing` option
+framework/react/api/router/useChildMatchesHook.md|28|2|useChildMatches returns
+framework/react/api/router/useChildMatchesHook.md|33|2|Examples
+framework/react/api/router/useLinkPropsHook.md|8|2|useLinkProps options
+framework/react/api/router/useLinkPropsHook.md|19|2|useLinkProps returns
+framework/react/api/router/useLoaderDataHook.md|8|2|useLoaderData options
+framework/react/api/router/useLoaderDataHook.md|12|3|`opts.from` option
+framework/react/api/router/useLoaderDataHook.md|20|3|`opts.strict` option
+framework/react/api/router/useLoaderDataHook.md|26|3|`opts.select` option
+framework/react/api/router/useLoaderDataHook.md|32|3|`opts.structuralSharing` option
+framework/react/api/router/useLoaderDataHook.md|39|2|useLoaderData returns
+framework/react/api/router/useLoaderDataHook.md|44|2|Examples
+framework/react/api/router/useLoaderDepsHook.md|8|2|useLoaderDepsHook options
+framework/react/api/router/useLoaderDepsHook.md|12|3|`opts.from` option
+framework/react/api/router/useLoaderDepsHook.md|18|3|`opts.select` option
+framework/react/api/router/useLoaderDepsHook.md|24|3|`opts.structuralSharing` option
+framework/react/api/router/useLoaderDepsHook.md|31|2|useLoaderDeps returns
+framework/react/api/router/useLoaderDepsHook.md|35|2|Examples
+framework/react/api/router/useLocationHook.md|8|2|useLocation options
+framework/react/api/router/useLocationHook.md|12|3|`opts.select` option
+framework/react/api/router/useLocationHook.md|18|2|useLocation returns
+framework/react/api/router/useLocationHook.md|22|2|Examples
+framework/react/api/router/useMatchHook.md|8|2|useMatch options
+framework/react/api/router/useMatchHook.md|12|3|`opts.from` option
+framework/react/api/router/useMatchHook.md|20|3|`opts.strict` option
+framework/react/api/router/useMatchHook.md|27|3|`opts.select` option
+framework/react/api/router/useMatchHook.md|33|3|`opts.structuralSharing` option
+framework/react/api/router/useMatchHook.md|40|3|`opts.shouldThrow` option
+framework/react/api/router/useMatchHook.md|47|2|useMatch returns
+framework/react/api/router/useMatchHook.md|52|2|Examples
+framework/react/api/router/useMatchHook.md|54|3|Accessing a route match
+framework/react/api/router/useMatchHook.md|66|3|Accessing the root route's match
+framework/react/api/router/useMatchHook.md|81|3|Checking if a specific route is currently rendered
+framework/react/api/router/useMatchRouteHook.md|8|2|useMatchRoute returns
+framework/react/api/router/useMatchRouteHook.md|12|2|matchRoute function
+framework/react/api/router/useMatchRouteHook.md|16|3|matchRoute function options
+framework/react/api/router/useMatchRouteHook.md|22|3|matchRoute function returns
+framework/react/api/router/useMatchRouteHook.md|26|2|Examples
+framework/react/api/router/useMatchesHook.md|11|2|useMatches options
+framework/react/api/router/useMatchesHook.md|15|3|`opts.select` option
+framework/react/api/router/useMatchesHook.md|21|3|`opts.structuralSharing` option
+framework/react/api/router/useMatchesHook.md|28|2|useMatches returns
+framework/react/api/router/useMatchesHook.md|33|2|Examples
+framework/react/api/router/useNavigateHook.md|8|2|useNavigate options
+framework/react/api/router/useNavigateHook.md|12|3|`opts.from` option
+framework/react/api/router/useNavigateHook.md|18|2|useNavigate returns
+framework/react/api/router/useNavigateHook.md|22|2|navigate function
+framework/react/api/router/useNavigateHook.md|26|3|navigate function options
+framework/react/api/router/useNavigateHook.md|32|3|navigate function returns
+framework/react/api/router/useNavigateHook.md|36|2|Examples
+framework/react/api/router/useParamsHook.md|8|2|useParams options
+framework/react/api/router/useParamsHook.md|12|3|`opts.strict` option
+framework/react/api/router/useParamsHook.md|18|3|`opts.shouldThrow` option
+framework/react/api/router/useParamsHook.md|25|3|`opts.select` option
+framework/react/api/router/useParamsHook.md|31|3|`opts.structuralSharing` option
+framework/react/api/router/useParamsHook.md|38|2|useParams returns
+framework/react/api/router/useParamsHook.md|42|2|Examples
+framework/react/api/router/useParentMatchesHook.md|11|2|useParentMatches options
+framework/react/api/router/useParentMatchesHook.md|15|3|`opts.select` option
+framework/react/api/router/useParentMatchesHook.md|21|3|`opts.structuralSharing` option
+framework/react/api/router/useParentMatchesHook.md|28|2|useParentMatches returns
+framework/react/api/router/useParentMatchesHook.md|33|2|Examples
+framework/react/api/router/useRouteContextHook.md|8|2|useRouteContext options
+framework/react/api/router/useRouteContextHook.md|12|3|`opts.from` option
+framework/react/api/router/useRouteContextHook.md|18|3|`opts.select` option
+framework/react/api/router/useRouteContextHook.md|24|2|useRouteContext returns
+framework/react/api/router/useRouteContextHook.md|28|2|Examples
+framework/react/api/router/useRouterHook.md|8|2|useRouter returns
+framework/react/api/router/useRouterHook.md|14|2|Examples
+framework/react/api/router/useRouterStateHook.md|11|2|useRouterState options
+framework/react/api/router/useRouterStateHook.md|15|3|`opts.select` option
+framework/react/api/router/useRouterStateHook.md|21|3|`opts.structuralSharing` option
+framework/react/api/router/useRouterStateHook.md|28|2|useRouterState returns
+framework/react/api/router/useRouterStateHook.md|32|2|Examples
+framework/react/api/router/useSearchHook.md|8|2|useSearch options
+framework/react/api/router/useSearchHook.md|12|3|`opts.from` option
+framework/react/api/router/useSearchHook.md|18|3|`opts.shouldThrow` option
+framework/react/api/router/useSearchHook.md|25|3|`opts.select` option
+framework/react/api/router/useSearchHook.md|31|3|`opts.structuralSharing` option
+framework/react/api/router/useSearchHook.md|38|3|`opts.strict` option
+framework/react/api/router/useSearchHook.md|44|2|useSearch returns
+framework/react/api/router/useSearchHook.md|49|2|Examples
+framework/react/guide/authenticated-routes.md|8|2|The `route.beforeLoad` Option
+framework/react/guide/authenticated-routes.md|28|2|Redirecting
+framework/react/guide/authenticated-routes.md|60|2|Non-Redirected Authentication
+framework/react/guide/authenticated-routes.md|79|2|Authentication using React context/hooks
+framework/react/guide/authenticated-routes.md|170|2|Related How-To Guides
+framework/react/guide/authenticated-routes.md|178|2|Examples
+framework/react/guide/automatic-code-splitting.md|25|2|How does it work?
+framework/react/guide/automatic-code-splitting.md|36|3|The transformation process
+framework/react/guide/automatic-code-splitting.md|47|3|What gets code split?
+framework/react/guide/automatic-code-splitting.md|77|2|Granular control
+framework/react/guide/automatic-code-splitting.md|81|3|Global code splitting behavior (`defaultBehavior`)
+framework/react/guide/automatic-code-splitting.md|111|3|Advanced programmatic control (`splitBehavior`)
+framework/react/guide/automatic-code-splitting.md|138|3|Per-route overrides (`codeSplitGroupings`)
+framework/react/guide/automatic-code-splitting.md|161|3|Configuration order matters
+framework/react/guide/automatic-code-splitting.md|171|3|Splitting the Data Loader
+framework/react/guide/code-splitting.md|11|2|How does TanStack Router split code?
+framework/react/guide/code-splitting.md|40|2|Encapsulating a route's files into a directory
+framework/react/guide/code-splitting.md|57|2|Approaches to code splitting
+framework/react/guide/code-splitting.md|67|2|Using automatic code-splitting✨
+framework/react/guide/code-splitting.md|100|2|Using the `.lazy.tsx` suffix
+framework/react/guide/code-splitting.md|116|3|Example code splitting with `.lazy.tsx`
+framework/react/guide/code-splitting.md|167|2|Using Virtual Routes
+framework/react/guide/code-splitting.md|212|2|Code-Based Splitting
+framework/react/guide/code-splitting.md|239|2|Data Loader Splitting
+framework/react/guide/code-splitting.md|264|2|Manually accessing Route APIs in other files with the `getRouteApi` helper
+framework/react/guide/creating-a-router.md|5|2|The `Router` Class
+framework/react/guide/creating-a-router.md|17|2|Route Tree
+framework/react/guide/creating-a-router.md|23|3|Filesystem Route Tree
+framework/react/guide/creating-a-router.md|31|3|Code-Based Route Tree
+framework/react/guide/creating-a-router.md|41|2|Router Type Safety
+framework/react/guide/creating-a-router.md|59|2|404 Not Found Route
+framework/react/guide/creating-a-router.md|74|2|Other Options
+framework/react/guide/custom-link.md|7|2|`createLink` for cross-cutting concerns
+framework/react/guide/custom-link.md|11|3|Basic example
+framework/react/guide/custom-link.md|50|2|`createLink` with third party libraries
+framework/react/guide/custom-link.md|54|3|React Aria Components example
+framework/react/guide/custom-link.md|90|3|Chakra UI example
+framework/react/guide/custom-link.md|126|3|MUI example
+framework/react/guide/custom-link.md|130|4|`Link`
+framework/react/guide/custom-link.md|167|4|`Button`
+framework/react/guide/custom-link.md|196|4|Usage with `styled`
+framework/react/guide/custom-link.md|211|3|Mantine example
+framework/react/guide/custom-search-param-serialization.md|50|2|Using Base64
+framework/react/guide/custom-search-param-serialization.md|98|2|Using the query-string library
+framework/react/guide/custom-search-param-serialization.md|127|2|Using the JSURL2 library
+framework/react/guide/custom-search-param-serialization.md|152|2|Using the Zipson library
+framework/react/guide/custom-search-param-serialization.md|200|3|Safe Binary Encoding/Decoding
+framework/react/guide/data-loading.md|12|2|The route loading lifecycle
+framework/react/guide/data-loading.md|31|2|To Router Cache or not to Router Cache?
+framework/react/guide/data-loading.md|54|2|Using the Router Cache
+framework/react/guide/data-loading.md|58|2|Route `loader`s
+framework/react/guide/data-loading.md|69|2|`loader` Parameters
+framework/react/guide/data-loading.md|90|2|Consuming data from `loader`s
+framework/react/guide/data-loading.md|109|2|Dependency-based Stale-While-Revalidate Caching
+framework/react/guide/data-loading.md|120|3|Key options
+framework/react/guide/data-loading.md|138|3|⚠️ Some Important Defaults
+framework/react/guide/data-loading.md|145|3|Using `loaderDeps` to access search params
+framework/react/guide/data-loading.md|163|3|Using `staleTime` to control how long data is considered fresh
+framework/react/guide/data-loading.md|180|2|Turning off stale-while-revalidate caching
+framework/react/guide/data-loading.md|201|2|Using `shouldReload` and `gcTime` to opt-out of caching
+framework/react/guide/data-loading.md|217|3|Opting out of caching while still preloading
+framework/react/guide/data-loading.md|223|2|Passing all loader events to an external cache
+framework/react/guide/data-loading.md|236|2|Using Router Context
+framework/react/guide/data-loading.md|299|2|Using Path Params
+framework/react/guide/data-loading.md|310|2|Using Route Context
+framework/react/guide/data-loading.md|331|2|Using Search Params in Loaders
+framework/react/guide/data-loading.md|355|3|Accessing Search Params via `routeOptions.loaderDeps`
+framework/react/guide/data-loading.md|374|2|Using the Abort Signal
+framework/react/guide/data-loading.md|389|2|Using the `preload` flag
+framework/react/guide/data-loading.md|403|2|Handling Slow Loaders
+framework/react/guide/data-loading.md|410|2|Showing a pending component
+framework/react/guide/data-loading.md|419|2|Avoiding Pending Component Flash
+framework/react/guide/data-loading.md|426|2|Handling Errors
+framework/react/guide/data-loading.md|430|3|Handling Errors with `routeOptions.onError`
+framework/react/guide/data-loading.md|445|3|Handling Errors with `routeOptions.onCatch`
+framework/react/guide/data-loading.md|459|3|Handling Errors with `routeOptions.errorComponent`
+framework/react/guide/data-loading.md|527|3|Using the default `ErrorComponent`
+framework/react/guide/data-mutations.md|36|2|Invalidating TanStack Router after a mutation
+framework/react/guide/data-mutations.md|72|2|Long-term mutation State
+framework/react/guide/data-mutations.md|85|2|Using mutation keys
+framework/react/guide/data-mutations.md|124|2|Using the `router.subscribe` method
+framework/react/guide/deferred-data-loading.md|12|2|Deferred Data Loading with `Await`
+framework/react/guide/deferred-data-loading.md|78|2|Deferred Data Loading with External libraries
+framework/react/guide/deferred-data-loading.md|132|2|Caching and Invalidation
+framework/react/guide/deferred-data-loading.md|138|2|SSR & Streaming Deferred Data
+framework/react/guide/deferred-data-loading.md|144|2|SSR Streaming Lifecycle
+framework/react/guide/document-head-management.md|20|2|Managing the Document Head
+framework/react/guide/document-head-management.md|58|3|Deduping
+framework/react/guide/document-head-management.md|65|3|`<HeadContent />`
+framework/react/guide/document-head-management.md|71|3|Start/Full-Stack Applications
+framework/react/guide/document-head-management.md|90|3|Single-Page Applications
+framework/react/guide/document-head-management.md|107|2|Managing Body Scripts
+framework/react/guide/document-head-management.md|126|3|`<Scripts />`
+framework/react/guide/document-head-management.md|130|3|Example
+framework/react/guide/external-data-loading.md|9|2|To **Store** or to **Coordinate**?
+framework/react/guide/external-data-loading.md|15|2|What data fetching libraries are supported?
+framework/react/guide/external-data-loading.md|35|2|Using Loaders to ensure data is loaded
+framework/react/guide/external-data-loading.md|72|2|A more realistic example using TanStack Query
+framework/react/guide/external-data-loading.md|103|3|Error handling with TanStack Query
+framework/react/guide/external-data-loading.md|136|2|SSR Dehydration/Hydration
+framework/react/guide/external-data-loading.md|140|2|Critical Dehydration/Hydration
+framework/react/guide/history-types.md|25|2|Browser Routing
+framework/react/guide/history-types.md|29|2|Hash Routing
+framework/react/guide/history-types.md|41|2|Memory Routing
+framework/react/guide/link-options.md|20|3|Using `linkOptions` function to create re-usable options
+framework/react/guide/link-options.md|67|3|An array of `linkOptions`
+framework/react/guide/navigation-blocking.md|16|2|How does navigation blocking work?
+framework/react/guide/navigation-blocking.md|25|2|How do I use navigation blocking?
+framework/react/guide/navigation-blocking.md|32|2|Hook/logical-based blocking
+framework/react/guide/navigation-blocking.md|103|2|Component-based blocking
+framework/react/guide/navigation-blocking.md|143|2|How can I show a custom UI?
+framework/react/guide/navigation-blocking.md|151|3|Hook/logical-based custom UI with resolver
+framework/react/guide/navigation-blocking.md|184|3|Hook/logical-based custom UI without resolver
+framework/react/guide/navigation-blocking.md|229|3|Component-based custom UI
+framework/react/guide/navigation.md|5|2|Everything is Relative
+framework/react/guide/navigation.md|16|2|Shared Navigation API
+framework/react/guide/navigation.md|20|3|`ToOptions` Interface
+framework/react/guide/navigation.md|61|3|`NavigateOptions` Interface
+framework/react/guide/navigation.md|88|3|`LinkOptions` Interface
+framework/react/guide/navigation.md|116|2|Navigation API
+framework/react/guide/navigation.md|131|2|`<Link>` Component
+framework/react/guide/navigation.md|153|3|Absolute Links
+framework/react/guide/navigation.md|163|3|Dynamic Links
+framework/react/guide/navigation.md|182|3|Relative Links
+framework/react/guide/navigation.md|202|3|Special relative paths: `"."` and `".."`
+framework/react/guide/navigation.md|233|3|Search Param Links
+framework/react/guide/navigation.md|266|3|Search Param Type Safety
+framework/react/guide/navigation.md|270|3|Hash Links
+framework/react/guide/navigation.md|288|3|Navigating with Optional Parameters
+framework/react/guide/navigation.md|292|4|Parameter Inheritance vs Removal
+framework/react/guide/navigation.md|316|4|Basic Optional Parameter Navigation
+framework/react/guide/navigation.md|344|4|Function-Style Parameter Updates
+framework/react/guide/navigation.md|377|4|Multiple Optional Parameters
+framework/react/guide/navigation.md|407|4|Mixed Required and Optional Parameters
+framework/react/guide/navigation.md|437|4|Advanced Optional Parameter Patterns
+framework/react/guide/navigation.md|489|4|Navigation with Search Params and Optional Parameters
+framework/react/guide/navigation.md|513|4|Imperative Navigation with Optional Parameters
+framework/react/guide/navigation.md|544|3|Active & Inactive Props
+framework/react/guide/navigation.md|568|3|The `data-status` attribute
+framework/react/guide/navigation.md|572|3|Active Options
+framework/react/guide/navigation.md|635|3|Passing `isActive` to children
+framework/react/guide/navigation.md|654|3|Link Preloading
+framework/react/guide/navigation.md|670|3|Link Preloading Delay
+framework/react/guide/navigation.md|682|2|`useNavigate`
+framework/react/guide/navigation.md|711|3|`navigate` Options
+framework/react/guide/navigation.md|715|2|`Navigate` Component
+framework/react/guide/navigation.md|727|2|`router.navigate`
+framework/react/guide/navigation.md|731|2|`useMatchRoute` and `<MatchRoute>`
+framework/react/guide/not-found-errors.md|7|2|Overview
+framework/react/guide/not-found-errors.md|26|2|The `notFoundMode` option
+framework/react/guide/not-found-errors.md|35|3|`notFoundMode: 'fuzzy'`
+framework/react/guide/not-found-errors.md|60|3|`notFoundMode: 'root'`
+framework/react/guide/not-found-errors.md|77|2|Configuring a route's `notFoundComponent`
+framework/react/guide/not-found-errors.md|122|2|Default Router-Wide Not Found Handling
+framework/react/guide/not-found-errors.md|143|2|Throwing your own `notFound` errors
+framework/react/guide/not-found-errors.md|169|2|Specifying Which Routes Handle Not Found Errors
+framework/react/guide/not-found-errors.md|204|3|Manually targeting the root route
+framework/react/guide/not-found-errors.md|220|3|Throwing Not Found Errors in Components
+framework/react/guide/not-found-errors.md|226|3|Data Loading Inside `notFoundComponent`
+framework/react/guide/not-found-errors.md|257|2|Usage With SSR
+framework/react/guide/not-found-errors.md|261|2|Migrating from `NotFoundRoute`
+framework/react/guide/outlets.md|7|2|The `Outlet` Component
+framework/react/guide/path-params.md|30|2|Path Params can be used by child routes
+framework/react/guide/path-params.md|34|2|Path Params in Loaders
+framework/react/guide/path-params.md|56|2|Path Params in Components
+framework/react/guide/path-params.md|73|2|Path Params outside of Routes
+framework/react/guide/path-params.md|84|2|Navigating with Path Params
+framework/react/guide/path-params.md|114|2|Prefixes and Suffixes for Path Params
+framework/react/guide/path-params.md|120|3|Defining Prefixes
+framework/react/guide/path-params.md|153|3|Defining Suffixes
+framework/react/guide/path-params.md|185|3|Combining Prefixes and Suffixes
+framework/react/guide/path-params.md|204|2|Optional Path Parameters
+framework/react/guide/path-params.md|208|3|Defining Optional Parameters
+framework/react/guide/path-params.md|232|3|How Optional Parameters Work
+framework/react/guide/path-params.md|242|3|Accessing Optional Parameters
+framework/react/guide/path-params.md|254|3|Optional Parameters in Loaders
+framework/react/guide/path-params.md|267|3|Optional Parameters in beforeLoad
+framework/react/guide/path-params.md|282|3|Advanced Optional Parameter Patterns
+framework/react/guide/path-params.md|284|4|With Prefix and Suffix
+framework/react/guide/path-params.md|301|4|All Optional Parameters
+framework/react/guide/path-params.md|332|4|Optional Parameters with Wildcards
+framework/react/guide/path-params.md|356|3|Navigating with Optional Parameters
+framework/react/guide/path-params.md|386|3|Type Safety with Optional Parameters
+framework/react/guide/path-params.md|417|2|Internationalization (i18n) with Optional Path Parameters
+framework/react/guide/path-params.md|421|3|Prefix-based i18n
+framework/react/guide/path-params.md|463|3|Complex i18n Patterns
+framework/react/guide/path-params.md|514|3|Language Navigation
+framework/react/guide/path-params.md|597|3|Advanced i18n with Optional Parameters
+framework/react/guide/path-params.md|634|3|SEO and Canonical URLs
+framework/react/guide/path-params.md|685|3|Type Safety for i18n
+framework/react/guide/path-params.md|741|2|Allowed Characters
+framework/react/guide/preloading.md|7|2|Supported Preloading Strategies
+framework/react/guide/preloading.md|19|2|How long does preloaded data stay in memory?
+framework/react/guide/preloading.md|41|2|Preload Delay
+framework/react/guide/preloading.md|56|2|Built-in Preloading & `preloadStaleTime`
+framework/react/guide/preloading.md|82|2|Preloading with External Libraries
+framework/react/guide/preloading.md|101|2|Preloading Manually
+framework/react/guide/render-optimizations.md|7|2|structural sharing
+framework/react/guide/render-optimizations.md|19|2|fine-grained selectors
+framework/react/guide/render-optimizations.md|28|3|structural sharing with fine-grained selectors
+framework/react/guide/render-optimizations.md|49|4|Enable it by default in the router options:
+framework/react/guide/render-optimizations.md|58|4|Enable it per hook usage as shown here:
+framework/react/guide/route-masking.md|14|2|How does route masking work?
+framework/react/guide/route-masking.md|43|2|How do I use route masking?
+framework/react/guide/route-masking.md|54|3|Imperative route masking
+framework/react/guide/route-masking.md|92|3|Declarative route masking
+framework/react/guide/route-masking.md|124|2|Unmasking when sharing the URL
+framework/react/guide/route-masking.md|128|2|Local Unmasking Defaults
+framework/react/guide/route-masking.md|132|2|Unmasking on page reload
+framework/react/guide/router-context.md|16|2|Typed Router Context
+framework/react/guide/router-context.md|45|2|Passing the initial Router Context
+framework/react/guide/router-context.md|67|3|Invalidating the Router Context
+framework/react/guide/router-context.md|89|2|Using the Router Context
+framework/react/guide/router-context.md|131|3|How about an external data fetching library?
+framework/react/guide/router-context.md|172|2|How about using React Context/Hooks?
+framework/react/guide/router-context.md|247|2|Modifying the Router Context
+framework/react/guide/router-context.md|299|2|Processing Accumulated Route Context
+framework/react/guide/scroll-restoration.md|6|2|Hash/Top-of-Page Scrolling
+framework/react/guide/scroll-restoration.md|10|2|Scroll-to-top & Nested Scrollable Areas
+framework/react/guide/scroll-restoration.md|35|2|Scroll Restoration
+framework/react/guide/scroll-restoration.md|68|2|Custom Cache Keys
+framework/react/guide/scroll-restoration.md|78|2|Examples
+framework/react/guide/scroll-restoration.md|105|2|Preventing Scroll Restoration
+framework/react/guide/scroll-restoration.md|115|2|Manual Scroll Restoration
+framework/react/guide/scroll-restoration.md|193|2|Scroll Behavior
+framework/react/guide/search-params.md|9|2|Why not just use `URLSearchParams`?
+framework/react/guide/search-params.md|27|2|Search Params, the "OG" State Manager
+framework/react/guide/search-params.md|40|2|JSON-first Search Params
+framework/react/guide/search-params.md|85|2|Validating and Typing Search Params
+framework/react/guide/search-params.md|89|3|Enter Validation + TypeScript!
+framework/react/guide/search-params.md|118|3|Validating Search Params
+framework/react/guide/search-params.md|177|4|Adapters
+framework/react/guide/search-params.md|204|3|Zod
+framework/react/guide/search-params.md|274|3|Valibot
+framework/react/guide/search-params.md|299|3|Arktype
+framework/react/guide/search-params.md|321|3|Effect/Schema
+framework/react/guide/search-params.md|360|2|Reading Search Params
+framework/react/guide/search-params.md|364|3|Using Search Params in Loaders
+framework/react/guide/search-params.md|368|3|Search Params are inherited from Parent Routes
+framework/react/guide/search-params.md|399|3|Search Params in Components
+framework/react/guide/search-params.md|420|3|Search Params outside of Route Components
+framework/react/guide/search-params.md|466|2|Writing Search Params
+framework/react/guide/search-params.md|470|3|`<Link search />`
+framework/react/guide/search-params.md|530|3|`useNavigate(), navigate({ search })`
+framework/react/guide/search-params.md|559|3|`router.navigate({ search })`
+framework/react/guide/search-params.md|563|3|`<Navigate search />`
+framework/react/guide/search-params.md|567|2|Transforming search with search middlewares
+framework/react/guide/ssr.md|21|2|Non-Streaming SSR
+framework/react/guide/ssr.md|39|3|Automatic Server History
+framework/react/guide/ssr.md|43|3|Automatic Loader Dehydration/Hydration
+framework/react/guide/ssr.md|51|3|Router Creation
+framework/react/guide/ssr.md|71|3|Rendering the Application on the Server
+framework/react/guide/ssr.md|121|2|Rendering the Application on the Client
+framework/react/guide/ssr.md|145|2|Streaming SSR
+framework/react/guide/ssr.md|196|2|Streaming Dehydration/Hydration
+framework/react/guide/ssr.md|200|2|Data Serialization
+framework/react/guide/static-route-data.md|9|2|Example
+framework/react/guide/static-route-data.md|45|2|Enforcing Static Data
+framework/react/guide/static-route-data.md|69|2|Optional Static Data
+framework/react/guide/type-safety.md|9|2|Route Definitions
+framework/react/guide/type-safety.md|11|3|File-based Routing
+framework/react/guide/type-safety.md|15|3|Code-based Routing
+framework/react/guide/type-safety.md|27|2|Exported Hooks, Components, and Utilities
+framework/react/guide/type-safety.md|45|2|Fixing the Component Context Problem
+framework/react/guide/type-safety.md|70|3|What if I don't know the route? What if it's a shared component?
+framework/react/guide/type-safety.md|74|3|What if I pass the wrong `from` path?
+framework/react/guide/type-safety.md|78|3|What if I don't know the route, or it's a shared component, and I can't pass `from`?
+framework/react/guide/type-safety.md|90|2|Router Context
+framework/react/guide/type-safety.md|114|2|Performance Recommendations
+framework/react/guide/type-safety.md|118|3|Only infer types you need
+framework/react/guide/type-safety.md|157|3|Narrow to relevant routes as much as you possibly can
+framework/react/guide/type-safety.md|191|3|Consider using the object syntax of `addChildren`
+framework/react/guide/type-safety.md|206|3|Avoid internal types without narrowing
+framework/react/guide/type-utilities.md|8|2|Type checking Link options with `ValidateLinkOptions`
+framework/react/guide/type-utilities.md|45|2|Type checking an array of Link options with `ValidateLinkOptionsArray`
+framework/react/guide/type-utilities.md|124|2|Type checking redirect options with `ValidateRedirectOptions`
+framework/react/guide/type-utilities.md|156|2|Type checking navigate options with `ValidateNavigateOptions`
+framework/react/how-to/README.md|1|1|How-To Guides
+framework/react/how-to/README.md|10|2|Available Guides
+framework/react/how-to/README.md|18|3|Authentication
+framework/react/how-to/README.md|24|3|Testing & Debugging
+framework/react/how-to/README.md|30|3|UI Library Integration
+framework/react/how-to/README.md|37|3|Search Parameters & URL State (Progressive Series)
+framework/react/how-to/README.md|63|2|Using These Guides
+framework/react/how-to/README.md|73|2|Contributing
+framework/react/how-to/arrays-objects-dates-search-params.md|7|2|Quick Start
+framework/react/how-to/arrays-objects-dates-search-params.md|35|2|Working with Arrays
+framework/react/how-to/arrays-objects-dates-search-params.md|39|3|Basic Array Validation
+framework/react/how-to/arrays-objects-dates-search-params.md|74|3|Navigating with Arrays
+framework/react/how-to/arrays-objects-dates-search-params.md|119|3|Advanced Array Patterns
+framework/react/how-to/arrays-objects-dates-search-params.md|153|2|Working with Objects
+framework/react/how-to/arrays-objects-dates-search-params.md|157|3|Basic Object Validation
+framework/react/how-to/arrays-objects-dates-search-params.md|207|3|Navigating with Objects
+framework/react/how-to/arrays-objects-dates-search-params.md|293|2|Working with Dates
+framework/react/how-to/arrays-objects-dates-search-params.md|297|3|Date Validation and Serialization
+framework/react/how-to/arrays-objects-dates-search-params.md|348|3|Date Navigation Patterns
+framework/react/how-to/arrays-objects-dates-search-params.md|413|2|Nested Data Structures
+framework/react/how-to/arrays-objects-dates-search-params.md|417|3|Complex Nested Schema
+framework/react/how-to/arrays-objects-dates-search-params.md|485|3|Managing Complex State Updates
+framework/react/how-to/arrays-objects-dates-search-params.md|565|2|Performance Optimization
+framework/react/how-to/arrays-objects-dates-search-params.md|567|3|Selective Updates with Selectors
+framework/react/how-to/arrays-objects-dates-search-params.md|596|3|Memoization for Complex Transforms
+framework/react/how-to/arrays-objects-dates-search-params.md|624|2|Production Checklist
+framework/react/how-to/arrays-objects-dates-search-params.md|635|2|Common Problems
+framework/react/how-to/arrays-objects-dates-search-params.md|637|3|Problem: Array Parameters Not Updating
+framework/react/how-to/arrays-objects-dates-search-params.md|659|3|Problem: Dates Not Serializing Correctly
+framework/react/how-to/arrays-objects-dates-search-params.md|679|3|Problem: Deep Object Updates Not Working
+framework/react/how-to/arrays-objects-dates-search-params.md|704|3|Problem: URL Too Long Error
+framework/react/how-to/arrays-objects-dates-search-params.md|728|3|Problem: Performance Issues with Large Objects
+framework/react/how-to/arrays-objects-dates-search-params.md|750|2|Common Next Steps
+framework/react/how-to/arrays-objects-dates-search-params.md|757|2|Related Resources
+framework/react/how-to/debug-router-issues.md|7|2|Quick Start
+framework/react/how-to/debug-router-issues.md|13|2|Essential Debugging Tools
+framework/react/how-to/debug-router-issues.md|15|3|1. TanStack Router DevTools
+framework/react/how-to/debug-router-issues.md|46|3|2. Debug Mode Configuration
+framework/react/how-to/debug-router-issues.md|62|3|3. Browser DevTools Setup
+framework/react/how-to/debug-router-issues.md|80|2|Route Matching Issues
+framework/react/how-to/debug-router-issues.md|82|3|Problem: Route Not Found (404)
+framework/react/how-to/debug-router-issues.md|126|3|Problem: Route Parameters Not Working
+framework/react/how-to/debug-router-issues.md|183|2|Navigation Issues
+framework/react/how-to/debug-router-issues.md|185|3|Problem: Navigation Not Working
+framework/react/how-to/debug-router-issues.md|238|3|Problem: Navigation Redirects Unexpectedly
+framework/react/how-to/debug-router-issues.md|283|2|Data Loading Problems
+framework/react/how-to/debug-router-issues.md|285|3|Problem: Route Data Not Loading
+framework/react/how-to/debug-router-issues.md|355|2|Search Parameters Issues
+framework/react/how-to/debug-router-issues.md|357|3|Problem: Search Params Not Updating
+framework/react/how-to/debug-router-issues.md|421|2|Performance Issues
+framework/react/how-to/debug-router-issues.md|423|3|Problem: Excessive Re-renders
+framework/react/how-to/debug-router-issues.md|490|3|Problem: Memory Leaks
+framework/react/how-to/debug-router-issues.md|537|2|TypeScript Issues
+framework/react/how-to/debug-router-issues.md|539|3|Problem: Type Errors with Router
+framework/react/how-to/debug-router-issues.md|563|1|Check if route types are being generated
+framework/react/how-to/debug-router-issues.md|566|1|Regenerate route types if needed
+framework/react/how-to/debug-router-issues.md|587|2|Systematic Debugging Process
+framework/react/how-to/debug-router-issues.md|589|3|1. Information Gathering
+framework/react/how-to/debug-router-issues.md|615|3|2. Isolation Testing
+framework/react/how-to/debug-router-issues.md|637|3|3. Step-by-Step Debugging
+framework/react/how-to/debug-router-issues.md|647|2|Browser Debugging Tips
+framework/react/how-to/debug-router-issues.md|649|3|Console Commands
+framework/react/how-to/debug-router-issues.md|670|3|Network Tab
+framework/react/how-to/debug-router-issues.md|678|3|React DevTools
+framework/react/how-to/debug-router-issues.md|686|2|Common Error Messages
+framework/react/how-to/debug-router-issues.md|688|3|"Route not found"
+framework/react/how-to/debug-router-issues.md|694|3|"Cannot read property 'useParams' of undefined"
+framework/react/how-to/debug-router-issues.md|700|3|"Invalid search params"
+framework/react/how-to/debug-router-issues.md|706|3|"Navigation was interrupted"
+framework/react/how-to/debug-router-issues.md|714|2|Performance Monitoring
+framework/react/how-to/debug-router-issues.md|716|3|Enable Performance Tracking
+framework/react/how-to/debug-router-issues.md|734|3|Monitor Route Loading Times
+framework/react/how-to/debug-router-issues.md|752|2|Common Next Steps
+framework/react/how-to/debug-router-issues.md|764|2|Related Resources
+framework/react/how-to/deploy-to-production.md|7|2|Quick Start
+framework/react/how-to/deploy-to-production.md|13|2|Netlify Deployment
+framework/react/how-to/deploy-to-production.md|15|3|1. Create `_redirects` File
+framework/react/how-to/deploy-to-production.md|23|3|2. Alternative: `netlify.toml`
+framework/react/how-to/deploy-to-production.md|38|3|3. For TanStack Start (SSR)
+framework/react/how-to/deploy-to-production.md|61|2|Cloudflare Pages
+framework/react/how-to/deploy-to-production.md|63|3|1. Create `_redirects` File
+framework/react/how-to/deploy-to-production.md|71|3|2. Alternative: `_routes.json`
+framework/react/how-to/deploy-to-production.md|83|3|3. For TanStack Start (SSR)
+framework/react/how-to/deploy-to-production.md|94|3|4. Deploy via Git
+framework/react/how-to/deploy-to-production.md|102|3|5. Deploy via Wrangler CLI
+framework/react/how-to/deploy-to-production.md|105|1|Install Wrangler
+framework/react/how-to/deploy-to-production.md|108|1|Deploy
+framework/react/how-to/deploy-to-production.md|114|2|Vercel Deployment
+framework/react/how-to/deploy-to-production.md|116|3|1. Create `vercel.json`
+framework/react/how-to/deploy-to-production.md|131|3|2. For TanStack Start (SSR) Applications
+framework/react/how-to/deploy-to-production.md|151|3|3. Build Configuration
+framework/react/how-to/deploy-to-production.md|164|3|4. Deploy
+framework/react/how-to/deploy-to-production.md|167|1|Install Vercel CLI
+framework/react/how-to/deploy-to-production.md|170|1|Deploy
+framework/react/how-to/deploy-to-production.md|176|2|GitHub Pages
+framework/react/how-to/deploy-to-production.md|178|3|1. Create `404.html`
+framework/react/how-to/deploy-to-production.md|183|1|After building
+framework/react/how-to/deploy-to-production.md|187|3|2. Update `vite.config.js`
+framework/react/how-to/deploy-to-production.md|209|3|3. GitHub Actions Workflow
+framework/react/how-to/deploy-to-production.md|250|2|Firebase Hosting
+framework/react/how-to/deploy-to-production.md|252|3|1. Create `firebase.json`
+framework/react/how-to/deploy-to-production.md|269|3|2. Deploy
+framework/react/how-to/deploy-to-production.md|272|1|Install Firebase CLI
+framework/react/how-to/deploy-to-production.md|275|1|Login and initialize
+framework/react/how-to/deploy-to-production.md|279|1|Build and deploy
+framework/react/how-to/deploy-to-production.md|286|2|Apache Server
+framework/react/how-to/deploy-to-production.md|303|2|Nginx
+framework/react/how-to/deploy-to-production.md|328|2|Docker Deployment
+framework/react/how-to/deploy-to-production.md|330|3|1. Create `Dockerfile`
+framework/react/how-to/deploy-to-production.md|333|1|Build stage
+framework/react/how-to/deploy-to-production.md|341|1|Production stage
+framework/react/how-to/deploy-to-production.md|349|3|2. Create `nginx.conf`
+framework/react/how-to/deploy-to-production.md|364|3|3. Build and Run
+framework/react/how-to/deploy-to-production.md|373|2|Production Checklist
+framework/react/how-to/deploy-to-production.md|385|2|Common Problems
+framework/react/how-to/deploy-to-production.md|387|3|404 Errors on Page Refresh
+framework/react/how-to/deploy-to-production.md|395|3|App Works Locally But Breaks When Deployed
+framework/react/how-to/deploy-to-production.md|421|3|Assets Not Loading (CSS/JS 404s)
+framework/react/how-to/deploy-to-production.md|433|2|Common Next Steps
+framework/react/how-to/deploy-to-production.md|446|2|Related Resources
+framework/react/how-to/install.md|5|2|Prerequisites
+framework/react/how-to/install.md|11|2|Installation Steps
+framework/react/how-to/integrate-chakra-ui.md|7|2|Quick Start
+framework/react/how-to/integrate-chakra-ui.md|13|3|What You'll Accomplish
+framework/react/how-to/integrate-chakra-ui.md|23|2|Installation and Setup
+framework/react/how-to/integrate-chakra-ui.md|25|3|Step 1: Install Chakra UI Dependencies
+framework/react/how-to/integrate-chakra-ui.md|31|3|Step 2: Set Up Chakra Provider
+framework/react/how-to/integrate-chakra-ui.md|89|3|Step 3: Update Root Route
+framework/react/how-to/integrate-chakra-ui.md|109|2|Creating Router-Compatible Components
+framework/react/how-to/integrate-chakra-ui.md|111|3|Step 1: Create Router-Compatible Chakra Components
+framework/react/how-to/integrate-chakra-ui.md|141|3|Step 2: Create Navigation Components
+framework/react/how-to/integrate-chakra-ui.md|296|3|Step 3: Create Breadcrumb Navigation
+framework/react/how-to/integrate-chakra-ui.md|367|2|Responsive Design Patterns
+framework/react/how-to/integrate-chakra-ui.md|369|3|Step 1: Create Responsive Layout Component
+framework/react/how-to/integrate-chakra-ui.md|423|3|Step 2: Create Responsive Card Grid
+framework/react/how-to/integrate-chakra-ui.md|462|2|Complete Usage Examples
+framework/react/how-to/integrate-chakra-ui.md|464|3|Step 1: Posts List Page
+framework/react/how-to/integrate-chakra-ui.md|590|3|Step 2: Post Detail Page
+framework/react/how-to/integrate-chakra-ui.md|694|2|Common Problems
+framework/react/how-to/integrate-chakra-ui.md|696|3|Theme Provider Issues
+framework/react/how-to/integrate-chakra-ui.md|722|3|TypeScript Errors with Router Integration
+framework/react/how-to/integrate-chakra-ui.md|741|3|Color Mode Persistence
+framework/react/how-to/integrate-chakra-ui.md|760|3|Responsive Design Issues
+framework/react/how-to/integrate-chakra-ui.md|784|2|Production Checklist
+framework/react/how-to/integrate-chakra-ui.md|788|3|Functionality
+framework/react/how-to/integrate-chakra-ui.md|795|3|Accessibility
+framework/react/how-to/integrate-chakra-ui.md|802|3|Performance
+framework/react/how-to/integrate-chakra-ui.md|809|3|Responsiveness
+framework/react/how-to/integrate-chakra-ui.md|818|2|Related Resources
+framework/react/how-to/integrate-framer-motion.md|7|2|Quick Start
+framework/react/how-to/integrate-framer-motion.md|13|3|What You'll Accomplish
+framework/react/how-to/integrate-framer-motion.md|23|2|Installation and Setup
+framework/react/how-to/integrate-framer-motion.md|25|3|Step 1: Install Framer Motion
+framework/react/how-to/integrate-framer-motion.md|31|3|Step 2: Verify Version Compatibility
+framework/react/how-to/integrate-framer-motion.md|47|2|Route Transition Animations
+framework/react/how-to/integrate-framer-motion.md|49|3|Step 1: Create Animated Route Wrapper
+framework/react/how-to/integrate-framer-motion.md|110|3|Step 2: Set Up Route Animation Container
+framework/react/how-to/integrate-framer-motion.md|135|3|Step 3: Update Root Route for Animations
+framework/react/how-to/integrate-framer-motion.md|155|3|Step 4: Use Animations in Routes
+framework/react/how-to/integrate-framer-motion.md|208|2|Animated Navigation Components
+framework/react/how-to/integrate-framer-motion.md|210|3|Step 1: Create Animated Tab Navigation
+framework/react/how-to/integrate-framer-motion.md|265|3|Step 2: Create Sliding Mobile Menu
+framework/react/how-to/integrate-framer-motion.md|368|3|Step 3: Create Floating Action Button with Animations
+framework/react/how-to/integrate-framer-motion.md|415|2|Advanced Animation Patterns
+framework/react/how-to/integrate-framer-motion.md|417|3|Step 1: Shared Element Transitions
+framework/react/how-to/integrate-framer-motion.md|477|3|Step 2: Route-Based Animation Variants
+framework/react/how-to/integrate-framer-motion.md|540|3|Step 3: Loading Animations
+framework/react/how-to/integrate-framer-motion.md|584|2|Complete Example
+framework/react/how-to/integrate-framer-motion.md|586|3|App with Full Animation Integration
+framework/react/how-to/integrate-framer-motion.md|663|2|Common Problems
+framework/react/how-to/integrate-framer-motion.md|665|3|Animations Not Triggering
+framework/react/how-to/integrate-framer-motion.md|691|3|Performance Issues
+framework/react/how-to/integrate-framer-motion.md|718|3|Layout Shift Issues
+framework/react/how-to/integrate-framer-motion.md|739|2|Production Checklist
+framework/react/how-to/integrate-framer-motion.md|743|3|Performance
+framework/react/how-to/integrate-framer-motion.md|750|3|User Experience
+framework/react/how-to/integrate-framer-motion.md|757|3|Accessibility
+framework/react/how-to/integrate-framer-motion.md|764|3|Technical
+framework/react/how-to/integrate-framer-motion.md|773|2|Related Resources
+framework/react/how-to/integrate-material-ui.md|7|2|Quick Start
+framework/react/how-to/integrate-material-ui.md|13|3|What You'll Accomplish
+framework/react/how-to/integrate-material-ui.md|23|2|Installation and Setup
+framework/react/how-to/integrate-material-ui.md|25|3|Step 1: Install Material-UI Dependencies
+framework/react/how-to/integrate-material-ui.md|37|3|Step 2: Set Up Theme Provider
+framework/react/how-to/integrate-material-ui.md|96|3|Step 3: Update Root Route
+framework/react/how-to/integrate-material-ui.md|118|2|Creating Router-Compatible MUI Components
+framework/react/how-to/integrate-material-ui.md|120|3|Step 1: Create Typed MUI Link Component
+framework/react/how-to/integrate-material-ui.md|138|3|Step 2: Create Typed MUI Button Component
+framework/react/how-to/integrate-material-ui.md|154|3|Step 3: Create Advanced Navigation Components
+framework/react/how-to/integrate-material-ui.md|172|2|Implementing Navigation with Active States
+framework/react/how-to/integrate-material-ui.md|174|3|Step 1: Create Navigation Tabs with Active States
+framework/react/how-to/integrate-material-ui.md|222|3|Step 2: Create Navigation Drawer
+framework/react/how-to/integrate-material-ui.md|303|3|Step 3: Create App Bar with Navigation
+framework/react/how-to/integrate-material-ui.md|424|2|Usage Examples
+framework/react/how-to/integrate-material-ui.md|426|3|Complete Page Example
+framework/react/how-to/integrate-material-ui.md|511|3|Layout with Navigation
+framework/react/how-to/integrate-material-ui.md|556|2|Common Problems
+framework/react/how-to/integrate-material-ui.md|558|3|TypeScript Errors with Component Props
+framework/react/how-to/integrate-material-ui.md|576|3|Styling Conflicts
+framework/react/how-to/integrate-material-ui.md|612|3|Theme Not Applied Correctly
+framework/react/how-to/integrate-material-ui.md|638|3|Performance Issues with Large Apps
+framework/react/how-to/integrate-material-ui.md|678|2|Production Checklist
+framework/react/how-to/integrate-material-ui.md|682|3|Functionality
+framework/react/how-to/integrate-material-ui.md|689|3|Performance
+framework/react/how-to/integrate-material-ui.md|696|3|Styling
+framework/react/how-to/integrate-material-ui.md|703|3|Accessibility
+framework/react/how-to/integrate-material-ui.md|712|2|Related Resources
+framework/react/how-to/integrate-shadcn-ui.md|7|2|Quick Start
+framework/react/how-to/integrate-shadcn-ui.md|13|3|What You'll Accomplish
+framework/react/how-to/integrate-shadcn-ui.md|23|2|Installation and Setup
+framework/react/how-to/integrate-shadcn-ui.md|25|3|Step 1: Install Shadcn/ui
+framework/react/how-to/integrate-shadcn-ui.md|39|3|Step 2: Configure components.json
+framework/react/how-to/integrate-shadcn-ui.md|62|3|Step 3: Add Essential Components
+framework/react/how-to/integrate-shadcn-ui.md|75|2|Fixing Animation Issues
+framework/react/how-to/integrate-shadcn-ui.md|77|3|Step 1: Set Up Proper DOM Structure
+framework/react/how-to/integrate-shadcn-ui.md|103|3|Step 2: Create Router-Compatible Sheet Component
+framework/react/how-to/integrate-shadcn-ui.md|156|3|Step 3: Create Router-Compatible Dialog Component
+framework/react/how-to/integrate-shadcn-ui.md|209|2|Creating Navigation Components
+framework/react/how-to/integrate-shadcn-ui.md|211|3|Step 1: Router-Compatible Navigation Menu
+framework/react/how-to/integrate-shadcn-ui.md|265|3|Step 2: Create Router-Compatible Button Links
+framework/react/how-to/integrate-shadcn-ui.md|281|3|Step 3: Usage Example
+framework/react/how-to/integrate-shadcn-ui.md|336|2|Common Problems
+framework/react/how-to/integrate-shadcn-ui.md|338|3|Animation Components Not Working
+framework/react/how-to/integrate-shadcn-ui.md|369|3|TypeScript Errors with Router Integration
+framework/react/how-to/integrate-shadcn-ui.md|383|3|Styling Conflicts
+framework/react/how-to/integrate-shadcn-ui.md|410|3|Dark Mode Integration
+framework/react/how-to/integrate-shadcn-ui.md|486|2|Production Checklist
+framework/react/how-to/integrate-shadcn-ui.md|490|3|Styling
+framework/react/how-to/integrate-shadcn-ui.md|498|3|Functionality
+framework/react/how-to/integrate-shadcn-ui.md|505|3|Performance
+framework/react/how-to/integrate-shadcn-ui.md|513|2|Related Resources
+framework/react/how-to/migrate-from-react-router.md|7|2|Quick Start
+framework/react/how-to/migrate-from-react-router.md|13|3|What You'll Accomplish
+framework/react/how-to/migrate-from-react-router.md|25|2|Complete Migration Process
+framework/react/how-to/migrate-from-react-router.md|27|3|Step 1: Prepare for Migration
+framework/react/how-to/migrate-from-react-router.md|41|1|Install TanStack Router
+framework/react/how-to/migrate-from-react-router.md|44|1|Install development dependencies
+framework/react/how-to/migrate-from-react-router.md|67|3|Step 2: Create TanStack Router Configuration
+framework/react/how-to/migrate-from-react-router.md|87|3|Step 3: Convert Your React Router v7 Structure
+framework/react/how-to/migrate-from-react-router.md|258|3|Step 4: Handle React Router v7 Framework Features
+framework/react/how-to/migrate-from-react-router.md|344|3|Step 5: Update Navigation Components
+framework/react/how-to/migrate-from-react-router.md|396|3|Step 6: Handle React Router v7 Specific Features
+framework/react/how-to/migrate-from-react-router.md|450|3|Step 7: Update Your Main Router Setup
+framework/react/how-to/migrate-from-react-router.md|483|3|Step 8: Handle Search Parameters
+framework/react/how-to/migrate-from-react-router.md|528|3|Step 9: Remove React Router Dependencies
+framework/react/how-to/migrate-from-react-router.md|543|1|Find remaining React Router imports
+framework/react/how-to/migrate-from-react-router.md|549|3|Step 10: Add Advanced Type Safety
+framework/react/how-to/migrate-from-react-router.md|586|2|Production Checklist
+framework/react/how-to/migrate-from-react-router.md|590|3|Router Configuration
+framework/react/how-to/migrate-from-react-router.md|597|3|Route Migration
+framework/react/how-to/migrate-from-react-router.md|605|3|Feature Migration
+framework/react/how-to/migrate-from-react-router.md|613|3|Navigation Updates
+framework/react/how-to/migrate-from-react-router.md|620|3|Code Cleanup
+framework/react/how-to/migrate-from-react-router.md|628|3|Testing
+framework/react/how-to/migrate-from-react-router.md|640|2|Common Problems
+framework/react/how-to/migrate-from-react-router.md|642|3|Error: "Cannot use useNavigate outside of context"
+framework/react/how-to/migrate-from-react-router.md|655|3|TypeScript Errors: Route Parameters
+framework/react/how-to/migrate-from-react-router.md|672|3|React Router v7 Framework Features Not Working
+framework/react/how-to/migrate-from-react-router.md|683|3|Routes Not Matching
+framework/react/how-to/migrate-from-react-router.md|696|3|React Router v7 Simplified APIs Not Translating
+framework/react/how-to/migrate-from-react-router.md|708|2|React Router v7 vs TanStack Router Feature Comparison
+framework/react/how-to/migrate-from-react-router.md|723|2|Common Next Steps
+framework/react/how-to/migrate-from-react-router.md|727|3|Advanced Features to Explore
+framework/react/how-to/migrate-from-react-router.md|737|2|Related Resources
+framework/react/how-to/navigate-with-search-params.md|9|2|Quick Start
+framework/react/how-to/navigate-with-search-params.md|29|2|Navigation Methods
+framework/react/how-to/navigate-with-search-params.md|31|3|Using Link Components
+framework/react/how-to/navigate-with-search-params.md|33|4|Basic Search Parameter Updates
+framework/react/how-to/navigate-with-search-params.md|55|4|Functional Search Parameter Updates
+framework/react/how-to/navigate-with-search-params.md|94|4|Preserving All Search Parameters
+framework/react/how-to/navigate-with-search-params.md|118|4|Navigation with Route Changes
+framework/react/how-to/navigate-with-search-params.md|159|3|Programmatic Navigation
+framework/react/how-to/navigate-with-search-params.md|161|4|Using useNavigate Hook
+framework/react/how-to/navigate-with-search-params.md|211|4|Navigation with Router Instance
+framework/react/how-to/navigate-with-search-params.md|273|2|Advanced Navigation Patterns
+framework/react/how-to/navigate-with-search-params.md|275|3|Conditional Navigation
+framework/react/how-to/navigate-with-search-params.md|300|2|Common Patterns
+framework/react/how-to/navigate-with-search-params.md|302|2|Common Problems
+framework/react/how-to/navigate-with-search-params.md|304|3|Search Parameters Not Updating
+framework/react/how-to/navigate-with-search-params.md|318|3|Losing Existing Search Parameters
+framework/react/how-to/navigate-with-search-params.md|332|2|Common Next Steps
+framework/react/how-to/navigate-with-search-params.md|343|2|Related Resources
+framework/react/how-to/setup-auth-providers.md|7|2|Quick Start
+framework/react/how-to/setup-auth-providers.md|13|2|Auth0 Integration
+framework/react/how-to/setup-auth-providers.md|15|3|1. Install Auth0
+framework/react/how-to/setup-auth-providers.md|21|3|2. Set Up Environment Variables
+framework/react/how-to/setup-auth-providers.md|30|3|3. Create Auth0 Wrapper
+framework/react/how-to/setup-auth-providers.md|91|3|4. Update App Configuration
+framework/react/how-to/setup-auth-providers.md|125|3|5. Create Protected Routes
+framework/react/how-to/setup-auth-providers.md|146|2|Clerk Integration
+framework/react/how-to/setup-auth-providers.md|148|3|1. Install Clerk
+framework/react/how-to/setup-auth-providers.md|154|3|2. Set Up Environment Variables
+framework/react/how-to/setup-auth-providers.md|162|3|3. Create Clerk Wrapper
+framework/react/how-to/setup-auth-providers.md|204|3|4. Create Clerk Auth Routes
+framework/react/how-to/setup-auth-providers.md|236|3|5. Update App Configuration
+framework/react/how-to/setup-auth-providers.md|270|3|6. Create Protected Routes
+framework/react/how-to/setup-auth-providers.md|294|2|Supabase Integration
+framework/react/how-to/setup-auth-providers.md|296|3|1. Install Supabase
+framework/react/how-to/setup-auth-providers.md|302|3|2. Set Up Environment Variables
+framework/react/how-to/setup-auth-providers.md|311|3|3. Create Supabase Client
+framework/react/how-to/setup-auth-providers.md|402|3|4. Create Login Component
+framework/react/how-to/setup-auth-providers.md|501|3|5. Update App Configuration
+framework/react/how-to/setup-auth-providers.md|537|2|Provider Comparison
+framework/react/how-to/setup-auth-providers.md|549|3|When to Choose Each:
+framework/react/how-to/setup-auth-providers.md|557|2|Common Problems
+framework/react/how-to/setup-auth-providers.md|559|3|Provider Context Not Available
+framework/react/how-to/setup-auth-providers.md|579|3|Infinite Loading States
+framework/react/how-to/setup-auth-providers.md|597|3|Redirect Loops with Auth0
+framework/react/how-to/setup-auth-providers.md|618|2|Common Next Steps
+framework/react/how-to/setup-auth-providers.md|630|2|Related Resources
+framework/react/how-to/setup-authentication.md|7|2|Quick Start
+framework/react/how-to/setup-authentication.md|13|2|Create Authentication Context
+framework/react/how-to/setup-authentication.md|120|2|Configure Router Context
+framework/react/how-to/setup-authentication.md|122|3|1. Set Up Router Context
+framework/react/how-to/setup-authentication.md|151|3|2. Configure Router
+framework/react/how-to/setup-authentication.md|174|3|3. Connect App with Authentication
+framework/react/how-to/setup-authentication.md|201|2|Create Protected Routes
+framework/react/how-to/setup-authentication.md|203|3|1. Create Authentication Layout Route
+framework/react/how-to/setup-authentication.md|226|3|2. Create Login Route
+framework/react/how-to/setup-authentication.md|327|3|3. Create Protected Dashboard
+framework/react/how-to/setup-authentication.md|368|2|Add Authentication Persistence
+framework/react/how-to/setup-authentication.md|421|2|Production Checklist
+framework/react/how-to/setup-authentication.md|436|2|Common Problems
+framework/react/how-to/setup-authentication.md|438|3|Authentication Context Not Available
+framework/react/how-to/setup-authentication.md|444|3|User Logged Out on Page Refresh
+framework/react/how-to/setup-authentication.md|450|3|Protected Route Flashing Before Redirect
+framework/react/how-to/setup-authentication.md|469|2|Common Next Steps
+framework/react/how-to/setup-authentication.md|481|2|Related Resources
+framework/react/how-to/setup-basic-search-params.md|7|2|Quick Start
+framework/react/how-to/setup-basic-search-params.md|41|2|Why Use Schema Validation for Search Parameters?
+framework/react/how-to/setup-basic-search-params.md|51|2|Validation Library Setup
+framework/react/how-to/setup-basic-search-params.md|76|2|Step-by-Step Setup with Zod
+framework/react/how-to/setup-basic-search-params.md|80|3|Step 1: Install Dependencies
+framework/react/how-to/setup-basic-search-params.md|86|3|Step 2: Define Your Search Schema
+framework/react/how-to/setup-basic-search-params.md|116|3|Step 3: Add Schema Validation to Route
+framework/react/how-to/setup-basic-search-params.md|129|3|Step 4: Read Search Parameters in Components
+framework/react/how-to/setup-basic-search-params.md|163|2|Common Search Parameter Patterns
+framework/react/how-to/setup-basic-search-params.md|165|3|Pagination with Constraints
+framework/react/how-to/setup-basic-search-params.md|195|3|Enum Validation with Defaults
+framework/react/how-to/setup-basic-search-params.md|213|3|Complex Data Types
+framework/react/how-to/setup-basic-search-params.md|242|3|Date and Advanced Types
+framework/react/how-to/setup-basic-search-params.md|253|2|Reading Search Parameters Outside Components
+framework/react/how-to/setup-basic-search-params.md|255|3|Using getRouteApi
+framework/react/how-to/setup-basic-search-params.md|281|3|Using useSearch with from
+framework/react/how-to/setup-basic-search-params.md|293|2|Manual Validation (Understanding the Primitives)
+framework/react/how-to/setup-basic-search-params.md|319|2|Production Checklist
+framework/react/how-to/setup-basic-search-params.md|329|2|Common Problems
+framework/react/how-to/setup-basic-search-params.md|331|3|Problem: Search Parameters Cause TypeScript Errors
+framework/react/how-to/setup-basic-search-params.md|355|3|Problem: Invalid URL Parameters Break the App
+framework/react/how-to/setup-basic-search-params.md|373|3|Problem: Optional Parameters Are Required by TypeScript
+framework/react/how-to/setup-basic-search-params.md|389|3|Problem: Complex Objects Not Validating
+framework/react/how-to/setup-basic-search-params.md|413|2|Common Next Steps
+framework/react/how-to/setup-basic-search-params.md|421|2|Related Resources
+framework/react/how-to/setup-rbac.md|7|2|Quick Start
+framework/react/how-to/setup-rbac.md|13|2|Extend Authentication Context
+framework/react/how-to/setup-rbac.md|15|3|1. Add Roles to User Type
+framework/react/how-to/setup-rbac.md|116|3|2. Update Router Context Types
+framework/react/how-to/setup-rbac.md|155|2|Create Role-Protected Routes
+framework/react/how-to/setup-rbac.md|157|3|1. Admin-Only Routes
+framework/react/how-to/setup-rbac.md|190|3|2. Multiple Role Access
+framework/react/how-to/setup-rbac.md|227|3|3. Permission-Based Routes
+framework/react/how-to/setup-rbac.md|253|2|Create Specific Protected Pages
+framework/react/how-to/setup-rbac.md|255|3|1. Admin Dashboard
+framework/react/how-to/setup-rbac.md|310|3|2. User Management Page
+framework/react/how-to/setup-rbac.md|396|2|Create Unauthorized Page
+framework/react/how-to/setup-rbac.md|483|2|Component-Level Permission Checks
+framework/react/how-to/setup-rbac.md|485|3|1. Conditional Rendering Hook
+framework/react/how-to/setup-rbac.md|506|3|2. Permission Guard Component
+framework/react/how-to/setup-rbac.md|547|3|3. Using Permission Guards
+framework/react/how-to/setup-rbac.md|588|2|Advanced Permission Patterns
+framework/react/how-to/setup-rbac.md|590|3|1. Resource-Based Permissions
+framework/react/how-to/setup-rbac.md|621|3|2. Time-Based Permissions
+framework/react/how-to/setup-rbac.md|647|2|Common Problems
+framework/react/how-to/setup-rbac.md|649|3|Role/Permission Data Not Loading
+framework/react/how-to/setup-rbac.md|673|3|Permission Checks Too Restrictive
+framework/react/how-to/setup-rbac.md|694|3|Performance Issues with Many Permission Checks
+framework/react/how-to/setup-rbac.md|722|2|Common Next Steps
+framework/react/how-to/setup-rbac.md|734|2|Related Resources
+framework/react/how-to/setup-ssr.md|9|2|Quick Start with TanStack Start
+framework/react/how-to/setup-ssr.md|17|2|Manual SSR Setup
+framework/react/how-to/setup-ssr.md|19|3|1. Install Dependencies
+framework/react/how-to/setup-ssr.md|26|3|2. Create Shared Router Configuration
+framework/react/how-to/setup-ssr.md|50|3|3. Set Up Server Entry Point
+framework/react/how-to/setup-ssr.md|125|3|4. Set Up Client Entry Point
+framework/react/how-to/setup-ssr.md|138|3|5. Configure Vite for SSR
+framework/react/how-to/setup-ssr.md|191|3|6. Update Root Route for HTML Structure
+framework/react/how-to/setup-ssr.md|270|3|7. Create Express Server
+framework/react/how-to/setup-ssr.md|368|3|8. Update Package Scripts
+framework/react/how-to/setup-ssr.md|382|2|Streaming SSR
+framework/react/how-to/setup-ssr.md|401|3|Streaming Vite Configuration
+framework/react/how-to/setup-ssr.md|424|2|Common Problems
+framework/react/how-to/setup-ssr.md|428|3|React Import Errors
+framework/react/how-to/setup-ssr.md|444|3|Hydration Mismatches
+framework/react/how-to/setup-ssr.md|464|3|Bun Runtime Issues
+framework/react/how-to/setup-ssr.md|478|3|Module Resolution Errors
+framework/react/how-to/setup-ssr.md|500|3|Streaming Configuration Issues
+framework/react/how-to/setup-ssr.md|518|3|Build Output Issues
+framework/react/how-to/setup-ssr.md|538|2|Related Resources
+framework/react/how-to/setup-ssr.md|544|2|Common Next Steps
+framework/react/how-to/setup-testing.md|1|1|How to Set Up Testing with Code-Based Routing
+framework/react/how-to/setup-testing.md|5|2|Quick Start
+framework/react/how-to/setup-testing.md|13|2|Configure Test Framework
+framework/react/how-to/setup-testing.md|15|3|1. Install Dependencies
+framework/react/how-to/setup-testing.md|29|3|2. Configure Vitest
+framework/react/how-to/setup-testing.md|48|3|3. Create Test Setup
+framework/react/how-to/setup-testing.md|61|2|Code-Based Router Testing Patterns
+framework/react/how-to/setup-testing.md|65|3|1. TanStack Router Internal Pattern (Recommended)
+framework/react/how-to/setup-testing.md|115|3|2. Alternative: Router Test Utilities (For Simpler Cases)
+framework/react/how-to/setup-testing.md|197|3|2. Mock Route Factory
+framework/react/how-to/setup-testing.md|234|2|Test Code-Based Route Components
+framework/react/how-to/setup-testing.md|236|3|1. Basic Component Testing
+framework/react/how-to/setup-testing.md|287|3|2. Testing Route Parameters
+framework/react/how-to/setup-testing.md|348|2|Test Navigation
+framework/react/how-to/setup-testing.md|350|3|1. Testing Link Components
+framework/react/how-to/setup-testing.md|457|3|2. Testing Route Guards
+framework/react/how-to/setup-testing.md|533|2|Test Data Loading
+framework/react/how-to/setup-testing.md|535|3|1. Testing Loaders
+framework/react/how-to/setup-testing.md|614|3|2. Testing with React Query
+framework/react/how-to/setup-testing.md|684|2|Test with Context
+framework/react/how-to/setup-testing.md|686|3|1. Testing Router Context
+framework/react/how-to/setup-testing.md|749|2|E2E Testing with Playwright
+framework/react/how-to/setup-testing.md|751|3|1. Playwright Configuration
+framework/react/how-to/setup-testing.md|783|3|2. E2E Test Example
+framework/react/how-to/setup-testing.md|844|2|Code-Based Routing Testing Best Practices
+framework/react/how-to/setup-testing.md|846|3|1. Test Organization
+framework/react/how-to/setup-testing.md|866|3|2. Common Patterns
+framework/react/how-to/setup-testing.md|911|2|Common Problems
+framework/react/how-to/setup-testing.md|913|3|Test Environment Issues
+framework/react/how-to/setup-testing.md|928|3|Router Context Missing
+framework/react/how-to/setup-testing.md|942|3|Async Data Loading
+framework/react/how-to/setup-testing.md|956|2|Common Next Steps
+framework/react/how-to/setup-testing.md|969|2|Related Resources
+framework/react/how-to/share-search-params-across-routes.md|5|1|How to Share Search Parameters Across Routes
+framework/react/how-to/share-search-params-across-routes.md|9|2|How Parameter Inheritance Works
+framework/react/how-to/share-search-params-across-routes.md|17|2|Global Parameters via Root Route
+framework/react/how-to/share-search-params-across-routes.md|80|2|Section-Specific Parameters via Layout Routes
+framework/react/how-to/share-search-params-across-routes.md|141|2|Common Use Cases
+framework/react/how-to/share-search-params-across-routes.md|161|2|Common Problems
+framework/react/how-to/share-search-params-across-routes.md|163|3|Problem: Parameters Not Inheriting
+framework/react/how-to/share-search-params-across-routes.md|189|3|Problem: Navigation Loses Shared Parameters
+framework/react/how-to/share-search-params-across-routes.md|211|3|Problem: Type Errors with Inherited Parameters
+framework/react/how-to/share-search-params-across-routes.md|223|2|Production Checklist
+framework/react/how-to/share-search-params-across-routes.md|232|2|Common Next Steps
+framework/react/how-to/share-search-params-across-routes.md|241|2|Related Resources
+framework/react/how-to/test-file-based-routing.md|7|2|Quick Start
+framework/react/how-to/test-file-based-routing.md|13|2|Understanding File-Based Routing Testing
+framework/react/how-to/test-file-based-routing.md|24|2|Setting Up File-Based Route Testing
+framework/react/how-to/test-file-based-routing.md|26|3|1. Install Test Dependencies
+framework/react/how-to/test-file-based-routing.md|34|3|2. Configure Test Environment
+framework/react/how-to/test-file-based-routing.md|64|3|3. Create Route Testing Utilities
+framework/react/how-to/test-file-based-routing.md|143|2|Testing File-Based Route Structure
+framework/react/how-to/test-file-based-routing.md|145|3|1. Test Route Tree Generation
+framework/react/how-to/test-file-based-routing.md|195|3|2. Test File Route Conventions
+framework/react/how-to/test-file-based-routing.md|246|2|Testing File-Based Route Components
+framework/react/how-to/test-file-based-routing.md|248|3|1. Test Individual Route Files
+framework/react/how-to/test-file-based-routing.md|286|3|2. Test Route-Specific Hooks
+framework/react/how-to/test-file-based-routing.md|332|2|Testing Route Navigation with File-Based Routes
+framework/react/how-to/test-file-based-routing.md|334|3|1. Test Link Navigation
+framework/react/how-to/test-file-based-routing.md|391|3|2. Test Programmatic Navigation
+framework/react/how-to/test-file-based-routing.md|433|2|Testing File-Based Route Guards and Loaders
+framework/react/how-to/test-file-based-routing.md|435|3|1. Test Route Guards
+framework/react/how-to/test-file-based-routing.md|472|3|2. Test Route Loaders
+framework/react/how-to/test-file-based-routing.md|524|2|Testing File Route Validation
+framework/react/how-to/test-file-based-routing.md|526|3|1. Test Search Parameter Validation
+framework/react/how-to/test-file-based-routing.md|567|2|Testing File Route Error Boundaries
+framework/react/how-to/test-file-based-routing.md|569|3|1. Test Route-Level Error Handling
+framework/react/how-to/test-file-based-routing.md|619|2|Testing with Generated Route Types
+framework/react/how-to/test-file-based-routing.md|621|3|1. Test Type Safety
+framework/react/how-to/test-file-based-routing.md|665|2|Testing Route Tree Changes
+framework/react/how-to/test-file-based-routing.md|667|3|1. Test Route Generation During Development
+framework/react/how-to/test-file-based-routing.md|705|2|E2E Testing for File-Based Routes
+framework/react/how-to/test-file-based-routing.md|707|3|1. Playwright Configuration for File-Based Routes
+framework/react/how-to/test-file-based-routing.md|755|2|Common File-Based Routing Testing Patterns
+framework/react/how-to/test-file-based-routing.md|757|3|1. Mock Route Files for Testing
+framework/react/how-to/test-file-based-routing.md|790|3|2. Test Route Discovery
+framework/react/how-to/test-file-based-routing.md|825|2|Best Practices for File-Based Route Testing
+framework/react/how-to/test-file-based-routing.md|827|3|1. Test Organization
+framework/react/how-to/test-file-based-routing.md|849|3|2. Common Test Patterns
+framework/react/how-to/test-file-based-routing.md|885|2|Troubleshooting File-Based Route Testing
+framework/react/how-to/test-file-based-routing.md|887|3|Common Issues
+framework/react/how-to/test-file-based-routing.md|939|2|Next Steps
+framework/react/how-to/test-file-based-routing.md|947|2|Related Resources
+framework/react/how-to/use-environment-variables.md|7|2|Quick Start
+framework/react/how-to/use-environment-variables.md|12|1|.env
+framework/react/how-to/use-environment-variables.md|31|2|Environment Variable Access Patterns
+framework/react/how-to/use-environment-variables.md|33|3|Vite-Based Projects (Most Common)
+framework/react/how-to/use-environment-variables.md|66|3|Webpack-Based Projects
+framework/react/how-to/use-environment-variables.md|97|3|Rspack-Based Projects
+framework/react/how-to/use-environment-variables.md|102|1|.env
+framework/react/how-to/use-environment-variables.md|121|3|ESBuild Projects
+framework/react/how-to/use-environment-variables.md|138|2|Common Patterns
+framework/react/how-to/use-environment-variables.md|140|3|API Configuration in Route Loaders
+framework/react/how-to/use-environment-variables.md|172|3|Environment-Based Route Configuration
+framework/react/how-to/use-environment-variables.md|190|3|Feature Flags in Routes
+framework/react/how-to/use-environment-variables.md|215|3|Authentication Configuration
+framework/react/how-to/use-environment-variables.md|243|3|Search Params with Environment Config
+framework/react/how-to/use-environment-variables.md|271|2|Environment File Setup
+framework/react/how-to/use-environment-variables.md|273|3|File Hierarchy (Vite)
+framework/react/how-to/use-environment-variables.md|284|3|Example Configuration
+framework/react/how-to/use-environment-variables.md|289|1|API Configuration
+framework/react/how-to/use-environment-variables.md|293|1|Feature Flags
+framework/react/how-to/use-environment-variables.md|297|1|Auth Configuration (public keys only)
+framework/react/how-to/use-environment-variables.md|301|1|Build Configuration
+framework/react/how-to/use-environment-variables.md|309|1|Development overrides
+framework/react/how-to/use-environment-variables.md|318|1|Production-specific
+framework/react/how-to/use-environment-variables.md|324|2|Type Safety
+framework/react/how-to/use-environment-variables.md|326|3|Vite TypeScript Declarations
+framework/react/how-to/use-environment-variables.md|358|3|Runtime Validation
+framework/react/how-to/use-environment-variables.md|407|3|Usage with Type Safety
+framework/react/how-to/use-environment-variables.md|431|2|Bundler-Specific Configuration
+framework/react/how-to/use-environment-variables.md|433|3|Vite Configuration
+framework/react/how-to/use-environment-variables.md|456|3|Webpack Configuration
+framework/react/how-to/use-environment-variables.md|477|3|Rspack Configuration
+framework/react/how-to/use-environment-variables.md|500|2|Production Checklist
+framework/react/how-to/use-environment-variables.md|511|2|Common Problems
+framework/react/how-to/use-environment-variables.md|513|3|Environment Variable is Undefined
+framework/react/how-to/use-environment-variables.md|539|1|❌ Won't work (no prefix)
+framework/react/how-to/use-environment-variables.md|542|1|✅ Works with Vite
+framework/react/how-to/use-environment-variables.md|545|1|✅ Works with Rspack
+framework/react/how-to/use-environment-variables.md|548|1|❌ Won't bundle the variable (assuming it is not set in the environment of the build)
+framework/react/how-to/use-environment-variables.md|551|1|✅ Works with Vite and will bundle the variable for production
+framework/react/how-to/use-environment-variables.md|554|1|✅ Works with Rspack and will bundle the variable for production
+framework/react/how-to/use-environment-variables.md|558|3|Runtime Client Environment Variables at Runtime in Production
+framework/react/how-to/use-environment-variables.md|592|3|Variable Not Updating
+framework/react/how-to/use-environment-variables.md|603|3|TypeScript Errors
+framework/react/how-to/use-environment-variables.md|615|3|Build Errors
+framework/react/how-to/use-environment-variables.md|626|3|Security Issues
+framework/react/how-to/use-environment-variables.md|637|3|Runtime vs Build-time Confusion
+framework/react/how-to/use-environment-variables.md|647|3|Environment Variables are Always Strings
+framework/react/how-to/use-environment-variables.md|679|2|Common Next Steps
+framework/react/how-to/use-environment-variables.md|685|2|Related Resources
+framework/react/how-to/validate-search-params.md|9|2|Quick Start
+framework/react/how-to/validate-search-params.md|77|2|Validation Library Options
+framework/react/how-to/validate-search-params.md|81|3|Zod (Recommended)
+framework/react/how-to/validate-search-params.md|102|3|Valibot
+framework/react/how-to/validate-search-params.md|123|3|ArkType
+framework/react/how-to/validate-search-params.md|143|3|Custom Validation Function
+framework/react/how-to/validate-search-params.md|187|2|Common Validation Patterns
+framework/react/how-to/validate-search-params.md|189|3|Required vs Optional Parameters
+framework/react/how-to/validate-search-params.md|208|3|Complex Data Types
+framework/react/how-to/validate-search-params.md|240|3|Input Transformation
+framework/react/how-to/validate-search-params.md|264|2|Error Handling Strategies
+framework/react/how-to/validate-search-params.md|266|3|Basic Error Handling
+framework/react/how-to/validate-search-params.md|312|3|Custom Error Messages
+framework/react/how-to/validate-search-params.md|339|3|Validation Error Recovery
+framework/react/how-to/validate-search-params.md|368|2|Advanced Validation Techniques
+framework/react/how-to/validate-search-params.md|370|3|Conditional Validation
+framework/react/how-to/validate-search-params.md|397|3|Schema Composition
+framework/react/how-to/validate-search-params.md|426|3|Performance Optimization
+framework/react/how-to/validate-search-params.md|458|2|Testing Search Parameter Validation
+framework/react/how-to/validate-search-params.md|505|2|Common Problems
+framework/react/how-to/validate-search-params.md|507|3|Problem: Validation errors break the entire route
+framework/react/how-to/validate-search-params.md|538|3|Problem: TypeScript errors with optional search parameters
+framework/react/how-to/validate-search-params.md|563|3|Problem: Search parameter arrays not parsing correctly
+framework/react/how-to/validate-search-params.md|592|3|Problem: Schema validation is too slow
+framework/react/how-to/validate-search-params.md|626|2|Common Next Steps
+framework/react/how-to/validate-search-params.md|637|2|Related Resources
+framework/react/how-to/drafts/README.md|1|1|How-To Guide Drafts
+framework/react/how-to/drafts/README.md|10|2|File Naming Convention
+framework/react/how-to/drafts/README.md|15|2|Current Drafts
+framework/react/how-to/drafts/README.md|17|3|⏳ Ready for Implementation (Substantial Content Available)
+framework/react/how-to/drafts/README.md|39|2|Implementation Workflow
+framework/react/how-to/drafts/README.md|50|2|Benefits of This System
+framework/react/how-to/drafts/README.md|58|2|Content Sources
+framework/react/how-to/drafts/build-search-filtering-systems.draft.md|1|1|DRAFT: Build Search-Based Filtering Systems
+framework/react/how-to/drafts/build-search-filtering-systems.draft.md|10|2|Content Staged from navigate-with-search-params.md
+framework/react/how-to/drafts/build-search-filtering-systems.draft.md|12|3|Search Result Navigation
+framework/react/how-to/drafts/build-search-filtering-systems.draft.md|62|3|Filter Navigation
+framework/react/how-to/drafts/build-search-filtering-systems.draft.md|128|3|Programmatic Search Controls
+framework/react/how-to/drafts/build-search-filtering-systems.draft.md|169|2|Implementation Notes
+framework/react/how-to/drafts/build-search-filtering-systems.draft.md|171|3|Additional Content Needed:
+framework/react/how-to/drafts/build-search-filtering-systems.draft.md|182|3|Cross-References to Add:
+framework/react/how-to/drafts/build-search-filtering-systems.draft.md|189|3|README Update Required:
+framework/react/how-to/drafts/optimize-search-param-performance.draft.md|1|1|DRAFT: Optimize Search Parameter Performance
+framework/react/how-to/drafts/optimize-search-param-performance.draft.md|10|2|Content Staged from navigate-with-search-params.md
+framework/react/how-to/drafts/optimize-search-param-performance.draft.md|12|3|Performance Issues with Functional Updates
+framework/react/how-to/drafts/optimize-search-param-performance.draft.md|35|3|Navigation During Render
+framework/react/how-to/drafts/optimize-search-param-performance.draft.md|67|2|Implementation Notes
+framework/react/how-to/drafts/optimize-search-param-performance.draft.md|69|3|Additional Content Needed:
+framework/react/how-to/drafts/optimize-search-param-performance.draft.md|80|3|Cross-References to Add:
+framework/react/how-to/drafts/optimize-search-param-performance.draft.md|87|3|README Update Required:
+framework/react/how-to/drafts/search-params-in-forms.draft.md|1|1|DRAFT: Handle Search Parameters in Forms
+framework/react/how-to/drafts/search-params-in-forms.draft.md|10|2|Content Staged from navigate-with-search-params.md
+framework/react/how-to/drafts/search-params-in-forms.draft.md|12|3|Navigation with State Synchronization
+framework/react/how-to/drafts/search-params-in-forms.draft.md|113|3|Form with Search Parameter Validation
+framework/react/how-to/drafts/search-params-in-forms.draft.md|134|2|Implementation Notes
+framework/react/how-to/drafts/search-params-in-forms.draft.md|136|3|Additional Content Needed:
+framework/react/how-to/drafts/search-params-in-forms.draft.md|147|3|Cross-References to Add:
+framework/react/how-to/drafts/search-params-in-forms.draft.md|154|3|README Update Required:
+integrations/query.md|9|2|What you get
+integrations/query.md|16|2|Installation
+integrations/query.md|22|1|or
+integrations/query.md|24|1|or
+integrations/query.md|26|1|or
+integrations/query.md|30|2|Setup
+integrations/query.md|65|2|SSR behavior and streaming
+integrations/query.md|71|2|Use in routes
+integrations/query.md|73|3|Using useSuspenseQuery vs useQuery
+integrations/query.md|86|3|Preload with a loader and read with a hook
+integrations/query.md|113|3|Prefetching and streaming
+integrations/query.md|135|2|Redirect handling
+integrations/query.md|142|2|Works with TanStack Start
+eslint/create-route-property-order.md|24|2|Rule Details
+eslint/create-route-property-order.md|54|2|Attributes
+eslint/eslint-plugin-router.md|8|2|Installation
+eslint/eslint-plugin-router.md|34|2|Flat Config (`eslint.config.js`)
+eslint/eslint-plugin-router.md|39|3|Recommended Flat Config setup
+eslint/eslint-plugin-router.md|53|3|Custom Flat Config setup
+eslint/eslint-plugin-router.md|74|2|Legacy Config (`.eslintrc`)
+eslint/eslint-plugin-router.md|78|3|Recommended Legacy Config setup
+eslint/eslint-plugin-router.md|88|3|Custom Legacy Config setup
+eslint/eslint-plugin-router.md|101|2|Rules
+eslint/eslint-plugin-router.md|107|2|Conflicts with other ESLint plugins
+eslint/eslint-plugin-router.md|111|3|`typescript-eslint`
