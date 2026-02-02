@@ -54,6 +54,7 @@ export type { GeneratorResult } from '@babel/generator'
  * - `export type Foo = ...`
  * - `export interface Foo { ... }`
  * - `export type { Foo } from './module'`
+ * - `export type * from './module'`
  * - Type specifiers in mixed exports: `export { value, type Foo }` -> `export { value }`
  * - `import type { Foo } from './module'`
  * - Type specifiers in mixed imports: `import { value, type Foo } from './module'` -> `import { value }`
@@ -98,6 +99,14 @@ export function stripTypeExports(ast: ParseResult<_babel_types.File>): void {
         if (node.specifiers.length === 0 && !node.declaration) {
           return false
         }
+      }
+    }
+
+    // Handle type-only export-all declarations
+    // e.g., `export type * from './module'`
+    if (t.isExportAllDeclaration(node)) {
+      if (node.exportKind === 'type') {
+        return false
       }
     }
 
@@ -149,7 +158,7 @@ export { findReferencedIdentifiers }
  */
 export function deadCodeElimination(
   ast: ParseResult<_babel_types.File>,
-  candidates?: Set<any>,
+  candidates?: ReturnType<typeof findReferencedIdentifiers>,
 ): void {
   // First strip TypeScript type-only exports and imports
   stripTypeExports(ast)

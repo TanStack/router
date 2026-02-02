@@ -2,10 +2,10 @@
 import crypto from 'node:crypto'
 import * as t from '@babel/types'
 import {
-  generateFromAst,
-  parseAst,
   deadCodeElimination,
   findReferencedIdentifiers,
+  generateFromAst,
+  parseAst,
 } from '@tanstack/router-utils'
 import babel from '@babel/core'
 import { handleCreateServerFn } from './handleCreateServerFn'

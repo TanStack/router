@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { parseAst, generateFromAst, stripTypeExports } from '../src/ast'
+import { generateFromAst, parseAst, stripTypeExports } from '../src/ast'
 
 function transform(code: string): string {
   const ast = parseAst({ code })
@@ -63,6 +63,31 @@ export const value = 1;`
       const result = transform(code)
       expect(result).not.toContain('Foo')
       expect(result).not.toContain('Bar')
+      expect(result).toContain('export const value = 1')
+    })
+
+    test('removes export type * from syntax', () => {
+      const code = `export type * from './types';
+export const value = 1;`
+      const result = transform(code)
+      expect(result).not.toContain('./types')
+      expect(result).toContain('export const value = 1')
+    })
+
+    test('removes export type * as namespace from syntax', () => {
+      const code = `export type * as Types from './types';
+export const value = 1;`
+      const result = transform(code)
+      expect(result).not.toContain('Types')
+      expect(result).not.toContain('./types')
+      expect(result).toContain('export const value = 1')
+    })
+
+    test('preserves regular export * from syntax', () => {
+      const code = `export * from './other';
+export const value = 1;`
+      const result = transform(code)
+      expect(result).toContain("export * from './other'")
       expect(result).toContain('export const value = 1')
     })
   })
