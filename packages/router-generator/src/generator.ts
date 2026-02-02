@@ -1439,21 +1439,31 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     //   - For /_layout/path/, hasParentRoute returns /_layout (wrong)
     //   - But the correct parent is /_layout/path (the virtual route from path.lazy.tsx)
     //
-    // Optimization: Only search if we might find a closer parent. The search walks
-    // up from the immediate parent path, so if the first candidate matches what
-    // prefixMap found, there's no closer parent to find.
+    // We walk up the path segments to find the closest registered parent. This handles
+    // cases where multiple path segments (e.g., $a/$b) don't have intermediate routes.
     if (node.routePath) {
-      const lastSlash = node.routePath.lastIndexOf('/')
-      if (lastSlash > 0) {
-        const immediateParentPath = node.routePath.substring(0, lastSlash)
-        const candidate = acc.routeNodesByPath.get(immediateParentPath)
-        if (
-          candidate &&
-          candidate.routePath !== node.routePath &&
-          candidate !== parentRoute
-        ) {
-          // Found a closer parent in routeNodesByPath that differs from prefixMap result
-          parentRoute = candidate
+      let searchPath = node.routePath
+      while (searchPath.length > 0) {
+        const lastSlash = searchPath.lastIndexOf('/')
+        if (lastSlash <= 0) break
+
+        searchPath = searchPath.substring(0, lastSlash)
+        const candidate = acc.routeNodesByPath.get(searchPath)
+        if (candidate && candidate.routePath !== node.routePath) {
+          // Found a parent in routeNodesByPath
+          // If it's different from what prefixMap found AND is a closer match, use it
+          if (candidate !== parentRoute) {
+            // Check if this candidate is a closer parent than what prefixMap found
+            // (longer path prefix means closer parent)
+            if (
+              !parentRoute ||
+              (candidate.routePath?.length ?? 0) >
+                (parentRoute.routePath?.length ?? 0)
+            ) {
+              parentRoute = candidate
+            }
+          }
+          break
         }
       }
     }
