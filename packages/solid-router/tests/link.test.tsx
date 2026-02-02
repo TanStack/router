@@ -777,19 +777,13 @@ describe('Link', () => {
 
     await fireEvent.click(updateSearchLink)
 
-    // Wait for navigation to complete and UI to update
+    // Wait for navigation to complete and search params to update
     await waitFor(() => {
       expect(window.location.search).toBe('?page=2&filter=inactive')
     })
 
-    // Wait for the UI to reflect the new search params
-    await waitFor(() => {
-      const page = screen.getByTestId('current-page')
-      expect(page).toHaveTextContent('Page: 2')
-    })
-
-    const updatedPage = screen.getByTestId('current-page')
-    const updatedFilter = screen.getByTestId('current-filter')
+    const updatedPage = await screen.findByTestId('current-page')
+    const updatedFilter = await screen.findByTestId('current-filter')
 
     // Verify search was updated
     expect(window.location.pathname).toBe('/posts')
@@ -6512,8 +6506,8 @@ describe('encoded and unicode paths', () => {
       name: 'with prefix',
       path: '/foo/prefix@대{$}',
       expectedPath:
-        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]',
-      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀@]',
+        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]',
+      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀%40]',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',
@@ -6523,8 +6517,8 @@ describe('encoded and unicode paths', () => {
       name: 'with suffix',
       path: '/foo/{$}대suffix@',
       expectedPath:
-        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]%EB%8C%80suffix@',
-      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀@]대suffix@',
+        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]%EB%8C%80suffix@',
+      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀%40]대suffix@',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',

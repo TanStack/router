@@ -46,9 +46,22 @@ function RouteComponent() {
           class: 'font-bold',
         }}
         hash={'대|'}
-        data-testid="special-hash-link"
+        data-testid="special-hash-link-1"
       >
         Unicode Hash
+      </Link>{' '}
+      <Link
+        to="/specialChars/hash"
+        activeOptions={{
+          includeHash: true,
+        }}
+        activeProps={{
+          class: 'font-bold',
+        }}
+        hash={'abc'}
+        data-testid="special-hash-link-2"
+      >
+        Unicode Hash abc
       </Link>{' '}
       <Link
         to="/specialChars/malformed"

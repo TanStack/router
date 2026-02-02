@@ -26,12 +26,25 @@ function ensureLeadingUnderScore(id: string) {
   return `_${id}`
 }
 
-function flattenTree(node: RouteNode): Array<RouteNode> {
+function flattenTree(
+  node: RouteNode,
+  parentRoutePath?: string,
+): Array<RouteNode> {
+  // Store the explicit parent's routePath for virtual routes.
+  // This prevents the generator from auto-nesting based on path matching (#5822).
+  //
+  // Skip when the parent is the synthetic virtual root (`/${rootPathId}`).
+  // Root-level nodes should use path-based inference to find their parent.
+  const isRootParent = parentRoutePath === `/${rootPathId}`
+  if (parentRoutePath !== undefined && !isRootParent) {
+    node._virtualParentRoutePath = parentRoutePath
+  }
+
   const result = [node]
 
   if (node.children) {
     for (const child of node.children) {
-      result.push(...flattenTree(child))
+      result.push(...flattenTree(child, node.routePath))
     }
   }
   delete node.children

@@ -398,9 +398,12 @@ const requestLogger = createMiddleware({ type: 'function' })
 
 Global middleware runs automatically for every request in your application. This is useful for functionality like authentication, logging, and monitoring that should apply to all requests.
 
+> [!NOTE]
+> The `src/start.ts` file is not included in the default TanStack Start template. You'll need to create this file when you want to configure global middleware or other Start-level options.
+
 ### Global Request Middleware
 
-To have a middleware run for **every request handled by Start**, you can create a middleware and return it as `requestMiddleware` in the `createStart` function in your `src/start.ts` file:
+To have a middleware run for **every request handled by Start**, create a `src/start.ts` file and use the `createStart` function to return your middleware configuration:
 
 ```tsx
 // src/start.ts
@@ -422,7 +425,7 @@ export const startInstance = createStart(() => {
 
 ### Global Server Function Middleware
 
-To have a middleware run for **every server function in your application**, you can create a middleware and return it to the `createStart` function as `functionMiddleware` in your `src/start.ts` file:
+To have a middleware run for **every server function in your application**, add it to the `functionMiddleware` array in your `src/start.ts` file:
 
 ```tsx
 // src/start.ts

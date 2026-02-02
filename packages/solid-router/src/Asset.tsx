@@ -1,5 +1,6 @@
 import { Link, Meta, Style, Title } from '@solidjs/meta'
 import { onCleanup, onMount } from 'solid-js'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { JSX } from 'solid-js'
@@ -123,7 +124,7 @@ function Script({
     }
   })
 
-  if (!router.isServer) {
+  if (!(isServer ?? router.isServer)) {
     // render an empty script on the client just to avoid hydration errors
     return null
   }

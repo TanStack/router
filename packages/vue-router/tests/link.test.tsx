@@ -3991,13 +3991,10 @@ describe('Link', () => {
     const onPostsText = await screen.findByText('On Posts')
     expect(onPostsText).toBeInTheDocument()
 
-    // Wait for the UI to update after navigation
-    await waitFor(() => {
-      // Query for 'From invoices' link again after navigation - it should not exist
-      expect(
-        screen.queryByRole('link', { name: 'From invoices' }),
-      ).not.toBeInTheDocument()
-    })
+    // Query for 'From invoices' link again after navigation - it should not exist
+    expect(
+      screen.queryByRole('link', { name: 'From invoices' }),
+    ).not.toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -5725,21 +5722,14 @@ describe('relative links to current route', () => {
       render(<RouterProvider router={router} />)
 
       const postButton = await screen.findByTestId('posts-link')
+      const searchButton = await screen.findByTestId('search-link')
+      const searchButton2 = await screen.findByTestId('search2-link')
 
       fireEvent.click(postButton)
 
       await waitFor(() => {
         expect(window.location.pathname).toBe(`/post${tail}`)
       })
-
-      // Wait for Vue to update the Links with new hrefs after navigation
-      await waitFor(() => {
-        const searchLink = screen.getByTestId('search-link')
-        expect(searchLink.getAttribute('href')).toContain('/post')
-      })
-
-      const searchButton = await screen.findByTestId('search-link')
-      const searchButton2 = await screen.findByTestId('search2-link')
 
       fireEvent.click(searchButton)
 
@@ -6552,8 +6542,8 @@ describe('encoded and unicode paths', () => {
       name: 'with prefix',
       path: '/foo/prefix@대{$}',
       expectedPath:
-        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]',
-      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀@]',
+        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]',
+      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀%40]',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',
@@ -6563,8 +6553,8 @@ describe('encoded and unicode paths', () => {
       name: 'with suffix',
       path: '/foo/{$}대suffix@',
       expectedPath:
-        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]%EB%8C%80suffix@',
-      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀@]대suffix@',
+        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]%EB%8C%80suffix@',
+      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀%40]대suffix@',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',

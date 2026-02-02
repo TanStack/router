@@ -25,6 +25,13 @@ const config = defineConfig(({ mode }) => {
 
   return {
     plugins: [solid()] as ViteUserConfig['plugins'],
+    // Add 'development' condition for tests to resolve @tanstack/router-core/isServer
+    // to the development export (isServer = undefined) instead of node (isServer = true)
+    ...(process.env.VITEST && {
+      resolve: {
+        conditions: ['development'],
+      },
+    }),
     test: {
       name: packageJson.name,
       dir: './tests',
