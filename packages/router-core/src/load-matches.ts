@@ -441,6 +441,7 @@ const executeBeforeLoad = (
     any,
     any,
     any,
+    any,
     any
   > = {
     search,
@@ -457,6 +458,7 @@ const executeBeforeLoad = (
     buildLocation: inner.router.buildLocation,
     cause: preload ? 'preload' : cause,
     matches: inner.matches,
+    routeId: route.id,
     ...inner.router.options.additionalContext,
   }
 
