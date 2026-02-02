@@ -2,10 +2,11 @@ import * as t from '@babel/types'
 import babel from '@babel/core'
 import * as template from '@babel/template'
 import {
+  generateFromAst,
+  parseAst,
   deadCodeElimination,
   findReferencedIdentifiers,
-} from 'babel-dead-code-elimination'
-import { generateFromAst, parseAst } from '@tanstack/router-utils'
+} from '@tanstack/router-utils'
 import { tsrSplit } from '../constants'
 import { routeHmrStatement } from '../route-hmr-statement'
 import { createIdentifier } from './path-ids'
@@ -430,6 +431,7 @@ export function compileCodeSplitReferenceRoute(
   if (!modified) {
     return null
   }
+
   deadCodeElimination(ast, refIdents)
 
   // if there are exported identifiers, then we need to add a warning

@@ -11869,9 +11869,6 @@ importers:
       '@tanstack/virtual-file-routes':
         specifier: workspace:*
         version: link:../virtual-file-routes
-      babel-dead-code-elimination:
-        specifier: ^1.0.11
-        version: 1.0.11
       chokidar:
         specifier: ^3.6.0
         version: 3.6.0
@@ -11921,9 +11918,15 @@ importers:
       '@babel/parser':
         specifier: ^7.28.5
         version: 7.28.5
+      '@babel/types':
+        specifier: ^7.28.5
+        version: 7.28.5
       ansis:
         specifier: ^4.1.0
         version: 4.1.0
+      babel-dead-code-elimination:
+        specifier: ^1.0.11
+        version: 1.0.11
       diff:
         specifier: ^8.0.2
         version: 8.0.2
@@ -11934,9 +11937,6 @@ importers:
         specifier: ^0.2.15
         version: 0.2.15
     devDependencies:
-      '@babel/types':
-        specifier: ^7.28.5
-        version: 7.28.5
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
@@ -12203,9 +12203,6 @@ importers:
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
-      babel-dead-code-elimination:
-        specifier: ^1.0.11
-        version: 1.0.11
       cheerio:
         specifier: ^1.0.0
         version: 1.0.0
