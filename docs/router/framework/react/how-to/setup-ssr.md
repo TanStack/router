@@ -142,7 +142,7 @@ hydrateRoot(document, <RouterClient router={router} />)
 // vite.config.ts
 import path from 'node:path'
 import url from 'node:url'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -151,7 +151,7 @@ const __dirname = path.dirname(__filename)
 
 export default defineConfig(({ isSsrBuild }) => ({
   plugins: [
-    TanStackRouterVite({
+    tanstackRouter({
       autoCodeSplitting: true,
     }),
     react(),
@@ -407,7 +407,7 @@ For streaming SSR, update your Vite config:
 // vite.config.ts
 export default defineConfig(({ isSsrBuild }) => ({
   plugins: [
-    TanStackRouterVite({
+    tanstackRouter({
       autoCodeSplitting: true,
       enableStreaming: true, // Enable streaming support
     }),
