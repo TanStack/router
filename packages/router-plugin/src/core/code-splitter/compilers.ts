@@ -2,10 +2,10 @@ import * as t from '@babel/types'
 import babel from '@babel/core'
 import * as template from '@babel/template'
 import {
-  generateFromAst,
-  parseAst,
   deadCodeElimination,
   findReferencedIdentifiers,
+  generateFromAst,
+  parseAst,
 } from '@tanstack/router-utils'
 import { tsrSplit } from '../constants'
 import { routeHmrStatement } from '../route-hmr-statement'

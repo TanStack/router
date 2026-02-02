@@ -12,11 +12,11 @@ function transform(code: string): string {
 
 describe('stripTypeExports', () => {
   describe('type alias declarations', () => {
-    test('removes top-level type alias declaration', () => {
+    test('preserves top-level type alias declaration (non-exported)', () => {
       const code = `type Foo = string;
 const value = 1;`
       const result = transform(code)
-      expect(result).not.toContain('type Foo')
+      expect(result).toContain('type Foo = string')
       expect(result).toContain('const value = 1')
     })
 
@@ -30,11 +30,11 @@ export const value = 1;`
   })
 
   describe('interface declarations', () => {
-    test('removes top-level interface declaration', () => {
+    test('preserves top-level interface declaration (non-exported)', () => {
       const code = `interface Bar { x: number }
 const value = 1;`
       const result = transform(code)
-      expect(result).not.toContain('interface Bar')
+      expect(result).toContain('interface Bar')
       expect(result).toContain('const value = 1')
     })
 

@@ -58,24 +58,15 @@ export type { GeneratorResult } from '@babel/generator'
  * - Type specifiers in mixed exports: `export { value, type Foo }` -> `export { value }`
  * - `import type { Foo } from './module'`
  * - Type specifiers in mixed imports: `import { value, type Foo } from './module'` -> `import { value }`
- * - Top-level `type Foo = ...` declarations (non-exported)
- * - Top-level `interface Foo { ... }` declarations (non-exported)
+ *
+ * Note: Non-exported type/interface declarations are preserved as they may be
+ * used as type annotations within the code.
  *
  * @param ast - The Babel AST (or ParseResult) to mutate
  */
 export function stripTypeExports(ast: ParseResult<_babel_types.File>): void {
   // Filter the program body to remove type-only nodes
   ast.program.body = ast.program.body.filter((node) => {
-    // Remove top-level type alias declarations: `type Foo = string`
-    if (t.isTSTypeAliasDeclaration(node)) {
-      return false
-    }
-
-    // Remove top-level interface declarations: `interface Foo { ... }`
-    if (t.isTSInterfaceDeclaration(node)) {
-      return false
-    }
-
     // Handle export declarations
     if (t.isExportNamedDeclaration(node)) {
       // Remove entire export if it's a type-only export

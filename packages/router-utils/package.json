@@ -68,7 +68,7 @@
     "@babel/parser": "^7.28.5",
     "@babel/types": "^7.28.5",
     "ansis": "^4.1.0",
-    "babel-dead-code-elimination": "^1.0.11",
+    "babel-dead-code-elimination": "^1.0.12",
     "diff": "^8.0.2",
     "pathe": "^2.0.3",
     "tinyglobby": "^0.2.15"
