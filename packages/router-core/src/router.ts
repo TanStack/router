@@ -1614,7 +1614,7 @@ export class RouterCore<
         // Update the match's context
 
         if (route.options.context) {
-          const contextFnContext: RouteContextOptions<any, any, any, any> = {
+          const contextFnContext: RouteContextOptions<any, any, any, any, any> = {
             deps: match.loaderDeps,
             params: match.params,
             context: parentContext ?? {},
@@ -1626,6 +1626,7 @@ export class RouterCore<
             abortController: match.abortController,
             preload: !!match.preload,
             matches,
+            routeId: route.id,
           }
           // Get the route context
           match.__routeContext =
