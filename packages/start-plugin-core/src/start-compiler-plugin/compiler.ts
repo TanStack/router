@@ -455,6 +455,14 @@ export class StartCompiler {
         ['createClientOnlyFn', 'ClientOnlyFn'],
       ]),
     )
+    this.knownRootImports.set(
+      '@tanstack/start-client-core',
+      new Map<string, Kind>([
+        ['createIsomorphicFn', 'IsomorphicFn'],
+        ['createServerOnlyFn', 'ServerOnlyFn'],
+        ['createClientOnlyFn', 'ClientOnlyFn'],
+      ]),
+    )
 
     await Promise.all(
       this.options.lookupConfigurations.map(async (config) => {
