@@ -364,20 +364,6 @@ describe('useMatchRoute with React Compiler', () => {
     // can capture stale router state, causing it to return incorrect results
     // after navigation.
 
-    const rootRoute = createRootRoute()
-
-    const homeRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/home',
-      component: () => <div>Home</div>,
-    })
-
-    const aboutRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/about',
-      component: () => <div>About</div>,
-    })
-
     // Component that uses useMatchRoute to check current route
     function TestComponent() {
       const matchRoute = useMatchRoute()
@@ -394,18 +380,30 @@ describe('useMatchRoute with React Compiler', () => {
           <Link to="/about" data-testid="nav-to-about">
             Go to About
           </Link>
+          <Outlet />
         </div>
       )
     }
 
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
+    // Mount TestComponent on root route so it stays mounted during navigation
+    const rootRoute = createRootRoute({
       component: TestComponent,
     })
 
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/home',
+      component: () => <div>Home</div>,
+    })
+
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <div>About</div>,
+    })
+
     const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, homeRoute, aboutRoute]),
+      routeTree: rootRoute.addChildren([homeRoute, aboutRoute]),
       history: createMemoryHistory({ initialEntries: ['/home'] }),
     })
 
