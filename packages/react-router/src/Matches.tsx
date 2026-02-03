@@ -172,6 +172,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     // but router.matchRoute() reads mutable internal state (location, status).
     // By including routerState, we ensure the callback is recreated when
     // navigation occurs, preventing stale closure issues.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [router, routerState],
   )
 }
