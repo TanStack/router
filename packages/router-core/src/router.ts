@@ -1614,19 +1614,21 @@ export class RouterCore<
         // Update the match's context
 
         if (route.options.context) {
-          const contextFnContext: RouteContextOptions<any, any, any, any> = {
-            deps: match.loaderDeps,
-            params: match.params,
-            context: parentContext ?? {},
-            location: next,
-            navigate: (opts: any) =>
-              this.navigate({ ...opts, _fromLocation: next }),
-            buildLocation: this.buildLocation,
-            cause: match.cause,
-            abortController: match.abortController,
-            preload: !!match.preload,
-            matches,
-          }
+          const contextFnContext: RouteContextOptions<any, any, any, any, any> =
+            {
+              deps: match.loaderDeps,
+              params: match.params,
+              context: parentContext ?? {},
+              location: next,
+              navigate: (opts: any) =>
+                this.navigate({ ...opts, _fromLocation: next }),
+              buildLocation: this.buildLocation,
+              cause: match.cause,
+              abortController: match.abortController,
+              preload: !!match.preload,
+              matches,
+              routeId: route.id,
+            }
           // Get the route context
           match.__routeContext =
             route.options.context(contextFnContext) ?? undefined

@@ -271,7 +271,10 @@ export function interpolatePath({
   path,
   params,
   decoder,
-  server,
+  // `server` is marked @internal and stripped from .d.ts by `stripInternal`.
+  // We avoid destructuring it in the function signature so the emitted
+  // declaration doesn't reference a property that no longer exists.
+  ...rest
 }: InterpolatePathOptions): InterPolatePathResult {
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
@@ -283,7 +286,7 @@ export function interpolatePath({
   if (!path.includes('$'))
     return { interpolatedPath: path, usedParams, isMissingParams }
 
-  if (isServer ?? server) {
+  if (isServer ?? rest.server) {
     // Fast path for common templates like `/posts/$id` or `/files/$`.
     // Braced segments (`{...}`) are more complex (prefix/suffix/optional) and are
     // handled by the general parser below.
