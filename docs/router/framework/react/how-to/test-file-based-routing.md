@@ -38,11 +38,11 @@ Create `vitest.config.ts` with file-based routing support:
 ```ts
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({
+    tanstackRouter({
       // Configure for test environment
       routesDirectory: './src/routes',
       generatedRouteTree: './src/routeTree.gen.ts',
@@ -898,7 +898,7 @@ Error: Cannot find module '../routeTree.gen'
 // vitest.config.ts
 export default defineConfig({
   plugins: [
-    TanStackRouterVite(), // Ensure this runs before tests
+    tanstackRouter(), // Ensure this runs before tests
     react(),
   ],
   test: {
