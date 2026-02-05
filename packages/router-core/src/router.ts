@@ -32,6 +32,7 @@ import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
 import {
   defaultGetScrollRestorationKey,
+  getCssSelector,
   scrollRestorationCache,
   setupScrollRestoration,
 } from './scroll-restoration'
@@ -2140,6 +2141,18 @@ export class RouterCore<
           keyEntry['window'] = {
             scrollX: window.scrollX || 0,
             scrollY: window.scrollY || 0,
+          }
+          if (this.options.scrollToTopSelectors) {
+            for (const selector of this.options.scrollToTopSelectors) {
+              const element = typeof selector === 'function' ? selector() : document.querySelector(selector)
+              if (element) {
+                const elementSelector = typeof selector === 'string' ? selector : getCssSelector(element)
+                keyEntry[elementSelector] = {
+                  scrollX: element.scrollLeft || 0,
+                  scrollY: element.scrollTop || 0,
+                }
+              }
+            }
           }
           return state
         })
