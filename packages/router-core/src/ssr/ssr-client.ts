@@ -160,22 +160,24 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
         // so run it again and merge route context
         if (route.options.context) {
-          const contextFnContext: RouteContextOptions<any, any, any, any> = {
-            deps: match.loaderDeps,
-            params: match.params,
-            context: parentContext ?? {},
-            location: router.state.location,
-            navigate: (opts: any) =>
-              router.navigate({
-                ...opts,
-                _fromLocation: router.state.location,
-              }),
-            buildLocation: router.buildLocation,
-            cause: match.cause,
-            abortController: match.abortController,
-            preload: false,
-            matches,
-          }
+          const contextFnContext: RouteContextOptions<any, any, any, any, any> =
+            {
+              deps: match.loaderDeps,
+              params: match.params,
+              context: parentContext ?? {},
+              location: router.state.location,
+              navigate: (opts: any) =>
+                router.navigate({
+                  ...opts,
+                  _fromLocation: router.state.location,
+                }),
+              buildLocation: router.buildLocation,
+              cause: match.cause,
+              abortController: match.abortController,
+              preload: false,
+              matches,
+              routeId: route.id,
+            }
           match.__routeContext =
             route.options.context(contextFnContext) ?? undefined
         }

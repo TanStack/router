@@ -441,6 +441,7 @@ const executeBeforeLoad = (
     any,
     any,
     any,
+    any,
     any
   > = {
     search,
@@ -457,6 +458,7 @@ const executeBeforeLoad = (
     buildLocation: inner.router.buildLocation,
     cause: preload ? 'preload' : cause,
     matches: inner.matches,
+    routeId: route.id,
     ...inner.router.options.additionalContext,
   }
 
@@ -697,6 +699,11 @@ const runLoader = async (
       let error = e
 
       if ((error as any)?.name === 'AbortError') {
+        if (match.abortController.signal.aborted) {
+          match._nonReactive.loaderPromise?.resolve()
+          match._nonReactive.loaderPromise = undefined
+          return
+        }
         inner.updateMatch(matchId, (prev) => ({
           ...prev,
           status: prev.status === 'pending' ? 'success' : prev.status,
@@ -747,6 +754,56 @@ const loadRouteMatch = async (
   inner: InnerLoadContext,
   index: number,
 ): Promise<AnyRouteMatch> => {
+  async function handleLoader(
+    preload: boolean,
+    prevMatch: AnyRouteMatch,
+    match: AnyRouteMatch,
+    route: AnyRoute,
+  ) {
+    const age = Date.now() - prevMatch.updatedAt
+
+    const staleAge = preload
+      ? (route.options.preloadStaleTime ??
+        inner.router.options.defaultPreloadStaleTime ??
+        30_000) // 30 seconds for preloads by default
+      : (route.options.staleTime ?? inner.router.options.defaultStaleTime ?? 0)
+
+    const shouldReloadOption = route.options.shouldReload
+
+    // Default to reloading the route all the time
+    // Allow shouldReload to get the last say,
+    // if provided.
+    const shouldReload =
+      typeof shouldReloadOption === 'function'
+        ? shouldReloadOption(getLoaderContext(inner, matchId, index, route))
+        : shouldReloadOption
+
+    // If the route is successful and still fresh, just resolve
+    const { status, invalid } = match
+    loaderShouldRunAsync =
+      status === 'success' && (invalid || (shouldReload ?? age > staleAge))
+    if (preload && route.options.preload === false) {
+      // Do nothing
+    } else if (loaderShouldRunAsync && !inner.sync) {
+      loaderIsRunningAsync = true
+      ;(async () => {
+        try {
+          await runLoader(inner, matchId, index, route)
+          const match = inner.router.getMatch(matchId)!
+          match._nonReactive.loaderPromise?.resolve()
+          match._nonReactive.loadPromise?.resolve()
+          match._nonReactive.loaderPromise = undefined
+        } catch (err) {
+          if (isRedirect(err)) {
+            await inner.router.navigate(err.options)
+          }
+        }
+      })()
+    } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
+      await runLoader(inner, matchId, index, route)
+    }
+  }
+
   const { id: matchId, routeId } = inner.matches[index]!
   let loaderShouldRunAsync = false
   let loaderIsRunningAsync = false
@@ -757,7 +814,9 @@ const loadRouteMatch = async (
       return inner.router.getMatch(matchId)!
     }
   } else {
-    const prevMatch = inner.router.getMatch(matchId)!
+    const prevMatch = inner.router.getMatch(matchId)! // This is where all of the stale-while-revalidate magic happens
+    const preload = resolvePreload(inner, matchId)
+
     // there is a loaderPromise, so we are in the middle of a load
     if (prevMatch._nonReactive.loaderPromise) {
       // do not block if we already have stale data we can show
@@ -772,32 +831,13 @@ const loadRouteMatch = async (
       if (error) {
         handleRedirectAndNotFound(inner, match, error)
       }
+
+      if (match.status === 'pending') {
+        await handleLoader(preload, prevMatch, match, route)
+      }
     } else {
-      // This is where all of the stale-while-revalidate magic happens
-      const age = Date.now() - prevMatch.updatedAt
-
-      const preload = resolvePreload(inner, matchId)
-
-      const staleAge = preload
-        ? (route.options.preloadStaleTime ??
-          inner.router.options.defaultPreloadStaleTime ??
-          30_000) // 30 seconds for preloads by default
-        : (route.options.staleTime ??
-          inner.router.options.defaultStaleTime ??
-          0)
-
-      const shouldReloadOption = route.options.shouldReload
-
-      // Default to reloading the route all the time
-      // Allow shouldReload to get the last say,
-      // if provided.
-      const shouldReload =
-        typeof shouldReloadOption === 'function'
-          ? shouldReloadOption(getLoaderContext(inner, matchId, index, route))
-          : shouldReloadOption
-
       const nextPreload =
-        !!preload && !inner.router.state.matches.some((d) => d.id === matchId)
+        preload && !inner.router.state.matches.some((d) => d.id === matchId)
       const match = inner.router.getMatch(matchId)!
       match._nonReactive.loaderPromise = createControlledPromise<void>()
       if (nextPreload !== match.preload) {
@@ -807,30 +847,7 @@ const loadRouteMatch = async (
         }))
       }
 
-      // If the route is successful and still fresh, just resolve
-      const { status, invalid } = match
-      loaderShouldRunAsync =
-        status === 'success' && (invalid || (shouldReload ?? age > staleAge))
-      if (preload && route.options.preload === false) {
-        // Do nothing
-      } else if (loaderShouldRunAsync && !inner.sync) {
-        loaderIsRunningAsync = true
-        ;(async () => {
-          try {
-            await runLoader(inner, matchId, index, route)
-            const match = inner.router.getMatch(matchId)!
-            match._nonReactive.loaderPromise?.resolve()
-            match._nonReactive.loadPromise?.resolve()
-            match._nonReactive.loaderPromise = undefined
-          } catch (err) {
-            if (isRedirect(err)) {
-              await inner.router.navigate(err.options)
-            }
-          }
-        })()
-      } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
-        await runLoader(inner, matchId, index, route)
-      }
+      await handleLoader(preload, prevMatch, match, route)
     }
   }
   const match = inner.router.getMatch(matchId)!

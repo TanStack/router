@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.157.16",
+  "version": "1.158.1",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -114,7 +114,6 @@
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
-    "babel-dead-code-elimination": "^1.0.11",
     "chokidar": "^3.6.0",
     "unplugin": "^2.1.2",
     "zod": "^3.24.2"
