@@ -100,3 +100,19 @@ The server entry point is where you can configure server-specific behavior:
 - Logging and monitoring
 
 This flexibility allows you to customize how your TanStack Start application handles server-side rendering while maintaining the framework's conventions.
+
+## Configuring the Server Entry Point
+
+When deploying to platforms like Cloudflare Workers or other edge runtimes, you need to configure where your custom server entry point is located.
+
+### Cloudflare Workers
+
+Update your `wrangler.jsonc` to point to your custom server entry point:
+
+```jsonc
+{
+  "main": "./src/server.ts"
+}
+```
+
+This tells Cloudflare Workers to use your custom `src/server.ts` file as the entry point instead of the default TanStack Start handler. It is essential when you need custom middleware, authentication, or other server-side logic (such as i18n middleware for locale handling).
