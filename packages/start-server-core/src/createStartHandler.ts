@@ -225,7 +225,7 @@ export function createStartHandler<TRegister = Register>(
       const origin = getOrigin(request)
 
       if (handledProtocolRelativeURL) {
-        return Response.redirect(url, 302)
+        return Response.redirect(url, 308)
       }
 
       const entries = await getEntries()
