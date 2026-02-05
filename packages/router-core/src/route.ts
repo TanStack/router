@@ -862,12 +862,14 @@ export type RouteContextFn<
   in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
+  in out TRouteId,
 > = (
   ctx: RouteContextOptions<
     TParentRoute,
     TSearchValidator,
     TParams,
-    TRouterContext
+    TRouterContext,
+    TRouteId
   >,
 ) => any
 
@@ -949,7 +951,8 @@ export interface FilebaseRouteOptionsInterface<
         TParentRoute,
         TParams,
         TRouterContext,
-        TLoaderDeps
+        TLoaderDeps,
+        TId
       >,
     ) => any
   >
@@ -977,6 +980,7 @@ export interface FilebaseRouteOptionsInterface<
         TParams,
         TRouterContext,
         TRouteContextFn,
+        TId,
         TServerMiddlewares,
         THandlers
       >,
@@ -1068,6 +1072,7 @@ export type BaseRouteOptions<
 export interface ContextOptions<
   in out TParentRoute extends AnyRoute,
   in out TParams,
+  in out TRouteId,
 > {
   abortController: AbortController
   preload: boolean
@@ -1080,6 +1085,7 @@ export interface ContextOptions<
   buildLocation: BuildLocationFn
   cause: 'preload' | 'enter' | 'stay'
   matches: Array<MakeRouteMatchUnion>
+  routeId: TRouteId
 }
 
 export interface RouteContextOptions<
@@ -1087,7 +1093,8 @@ export interface RouteContextOptions<
   in out TParams,
   in out TRouterContext,
   in out TLoaderDeps,
-> extends ContextOptions<TParentRoute, TParams> {
+  in out TRouteId,
+> extends ContextOptions<TParentRoute, TParams, TRouteId> {
   deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
@@ -1120,11 +1127,12 @@ export interface BeforeLoadContextOptions<
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
+  in out TRouteId,
   in out TServerMiddlewares,
   in out THandlers,
 >
   extends
-    ContextOptions<TParentRoute, TParams>,
+    ContextOptions<TParentRoute, TParams, TRouteId>,
     FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
     BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>

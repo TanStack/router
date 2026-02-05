@@ -6,6 +6,7 @@ import {
   RouterCore,
   notFound,
   redirect,
+  rootRouteId,
 } from '../src'
 import type { RootRouteOptions } from '../src'
 
@@ -82,8 +83,6 @@ describe('beforeLoad skip or exec', () => {
     const beforeLoad = vi.fn(() => Promise.resolve({ hello: 'world' }))
     const router = setup({ beforeLoad })
     const navigation = router.navigate({ to: '/foo' })
-    // With async history.push, load() runs after a microtask
-    await Promise.resolve()
     expect(beforeLoad).toHaveBeenCalledTimes(1)
     expect(router.state.pendingMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
@@ -266,8 +265,6 @@ describe('loader skip or exec', () => {
     const loader = vi.fn(() => Promise.resolve({ hello: 'world' }))
     const router = setup({ loader })
     const navigation = router.navigate({ to: '/foo' })
-    // With async history.push, load() runs after a microtask
-    await Promise.resolve()
     expect(loader).toHaveBeenCalledTimes(1)
     expect(router.state.pendingMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
@@ -603,6 +600,203 @@ describe('params.parse notFound', () => {
     const match = router.state.matches.find((m) => m.routeId === testRoute.id)
     expect(match?.status).toBe('success')
     expect(router.state.statusCode).toBe(200)
+  })
+})
+
+describe('routeId in context options', () => {
+  test('beforeLoad and context receive correct routeId for root route', async () => {
+    const beforeLoad = vi.fn()
+    const context = vi.fn()
+    const rootRoute = new BaseRootRoute({
+      beforeLoad,
+      context,
+    })
+
+    const routeTree = rootRoute.addChildren([])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.load()
+
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(beforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: rootRouteId,
+      }),
+    )
+
+    expect(context).toHaveBeenCalledTimes(1)
+    expect(context).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: rootRouteId,
+      }),
+    )
+  })
+
+  test('beforeLoad and context receive correct routeId for child route', async () => {
+    const beforeLoad = vi.fn()
+    const context = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      beforeLoad,
+      context,
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo' })
+
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(beforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/foo',
+      }),
+    )
+
+    expect(context).toHaveBeenCalledTimes(1)
+    expect(context).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/foo',
+      }),
+    )
+  })
+
+  test('beforeLoad and context receive correct routeId for nested route', async () => {
+    const parentBeforeLoad = vi.fn()
+    const parentContext = vi.fn()
+    const childBeforeLoad = vi.fn()
+    const childContext = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      beforeLoad: parentBeforeLoad,
+      context: parentContext,
+    })
+
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: childBeforeLoad,
+      context: childContext,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      parentRoute.addChildren([childRoute]),
+    ])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/parent/child' })
+
+    expect(parentBeforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/parent',
+      }),
+    )
+    expect(parentContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/parent',
+      }),
+    )
+    expect(childBeforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/parent/child',
+      }),
+    )
+    expect(childContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/parent/child',
+      }),
+    )
+  })
+
+  test('beforeLoad and context receive correct routeId for route with dynamic params', async () => {
+    const beforeLoad = vi.fn()
+    const context = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+
+    const postRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/$postId',
+      beforeLoad,
+      context,
+    })
+
+    const routeTree = rootRoute.addChildren([postRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/posts/$postId', params: { postId: '123' } })
+
+    expect(beforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/posts/$postId',
+      }),
+    )
+    expect(context).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/posts/$postId',
+      }),
+    )
+  })
+
+  test('beforeLoad and context receive correct routeId for layout route', async () => {
+    const beforeLoad = vi.fn()
+    const context = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+
+    const layoutRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      id: '/_layout',
+      beforeLoad,
+      context,
+    })
+
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/',
+    })
+
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([indexRoute]),
+    ])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.load()
+
+    expect(beforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/_layout',
+      }),
+    )
+    expect(context).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/_layout',
+      }),
+    )
   })
 })
 

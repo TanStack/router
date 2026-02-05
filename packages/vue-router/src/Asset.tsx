@@ -1,4 +1,5 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -18,7 +19,7 @@ const Title = Vue.defineComponent({
   setup(props) {
     const router = useRouter()
 
-    if (!router.isServer) {
+    if (!(isServer ?? router.isServer)) {
       Vue.onMounted(() => {
         if (props.children) {
           document.title = props.children
@@ -54,7 +55,7 @@ const Script = Vue.defineComponent({
   setup(props) {
     const router = useRouter()
 
-    if (!router.isServer) {
+    if (!(isServer ?? router.isServer)) {
       Vue.onMounted(() => {
         const attrs = props.attrs
         const children = props.children
@@ -130,7 +131,7 @@ const Script = Vue.defineComponent({
     }
 
     return () => {
-      if (!router.isServer) {
+      if (!(isServer ?? router.isServer)) {
         const { src: _src, ...rest } = props.attrs || {}
         return Vue.h('script', {
           ...rest,

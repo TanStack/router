@@ -165,6 +165,37 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.indexToken = /[a-z]+-page/
       config.routeToken = /[a-z]+-layout/
       break
+    case 'virtual-sibling-routes':
+      {
+        // Test case for issue #5822: Virtual routes should respect explicit sibling relationships
+        // Routes /posts and /posts/$id should remain siblings under the layout,
+        // NOT auto-nested based on path matching
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          layout('_main', 'layout.tsx', [
+            route('/posts', 'posts.tsx'),
+            route('/posts/$id', 'post-detail.tsx'),
+          ]),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
+    case 'virtual-nested-layouts-with-virtual-route':
+      {
+        // Test case for nested layouts with a virtual file-less route in between.
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          index('home.tsx'),
+          layout('first', 'layout/first-layout.tsx', [
+            layout('layout/second-layout.tsx', [
+              route('route-without-file', [
+                route('/layout-a', 'a.tsx'),
+                route('/layout-b', 'b.tsx'),
+              ]),
+            ]),
+          ]),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
     default:
       break
   }

@@ -43,6 +43,7 @@ import {
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
 import { transform } from './transform/transform'
+import { validateRouteParams } from './validate-route-params'
 import type { GeneratorPlugin } from './plugin/types'
 import type { TargetTemplate } from './template'
 import type {
@@ -1056,6 +1057,10 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       throw new Error(`⚠️ File ${node.fullPath} does not exist`)
     }
 
+    if (node.routePath) {
+      validateRouteParams(node.routePath, node.filePath, this.logger)
+    }
+
     const updatedCacheEntry: RouteNodeCacheEntry = {
       fileContent: existingRouteFile.fileContent,
       mtimeMs: existingRouteFile.stat.mtimeMs,
@@ -1434,23 +1439,48 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     //   - For /_layout/path/, hasParentRoute returns /_layout (wrong)
     //   - But the correct parent is /_layout/path (the virtual route from path.lazy.tsx)
     //
-    // Optimization: Only search if we might find a closer parent. The search walks
-    // up from the immediate parent path, so if the first candidate matches what
-    // prefixMap found, there's no closer parent to find.
+    // We walk up the path segments to find the closest registered parent. This handles
+    // cases where multiple path segments (e.g., $a/$b) don't have intermediate routes.
     if (node.routePath) {
-      const lastSlash = node.routePath.lastIndexOf('/')
-      if (lastSlash > 0) {
-        const immediateParentPath = node.routePath.substring(0, lastSlash)
-        const candidate = acc.routeNodesByPath.get(immediateParentPath)
-        if (
-          candidate &&
-          candidate.routePath !== node.routePath &&
-          candidate !== parentRoute
-        ) {
-          // Found a closer parent in routeNodesByPath that differs from prefixMap result
-          parentRoute = candidate
+      let searchPath = node.routePath
+      while (searchPath.length > 0) {
+        const lastSlash = searchPath.lastIndexOf('/')
+        if (lastSlash <= 0) break
+
+        searchPath = searchPath.substring(0, lastSlash)
+        const candidate = acc.routeNodesByPath.get(searchPath)
+        if (candidate && candidate.routePath !== node.routePath) {
+          // Found a parent in routeNodesByPath
+          // If it's different from what prefixMap found AND is a closer match, use it
+          if (candidate !== parentRoute) {
+            // Check if this candidate is a closer parent than what prefixMap found
+            // (longer path prefix means closer parent)
+            if (
+              !parentRoute ||
+              (candidate.routePath?.length ?? 0) >
+                (parentRoute.routePath?.length ?? 0)
+            ) {
+              parentRoute = candidate
+            }
+          }
+          break
         }
       }
+    }
+
+    // Virtual routes may have an explicit parent from virtual config.
+    // If we can find that exact parent, use it to prevent auto-nesting siblings
+    // based on path prefix matching. If the explicit parent is not found (e.g.,
+    // it was a virtual file-less route that got filtered out), keep using the
+    // path-based parent we already computed above.
+    if (node._virtualParentRoutePath !== undefined) {
+      const explicitParent =
+        acc.routeNodesByPath.get(node._virtualParentRoutePath) ??
+        prefixMap.get(node._virtualParentRoutePath)
+      if (explicitParent) {
+        parentRoute = explicitParent
+      }
+      // If not found, parentRoute stays as the path-based result (fallback)
     }
 
     if (parentRoute) node.parent = parentRoute
