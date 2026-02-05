@@ -1124,28 +1124,6 @@ export class StartCompiler {
     return resolvedKind
   }
 
-  /**
-   * Checks if an identifier is a direct import from a known factory library.
-   * Returns true for imports like `import { createServerOnlyFn } from '@tanstack/react-start'`
-   * or renamed imports like `import { createServerOnlyFn as myFn } from '...'`.
-   * Returns false for local variables that hold the result of calling a factory.
-   */
-  private async isKnownFactoryImport(
-    identName: string,
-    fileId: string,
-  ): Promise<boolean> {
-    const info = await this.getModuleInfo(fileId)
-    const binding = info.bindings.get(identName)
-
-    if (!binding || binding.type !== 'import') {
-      return false
-    }
-
-    // Check if it's imported from a known library
-    const knownExports = this.knownRootImports.get(binding.source)
-    return knownExports !== undefined && knownExports.has(binding.importedName)
-  }
-
   private async resolveExprKind(
     expr: t.Expression | null,
     fileId: string,
@@ -1185,19 +1163,14 @@ export class StartCompiler {
           return calleeKind
         }
       }
-      // For direct calls (callee is Identifier), only return the kind if the
-      // callee is a direct import from a known library (e.g., createServerOnlyFn).
-      // Calling a local variable that holds an already-built function (e.g., myServerOnlyFn())
-      // should NOT be treated as a transformation candidate.
+      // For direct calls (callee is Identifier like createServerOnlyFn()),
+      // trust calleeKind if it resolved to a valid LookupKind. This means
+      // resolveBindingKind successfully traced the import back to
+      // @tanstack/start-fn-stubs (via fast path or slow path through re-exports).
+      // This handles both direct imports from @tanstack/react-start and imports
+      // from intermediate packages that re-export from @tanstack/start-client-core.
       if (t.isIdentifier(expr.callee)) {
-        const isFactoryImport = await this.isKnownFactoryImport(
-          expr.callee.name,
-          fileId,
-        )
-        if (
-          isFactoryImport &&
-          this.validLookupKinds.has(calleeKind as LookupKind)
-        ) {
+        if (this.validLookupKinds.has(calleeKind as LookupKind)) {
           return calleeKind
         }
       }
