@@ -80,7 +80,7 @@ test.describe('Open redirect prevention', () => {
       // the result could be //evil.com/ which is a protocol-relative URL
       // Our fix collapses these to /evil.com/ to prevent external redirects
       // This is already tested above, but we verify the collapsed path works
-      await page.goto('/%0d/test-path/')
+      const res = await page.goto('/%0d/test-path/')
       await page.waitForLoadState('networkidle')
 
       // Should stay on the same origin
@@ -89,6 +89,7 @@ test.describe('Open redirect prevention', () => {
       expect(url.origin).toBe(new URL(baseURL!).origin)
       // Path should be collapsed to /test-path (not //test-path/)
       expect(url.pathname).toMatch(/^\/test-path\/?$/)
+      expect(res?.request().redirectedFrom()?.url()).not.toBe(undefined)
     })
   })
 
