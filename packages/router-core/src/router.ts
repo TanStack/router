@@ -2133,8 +2133,13 @@ export class RouterCore<
 
       this.shouldViewTransition = viewTransition
 
-      if (next.resetScroll === false && this.isScrollRestoring && scrollRestorationCache) {
-        const getKey = this.options.getScrollRestorationKey || defaultGetScrollRestorationKey
+      if (
+        next.resetScroll === false &&
+        this.isScrollRestoring &&
+        scrollRestorationCache
+      ) {
+        const getKey =
+          this.options.getScrollRestorationKey || defaultGetScrollRestorationKey
         const toKey = getKey(next as unknown as ParsedLocation)
         scrollRestorationCache.set((state) => {
           const keyEntry = (state[toKey] ||= {} as ScrollRestorationByElement)
@@ -2144,9 +2149,15 @@ export class RouterCore<
           }
           if (this.options.scrollToTopSelectors) {
             for (const selector of this.options.scrollToTopSelectors) {
-              const element = typeof selector === 'function' ? selector() : document.querySelector(selector)
+              const element =
+                typeof selector === 'function'
+                  ? selector()
+                  : document.querySelector(selector)
               if (element) {
-                const elementSelector = typeof selector === 'string' ? selector : getCssSelector(element)
+                const elementSelector =
+                  typeof selector === 'string'
+                    ? selector
+                    : getCssSelector(element)
                 keyEntry[elementSelector] = {
                   scrollX: element.scrollLeft || 0,
                   scrollY: element.scrollTop || 0,

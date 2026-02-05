@@ -180,13 +180,10 @@ test('resetScroll=false preserves scrollToTopSelectors element scroll position, 
   await page.goto('/')
   await expect(page.locator('#greeting')).toContainText('Welcome Home!')
 
-  await page.evaluate(
-    (scrollPos: number) => {
-      const sidebar = document.querySelector('#sidebar')
-      if (sidebar) sidebar.scrollTo(0, scrollPos)
-    },
-    sidebarScrollPosition,
-  )
+  await page.evaluate((scrollPos: number) => {
+    const sidebar = document.querySelector('#sidebar')
+    if (sidebar) sidebar.scrollTo(0, scrollPos)
+  }, sidebarScrollPosition)
 
   const sidebarScrollBeforeNav = await page.evaluate(
     () => document.querySelector('#sidebar')?.scrollTop,
