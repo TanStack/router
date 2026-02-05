@@ -14,4 +14,7 @@ export default defineConfig({
     tanstackStart(),
     viteReact(),
   ],
+  ssr: {
+    noExternal: ['@radix-ui/themes'],
+  },
 });
