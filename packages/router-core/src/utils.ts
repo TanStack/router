@@ -593,7 +593,7 @@ export function escapeHtml(str: string): string {
   return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
 }
 
-export function decodePath(path: string, decodeIgnore?: Array<string>) {
+export function decodePath(path: string) {
   if (!path) return { path, handledProtocolRelativeURL: false }
 
   // Fast path: most paths are already decoded and safe.
@@ -605,9 +605,7 @@ export function decodePath(path: string, decodeIgnore?: Array<string>) {
     return { path, handledProtocolRelativeURL: false }
   }
 
-  const re = decodeIgnore
-    ? new RegExp(`${decodeIgnore.join('|')}`, 'gi')
-    : /%25|%5C/gi
+  const re = /%25|%5C/gi
   let cursor = 0
   let result = ''
   let match
