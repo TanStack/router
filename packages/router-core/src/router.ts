@@ -30,7 +30,11 @@ import {
 } from './path'
 import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
-import { setupScrollRestoration } from './scroll-restoration'
+import {
+  defaultGetScrollRestorationKey,
+  scrollRestorationCache,
+  setupScrollRestoration,
+} from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
@@ -41,6 +45,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
+import type { ScrollRestorationByElement } from './scroll-restoration'
 import type { LRUCache } from './lru-cache'
 import type {
   ProcessRouteTreeResult,
@@ -2126,6 +2131,19 @@ export class RouterCore<
         hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true
 
       this.shouldViewTransition = viewTransition
+
+      if (next.resetScroll === false && this.isScrollRestoring && scrollRestorationCache) {
+        const getKey = this.options.getScrollRestorationKey || defaultGetScrollRestorationKey
+        const toKey = getKey(next as unknown as ParsedLocation)
+        scrollRestorationCache.set((state) => {
+          const keyEntry = (state[toKey] ||= {} as ScrollRestorationByElement)
+          keyEntry['window'] = {
+            scrollX: window.scrollX || 0,
+            scrollY: window.scrollY || 0,
+          }
+          return state
+        })
+      }
 
       this.history[next.replace ? 'replace' : 'push'](
         nextHistory.publicHref,
