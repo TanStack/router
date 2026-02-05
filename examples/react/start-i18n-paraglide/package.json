@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@tanstack/react-devtools": "^0.7.0",
-    "@tanstack/react-router": "^1.149.3",
-    "@tanstack/react-router-devtools": "^1.149.3",
-    "@tanstack/react-start": "^1.149.4",
+    "@tanstack/react-router": "^1.158.1",
+    "@tanstack/react-router-devtools": "^1.158.1",
+    "@tanstack/react-start": "^1.158.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
@@ -22,7 +22,7 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4",
     "@tailwindcss/vite": "^4.1.18",
     "tailwindcss": "^4.1.18",

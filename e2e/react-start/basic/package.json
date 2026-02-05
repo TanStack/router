@@ -10,14 +10,13 @@
     "build:spa": "MODE=spa vite build && tsc --noEmit",
     "build:prerender": "MODE=prerender vite build && tsc --noEmit",
     "preview": "vite preview",
-    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "start:spa": "node server.js",
+    "start": "node server.js",
     "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' &",
     "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
-    "test:e2e:spaMode": "rm -rf port*.txt; MODE=spa playwright test --project=chromium",
-    "test:e2e:ssrMode": "rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e:prerender": "rm -rf port*.txt; MODE=prerender playwright test --project=chromium",
-    "test:e2e:preview": "rm -rf port*.txt; MODE=preview playwright test --project=chromium",
+    "test:e2e:spaMode": "rm -rf dist; rm -rf port*.txt; MODE=spa playwright test --project=chromium",
+    "test:e2e:ssrMode": "rm -rf dist; rm -rf port*.txt; playwright test --project=chromium",
+    "test:e2e:prerender": "rm -rf dist; rm -rf port*.txt; MODE=prerender playwright test --project=chromium",
+    "test:e2e:preview": "rm -rf dist; rm -rf port*.txt; MODE=preview playwright test --project=chromium",
     "test:e2e": "pnpm run test:e2e:spaMode && pnpm run test:e2e:ssrMode && pnpm run test:e2e:prerender && pnpm run test:e2e:preview"
   },
   "dependencies": {
@@ -42,10 +41,10 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "combinate": "^1.1.11",
-    "srvx": "^0.10.0",
+    "srvx": "^0.10.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4",
     "zod": "^3.24.2"
   }

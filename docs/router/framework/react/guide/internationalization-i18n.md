@@ -25,8 +25,8 @@ This pattern relies exclusively on TanStack Router features. It is suitable when
 
 Optional path parameters are ideal for implementing locale-aware routing without duplicating routes.
 
-```ts
-;/{-$locale}/abotu
+```
+/{-$locale}/about
 ```
 
 This single route matches:
@@ -141,6 +141,8 @@ paraglideVitePlugin({
 ```
 
 ### URL Localization via Router Rewrite
+
+The router's `rewrite` option enables bidirectional URL transformation, perfect for locale prefixes. For comprehensive documentation on URL rewrites including advanced patterns, see the [URL Rewrites guide](./url-rewrites.md).
 
 ```ts
 import { deLocalizeUrl, localizeUrl } from './paraglide/runtime'

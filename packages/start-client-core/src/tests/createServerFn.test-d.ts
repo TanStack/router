@@ -2,6 +2,7 @@ import { describe, expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
 import { TSS_SERVER_FUNCTION } from '../constants'
+import type { ServerFnMeta } from '../constants'
 import type {
   Constrain,
   Register,
@@ -9,7 +10,11 @@ import type {
   ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
-import type { ConstrainValidator, ServerFnReturnType } from '../createServerFn'
+import type {
+  ConstrainValidator,
+  CustomFetch,
+  ServerFnReturnType,
+} from '../createServerFn'
 
 test('createServerFn without middleware', () => {
   expectTypeOf(createServerFn()).toHaveProperty('handler')
@@ -20,7 +25,9 @@ test('createServerFn without middleware', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: undefined
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 })
@@ -42,7 +49,9 @@ test('createServerFn with validator function', () => {
       data: {
         a: string
       }
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -50,6 +59,7 @@ test('createServerFn with validator function', () => {
     data: { input: string }
     headers?: HeadersInit
     signal?: AbortSignal
+    fetch?: CustomFetch
   }>()
 
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
@@ -68,7 +78,9 @@ test('createServerFn with async validator function', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -76,6 +88,7 @@ test('createServerFn with async validator function', () => {
     data: string
     headers?: HeadersInit
     signal?: AbortSignal
+    fetch?: CustomFetch
   }>()
 
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
@@ -96,7 +109,9 @@ test('createServerFn with validator with parse method', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -104,6 +119,7 @@ test('createServerFn with validator with parse method', () => {
     data: string
     headers?: HeadersInit
     signal?: AbortSignal
+    fetch?: CustomFetch
   }>()
 
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
@@ -124,7 +140,9 @@ test('createServerFn with async validator with parse method', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -132,6 +150,7 @@ test('createServerFn with async validator with parse method', () => {
     data: string
     headers?: HeadersInit
     signal?: AbortSignal
+    fetch?: CustomFetch
   }>()
 
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
@@ -169,7 +188,9 @@ test('createServerFn with standard validator', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -177,6 +198,7 @@ test('createServerFn with standard validator', () => {
     data: string
     headers?: HeadersInit
     signal?: AbortSignal
+    fetch?: CustomFetch
   }>()
 
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
@@ -215,7 +237,9 @@ test('createServerFn with async standard validator', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: string
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -223,6 +247,7 @@ test('createServerFn with async standard validator', () => {
     data: string
     headers?: HeadersInit
     signal?: AbortSignal
+    fetch?: CustomFetch
   }>()
 
   expectTypeOf<ReturnType<typeof fn>>().resolves.toEqualTypeOf<void>()
@@ -277,7 +302,9 @@ test('createServerFn with middleware and context', () => {
         readonly d: 'd'
       }
       data: undefined
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 })
@@ -319,7 +346,9 @@ describe('createServerFn with middleware and validator', () => {
             readonly outputB: 'outputB'
             readonly outputC: 'outputC'
           }
+          method: 'GET'
           signal: AbortSignal
+          serverFnMeta: ServerFnMeta
         }>()
 
         return 'some-data' as const
@@ -333,6 +362,7 @@ describe('createServerFn with middleware and validator', () => {
       }
       headers?: HeadersInit
       signal?: AbortSignal
+      fetch?: CustomFetch
     }>()
 
     expectTypeOf(fn).returns.resolves.toEqualTypeOf<'some-data'>()
@@ -415,7 +445,9 @@ test('createServerFn where validator is a primitive', () => {
       expectTypeOf(options).toEqualTypeOf<{
         context: undefined
         data: 'c'
+        method: 'GET'
         signal: AbortSignal
+        serverFnMeta: ServerFnMeta
       }>()
     })
 })
@@ -427,7 +459,9 @@ test('createServerFn where validator is optional if object is optional', () => {
       expectTypeOf(options).toEqualTypeOf<{
         context: undefined
         data: 'c' | undefined
+        method: 'GET'
         signal: AbortSignal
+        serverFnMeta: ServerFnMeta
       }>()
     })
 
@@ -436,6 +470,7 @@ test('createServerFn where validator is optional if object is optional', () => {
         data?: 'c' | undefined
         headers?: HeadersInit
         signal?: AbortSignal
+        fetch?: CustomFetch
       }
     | undefined
   >()
@@ -448,7 +483,9 @@ test('createServerFn where data is optional if there is no validator', () => {
     expectTypeOf(options).toEqualTypeOf<{
       context: undefined
       data: undefined
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -457,6 +494,7 @@ test('createServerFn where data is optional if there is no validator', () => {
         data?: undefined
         headers?: HeadersInit
         signal?: AbortSignal
+        fetch?: CustomFetch
       }
     | undefined
   >()
@@ -599,6 +637,7 @@ test('createServerFn validator infers unknown for default input type', () => {
         data?: unknown | undefined
         headers?: HeadersInit
         signal?: AbortSignal
+        fetch?: CustomFetch
       }
     | undefined
   >()
@@ -639,7 +678,9 @@ test('incrementally building createServerFn with multiple middleware calls', () 
         readonly a: 'a'
       }
       data: undefined
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -659,7 +700,9 @@ test('incrementally building createServerFn with multiple middleware calls', () 
         readonly b: 'b'
       }
       data: undefined
+      method: 'POST'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 
@@ -680,7 +723,9 @@ test('incrementally building createServerFn with multiple middleware calls', () 
         readonly c: 'c'
       }
       data: undefined
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 })
@@ -712,7 +757,9 @@ test('compose middlewares and server function factories', () => {
         readonly b: 'b'
       }
       data: undefined
+      method: 'GET'
       signal: AbortSignal
+      serverFnMeta: ServerFnMeta
     }>()
   })
 })

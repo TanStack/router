@@ -864,6 +864,28 @@ describe('findRouteMatch', () => {
         expect(result?.route.id).toBe('/_pathless/{-$language}/')
         expect(result?.rawParams).toEqual({ language: 'sv' })
       })
+      it('skipped optional, ends with wildcard', () => {
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/{-$foo}/bar/$',
+              fullPath: '/{-$foo}/bar/$',
+              path: '{-$foo}/bar/$',
+              isRoot: false,
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch(`/bar/rest`, processedTree)
+        expect(result?.route.id).toBe('/{-$foo}/bar/$')
+        expect(result?.rawParams).toEqual({ '*': 'rest', _splat: 'rest' })
+      })
     })
   })
   describe('pathless routes', () => {
@@ -1086,6 +1108,83 @@ describe('findRouteMatch', () => {
           "wildcard": null,
         }
       `)
+    })
+    it('does not consume a path segment during param extraction', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/$foo/_layout',
+            fullPath: '/$foo',
+            path: '$foo',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => params,
+              },
+              // force the creation of a pathless node
+              skipRouteOnParseError: { params: true },
+            },
+            children: [
+              {
+                id: '/$foo/_layout/$bar',
+                fullPath: '/$foo/$bar',
+                path: '$bar',
+                options: {},
+              },
+            ],
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const result = findRouteMatch('/abc/def', processedTree)
+      expect(result?.route.id).toBe('/$foo/_layout/$bar')
+      expect(result?.rawParams).toEqual({ foo: 'abc', bar: 'def' })
+    })
+    it('skipped optional uses the correct node index with pathless nodes', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/one_{-$foo}/_layout',
+            fullPath: '/one_{-$foo}',
+            path: 'one_{-$foo}',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => params,
+              },
+              // force the creation of a pathless node
+              skipRouteOnParseError: { params: true },
+            },
+            children: [
+              {
+                id: '/one_{-$foo}/_layout/two_{-$bar}/baz',
+                fullPath: '/one_{-$foo}/two_{-$bar}/baz',
+                path: 'two_{-$bar}/baz',
+                options: {},
+              },
+            ],
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      // match first, skip second
+      {
+        const result = findRouteMatch('/one_value/baz', processedTree)
+        expect(result?.route.id).toBe('/one_{-$foo}/_layout/two_{-$bar}/baz')
+        expect(result?.rawParams).toEqual({ foo: 'value' })
+      }
+      // skip first, match second
+      {
+        const result = findRouteMatch('/two_value/baz', processedTree)
+        expect(result?.route.id).toBe('/one_{-$foo}/_layout/two_{-$bar}/baz')
+        expect(result?.rawParams).toEqual({ bar: 'value' })
+      }
     })
   })
 })

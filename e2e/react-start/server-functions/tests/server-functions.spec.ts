@@ -883,3 +883,313 @@ test('function middleware receives serverFnMeta in options', async ({
     'src/routes/middleware/function-metadata.tsx',
   )
 })
+
+test('server function is called with correct method option', async ({
+  page,
+}) => {
+  await page.goto('/function-method', { waitUntil: 'networkidle' })
+
+  await expect(page.getByTestId('method-route-component')).toBeInViewport()
+
+  const buttons = await page
+    .locator('[data-testid^="btn-fn-"]')
+    .elementHandles()
+  for (const button of buttons) {
+    const testId = await button.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('Button is missing data-testid')
+    }
+
+    const suffix = testId.replace('btn-fn-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-fn-result-${suffix}`).textContent()) ||
+      ''
+    expect(expected).not.toBe('')
+
+    await button.click()
+
+    await expect(page.getByTestId(`fn-result-${suffix}`)).toContainText(
+      expected,
+    )
+
+    await expect(page.getByTestId(`fn-comparison-${suffix}`)).toContainText(
+      'equal',
+    )
+  }
+})
+
+test('server function receives serverFnMeta in options', async ({ page }) => {
+  // This test verifies that:
+  // 1. Server functions receive `serverFnMeta` with full { id, name, filename }
+  // 2. No1 works even when the said server function is called from another server function
+
+  await page.goto('/function-metadata', { waitUntil: 'networkidle' })
+
+  await expect(page.getByTestId('metadata-route-component')).toBeInViewport()
+
+  // Test for no1
+  const loaderNormalGet = await page
+    .getByTestId('loader-normal-get-function-metadata')
+    .textContent()
+  const loaderNormalPost = await page
+    .getByTestId('loader-normal-post-function-metadata')
+    .textContent()
+
+  // stringified metadata should not be empty string
+  expect(loaderNormalGet).toBeTruthy()
+  // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
+  const normalGetMetadata = JSON.parse(loaderNormalGet!)
+  expect(normalGetMetadata).toHaveProperty('id')
+  expect(normalGetMetadata).toHaveProperty('name')
+  expect(normalGetMetadata).toHaveProperty('filename')
+  expect(typeof normalGetMetadata.id).toBe('string')
+  expect(normalGetMetadata.id.length).toBeGreaterThan(0)
+  expect(typeof normalGetMetadata.name).toBe('string')
+  expect(normalGetMetadata.name.length).toBeGreaterThan(0)
+  expect(typeof normalGetMetadata.filename).toBe('string')
+  expect(normalGetMetadata.filename.length).toBeGreaterThan(0)
+
+  // stringified metadata should not be empty string
+  expect(loaderNormalPost).toBeTruthy()
+  // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
+  const normalPostMetadata = JSON.parse(loaderNormalPost!)
+  expect(normalPostMetadata).toHaveProperty('id')
+  expect(normalPostMetadata).toHaveProperty('name')
+  expect(normalPostMetadata).toHaveProperty('filename')
+  expect(typeof normalPostMetadata.id).toBe('string')
+  expect(normalPostMetadata.id.length).toBeGreaterThan(0)
+  expect(typeof normalPostMetadata.name).toBe('string')
+  expect(normalPostMetadata.name.length).toBeGreaterThan(0)
+  expect(typeof normalPostMetadata.filename).toBe('string')
+  expect(normalPostMetadata.filename.length).toBeGreaterThan(0)
+
+  // Test for no2
+  const loaderNestingGet = await page
+    .getByTestId('loader-nesting-get-function-metadata')
+    .textContent()
+  const loaderNestingPost = await page
+    .getByTestId('loader-nesting-post-function-metadata')
+    .textContent()
+
+  // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
+  const nestingGetMetadata = JSON.parse(loaderNestingGet!)
+  expect(nestingGetMetadata).toHaveProperty('meta.id')
+  expect(nestingGetMetadata).toHaveProperty('meta.name')
+  expect(nestingGetMetadata).toHaveProperty('meta.filename')
+  expect(typeof nestingGetMetadata.meta.id).toBe('string')
+  expect(nestingGetMetadata.meta.id.length).toBeGreaterThan(0)
+  expect(typeof nestingGetMetadata.meta.name).toBe('string')
+  expect(nestingGetMetadata.meta.name.length).toBeGreaterThan(0)
+  expect(typeof nestingGetMetadata.meta.filename).toBe('string')
+  expect(nestingGetMetadata.meta.filename.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata).toHaveProperty('inner.get.id')
+  expect(nestingGetMetadata).toHaveProperty('inner.get.name')
+  expect(nestingGetMetadata).toHaveProperty('inner.get.filename')
+  expect(nestingGetMetadata.inner.get.id.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata.inner.get.name.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata.inner.get.filename.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata).toHaveProperty('inner.post.id')
+  expect(nestingGetMetadata).toHaveProperty('inner.post.name')
+  expect(nestingGetMetadata).toHaveProperty('inner.post.filename')
+  expect(nestingGetMetadata.inner.post.id.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata.inner.post.name.length).toBeGreaterThan(0)
+  expect(nestingGetMetadata.inner.post.filename.length).toBeGreaterThan(0)
+
+  // metadata should have `id`, `name`, and `filename` property, with all of them being a non-empty string
+  const nestingPostMetadata = JSON.parse(loaderNestingPost!)
+  expect(nestingPostMetadata).toHaveProperty('meta.id')
+  expect(nestingPostMetadata).toHaveProperty('meta.name')
+  expect(nestingPostMetadata).toHaveProperty('meta.filename')
+  expect(typeof nestingPostMetadata.meta.id).toBe('string')
+  expect(nestingPostMetadata.meta.id.length).toBeGreaterThan(0)
+  expect(typeof nestingPostMetadata.meta.name).toBe('string')
+  expect(nestingPostMetadata.meta.name.length).toBeGreaterThan(0)
+  expect(typeof nestingPostMetadata.meta.filename).toBe('string')
+  expect(nestingPostMetadata.meta.filename.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata).toHaveProperty('inner.get.id')
+  expect(nestingPostMetadata).toHaveProperty('inner.get.name')
+  expect(nestingPostMetadata).toHaveProperty('inner.get.filename')
+  expect(nestingPostMetadata.inner.get.id.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata.inner.get.name.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata.inner.get.filename.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata).toHaveProperty('inner.post.id')
+  expect(nestingPostMetadata).toHaveProperty('inner.post.name')
+  expect(nestingPostMetadata).toHaveProperty('inner.post.filename')
+  expect(nestingPostMetadata.inner.post.id.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata.inner.post.name.length).toBeGreaterThan(0)
+  expect(nestingPostMetadata.inner.post.filename.length).toBeGreaterThan(0)
+})
+
+test('middleware can catch errors thrown by server function handlers', async ({
+  page,
+}) => {
+  await page.goto('/middleware/catch-handler-error')
+
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('catch-handler-error-title')).toBeVisible()
+
+  await page.getByTestId('trigger-error-btn').click()
+
+  await expect(page.getByTestId('transformed-error')).toBeVisible()
+
+  await expect(page.getByTestId('transformed-error')).toContainText(
+    'Middleware caught and transformed',
+  )
+
+  await expect(page.getByTestId('transformed-error')).toContainText(
+    'This error should be caught by middleware',
+  )
+})
+
+test('server function with custom fetch implementation passed directly', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-direct-custom-fetch-btn').click()
+  await page.waitForSelector(
+    '[data-testid="direct-custom-fetch-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('direct-custom-fetch-result')
+    .textContent()
+  expect(result).toContain('x-custom-fetch-direct')
+})
+
+test('server function with custom fetch implementation via middleware', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-middleware-custom-fetch-btn').click()
+  await page.waitForSelector(
+    '[data-testid="middleware-custom-fetch-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('middleware-custom-fetch-result')
+    .textContent()
+  expect(result).toContain('x-custom-fetch-middleware')
+})
+
+test('server function with chained middleware - later middleware overrides earlier', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-chained-middleware-btn').click()
+  await page.waitForSelector(
+    '[data-testid="chained-middleware-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('chained-middleware-result')
+    .textContent()
+  // Second middleware should override first, so only x-middleware-second should be present
+  expect(result).toContain('x-middleware-second')
+  expect(result).not.toContain('x-middleware-first')
+})
+
+test('server function with direct fetch overrides middleware fetch', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-direct-override-btn').click()
+  await page.waitForSelector(
+    '[data-testid="direct-override-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page.getByTestId('direct-override-result').textContent()
+  // Direct fetch should override middleware, so x-direct-override should be present
+  // and x-custom-fetch-middleware should NOT be present
+  expect(result).toContain('x-direct-override')
+  expect(result).not.toContain('x-custom-fetch-middleware')
+})
+
+test('server function without custom fetch uses global serverFnFetch from createStart', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-no-custom-fetch-btn').click()
+  await page.waitForLoadState('networkidle')
+  await page.waitForSelector(
+    '[data-testid="no-custom-fetch-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page.getByTestId('no-custom-fetch-result').textContent()
+  // Global serverFnFetch header should be present
+  expect(result).toContain('x-global-fetch')
+  // No other custom headers should be present
+  expect(result).not.toContain('x-custom-fetch-direct')
+  expect(result).not.toContain('x-custom-fetch-middleware')
+  expect(result).not.toContain('x-middleware-first')
+  expect(result).not.toContain('x-middleware-second')
+  expect(result).not.toContain('x-direct-override')
+})
+
+test('server function uses global serverFnFetch from createStart', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-global-fetch-btn').click()
+  await page.waitForSelector(
+    '[data-testid="global-fetch-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page.getByTestId('global-fetch-result').textContent()
+  // Global serverFnFetch header should be present
+  expect(result).toContain('x-global-fetch')
+})
+
+test('middleware fetch overrides global serverFnFetch from createStart', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-middleware-overrides-global-btn').click()
+  await page.waitForSelector(
+    '[data-testid="middleware-overrides-global-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('middleware-overrides-global-result')
+    .textContent()
+  // Middleware fetch should override global, so x-custom-fetch-middleware should be present
+  expect(result).toContain('x-custom-fetch-middleware')
+  // Global fetch header should NOT be present (overridden by middleware)
+  expect(result).not.toContain('x-global-fetch')
+})
+
+test('direct fetch overrides global serverFnFetch from createStart', async ({
+  page,
+}) => {
+  await page.goto('/custom-fetch')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-direct-overrides-global-btn').click()
+  await page.waitForSelector(
+    '[data-testid="direct-overrides-global-result"]:not(:has-text("null"))',
+  )
+
+  const result = await page
+    .getByTestId('direct-overrides-global-result')
+    .textContent()
+  // Direct fetch should override global, so x-direct-override-global should be present
+  expect(result).toContain('x-direct-override-global')
+  // Global fetch header should NOT be present (overridden by direct fetch)
+  expect(result).not.toContain('x-global-fetch')
+})

@@ -1,6 +1,7 @@
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
 import { rootRouteId } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -41,7 +42,8 @@ export function Matches() {
   const router = useRouter()
 
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.ssr)
+    (isServer ?? router.isServer) ||
+    (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : Solid.Suspense
 

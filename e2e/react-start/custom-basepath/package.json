@@ -29,11 +29,11 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "cross-env": "^10.0.0",
-    "srvx": "^0.10.0",
+    "srvx": "^0.10.1",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.20.3",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

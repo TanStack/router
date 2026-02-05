@@ -471,23 +471,19 @@ export function useLinkProps<
       return undefined
     }
     const nextLocation = next.value
-    const maskedLocation = nextLocation?.maskedLocation
+    const location = nextLocation?.maskedLocation ?? nextLocation
 
-    let hrefValue: string
-    if (maskedLocation) {
-      hrefValue = maskedLocation.url.href
-    } else {
-      hrefValue = nextLocation?.url.href
-    }
+    // Use publicHref - it contains the correct href for display
+    // When a rewrite changes the origin, publicHref is the full URL
+    // Otherwise it's the origin-stripped path
+    // This avoids constructing URL objects in the hot path
+    const publicHref = location?.publicHref
+    if (!publicHref) return undefined
 
-    // Handle origin stripping like Solid does
-    if (router.origin && hrefValue?.startsWith(router.origin)) {
-      hrefValue = router.history.createHref(
-        hrefValue.replace(router.origin, ''),
-      )
-    }
+    const external = location?.external
+    if (external) return publicHref
 
-    return hrefValue
+    return router.history.createHref(publicHref) || '/'
   })
 
   // Create static event handlers that don't change between renders
@@ -683,7 +679,7 @@ export type LinkComponent<
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
 > {
-  defaultFrom: TDefaultFrom
+  defaultFrom: TDefaultFrom;
   <
     TRouter extends AnyRouter = RegisteredRouter,
     const TTo extends string | undefined = undefined,

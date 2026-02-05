@@ -21,7 +21,7 @@
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -29,7 +29,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "srvx": "^0.10.0",
+    "srvx": "^0.10.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.10",

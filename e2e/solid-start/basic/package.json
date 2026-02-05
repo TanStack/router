@@ -10,8 +10,7 @@
     "build:spa": "MODE=spa vite build && tsc --noEmit",
     "build:prerender": "MODE=prerender vite build && tsc --noEmit",
     "preview": "vite preview",
-    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "start:spa": "node server.js",
+    "start": "node server.js",
     "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' &",
     "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
     "test:e2e:spaMode": "rm -rf port*.txt; MODE=spa playwright test --project=chromium",
@@ -30,7 +29,7 @@
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -40,7 +39,7 @@
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.10.2",
     "combinate": "^1.1.11",
-    "srvx": "^0.10.0",
+    "srvx": "^0.10.1",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.10",

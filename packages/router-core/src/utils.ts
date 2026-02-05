@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
@@ -188,7 +189,7 @@ export type LooseAsyncReturnType<T> = T extends (
  * Return the last element of an array.
  * Intended for non-empty arrays used within router internals.
  */
-export function last<T>(arr: Array<T>) {
+export function last<T>(arr: ReadonlyArray<T>) {
   return arr[arr.length - 1]
 }
 
@@ -212,6 +213,7 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
 }
 
 const hasOwn = Object.prototype.hasOwnProperty
+const isEnumerable = Object.prototype.propertyIsEnumerable
 
 /**
  * This function returns `prev` if `_next` is deeply equal.
@@ -220,6 +222,9 @@ const hasOwn = Object.prototype.hasOwnProperty
  * Do not use this with signals
  */
 export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
+  if (isServer) {
+    return _next
+  }
   if (prev === _next) {
     return prev
   }
@@ -274,17 +279,27 @@ export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
 /**
  * Equivalent to `Reflect.ownKeys`, but ensures that objects are "clone-friendly":
  * will return false if object has any non-enumerable properties.
+ *
+ * Optimized for the common case where objects have no symbol properties.
  */
 function getEnumerableOwnKeys(o: object) {
-  const keys = []
   const names = Object.getOwnPropertyNames(o)
+
+  // Fast path: check all string property names are enumerable
   for (const name of names) {
-    if (!Object.prototype.propertyIsEnumerable.call(o, name)) return false
-    keys.push(name)
+    if (!isEnumerable.call(o, name)) return false
   }
+
+  // Only check symbols if the object has any (most plain objects don't)
   const symbols = Object.getOwnPropertySymbols(o)
+
+  // Fast path: no symbols, return names directly (avoids array allocation/concat)
+  if (symbols.length === 0) return names
+
+  // Slow path: has symbols, need to check and merge
+  const keys: Array<string | symbol> = names
   for (const symbol of symbols) {
-    if (!Object.prototype.propertyIsEnumerable.call(o, symbol)) return false
+    if (!isEnumerable.call(o, symbol)) return false
     keys.push(symbol)
   }
   return keys
@@ -475,8 +490,8 @@ export function isPromise<T>(
 ): value is Promise<Awaited<T>> {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      typeof (value as Promise<T>).then === 'function',
+    typeof value === 'object' &&
+    typeof (value as Promise<T>).then === 'function',
   )
 }
 
@@ -580,6 +595,16 @@ export function escapeHtml(str: string): string {
 
 export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   if (!path) return path
+
+  // Fast path: most paths are already decoded and safe.
+  // Only fall back to the slower scan/regex path when we see a '%' (encoded),
+  // a backslash (explicitly handled), a control character, or a protocol-relative
+  // prefix which needs collapsing.
+  // eslint-disable-next-line no-control-regex
+  if (!/[%\\\x00-\x1f\x7f]/.test(path) && !path.startsWith('//')) {
+    return path
+  }
+
   const re = decodeIgnore
     ? new RegExp(`${decodeIgnore.join('|')}`, 'gi')
     : /%25|%5C/gi
@@ -600,6 +625,36 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   }
 
   return result
+}
+
+/**
+ * Encodes a path the same way `new URL()` would, but without the overhead of full URL parsing.
+ *
+ * This function encodes:
+ * - Whitespace characters (spaces → %20, tabs → %09, etc.)
+ * - Non-ASCII/Unicode characters (emojis, accented characters, etc.)
+ *
+ * It preserves:
+ * - Already percent-encoded sequences (won't double-encode %2F, %25, etc.)
+ * - ASCII special characters valid in URL paths (@, $, &, +, etc.)
+ * - Forward slashes as path separators
+ *
+ * Used to generate proper href values for SSR without constructing URL objects.
+ *
+ * @example
+ * encodePathLikeUrl('/path/file name.pdf') // '/path/file%20name.pdf'
+ * encodePathLikeUrl('/path/日本語') // '/path/%E6%97%A5%E6%9C%AC%E8%AA%9E'
+ * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
+ */
+export function encodePathLikeUrl(path: string): string {
+  // Encode whitespace and non-ASCII characters that browsers encode in URLs
+
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
+  // eslint-disable-next-line no-control-regex
+  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
+  // eslint-disable-next-line no-control-regex
+  return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
 }
 
 /**

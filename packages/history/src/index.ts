@@ -593,6 +593,11 @@ export function createMemoryHistory(
 
   const getLocation = () => parseHref(entries[index]!, states[index])
 
+  let blockers: Array<NavigationBlocker> = []
+  const _getBlockers = () => blockers
+  const _setBlockers = (newBlockers: Array<NavigationBlocker>) =>
+    (blockers = newBlockers)
+
   return createHistory({
     getLocation,
     getLength: () => entries.length,
@@ -620,6 +625,8 @@ export function createMemoryHistory(
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
     createHref: (path) => path,
+    getBlockers: _getBlockers,
+    setBlockers: _setBlockers,
   })
 }
 

@@ -4,6 +4,7 @@ import {
   handleHashScroll,
   trimPathRight,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
@@ -15,7 +16,7 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
-  if (router.isServer) {
+  if (isServer ?? router.isServer) {
     return null
   }
 

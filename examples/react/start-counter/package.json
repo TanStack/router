@@ -10,9 +10,9 @@
     "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.149.3",
-    "@tanstack/react-router-devtools": "^1.149.3",
-    "@tanstack/react-start": "^1.149.4",
+    "@tanstack/react-router": "^1.158.1",
+    "@tanstack/react-router-devtools": "^1.158.1",
+    "@tanstack/react-start": "^1.158.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -22,6 +22,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7"
+    "vite": "^7.3.1"
   }
 }

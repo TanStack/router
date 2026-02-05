@@ -123,6 +123,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             data: opts?.data as any,
             headers: opts?.headers,
             signal: opts?.signal,
+            fetch: opts?.fetch,
             context: createNullProtoObject(),
           })
 
@@ -257,6 +258,8 @@ export async function executeMiddleware(
             context: safeObjectMerge(ctx.context, userCtx.context),
             sendContext: safeObjectMerge(ctx.sendContext, userCtx.sendContext),
             headers: mergeHeaders(ctx.headers, userCtx.headers),
+            _callSiteFetch: ctx._callSiteFetch,
+            fetch: ctx._callSiteFetch ?? userCtx.fetch ?? ctx.fetch,
             result:
               userCtx.result !== undefined
                 ? userCtx.result
@@ -266,14 +269,13 @@ export async function executeMiddleware(
             error: userCtx.error ?? (ctx as any).error,
           }
 
-          try {
-            return await callNextMiddleware(nextCtx)
-          } catch (error: any) {
-            return {
-              ...nextCtx,
-              error,
-            }
+          const result = await callNextMiddleware(nextCtx)
+
+          if (result.error) {
+            throw result.error
           }
+
+          return result
         }
 
         // Execute the middleware
@@ -322,6 +324,7 @@ export async function executeMiddleware(
     headers: opts.headers || {},
     sendContext: opts.sendContext || {},
     context: opts.context || createNullProtoObject(),
+    _callSiteFetch: opts.fetch,
   })
 }
 
@@ -330,6 +333,7 @@ export type CompiledFetcherFnOptions = {
   data: unknown
   headers?: HeadersInit
   signal?: AbortSignal
+  fetch?: CustomFetch
   context?: any
 }
 
@@ -350,32 +354,45 @@ export interface FetcherBase {
   }) => Promise<unknown>
 }
 
-export interface OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
-  extends FetcherBase {
+export interface OptionalFetcher<
+  TMiddlewares,
+  TInputValidator,
+  TResponse,
+> extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
   ): Promise<Awaited<TResponse>>
 }
 
-export interface RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
-  extends FetcherBase {
+export interface RequiredFetcher<
+  TMiddlewares,
+  TInputValidator,
+  TResponse,
+> extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
   ): Promise<Awaited<TResponse>>
 }
 
+export type CustomFetch = typeof globalThis.fetch
+
 export type FetcherBaseOptions = {
   headers?: HeadersInit
   signal?: AbortSignal
+  fetch?: CustomFetch
 }
 
-export interface OptionalFetcherDataOptions<TMiddlewares, TInputValidator>
-  extends FetcherBaseOptions {
+export interface OptionalFetcherDataOptions<
+  TMiddlewares,
+  TInputValidator,
+> extends FetcherBaseOptions {
   data?: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
-export interface RequiredFetcherDataOptions<TMiddlewares, TInputValidator>
-  extends FetcherBaseOptions {
+export interface RequiredFetcherDataOptions<
+  TMiddlewares,
+  TInputValidator,
+> extends FetcherBaseOptions {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
@@ -399,12 +416,19 @@ export type ServerFn<
   TInputValidator,
   TResponse,
 > = (
-  ctx: ServerFnCtx<TRegister, TMiddlewares, TInputValidator>,
+  ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator>,
 ) => ServerFnReturnType<TRegister, TResponse>
 
-export interface ServerFnCtx<TRegister, TMiddlewares, TInputValidator> {
+export interface ServerFnCtx<
+  TRegister,
+  TMethod,
+  TMiddlewares,
+  TInputValidator,
+> {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
+  serverFnMeta: ServerFnMeta
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
+  method: TMethod
   signal: AbortSignal
 }
 
@@ -515,7 +539,9 @@ export interface ServerFnAfterMiddleware<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
@@ -554,7 +580,9 @@ export interface ServerFnAfterValidator<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
@@ -569,7 +597,9 @@ export interface ServerFnAfterTyper<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
@@ -597,13 +627,8 @@ export interface ServerFnHandler<
 }
 
 export interface ServerFnBuilder<TRegister, TMethod extends Method = 'GET'>
-  extends ServerFnWithTypes<
-      TRegister,
-      TMethod,
-      undefined,
-      undefined,
-      undefined
-    >,
+  extends
+    ServerFnWithTypes<TRegister, TMethod, undefined, undefined, undefined>,
     ServerFnMiddleware<TRegister, TMethod, undefined, undefined>,
     ServerFnValidator<TRegister, TMethod, undefined>,
     ServerFnHandler<TRegister, TMethod, undefined, undefined> {
@@ -695,6 +720,9 @@ export type ServerFnMiddlewareOptions = {
   sendContext?: any
   context?: any
   serverFnMeta: ClientFnMeta
+  fetch?: CustomFetch
+  /** @internal - Preserves the call-site fetch to ensure it has highest priority over middleware */
+  _callSiteFetch?: CustomFetch
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
@@ -745,11 +773,12 @@ function serverFnBaseToMiddleware(
     '~types': undefined!,
     options: {
       inputValidator: options.inputValidator,
-      client: async ({ next, sendContext, ...ctx }) => {
+      client: async ({ next, sendContext, fetch, ...ctx }) => {
         const payload = {
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
+          fetch,
         } as any
 
         // Execute the extracted function

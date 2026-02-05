@@ -1,5 +1,6 @@
 import { Link, Meta, Style, Title } from '@solidjs/meta'
 import { onCleanup, onMount } from 'solid-js'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { JSX } from 'solid-js'
@@ -17,7 +18,7 @@ export function Asset({
     case 'link':
       return <Link {...attrs} />
     case 'style':
-      return <Style {...attrs} innerHTML={children} />
+      return <Style {...attrs}>{children}</Style>
     case 'script':
       return <Script attrs={attrs}>{children}</Script>
     default:
@@ -123,7 +124,7 @@ function Script({
     }
   })
 
-  if (!router.isServer) {
+  if (!(isServer ?? router.isServer)) {
     // render an empty script on the client just to avoid hydration errors
     return null
   }

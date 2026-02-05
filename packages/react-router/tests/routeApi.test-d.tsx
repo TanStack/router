@@ -106,3 +106,35 @@ describe('createRoute', () => {
     })
   })
 })
+
+describe('fullPath type correctness', () => {
+  // Create a layout route (pathless route)
+  const layoutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_layout',
+  })
+
+  const layoutChildRoute = createRoute({
+    getParentRoute: () => layoutRoute,
+    path: 'dashboard',
+  })
+
+  const routeTreeWithLayout = rootRoute.addChildren([
+    layoutRoute.addChildren([layoutChildRoute]),
+    indexRoute,
+  ])
+
+  test('index route fullPath should have trailing slash to match runtime', () => {
+    // At runtime, Route.fullPath returns '/invoices/' for an index route
+    // The type should match this behavior
+    const fullPath = invoicesIndexRoute.fullPath
+    expectTypeOf(fullPath).toEqualTypeOf<'/invoices/'>()
+  })
+
+  test('layout route fullPath should be "/" not empty string', () => {
+    // At runtime, a pathless layout route has fullPath of '/'
+    // The type should be '/' not ''
+    const fullPath = layoutRoute.fullPath
+    expectTypeOf(fullPath).toEqualTypeOf<'/'>()
+  })
+})

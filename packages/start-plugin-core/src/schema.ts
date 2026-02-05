@@ -153,6 +153,12 @@ const tanstackStartOptionsSchema = z
     server: z
       .object({
         entry: z.string().optional(),
+        build: z
+          .object({
+            staticNodeEnv: z.boolean().optional().default(true),
+          })
+          .optional()
+          .default({}),
       })
       .optional()
       .default({}),

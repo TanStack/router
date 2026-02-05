@@ -804,7 +804,7 @@ describe('encoding: URL path segment', () => {
     await router.load()
 
     expect(router.state.location.pathname).toBe(path)
-    expect(new URL(router.state.location.url).pathname).toBe(url)
+    expect(router.state.location.href).toBe(url)
   })
 })
 

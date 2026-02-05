@@ -7,15 +7,19 @@ export type IsomorphicFn<
   TClient = undefined,
 > = (...args: TArgs) => TServer | TClient
 
-export interface ServerOnlyFn<TArgs extends Array<any>, TServer>
-  extends IsomorphicFn<TArgs, TServer> {
+export interface ServerOnlyFn<
+  TArgs extends Array<any>,
+  TServer,
+> extends IsomorphicFn<TArgs, TServer> {
   client: <TClient>(
     clientImpl: (...args: TArgs) => TClient,
   ) => IsomorphicFn<TArgs, TServer, TClient>
 }
 
-export interface ClientOnlyFn<TArgs extends Array<any>, TClient>
-  extends IsomorphicFn<TArgs, undefined, TClient> {
+export interface ClientOnlyFn<
+  TArgs extends Array<any>,
+  TClient,
+> extends IsomorphicFn<TArgs, undefined, TClient> {
   server: <TServer>(
     serverImpl: (...args: TArgs) => TServer,
   ) => IsomorphicFn<TArgs, TServer, TClient>

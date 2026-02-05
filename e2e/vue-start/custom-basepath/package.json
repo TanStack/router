@@ -25,11 +25,11 @@
     "@types/express": "^5.0.3",
     "@types/node": "^22.10.2",
     "cross-env": "^10.0.0",
-    "srvx": "^0.10.0",
+    "srvx": "^0.10.1",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.20.3",
     "typescript": "^5.7.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "@vitejs/plugin-vue": "^6.0.3",
     "@vitejs/plugin-vue-jsx": "^5.1.2",
     "vite-tsconfig-paths": "^5.1.4"

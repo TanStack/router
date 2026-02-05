@@ -94,8 +94,10 @@ import * as React from 'react'
 import { createLink, LinkComponent } from '@tanstack/react-router'
 import { Link } from '@chakra-ui/react'
 
-interface ChakraLinkProps
-  extends Omit<React.ComponentPropsWithoutRef<typeof Link>, 'href'> {
+interface ChakraLinkProps extends Omit<
+  React.ComponentPropsWithoutRef<typeof Link>,
+  'href'
+> {
   // Add any additional props you want to pass to the link
 }
 

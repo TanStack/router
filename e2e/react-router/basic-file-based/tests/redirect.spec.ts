@@ -133,4 +133,144 @@ test.describe('redirects', () => {
     await page.waitForURL('/redirect/preload/third')
     await expect(page.getByTestId(`third`)).toBeInViewport()
   })
+
+  // Tests for Route.redirect() method - tests relative redirects
+  test.describe('Route.redirect()', () => {
+    const routeRedirectInternalTestMatrix = combinate({
+      thrower: ['beforeLoad', 'loader'] as const,
+    })
+
+    // Test internal relative redirects (the key feature being tested)
+    routeRedirectInternalTestMatrix.forEach(({ thrower }) => {
+      test(`internal target (relative redirect), navigation: thrower: ${thrower}`, async ({
+        page,
+      }) => {
+        await page.goto('/redirect/internal')
+        await page.waitForLoadState('networkidle')
+
+        const link = page.getByTestId(`via-route-redirect-${thrower}`)
+        await link.click()
+
+        // Should redirect to the relative ./destination route
+        const url = `http://localhost:${PORT}/redirect/internal/destination`
+        await page.waitForURL(url)
+        expect(page.url()).toBe(url)
+        await expect(page.getByTestId('redirect-destination')).toBeInViewport()
+      })
+    })
+
+    routeRedirectInternalTestMatrix.forEach(({ thrower }) => {
+      test(`internal target (relative redirect), direct visit: thrower: ${thrower}`, async ({
+        page,
+      }) => {
+        await page.goto(`/redirect/internal/via-route-redirect-${thrower}`)
+
+        // Should redirect to the relative ./destination route
+        const url = `http://localhost:${PORT}/redirect/internal/destination`
+        await page.waitForURL(url)
+        expect(page.url()).toBe(url)
+        await expect(page.getByTestId('redirect-destination')).toBeInViewport()
+      })
+    })
+
+    // Test external redirects still work with Route.redirect()
+    const externalRouteRedirectTestMatrix = combinate({
+      scenario: ['navigate', 'direct_visit'] as const,
+      thrower: ['beforeLoad', 'loader'] as const,
+    })
+
+    externalRouteRedirectTestMatrix.forEach(({ scenario, thrower }) => {
+      test(`external target: scenario: ${scenario}, thrower: ${thrower}`, async ({
+        page,
+      }) => {
+        const q = queryString.stringify({
+          externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+        })
+
+        if (scenario === 'navigate') {
+          await page.goto(`/redirect/external?${q}`)
+          await page.waitForLoadState('networkidle')
+          await page.getByTestId(`via-route-redirect-${thrower}`).click()
+        } else {
+          await page.goto(
+            `/redirect/external/via-route-redirect-${thrower}?${q}`,
+          )
+        }
+
+        const url = `http://localhost:${EXTERNAL_HOST_PORT}/`
+        await page.waitForURL(url)
+        expect(page.url()).toBe(url)
+      })
+    })
+  })
+
+  // Tests for getRouteApi().redirect() method - tests relative redirects
+  test.describe('getRouteApi().redirect()', () => {
+    const routeApiRedirectInternalTestMatrix = combinate({
+      thrower: ['beforeLoad', 'loader'] as const,
+    })
+
+    // Test internal relative redirects (the key feature being tested)
+    routeApiRedirectInternalTestMatrix.forEach(({ thrower }) => {
+      test(`internal target (relative redirect), navigation: thrower: ${thrower}`, async ({
+        page,
+      }) => {
+        await page.goto('/redirect/internal')
+        await page.waitForLoadState('networkidle')
+
+        const link = page.getByTestId(`via-routeApi-redirect-${thrower}`)
+        await link.click()
+
+        // Should redirect to the relative ./destination route
+        const url = `http://localhost:${PORT}/redirect/internal/destination`
+        await page.waitForURL(url)
+        expect(page.url()).toBe(url)
+        await expect(page.getByTestId('redirect-destination')).toBeInViewport()
+      })
+    })
+
+    routeApiRedirectInternalTestMatrix.forEach(({ thrower }) => {
+      test(`internal target (relative redirect), direct visit: thrower: ${thrower}`, async ({
+        page,
+      }) => {
+        await page.goto(`/redirect/internal/via-routeApi-redirect-${thrower}`)
+
+        // Should redirect to the relative ./destination route
+        const url = `http://localhost:${PORT}/redirect/internal/destination`
+        await page.waitForURL(url)
+        expect(page.url()).toBe(url)
+        await expect(page.getByTestId('redirect-destination')).toBeInViewport()
+      })
+    })
+
+    // Test external redirects still work with getRouteApi().redirect()
+    const externalRouteApiRedirectTestMatrix = combinate({
+      scenario: ['navigate', 'direct_visit'] as const,
+      thrower: ['beforeLoad', 'loader'] as const,
+    })
+
+    externalRouteApiRedirectTestMatrix.forEach(({ scenario, thrower }) => {
+      test(`external target: scenario: ${scenario}, thrower: ${thrower}`, async ({
+        page,
+      }) => {
+        const q = queryString.stringify({
+          externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+        })
+
+        if (scenario === 'navigate') {
+          await page.goto(`/redirect/external?${q}`)
+          await page.waitForLoadState('networkidle')
+          await page.getByTestId(`via-routeApi-redirect-${thrower}`).click()
+        } else {
+          await page.goto(
+            `/redirect/external/via-routeApi-redirect-${thrower}?${q}`,
+          )
+        }
+
+        const url = `http://localhost:${EXTERNAL_HOST_PORT}/`
+        await page.waitForURL(url)
+        expect(page.url()).toBe(url)
+      })
+    })
+  })
 })

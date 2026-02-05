@@ -362,6 +362,8 @@ export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 export type {
   Redirect,
   RedirectOptions,
+  RedirectOptionsRoute,
+  RedirectFnRoute,
   ResolvedRedirect,
   AnyRedirect,
 } from './redirect'

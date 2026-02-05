@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/react-router": "^1.149.3",
-    "@tanstack/router-plugin": "^1.149.3",
+    "@tanstack/react-router": "^1.158.1",
+    "@tanstack/router-plugin": "^1.158.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.1.18"
@@ -23,7 +23,7 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
     "typescript": "^5.9.2",
-    "vite": "^7.1.7",
+    "vite": "^7.3.1",
     "@inlang/paraglide-js": "^2.4.0"
   }
 }
