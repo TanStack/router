@@ -11953,6 +11953,8 @@ importers:
         specifier: workspace:*
         version: link:../router-plugin
 
+  packages/skills: {}
+
   packages/solid-router:
     dependencies:
       '@solid-devtools/logger':
