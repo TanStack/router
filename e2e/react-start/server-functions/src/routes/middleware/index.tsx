@@ -66,6 +66,54 @@ function RouteComponent() {
             Function middleware receives functionId and filename
           </Route.Link>
         </li>
+        <li>
+          <Route.Link
+            to="./server-early-return"
+            data-testid="server-early-return-link"
+          >
+            Server middleware early return (no next() call)
+          </Route.Link>
+        </li>
+        <li>
+          <Route.Link
+            to="/middleware/server-early-return-headers"
+            data-testid="server-early-return-headers-link"
+          >
+            Server middleware early return with headers
+          </Route.Link>
+        </li>
+        <li>
+          <Route.Link
+            to="./server-conditional"
+            data-testid="server-conditional-link"
+          >
+            Server middleware conditional return (next() OR value)
+          </Route.Link>
+        </li>
+        <li>
+          <Route.Link
+            to="./client-early-return"
+            data-testid="client-early-return-link"
+          >
+            Client middleware early return (no next() call)
+          </Route.Link>
+        </li>
+        <li>
+          <Route.Link
+            to="./client-conditional"
+            data-testid="client-conditional-link"
+          >
+            Client middleware conditional return (next() OR value)
+          </Route.Link>
+        </li>
+        <li>
+          <Route.Link
+            to="./nested-early-return"
+            data-testid="nested-early-return-link"
+          >
+            Nested middleware early return
+          </Route.Link>
+        </li>
       </ul>
     </div>
   )

@@ -808,3 +808,211 @@ test('createMiddleware with type request can return sync Response', () => {
     })
   })
 })
+
+// =============================================================================
+// Middleware Early Return Tests
+// =============================================================================
+
+test('createMiddleware server can return early without calling next using result()', () => {
+  const middleware = createMiddleware({ type: 'function' }).server(
+    async ({ result, next }) => {
+      expectTypeOf(next).toBeFunction()
+      return result({
+        data: {
+          earlyReturn: true as const,
+          message: 'Short-circuited' as const,
+        },
+      })
+    },
+  )
+
+  expectTypeOf(middleware['~types']['serverEarlyReturn']).toEqualTypeOf<{
+    earlyReturn: true
+    message: 'Short-circuited'
+  }>()
+})
+
+test('createMiddleware server can conditionally call next or return value using result()', () => {
+  const middleware = createMiddleware({ type: 'function' })
+    .inputValidator((input: { shouldShortCircuit: boolean }) => input)
+    .server(async ({ data, next, result }) => {
+      if (data.shouldShortCircuit) {
+        return result({
+          data: {
+            earlyReturn: true as const,
+            message: 'Short-circuited' as const,
+          },
+        })
+      }
+      return next({ context: { passedThrough: true } })
+    })
+
+  expectTypeOf(middleware['~types']['serverEarlyReturn']).toEqualTypeOf<{
+    earlyReturn: true
+    message: 'Short-circuited'
+  }>()
+})
+
+test('createMiddleware client can return early without calling next using result()', () => {
+  const middleware = createMiddleware({ type: 'function' }).client(
+    async ({ result, next }) => {
+      expectTypeOf(next).toBeFunction()
+      return result({
+        data: {
+          earlyReturn: true as const,
+          message: 'Client short-circuited' as const,
+        },
+      })
+    },
+  )
+
+  expectTypeOf(middleware['~types']['clientEarlyReturn']).toEqualTypeOf<{
+    earlyReturn: true
+    message: 'Client short-circuited'
+  }>()
+})
+
+test('createMiddleware client can conditionally call next or return value using result()', () => {
+  const middleware = createMiddleware({ type: 'function' })
+    .inputValidator((input: { shouldShortCircuit: boolean }) => input)
+    .client(async ({ data, next, result }) => {
+      if (data.shouldShortCircuit) {
+        return result({
+          data: {
+            earlyReturn: true as const,
+            message: 'Client short-circuited' as const,
+          },
+        })
+      }
+      return next({ sendContext: { fromClient: true } })
+    })
+
+  expectTypeOf(middleware['~types']['clientEarlyReturn']).toEqualTypeOf<{
+    earlyReturn: true
+    message: 'Client short-circuited'
+  }>()
+})
+
+test('nested middleware where inner middleware returns early using result()', () => {
+  const innerMiddleware = createMiddleware({ type: 'function' })
+    .inputValidator((input: { level: string }) => input)
+    .server(async ({ data, next, result }) => {
+      if (data.level === 'inner') {
+        return result({ data: { returnedFrom: 'inner' as const, level: 2 } })
+      }
+      return next({ context: { innerPassed: true } })
+    })
+
+  const outerMiddleware = createMiddleware({ type: 'function' })
+    .middleware([innerMiddleware])
+    .server(async ({ data, next, context, result }) => {
+      if (data.level === 'outer') {
+        return result({
+          data: {
+            returnedFrom: 'outer' as const,
+            level: 1,
+            innerContext: context,
+          },
+        })
+      }
+      return next({ context: { outerPassed: true } })
+    })
+
+  expectTypeOf(innerMiddleware['~types']['serverEarlyReturn']).toEqualTypeOf<{
+    returnedFrom: 'inner'
+    level: number
+  }>()
+  expectTypeOf(outerMiddleware['~types']['serverEarlyReturn']).toEqualTypeOf<{
+    returnedFrom: 'outer'
+    level: number
+    innerContext: { innerPassed: boolean }
+  }>()
+})
+
+test('deeply nested middleware chain with early return at each level using result()', () => {
+  const deepMiddleware = createMiddleware({ type: 'function' })
+    .inputValidator(
+      (input: { earlyReturnLevel: 'none' | 'deep' | 'middle' | 'outer' }) =>
+        input,
+    )
+    .server(async ({ data, next, result }) => {
+      if (data.earlyReturnLevel === 'deep') {
+        return result({ data: { returnedFrom: 'deep' as const, level: 3 } })
+      }
+      return next({ context: { deepPassed: true } })
+    })
+
+  const middleMiddleware = createMiddleware({ type: 'function' })
+    .middleware([deepMiddleware])
+    .server(async ({ data, next, context, result }) => {
+      if (data.earlyReturnLevel === 'middle') {
+        return result({
+          data: {
+            returnedFrom: 'middle' as const,
+            level: 2,
+            deepContext: context,
+          },
+        })
+      }
+      return next({ context: { middlePassed: true } })
+    })
+
+  const outerMiddleware = createMiddleware({ type: 'function' })
+    .middleware([middleMiddleware])
+    .server(async ({ data, next, context, result }) => {
+      if (data.earlyReturnLevel === 'outer') {
+        return result({
+          data: {
+            returnedFrom: 'outer' as const,
+            level: 1,
+            middleContext: context,
+          },
+        })
+      }
+      return next({ context: { outerPassed: true } })
+    })
+
+  expectTypeOf(deepMiddleware['~types']['serverEarlyReturn']).toEqualTypeOf<{
+    returnedFrom: 'deep'
+    level: number
+  }>()
+  expectTypeOf(middleMiddleware['~types']['serverEarlyReturn']).toEqualTypeOf<{
+    returnedFrom: 'middle'
+    level: number
+    deepContext: { deepPassed: boolean }
+  }>()
+  expectTypeOf(outerMiddleware['~types']['serverEarlyReturn']).toEqualTypeOf<{
+    returnedFrom: 'outer'
+    level: number
+    middleContext: { deepPassed: boolean; middlePassed: boolean }
+  }>()
+})
+
+test('client middleware early return prevents server call using result()', () => {
+  const clientEarlyReturnMiddleware = createMiddleware({ type: 'function' })
+    .inputValidator((input: { skipServer: boolean }) => input)
+    .client(async ({ data, next, result }) => {
+      if (data.skipServer) {
+        return result({
+          data: {
+            source: 'client' as const,
+            message: 'Skipped server entirely' as const,
+          },
+        })
+      }
+      return next({ sendContext: { clientCalled: true } })
+    })
+
+  const withServerMiddleware = createMiddleware({ type: 'function' })
+    .middleware([clientEarlyReturnMiddleware])
+    .server(async ({ next, context }) => {
+      return next({
+        context: { serverReached: true, clientContext: context },
+      })
+    })
+
+  expectTypeOf(
+    clientEarlyReturnMiddleware['~types']['clientEarlyReturn'],
+  ).toEqualTypeOf<{ source: 'client'; message: 'Skipped server entirely' }>()
+  expectTypeOf(withServerMiddleware).toHaveProperty('options')
+})

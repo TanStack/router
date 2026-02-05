@@ -864,3 +864,142 @@ test('createServerFn respects TsrSerializable', () => {
     Promise<{ nested: { custom: MyCustomTypeSerializable } }>
   >()
 })
+
+describe('middleware early return types', () => {
+  test('client-only early return blocks server early return types', () => {
+    const clientStop = createMiddleware({ type: 'function' }).client(
+      ({ result }) => {
+        return result({ data: { fromClient: true as const } })
+      },
+    )
+
+    const serverStop = createMiddleware({ type: 'function' }).server(
+      ({ result }) => {
+        return result({ data: { fromServer: true as const } })
+      },
+    )
+
+    const fn = createServerFn()
+      .middleware([clientStop, serverStop])
+      .handler(() => {
+        return { handler: true as const }
+      })
+
+    expectTypeOf<Awaited<ReturnType<typeof fn>>>()
+    expectTypeOf<{ fromClient: true }>()
+  })
+
+  test('client early return that can next includes server early returns', () => {
+    const clientMaybeStop = createMiddleware({ type: 'function' }).client(
+      ({ next, result }) => {
+        if (Math.random() > 0.5) {
+          return result({ data: { fromClient: true as const } })
+        }
+        return next()
+      },
+    )
+
+    const serverStop = createMiddleware({ type: 'function' }).server(
+      ({ result }) => {
+        return result({ data: { fromServer: true as const } })
+      },
+    )
+
+    const fn = createServerFn()
+      .middleware([clientMaybeStop, serverStop])
+      .handler(() => {
+        return { handler: true as const }
+      })
+
+    expectTypeOf<Awaited<ReturnType<typeof fn>>>()
+    expectTypeOf<
+      { handler: true } | { fromClient: true } | { fromServer: true }
+    >()
+  })
+  test('server function with middleware that may return early using result()', () => {
+    const earlyReturnMiddleware = createMiddleware({ type: 'function' }).server(
+      ({ next, result }) => {
+        const shouldShortCircuit = Math.random() > 0.5
+        if (shouldShortCircuit) {
+          return result({
+            data: {
+              earlyReturn: true as const,
+              value: 'short-circuited' as const,
+            },
+          })
+        }
+        return next({ context: { middlewareRan: true } as const })
+      },
+    )
+
+    const fn = createServerFn()
+      .middleware([earlyReturnMiddleware])
+      .handler(() => {
+        return { handlerResult: 'from-handler' as const }
+      })
+
+    // `expectTypeOf().toEqualTypeOf()` does not behave well for unions of object
+    // types in this dts harness. Ensure both sides are compatible instead.
+    type Actual = Awaited<ReturnType<typeof fn>>
+    type Expected =
+      | { handlerResult: 'from-handler' }
+      | { earlyReturn: true; value: 'short-circuited' }
+
+    type AssertExtends<T, U extends T> = true
+    type _expectedExtendsActual = AssertExtends<Actual, Expected>
+    type _actualExtendsExpected = AssertExtends<Expected, Actual>
+  })
+
+  test('client middleware early return types using result()', () => {
+    const clientEarlyReturnMiddleware = createMiddleware({
+      type: 'function',
+    }).client(({ next, result }) => {
+      const cached = true
+      if (cached) {
+        return result({ data: { fromCache: true as const } })
+      }
+      return next()
+    })
+
+    const fn = createServerFn()
+      .middleware([clientEarlyReturnMiddleware])
+      .handler(() => {
+        return { fromServer: true as const }
+      })
+
+    expectTypeOf<ReturnType<typeof fn>>().toEqualTypeOf<
+      Promise<{ fromServer: true } | { fromCache: true }>
+    >()
+  })
+
+  test('nested middleware early returns using result()', () => {
+    const outerMiddleware = createMiddleware({ type: 'function' }).server(
+      ({ next, result }) => {
+        if (Math.random() > 0.9) {
+          return result({ data: { level: 'outer' as const } })
+        }
+        return next({ context: { outer: true } as const })
+      },
+    )
+
+    const innerMiddleware = createMiddleware({ type: 'function' })
+      .middleware([outerMiddleware])
+      .server(({ next, result }) => {
+        if (Math.random() > 0.9) {
+          return result({ data: { level: 'inner' as const } })
+        }
+        return next({ context: { inner: true } as const })
+      })
+
+    const fn = createServerFn()
+      .middleware([innerMiddleware])
+      .handler(() => {
+        return { level: 'handler' as const }
+      })
+
+    expectTypeOf<Awaited<ReturnType<typeof fn>>>()
+    expectTypeOf<
+      { level: 'handler' } | { level: 'outer' } | { level: 'inner' }
+    >()
+  })
+})

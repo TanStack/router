@@ -40,11 +40,17 @@ import { Route as RedirectTestTargetRouteImport } from './routes/redirect-test/t
 import { Route as RedirectTestSsrTargetRouteImport } from './routes/redirect-test-ssr/target'
 import { Route as MiddlewareUnhandledExceptionRouteImport } from './routes/middleware/unhandled-exception'
 import { Route as MiddlewareServerImportMiddlewareRouteImport } from './routes/middleware/server-import-middleware'
+import { Route as MiddlewareServerEarlyReturnHeadersRouteImport } from './routes/middleware/server-early-return-headers'
+import { Route as MiddlewareServerEarlyReturnRouteImport } from './routes/middleware/server-early-return'
+import { Route as MiddlewareServerConditionalRouteImport } from './routes/middleware/server-conditional'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
+import { Route as MiddlewareNestedEarlyReturnRouteImport } from './routes/middleware/nested-early-return'
 import { Route as MiddlewareMiddlewareFactoryRouteImport } from './routes/middleware/middleware-factory'
 import { Route as MiddlewareFunctionMetadataRouteImport } from './routes/middleware/function-metadata'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
+import { Route as MiddlewareClientEarlyReturnRouteImport } from './routes/middleware/client-early-return'
+import { Route as MiddlewareClientConditionalRouteImport } from './routes/middleware/client-conditional'
 import { Route as MiddlewareCatchHandlerErrorRouteImport } from './routes/middleware/catch-handler-error'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as AbortSignalMethodRouteImport } from './routes/abort-signal/$method'
@@ -209,6 +215,24 @@ const MiddlewareServerImportMiddlewareRoute =
     path: '/middleware/server-import-middleware',
     getParentRoute: () => rootRouteImport,
   } as any)
+const MiddlewareServerEarlyReturnHeadersRoute =
+  MiddlewareServerEarlyReturnHeadersRouteImport.update({
+    id: '/middleware/server-early-return-headers',
+    path: '/middleware/server-early-return-headers',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MiddlewareServerEarlyReturnRoute =
+  MiddlewareServerEarlyReturnRouteImport.update({
+    id: '/middleware/server-early-return',
+    path: '/middleware/server-early-return',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MiddlewareServerConditionalRoute =
+  MiddlewareServerConditionalRouteImport.update({
+    id: '/middleware/server-conditional',
+    path: '/middleware/server-conditional',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MiddlewareSendServerFnRoute = MiddlewareSendServerFnRouteImport.update({
   id: '/middleware/send-serverFn',
   path: '/middleware/send-serverFn',
@@ -218,6 +242,12 @@ const MiddlewareRequestMiddlewareRoute =
   MiddlewareRequestMiddlewareRouteImport.update({
     id: '/middleware/request-middleware',
     path: '/middleware/request-middleware',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MiddlewareNestedEarlyReturnRoute =
+  MiddlewareNestedEarlyReturnRouteImport.update({
+    id: '/middleware/nested-early-return',
+    path: '/middleware/nested-early-return',
     getParentRoute: () => rootRouteImport,
   } as any)
 const MiddlewareMiddlewareFactoryRoute =
@@ -236,6 +266,18 @@ const MiddlewareClientMiddlewareRouterRoute =
   MiddlewareClientMiddlewareRouterRouteImport.update({
     id: '/middleware/client-middleware-router',
     path: '/middleware/client-middleware-router',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MiddlewareClientEarlyReturnRoute =
+  MiddlewareClientEarlyReturnRouteImport.update({
+    id: '/middleware/client-early-return',
+    path: '/middleware/client-early-return',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const MiddlewareClientConditionalRoute =
+  MiddlewareClientConditionalRouteImport.update({
+    id: '/middleware/client-conditional',
+    path: '/middleware/client-conditional',
     getParentRoute: () => rootRouteImport,
   } as any)
 const MiddlewareCatchHandlerErrorRoute =
@@ -294,11 +336,17 @@ export interface FileRoutesByFullPath {
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
+  '/middleware/client-conditional': typeof MiddlewareClientConditionalRoute
+  '/middleware/client-early-return': typeof MiddlewareClientEarlyReturnRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
   '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
+  '/middleware/nested-early-return': typeof MiddlewareNestedEarlyReturnRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/server-conditional': typeof MiddlewareServerConditionalRoute
+  '/middleware/server-early-return': typeof MiddlewareServerEarlyReturnRoute
+  '/middleware/server-early-return-headers': typeof MiddlewareServerEarlyReturnHeadersRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
   '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
@@ -338,11 +386,17 @@ export interface FileRoutesByTo {
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
+  '/middleware/client-conditional': typeof MiddlewareClientConditionalRoute
+  '/middleware/client-early-return': typeof MiddlewareClientEarlyReturnRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
   '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
+  '/middleware/nested-early-return': typeof MiddlewareNestedEarlyReturnRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/server-conditional': typeof MiddlewareServerConditionalRoute
+  '/middleware/server-early-return': typeof MiddlewareServerEarlyReturnRoute
+  '/middleware/server-early-return-headers': typeof MiddlewareServerEarlyReturnHeadersRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
   '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
@@ -383,11 +437,17 @@ export interface FileRoutesById {
   '/abort-signal/$method': typeof AbortSignalMethodRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/catch-handler-error': typeof MiddlewareCatchHandlerErrorRoute
+  '/middleware/client-conditional': typeof MiddlewareClientConditionalRoute
+  '/middleware/client-early-return': typeof MiddlewareClientEarlyReturnRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/function-metadata': typeof MiddlewareFunctionMetadataRoute
   '/middleware/middleware-factory': typeof MiddlewareMiddlewareFactoryRoute
+  '/middleware/nested-early-return': typeof MiddlewareNestedEarlyReturnRoute
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
+  '/middleware/server-conditional': typeof MiddlewareServerConditionalRoute
+  '/middleware/server-early-return': typeof MiddlewareServerEarlyReturnRoute
+  '/middleware/server-early-return-headers': typeof MiddlewareServerEarlyReturnHeadersRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
   '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
@@ -429,11 +489,17 @@ export interface FileRouteTypes {
     | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/catch-handler-error'
+    | '/middleware/client-conditional'
+    | '/middleware/client-early-return'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
     | '/middleware/middleware-factory'
+    | '/middleware/nested-early-return'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/server-conditional'
+    | '/middleware/server-early-return'
+    | '/middleware/server-early-return-headers'
     | '/middleware/server-import-middleware'
     | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
@@ -473,11 +539,17 @@ export interface FileRouteTypes {
     | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/catch-handler-error'
+    | '/middleware/client-conditional'
+    | '/middleware/client-early-return'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
     | '/middleware/middleware-factory'
+    | '/middleware/nested-early-return'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/server-conditional'
+    | '/middleware/server-early-return'
+    | '/middleware/server-early-return-headers'
     | '/middleware/server-import-middleware'
     | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
@@ -517,11 +589,17 @@ export interface FileRouteTypes {
     | '/abort-signal/$method'
     | '/cookies/set'
     | '/middleware/catch-handler-error'
+    | '/middleware/client-conditional'
+    | '/middleware/client-early-return'
     | '/middleware/client-middleware-router'
     | '/middleware/function-metadata'
     | '/middleware/middleware-factory'
+    | '/middleware/nested-early-return'
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
+    | '/middleware/server-conditional'
+    | '/middleware/server-early-return'
+    | '/middleware/server-early-return-headers'
     | '/middleware/server-import-middleware'
     | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
@@ -562,11 +640,17 @@ export interface RootRouteChildren {
   AbortSignalMethodRoute: typeof AbortSignalMethodRoute
   CookiesSetRoute: typeof CookiesSetRoute
   MiddlewareCatchHandlerErrorRoute: typeof MiddlewareCatchHandlerErrorRoute
+  MiddlewareClientConditionalRoute: typeof MiddlewareClientConditionalRoute
+  MiddlewareClientEarlyReturnRoute: typeof MiddlewareClientEarlyReturnRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareFunctionMetadataRoute: typeof MiddlewareFunctionMetadataRoute
   MiddlewareMiddlewareFactoryRoute: typeof MiddlewareMiddlewareFactoryRoute
+  MiddlewareNestedEarlyReturnRoute: typeof MiddlewareNestedEarlyReturnRoute
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
+  MiddlewareServerConditionalRoute: typeof MiddlewareServerConditionalRoute
+  MiddlewareServerEarlyReturnRoute: typeof MiddlewareServerEarlyReturnRoute
+  MiddlewareServerEarlyReturnHeadersRoute: typeof MiddlewareServerEarlyReturnHeadersRoute
   MiddlewareServerImportMiddlewareRoute: typeof MiddlewareServerImportMiddlewareRoute
   MiddlewareUnhandledExceptionRoute: typeof MiddlewareUnhandledExceptionRoute
   RedirectTestSsrTargetRoute: typeof RedirectTestSsrTargetRoute
@@ -805,6 +889,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiddlewareServerImportMiddlewareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/server-early-return-headers': {
+      id: '/middleware/server-early-return-headers'
+      path: '/middleware/server-early-return-headers'
+      fullPath: '/middleware/server-early-return-headers'
+      preLoaderRoute: typeof MiddlewareServerEarlyReturnHeadersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/middleware/server-early-return': {
+      id: '/middleware/server-early-return'
+      path: '/middleware/server-early-return'
+      fullPath: '/middleware/server-early-return'
+      preLoaderRoute: typeof MiddlewareServerEarlyReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/middleware/server-conditional': {
+      id: '/middleware/server-conditional'
+      path: '/middleware/server-conditional'
+      fullPath: '/middleware/server-conditional'
+      preLoaderRoute: typeof MiddlewareServerConditionalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/send-serverFn': {
       id: '/middleware/send-serverFn'
       path: '/middleware/send-serverFn'
@@ -817,6 +922,13 @@ declare module '@tanstack/react-router' {
       path: '/middleware/request-middleware'
       fullPath: '/middleware/request-middleware'
       preLoaderRoute: typeof MiddlewareRequestMiddlewareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/middleware/nested-early-return': {
+      id: '/middleware/nested-early-return'
+      path: '/middleware/nested-early-return'
+      fullPath: '/middleware/nested-early-return'
+      preLoaderRoute: typeof MiddlewareNestedEarlyReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/middleware/middleware-factory': {
@@ -838,6 +950,20 @@ declare module '@tanstack/react-router' {
       path: '/middleware/client-middleware-router'
       fullPath: '/middleware/client-middleware-router'
       preLoaderRoute: typeof MiddlewareClientMiddlewareRouterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/middleware/client-early-return': {
+      id: '/middleware/client-early-return'
+      path: '/middleware/client-early-return'
+      fullPath: '/middleware/client-early-return'
+      preLoaderRoute: typeof MiddlewareClientEarlyReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/middleware/client-conditional': {
+      id: '/middleware/client-conditional'
+      path: '/middleware/client-conditional'
+      fullPath: '/middleware/client-conditional'
+      preLoaderRoute: typeof MiddlewareClientConditionalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/middleware/catch-handler-error': {
@@ -906,11 +1032,18 @@ const rootRouteChildren: RootRouteChildren = {
   AbortSignalMethodRoute: AbortSignalMethodRoute,
   CookiesSetRoute: CookiesSetRoute,
   MiddlewareCatchHandlerErrorRoute: MiddlewareCatchHandlerErrorRoute,
+  MiddlewareClientConditionalRoute: MiddlewareClientConditionalRoute,
+  MiddlewareClientEarlyReturnRoute: MiddlewareClientEarlyReturnRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareFunctionMetadataRoute: MiddlewareFunctionMetadataRoute,
   MiddlewareMiddlewareFactoryRoute: MiddlewareMiddlewareFactoryRoute,
+  MiddlewareNestedEarlyReturnRoute: MiddlewareNestedEarlyReturnRoute,
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
+  MiddlewareServerConditionalRoute: MiddlewareServerConditionalRoute,
+  MiddlewareServerEarlyReturnRoute: MiddlewareServerEarlyReturnRoute,
+  MiddlewareServerEarlyReturnHeadersRoute:
+    MiddlewareServerEarlyReturnHeadersRoute,
   MiddlewareServerImportMiddlewareRoute: MiddlewareServerImportMiddlewareRoute,
   MiddlewareUnhandledExceptionRoute: MiddlewareUnhandledExceptionRoute,
   RedirectTestSsrTargetRoute: RedirectTestSsrTargetRoute,
