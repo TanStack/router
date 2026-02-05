@@ -914,23 +914,29 @@ test('reproducer for #6388 - rapid navigation between parameterized routes shoul
   render(<RouterProvider router={router} />)
   await act(() => router.latestLoadPromise)
 
+  const pendingComponent = screen.findByTestId('pending-component')
   expect(await screen.findByTestId('home-page')).toBeInTheDocument()
 
   const param1Link = await screen.findByTestId('link-to-param-1')
   fireEvent.click(param1Link)
+  expect(await pendingComponent).toBeInTheDocument()
 
   const param2Link = await screen.findByTestId('link-to-param-2')
   fireEvent.click(param2Link)
+  expect(await pendingComponent).toBeInTheDocument()
 
   fireEvent.click(param1Link)
+  expect(await pendingComponent).toBeInTheDocument()
 
   await act(() => router.latestLoadPromise)
 
   expect(onAbortMock).toHaveBeenCalled()
   expect(errorComponentRenderCount).not.toHaveBeenCalled()
   expect(screen.queryByTestId('error-component')).not.toBeInTheDocument()
+  expect(await pendingComponent).not.toBeInTheDocument()
 
   const paramPage = await screen.findByTestId('param-page')
   expect(paramPage).toBeInTheDocument()
+  expect(paramPage).toHaveTextContent('Param Component 1 Done')
   expect(loaderCompleteMock).toHaveBeenCalled()
 })
