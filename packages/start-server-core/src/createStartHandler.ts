@@ -218,9 +218,15 @@ export function createStartHandler<TRegister = Register>(
 
     try {
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
-      const url = getNormalizedURL(request.url)
+      // during normalization paths like '//posts' are flattened to '/posts'.
+      // in these cases we would prefer to redirect to the new path
+      const { url, handledProtocolRelativeURL } = getNormalizedURL(request.url)
       const href = url.pathname + url.search + url.hash
       const origin = getOrigin(request)
+
+      if (handledProtocolRelativeURL) {
+        return Response.redirect(url, 302)
+      }
 
       const entries = await getEntries()
       const startOptions: AnyStartInstanceOptions =
