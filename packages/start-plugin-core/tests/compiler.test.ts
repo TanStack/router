@@ -454,3 +454,168 @@ test('ingestModule handles empty code gracefully', () => {
     compiler.ingestModule({ code: '   \n\t  ', id: 'whitespace.ts' })
   }).not.toThrow()
 })
+
+describe('re-export chain resolution', () => {
+  // This tests the fix for https://github.com/TanStack/router/issues/6583
+  // Third-party packages may import from @tanstack/start-client-core (which re-exports
+  // from @tanstack/start-fn-stubs) rather than directly from @tanstack/react-start.
+  // The compiler should correctly resolve these imports via the slow path.
+
+  // Virtual module contents for simulating the re-export chain:
+  // @third-party/lib -> @tanstack/start-client-core -> @tanstack/start-fn-stubs
+  //
+  // Note: We don't need a virtual module for @tanstack/start-fn-stubs because
+  // init() hardcodes it in knownRootImports. When the slow path resolution reaches
+  // that package, it uses the fast path lookup and never needs to parse the module.
+  const virtualModules: Record<string, string> = {
+    // The client-core package that re-exports from stubs
+    '@tanstack/start-client-core': `
+      export { createIsomorphicFn, createServerOnlyFn, createClientOnlyFn } from '@tanstack/start-fn-stubs'
+    `,
+    // A third-party package that imports from start-client-core
+    '@third-party/lib': `
+      import { createIsomorphicFn, createClientOnlyFn } from '@tanstack/start-client-core'
+
+      export const getThemeData = createIsomorphicFn()
+        .client(() => 'client-theme')
+        .server(() => 'server-theme')
+
+      export const initClientFeature = createClientOnlyFn(() => {
+        console.log('client only initialization')
+        return 'initialized'
+      })
+    `,
+  }
+
+  function createCompilerWithVirtualModules(env: 'client' | 'server') {
+    const envName = env === 'client' ? 'client' : 'ssr'
+    const lookupKinds: Set<LookupKind> = new Set([
+      'IsomorphicFn',
+      'ServerOnlyFn',
+      'ClientOnlyFn',
+    ])
+
+    // Note: We use empty lookupConfigurations because this test is specifically
+    // testing the slow path resolution through re-export chains. The compiler
+    // should still work because @tanstack/start-fn-stubs is hardcoded in
+    // knownRootImports during init().
+    const compiler: StartCompiler = new StartCompiler({
+      env,
+      envName,
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds,
+      lookupConfigurations: [],
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return virtualModules[id] ? id : null
+      },
+    })
+
+    return compiler
+  }
+
+  const testCases: Array<{
+    env: 'client' | 'server'
+    fn: string
+    shouldContain: Array<string>
+    shouldNotContain: Array<string>
+  }> = [
+    {
+      env: 'client',
+      fn: 'createIsomorphicFn',
+      shouldContain: ['client-theme'],
+      shouldNotContain: ['server-theme'],
+    },
+    {
+      env: 'server',
+      fn: 'createIsomorphicFn',
+      shouldContain: ['server-theme'],
+      shouldNotContain: ['client-theme'],
+    },
+    {
+      env: 'client',
+      fn: 'createClientOnlyFn',
+      shouldContain: ['client only initialization'],
+      shouldNotContain: [],
+    },
+    {
+      env: 'server',
+      fn: 'createClientOnlyFn',
+      shouldContain: ['throw new Error'],
+      shouldNotContain: ['client only initialization'],
+    },
+  ]
+
+  test.each(testCases)(
+    'resolves $fn via re-export chain on $env',
+    async ({ env, shouldContain, shouldNotContain }) => {
+      const compiler = createCompilerWithVirtualModules(env)
+      const code = virtualModules['@third-party/lib']!
+
+      const result = await compiler.compile({
+        code,
+        id: '@third-party/lib',
+      })
+
+      expect(result).not.toBeNull()
+      for (const str of shouldContain) {
+        expect(result!.code).toContain(str)
+      }
+      for (const str of shouldNotContain) {
+        expect(result!.code).not.toContain(str)
+      }
+    },
+  )
+
+  test('handles deeper re-export chains', async () => {
+    // Add another level to the chain
+    const deeperVirtualModules: Record<string, string> = {
+      ...virtualModules,
+      // Another intermediate package
+      '@another-intermediate/pkg': `
+        export { createIsomorphicFn } from '@tanstack/start-client-core'
+      `,
+      '@deep-third-party/lib': `
+        import { createIsomorphicFn } from '@another-intermediate/pkg'
+        export const deepFn = createIsomorphicFn()
+          .client(() => 'deep-client')
+          .server(() => 'deep-server')
+      `,
+    }
+
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'client',
+      envName: 'client',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(['IsomorphicFn', 'ServerOnlyFn', 'ClientOnlyFn']),
+      lookupConfigurations: [],
+      loadModule: async (id) => {
+        const code = deeperVirtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return deeperVirtualModules[id] ? id : null
+      },
+    })
+
+    const result = await compiler.compile({
+      code: deeperVirtualModules['@deep-third-party/lib']!,
+      id: '@deep-third-party/lib',
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('deep-client')
+    expect(result!.code).not.toContain('deep-server')
+  })
+})
