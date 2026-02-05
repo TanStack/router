@@ -1,10 +1,12 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
+import { getRequest } from '@tanstack/vue-start/server'
 import { defineComponent, ref } from 'vue'
 
 const abortableServerFn = createServerFn().handler(
-  async ({ context, signal }) => {
-    console.log('server function started', { context, signal })
+  async ({ context }) => {
+    console.log('server function started', { context })
+    const signal = getRequest().signal
     return new Promise<string>((resolve, reject) => {
       if (signal.aborted) {
         return reject(new Error('Aborted before start'))
