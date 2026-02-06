@@ -21,4 +21,3 @@ export function getRouter() {
     plugins: [createSsrQueryPlugin({ queryClient })],
   })
 }
-

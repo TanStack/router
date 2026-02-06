@@ -61,7 +61,6 @@ The plugin provides the `queryClient` to your router context automatically via t
 
 By default, the integration wraps your router with a `QueryClientProvider`. If you already provide your own provider, pass `wrapQueryClient: false` and keep your custom wrapper.
 
-
 ### Migrating from `setupRouterSsrQueryIntegration`
 
 > [!NOTE]

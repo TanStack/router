@@ -174,6 +174,6 @@ createStartContextBridge({
 
 The context bridge integrates with the router plugin type system:
 
-- The `select` function is typed based on your registered middleware 
+- The `select` function is typed based on your registered middleware
 - The `context` option in `createRouter` becomes optional for keys that plugins provide
 - Route loaders and components see the bridged values in their `context` parameter with full type inference
