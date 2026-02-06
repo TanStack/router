@@ -12,6 +12,7 @@ const config = defineConfig({
     watch: false,
     environment: 'jsdom',
     setupFiles: ['./src/tests/setupTests.tsx'],
+    coverage: { enabled: true },
   },
 })
 

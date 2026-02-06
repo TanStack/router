@@ -8,6 +8,7 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     typecheck: { enabled: true },
+    coverage: { enabled: true },
   },
 })
 
