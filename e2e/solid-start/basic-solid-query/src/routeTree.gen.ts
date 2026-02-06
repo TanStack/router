@@ -262,7 +262,7 @@ declare module '@tanstack/solid-router' {
     '/_layout': {
       id: '/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -311,7 +311,7 @@ declare module '@tanstack/solid-router' {
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }

@@ -1,19 +1,14 @@
 import { QueryClient } from '@tanstack/solid-query'
 import { createRouter } from '@tanstack/solid-router'
-import { setupRouterSsrQueryIntegration } from '@tanstack/solid-router-ssr-query'
+import { createSsrQueryPlugin } from '@tanstack/solid-router-ssr-query'
 import { routeTree } from './routeTree.gen'
 
 export function getRouter() {
   const queryClient = new QueryClient()
-  const router = createRouter({
+  return createRouter({
     routeTree,
-    context: { queryClient },
     scrollRestoration: true,
     defaultPreload: 'intent',
+    plugins: [createSsrQueryPlugin({ queryClient })],
   })
-  setupRouterSsrQueryIntegration({
-    router,
-    queryClient,
-  })
-  return router
 }
