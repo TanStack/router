@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from './utils/isSpaMode'
 
 test.use({
   whitelistErrors: [
@@ -89,7 +90,9 @@ test.describe('Open redirect prevention', () => {
       expect(url.origin).toBe(new URL(baseURL!).origin)
       // Path should be collapsed to /test-path (not //test-path/)
       expect(url.pathname).toMatch(/^\/test-path\/?$/)
-      expect(res?.request().redirectedFrom()?.url()).not.toBe(undefined)
+      if (!isSpaMode) {
+        expect(res?.request().redirectedFrom()?.url()).not.toBe(undefined)
+      }
     })
   })
 
