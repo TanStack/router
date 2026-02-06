@@ -30,7 +30,6 @@ import {
   defaultStreamHandler,
 } from '@tanstack/react-start/server'
 import { createServerEntry } from '@tanstack/react-start/server-entry'
-import { getRequest } from '@tanstack/react-start/server'
 
 const handler = createStartHandler({
   handler: defaultStreamHandler,
@@ -46,7 +45,7 @@ When the string is empty (or not set), the URLs are left unchanged.
 
 ### Callback
 
-For more control, pass a callback that receives `{ url, type }` and returns a new URL (or a `Promise` of one). If you need the request, call `getRequest()` inside the callback. Like the string form, the result is cached after the first request by default:
+For more control, pass a callback that receives `{ url, type }` and returns a new URL (or a `Promise` of one). By default, the transformed manifest is cached after the first request (`cache: true`), so the callback only runs once in production:
 
 ```tsx
 // src/server.ts
@@ -55,7 +54,6 @@ import {
   defaultStreamHandler,
 } from '@tanstack/react-start/server'
 import { createServerEntry } from '@tanstack/react-start/server-entry'
-import { getRequest } from '@tanstack/react-start/server'
 
 const handler = createStartHandler({
   handler: defaultStreamHandler,
@@ -68,6 +66,8 @@ const handler = createStartHandler({
 
 export default createServerEntry({ fetch: handler })
 ```
+
+If you need per-request behavior (for example, choosing a CDN based on a header), use the object form with `cache: false`.
 
 The `type` parameter tells you what kind of asset URL is being transformed:
 
@@ -88,6 +88,7 @@ import {
   defaultStreamHandler,
 } from '@tanstack/react-start/server'
 import { createServerEntry } from '@tanstack/react-start/server-entry'
+import { getRequest } from '@tanstack/react-start/server'
 
 const handler = createStartHandler({
   handler: defaultStreamHandler,
@@ -109,14 +110,14 @@ export default createServerEntry({ fetch: handler })
 
 The object form accepts:
 
-| Property          | Type                            | Description                                                                                   |
-| ----------------- | ------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `transform`       | `string \| (context) => string` | A string prefix or callback, same as the shorthand forms above.                               |
-| `createTransform` | `({ warmup: true }              | { warmup: false; request: Request }) => (asset) => string \| Promise<string>`                 | Async factory that runs once per manifest computation and returns a per-asset transform. Mutually exclusive with `transform`. |
-| `cache`           | `boolean`                       | Whether to cache the transformed manifest. Defaults to `true`.                                |
-| `warmup`          | `boolean`                       | When `true`, warms up the cached manifest on server startup (prod only). Defaults to `false`. |
+| Property          | Type | Description |
+| ----------------- | ---- | ----------- |
+| `transform`       | `string \| (asset) => string \| Promise<string>` | A string prefix or callback, same as the shorthand forms above. |
+| `createTransform` | `(ctx: { warmup: true } \| { warmup: false; request: Request }) => (asset) => string \| Promise<string>` | Async factory that runs once per manifest computation and returns a per-asset transform. Mutually exclusive with `transform`. |
+| `cache`           | `boolean` | Whether to cache the transformed manifest. Defaults to `true`. |
+| `warmup`          | `boolean` | When `true`, warms up the cached manifest on server startup (prod only). Defaults to `false`. |
 
-If you need to do async work once (e.g. fetch a CDN origin from a service) and then transform many URLs, prefer `createTransform`:
+If you need to do async work once per manifest computation (e.g. fetch a CDN origin from a service) and then transform many URLs, prefer `createTransform`:
 
 ```ts
 transformAssetUrls: {
