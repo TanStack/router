@@ -171,7 +171,8 @@ export function buildClientEntryScriptTag(
   clientEntry: string,
   injectedHeadScripts?: string,
 ): RouterManagedTag {
-  let script = `import('${clientEntry}')`
+  const clientEntryLiteral = JSON.stringify(clientEntry)
+  let script = `import(${clientEntryLiteral})`
   if (injectedHeadScripts) {
     script = `${injectedHeadScripts};${script}`
   }
