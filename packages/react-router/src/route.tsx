@@ -465,7 +465,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TLoaderFn,
       TSSR,
       TServerMiddlewares
-    >(options as any)
+    >(options)
   }
 }
 
