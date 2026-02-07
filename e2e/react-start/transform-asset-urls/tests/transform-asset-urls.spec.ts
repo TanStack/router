@@ -120,7 +120,7 @@ test.describe('transformAssetUrls with CDN prefix', () => {
 
     // The client entry script should contain an import() with CDN-prefixed URL
     const clientEntryMatch = html.match(
-      /import\('(http:\/\/localhost:\d+\/[^']+)'\)/,
+      /import\("(http:\/\/localhost:\d+\/[^"]+)"\)/,
     )
     expect(clientEntryMatch).toBeTruthy()
     expect(clientEntryMatch![1]).toMatch(/^http:\/\/localhost:\d+\//)
