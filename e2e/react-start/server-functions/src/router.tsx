@@ -1,13 +1,13 @@
 import { createRouter } from '@tanstack/react-router'
 import { QueryClient } from '@tanstack/react-query'
-import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
+import { createSsrQueryPlugin } from '@tanstack/react-router-ssr-query'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
 
 export function getRouter() {
   const queryClient = new QueryClient()
-  const router = createRouter({
+  return createRouter({
     routeTree,
     defaultPreload: 'intent',
     defaultErrorComponent: DefaultCatchBoundary,
@@ -18,8 +18,6 @@ export function getRouter() {
         bar: 'baz',
       },
     },
+    plugins: [createSsrQueryPlugin({ queryClient })],
   })
-  setupRouterSsrQueryIntegration({ router, queryClient })
-
-  return router
 }

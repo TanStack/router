@@ -1,7 +1,11 @@
 import { QueryClientProvider } from '@tanstack/solid-query'
-import { setupCoreRouterSsrQueryIntegration } from '@tanstack/router-ssr-query-core'
-import type { RouterSsrQueryOptions } from '@tanstack/router-ssr-query-core'
-import type { AnyRouter } from '@tanstack/solid-router'
+import { createCoreSsrQueryPlugin } from '@tanstack/router-ssr-query-core'
+import type {
+  RouterSsrQueryOptions,
+  SsrQueryPluginOptions,
+} from '@tanstack/router-ssr-query-core'
+import type { AnyRouter, RouterPlugin } from '@tanstack/solid-router'
+import type { QueryClient } from '@tanstack/solid-query'
 import type { JSX } from 'solid-js'
 
 export type Options<TRouter extends AnyRouter> =
@@ -9,24 +13,71 @@ export type Options<TRouter extends AnyRouter> =
     wrapQueryClient?: boolean
   }
 
+export type SsrQueryPluginSolidOptions = SsrQueryPluginOptions & {
+  /**
+   * If `false`, the plugin will not wrap the router with `QueryClientProvider`.
+   * Useful if you are already providing the QueryClient via a parent provider.
+   *
+   * @default true
+   */
+  wrapQueryClient?: boolean
+}
+
+/**
+ * Create a router plugin that integrates TanStack Query with SSR for Solid.
+ *
+ * The plugin contributes `{ queryClient: QueryClient }` to the router context,
+ * sets up dehydrate/hydrate for SSR, and wraps the app with `QueryClientProvider`.
+ *
+ * @example
+ * ```tsx
+ * const queryClient = new QueryClient()
+ * const ssrQueryPlugin = createSsrQueryPlugin({ queryClient })
+ *
+ * const router = createRouter({
+ *   routeTree,
+ *   plugins: [ssrQueryPlugin],
+ * })
+ * ```
+ */
+export function createSsrQueryPlugin(
+  opts: SsrQueryPluginSolidOptions,
+): RouterPlugin<{ queryClient: QueryClient }> {
+  const corePlugin = createCoreSsrQueryPlugin(opts)
+
+  return {
+    '~types': null as any,
+    setup: (router: AnyRouter) => {
+      corePlugin.setup(router)
+
+      if (opts.wrapQueryClient === false) {
+        return
+      }
+
+      const OGWrap =
+        router.options.Wrap ||
+        ((props: { children: JSX.Element }) => props.children)
+
+      router.options.Wrap = (props) => {
+        return (
+          <QueryClientProvider client={opts.queryClient}>
+            <OGWrap>{props.children}</OGWrap>
+          </QueryClientProvider>
+        )
+      }
+    },
+  }
+}
+
+/**
+ * @deprecated Use `createSsrQueryPlugin` instead. This function will be removed in a future version.
+ */
 export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
   opts: Options<TRouter>,
 ) {
-  setupCoreRouterSsrQueryIntegration(opts)
-
-  if (opts.wrapQueryClient === false) {
-    return
-  }
-
-  const OGWrap =
-    opts.router.options.Wrap ||
-    ((props: { children: JSX.Element }) => props.children)
-
-  opts.router.options.Wrap = (props) => {
-    return (
-      <QueryClientProvider client={opts.queryClient}>
-        <OGWrap>{props.children}</OGWrap>
-      </QueryClientProvider>
-    )
-  }
+  createSsrQueryPlugin({
+    queryClient: opts.queryClient,
+    handleRedirects: opts.handleRedirects,
+    wrapQueryClient: opts.wrapQueryClient,
+  }).setup(opts.router)
 }

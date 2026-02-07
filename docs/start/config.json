@@ -106,6 +106,10 @@
               "to": "framework/react/guide/middleware"
             },
             {
+              "label": "Context Bridge",
+              "to": "framework/react/guide/context-bridge"
+            },
+            {
               "label": "Error Boundaries",
               "to": "framework/react/guide/error-boundaries"
             },
@@ -221,6 +225,10 @@
             {
               "label": "Middleware",
               "to": "framework/solid/guide/middleware"
+            },
+            {
+              "label": "Context Bridge",
+              "to": "framework/solid/guide/context-bridge"
             },
             {
               "label": "Error Boundaries",

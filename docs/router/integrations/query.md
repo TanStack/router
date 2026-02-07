@@ -29,38 +29,61 @@ bun add @tanstack/react-router-ssr-query
 
 ## Setup
 
-Create your router and wire up the integration. Ensure a fresh `QueryClient` is created per request in SSR environments.
+Create your router and wire up the integration using the `createSsrQueryPlugin` function. The plugin automatically adds `queryClient` to your router context, so you don't need to pass it manually. Ensure a fresh `QueryClient` is created per request in SSR environments.
 
 ```tsx
 // src/router.tsx
 import { QueryClient } from '@tanstack/react-query'
 import { createRouter } from '@tanstack/react-router'
-import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
+import { createSsrQueryPlugin } from '@tanstack/react-router-ssr-query'
 import { routeTree } from './routeTree.gen'
 
 export function getRouter() {
   const queryClient = new QueryClient()
-  const router = createRouter({
+
+  return createRouter({
     routeTree,
-    // optionally expose the QueryClient via router context
-    context: { queryClient },
     scrollRestoration: true,
     defaultPreload: 'intent',
+    plugins: [
+      createSsrQueryPlugin({
+        queryClient,
+        // optional:
+        // handleRedirects: true,
+        // wrapQueryClient: true,
+      }),
+    ],
   })
-
-  setupRouterSsrQueryIntegration({
-    router,
-    queryClient,
-    // optional:
-    // handleRedirects: true,
-    // wrapQueryClient: true,
-  })
-
-  return router
 }
 ```
 
+The plugin provides the `queryClient` to your router context automatically via the `plugins` system. This means `context.queryClient` is available in route loaders and components without needing to pass `context: { queryClient }` when creating the router.
+
 By default, the integration wraps your router with a `QueryClientProvider`. If you already provide your own provider, pass `wrapQueryClient: false` and keep your custom wrapper.
+
+### Migrating from `setupRouterSsrQueryIntegration`
+
+> [!NOTE]
+> `setupRouterSsrQueryIntegration` is deprecated. Use `createSsrQueryPlugin` instead.
+
+If you are migrating from the imperative setup function:
+
+```diff
+- import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
++ import { createSsrQueryPlugin } from '@tanstack/react-router-ssr-query'
+
+  const queryClient = new QueryClient()
+
+  const router = createRouter({
+    routeTree,
+-   context: { queryClient },
++   plugins: [createSsrQueryPlugin({ queryClient })],
+  })
+
+- setupRouterSsrQueryIntegration({ router, queryClient })
+```
+
+The plugin handles both adding `queryClient` to the router context and wiring up SSR dehydration/hydration, so you can remove the manual `context: { queryClient }` and the `setupRouterSsrQueryIntegration` call.
 
 ## SSR behavior and streaming
 

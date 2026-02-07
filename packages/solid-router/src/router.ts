@@ -3,6 +3,7 @@ import { createFileRoute, createLazyFileRoute } from './fileRoute'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
+  RouterPlugin,
   CreateRouterFn,
   RouterConstructorOptions,
   TrailingSlashOption,
@@ -74,7 +75,11 @@ declare module '@tanstack/router-core' {
 }
 
 export const createRouter: CreateRouterFn = (options) => {
-  return new Router(options)
+  // `as any` is safe: CreateRouterFn enforces full type safety at the call
+  // site (including plugin-aware context). The Router constructor widens
+  // TPlugins to ReadonlyArray<RouterPlugin<any>> since the class only
+  // iterates plugins at runtime and doesn't need the exact tuple type.
+  return new Router(options as any)
 }
 
 export class Router<
@@ -96,7 +101,8 @@ export class Router<
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
       TRouterHistory,
-      TDehydrated
+      TDehydrated,
+      ReadonlyArray<RouterPlugin<any>>
     >,
   ) {
     super(options)

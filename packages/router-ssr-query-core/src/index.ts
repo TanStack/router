@@ -4,7 +4,7 @@ import {
 } from '@tanstack/query-core'
 import { isRedirect } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import type { AnyRouter } from '@tanstack/router-core'
+import type { AnyRouter, RouterPlugin } from '@tanstack/router-core'
 import type {
   QueryClient,
   DehydratedState as QueryDehydratedState,
@@ -23,16 +23,79 @@ export type RouterSsrQueryOptions<TRouter extends AnyRouter> = {
   handleRedirects?: boolean
 }
 
+export type SsrQueryPluginOptions = {
+  queryClient: QueryClient
+
+  /**
+   * If `true`, the QueryClient will handle errors thrown by `redirect()` inside of mutations and queries.
+   *
+   * @default true
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction)
+   */
+  handleRedirects?: boolean
+}
+
 type DehydratedRouterQueryState = {
   dehydratedQueryClient?: QueryDehydratedState
   queryStream: ReadableStream<QueryDehydratedState>
 }
 
+/**
+ * Create a router plugin that integrates TanStack Query with SSR.
+ *
+ * The plugin contributes `{ queryClient: QueryClient }` to the router context,
+ * so you do not need to pass `queryClient` in `context` when creating the router.
+ *
+ * @example
+ * ```ts
+ * const queryClient = new QueryClient()
+ * const ssrQueryPlugin = createSsrQueryPlugin({ queryClient })
+ *
+ * createRouter({
+ *   routeTree,
+ *   plugins: [ssrQueryPlugin],
+ * })
+ * ```
+ */
+export function createCoreSsrQueryPlugin(
+  opts: SsrQueryPluginOptions,
+): RouterPlugin<{ queryClient: QueryClient }> {
+  const { queryClient, handleRedirects = true } = opts
+
+  return {
+    '~types': null as any,
+    setup: (router: AnyRouter) => {
+      // Merge queryClient into router context
+      router.options.context = {
+        ...router.options.context,
+        queryClient,
+      }
+
+      _setupCoreSsrQueryIntegration({ router, queryClient, handleRedirects })
+    },
+  }
+}
+
+/**
+ * @deprecated Use `createSsrQueryPlugin` instead. This function will be removed in a future version.
+ */
 export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   router,
   queryClient,
   handleRedirects = true,
 }: RouterSsrQueryOptions<TRouter>) {
+  createCoreSsrQueryPlugin({ queryClient, handleRedirects }).setup(router)
+}
+
+function _setupCoreSsrQueryIntegration({
+  router,
+  queryClient,
+  handleRedirects,
+}: {
+  router: AnyRouter
+  queryClient: QueryClient
+  handleRedirects: boolean
+}) {
   const ogHydrate = router.options.hydrate
   const ogDehydrate = router.options.dehydrate
 

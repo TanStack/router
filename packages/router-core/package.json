@@ -140,11 +140,11 @@
         }
       },
       "import": {
-        "types": "./dist/esm/isServer/client.d.ts",
+        "types": "./dist/esm/isServer/development.d.ts",
         "default": "./dist/esm/isServer/client.js"
       },
       "require": {
-        "types": "./dist/cjs/isServer/client.d.cts",
+        "types": "./dist/cjs/isServer/development.d.cts",
         "default": "./dist/cjs/isServer/client.cjs"
       }
     },

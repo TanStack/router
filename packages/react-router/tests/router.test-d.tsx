@@ -6,7 +6,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import type { RouterHistory } from '../src'
+import type { RouterHistory, RouterPlugin } from '../src'
 
 test('when creating a router without context', () => {
   // eslint-disable-next-line unused-imports/no-unused-vars
@@ -252,4 +252,163 @@ test('when creating a router with custom router history', () => {
 
   expectTypeOf(router.history).toMatchTypeOf<RouterHistory>()
   expectTypeOf(router.history).toEqualTypeOf<typeof customRouterHistory>()
+})
+
+test('when a plugin provides all required context keys, context becomes optional', () => {
+  const rootRoute = createRootRouteWithContext<{ queryClient: string }>()()
+
+  type RouteTree = typeof rootRoute
+  type Plugins = readonly [RouterPlugin<{ queryClient: string }>]
+
+  // Plugin provides queryClient, so context becomes optional
+  expectTypeOf(
+    createRouter<
+      RouteTree,
+      'never',
+      boolean,
+      RouterHistory,
+      Record<string, any>,
+      Plugins
+    >,
+  )
+    .parameter(0)
+    .not.toMatchTypeOf<{ context: { queryClient: string } }>()
+
+  expectTypeOf(
+    createRouter<
+      RouteTree,
+      'never',
+      boolean,
+      RouterHistory,
+      Record<string, any>,
+      Plugins
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('context')
+    .toMatchTypeOf<{ queryClient?: string } | undefined>()
+})
+
+test('when a plugin provides some required context keys, remaining keys are still required', () => {
+  const rootRoute = createRootRouteWithContext<{
+    queryClient: string
+    userToken: string
+  }>()()
+
+  type RouteTree = typeof rootRoute
+  type Plugins = readonly [RouterPlugin<{ queryClient: string }>]
+
+  // userToken is required, queryClient is optional (provided by plugin)
+  expectTypeOf(
+    createRouter<
+      RouteTree,
+      'never',
+      boolean,
+      RouterHistory,
+      Record<string, any>,
+      Plugins
+    >,
+  )
+    .parameter(0)
+    .toMatchTypeOf<{
+      context: { userToken: string }
+    }>()
+
+  expectTypeOf(
+    createRouter<
+      RouteTree,
+      'never',
+      boolean,
+      RouterHistory,
+      Record<string, any>,
+      Plugins
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('context')
+    .toEqualTypeOf<{ userToken: string } & { queryClient?: string }>()
+})
+
+test('when multiple plugins provide different context keys, all plugin keys are omitted', () => {
+  const rootRoute = createRootRouteWithContext<{
+    queryClient: string
+    authToken: string
+    appName: string
+  }>()()
+
+  type RouteTree = typeof rootRoute
+  type Plugins = readonly [
+    RouterPlugin<{ queryClient: string }>,
+    RouterPlugin<{ authToken: string }>,
+  ]
+
+  // appName required, queryClient + authToken optional (provided by plugins)
+  expectTypeOf(
+    createRouter<
+      RouteTree,
+      'never',
+      boolean,
+      RouterHistory,
+      Record<string, any>,
+      Plugins
+    >,
+  )
+    .parameter(0)
+    .toMatchTypeOf<{
+      context: { appName: string }
+    }>()
+
+  expectTypeOf(
+    createRouter<
+      RouteTree,
+      'never',
+      boolean,
+      RouterHistory,
+      Record<string, any>,
+      Plugins
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('context')
+    .toEqualTypeOf<
+      { appName: string } & { queryClient?: string; authToken?: string }
+    >()
+})
+
+test('when no plugins are provided, context is still required if route tree demands it', () => {
+  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+
+  type RouteTree = typeof rootRoute
+
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+    .parameter(0)
+    .toHaveProperty('context')
+    .toEqualTypeOf<{ userId: string }>()
+
+  expectTypeOf(createRouter<RouteTree, 'never', boolean>)
+    .parameter(0)
+    .toMatchTypeOf<{
+      context: { userId: string }
+    }>()
+})
+
+test('when a plugin provides context keys not defined in the route tree, context remains optional', () => {
+  const rootRoute = createRootRoute()
+
+  type RouteTree = typeof rootRoute
+  type Plugins = readonly [RouterPlugin<{ analytics: object }>]
+
+  expectTypeOf(
+    createRouter<
+      RouteTree,
+      'never',
+      boolean,
+      RouterHistory,
+      Record<string, any>,
+      Plugins
+    >,
+  )
+    .parameter(0)
+    .toHaveProperty('context')
+    .toEqualTypeOf<{} | undefined>()
 })

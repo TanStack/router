@@ -215,6 +215,9 @@ export type {
   RouteMask,
   MatchRouteOptions,
   CreateLazyFileRoute,
+  RouterPlugin,
+  RouterPluginTypes,
+  PluginProvidedContext,
 } from '@tanstack/router-core'
 export type {
   UseLinkPropsOptions,

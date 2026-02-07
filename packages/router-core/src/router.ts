@@ -1,6 +1,7 @@
 import { Store } from '@tanstack/store'
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
+import type { PluginProvidedContext, RouterPlugin } from './plugin'
 import { batch } from './utils/batch'
 import {
   createControlledPromise,
@@ -59,6 +60,7 @@ import type {
   Awaitable,
   Constrain,
   ControlledPromise,
+  MakeDifferenceOptional,
   NoInfer,
   NonNullableUpdater,
   PickAsRequired,
@@ -316,6 +318,17 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/router-context)
    */
   context?: InferRouterContext<TRouteTree>
+
+  /**
+   * An array of router plugins that can provide context values,
+   * hook into dehydrate/hydrate, or perform other setup tasks.
+   *
+   * When plugins provide context values, the router's `context` option
+   * only needs to supply the remaining (non-plugin-provided) keys.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/router-context)
+   */
+  plugins?: Array<RouterPlugin<any>>
 
   additionalContext?: any
 
@@ -602,14 +615,60 @@ export interface MatchRoutesOpts {
 export type InferRouterContext<TRouteTree extends AnyRoute> =
   TRouteTree['types']['routerContext']
 
-export type RouterContextOptions<TRouteTree extends AnyRoute> =
-  AnyContext extends InferRouterContext<TRouteTree>
+/**
+ * Conditional type that makes `context` optional when all required keys
+ * are provided by plugins.
+ *
+ * Uses `MakeDifferenceOptional` so that plugin-provided keys become
+ * optional (the user may still override them), while keys NOT provided
+ * by any plugin stay required.
+ *
+ * @private
+ */
+export type RouterContextOptions<
+  TRouteTree extends AnyRoute,
+  TPlugins extends ReadonlyArray<RouterPlugin<any>> = [],
+> =
+  AnyContext extends MakeDifferenceOptional<
+    PluginProvidedContext<TPlugins>,
+    InferRouterContext<TRouteTree>
+  >
     ? {
-        context?: InferRouterContext<TRouteTree>
+        context?: MakeDifferenceOptional<
+          PluginProvidedContext<TPlugins>,
+          InferRouterContext<TRouteTree>
+        >
+        plugins?: ValidatePluginContext<TRouteTree, TPlugins>
       }
     : {
-        context: InferRouterContext<TRouteTree>
+        context: MakeDifferenceOptional<
+          PluginProvidedContext<TPlugins>,
+          InferRouterContext<TRouteTree>
+        >
+        plugins?: ValidatePluginContext<TRouteTree, TPlugins>
       }
+
+/**
+ * Validates that the merged context provided by `TPlugins` is
+ * assignable to the route tree's expected context.
+ *
+ * Resolves to `TPlugins` when valid. When a mismatch is detected, resolves
+ * to a type that the offending plugin cannot satisfy, causing a type error
+ * at the call-site.
+ *
+ * @private
+ */
+type ValidatePluginContext<
+  TRouteTree extends AnyRoute,
+  TPlugins extends ReadonlyArray<RouterPlugin<any>>,
+> =
+  PluginProvidedContext<TPlugins> extends Partial<
+    InferRouterContext<TRouteTree>
+  >
+    ? TPlugins
+    : ReadonlyArray<
+        RouterPlugin<InferRouterContext<TRouteTree> & Record<string, unknown>>
+      >
 
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
@@ -617,6 +676,7 @@ export type RouterConstructorOptions<
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
+  TPlugins extends ReadonlyArray<RouterPlugin<any>> = [],
 > = Omit<
   RouterOptions<
     TRouteTree,
@@ -625,9 +685,9 @@ export type RouterConstructorOptions<
     TRouterHistory,
     TDehydrated
   >,
-  'context' | 'serializationAdapters' | 'defaultSsr'
+  'context' | 'plugins' | 'serializationAdapters' | 'defaultSsr'
 > &
-  RouterContextOptions<TRouteTree>
+  RouterContextOptions<TRouteTree, TPlugins>
 
 export type PreloadRouteFn<
   TRouteTree extends AnyRoute,
@@ -684,12 +744,15 @@ export type UpdateFn<
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
 > = (
-  newOptions: RouterConstructorOptions<
-    TRouteTree,
-    TTrailingSlashOption,
-    TDefaultStructuralSharingOption,
-    TRouterHistory,
-    TDehydrated
+  newOptions: Omit<
+    RouterConstructorOptions<
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >,
+    'plugins'
   >,
 ) => void
 
@@ -855,12 +918,16 @@ export function getLocationChangeInfo(routerState: {
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
 
+/**
+ * @private
+ */
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
   TDefaultStructuralSharingOption extends boolean = false,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
+  const TPlugins extends ReadonlyArray<RouterPlugin<any>> = [],
 >(
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
@@ -869,7 +936,8 @@ export type CreateRouterFn = <
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
         TRouterHistory,
-        TDehydrated
+        TDehydrated,
+        TPlugins
       >,
 ) => RouterCore<
   TRouteTree,
@@ -971,7 +1039,8 @@ export class RouterCore<
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
       TRouterHistory,
-      TDehydrated
+      TDehydrated,
+      ReadonlyArray<RouterPlugin<any>>
     >,
   ) {
     this.update({
@@ -984,7 +1053,14 @@ export class RouterCore<
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
-    })
+    } as any)
+
+    // Wire up plugins if provided
+    if (this.options.plugins) {
+      for (const plugin of this.options.plugins) {
+        plugin.setup(this)
+      }
+    }
 
     if (typeof document !== 'undefined') {
       self.__TSR_ROUTER__ = this

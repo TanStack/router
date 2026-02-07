@@ -187,6 +187,9 @@ export type {
   AnySerializationAdapter,
   SerializationAdapter,
   SerializableExtensions,
+  RouterPlugin,
+  RouterPluginTypes,
+  PluginProvidedContext,
 } from '@tanstack/router-core'
 
 export {
