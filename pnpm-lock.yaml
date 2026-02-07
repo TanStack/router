@@ -12299,8 +12299,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       h3-v2:
-        specifier: npm:h3@2.0.1-rc.11
-        version: h3@2.0.1-rc.11(crossws@0.4.3(srvx@0.11.2))
+        specifier: npm:h3@2.0.1-rc.14
+        version: h3@2.0.1-rc.14(crossws@0.4.3(srvx@0.11.2))
       seroval:
         specifier: ^1.4.2
         version: 1.4.2
@@ -20583,6 +20583,16 @@ packages:
   h3@2.0.1-rc.11:
     resolution: {integrity: sha512-2myzjCqy32c1As9TjZW9fNZXtLqNedjFSrdFy2AjFBQQ3LzrnGoDdFDYfC0tV2e4vcyfJ2Sfo/F6NQhO2Ly/Mw==}
     engines: {node: '>=20.11.1'}
+    peerDependencies:
+      crossws: ^0.4.1
+    peerDependenciesMeta:
+      crossws:
+        optional: true
+
+  h3@2.0.1-rc.14:
+    resolution: {integrity: sha512-163qbGmTr/9rqQRNuqMqtgXnOUAkE4KTdauiC9y0E5iG1I65kte9NyfWvZw5RTDMt6eY+DtyoNzrQ9wA2BfvGQ==}
+    engines: {node: '>=20.11.1'}
+    hasBin: true
     peerDependencies:
       crossws: ^0.4.1
     peerDependenciesMeta:
@@ -34006,10 +34016,10 @@ snapshots:
     optionalDependencies:
       crossws: 0.4.3(srvx@0.10.1)
 
-  h3@2.0.1-rc.11(crossws@0.4.3(srvx@0.11.2)):
+  h3@2.0.1-rc.14(crossws@0.4.3(srvx@0.11.2)):
     dependencies:
       rou3: 0.7.12
-      srvx: 0.10.1
+      srvx: 0.11.2
     optionalDependencies:
       crossws: 0.4.3(srvx@0.11.2)
 
