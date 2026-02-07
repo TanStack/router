@@ -106,7 +106,7 @@ function isLocale(value?: string): value is Locale {
 
 TanStack Router is **library-agnostic**. You can integrate any i18n solution by mapping locale state to routing behavior.
 
-Below is a recommended pattern using **Paraglide**.
+Below is a recommended pattern using **[Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs)**.
 
 ---
 
