@@ -15,7 +15,7 @@ An optimized production server for TanStack Start applications using Bun, implem
 This project was created with TanStack Start:
 
 ```bash
-bunx create-start-app@latest
+bunx @tanstack/cli create
 ```
 
 Install dependencies:
