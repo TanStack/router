@@ -1605,9 +1605,11 @@ export class RouterCore<
       const route = this.looseRoutesById[match.routeId]!
       const existingMatch = this.getMatch(match.id)
 
-      // only execute `context` if we are not calling from router.buildLocation
+      // Only execute `context` if we are not calling from router.buildLocation.
+      // Recompute it when invalidating to ensure route context reflects updates
+      // from the latest router context.
 
-      if (!existingMatch) {
+      if (!existingMatch || existingMatch.invalid) {
         const parentMatch = matches[index - 1]
         const parentContext = this.getParentContext(parentMatch)
 

@@ -463,13 +463,6 @@ const executeBeforeLoad = (
   }
 
   const updateContext = (beforeLoadContext: any) => {
-    if (beforeLoadContext === undefined) {
-      batch(() => {
-        pending()
-        resolve()
-      })
-      return
-    }
     if (isRedirect(beforeLoadContext) || isNotFound(beforeLoadContext)) {
       pending()
       handleSerialError(inner, index, beforeLoadContext, 'BEFORE_LOAD')

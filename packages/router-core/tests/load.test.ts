@@ -221,6 +221,53 @@ describe('beforeLoad skip or exec', () => {
   })
 })
 
+describe('router.invalidate router context', () => {
+  test('recomputes route context when router context changes', async () => {
+    const rootRoute = new BaseRootRoute<{
+      auth: { isAuthenticated: boolean }
+    }>({})
+
+    const protectedRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/protected',
+      context: ({ context }) => ({
+        authFromRoute: context.auth.isAuthenticated,
+      }),
+    })
+
+    const routeTree = rootRoute.addChildren([protectedRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/protected'] }),
+      context: {
+        auth: { isAuthenticated: true },
+      },
+    })
+
+    await router.load()
+
+    const initialMatch = router.state.matches.find(
+      (match) => match.routeId === protectedRoute.id,
+    )
+    expect(initialMatch?.context.authFromRoute).toBe(true)
+
+    router.update({
+      ...router.options,
+      context: {
+        auth: { isAuthenticated: false },
+      },
+    })
+
+    await router.invalidate()
+
+    const updatedMatch = router.state.matches.find(
+      (match) => match.routeId === protectedRoute.id,
+    )
+    expect(updatedMatch?.context.authFromRoute).toBe(false)
+  })
+})
+
 describe('loader skip or exec', () => {
   const setup = ({
     loader,
