@@ -6,7 +6,7 @@ replace: { 'React': 'Solid', 'react': 'solid' }
 [//]: # 'createAppCommand'
 
 ```sh
-npx create-tsrouter-app@latest --framework solid
+npx @tanstack/cli create --framework solid
 ```
 
 [//]: # 'createAppCommand'
@@ -21,14 +21,14 @@ npx create-tsrouter-app@latest --framework solid
 [//]: # 'createAppCommandFileBased'
 
 ```sh
-npx create-tsrouter-app@latest my-app --framework solid --template file-router
+npx @tanstack/cli create my-app --framework solid
 ```
 
 [//]: # 'createAppCommandFileBased'
 [//]: # 'createAppCommandCodeBased'
 
 ```sh
-npx create-tsrouter-app@latest my-app --framework solid
+npx @tanstack/cli create my-app --framework solid
 ```
 
 [//]: # 'createAppCommandCodeBased'
