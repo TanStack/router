@@ -103,7 +103,7 @@ test.describe('transformAssetUrls with CDN prefix', () => {
 
     // Now load /about and verify the CSS module style is actually applied.
     await page.goto('/about')
-    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('about-card')).toBeVisible()
 
     const bgColor = await page
       .getByTestId('about-card')
@@ -119,8 +119,9 @@ test.describe('transformAssetUrls with CDN prefix', () => {
     const html = await getSSRHtml(page)
 
     // The client entry script should contain an import() with CDN-prefixed URL
+    // JSON.stringify produces double quotes; bundler optimisation may use single quotes
     const clientEntryMatch = html.match(
-      /import\("(http:\/\/localhost:\d+\/[^"]+)"\)/,
+      /import\(["'](http:\/\/localhost:\d+\/[^"']+)["']\)/,
     )
     expect(clientEntryMatch).toBeTruthy()
     expect(clientEntryMatch![1]).toMatch(/^http:\/\/localhost:\d+\//)
@@ -128,7 +129,6 @@ test.describe('transformAssetUrls with CDN prefix', () => {
 
   test('page renders correctly with CDN-served assets', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
 
     // Page content renders
     await expect(page.getByTestId('home-heading')).toHaveText('Welcome Home')
@@ -139,7 +139,7 @@ test.describe('transformAssetUrls with CDN prefix', () => {
 
   test('CSS is applied correctly from CDN', async ({ page }) => {
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await expect(page.locator('.app-styled')).toBeVisible()
 
     // Verify that the CSS from app.css is actually applied
     // The .app-styled class sets background-color to #f0f0f0
@@ -179,17 +179,47 @@ test.describe('transformAssetUrls with CDN prefix', () => {
   test('client-side navigation to /about loads split chunk from CDN', async ({
     page,
   }) => {
+    const appOrigin = new URL(
+      test.info().project.use.baseURL || 'http://localhost:3000',
+    ).origin
+
     await page.goto('/')
     await page.waitForLoadState('networkidle')
+
+    // Start tracking network requests after initial page load so we only
+    // capture requests triggered by the client-side navigation
+    const navigationAssetRequests: Array<{
+      url: string
+      fromCdn: boolean
+    }> = []
+
+    page.on('request', (request) => {
+      const url = request.url()
+      if (/\.(js|css)(\?|$)/.test(url)) {
+        const origin = new URL(url).origin
+        navigationAssetRequests.push({ url, fromCdn: origin !== appOrigin })
+      }
+    })
 
     await page.getByTestId('link-to-about').click()
     await page.waitForURL('**/about')
     await expect(page.getByTestId('about-heading')).toHaveText('About')
 
     // Ensure CSS modules were loaded and applied after client navigation
+    await expect(page.getByTestId('about-card')).toBeVisible()
     const bgColor = await page
       .getByTestId('about-card')
       .evaluate((el) => getComputedStyle(el).backgroundColor)
     expect(bgColor).toBe('rgb(255, 243, 196)')
+
+    // With base: '', lazy-loaded route chunks should come from the CDN, not the app server.
+    // Filter to JS requests only (the route chunk import)
+    const jsRequests = navigationAssetRequests.filter((r) =>
+      /\.js(\?|$)/.test(r.url),
+    )
+    expect(jsRequests.length).toBeGreaterThan(0)
+
+    const cdnJsRequests = jsRequests.filter((r) => r.fromCdn)
+    expect(cdnJsRequests.length).toBeGreaterThan(0)
   })
 })

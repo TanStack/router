@@ -110,12 +110,12 @@ export default createServerEntry({ fetch: handler })
 
 The object form accepts:
 
-| Property          | Type | Description |
-| ----------------- | ---- | ----------- |
-| `transform`       | `string \| (asset) => string \| Promise<string>` | A string prefix or callback, same as the shorthand forms above. |
+| Property          | Type                                                                                                     | Description                                                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `transform`       | `string \| (asset) => string \| Promise<string>`                                                         | A string prefix or callback, same as the shorthand forms above.                                                               |
 | `createTransform` | `(ctx: { warmup: true } \| { warmup: false; request: Request }) => (asset) => string \| Promise<string>` | Async factory that runs once per manifest computation and returns a per-asset transform. Mutually exclusive with `transform`. |
-| `cache`           | `boolean` | Whether to cache the transformed manifest. Defaults to `true`. |
-| `warmup`          | `boolean` | When `true`, warms up the cached manifest on server startup (prod only). Defaults to `false`. |
+| `cache`           | `boolean`                                                                                                | Whether to cache the transformed manifest. Defaults to `true`.                                                                |
+| `warmup`          | `boolean`                                                                                                | When `true`, warms up the cached manifest on server startup (prod only). Defaults to `false`.                                 |
 
 If you need to do async work once per manifest computation (e.g. fetch a CDN origin from a service) and then transform many URLs, prefer `createTransform`:
 
@@ -164,6 +164,33 @@ transformAssetUrls: {
 This has no effect in development mode, or when `cache: false`.
 
 > **Note:** In development mode (`TSS_DEV_SERVER`), caching is always skipped regardless of the `cache` setting, so you always get fresh manifests.
+
+## Recommended: Set `base: ''` for Client-Side Navigation
+
+`transformAssetUrls` rewrites the URLs in the SSR HTML — modulepreload hints, stylesheets, and the client entry script. This means the browser's initial page load fetches all assets from the CDN.
+
+However, when users navigate client-side (e.g., clicking a `<Link>`), TanStack Router lazy-loads route chunks using `import()` calls with paths that were baked in at **build time** by Vite. By default, Vite uses `base: '/'`, which produces absolute paths like `/assets/about-abc123.js`. These resolve against the **app server's origin**, not the CDN — even though the entry module was loaded from the CDN.
+
+To fix this, set `base: ''` in your Vite config:
+
+```ts
+// vite.config.ts
+export default defineConfig({
+  base: '',
+  // ... plugins, etc.
+})
+```
+
+With `base: ''`, Vite generates **relative** import paths for client-side chunks. Since the client entry module was loaded from the CDN (thanks to `transformAssetUrls`), all relative `import()` calls resolve against the CDN origin. This ensures that lazy-loaded route chunks during client-side navigation are also served from the CDN.
+
+Using an empty string rather than `'./'` is important — both produce relative client-side imports, but `base: ''` preserves the correct root-relative paths (`/assets/...`) in the SSR manifest so that `transformAssetUrls` can properly prepend the CDN origin.
+
+| `base` setting  | SSR assets (initial load)      | Client-side navigation chunks  |
+| --------------- | ------------------------------ | ------------------------------ |
+| `'/'` (default) | CDN (via `transformAssetUrls`) | App server                     |
+| `''`            | CDN (via `transformAssetUrls`) | CDN (relative to entry module) |
+
+> **Tip:** `base: ''` is recommended whenever you use `transformAssetUrls` so that all assets — both on initial load and during client-side navigation — are consistently served from the CDN.
 
 ## What This Does NOT Cover
 
