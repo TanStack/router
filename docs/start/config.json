@@ -138,6 +138,10 @@
               "to": "framework/react/guide/server-entry-point"
             },
             {
+              "label": "CDN Asset URLs",
+              "to": "framework/react/guide/cdn-asset-urls"
+            },
+            {
               "label": "Client Entry Point",
               "to": "framework/react/guide/client-entry-point"
             },
