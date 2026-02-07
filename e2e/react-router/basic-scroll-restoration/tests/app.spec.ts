@@ -115,3 +115,107 @@ test('scroll to top when not scrolled, regression test for #4782', async ({
   const restoredScrollPosition = await page.evaluate(() => window.scrollY)
   expect(restoredScrollPosition).toBe(0)
 })
+
+test('resetScroll=false saves scroll position for back navigation without scroll event, regression test for #6595', async ({
+  page,
+}) => {
+  const storageKey = 'tsr-scroll-restoration-v1_3'
+  const targetScrollPosition = 1000
+
+  await page.goto('/')
+  await expect(page.locator('#greeting')).toContainText('Welcome Home!')
+
+  await page.evaluate(
+    (scrollPos: number) => window.scrollTo(0, scrollPos),
+    targetScrollPosition,
+  )
+
+  await page.waitForFunction(
+    ([key, path, expectedY]) => {
+      const cache = sessionStorage.getItem(key)
+      if (!cache) return false
+      const parsed = JSON.parse(cache)
+      return parsed[path]?.window?.scrollY === expectedY
+    },
+    [storageKey, '/', targetScrollPosition] as const,
+  )
+
+  const scrollBeforeNav = await page.evaluate(() => window.scrollY)
+  expect(scrollBeforeNav).toBe(targetScrollPosition)
+
+  await page.getByRole('link', { name: 'About (No Reset)' }).click()
+  await expect(page.locator('#greeting')).toContainText('Hello from About!')
+
+  await page.waitForFunction(
+    ([key, path, expectedY]) => {
+      const cache = sessionStorage.getItem(key)
+      if (!cache) return false
+      const parsed = JSON.parse(cache)
+      return parsed[path]?.window?.scrollY === expectedY
+    },
+    [storageKey, '/about', targetScrollPosition] as const,
+  )
+
+  await page.goto('/foo')
+  await expect(page.getByTestId('foo-route-component')).toBeVisible()
+
+  await page.goBack()
+  await expect(page.locator('#greeting')).toContainText('Hello from About!')
+
+  await page.waitForFunction(
+    (expectedY) => window.scrollY === expectedY,
+    targetScrollPosition,
+  )
+
+  const restoredScrollPosition = await page.evaluate(() => window.scrollY)
+  expect(restoredScrollPosition).toBe(targetScrollPosition)
+})
+
+test('resetScroll=false preserves scrollToTopSelectors element scroll position, extension of #6595', async ({
+  page,
+}) => {
+  const storageKey = 'tsr-scroll-restoration-v1_3'
+  const sidebarScrollPosition = 500
+
+  await page.goto('/')
+  await expect(page.locator('#greeting')).toContainText('Welcome Home!')
+
+  await page.evaluate((scrollPos: number) => {
+    const sidebar = document.querySelector('#sidebar')
+    if (sidebar) sidebar.scrollTo(0, scrollPos)
+  }, sidebarScrollPosition)
+
+  const sidebarScrollBeforeNav = await page.evaluate(
+    () => document.querySelector('#sidebar')?.scrollTop,
+  )
+  expect(sidebarScrollBeforeNav).toBe(sidebarScrollPosition)
+
+  await page.getByRole('link', { name: 'About (No Reset)' }).click()
+  await expect(page.locator('#greeting')).toContainText('Hello from About!')
+
+  await page.waitForFunction(
+    ([key, path, expectedY]) => {
+      const cache = sessionStorage.getItem(key)
+      if (!cache) return false
+      const parsed = JSON.parse(cache)
+      return parsed[path]?.['#sidebar']?.scrollY === expectedY
+    },
+    [storageKey, '/about', sidebarScrollPosition] as const,
+  )
+
+  await page.goto('/foo')
+  await expect(page.getByTestId('foo-route-component')).toBeVisible()
+
+  await page.goBack()
+  await expect(page.locator('#greeting')).toContainText('Hello from About!')
+
+  await page.waitForFunction(
+    (expectedY) => document.querySelector('#sidebar')?.scrollTop === expectedY,
+    sidebarScrollPosition,
+  )
+
+  const restoredSidebarScroll = await page.evaluate(
+    () => document.querySelector('#sidebar')?.scrollTop,
+  )
+  expect(restoredSidebarScroll).toBe(sidebarScrollPosition)
+})
