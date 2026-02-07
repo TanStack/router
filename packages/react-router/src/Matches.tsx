@@ -36,9 +36,24 @@ declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
     meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
     links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
-    scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
-    styles?: Array<React.JSX.IntrinsicElements['style'] | undefined>
-    headScripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
+    scripts?: Array<
+      | (React.JSX.IntrinsicElements['script'] & {
+          children?: string | null | boolean | number | undefined
+        })
+      | undefined
+    >
+    styles?: Array<
+      | (React.JSX.IntrinsicElements['style'] & {
+          children?: string | null | boolean | number | undefined
+        })
+      | undefined
+    >
+    headScripts?: Array<
+      | (React.JSX.IntrinsicElements['script'] & {
+          children?: string | null | boolean | number | undefined
+        })
+      | undefined
+    >
   }
 }
 
