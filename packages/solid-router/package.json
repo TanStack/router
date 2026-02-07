@@ -106,6 +106,7 @@
     "@solidjs/meta": "^0.29.4",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
+    "@tanstack/llm-docs": "workspace:*",
     "@tanstack/solid-store": "^0.8.0",
     "isbot": "^5.1.22",
     "tiny-invariant": "^1.3.3",
