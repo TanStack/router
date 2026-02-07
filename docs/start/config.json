@@ -158,6 +158,10 @@
               "to": "framework/react/guide/authentication"
             },
             {
+              "label": "Security",
+              "to": "framework/react/guide/security"
+            },
+            {
               "label": "Databases",
               "to": "framework/react/guide/databases"
             },
@@ -265,6 +269,10 @@
             {
               "label": "Authentication",
               "to": "framework/solid/guide/authentication"
+            },
+            {
+              "label": "Security",
+              "to": "framework/solid/guide/security"
             },
             {
               "label": "Databases",
