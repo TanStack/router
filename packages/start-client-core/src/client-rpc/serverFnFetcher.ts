@@ -297,24 +297,14 @@ async function processServerFnResponse({
       throw new Error('Stream ended before first object')
     }
 
-    // common case: buffer ends with newline
-    if (buffer.endsWith('\n')) {
-      const lines = buffer.split('\n').filter(Boolean)
-      const firstLine = lines[0]
-      if (!firstLine) throw new Error('No JSON line in the first chunk')
-      firstObject = JSON.parse(firstLine)
-      firstRead = true
-      buffer = lines.slice(1).join('\n')
-    } else {
-      // fallback: wait for a newline to parse first object safely
-      const newlineIndex = buffer.indexOf('\n')
-      if (newlineIndex >= 0) {
-        const line = buffer.slice(0, newlineIndex).trim()
-        buffer = buffer.slice(newlineIndex + 1)
-        if (line.length > 0) {
-          firstObject = JSON.parse(line)
-          firstRead = true
-        }
+    // Wait for at least one complete line (ending with newline)
+    const newlineIndex = buffer.indexOf('\n')
+    if (newlineIndex >= 0) {
+      const line = buffer.slice(0, newlineIndex).trim()
+      buffer = buffer.slice(newlineIndex + 1)
+      if (line.length > 0) {
+        firstObject = JSON.parse(line)
+        firstRead = true
       }
     }
   }
