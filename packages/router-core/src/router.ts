@@ -1268,14 +1268,14 @@ export class RouterCore<
         return {
           href: pathname + searchStr + hash,
           publicHref: href,
-          pathname: decodePath(pathname),
+          pathname: decodePath(pathname).path,
           external: false,
           searchStr,
           search: replaceEqualDeep(
             previousLocation?.search,
             parsedSearch,
           ) as any,
-          hash: decodePath(hash.slice(1)),
+          hash: decodePath(hash.slice(1)).path,
           state: replaceEqualDeep(previousLocation?.state, state),
         }
       }
@@ -1297,11 +1297,11 @@ export class RouterCore<
       return {
         href: fullPath,
         publicHref: href,
-        pathname: decodePath(url.pathname),
+        pathname: decodePath(url.pathname).path,
         external: !!this.rewrite && url.origin !== this.origin,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
-        hash: decodePath(url.hash.slice(1)),
+        hash: decodePath(url.hash.slice(1)).path,
         state: replaceEqualDeep(previousLocation?.state, state),
       }
     }
@@ -1879,7 +1879,7 @@ export class RouterCore<
                   decoder: this.pathParamsDecoder,
                   server: this.isServer,
                 }).interpolatedPath,
-          )
+          ).path
 
       // Resolve the next search
       let nextSearch = fromSearch
