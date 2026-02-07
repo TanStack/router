@@ -168,3 +168,30 @@ test('Each request gets a unique nonce', async ({ page }) => {
   expect(nonce2).toBeTruthy()
   expect(nonce1).not.toBe(nonce2)
 })
+
+test('Client-side navigation works', async ({ page }) => {
+  const violations: Array<string> = []
+  const logViolation = (text: string) => {
+    const lowerText = text.toLowerCase()
+    if (
+      lowerText.includes('trusted type') ||
+      lowerText.includes('content security policy') ||
+      lowerText.includes('trustedhtml') ||
+      lowerText.includes('trustedscript')
+    ) {
+      violations.push(text)
+    }
+  }
+
+  // Wait until idle to ensure we're doing a soft navigation.
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await expect(page.getByTestId('csp-heading')).toBeVisible()
+
+  page.on('console', (msg) => logViolation(msg.text()))
+  page.on('pageerror', (err) => logViolation(err.message))
+
+  await page.getByRole('link', { name: 'Test Navigation' }).click()
+
+  await expect(page.getByTestId('other-heading')).toBeVisible()
+  expect(violations).toEqual([])
+})
