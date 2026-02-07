@@ -186,8 +186,9 @@ export default {
 ### HTML Language Attribute
 
 ```tsx
-import { getLocale } from '../paraglide/runtime'
-;<html lang={getLocale()} />
+import { getLocale } from '../paraglide/runtime';
+
+<html lang={getLocale()} />
 ```
 
 ---
