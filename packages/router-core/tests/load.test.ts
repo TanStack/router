@@ -84,9 +84,8 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     const navigation = router.navigate({ to: '/foo' })
     expect(beforeLoad).toHaveBeenCalledTimes(1)
-    expect(router.state.pendingMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
+    expect(router.state.status).toBe('pending')
+    expect(router.getMatch('/foo/foo')).toBeDefined()
     await navigation
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
@@ -266,9 +265,8 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     const navigation = router.navigate({ to: '/foo' })
     expect(loader).toHaveBeenCalledTimes(1)
-    expect(router.state.pendingMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
+    expect(router.state.status).toBe('pending')
+    expect(router.getMatch('/foo/foo')).toBeDefined()
     await navigation
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
@@ -549,6 +547,7 @@ describe('params.parse notFound', () => {
     const testRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/test/$id',
+      notFoundComponent: () => 'Not Found' as any,
       params: {
         parse: ({ id }: { id: string }) => {
           const parsed = parseInt(id, 10)
@@ -567,9 +566,7 @@ describe('params.parse notFound', () => {
 
     await router.load()
 
-    const match = router.state.pendingMatches?.find(
-      (m) => m.routeId === testRoute.id,
-    )
+    const match = router.state.matches.find((m) => m.routeId === testRoute.id)
 
     expect(match?.status).toBe('notFound')
   })

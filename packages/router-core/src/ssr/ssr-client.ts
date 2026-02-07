@@ -142,6 +142,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       matches,
     }
   })
+  // Rebuild internal match lookup maps after directly setting matches
+  ;(router as any).rebuildMatchesById()
 
   // Allow the user to handle custom hydration data
   await router.options.hydrate?.(dehydratedData)

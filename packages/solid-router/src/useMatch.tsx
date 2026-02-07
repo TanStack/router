@@ -84,14 +84,11 @@ export function useMatch<
       )
 
       if (match === undefined) {
-        // During navigation transitions, check if the match exists in pendingMatches
-        const pendingMatch = state.pendingMatches?.find((d: any) =>
-          opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
-        )
-
         // Determine if we should throw an error
         const shouldThrowError =
-          !pendingMatch && !state.isTransitioning && (opts.shouldThrow ?? true)
+          !state.isLoading &&
+          !state.isTransitioning &&
+          (opts.shouldThrow ?? true)
 
         return { match: undefined, shouldThrowError }
       }

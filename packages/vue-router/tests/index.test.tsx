@@ -69,7 +69,6 @@ test('index true=true', () => {
 //     })
 
 //     const promise = router.mount()
-//     expect(router.store.pendingMatches[0].id).toBe('/')
 
 //     await promise
 //     expect(router.state.matches[0].id).toBe('/')
@@ -92,7 +91,6 @@ test('index true=true', () => {
 
 //     let promise = router.mount()
 
-//     expect(router.store.pendingMatches[0].id).toBe('/a')
 //     await promise
 //     expect(router.state.matches[0].id).toBe('/a')
 //   })
@@ -122,7 +120,6 @@ test('index true=true', () => {
 
 //     let promise = router.mount()
 
-//     expect(router.store.pendingMatches[1].id).toBe('/a/b')
 //     await promise
 //     expect(router.state.matches[1].id).toBe('/a/b')
 //   })
@@ -144,14 +141,11 @@ test('index true=true', () => {
 
 //     let promise = router.mount()
 
-//     expect(router.store.pendingMatches[0].id).toBe('/')
-
 //     await promise
 //     expect(router.state.matches[0].id).toBe('/')
 
 //     promise = router.navigate({ to: 'a' })
 //     expect(router.state.matches[0].id).toBe('/')
-//     expect(router.store.pendingMatches[0].id).toBe('a')
 
 //     await promise
 //     expect(router.state.matches[0].id).toBe('a')

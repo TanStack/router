@@ -140,9 +140,7 @@ function RouteComp({
   setActiveId: (id: string) => void
 }) {
   const styles = useStyles()
-  const matches = createMemo(
-    () => routerState().pendingMatches || routerState().matches,
-  )
+  const matches = createMemo(() => routerState().matches)
   const match = createMemo(() =>
     routerState().matches.find((d) => d.routeId === route.id),
   )
@@ -308,11 +306,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     })
 
     const activeMatch = createMemo(() => {
-      const matches = [
-        ...(routerState().pendingMatches ?? []),
-        ...routerState().matches,
-        ...routerState().cachedMatches,
-      ]
+      const matches = [...routerState().matches, ...routerState().cachedMatches]
       return matches.find(
         (d) => d.routeId === activeId() || d.id === activeId(),
       )
@@ -521,10 +515,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </Match>
                 <Match when={currentTab() === 'matches'}>
                   <div>
-                    {(routerState().pendingMatches?.length
-                      ? routerState().pendingMatches
-                      : routerState().matches
-                    )?.map((match: any, _i: any) => {
+                    {routerState().matches.map((match: any, _i: any) => {
                       return (
                         <div
                           role="button"
@@ -679,15 +670,11 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {routerState().pendingMatches?.find(
+                    {routerState().cachedMatches.find(
                       (d: any) => d.id === activeMatch()?.id,
                     )
-                      ? 'Pending'
-                      : routerState().matches.find(
-                            (d: any) => d.id === activeMatch()?.id,
-                          )
-                        ? 'Active'
-                        : 'Cached'}
+                      ? 'Cached'
+                      : 'Active'}
                   </div>
                 </div>
                 <div class={styles().matchDetailsInfoLabel}>
