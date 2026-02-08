@@ -1,12 +1,12 @@
 {
   "name": "@tanstack/react-router-devtools",
-  "version": "1.127.3",
+  "version": "1.158.4",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TanStack/router.git",
+    "url": "git+https://github.com/TanStack/router.git",
     "directory": "packages/react-router-devtools"
   },
   "homepage": "https://tanstack.com/router",
@@ -27,12 +27,12 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
-    "test:types:ts58": "tsc",
+    "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js",
+    "test:types:ts59": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
@@ -62,16 +62,23 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-devtools-core": "workspace:^"
+    "@tanstack/router-devtools-core": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "react": ">=19",
-    "react-dom": ">=19"
+    "react-dom": ">=19",
+    "vite": "^7.3.1"
   },
   "peerDependencies": {
     "@tanstack/react-router": "workspace:^",
+    "@tanstack/router-core": "workspace:^",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/router-core": {
+      "optional": true
+    }
   }
 }

@@ -16,7 +16,7 @@ export interface CommitLocationOptions {
   hashScrollIntoView?: boolean | ScrollIntoViewOptions
   viewTransition?: boolean | ViewTransitionOptions
   /**
-   * @deprecated All navigations use React transitions under the hood now
+   * @deprecated All navigations use transitions under the hood now
    **/
   startTransition?: boolean
   ignoreBlocker?: boolean
@@ -30,7 +30,7 @@ export type NavigateFn = <
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) => Promise<void> | void
+) => Promise<void>
 
 export type BuildLocationFn = <
   TRouter extends RegisteredRouter,

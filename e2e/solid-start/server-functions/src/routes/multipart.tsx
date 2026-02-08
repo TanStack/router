@@ -7,7 +7,7 @@ export const Route = createFileRoute('/multipart')({
 })
 
 const multipartFormDataServerFn = createServerFn({ method: 'POST' })
-  .validator((x: unknown) => {
+  .inputValidator((x: unknown) => {
     if (!(x instanceof FormData)) {
       throw new Error('Invalid form data')
     }
@@ -85,14 +85,14 @@ function MultipartServerFnCall() {
         />
         <button
           type="submit"
-          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         >
           Submit (native)
         </button>
         <button
           type="button"
           onClick={handleSubmit}
-          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         >
           Submit (onClick)
         </button>

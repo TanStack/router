@@ -17,7 +17,7 @@ function useScrollRestoration() {
 }
 
 /**
- * @deprecated use createRouter's `scrollRestoration` option instead
+ * @deprecated Use the `scrollRestoration` router option instead.
  */
 export function ScrollRestoration(_props: ScrollRestorationOptions) {
   useScrollRestoration()

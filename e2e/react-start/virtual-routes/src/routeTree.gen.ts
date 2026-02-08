@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/root'
+import { Route as pipeRouteImport } from './routes/pipe'
 import { Route as postsPostsRouteImport } from './routes/posts/posts'
 import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'
 import { Route as homeRouteImport } from './routes/home'
@@ -22,6 +23,11 @@ import { Route as ClassicHelloUniverseRouteImport } from './routes/file-based-su
 import { Route as bRouteImport } from './routes/b'
 import { Route as aRouteImport } from './routes/a'
 
+const pipeRoute = pipeRouteImport.update({
+  id: '/special|pipe',
+  path: '/special|pipe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const postsPostsRoute = postsPostsRouteImport.update({
   id: '/posts',
   path: '/posts',
@@ -84,6 +90,7 @@ const aRoute = aRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof homeRoute
   '/posts': typeof postsPostsRouteWithChildren
+  '/special|pipe': typeof pipeRoute
   '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
   '/posts/': typeof postsPostsHomeRoute
   '/posts/$postId': typeof postsPostsDetailRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof homeRoute
+  '/special|pipe': typeof pipeRoute
   '/posts': typeof postsPostsHomeRoute
   '/posts/$postId': typeof postsPostsDetailRoute
   '/classic/hello/universe': typeof ClassicHelloUniverseRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof homeRoute
   '/_first': typeof layoutFirstLayoutRouteWithChildren
   '/posts': typeof postsPostsRouteWithChildren
+  '/special|pipe': typeof pipeRoute
   '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
   '/posts/': typeof postsPostsHomeRoute
   '/_first/_second-layout': typeof layoutSecondLayoutRouteWithChildren
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/posts'
+    | '/special|pipe'
     | '/classic/hello'
     | '/posts/'
     | '/posts/$postId'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/special|pipe'
     | '/posts'
     | '/posts/$postId'
     | '/classic/hello/universe'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_first'
     | '/posts'
+    | '/special|pipe'
     | '/classic/hello'
     | '/posts/'
     | '/_first/_second-layout'
@@ -161,11 +173,19 @@ export interface RootRouteChildren {
   homeRoute: typeof homeRoute
   layoutFirstLayoutRoute: typeof layoutFirstLayoutRouteWithChildren
   postsPostsRoute: typeof postsPostsRouteWithChildren
+  pipeRoute: typeof pipeRoute
   ClassicHelloRouteRoute: typeof ClassicHelloRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/special|pipe': {
+      id: '/special|pipe'
+      path: '/special|pipe'
+      fullPath: '/special|pipe'
+      preLoaderRoute: typeof pipeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
@@ -310,8 +330,18 @@ const rootRouteChildren: RootRouteChildren = {
   homeRoute: homeRoute,
   layoutFirstLayoutRoute: layoutFirstLayoutRouteWithChildren,
   postsPostsRoute: postsPostsRouteWithChildren,
+  pipeRoute: pipeRoute,
   ClassicHelloRouteRoute: ClassicHelloRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

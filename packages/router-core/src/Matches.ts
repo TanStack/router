@@ -9,7 +9,7 @@ import type {
   RouteById,
   RouteIds,
 } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter, SSROption } from './router'
 import type { Constrain, ControlledPromise } from './utils'
 
 export type AnyMatchAndValue = { match: any; value: any }
@@ -96,9 +96,10 @@ export const isMatch = <TMatch, TPath extends string>(
 ): match is IsMatch<TMatch, TPath>['result'] => {
   const parts = (path as string).split('.')
   let part
+  let i = 0
   let value: any = match
 
-  while ((part = parts.shift()) != null && value != null) {
+  while ((part = parts[i++]) != null && value != null) {
     value = value[part]
   }
 
@@ -139,11 +140,24 @@ export interface RouteMatch<
   searchError: unknown
   stateError: unknown
   updatedAt: number
-  loadPromise?: ControlledPromise<void>
-  beforeLoadPromise?: ControlledPromise<void>
-  loaderPromise?: ControlledPromise<void>
+  _nonReactive: {
+    /** @internal */
+    beforeLoadPromise?: ControlledPromise<void>
+    /** @internal */
+    loaderPromise?: ControlledPromise<void>
+    /** @internal */
+    pendingTimeout?: ReturnType<typeof setTimeout>
+    loadPromise?: ControlledPromise<void>
+    displayPendingPromise?: Promise<void>
+    minPendingPromise?: ControlledPromise<void>
+    dehydrated?: boolean
+    /** @internal */
+    error?: unknown
+  }
   loaderData?: TLoaderData
-  __routeContext: Record<string, unknown>
+  /** @internal */
+  __routeContext?: Record<string, unknown>
+  /** @internal */
   __beforeLoadContext?: Record<string, unknown>
   context: TAllContext
   search: TFullSearchSchema
@@ -159,12 +173,9 @@ export interface RouteMatch<
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
-  minPendingPromise?: ControlledPromise<void>
-  pendingTimeout?: ReturnType<typeof setTimeout>
-  ssr?: boolean | 'data-only'
-  _dehydrated?: boolean
+  /** This attribute is not reactive */
+  ssr?: SSROption
   _forcePending?: boolean
-  displayPendingPromise?: Promise<void>
   _displayPending?: boolean
 }
 
@@ -271,6 +282,8 @@ export interface MatchRouteOptions {
    * If `true`, will match against the current location with case sensitivity.
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/MatchRouteOptionsType#casesensitive-property)
+   *
+   * @deprecated Declare case sensitivity in the route definition instead, or globally for all routes using the `caseSensitive` option on the router.
    */
   caseSensitive?: boolean
   /**

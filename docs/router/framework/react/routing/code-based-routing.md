@@ -3,18 +3,18 @@ title: Code-Based Routing
 ---
 
 > [!TIP]
-> Code-based routing is not recommended for most applications. It is recommended to use [File-Based Routing](../file-based-routing.md) instead.
+> Code-based routing is not recommended for most applications. It is recommended to use [File-Based Routing](./file-based-routing.md) instead.
 
 ## ⚠️ Before You Start
 
-- If you're using [File-Based Routing](../file-based-routing.md), **skip this guide**.
-- If you still insist on using code-based routing, you must read the [Routing Concepts](../routing-concepts.md) guide first, as it also covers core concepts of the router.
+- If you're using [File-Based Routing](./file-based-routing.md), **skip this guide**.
+- If you still insist on using code-based routing, you must read the [Routing Concepts](./routing-concepts.md) guide first, as it also covers core concepts of the router.
 
 ## Route Trees
 
 Code-based routing is no different from file-based routing in that it uses the same route tree concept to organize, match and compose matching routes into a component tree. The only difference is that instead of using the filesystem to organize your routes, you use code.
 
-Let's consider the same route tree from the [Route Trees & Nesting](../route-trees.md#route-trees) guide, and convert it to code-based routing:
+Let's consider the same route tree from the [Route Trees & Nesting](./route-trees.md#route-trees) guide, and convert it to code-based routing:
 
 Here is the file-based version:
 
@@ -130,7 +130,7 @@ The `getParentRoute` option is a function that returns the parent route of the r
 Absolutely! The reason for passing the parent route has **everything to do with the magical type safety** of TanStack Router. Without the parent route, TypeScript would have no idea what types to supply your route with!
 
 > [!IMPORTANT]
-> For every route that **NOT** the **Root Route** or a **Pathless Layout Route**, a `path` option is required. This is the path that will be matched against the URL pathname to determine if the route is a match.
+> For every route that's **NOT** the **Root Route** or a **Pathless Layout Route**, a `path` option is required. This is the path that will be matched against the URL pathname to determine if the route is a match.
 
 When configuring route `path` option on a route, it ignores leading and trailing slashes (this does not include "index" route paths `/`). You can include them if you want, but they will be normalized internally by TanStack Router. Here is a table of valid paths and what they will be normalized to:
 
@@ -179,7 +179,7 @@ But before you can go ahead and build the route tree, you need to understand how
 
 Believe it or not, file-based routing is really a superset of code-based routing and uses the filesystem and a bit of code-generation abstraction on top of it to generate this structure you see above automatically.
 
-We're going to assume you've read the [Routing Concepts](../routing-concepts.md) guide and are familiar with each of these main concepts:
+We're going to assume you've read the [Routing Concepts](./routing-concepts.md) guide and are familiar with each of these main concepts:
 
 - The Root Route
 - Basic Routes
@@ -214,7 +214,7 @@ export interface MyRouterContext {
 const rootRoute = createRootRouteWithContext<MyRouterContext>()
 ```
 
-To learn more about Context in TanStack Router, see the [Router Context](../../guide/router-context.md) guide.
+To learn more about Context in TanStack Router, see the [Router Context](../guide/router-context.md) guide.
 
 ## Basic Routes
 
@@ -269,7 +269,7 @@ function PostComponent() {
 ```
 
 > [!TIP]
-> If your component is code-split, you can use the [getRouteApi function](../../guide/code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
+> If your component is code-split, you can use the [getRouteApi function](../guide/code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `postIdRoute` configuration to get access to the typed `useParams()` hook.
 
 ## Splat / Catch-All Routes
 

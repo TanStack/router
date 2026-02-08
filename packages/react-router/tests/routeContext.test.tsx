@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
+import { useEffect } from 'react'
 import {
   Link,
   Outlet,
@@ -350,6 +351,99 @@ describe('context function', () => {
     })
   })
 
+  describe('routeId in context function', () => {
+    test('receives correct routeId for index route', async () => {
+      const mockContextFn = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: ({ routeId }) => {
+          mockContextFn(routeId)
+        },
+        component: () => <div>Index page</div>,
+      })
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const rootElement = await screen.findByText('Index page')
+      expect(rootElement).toBeInTheDocument()
+
+      expect(mockContextFn).toHaveBeenCalledWith('/')
+    })
+
+    test('receives correct routeId for nested route', async () => {
+      const mockParentContextFn = vi.fn()
+      const mockChildContextFn = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const parentRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/parent',
+        context: ({ routeId }) => {
+          mockParentContextFn(routeId)
+        },
+        component: () => (
+          <div>
+            Parent page <Outlet />
+          </div>
+        ),
+      })
+      const childRoute = createRoute({
+        getParentRoute: () => parentRoute,
+        path: '/child',
+        context: ({ routeId }) => {
+          mockChildContextFn(routeId)
+        },
+        component: () => <div>Child page</div>,
+      })
+      const routeTree = rootRoute.addChildren([
+        parentRoute.addChildren([childRoute]),
+      ])
+      const router = createRouter({ routeTree, history })
+
+      await act(() => router.navigate({ to: '/parent/child' }))
+
+      render(<RouterProvider router={router} />)
+
+      const childElement = await screen.findByText('Child page')
+      expect(childElement).toBeInTheDocument()
+
+      expect(mockParentContextFn).toHaveBeenCalledWith('/parent')
+      expect(mockChildContextFn).toHaveBeenCalledWith('/parent/child')
+    })
+
+    test('receives correct routeId for route with dynamic params', async () => {
+      const mockContextFn = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const postRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/$postId',
+        context: ({ routeId }) => {
+          mockContextFn(routeId)
+        },
+        component: () => <div>Post page</div>,
+      })
+      const routeTree = rootRoute.addChildren([postRoute])
+      const router = createRouter({ routeTree, history })
+
+      await act(() =>
+        router.navigate({ to: '/posts/$postId', params: { postId: '123' } }),
+      )
+
+      render(<RouterProvider router={router} />)
+
+      const postElement = await screen.findByText('Post page')
+      expect(postElement).toBeInTheDocument()
+
+      expect(mockContextFn).toHaveBeenCalledWith('/posts/$postId')
+    })
+  })
+
   describe('return values being available in beforeLoad', () => {
     test('when returning an empty object in a regular route', async () => {
       const mockIndexBeforeLoad = vi.fn()
@@ -606,6 +700,155 @@ describe('context function', () => {
       expect(mockIndexLoader).toHaveBeenCalledWith({ project: 'Query' })
       expect(mockIndexLoader).toHaveBeenCalledTimes(1)
     })
+  })
+})
+
+describe('routeId in beforeLoad', () => {
+  configure({ reactStrictMode: true })
+
+  test('receives correct routeId for root route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute({
+      beforeLoad: ({ routeId }) => {
+        mock(routeId)
+      },
+      component: () => <div>Root page</div>,
+    })
+    const routeTree = rootRoute.addChildren([])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    const rootElement = await screen.findByText('Root page')
+    expect(rootElement).toBeInTheDocument()
+
+    expect(mock).toHaveBeenCalledWith('__root__')
+  })
+
+  test('receives correct routeId for index route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      beforeLoad: ({ routeId }) => {
+        mock(routeId)
+      },
+      component: () => <div>Index page</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
+    expect(mock).toHaveBeenCalledWith('/')
+  })
+
+  test('receives correct routeId for nested routes', async () => {
+    const mockParent = vi.fn()
+    const mockChild = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      beforeLoad: ({ routeId }) => {
+        mockParent(routeId)
+      },
+      component: () => (
+        <div>
+          Parent page <Outlet />
+        </div>
+      ),
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: ({ routeId }) => {
+        mockChild(routeId)
+      },
+      component: () => <div>Child page</div>,
+    })
+    const routeTree = rootRoute.addChildren([
+      parentRoute.addChildren([childRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    await act(() => router.navigate({ to: '/parent/child' }))
+
+    render(<RouterProvider router={router} />)
+
+    const childElement = await screen.findByText('Child page')
+    expect(childElement).toBeInTheDocument()
+
+    expect(mockParent).toHaveBeenCalledWith('/parent')
+    expect(mockChild).toHaveBeenCalledWith('/parent/child')
+  })
+
+  test('receives correct routeId for route with dynamic params', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/$postId',
+      beforeLoad: ({ routeId }) => {
+        mock(routeId)
+      },
+      component: () => <div>Post page</div>,
+    })
+    const routeTree = rootRoute.addChildren([postRoute])
+    const router = createRouter({ routeTree, history })
+
+    await act(() =>
+      router.navigate({ to: '/posts/$postId', params: { postId: '123' } }),
+    )
+
+    render(<RouterProvider router={router} />)
+
+    const postElement = await screen.findByText('Post page')
+    expect(postElement).toBeInTheDocument()
+
+    expect(mock).toHaveBeenCalledWith('/posts/$postId')
+  })
+
+  test('receives correct routeId for layout route', async () => {
+    const mock = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      beforeLoad: ({ routeId }) => {
+        mock(routeId)
+      },
+      component: () => (
+        <div>
+          Layout <Outlet />
+        </div>
+      ),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/',
+      component: () => <div>Index page</div>,
+    })
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([indexRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    const indexElement = await screen.findByText('Index page')
+    expect(indexElement).toBeInTheDocument()
+
+    expect(mock).toHaveBeenCalledWith('/_layout')
   })
 })
 
@@ -1602,6 +1845,7 @@ describe('loader in the route definition', () => {
       path: '/',
     })
     const aboutRoute = createRoute({
+      ssr: false,
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async () => {
@@ -1652,7 +1896,9 @@ describe('loader in the route definition', () => {
         )
       },
     })
+
     const aboutRoute = createRoute({
+      ssr: false,
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async () => {
@@ -2470,6 +2716,61 @@ describe('useRouteContext in the component', () => {
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
     expect(content).toBeInTheDocument()
+  })
+
+  test('route context, (sleep in beforeLoad), with immediate navigation', async () => {
+    const contextValues: Array<{ data: string }> = []
+
+    const rootRoute = createRootRoute({
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        return { data: 'context-from-beforeLoad' }
+      },
+      component: () => {
+        const context: { data: string } = rootRoute.useRouteContext()
+
+        // Track all context values we receive
+        contextValues.push(context)
+
+        return <Outlet />
+      },
+    })
+
+    function Component() {
+      const navigate = indexRoute.useNavigate()
+
+      // Navigate away immediately on mount
+      useEffect(() => {
+        navigate({ to: '/other' })
+      }, [navigate])
+
+      return <div>Index page</div>
+    }
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: Component,
+    })
+
+    const otherRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+      component: () => <div>Other page</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    // Wait for navigation to complete
+    await screen.findByText('Other page')
+
+    const allContextsValid = contextValues.every(
+      (c) => c.data === 'context-from-beforeLoad',
+    )
+    expect(allContextsValid).toBe(true)
   })
 
   test('route context (sleep in loader), present in the index route', async () => {

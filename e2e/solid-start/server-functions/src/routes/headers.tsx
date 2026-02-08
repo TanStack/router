@@ -1,8 +1,11 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 import { createServerFn } from '@tanstack/solid-start'
-import { getHeaders, setHeader } from '@tanstack/solid-start/server'
-import type { HTTPHeaderName } from '@tanstack/solid-start/server'
+import {
+  getRequestHeaders,
+  setResponseHeader,
+} from '@tanstack/solid-start/server'
+import type { RequestHeaderName } from '@tanstack/solid-start/server'
 
 export const Route = createFileRoute('/headers')({
   loader: async () => {
@@ -17,17 +20,18 @@ export const Route = createFileRoute('/headers')({
 })
 
 export const getTestHeaders = createServerFn().handler(() => {
-  setHeader('x-test-header', 'test-value')
+  setResponseHeader('x-test-header', 'test-value')
+  const reqHeaders = Object.fromEntries(getRequestHeaders().entries())
 
   return {
-    serverHeaders: getHeaders(),
-    headers: getHeaders(),
+    serverHeaders: reqHeaders,
+    headers: reqHeaders,
   }
 })
 
 type TestHeadersResult = {
-  headers?: Partial<Record<HTTPHeaderName, string | undefined>>
-  serverHeaders?: Partial<Record<HTTPHeaderName, string | undefined>>
+  headers?: Partial<Record<RequestHeaderName, string | undefined>>
+  serverHeaders?: Partial<Record<RequestHeaderName, string | undefined>>
 }
 
 function ResponseHeaders({
@@ -52,7 +56,7 @@ function ResponseHeaders({
         <button
           type="submit"
           data-testid="test-headers-btn"
-          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         >
           Get Headers
         </button>

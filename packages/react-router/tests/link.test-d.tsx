@@ -4009,8 +4009,7 @@ test('when passing a component with props to createLink and navigating to the ro
 
 test('that createLink refs forward correctly', () => {
   // copied from: https://tanstack.com/router/latest/docs/framework/react/guide/custom-link#basic-example
-  interface BasicLinkProps
-    extends React.AnchorHTMLAttributes<HTMLAnchorElement> {}
+  interface BasicLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {}
   const BasicLinkComponent = React.forwardRef<
     HTMLAnchorElement,
     BasicLinkProps
@@ -4038,6 +4037,25 @@ test('that createLink refs forward correctly', () => {
     .parameter(0)
     .toHaveProperty('ref')
     .toEqualTypeOf<Parameters<typeof BasicLinkComponent>[0]['ref']>()
+})
+
+test('createLink should preserve correct ref type with required interface properties', () => {
+  interface MyLinkProps extends React.ComponentPropsWithRef<'a'> {
+    extra: unknown
+  }
+
+  const MyLink = React.forwardRef<HTMLAnchorElement, MyLinkProps>(
+    (props, ref) => {
+      return <a ref={ref} {...props} />
+    },
+  )
+
+  const CreatedLink = createLink(MyLink)
+
+  expectTypeOf(CreatedLink)
+    .parameter(0)
+    .toHaveProperty('ref')
+    .toEqualTypeOf<React.Ref<HTMLAnchorElement> | undefined>()
 })
 
 test('ResolveRelativePath', () => {

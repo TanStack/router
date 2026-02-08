@@ -11,6 +11,7 @@
 import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PathlessLayoutRouteImport } from './routes/_pathlessLayout'
 import { Route as PostsRouteRouteImport } from './routes/posts/route'
 import { Route as BlogRouteRouteImport } from './routes/blog/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,9 +19,18 @@ import { Route as PostsIndexRouteImport } from './routes/posts/index'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as BlogStatsRouteImport } from './routes/blog_/stats'
 import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
+import { Route as PathlessLayoutSettingsRouteImport } from './routes/_pathlessLayout/settings'
+import { Route as BlogBlogIdRouteRouteImport } from './routes/blog_/$blogId/route'
 import { Route as PostsPostIdIndexRouteImport } from './routes/posts/$postId/index'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts/$postId/deep'
+import { Route as BlogBlogIdEditRouteImport } from './routes/blog_/$blogId_/edit'
+import { Route as BlogBlogIdSlugRouteRouteImport } from './routes/blog_/$blogId/$slug/route'
+import { Route as BlogBlogIdSlugBarRouteImport } from './routes/blog_/$blogId/$slug_/bar'
 
+const PathlessLayoutRoute = PathlessLayoutRouteImport.update({
+  id: '/_pathlessLayout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsRouteRoute = PostsRouteRouteImport.update({
   id: '/posts',
   path: '/posts',
@@ -56,6 +66,16 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRouteRoute,
 } as any)
+const PathlessLayoutSettingsRoute = PathlessLayoutSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => PathlessLayoutRoute,
+} as any)
+const BlogBlogIdRouteRoute = BlogBlogIdRouteRouteImport.update({
+  id: '/blog_/$blogId',
+  path: '/blog/$blogId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsPostIdIndexRoute = PostsPostIdIndexRouteImport.update({
   id: '/$postId/',
   path: '/$postId/',
@@ -66,38 +86,69 @@ const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
   path: '/$postId/deep',
   getParentRoute: () => PostsRouteRoute,
 } as any)
+const BlogBlogIdEditRoute = BlogBlogIdEditRouteImport.update({
+  id: '/blog_/$blogId_/edit',
+  path: '/blog/$blogId/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogBlogIdSlugRouteRoute = BlogBlogIdSlugRouteRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogBlogIdRouteRoute,
+} as any)
+const BlogBlogIdSlugBarRoute = BlogBlogIdSlugBarRouteImport.update({
+  id: '/$slug_/bar',
+  path: '/$slug/bar',
+  getParentRoute: () => BlogBlogIdRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/blog': typeof BlogRouteRouteWithChildren
   '/posts': typeof PostsRouteRouteWithChildren
+  '/blog/$blogId': typeof BlogBlogIdRouteRouteWithChildren
+  '/settings': typeof PathlessLayoutSettingsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/stats': typeof BlogStatsRoute
   '/blog/': typeof BlogIndexRoute
   '/posts/': typeof PostsIndexRoute
+  '/blog/$blogId/$slug': typeof BlogBlogIdSlugRouteRoute
+  '/blog/$blogId/edit': typeof BlogBlogIdEditRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
-  '/posts/$postId': typeof PostsPostIdIndexRoute
+  '/posts/$postId/': typeof PostsPostIdIndexRoute
+  '/blog/$blogId/$slug/bar': typeof BlogBlogIdSlugBarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/blog/$blogId': typeof BlogBlogIdRouteRouteWithChildren
+  '/settings': typeof PathlessLayoutSettingsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/stats': typeof BlogStatsRoute
   '/blog': typeof BlogIndexRoute
   '/posts': typeof PostsIndexRoute
+  '/blog/$blogId/$slug': typeof BlogBlogIdSlugRouteRoute
+  '/blog/$blogId/edit': typeof BlogBlogIdEditRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/posts/$postId': typeof PostsPostIdIndexRoute
+  '/blog/$blogId/$slug/bar': typeof BlogBlogIdSlugBarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/blog': typeof BlogRouteRouteWithChildren
   '/posts': typeof PostsRouteRouteWithChildren
+  '/_pathlessLayout': typeof PathlessLayoutRouteWithChildren
+  '/blog_/$blogId': typeof BlogBlogIdRouteRouteWithChildren
+  '/_pathlessLayout/settings': typeof PathlessLayoutSettingsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog_/stats': typeof BlogStatsRoute
   '/blog/': typeof BlogIndexRoute
   '/posts/': typeof PostsIndexRoute
+  '/blog_/$blogId/$slug': typeof BlogBlogIdSlugRouteRoute
+  '/blog_/$blogId_/edit': typeof BlogBlogIdEditRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/posts/$postId/': typeof PostsPostIdIndexRoute
+  '/blog_/$blogId/$slug_/bar': typeof BlogBlogIdSlugBarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,55 +156,67 @@ export interface FileRouteTypes {
     | '/'
     | '/blog'
     | '/posts'
+    | '/blog/$blogId'
+    | '/settings'
     | '/blog/$slug'
     | '/blog/stats'
     | '/blog/'
     | '/posts/'
+    | '/blog/$blogId/$slug'
+    | '/blog/$blogId/edit'
     | '/posts/$postId/deep'
-    | '/posts/$postId'
+    | '/posts/$postId/'
+    | '/blog/$blogId/$slug/bar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/blog/$blogId'
+    | '/settings'
     | '/blog/$slug'
     | '/blog/stats'
     | '/blog'
     | '/posts'
+    | '/blog/$blogId/$slug'
+    | '/blog/$blogId/edit'
     | '/posts/$postId/deep'
     | '/posts/$postId'
+    | '/blog/$blogId/$slug/bar'
   id:
     | '__root__'
     | '/'
     | '/blog'
     | '/posts'
+    | '/_pathlessLayout'
+    | '/blog_/$blogId'
+    | '/_pathlessLayout/settings'
     | '/blog/$slug'
     | '/blog_/stats'
     | '/blog/'
     | '/posts/'
+    | '/blog_/$blogId/$slug'
+    | '/blog_/$blogId_/edit'
     | '/posts/$postId/deep'
     | '/posts/$postId/'
+    | '/blog_/$blogId/$slug_/bar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BlogRouteRoute: typeof BlogRouteRouteWithChildren
   PostsRouteRoute: typeof PostsRouteRouteWithChildren
+  PathlessLayoutRoute: typeof PathlessLayoutRouteWithChildren
+  BlogBlogIdRouteRoute: typeof BlogBlogIdRouteRouteWithChildren
   BlogStatsRoute: typeof BlogStatsRoute
+  BlogBlogIdEditRoute: typeof BlogBlogIdEditRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
+    '/_pathlessLayout': {
+      id: '/_pathlessLayout'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog': {
-      id: '/blog'
-      path: '/blog'
-      fullPath: '/blog'
-      preLoaderRoute: typeof BlogRouteRouteImport
+      preLoaderRoute: typeof PathlessLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts': {
@@ -163,11 +226,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/$slug': {
-      id: '/blog/$slug'
-      path: '/$slug'
-      fullPath: '/blog/$slug'
-      preLoaderRoute: typeof BlogSlugRouteImport
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRouteRoute
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof BlogRouteRoute
     }
     '/blog_/stats': {
@@ -177,18 +261,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/': {
-      id: '/blog/'
-      path: '/'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof BlogIndexRouteImport
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRouteRoute
     }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexRouteImport
+    '/_pathlessLayout/settings': {
+      id: '/_pathlessLayout/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof PathlessLayoutSettingsRouteImport
+      parentRoute: typeof PathlessLayoutRoute
+    }
+    '/blog_/$blogId': {
+      id: '/blog_/$blogId'
+      path: '/blog/$blogId'
+      fullPath: '/blog/$blogId'
+      preLoaderRoute: typeof BlogBlogIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/$postId/': {
+      id: '/posts/$postId/'
+      path: '/$postId'
+      fullPath: '/posts/$postId/'
+      preLoaderRoute: typeof PostsPostIdIndexRouteImport
       parentRoute: typeof PostsRouteRoute
     }
     '/posts/$postId/deep': {
@@ -198,12 +296,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsPostIdDeepRouteImport
       parentRoute: typeof PostsRouteRoute
     }
-    '/posts/$postId/': {
-      id: '/posts/$postId/'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdIndexRouteImport
-      parentRoute: typeof PostsRouteRoute
+    '/blog_/$blogId_/edit': {
+      id: '/blog_/$blogId_/edit'
+      path: '/blog/$blogId/edit'
+      fullPath: '/blog/$blogId/edit'
+      preLoaderRoute: typeof BlogBlogIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog_/$blogId/$slug': {
+      id: '/blog_/$blogId/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$blogId/$slug'
+      preLoaderRoute: typeof BlogBlogIdSlugRouteRouteImport
+      parentRoute: typeof BlogBlogIdRouteRoute
+    }
+    '/blog_/$blogId/$slug_/bar': {
+      id: '/blog_/$blogId/$slug_/bar'
+      path: '/$slug/bar'
+      fullPath: '/blog/$blogId/$slug/bar'
+      preLoaderRoute: typeof BlogBlogIdSlugBarRouteImport
+      parentRoute: typeof BlogBlogIdRouteRoute
     }
   }
 }
@@ -233,6 +345,33 @@ declare module './routes/posts/route' {
     FileRoutesByPath['/posts']['id'],
     FileRoutesByPath['/posts']['path'],
     FileRoutesByPath['/posts']['fullPath']
+  >
+}
+declare module './routes/_pathlessLayout' {
+  const createFileRoute: CreateFileRoute<
+    '/_pathlessLayout',
+    FileRoutesByPath['/_pathlessLayout']['parentRoute'],
+    FileRoutesByPath['/_pathlessLayout']['id'],
+    FileRoutesByPath['/_pathlessLayout']['path'],
+    FileRoutesByPath['/_pathlessLayout']['fullPath']
+  >
+}
+declare module './routes/blog_/$blogId/route' {
+  const createFileRoute: CreateFileRoute<
+    '/blog_/$blogId',
+    FileRoutesByPath['/blog_/$blogId']['parentRoute'],
+    FileRoutesByPath['/blog_/$blogId']['id'],
+    FileRoutesByPath['/blog_/$blogId']['path'],
+    FileRoutesByPath['/blog_/$blogId']['fullPath']
+  >
+}
+declare module './routes/_pathlessLayout/settings' {
+  const createFileRoute: CreateFileRoute<
+    '/_pathlessLayout/settings',
+    FileRoutesByPath['/_pathlessLayout/settings']['parentRoute'],
+    FileRoutesByPath['/_pathlessLayout/settings']['id'],
+    FileRoutesByPath['/_pathlessLayout/settings']['path'],
+    FileRoutesByPath['/_pathlessLayout/settings']['fullPath']
   >
 }
 declare module './routes/blog/$slug' {
@@ -271,6 +410,24 @@ declare module './routes/posts/index' {
     FileRoutesByPath['/posts/']['fullPath']
   >
 }
+declare module './routes/blog_/$blogId/$slug/route' {
+  const createFileRoute: CreateFileRoute<
+    '/blog_/$blogId/$slug',
+    FileRoutesByPath['/blog_/$blogId/$slug']['parentRoute'],
+    FileRoutesByPath['/blog_/$blogId/$slug']['id'],
+    FileRoutesByPath['/blog_/$blogId/$slug']['path'],
+    FileRoutesByPath['/blog_/$blogId/$slug']['fullPath']
+  >
+}
+declare module './routes/blog_/$blogId_/edit' {
+  const createFileRoute: CreateFileRoute<
+    '/blog_/$blogId_/edit',
+    FileRoutesByPath['/blog_/$blogId_/edit']['parentRoute'],
+    FileRoutesByPath['/blog_/$blogId_/edit']['id'],
+    FileRoutesByPath['/blog_/$blogId_/edit']['path'],
+    FileRoutesByPath['/blog_/$blogId_/edit']['fullPath']
+  >
+}
 declare module './routes/posts/$postId/deep' {
   const createFileRoute: CreateFileRoute<
     '/posts/$postId/deep',
@@ -287,6 +444,15 @@ declare module './routes/posts/$postId/index' {
     FileRoutesByPath['/posts/$postId/']['id'],
     FileRoutesByPath['/posts/$postId/']['path'],
     FileRoutesByPath['/posts/$postId/']['fullPath']
+  >
+}
+declare module './routes/blog_/$blogId/$slug_/bar' {
+  const createFileRoute: CreateFileRoute<
+    '/blog_/$blogId/$slug_/bar',
+    FileRoutesByPath['/blog_/$blogId/$slug_/bar']['parentRoute'],
+    FileRoutesByPath['/blog_/$blogId/$slug_/bar']['id'],
+    FileRoutesByPath['/blog_/$blogId/$slug_/bar']['path'],
+    FileRoutesByPath['/blog_/$blogId/$slug_/bar']['fullPath']
   >
 }
 
@@ -320,11 +486,40 @@ const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
   PostsRouteRouteChildren,
 )
 
+interface PathlessLayoutRouteChildren {
+  PathlessLayoutSettingsRoute: typeof PathlessLayoutSettingsRoute
+}
+
+const PathlessLayoutRouteChildren: PathlessLayoutRouteChildren = {
+  PathlessLayoutSettingsRoute: PathlessLayoutSettingsRoute,
+}
+
+const PathlessLayoutRouteWithChildren = PathlessLayoutRoute._addFileChildren(
+  PathlessLayoutRouteChildren,
+)
+
+interface BlogBlogIdRouteRouteChildren {
+  BlogBlogIdSlugRouteRoute: typeof BlogBlogIdSlugRouteRoute
+  BlogBlogIdSlugBarRoute: typeof BlogBlogIdSlugBarRoute
+}
+
+const BlogBlogIdRouteRouteChildren: BlogBlogIdRouteRouteChildren = {
+  BlogBlogIdSlugRouteRoute: BlogBlogIdSlugRouteRoute,
+  BlogBlogIdSlugBarRoute: BlogBlogIdSlugBarRoute,
+}
+
+const BlogBlogIdRouteRouteWithChildren = BlogBlogIdRouteRoute._addFileChildren(
+  BlogBlogIdRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BlogRouteRoute: BlogRouteRouteWithChildren,
   PostsRouteRoute: PostsRouteRouteWithChildren,
+  PathlessLayoutRoute: PathlessLayoutRouteWithChildren,
+  BlogBlogIdRouteRoute: BlogBlogIdRouteRouteWithChildren,
   BlogStatsRoute: BlogStatsRoute,
+  BlogBlogIdEditRoute: BlogBlogIdEditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

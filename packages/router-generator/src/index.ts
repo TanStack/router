@@ -9,11 +9,7 @@ export type { Config, BaseConfig } from './config'
 export { Generator } from './generator'
 export type { FileEventType, FileEvent, GeneratorEvent } from './generator'
 
-export type {
-  GeneratorPluginBase,
-  GeneratorPlugin,
-  GeneratorPluginWithTransform,
-} from './plugin/types'
+export type { GeneratorPlugin } from './plugin/types'
 
 export {
   capitalize,
@@ -31,7 +27,7 @@ export {
   format,
   removeExt,
   checkRouteFullPathUniqueness,
-  hasChildWithExport,
+  inferFullPath,
 } from './utils'
 
 export type {
@@ -41,6 +37,7 @@ export type {
   GetRoutesByFileMapResultValue,
   ImportDeclaration,
   ImportSpecifier,
+  HandleNodeAccumulator,
 } from './types'
 
 export { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
@@ -54,5 +51,4 @@ export type {
   TransformImportsConfig,
   TransformContext,
   TransformOptions,
-  TransformPlugin,
 } from './transform/types'

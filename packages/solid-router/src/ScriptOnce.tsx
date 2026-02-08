@@ -1,3 +1,6 @@
+import { isServer } from '@tanstack/router-core/isServer'
+import { useRouter } from './useRouter'
+
 export function ScriptOnce({
   children,
 }: {
@@ -5,14 +8,15 @@ export function ScriptOnce({
   log?: boolean
   sync?: boolean
 }) {
-  if (typeof document !== 'undefined') {
+  const router = useRouter()
+  if (!(isServer ?? router.isServer)) {
     return null
   }
-
   return (
     <script
-      class="tsr-once"
-      innerHTML={[children].filter(Boolean).join('\n')}
+      nonce={router.options.ssr?.nonce}
+      class="$tsr"
+      innerHTML={children + ';document.currentScript.remove()'}
     />
   )
 }

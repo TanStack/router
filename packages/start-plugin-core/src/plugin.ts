@@ -1,148 +1,294 @@
-import path from 'node:path'
-import { createNitro } from 'nitropack'
-import { trimPathRight } from '@tanstack/router-core'
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
-import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
+import { joinPaths } from '@tanstack/router-core'
 import * as vite from 'vite'
-import { createTanStackConfig } from './schema'
-import { nitroPlugin } from './nitro-plugin/plugin'
+import { crawlFrameworkPkgs } from 'vitefu'
+import { join } from 'pathe'
+import { escapePath } from 'tinyglobby'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
-import { startCompilerPlugin } from './start-compiler-plugin'
-import {
-  CLIENT_DIST_DIR,
-  SSR_ENTRY_FILE,
-  VITE_ENVIRONMENT_NAMES,
-} from './constants'
+import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
-import { resolveVirtualEntriesPlugin } from './resolve-virtual-entries-plugin/plugin'
-import type { createTanStackStartOptionsSchema } from './schema'
-import type { PluginOption, Rollup } from 'vite'
-import type { z } from 'zod'
-import type { CompileStartFrameworkOptions } from './compilers'
+import { previewServerPlugin } from './preview-server-plugin/plugin'
+import { parseStartConfig } from './schema'
+import { resolveEntry } from './resolve-entries'
+import {
+  getClientOutputDirectory,
+  getServerOutputDirectory,
+} from './output-directory'
+import { postServerBuild } from './post-server-build'
+import { startCompilerPlugin } from './start-compiler-plugin/plugin'
+import type {
+  GetConfigFn,
+  ResolvedStartConfig,
+  TanStackStartVitePluginCoreOptions,
+} from './types'
+import type { ViteEnvironmentNames } from './constants'
+import type {
+  TanStackStartInputConfig,
+  TanStackStartOutputConfig,
+} from './schema'
+import type { PluginOption } from 'vite'
 
-export type TanStackStartInputConfig = z.input<
-  ReturnType<typeof createTanStackStartOptionsSchema>
->
-
-const defaultConfig = createTanStackConfig()
-export function getTanStackStartOptions(opts?: TanStackStartInputConfig) {
-  return defaultConfig.parse(opts)
+function isFullUrl(str: string): boolean {
+  try {
+    new URL(str)
+    return true
+  } catch {
+    return false
+  }
 }
-
-export type TanStackStartOutputConfig = ReturnType<
-  typeof getTanStackStartOptions
->
-
-export interface TanStackStartVitePluginCoreOptions {
-  framework: CompileStartFrameworkOptions
-  getVirtualServerRootHandler: (ctx: {
-    routerFilepath: string
-    serverEntryFilepath: string
-  }) => string
-  getVirtualServerEntry: (ctx: { routerFilepath: string }) => string
-  getVirtualClientEntry: (ctx: { routerFilepath: string }) => string
-}
-// this needs to live outside of the TanStackStartVitePluginCore since it will be invoked multiple times by vite
-let ssrBundle: Rollup.OutputBundle
 
 export function TanStackStartVitePluginCore(
-  opts: TanStackStartVitePluginCoreOptions,
-  startConfig: TanStackStartOutputConfig,
+  corePluginOpts: TanStackStartVitePluginCoreOptions,
+  startPluginOpts: TanStackStartInputConfig,
 ): Array<PluginOption> {
+  // Determine the provider environment for server functions
+  // If providerEnv is set, use that; otherwise default to SSR as the provider
+  const serverFnProviderEnv =
+    corePluginOpts.serverFn?.providerEnv || VITE_ENVIRONMENT_NAMES.server
+  const ssrIsProvider = serverFnProviderEnv === VITE_ENVIRONMENT_NAMES.server
+
+  const resolvedStartConfig: ResolvedStartConfig = {
+    root: '',
+    startFilePath: undefined,
+    routerFilePath: '',
+    srcDirectory: '',
+    viteAppBase: '',
+    serverFnProviderEnv,
+  }
+
+  let startConfig: TanStackStartOutputConfig | null
+  const getConfig: GetConfigFn = () => {
+    if (!resolvedStartConfig.root) {
+      throw new Error(`Cannot get config before root is resolved`)
+    }
+    if (!startConfig) {
+      startConfig = parseStartConfig(
+        startPluginOpts,
+        corePluginOpts,
+        resolvedStartConfig.root,
+      )
+    }
+    return { startConfig, resolvedStartConfig, corePluginOpts }
+  }
+
+  const capturedBundle: Partial<
+    Record<ViteEnvironmentNames, vite.Rollup.OutputBundle>
+  > = {}
+
+  function getBundle(envName: ViteEnvironmentNames): vite.Rollup.OutputBundle {
+    const bundle = capturedBundle[envName]
+    if (!bundle) {
+      throw new Error(`No bundle captured for environment: ${envName}`)
+    }
+    return bundle
+  }
+
+  const environments: Array<{ name: string; type: 'client' | 'server' }> = [
+    { name: VITE_ENVIRONMENT_NAMES.client, type: 'client' },
+    { name: VITE_ENVIRONMENT_NAMES.server, type: 'server' },
+  ]
+  if (
+    corePluginOpts.serverFn?.providerEnv &&
+    !environments.find((e) => e.name === corePluginOpts.serverFn?.providerEnv)
+  ) {
+    environments.push({
+      name: corePluginOpts.serverFn.providerEnv,
+      type: 'server',
+    })
+  }
   return [
-    tanStackStartRouter({
-      ...startConfig.tsr,
-      target: opts.framework,
-      autoCodeSplitting: true,
-    }),
-    resolveVirtualEntriesPlugin(opts, startConfig),
     {
-      name: 'tanstack-start-core:config-client',
-      async config(viteConfig) {
-        const viteAppBase = trimPathRight(viteConfig.base || '/')
-        globalThis.TSS_APP_BASE = viteAppBase
+      name: 'tanstack-start-core:config',
+      enforce: 'pre',
+      async config(viteConfig, { command }) {
+        resolvedStartConfig.viteAppBase = viteConfig.base ?? '/'
+        if (!isFullUrl(resolvedStartConfig.viteAppBase)) {
+          resolvedStartConfig.viteAppBase = joinPaths([
+            '/',
+            viteConfig.base,
+            '/',
+          ])
+        }
+        const root = viteConfig.root || process.cwd()
+        resolvedStartConfig.root = root
 
-        const nitroOutputPublicDir = await (async () => {
-          // Create a dummy nitro app to get the resolved public output path
-          const dummyNitroApp = await createNitro({
-            preset: startConfig.target,
-            compatibilityDate: '2024-12-01',
-          })
+        const { startConfig } = getConfig()
+        if (startConfig.router.basepath === undefined) {
+          if (!isFullUrl(resolvedStartConfig.viteAppBase)) {
+            startConfig.router.basepath =
+              resolvedStartConfig.viteAppBase.replace(/^\/|\/$/g, '')
+          } else {
+            startConfig.router.basepath = '/'
+          }
+        } else {
+          if (command === 'serve' && !viteConfig.server?.middlewareMode) {
+            // when serving, we must ensure that router basepath and viteAppBase are aligned
+            if (
+              !joinPaths(['/', startConfig.router.basepath, '/']).startsWith(
+                joinPaths(['/', resolvedStartConfig.viteAppBase, '/']),
+              )
+            ) {
+              this.error(
+                '[tanstack-start]: During `vite dev`, `router.basepath` must start with the vite `base` config value',
+              )
+            }
+          }
+        }
 
-          const nitroOutputPublicDir = dummyNitroApp.options.output.publicDir
-          await dummyNitroApp.close()
+        const TSS_SERVER_FN_BASE = joinPaths([
+          '/',
+          startConfig.router.basepath,
+          startConfig.serverFns.base,
+          '/',
+        ])
+        const resolvedSrcDirectory = join(root, startConfig.srcDirectory)
+        resolvedStartConfig.srcDirectory = resolvedSrcDirectory
 
-          return nitroOutputPublicDir
-        })()
+        const startFilePath = resolveEntry({
+          type: 'start entry',
+          configuredEntry: startConfig.start.entry,
+          defaultEntry: 'start',
+          resolvedSrcDirectory,
+          required: false,
+        })
+        resolvedStartConfig.startFilePath = startFilePath
+
+        const routerFilePath = resolveEntry({
+          type: 'router entry',
+          configuredEntry: startConfig.router.entry,
+          defaultEntry: 'router',
+          resolvedSrcDirectory,
+          required: true,
+        })
+        resolvedStartConfig.routerFilePath = routerFilePath
+
+        const clientEntryPath = resolveEntry({
+          type: 'client entry',
+          configuredEntry: startConfig.client.entry,
+          defaultEntry: 'client',
+          resolvedSrcDirectory,
+          required: false,
+        })
+
+        const serverEntryPath = resolveEntry({
+          type: 'server entry',
+          configuredEntry: startConfig.server.entry,
+          defaultEntry: 'server',
+          resolvedSrcDirectory,
+          required: false,
+        })
+
+        const clientAlias = vite.normalizePath(
+          clientEntryPath ?? corePluginOpts.defaultEntryPaths.client,
+        )
+        const serverAlias = vite.normalizePath(
+          serverEntryPath ?? corePluginOpts.defaultEntryPaths.server,
+        )
+        const startAlias = vite.normalizePath(
+          startFilePath ?? corePluginOpts.defaultEntryPaths.start,
+        )
+        const routerAlias = vite.normalizePath(routerFilePath)
+
+        const entryAliasConfiguration: Record<
+          (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS],
+          string
+        > = {
+          [ENTRY_POINTS.client]: clientAlias,
+          [ENTRY_POINTS.server]: serverAlias,
+          [ENTRY_POINTS.start]: startAlias,
+          [ENTRY_POINTS.router]: routerAlias,
+        }
+
+        const startPackageName =
+          `@tanstack/${corePluginOpts.framework}-start` as const
+
+        // crawl packages that have start in "peerDependencies"
+        // see https://github.com/svitejs/vitefu/blob/d8d82fa121e3b2215ba437107093c77bde51b63b/src/index.js#L95-L101
+
+        // this is currently uncached; could be implemented similarly as vite handles lock file changes
+        // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
+
+        const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
+          root: process.cwd(),
+          isBuild: command === 'build',
+          isFrameworkPkgByJson(pkgJson) {
+            const peerDependencies = pkgJson['peerDependencies']
+
+            if (peerDependencies) {
+              if (
+                startPackageName in peerDependencies ||
+                '@tanstack/start-client-core' in peerDependencies
+              ) {
+                return true
+              }
+            }
+
+            return false
+          },
+        })
 
         return {
-          base: viteAppBase,
+          // see https://vite.dev/config/shared-options.html#apptype
+          // this will prevent vite from injecting middlewares that we don't want
+          appType: viteConfig.appType ?? 'custom',
           environments: {
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
               build: {
-                manifest: true,
                 rollupOptions: {
                   input: {
-                    main: getClientEntryPath(startConfig),
+                    main: ENTRY_POINTS.client,
                   },
-                  output: {
-                    dir: path.resolve(startConfig.root, CLIENT_DIST_DIR),
-                  },
-                  // TODO: this should be removed
-                  external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
                 },
+                outDir: getClientOutputDirectory(viteConfig),
+              },
+              optimizeDeps: {
+                exclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
+                // Ensure user code can be crawled for dependencies
+                entries: [clientAlias, routerAlias].map((entry) =>
+                  // Entries are treated as `tinyglobby` patterns so need to be escaped
+                  escapePath(entry),
+                ),
               },
             },
             [VITE_ENVIRONMENT_NAMES.server]: {
               consumer: 'server',
               build: {
                 ssr: true,
-                // we don't write to the file system as the below 'capture-output' plugin will
-                // capture the output and write it to the virtual file system
-                write: false,
-                copyPublicDir: false,
                 rollupOptions: {
-                  output: {
-                    entryFileNames: SSR_ENTRY_FILE,
-                  },
-                  plugins: [
-                    {
-                      name: 'capture-output',
-                      generateBundle(_options, bundle) {
-                        // TODO: can this hook be called more than once?
-                        ssrBundle = bundle
-                      },
-                    },
-                  ],
+                  input:
+                    viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
+                      ?.build?.rollupOptions?.input ?? serverAlias,
                 },
+                outDir: getServerOutputDirectory(viteConfig),
                 commonjsOptions: {
                   include: [/node_modules/],
                 },
+                copyPublicDir:
+                  viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
+                    ?.build?.copyPublicDir ?? false,
+              },
+              optimizeDeps: {
+                // Ensure user code can be crawled for dependencies
+                entries: [serverAlias, startAlias, routerAlias].map((entry) =>
+                  // Entries are treated as `tinyglobby` patterns so need to be escaped
+                  escapePath(entry),
+                ),
               },
             },
           },
+
           resolve: {
             noExternal: [
-              '@tanstack/start-client',
-              '@tanstack/start-client-core',
-              '@tanstack/start-server',
-              '@tanstack/start-server-core',
-              '@tanstack/start-server-functions-fetcher',
-              '@tanstack/start-server-functions-client',
-              '@tanstack/start-server-functions-server',
-              '@tanstack/start-router-manifest',
-              '@tanstack/start-config',
-              '@tanstack/server-functions-plugin',
-              'nitropack',
-              '@tanstack/**start**',
-              ...Object.values(VIRTUAL_MODULES),
+              // ENTRY_POINTS.start,
+              '@tanstack/start**',
+              `@tanstack/${corePluginOpts.framework}-start**`,
+              ...crawlFrameworkPkgsResult.ssr.noExternal.sort(),
             ],
-          },
-          optimizeDeps: {
-            exclude: [...Object.values(VIRTUAL_MODULES)],
+            alias: {
+              ...entryAliasConfiguration,
+            },
           },
           /* prettier-ignore */
           define: {
@@ -150,50 +296,109 @@ export function TanStackStartVitePluginCore(
             // i.e: __FRAMEWORK_NAME__ can be replaced with JSON.stringify("TanStack Start")
             // This is not the same as injecting environment variables.
 
-            ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
-            ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
-            ...defineReplaceEnv('TSS_APP_BASE', viteAppBase),
-            ...defineReplaceEnv('TSS_SPA_MODE', startConfig.spa?.enabled ? 'true' : 'false'),
+            ...defineReplaceEnv('TSS_SERVER_FN_BASE', TSS_SERVER_FN_BASE),
+            ...defineReplaceEnv('TSS_CLIENT_OUTPUT_DIR', getClientOutputDirectory(viteConfig)),
+            ...defineReplaceEnv('TSS_ROUTER_BASEPATH', startConfig.router.basepath),
+            ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
+            ...defineReplaceEnv('TSS_DEV_SERVER', command === 'serve' ? 'true' : 'false'),
+            // Replace NODE_ENV during build (unless opted out) for dead code elimination in server bundles
+            ...(command === 'build' && startConfig.server.build.staticNodeEnv ? {
+              'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || viteConfig.mode || 'production'),
+            } : {}),
+          },
+          builder: {
+            sharedPlugins: true,
+            async buildApp(builder) {
+              const client = builder.environments[VITE_ENVIRONMENT_NAMES.client]
+              const server = builder.environments[VITE_ENVIRONMENT_NAMES.server]
+
+              if (!client) {
+                throw new Error('Client environment not found')
+              }
+
+              if (!server) {
+                throw new Error('SSR environment not found')
+              }
+
+              if (!client.isBuilt) {
+                // Build the client bundle first
+                await builder.build(client)
+              }
+              if (!server.isBuilt) {
+                // Build the SSR bundle
+                await builder.build(server)
+              }
+
+              // If a custom provider environment is configured (not SSR),
+              // build it last so the manifest includes functions from all environments
+              if (!ssrIsProvider) {
+                const providerEnv = builder.environments[serverFnProviderEnv]
+                if (!providerEnv) {
+                  throw new Error(
+                    `Provider environment "${serverFnProviderEnv}" not found`,
+                  )
+                }
+                if (!providerEnv.isBuilt) {
+                  // Build the provider environment last
+                  // This ensures all server functions are discovered from client/ssr builds
+                  await builder.build(providerEnv)
+                }
+              }
+            },
           },
         }
       },
     },
-    // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
-    startCompilerPlugin(opts.framework, {
-      client: { envName: VITE_ENVIRONMENT_NAMES.client },
-      server: { envName: VITE_ENVIRONMENT_NAMES.server },
-    }),
-    TanStackServerFnPluginEnv({
-      // This is the ID that will be available to look up and import
-      // our server function manifest and resolve its module
-      manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
-      client: {
-        getRuntimeCode: () =>
-          `import { createClientRpc } from '@tanstack/${opts.framework}-start/server-functions-client'`,
-        replacer: (d) =>
-          `createClientRpc('${d.functionId}', '${startConfig.serverFns.base}')`,
-        envName: VITE_ENVIRONMENT_NAMES.client,
-      },
-      server: {
-        getRuntimeCode: () =>
-          `import { createServerRpc } from '@tanstack/${opts.framework}-start/server-functions-server'`,
-        replacer: (d) =>
-          `createServerRpc('${d.functionId}', '${startConfig.serverFns.base}', ${d.fn})`,
-        envName: VITE_ENVIRONMENT_NAMES.server,
-      },
-    }),
-    loadEnvPlugin(startConfig),
-    startManifestPlugin({ clientEntry: getClientEntryPath(startConfig) }),
-    devServerPlugin(),
-    nitroPlugin(startConfig, () => ssrBundle),
+    // Separate plugin for buildApp hook with enforce: 'post'
+    // This ensures proper ordering with other plugins that also have
+    // buildApp hooks with order: 'post'. The enforce: 'post' ensures this
+    // runs after other plugins (like Nitro) complete their builds.
     {
-      name: 'tanstack-start:core:capture-client-bundle',
+      name: 'tanstack-start-core:post-build',
+      enforce: 'post',
+      buildApp: {
+        order: 'post',
+        async handler(builder) {
+          const { startConfig } = getConfig()
+          await postServerBuild({ builder, startConfig })
+        },
+      },
+    },
+    // Server function plugin handles:
+    // 1. Identifying createServerFn().handler() calls
+    // 2. Extracting server functions to separate modules
+    // 3. Replacing call sites with RPC stubs
+    // 4. Generating the server function manifest
+    // Also handles createIsomorphicFn, createServerOnlyFn, createClientOnlyFn, createMiddleware
+    startCompilerPlugin({
+      framework: corePluginOpts.framework,
+      environments,
+      generateFunctionId: startPluginOpts?.serverFns?.generateFunctionId,
+      providerEnvName: serverFnProviderEnv,
+    }),
+    tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
+    loadEnvPlugin(),
+    startManifestPlugin({
+      getClientBundle: () => getBundle(VITE_ENVIRONMENT_NAMES.client),
+      getConfig,
+    }),
+    devServerPlugin({ getConfig }),
+    previewServerPlugin(),
+    {
+      name: 'tanstack-start:core:capture-bundle',
       applyToEnvironment(e) {
-        return e.config.consumer === 'client'
+        return (
+          e.name === VITE_ENVIRONMENT_NAMES.client ||
+          e.name === VITE_ENVIRONMENT_NAMES.server
+        )
       },
       enforce: 'post',
       generateBundle(_options, bundle) {
-        globalThis.TSS_CLIENT_BUNDLE = bundle
+        const environment = this.environment.name as ViteEnvironmentNames
+        if (!Object.values(VITE_ENVIRONMENT_NAMES).includes(environment)) {
+          throw new Error(`Unknown environment: ${environment}`)
+        }
+        capturedBundle[environment] = bundle
       },
     },
   ]
@@ -207,23 +412,4 @@ function defineReplaceEnv<TKey extends string, TValue extends string>(
     [`process.env.${key}`]: JSON.stringify(value),
     [`import.meta.env.${key}`]: JSON.stringify(value),
   } as { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue }
-}
-
-const getClientEntryPath = (startConfig: TanStackStartOutputConfig) => {
-  // when the user specifies a custom client entry path, we need to resolve it
-  // relative to the root of the project, keeping in mind that if not specified
-  // it will be /~start/default-client-entry which is a virtual path
-  // that is resolved by vite to the actual client entry path
-  const entry = startConfig.clientEntryPath.startsWith(
-    '/~start/default-client-entry',
-  )
-    ? startConfig.clientEntryPath
-    : vite.normalizePath(
-        path.join(
-          '/@fs',
-          path.resolve(startConfig.root, startConfig.clientEntryPath),
-        ),
-      )
-
-  return entry
 }

@@ -1,7 +1,9 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import { functionalUpdate } from './utils'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
 import type { NonNullableUpdater } from './utils'
+import type { HistoryLocation } from '@tanstack/history'
 
 export type ScrollRestorationEntry = { scrollX: number; scrollY: number }
 
@@ -27,11 +29,14 @@ function getSafeSessionStorage() {
       return window.sessionStorage
     }
   } catch {
-    return undefined
+    // silent
   }
   return undefined
 }
 
+/** SessionStorage key used to persist scroll restoration state. */
+/** SessionStorage key used to store scroll positions across navigations. */
+/** SessionStorage key used to store scroll positions across navigations. */
 export const storageKey = 'tsr-scroll-restoration-v1_3'
 
 const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
@@ -46,10 +51,10 @@ const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
   }
 }
 
-function createScrollRestorationCache(): ScrollRestorationCache | undefined {
+function createScrollRestorationCache(): ScrollRestorationCache | null {
   const safeSessionStorage = getSafeSessionStorage()
   if (!safeSessionStorage) {
-    return undefined
+    return null
   }
 
   const persistedState = safeSessionStorage.getItem(storageKey)
@@ -62,13 +67,20 @@ function createScrollRestorationCache(): ScrollRestorationCache | undefined {
     // This setter is simply to make sure that we set the sessionStorage right
     // after the state is updated. It doesn't necessarily need to be a functional
     // update.
-    set: (updater) => (
-      (state = functionalUpdate(updater, state) || state),
-      safeSessionStorage.setItem(storageKey, JSON.stringify(state))
-    ),
+    set: (updater) => {
+      state = functionalUpdate(updater, state) || state
+      try {
+        safeSessionStorage.setItem(storageKey, JSON.stringify(state))
+      } catch {
+        console.warn(
+          '[ts-router] Could not persist scroll restoration state to sessionStorage.',
+        )
+      }
+    },
   }
 }
 
+/** In-memory handle to the persisted scroll restoration cache. */
 export const scrollRestorationCache = createScrollRestorationCache()
 
 /**
@@ -78,20 +90,24 @@ export const scrollRestorationCache = createScrollRestorationCache()
  * The `location.href` is used as a fallback to support the use case where the location state is not available like the initial render.
  */
 
+/**
+ * Default scroll restoration cache key: location state key or full href.
+ */
 export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
   return location.state.__TSR_key! || location.href
 }
 
+/** Best-effort nth-child CSS selector for a given element. */
 export function getCssSelector(el: any): string {
   const path = []
-  let parent
+  let parent: HTMLElement
   while ((parent = el.parentNode)) {
-    path.unshift(
-      `${el.tagName}:nth-child(${([].indexOf as any).call(parent.children, el) + 1})`,
+    path.push(
+      `${el.tagName}:nth-child(${Array.prototype.indexOf.call(parent.children, el) + 1})`,
     )
     el = parent
   }
-  return `${path.join(' > ')}`.toLowerCase()
+  return `${path.reverse().join(' > ')}`.toLowerCase()
 }
 
 let ignoreScroll = false
@@ -100,35 +116,45 @@ let ignoreScroll = false
 // unless they are passed in as arguments. Why? Because we need to be able to
 // toString() it into a script tag to execute as early as possible in the browser
 // during SSR. Additionally, we also call it from within the router lifecycle
-export function restoreScroll(
-  storageKey: string,
-  key: string | undefined,
-  behavior: ScrollToOptions['behavior'] | undefined,
-  shouldScrollRestoration: boolean | undefined,
-  scrollToTopSelectors:
-    | Array<string | (() => Element | null | undefined)>
-    | undefined,
-) {
+export function restoreScroll({
+  storageKey,
+  key,
+  behavior,
+  shouldScrollRestoration,
+  scrollToTopSelectors,
+  location,
+}: {
+  storageKey: string
+  key?: string
+  behavior?: ScrollToOptions['behavior']
+  shouldScrollRestoration?: boolean
+  scrollToTopSelectors?: Array<string | (() => Element | null | undefined)>
+  location?: HistoryLocation
+}) {
   let byKey: ScrollRestorationByKey
 
   try {
     byKey = JSON.parse(sessionStorage.getItem(storageKey) || '{}')
-  } catch (error: any) {
+  } catch (error) {
     console.error(error)
     return
   }
 
-  const resolvedKey = key || window.history.state?.key
+  const resolvedKey = key || window.history.state?.__TSR_key
   const elementEntries = byKey[resolvedKey]
 
   //
   ignoreScroll = true
 
   //
-  ;(() => {
+  scroll: {
     // If we have a cached entry for this location state,
     // we always need to prefer that over the hash scroll.
-    if (shouldScrollRestoration && elementEntries) {
+    if (
+      shouldScrollRestoration &&
+      elementEntries &&
+      Object.keys(elementEntries).length > 0
+    ) {
       for (const elementSelector in elementEntries) {
         const entry = elementEntries[elementSelector]!
         if (elementSelector === 'window') {
@@ -146,18 +172,18 @@ export function restoreScroll(
         }
       }
 
-      return
+      break scroll
     }
 
     // If we don't have a cached entry for the hash,
     // Which means we've never seen this location before,
     // we need to check if there is a hash in the URL.
     // If there is, we need to scroll it's ID into view.
-    const hash = window.location.hash.split('#')[1]
+    const hash = (location ?? window.location).hash.split('#', 2)[1]
 
     if (hash) {
       const hashScrollIntoViewOptions =
-        (window.history.state || {}).__hashScrollIntoViewOptions ?? true
+        window.history.state?.__hashScrollIntoViewOptions ?? true
 
       if (hashScrollIntoViewOptions) {
         const el = document.getElementById(hash)
@@ -166,37 +192,33 @@ export function restoreScroll(
         }
       }
 
-      return
+      break scroll
     }
 
     // If there is no cached entry for the hash and there is no hash in the URL,
     // we need to scroll to the top of the page for every scrollToTop element
-    ;[
-      'window',
-      ...(scrollToTopSelectors?.filter((d) => d !== 'window') ?? []),
-    ].forEach((selector) => {
-      const element =
-        selector === 'window'
-          ? window
-          : typeof selector === 'function'
+    const scrollOptions = { top: 0, left: 0, behavior }
+    window.scrollTo(scrollOptions)
+    if (scrollToTopSelectors) {
+      for (const selector of scrollToTopSelectors) {
+        if (selector === 'window') continue
+        const element =
+          typeof selector === 'function'
             ? selector()
             : document.querySelector(selector)
-      if (element) {
-        element.scrollTo({
-          top: 0,
-          left: 0,
-          behavior,
-        })
+        if (element) element.scrollTo(scrollOptions)
       }
-    })
-  })()
+    }
+  }
 
   //
   ignoreScroll = false
 }
 
+/** Setup global listeners and hooks to support scroll restoration. */
+/** Setup global listeners and hooks to support scroll restoration. */
 export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
-  if (scrollRestorationCache === undefined) {
+  if (!scrollRestorationCache && !(isServer ?? router.isServer)) {
     return
   }
   const shouldScrollRestoration =
@@ -206,7 +228,11 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     router.isScrollRestoring = true
   }
 
-  if (typeof document === 'undefined' || router.isScrollRestorationSetup) {
+  if (
+    (isServer ?? router.isServer) ||
+    router.isScrollRestorationSetup ||
+    !scrollRestorationCache
+  ) {
     return
   }
 
@@ -283,11 +309,10 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     const restoreKey = getKey(router.state.location)
 
     scrollRestorationCache.set((state) => {
-      const keyEntry = (state[restoreKey] =
-        state[restoreKey] || ({} as ScrollRestorationByElement))
+      const keyEntry = (state[restoreKey] ||= {} as ScrollRestorationByElement)
 
-      const elementEntry = (keyEntry[elementSelector] =
-        keyEntry[elementSelector] || ({} as ScrollRestorationEntry))
+      const elementEntry = (keyEntry[elementSelector] ||=
+        {} as ScrollRestorationEntry)
 
       if (elementSelector === 'window') {
         elementEntry.scrollX = window.scrollX || 0
@@ -320,19 +345,28 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       router.resetNextScroll = true
       return
     }
+    if (typeof router.options.scrollRestoration === 'function') {
+      const shouldRestore = router.options.scrollRestoration({
+        location: router.latestLocation,
+      })
+      if (!shouldRestore) {
+        return
+      }
+    }
 
-    restoreScroll(
+    restoreScroll({
       storageKey,
-      cacheKey,
-      router.options.scrollRestorationBehavior || undefined,
-      router.isScrollRestoring || undefined,
-      router.options.scrollToTopSelectors || undefined,
-    )
+      key: cacheKey,
+      behavior: router.options.scrollRestorationBehavior,
+      shouldScrollRestoration: router.isScrollRestoring,
+      scrollToTopSelectors: router.options.scrollToTopSelectors,
+      location: router.history.location,
+    })
 
     if (router.isScrollRestoring) {
       // Mark the location as having been seen
       scrollRestorationCache.set((state) => {
-        state[cacheKey] = state[cacheKey] || ({} as ScrollRestorationByElement)
+        state[cacheKey] ||= {} as ScrollRestorationByElement
 
         return state
       })
@@ -341,12 +375,17 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 }
 
 /**
- * @internal
+ * @private
  * Handles hash-based scrolling after navigation completes.
  * To be used in framework-specific <Transitioner> components during the onResolved event.
  *
  * Provides hash scrolling for programmatic navigation when default browser handling is prevented.
  * @param router The router instance containing current location and state
+ */
+/**
+ * @private
+ * Handles hash-based scrolling after navigation completes.
+ * To be used in framework-specific Transitioners.
  */
 export function handleHashScroll(router: AnyRouter) {
   if (typeof document !== 'undefined' && (document as any).querySelector) {

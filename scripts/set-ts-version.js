@@ -12,7 +12,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 const ROOT_PACKAGE_JSON = join(__dirname, '..', 'package.json')
 const PACKAGES_DIR = join(__dirname, '..', 'packages')
-const SUPPORTED_TS_VERSIONS = ['5.3', '5.4', '5.5', '5.6', '5.7', '5.8']
+const SUPPORTED_TS_VERSIONS = ['5.4', '5.5', '5.6', '5.7', '5.8', '5.9']
 const LATEST_TS_VERSION =
   SUPPORTED_TS_VERSIONS[SUPPORTED_TS_VERSIONS.length - 1]
 

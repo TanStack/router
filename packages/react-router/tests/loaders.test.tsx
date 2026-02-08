@@ -430,7 +430,7 @@ test('reproducer #4546', async () => {
     component: () => {
       return (
         <>
-          <div className="p-2 flex gap-2 text-lg">
+          <div className="flex gap-2 p-2 text-lg">
             <Link
               data-testid="link-to-index"
               to="/"
@@ -716,9 +716,9 @@ test('clears pendingTimeout when match resolves', async () => {
   })
 
   render(<RouterProvider router={router} />)
+  await act(() => router.latestLoadPromise)
   const linkToFoo = await screen.findByTestId('link-to-foo')
   fireEvent.click(linkToFoo)
-  await router.latestLoadPromise
   const fooElement = await screen.findByText('Nested Foo page')
   expect(fooElement).toBeInTheDocument()
 
@@ -728,4 +728,215 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(defaultPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(nestedPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
+})
+
+test('throw abortError from loader upon initial load with basepath', async () => {
+  window.history.replaceState(null, 'root', '/app')
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async () => {
+      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+    },
+    component: () => <div>Index route content</div>,
+    errorComponent: () => (
+      <div data-testid="index-error">indexErrorComponent</div>
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree, history, basepath: '/app' })
+
+  render(<RouterProvider router={router} />)
+
+  const indexElement = await screen.findByText('Index route content')
+  expect(indexElement).toBeInTheDocument()
+  expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
+  expect(window.location.pathname.startsWith('/app')).toBe(true)
+})
+
+test('cancelMatches after pending timeout', async () => {
+  function getPendingComponent(onMount: () => void) {
+    const PendingComponent = () => {
+      useEffect(() => {
+        onMount()
+      }, [])
+
+      return <div>Pending...</div>
+    }
+    return PendingComponent
+  }
+  const onAbortMock = vi.fn()
+  const fooPendingComponentOnMountMock = vi.fn()
+  const rootRoute = createRootRoute({
+    component: () => (
+      <div>
+        <h1>Index page</h1>
+        <Link data-testid="link-to-foo" to="/foo">
+          link to foo
+        </Link>
+        <Link data-testid="link-to-bar" to="/bar">
+          link to bar
+        </Link>
+        <Outlet />
+      </div>
+    ),
+  })
+  const fooRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo',
+    pendingMs: WAIT_TIME * 20,
+    loader: async ({ abortController }) => {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          resolve()
+        }, WAIT_TIME * 40)
+        abortController.signal.addEventListener('abort', () => {
+          onAbortMock()
+          clearTimeout(timer)
+          resolve()
+        })
+      })
+    },
+    pendingComponent: getPendingComponent(fooPendingComponentOnMountMock),
+    component: () => <div>Foo page</div>,
+  })
+  const barRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/bar',
+    component: () => <div>Bar page</div>,
+  })
+  const routeTree = rootRoute.addChildren([fooRoute, barRoute])
+  const router = createRouter({ routeTree, history })
+  render(<RouterProvider router={router} />)
+  await act(() => router.latestLoadPromise)
+  const fooLink = await screen.findByTestId('link-to-foo')
+  fireEvent.click(fooLink)
+  await sleep(WAIT_TIME * 30)
+  const pendingElement = await screen.findByText('Pending...')
+  expect(pendingElement).toBeInTheDocument()
+  const barLink = await screen.findByTestId('link-to-bar')
+  fireEvent.click(barLink)
+  const barElement = await screen.findByText('Bar page')
+  expect(barElement).toBeInTheDocument()
+  expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
+  expect(onAbortMock).toHaveBeenCalled()
+})
+
+test('reproducer for #6388 - rapid navigation between parameterized routes should not trigger errorComponent', async () => {
+  const errorComponentRenderCount = vi.fn()
+  const onAbortMock = vi.fn()
+  const loaderCompleteMock = vi.fn()
+
+  const rootRoute = createRootRoute({
+    component: () => (
+      <div>
+        <Link data-testid="link-to-home" to="/">
+          Home
+        </Link>
+        <Link
+          data-testid="link-to-param-1"
+          to="/something/$id"
+          params={{ id: '1' }}
+          preload={false}
+        >
+          Param 1
+        </Link>
+        <Link
+          data-testid="link-to-param-2"
+          to="/something/$id"
+          params={{ id: '2' }}
+          preload={false}
+        >
+          Param 2
+        </Link>
+        <Outlet />
+      </div>
+    ),
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div data-testid="home-page">Home page</div>,
+  })
+
+  const paramRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/something/$id',
+    pendingMs: 0,
+    loader: async ({ params, abortController }) => {
+      const result = await new Promise<{ id: string; done: boolean }>(
+        (resolve, reject) => {
+          const timer = setTimeout(() => {
+            loaderCompleteMock(params.id)
+            resolve({ id: params.id, done: true })
+          }, WAIT_TIME * 5)
+
+          abortController.signal.addEventListener('abort', () => {
+            clearTimeout(timer)
+            onAbortMock(params.id)
+            reject(new DOMException('Aborted', 'AbortError'))
+          })
+        },
+      )
+
+      return result
+    },
+    component: () => {
+      const data = paramRoute.useLoaderData()
+      return (
+        <div data-testid="param-page">
+          Param Component {data.id} {data.done ? 'Done' : 'Not done'}
+        </div>
+      )
+    },
+    errorComponent: ({ error }) => {
+      errorComponentRenderCount(error)
+      return (
+        <div data-testid="error-component">
+          Error Component: {error.message} | Name: {error.name}
+        </div>
+      )
+    },
+    pendingComponent: () => <div data-testid="pending-component">Pending</div>,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, paramRoute])
+  const router = createRouter({
+    routeTree,
+    history,
+    defaultPreload: false,
+  })
+
+  render(<RouterProvider router={router} />)
+  await act(() => router.latestLoadPromise)
+
+  const pendingComponent = screen.findByTestId('pending-component')
+  expect(await screen.findByTestId('home-page')).toBeInTheDocument()
+
+  const param1Link = await screen.findByTestId('link-to-param-1')
+  fireEvent.click(param1Link)
+  expect(await pendingComponent).toBeInTheDocument()
+
+  const param2Link = await screen.findByTestId('link-to-param-2')
+  fireEvent.click(param2Link)
+  expect(await pendingComponent).toBeInTheDocument()
+
+  fireEvent.click(param1Link)
+  expect(await pendingComponent).toBeInTheDocument()
+
+  await act(() => router.latestLoadPromise)
+
+  expect(onAbortMock).toHaveBeenCalled()
+  expect(errorComponentRenderCount).not.toHaveBeenCalled()
+  expect(screen.queryByTestId('error-component')).not.toBeInTheDocument()
+  expect(await pendingComponent).not.toBeInTheDocument()
+
+  const paramPage = await screen.findByTestId('param-page')
+  expect(paramPage).toBeInTheDocument()
+  expect(paramPage).toHaveTextContent('Param Component 1 Done')
+  expect(loaderCompleteMock).toHaveBeenCalled()
 })

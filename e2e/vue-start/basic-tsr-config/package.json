@@ -1,0 +1,29 @@
+{
+  "name": "tanstack-vue-start-e2e-basic-tsr-config",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "rimraf ./count.txt && vite build && tsc --noEmit",
+    "start": "pnpx srvx --prod -s ../client dist/server/server.js",
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/vue-router": "workspace:^",
+    "@tanstack/vue-router-devtools": "workspace:^",
+    "@tanstack/vue-start": "workspace:^",
+    "vite": "^7.3.1",
+    "vue": "^3.5.25"
+  },
+  "devDependencies": {
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@types/node": "^22.10.2",
+    "srvx": "^0.11.2",
+    "typescript": "^5.7.2",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vitejs/plugin-vue-jsx": "^5.1.2",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

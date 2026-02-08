@@ -1,6 +1,3 @@
-export { default as invariant } from 'tiny-invariant'
-export { default as warning } from 'tiny-warning'
-
 export {
   defer,
   TSR_DEFERRED_PROMISE,
@@ -11,30 +8,22 @@ export {
   trimPathRight,
   trimPath,
   resolvePath,
-  parsePathname,
   interpolatePath,
-  matchPathname,
-  removeBasepath,
-  matchByPath,
-  encode,
-  decode,
   rootRouteId,
   defaultSerializeError,
   defaultParseSearch,
   defaultStringifySearch,
   parseSearchWith,
   stringifySearchWith,
-  escapeJSON, // SSR
-  pick,
   functionalUpdate,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,
   deepEqual,
-  shallow,
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  createSerializationAdapter,
 } from '@tanstack/router-core'
 
 export type {
@@ -45,7 +34,6 @@ export type {
   RemoveTrailingSlashes,
   RemoveLeadingSlashes,
   ActiveOptions,
-  Segment,
   ResolveRelativePath,
   RootRouteId,
   AnyPathParams,
@@ -118,6 +106,9 @@ export type {
   RouteById,
   RootRouteOptions,
   CreateFileRoute,
+  SerializationAdapter,
+  AnySerializationAdapter,
+  SerializableExtensions,
 } from '@tanstack/router-core'
 
 export {
@@ -139,7 +130,7 @@ export { useAwaited, Await } from './awaited'
 export type { AwaitOptions } from './awaited'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
-export { ClientOnly } from './ClientOnly'
+export { ClientOnly, useHydrated } from './ClientOnly'
 
 export {
   FileRoute,
@@ -201,7 +192,6 @@ export type {
   AnyRouteMatch,
   RouteContextFn,
   RouteContextOptions,
-  BeforeLoadFn,
   BeforeLoadContextOptions,
   ContextOptions,
   RouteOptions,
@@ -256,7 +246,7 @@ export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
 
-export { redirect, isRedirect } from '@tanstack/router-core'
+export { redirect, isRedirect, createRouterConfig } from '@tanstack/router-core'
 
 export {
   RouteApi,
@@ -359,4 +349,11 @@ export type {
 export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
+export { useTags } from './headContentUtils'
 export { Scripts } from './Scripts'
+export type * from './ssr/serializer'
+export { composeRewrites } from '@tanstack/router-core'
+export type {
+  LocationRewrite,
+  LocationRewriteFunction,
+} from '@tanstack/router-core'

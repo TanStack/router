@@ -5,14 +5,14 @@ import {
   Link,
   Outlet,
   Scripts,
-  createRootRoute,
+  createRootRouteWithContext,
 } from '@tanstack/react-router'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{ foo: { bar: string } }>()({
   head: () => ({
     meta: [
       {

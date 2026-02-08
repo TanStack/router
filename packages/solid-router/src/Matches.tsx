@@ -1,13 +1,16 @@
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
+import { rootRouteId } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
-import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
+import { Match } from './Match'
 import type {
+  AnyRoute,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -38,31 +41,33 @@ declare module '@tanstack/router-core' {
 export function Matches() {
   const router = useRouter()
 
-  const pendingElement = router.options.defaultPendingComponent ? (
-    <router.options.defaultPendingComponent />
-  ) : null
-
-  // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.ssr)
+    (isServer ?? router.isServer) ||
+    (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : Solid.Suspense
 
-  const inner = (
-    <ResolvedSuspense fallback={pendingElement}>
-      <Transitioner />
-      <MatchesInner />
-    </ResolvedSuspense>
-  )
+  const rootRoute: () => AnyRoute = () => router.routesById[rootRouteId]
+  const PendingComponent =
+    rootRoute().options.pendingComponent ??
+    router.options.defaultPendingComponent
 
-  return router.options.InnerWrap ? (
-    <router.options.InnerWrap>{inner}</router.options.InnerWrap>
-  ) : (
-    inner
+  const OptionalWrapper = router.options.InnerWrap || SafeFragment
+
+  return (
+    <OptionalWrapper>
+      <ResolvedSuspense
+        fallback={PendingComponent ? <PendingComponent /> : null}
+      >
+        <Transitioner />
+        <MatchesInner />
+      </ResolvedSuspense>
+    </OptionalWrapper>
   )
 }
 
 function MatchesInner() {
+  const router = useRouter()
   const matchId = useRouterState({
     select: (s) => {
       return s.matches[0]?.id
@@ -73,21 +78,34 @@ function MatchesInner() {
     select: (s) => s.loadedAt,
   })
 
+  const matchComponent = () => {
+    return (
+      <Solid.Show when={matchId()}>
+        <Match matchId={matchId()!} />
+      </Solid.Show>
+    )
+  }
+
   return (
     <matchContext.Provider value={matchId}>
-      <CatchBoundary
-        getResetKey={() => resetKey()}
-        errorComponent={ErrorComponent}
-        onCatch={(error) => {
-          warning(
-            false,
-            `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-          )
-          warning(false, error.message || error.toString())
-        }}
-      >
-        {matchId() ? <Match matchId={matchId()!} /> : null}
-      </CatchBoundary>
+      {router.options.disableGlobalCatchBoundary ? (
+        matchComponent()
+      ) : (
+        <CatchBoundary
+          getResetKey={() => resetKey()}
+          errorComponent={ErrorComponent}
+          onCatch={(error) => {
+            warning(
+              false,
+              `The following error wasn't caught by any route! At the very leas
+    t, consider setting an 'errorComponent' in your RootRoute!`,
+            )
+            warning(false, error.message || error.toString())
+          }}
+        >
+          {matchComponent()}
+        </CatchBoundary>
+      )}
     </matchContext.Provider>
   )
 }

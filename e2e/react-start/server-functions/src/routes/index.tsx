@@ -63,11 +63,16 @@ function Home() {
         </li>
         <li>
           <Link to="/dead-code-preserve">
-            dead code elimation only affects code after transformation
+            dead code elimination only affects code after transformation
           </Link>
         </li>
         <li>
           <Link to="/abort-signal">aborting a server function call</Link>
+        </li>
+        <li>
+          <Link to="/async-validation">
+            server function with async validation
+          </Link>
         </li>
         <li>
           <Link to="/raw-response">server function returns raw response</Link>
@@ -80,6 +85,36 @@ function Home() {
         <li>
           <Link to="/formdata-redirect" search={{ mode: 'no-js' }}>
             server function redirects when FormData is submitted (via no-JS)
+          </Link>
+        </li>
+        <li>
+          <Link to="/middleware">Server Functions Middleware E2E tests</Link>
+        </li>
+        <li>
+          <Link to="/factory">Server Functions Factory E2E tests</Link>
+        </li>
+        <li>
+          <Link to="/server-only-fn">
+            Server Function only called by Server Environment is kept in the
+            server build
+          </Link>
+        </li>
+        <li>
+          <Link to="/middleware/unhandled-exception">
+            Server Functions Middleware Unhandled Exception E2E tests
+          </Link>
+        </li>
+        <li>
+          <Link to="/function-method">Server Functions method E2E tests</Link>
+        </li>
+        <li>
+          <Link to="/function-metadata">
+            Server Functions metadata E2E tests
+          </Link>
+        </li>
+        <li>
+          <Link to="/custom-fetch">
+            Server function with custom fetch implementation
           </Link>
         </li>
       </ul>

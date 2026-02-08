@@ -78,7 +78,7 @@ export function lazyRouteComponent<
         initialValue: comp,
         ssrLoadFrom: 'initial',
       })
-      return <>{compResource()}</>
+      return <Dynamic component={compResource()} {...props} />
     }
 
     return <Dynamic component={comp} {...props} />

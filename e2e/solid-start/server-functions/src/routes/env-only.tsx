@@ -1,9 +1,13 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { clientOnly, createServerFn, serverOnly } from '@tanstack/solid-start'
+import {
+  createClientOnlyFn,
+  createServerFn,
+  createServerOnlyFn,
+} from '@tanstack/solid-start'
 import { createSignal } from 'solid-js'
 
-const serverEcho = serverOnly((input: string) => 'server got: ' + input)
-const clientEcho = clientOnly((input: string) => 'client got: ' + input)
+const serverEcho = createServerOnlyFn((input: string) => 'server got: ' + input)
+const clientEcho = createClientOnlyFn((input: string) => 'client got: ' + input)
 
 const testOnServer = createServerFn().handler(() => {
   const serverOnServer = serverEcho('hello')

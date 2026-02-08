@@ -1,51 +1,18 @@
-import type { TransformPlugin } from '../transform/types'
-import type {
-  HandleNodeAccumulator,
-  ImportDeclaration,
-  RouteNode,
-} from '../types'
-
+import type { HandleNodeAccumulator, RouteNode } from '../types'
 import type { Generator } from '../generator'
 
-export type GeneratorPlugin = GeneratorPluginBase | GeneratorPluginWithTransform
-
-export interface GeneratorPluginBase {
+export interface GeneratorPlugin {
   name: string
-  onRouteTreesChanged?: (opts: {
-    routeTrees: Array<{
-      sortedRouteNodes: Array<RouteNode>
-      acc: HandleNodeAccumulator
-      exportName: string
-    }>
+  init?: (opts: { generator: Generator }) => void
+  onRouteTreeChanged?: (opts: {
+    routeTree: Array<RouteNode>
+    routeNodes: Array<RouteNode>
     rootRouteNode: RouteNode
-    generator: Generator
+    acc: HandleNodeAccumulator
+  }) => void
+
+  afterTransform?: (opts: {
+    node: RouteNode
+    prevNode: RouteNode | undefined
   }) => void
 }
-
-export interface GeneratorPluginWithTransform extends GeneratorPluginBase {
-  transformPlugin: TransformPlugin
-  moduleAugmentation: (opts: { generator: Generator }) => {
-    module: string
-    interfaceName: string
-  }
-  imports: (opts: {
-    rootRouteNode: RouteNode
-    sortedRouteNodes: Array<RouteNode>
-    acc: HandleNodeAccumulator
-    generator: Generator
-  }) => Array<ImportDeclaration>
-  routeModuleAugmentation: (opts: {
-    routeNode: RouteNode
-  }) => string | undefined
-  createRootRouteCode: () => string
-  createVirtualRouteCode: (opts: { node: RouteNode }) => string
-  config: (opts: {
-    generator: Generator
-    rootRouteNode: RouteNode
-    sortedRouteNodes: Array<RouteNode>
-  }) => {
-    virtualRootRoute?: boolean
-  }
-}
-
-export {}

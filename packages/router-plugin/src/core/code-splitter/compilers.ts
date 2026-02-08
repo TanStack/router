@@ -4,8 +4,9 @@ import * as template from '@babel/template'
 import {
   deadCodeElimination,
   findReferencedIdentifiers,
-} from 'babel-dead-code-elimination'
-import { generateFromAst, parseAst } from '@tanstack/router-utils'
+  generateFromAst,
+  parseAst,
+} from '@tanstack/router-utils'
 import { tsrSplit } from '../constants'
 import { routeHmrStatement } from '../route-hmr-statement'
 import { createIdentifier } from './path-ids'
@@ -84,7 +85,8 @@ function addSplitSearchParamToFilename(
   const params = new URLSearchParams()
   params.append(tsrSplit, createIdentifier(grouping))
 
-  return `${bareFilename}?${params.toString()}`
+  const result = `${bareFilename}?${params.toString()}`
+  return result
 }
 
 function removeSplitSearchParamFromFilename(filename: string) {
@@ -111,10 +113,12 @@ export function compileCodeSplitReferenceRoute(
     id: string
     addHmr?: boolean
   },
-): GeneratorResult {
+): GeneratorResult | null {
   const ast = parseAst(opts)
 
   const refIdents = findReferencedIdentifiers(ast)
+
+  const knownExportedIdents = new Set<string>()
 
   function findIndexForSplitNode(str: string) {
     return opts.codeSplitGroupings.findIndex((group) =>
@@ -129,6 +133,8 @@ export function compileCodeSplitReferenceRoute(
 
   let createRouteFn: string
 
+  let modified = false as boolean
+  let hmrAdded = false as boolean
   babel.traverse(ast, {
     Program: {
       enter(programPath) {
@@ -166,7 +172,8 @@ export function compileCodeSplitReferenceRoute(
                     (prop) => {
                       if (t.isObjectProperty(prop)) {
                         if (t.isIdentifier(prop.key)) {
-                          if (opts.deleteNodes?.has(prop.key.name as any)) {
+                          if (opts.deleteNodes!.has(prop.key.name as any)) {
+                            modified = true
                             return false
                           }
                         }
@@ -177,8 +184,10 @@ export function compileCodeSplitReferenceRoute(
                 }
                 if (!splittableCreateRouteFns.includes(createRouteFn)) {
                   // we can't split this route but we still add HMR handling if enabled
-                  if (opts.addHmr) {
+                  if (opts.addHmr && !hmrAdded) {
                     programPath.pushContainer('body', routeHmrStatement)
+                    modified = true
+                    hmrAdded = true
                   }
                   // exit traversal so this route is not split
                   return programPath.stop()
@@ -209,12 +218,14 @@ export function compileCodeSplitReferenceRoute(
                         return
                       }
 
-                      // Exit early if the value is undefined
-                      // Since we don't need to run an import just to get the value of `undefined`
-                      // This is useful for cases like: `createFileRoute('/')({ component: undefined })`
+                      // Exit early if the value is a boolean, null, or undefined.
+                      // These values mean "don't use this component, fallback to parent"
+                      // No code splitting needed to preserve fallback behavior
                       if (
-                        t.isIdentifier(prop.value) &&
-                        prop.value.name === 'undefined'
+                        t.isBooleanLiteral(prop.value) ||
+                        t.isNullLiteral(prop.value) ||
+                        (t.isIdentifier(prop.value) &&
+                          prop.value.name === 'undefined')
                       ) {
                         return
                       }
@@ -249,6 +260,9 @@ export function compileCodeSplitReferenceRoute(
                           // since they are already being imported
                           // and need to be retained in the compiled file
                           const isExported = hasExport(ast, value)
+                          if (isExported) {
+                            knownExportedIdents.add(value.name)
+                          }
                           shouldSplit = !isExported
 
                           if (shouldSplit) {
@@ -259,6 +273,8 @@ export function compileCodeSplitReferenceRoute(
                         if (!shouldSplit) {
                           return
                         }
+
+                        modified = true
 
                         // Prepend the import statement to the program along with the importer function
                         // Check to see if lazyRouteComponent is already imported before attempting
@@ -294,12 +310,13 @@ export function compileCodeSplitReferenceRoute(
                         )()
 
                         // add HMR handling
-                        if (opts.addHmr) {
+                        if (opts.addHmr && !hmrAdded) {
                           programPath.pushContainer('body', routeHmrStatement)
+                          modified = true
+                          hmrAdded = true
                         }
-                      }
-
-                      if (splitNodeMeta.splitStrategy === 'lazyFn') {
+                      } else {
+                        // if (splitNodeMeta.splitStrategy === 'lazyFn') {
                         const value = prop.value
 
                         let shouldSplit = true
@@ -318,6 +335,9 @@ export function compileCodeSplitReferenceRoute(
                           // since they are already being imported
                           // and need to be retained in the compiled file
                           const isExported = hasExport(ast, value)
+                          if (isExported) {
+                            knownExportedIdents.add(value.name)
+                          }
                           shouldSplit = !isExported
 
                           if (shouldSplit) {
@@ -328,6 +348,7 @@ export function compileCodeSplitReferenceRoute(
                         if (!shouldSplit) {
                           return
                         }
+                        modified = true
 
                         // Prepend the import statement to the program along with the importer function
                         if (!hasImportedOrDefinedIdentifier(LAZY_FN_IDENT)) {
@@ -393,6 +414,7 @@ export function compileCodeSplitReferenceRoute(
          * specifiers
          */
         if (removableImportPaths.size > 0) {
+          modified = true
           programPath.traverse({
             ImportDeclaration(path) {
               if (path.node.specifiers.length > 0) return
@@ -406,7 +428,31 @@ export function compileCodeSplitReferenceRoute(
     },
   })
 
+  if (!modified) {
+    return null
+  }
+
   deadCodeElimination(ast, refIdents)
+
+  // if there are exported identifiers, then we need to add a warning
+  // to the file to let the user know that the exported identifiers
+  // will not in the split file but in the original file, therefore
+  // increasing the bundle size
+  if (knownExportedIdents.size > 0) {
+    const warningMessage = createNotExportableMessage(
+      opts.filename,
+      knownExportedIdents,
+    )
+    console.warn(warningMessage)
+
+    // append this warning to the file using a template
+    if (process.env.NODE_ENV !== 'production') {
+      const warningTemplate = template.statement(
+        `console.warn(${JSON.stringify(warningMessage)})`,
+      )()
+      ast.program.body.unshift(warningTemplate)
+    }
+  }
 
   return generateFromAst(ast, {
     sourceMaps: true,
@@ -535,7 +581,7 @@ export function compileCodeSplitVirtualRoute(
           }
 
           let splitNode = splitKey.node
-          const splitMeta = splitKey.meta
+          const splitMeta = { ...splitKey.meta, shouldRemoveNode: true }
 
           while (t.isIdentifier(splitNode)) {
             const binding = programPath.scope.getBinding(splitNode.name)
@@ -545,21 +591,15 @@ export function compileCodeSplitVirtualRoute(
           // Add the node to the program
           if (splitNode) {
             if (t.isFunctionDeclaration(splitNode)) {
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    t.functionExpression(
-                      splitNode.id || null, // Anonymize the function expression
-                      splitNode.params,
-                      splitNode.body,
-                      splitNode.generator,
-                      splitNode.async,
-                    ),
-                  ),
-                ]),
-              )
+              // an anonymous function declaration should only happen for `export default function() {...}`
+              // so we should never get here
+              if (!splitNode.id) {
+                throw new Error(
+                  `Function declaration for "${SPLIT_TYPE}" must have an identifier.`,
+                )
+              }
+              splitMeta.shouldRemoveNode = false
+              splitMeta.localExporterIdent = splitNode.id.name
             } else if (
               t.isFunctionExpression(splitNode) ||
               t.isArrowFunctionExpression(splitNode)
@@ -587,15 +627,14 @@ export function compileCodeSplitVirtualRoute(
                 ]),
               )
             } else if (t.isVariableDeclarator(splitNode)) {
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    splitNode.init,
-                  ),
-                ]),
-              )
+              if (t.isIdentifier(splitNode.id)) {
+                splitMeta.localExporterIdent = splitNode.id.name
+                splitMeta.shouldRemoveNode = false
+              } else {
+                throw new Error(
+                  `Unexpected splitNode type ☝️: ${splitNode.type}`,
+                )
+              }
             } else if (t.isCallExpression(splitNode)) {
               const outputSplitNodeCode = generateFromAst(splitNode).code
               const splitNodeAst = babel.parse(outputSplitNodeCode)
@@ -652,17 +691,27 @@ export function compileCodeSplitVirtualRoute(
                   ),
                 ]),
               )
+            } else if (t.isBooleanLiteral(splitNode)) {
+              // Handle boolean literals
+              // This exits early here, since this value will be kept in the reference file
+              return
+            } else if (t.isNullLiteral(splitNode)) {
+              // Handle null literals
+              // This exits early here, since this value will be kept in the reference file
+              return
             } else {
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
             }
           }
 
-          // If the splitNode exists at the top of the program
-          // then we need to remove that copy
-          programPath.node.body = programPath.node.body.filter((node) => {
-            return node !== splitNode
-          })
+          if (splitMeta.shouldRemoveNode) {
+            // If the splitNode exists at the top of the program
+            // then we need to remove that copy
+            programPath.node.body = programPath.node.body.filter((node) => {
+              return node !== splitNode
+            })
+          }
 
           // Export the node
           programPath.pushContainer('body', [
@@ -684,19 +733,33 @@ export function compileCodeSplitVirtualRoute(
 
             if (path.node.declaration) {
               if (t.isVariableDeclaration(path.node.declaration)) {
-                path.replaceWith(
-                  t.importDeclaration(
-                    path.node.declaration.declarations.map((decl) =>
-                      t.importSpecifier(
-                        t.identifier((decl.id as any).name),
-                        t.identifier((decl.id as any).name),
-                      ),
-                    ),
-                    t.stringLiteral(
-                      removeSplitSearchParamFromFilename(opts.filename),
+                const importDecl = t.importDeclaration(
+                  path.node.declaration.declarations.map((decl) =>
+                    t.importSpecifier(
+                      t.identifier((decl.id as any).name),
+                      t.identifier((decl.id as any).name),
                     ),
                   ),
+                  t.stringLiteral(
+                    removeSplitSearchParamFromFilename(opts.filename),
+                  ),
                 )
+
+                path.replaceWith(importDecl)
+
+                // Track the imported identifier paths so deadCodeElimination can remove them if unused
+                // We need to traverse the newly created import to get the identifier paths
+                path.traverse({
+                  Identifier(identPath) {
+                    // Only track the local binding identifiers (the imported names)
+                    if (
+                      identPath.parentPath.isImportSpecifier() &&
+                      identPath.key === 'local'
+                    ) {
+                      refIdents.add(identPath)
+                    }
+                  },
+                })
               }
             }
           },
@@ -706,28 +769,6 @@ export function compileCodeSplitVirtualRoute(
   })
 
   deadCodeElimination(ast, refIdents)
-
-  // if there are exported identifiers, then we need to add a warning
-  // to the file to let the user know that the exported identifiers
-  // will not in the split file but in the original file, therefore
-  // increasing the bundle size
-  if (knownExportedIdents.size > 0) {
-    const list = Array.from(knownExportedIdents).reduce((str, ident) => {
-      str += `\n- ${ident}`
-      return str
-    }, '')
-
-    const warningMessage = `These exports from "${opts.filename}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
-    console.warn(warningMessage)
-
-    // append this warning to the file using a template
-    if (process.env.NODE_ENV !== 'production') {
-      const warningTemplate = template.statement(
-        `console.warn(${JSON.stringify(warningMessage)})`,
-      )()
-      ast.program.body.unshift(warningTemplate)
-    }
-  }
 
   return generateFromAst(ast, {
     sourceMaps: true,
@@ -830,6 +871,21 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
   })
 
   return { groupings: codeSplitGroupings }
+}
+
+function createNotExportableMessage(
+  filename: string,
+  idents: Set<string>,
+): string {
+  const list = Array.from(idents).map((d) => `- ${d}`)
+
+  const message = [
+    `[tanstack-router] These exports from "${filename}" will not be code-split and will increase your bundle size:`,
+    ...list,
+    'For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.',
+  ].join('\n')
+
+  return message
 }
 
 function getImportSpecifierAndPathFromLocalName(

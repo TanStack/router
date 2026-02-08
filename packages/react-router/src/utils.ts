@@ -1,5 +1,19 @@
 import * as React from 'react'
 
+// Safe version of React.use() that will not cause compilation errors against
+// React 18 with Webpack, which statically analyzes imports and fails when it
+// sees React.use referenced (since 'use' is not exported from React 18).
+// This uses a dynamic string lookup to avoid the static analysis.
+const REACT_USE = 'use'
+
+/**
+ * React.use if available (React 19+), undefined otherwise.
+ * Use dynamic lookup to avoid Webpack compilation errors with React 18.
+ */
+export const reactUse:
+  | (<T>(usable: Promise<T> | React.Context<T>) => T)
+  | undefined = (React as any)[REACT_USE]
+
 export function useStableCallback<T extends (...args: Array<any>) => any>(
   fn: T,
 ): T {
@@ -69,34 +83,26 @@ export function useIntersectionObserver<T extends Element>(
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean } = {},
-): IntersectionObserver | null {
-  const isIntersectionObserverAvailable = React.useRef(
-    typeof IntersectionObserver === 'function',
-  )
-
-  const observerRef = React.useRef<IntersectionObserver | null>(null)
-
+) {
   React.useEffect(() => {
     if (
       !ref.current ||
-      !isIntersectionObserverAvailable.current ||
-      options.disabled
+      options.disabled ||
+      typeof IntersectionObserver !== 'function'
     ) {
       return
     }
 
-    observerRef.current = new IntersectionObserver(([entry]) => {
+    const observer = new IntersectionObserver(([entry]) => {
       callback(entry)
     }, intersectionObserverOptions)
 
-    observerRef.current.observe(ref.current)
+    observer.observe(ref.current)
 
     return () => {
-      observerRef.current?.disconnect()
+      observer.disconnect()
     }
   }, [callback, intersectionObserverOptions, options.disabled, ref])
-
-  return observerRef.current
 }
 
 /**

@@ -1,6 +1,6 @@
-import { redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/redirect/$target/via-loader')({
   loaderDeps: ({ search: { reloadDocument, externalHost } }) => ({
     reloadDocument,
     externalHost,
@@ -10,8 +10,7 @@ export const Route = createFileRoute({
       case 'internal':
         throw redirect({ to: '/posts', reloadDocument })
       case 'external':
-        const href = externalHost ?? 'http://example.com'
-        throw redirect({ href })
+        throw redirect({ href: externalHost })
     }
   },
   component: () => <div>{Route.fullPath}</div>,

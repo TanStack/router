@@ -1,9 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/posts/$postId')({
-  ssr: () => {
-    throw new Error('ssr() should not be called in SPA mode')
-  },
   beforeLoad: () => {
     console.log(
       `beforeLoad for ${Route.id} called on the ${typeof window !== 'undefined' ? 'client' : 'server'}`,

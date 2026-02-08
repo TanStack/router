@@ -59,7 +59,7 @@ export interface MyRouterContext {
 export const Route = createRootRouteWithContext<MyRouterContext>()
 ```
 
-To learn more about Context in TanStack Router, see the [Router Context](../../guide/router-context.md) guide.
+To learn more about Context in TanStack Router, see the [Router Context](../guide/router-context.md) guide.
 
 ## Basic Routes
 
@@ -144,6 +144,40 @@ For example, a route targeting the `files/$` path is a splat route. If the URL p
 > ⚠️ In v1 of the router, splat routes are also denoted with a `*` instead of a `_splat` key for backwards compatibility. This will be removed in v2.
 
 > 🧠 Why use `$`? Thanks to tools like Remix, we know that despite `*`s being the most common character to represent a wildcard, they do not play nice with filenames or CLI tools, so just like them, we decided to use `$` instead.
+
+## Optional Path Parameters
+
+Optional path parameters allow you to define route segments that may or may not be present in the URL. They use the `{-$paramName}` syntax and provide flexible routing patterns where certain parameters are optional.
+
+```tsx
+// posts.{-$category}.tsx - Optional category parameter
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts/{-$category}')({
+  component: PostsComponent,
+})
+
+function PostsComponent() {
+  const { category } = Route.useParams()
+
+  return <div>{category ? `Posts in ${category}` : 'All Posts'}</div>
+}
+```
+
+This route will match both `/posts` (category is `undefined`) and `/posts/tech` (category is `"tech"`).
+
+You can also define multiple optional parameters in a single route:
+
+```tsx
+// posts.{-$category}.{-$slug}.tsx
+export const Route = createFileRoute('/posts/{-$category}/{-$slug}')({
+  component: PostsComponent,
+})
+```
+
+This route matches `/posts`, `/posts/tech`, and `/posts/tech/hello-world`.
+
+> 🧠 Routes with optional parameters are ranked lower in priority than exact matches, ensuring that more specific routes like `/posts/featured` are matched before `/posts/{-$category}`.
 
 ## Layout Routes
 
@@ -275,7 +309,7 @@ routes/
 │   ├── b.tsx
 ```
 
-However, unlike Layout Routes, since Pathless Layout Routes do match based on URL path segments, this means that these routes do not support [Dynamic Route Segments](#dynamic-route-segments) as part of their path and therefore cannot be matched in the URL.
+However, unlike Layout Routes, since Pathless Layout Routes do not match based on URL path segments, this means that these routes do not support [Dynamic Route Segments](#dynamic-route-segments) as part of their path and therefore cannot be matched in the URL.
 
 This means that you cannot do this:
 

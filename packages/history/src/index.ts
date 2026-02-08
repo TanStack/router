@@ -558,6 +558,11 @@ export function createBrowserHistory(opts?: {
   return history
 }
 
+/**
+ * Create a hash-based history implementation.
+ * Useful for static hosts or environments without server URL rewriting.
+ * @link https://tanstack.com/router/latest/docs/framework/react/guide/history-types
+ */
 export function createHashHistory(opts?: { window?: any }): RouterHistory {
   const win =
     opts?.window ??
@@ -579,6 +584,11 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
   })
 }
 
+/**
+ * Create an in-memory history implementation.
+ * Ideal for server rendering, tests, and non-DOM environments.
+ * @link https://tanstack.com/router/latest/docs/framework/react/guide/history-types
+ */
 export function createMemoryHistory(
   opts: {
     initialEntries: Array<string>
@@ -596,6 +606,11 @@ export function createMemoryHistory(
   )
 
   const getLocation = () => parseHref(entries[index]!, states[index])
+
+  let blockers: Array<NavigationBlocker> = []
+  const _getBlockers = () => blockers
+  const _setBlockers = (newBlockers: Array<NavigationBlocker>) =>
+    (blockers = newBlockers)
 
   return createHistory({
     getLocation,
@@ -624,21 +639,43 @@ export function createMemoryHistory(
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
     createHref: (path) => path,
+    getBlockers: _getBlockers,
+    setBlockers: _setBlockers,
   })
+}
+
+/**
+ * Sanitize a path to prevent open redirect vulnerabilities.
+ * Removes control characters and collapses leading double slashes.
+ */
+function sanitizePath(path: string): string {
+  // Remove ASCII control characters (0x00-0x1F) and DEL (0x7F)
+  // These include CR (\r = 0x0D), LF (\n = 0x0A), and other potentially dangerous characters
+  // eslint-disable-next-line no-control-regex
+  let sanitized = path.replace(/[\x00-\x1f\x7f]/g, '')
+
+  // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
+  // Collapse leading double slashes to a single slash
+  if (sanitized.startsWith('//')) {
+    sanitized = '/' + sanitized.replace(/^\/+/, '')
+  }
+
+  return sanitized
 }
 
 export function parseHref(
   href: string,
   state: ParsedHistoryState | undefined,
 ): HistoryLocation {
-  const hashIndex = href.indexOf('#')
-  const searchIndex = href.indexOf('?')
+  const sanitizedHref = sanitizePath(href)
+  const hashIndex = sanitizedHref.indexOf('#')
+  const searchIndex = sanitizedHref.indexOf('?')
 
   const addedKey = createRandomKey()
 
   return {
-    href,
-    pathname: href.substring(
+    href: sanitizedHref,
+    pathname: sanitizedHref.substring(
       0,
       hashIndex > 0
         ? searchIndex > 0
@@ -646,12 +683,15 @@ export function parseHref(
           : hashIndex
         : searchIndex > 0
           ? searchIndex
-          : href.length,
+          : sanitizedHref.length,
     ),
-    hash: hashIndex > -1 ? href.substring(hashIndex) : '',
+    hash: hashIndex > -1 ? sanitizedHref.substring(hashIndex) : '',
     search:
       searchIndex > -1
-        ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
+        ? sanitizedHref.slice(
+            searchIndex,
+            hashIndex === -1 ? undefined : hashIndex,
+          )
         : '',
     state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
   }

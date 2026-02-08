@@ -4,6 +4,7 @@ import {
   handleHashScroll,
   trimPathRight,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
@@ -15,7 +16,12 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
-  const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+  if (isServer ?? router.isServer) {
+    return null
+  }
+
+  const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
+
   // Track pending state changes
   const hasPendingMatches = useRouterState({
     select: (s) => s.matches.some((d) => d.status === 'pending'),
@@ -24,18 +30,16 @@ export function Transitioner() {
   const previousIsLoading = usePrevious(isLoading)
 
   const isAnyPending = () =>
-    isLoading() || isTransitioning() || hasPendingMatches()
+    isLoading() || isSolidTransitioning() || hasPendingMatches()
   const previousIsAnyPending = usePrevious(isAnyPending)
 
   const isPagePending = () => isLoading() || hasPendingMatches()
   const previousIsPagePending = usePrevious(isPagePending)
 
-  if (!router.isServer) {
-    router.startTransition = async (fn: () => void | Promise<void>) => {
-      setIsTransitioning(true)
-      await fn()
-      setIsTransitioning(false)
-    }
+  router.startTransition = (fn: () => void | Promise<void>) => {
+    Solid.startTransition(() => {
+      startSolidTransition(fn)
+    })
   }
 
   // Subscribe to location changes
@@ -52,9 +56,12 @@ export function Transitioner() {
       _includeValidateSearch: true,
     })
 
+    // Check if the current URL matches the canonical form.
+    // Compare publicHref (browser-facing URL) for consistency with
+    // the server-side redirect check in router.beforeLoad.
     if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
+      trimPathRight(router.latestLocation.publicHref) !==
+      trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
@@ -66,7 +73,6 @@ export function Transitioner() {
 
   // Try to load the initial location
   Solid.createRenderEffect(() => {
-    if (router.isServer) return
     Solid.untrack(() => {
       if (
         // if we are hydrating from SSR, loading is triggered in ssr-client
@@ -100,7 +106,8 @@ export function Transitioner() {
       },
     ),
   )
-  Solid.createRenderEffect(
+
+  Solid.createComputed(
     Solid.on(
       [isPagePending, previousIsPagePending],
       ([isPagePending, previousIsPagePending]) => {
@@ -119,11 +126,11 @@ export function Transitioner() {
     Solid.on(
       [isAnyPending, previousIsAnyPending],
       ([isAnyPending, previousIsAnyPending]) => {
-        // The router was pending and now it's not
         if (previousIsAnyPending.previous && !isAnyPending) {
+          const changeInfo = getLocationChangeInfo(router.state)
           router.emit({
             type: 'onResolved',
-            ...getLocationChangeInfo(router.state),
+            ...changeInfo,
           })
 
           router.__store.setState((s) => ({
@@ -132,7 +139,9 @@ export function Transitioner() {
             resolvedLocation: s.location,
           }))
 
-          handleHashScroll(router)
+          if (changeInfo.hrefChanged) {
+            handleHashScroll(router)
+          }
         }
       },
     ),

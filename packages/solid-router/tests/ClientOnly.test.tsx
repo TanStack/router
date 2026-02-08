@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderToString } from 'solid-js/web'
 import { cleanup, render, screen } from '@solidjs/testing-library'
 import {
   RouterProvider,
@@ -52,17 +51,6 @@ describe('ClientOnly', () => {
   // Clear mocks after each test to prevent interference
   afterEach(() => {
     vi.clearAllMocks()
-  })
-
-  it.skip('should render fallback during SSR', async () => {
-    const { router } = createTestRouter()
-    await router.load()
-
-    // Initial render (SSR)
-    const html = renderToString(() => <RouterProvider router={router} />)
-
-    expect(html).include('Loading...')
-    expect(html).not.include('Client Only Content')
   })
 
   it('should render client content after hydration', async () => {

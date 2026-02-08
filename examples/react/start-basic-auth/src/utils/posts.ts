@@ -9,7 +9,7 @@ export type PostType = {
 }
 
 export const fetchPost = createServerFn({ method: 'GET' })
-  .validator((postId: string) => postId)
+  .inputValidator((postId: string) => postId)
   .handler(async ({ data }) => {
     console.info(`Fetching post with id ${data}...`)
     const post = await axios

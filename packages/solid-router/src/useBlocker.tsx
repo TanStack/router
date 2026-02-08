@@ -185,13 +185,16 @@ export function useBlocker(
       function getLocation(
         location: HistoryLocation,
       ): AnyShouldBlockFnLocation {
-        const parsedLocation = router.parseLocation(undefined, location)
-        const matchedRoutes = router.getMatchedRoutes(
-          parsedLocation.pathname,
-          undefined,
-        )
+        const parsedLocation = router.parseLocation(location)
+        const matchedRoutes = router.getMatchedRoutes(parsedLocation.pathname)
         if (matchedRoutes.foundRoute === undefined) {
-          throw new Error(`No route found for location ${location.href}`)
+          return {
+            routeId: '__notFound__',
+            fullPath: parsedLocation.pathname,
+            pathname: parsedLocation.pathname,
+            params: matchedRoutes.routeParams,
+            search: parsedLocation.search,
+          }
         }
         return {
           routeId: matchedRoutes.foundRoute.id,
@@ -204,6 +207,13 @@ export function useBlocker(
 
       const current = getLocation(blockerFnArgs.currentLocation)
       const next = getLocation(blockerFnArgs.nextLocation)
+
+      if (
+        current.routeId === '__notFound__' &&
+        next.routeId !== '__notFound__'
+      ) {
+        return false
+      }
 
       const shouldBlock = await props.shouldBlockFn({
         action: blockerFnArgs.action,

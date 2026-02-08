@@ -5,7 +5,21 @@ title: Quick Start
 
 ## Impatient?
 
-If you're impatient, you can clone and run the [Basic](https://github.com/TanStack/router/tree/main/examples/react/start-basic) example right away with the following commands:
+The fastest way to get a Start project up and running is with the cli. Just run
+
+```
+pnpm create @tanstack/start@latest
+```
+
+or
+
+```
+npm create @tanstack/start@latest
+```
+
+depending on your package manager of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.
+
+You can also clone and run the [Basic](https://github.com/TanStack/router/tree/main/examples/react/start-basic) example right away with the following commands:
 
 ```bash
 npx gitpick TanStack/router/tree/main/examples/react/start-basic start-basic
@@ -16,7 +30,7 @@ npm run dev
 
 If you'd like to use a different example, you can replace `start-basic` above with the slug of the example you'd like to use from the list below.
 
-Once you've cloned the example you want, head back to the [Learn the Basics](../learn-the-basics) guide to learn how to use TanStack Start!
+Once you've cloned the example you want, head back to the [Routing](./guide/routing) guide to learn how to use TanStack Start!
 
 ## Examples
 
@@ -52,7 +66,7 @@ npm install
 npm run dev
 ```
 
-Once you've clone or deployed an example, head back to the [Learn the Basics](../learn-the-basics) guide to learn how to use TanStack Start!
+Once you've clone or deployed an example, head back to the [Routing](./guide/routing) guide to learn how to use TanStack Start!
 
 ## Other Router Examples
 

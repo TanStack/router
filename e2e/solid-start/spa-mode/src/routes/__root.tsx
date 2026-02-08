@@ -8,9 +8,10 @@ import {
   createRootRoute,
   useRouterState,
 } from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import { HydrationScript } from 'solid-js/web'
 import type * as Solid from 'solid-js'
 import appCss from '~/styles/app.css?url'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -28,9 +29,6 @@ export const Route = createRootRoute({
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  ssr: () => {
-    throw new Error('ssr() should not be called in SPA mode')
-  },
   beforeLoad: () => {
     console.log(
       `beforeLoad for ${Route.id} called on the ${typeof window !== 'undefined' ? 'client' : 'server'}`,
@@ -71,35 +69,41 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
     select: (state) => ({ isLoading: state.isLoading, status: state.status }),
   })
   return (
-    <>
-      <div class="p-2 flex gap-2 text-lg">
-        <h1>SPA Mode E2E Test</h1>
-        <Link
-          to="/"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Home
-        </Link>
-      </div>
-      <hr />
-      <ClientOnly>
-        <div>
-          router isLoading:{' '}
-          <b data-testid="router-isLoading">
-            {routerState().isLoading ? 'true' : 'false'}
-          </b>
+    <html>
+      <head>
+        <HydrationScript />
+      </head>
+      <body>
+        <HeadContent />
+        <div class="p-2 flex gap-2 text-lg">
+          <h1>SPA Mode E2E Test</h1>
+          <Link
+            to="/"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Home
+          </Link>
         </div>
-        <div>
-          router status:{' '}
-          <b data-testid="router-status">{routerState().status}</b>
-        </div>
-      </ClientOnly>
-      <hr />
-      {children}
-      <Scripts />
-      <TanStackRouterDevtools position="bottom-right" />
-    </>
+        <hr />
+        <ClientOnly>
+          <div>
+            router isLoading:{' '}
+            <b data-testid="router-isLoading">
+              {routerState().isLoading ? 'true' : 'false'}
+            </b>
+          </div>
+          <div>
+            router status:{' '}
+            <b data-testid="router-status">{routerState().status}</b>
+          </div>
+        </ClientOnly>
+        <hr />
+        {children}
+        <Scripts />
+        <TanStackRouterDevtools position="bottom-right" />
+      </body>
+    </html>
   )
 }

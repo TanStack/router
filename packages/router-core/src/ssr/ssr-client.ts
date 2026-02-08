@@ -1,57 +1,56 @@
 import invariant from 'tiny-invariant'
-import { batch } from '@tanstack/store'
+import { batch } from '../utils/batch'
+import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
-import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
+import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
+import type { DehydratedMatch, TsrSsrGlobal } from './types'
+import type { AnyRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
-import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
-import type { GLOBAL_TSR } from './ssr-server'
+import type { AnySerializationAdapter } from './serializer/transformer'
 
 declare global {
   interface Window {
     [GLOBAL_TSR]?: TsrSsrGlobal
+    [GLOBAL_SEROVAL]?: any
   }
-}
-
-export interface TsrSsrGlobal {
-  router?: DehydratedRouter
-  // clean scripts, shortened since this is sent for each streamed script
-  c: () => void
 }
 
 function hydrateMatch(
+  match: AnyRouteMatch,
   deyhydratedMatch: DehydratedMatch,
-): Partial<MakeRouteMatch> {
-  return {
-    id: deyhydratedMatch.i,
-    __beforeLoadContext: deyhydratedMatch.b,
-    loaderData: deyhydratedMatch.l,
-    status: deyhydratedMatch.s,
-    ssr: deyhydratedMatch.ssr,
-    updatedAt: deyhydratedMatch.u,
-    error: deyhydratedMatch.e,
-  }
-}
-export interface DehydratedMatch {
-  i: MakeRouteMatch['id']
-  b?: MakeRouteMatch['__beforeLoadContext']
-  l?: MakeRouteMatch['loaderData']
-  e?: MakeRouteMatch['error']
-  u: MakeRouteMatch['updatedAt']
-  s: MakeRouteMatch['status']
-  ssr?: MakeRouteMatch['ssr']
-}
-
-export interface DehydratedRouter {
-  manifest: Manifest | undefined
-  dehydratedData?: any
-  lastMatchId?: string
-  matches: Array<DehydratedMatch>
+): void {
+  match.id = deyhydratedMatch.i
+  match.__beforeLoadContext = deyhydratedMatch.b
+  match.loaderData = deyhydratedMatch.l
+  match.status = deyhydratedMatch.s
+  match.ssr = deyhydratedMatch.ssr
+  match.updatedAt = deyhydratedMatch.u
+  match.error = deyhydratedMatch.e
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {
   invariant(
-    window.$_TSR?.router,
+    window.$_TSR,
+    'Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
+  )
+
+  const serializationAdapters = router.options.serializationAdapters as
+    | Array<AnySerializationAdapter>
+    | undefined
+
+  if (serializationAdapters?.length) {
+    const fromSerializableMap = new Map()
+    serializationAdapters.forEach((adapter) => {
+      fromSerializableMap.set(adapter.key, adapter.fromSerializable)
+    })
+    window.$_TSR.t = fromSerializableMap
+    window.$_TSR.buffer.forEach((script) => script())
+  }
+  window.$_TSR.initialized = true
+
+  invariant(
+    window.$_TSR.router,
     'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
   )
 
@@ -59,6 +58,13 @@ export async function hydrate(router: AnyRouter): Promise<any> {
 
   router.ssr = {
     manifest,
+  }
+  const meta = document.querySelector('meta[property="csp-nonce"]') as
+    | HTMLMetaElement
+    | undefined
+  const nonce = meta?.content
+  router.options.ssr = {
+    nonce,
   }
 
   // Hydrate the router state
@@ -80,21 +86,29 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs
     if (pendingMinMs) {
       const minPendingPromise = createControlledPromise<void>()
-      match.minPendingPromise = minPendingPromise
+      match._nonReactive.minPendingPromise = minPendingPromise
       match._forcePending = true
 
       setTimeout(() => {
         minPendingPromise.resolve()
         // We've handled the minPendingPromise, so we can delete it
-        router.updateMatch(match.id, (prev) => ({
-          ...prev,
-          minPendingPromise: undefined,
-          _forcePending: undefined,
-        }))
+        router.updateMatch(match.id, (prev) => {
+          prev._nonReactive.minPendingPromise = undefined
+          return {
+            ...prev,
+            _forcePending: undefined,
+          }
+        })
       }, pendingMinMs)
     }
   }
 
+  function setRouteSsr(match: AnyRouteMatch) {
+    const route = router.looseRoutesById[match.routeId]
+    if (route) {
+      route.options.ssr = match.ssr
+    }
+  }
   // Right after hydration and before the first render, we need to rehydrate each match
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
@@ -103,17 +117,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       (d) => d.i === match.id,
     )
     if (!dehydratedMatch) {
-      Object.assign(match, { dehydrated: false, ssr: false })
+      match._nonReactive.dehydrated = false
+      match.ssr = false
+      setRouteSsr(match)
       return
     }
 
-    Object.assign(match, hydrateMatch(dehydratedMatch))
+    hydrateMatch(match, dehydratedMatch)
+    setRouteSsr(match)
 
-    if (match.ssr === false) {
-      match._dehydrated = false
-    } else {
-      match._dehydrated = true
-    }
+    match._nonReactive.dehydrated = match.ssr !== false
 
     if (match.ssr === 'data-only' || match.ssr === false) {
       if (firstNonSsrMatchIndex === undefined) {
@@ -138,59 +151,85 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // 2) execute `head()` and `scripts()` for each match
   await Promise.all(
     router.state.matches.map(async (match) => {
-      const route = router.looseRoutesById[match.routeId]!
+      try {
+        const route = router.looseRoutesById[match.routeId]!
 
-      const parentMatch = router.state.matches[match.index - 1]
-      const parentContext = parentMatch?.context ?? router.options.context ?? {}
+        const parentMatch = router.state.matches[match.index - 1]
+        const parentContext = parentMatch?.context ?? router.options.context
 
-      // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
-      // so run it again and merge route context
-      const contextFnContext: RouteContextOptions<any, any, any, any> = {
-        deps: match.loaderDeps,
-        params: match.params,
-        context: parentContext,
-        location: router.state.location,
-        navigate: (opts: any) =>
-          router.navigate({ ...opts, _fromLocation: router.state.location }),
-        buildLocation: router.buildLocation,
-        cause: match.cause,
-        abortController: match.abortController,
-        preload: false,
-        matches,
+        // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
+        // so run it again and merge route context
+        if (route.options.context) {
+          const contextFnContext: RouteContextOptions<any, any, any, any, any> =
+            {
+              deps: match.loaderDeps,
+              params: match.params,
+              context: parentContext ?? {},
+              location: router.state.location,
+              navigate: (opts: any) =>
+                router.navigate({
+                  ...opts,
+                  _fromLocation: router.state.location,
+                }),
+              buildLocation: router.buildLocation,
+              cause: match.cause,
+              abortController: match.abortController,
+              preload: false,
+              matches,
+              routeId: route.id,
+            }
+          match.__routeContext =
+            route.options.context(contextFnContext) ?? undefined
+        }
+
+        match.context = {
+          ...parentContext,
+          ...match.__routeContext,
+          ...match.__beforeLoadContext,
+        }
+
+        const assetContext = {
+          ssr: router.options.ssr,
+          matches: router.state.matches,
+          match,
+          params: match.params,
+          loaderData: match.loaderData,
+        }
+        const headFnContent = await route.options.head?.(assetContext)
+
+        const scripts = await route.options.scripts?.(assetContext)
+
+        match.meta = headFnContent?.meta
+        match.links = headFnContent?.links
+        match.headScripts = headFnContent?.scripts
+        match.styles = headFnContent?.styles
+        match.scripts = scripts
+      } catch (err) {
+        if (isNotFound(err)) {
+          match.error = { isNotFound: true }
+          console.error(
+            `NotFound error during hydration for routeId: ${match.routeId}`,
+            err,
+          )
+        } else {
+          match.error = err as any
+          console.error(
+            `Error during hydration for route ${match.routeId}:`,
+            err,
+          )
+          throw err
+        }
       }
-      match.__routeContext = route.options.context?.(contextFnContext) ?? {}
-
-      match.context = {
-        ...parentContext,
-        ...match.__routeContext,
-        ...match.__beforeLoadContext,
-      }
-
-      const assetContext = {
-        matches: router.state.matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData,
-      }
-      const headFnContent = await route.options.head?.(assetContext)
-
-      const scripts = await route.options.scripts?.(assetContext)
-
-      match.meta = headFnContent?.meta
-      match.links = headFnContent?.links
-      match.headScripts = headFnContent?.scripts
-      match.styles = headFnContent?.styles
-      match.scripts = scripts
     }),
   )
 
   const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
   const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
-  // all matches have data from the server   and we are not in SPA mode so we don't need to kick of router.load()
+  // all matches have data from the server and we are not in SPA mode so we don't need to kick of router.load()
   if (!hasSsrFalseMatches && !isSpaMode) {
     matches.forEach((match) => {
-      // remove the _dehydrate flag since we won't run router.load() which would remove it
-      match._dehydrated = undefined
+      // remove the dehydrated flag since we won't run router.load() which would remove it
+      match._nonReactive.dehydrated = undefined
     })
     return routeChunkPromise
   }
@@ -213,7 +252,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     setMatchForcePending(match)
 
     match._displayPending = true
-    match.displayPendingPromise = loadPromise
+    match._nonReactive.displayPendingPromise = loadPromise
 
     loadPromise.then(() => {
       batch(() => {

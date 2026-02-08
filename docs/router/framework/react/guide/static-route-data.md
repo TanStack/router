@@ -79,3 +79,73 @@ declare module '@tanstack/react-router' {
 ```
 
 As long as there are any required properties on the `StaticDataRouteOption`, you'll be required to pass in an object.
+
+## Common Patterns
+
+### Controlling Layout Visibility
+
+Use staticData to control which routes show or hide layout elements:
+
+```tsx
+// routes/admin/route.tsx
+export const Route = createFileRoute('/admin')({
+  staticData: { showNavbar: false },
+  component: AdminLayout,
+})
+```
+
+```tsx
+// routes/__root.tsx
+function RootComponent() {
+  const showNavbar = useMatches({
+    select: (matches) =>
+      !matches.some((m) => m.staticData?.showNavbar === false),
+  })
+
+  return showNavbar ? (
+    <Navbar>
+      <Outlet />
+    </Navbar>
+  ) : (
+    <Outlet />
+  )
+}
+```
+
+### Route Titles for Breadcrumbs
+
+```tsx
+// routes/posts/$postId.tsx
+export const Route = createFileRoute('/posts/$postId')({
+  staticData: {
+    getTitle: () => 'Post Details',
+  },
+})
+```
+
+```tsx
+// In a Breadcrumb component
+function Breadcrumbs() {
+  const matches = useMatches()
+
+  return (
+    <nav>
+      {matches
+        .filter((m) => m.staticData?.getTitle)
+        .map((m) => (
+          <span key={m.id}>{m.staticData.getTitle()}</span>
+        ))}
+    </nav>
+  )
+}
+```
+
+### When to Use staticData vs Context
+
+| staticData                             | context                         |
+| -------------------------------------- | ------------------------------- |
+| Synchronous, defined at route creation | Can be async (via `beforeLoad`) |
+| Available before loading starts        | Can depend on params/search     |
+| Same for all instances of a route      | Passed down to child routes     |
+
+Use staticData for static route metadata. Use context for dynamic data or auth state that varies per request.

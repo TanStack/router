@@ -1,15 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { getRouteApi, useParams } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, useParams } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts_/$postId/edit')({
   component: PostEditPage,
 })
 
-const api = getRouteApi('/posts_/$postId/edit')
+const api = getRouteApi(`/posts_/$postId/edit`)
 
 function PostEditPage() {
   const paramsViaApi = api.useParams()
-  const paramsViaHook = useParams({ from: '/posts_/$postId/edit' })
+  const paramsViaHook = useParams({ from: `/posts_/$postId/edit` })
+
   const paramsViaRouteHook = Route.useParams()
 
   return (

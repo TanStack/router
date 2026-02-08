@@ -1,14 +1,18 @@
-import * as React from 'react';
-import { createFileRoute, Outlet } from '@tanstack/react-router';
-import { importedComponent as ImportedComponent, importedLoader } from '../../shared/imported';
+import * as React from 'react'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
+import {
+  importedComponent as ImportedComponent,
+  importedLoader,
+} from '../../shared/imported'
+
 export const loaderFn = () => {
-  return importedLoader();
-};
+  return importedLoader()
+}
+
 const Layout = () => {
-  return <main>
-      <header style={{
-      height: HEADER_HEIGHT
-    }}>
+  return (
+    <main>
+      <header style={{ height: HEADER_HEIGHT }}>
         <nav>
           <ul>
             <li>
@@ -19,14 +23,18 @@ const Layout = () => {
       </header>
       <ImportedComponent />
       <Outlet />
-    </main>;
-};
+    </main>
+  )
+}
+
 export const Route = createFileRoute('/_layout')({
   component: Layout,
-  loader: loaderFn
-});
-const HEADER_HEIGHT = '63px';
-export const SIDEBAR_WIDTH = '150px';
-export const SIDEBAR_MINI_WIDTH = '80px';
-const ASIDE_WIDTH = '250px';
-export default Layout;
+  loader: loaderFn,
+})
+
+const HEADER_HEIGHT = '63px'
+export const SIDEBAR_WIDTH = '150px'
+export const SIDEBAR_MINI_WIDTH = '80px'
+const ASIDE_WIDTH = '250px'
+
+export default Layout

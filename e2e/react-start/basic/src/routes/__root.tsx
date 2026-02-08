@@ -142,6 +142,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Scripts
           </Link>{' '}
           <Link
+            to="/inline-scripts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Inline Scripts
+          </Link>{' '}
+          <Link
             to="/deferred"
             activeProps={{
               className: 'font-bold',
@@ -158,6 +166,22 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             redirect
           </Link>{' '}
           <Link
+            to="/client-only"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Client Only
+          </Link>{' '}
+          <Link
+            to="/raw-stream"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Raw Stream
+          </Link>{' '}
+          <Link
             // @ts-expect-error
             to="/this-route-does-not-exist"
             activeProps={{
@@ -170,7 +194,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <hr />
         {children}
         <div className="inline-div">This is an inline styled div</div>
-        <RouterDevtools position="bottom-right" />
+        <React.Suspense fallback={null}>
+          <RouterDevtools position="bottom-right" />
+        </React.Suspense>
         <Scripts />
       </body>
     </html>

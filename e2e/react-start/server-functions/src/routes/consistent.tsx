@@ -20,25 +20,25 @@ export const Route = createFileRoute('/consistent')({
 })
 
 const cons_getFn1 = createServerFn()
-  .validator((d: { username: string }) => d)
+  .inputValidator((d: { username: string }) => d)
   .handler(({ data }) => {
     return { payload: data }
   })
 
 const cons_serverGetFn1 = createServerFn()
-  .validator((d: { username: string }) => d)
+  .inputValidator((d: { username: string }) => d)
   .handler(async ({ data }) => {
     return cons_getFn1({ data })
   })
 
 const cons_postFn1 = createServerFn({ method: 'POST' })
-  .validator((d: { username: string }) => d)
+  .inputValidator((d: { username: string }) => d)
   .handler(({ data }) => {
     return { payload: data }
   })
 
 const cons_serverPostFn1 = createServerFn({ method: 'POST' })
-  .validator((d: { username: string }) => d)
+  .inputValidator((d: { username: string }) => d)
   .handler(({ data }) => {
     return cons_postFn1({ data })
   })
@@ -97,7 +97,7 @@ function ConsistentServerFnCalls() {
       <button
         data-testid="test-consistent-server-fn-calls-btn"
         type="button"
-        className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         onClick={() => {
           // GET calls
           cons_serverGetFn1({ data: { username: 'TEST' } }).then(

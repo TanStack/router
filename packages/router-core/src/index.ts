@@ -1,3 +1,5 @@
+export * from './global'
+
 export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { preloadWarning } from './link'
@@ -36,6 +38,8 @@ export type {
   ToSubOptionsProps,
   RequiredToOptions,
 } from './link'
+
+export { componentTypes } from './load-matches'
 
 export type {
   RouteToPath,
@@ -96,13 +100,8 @@ export {
   removeTrailingSlash,
   exactPathTest,
   resolvePath,
-  parsePathname,
   interpolatePath,
-  matchPathname,
-  removeBasepath,
-  matchByPath,
 } from './path'
-export type { Segment } from './path'
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
@@ -172,7 +171,6 @@ export type {
   RouteLoaderFn,
   LoaderFnContext,
   RouteContextFn,
-  BeforeLoadFn,
   ContextOptions,
   RouteContextOptions,
   BeforeLoadContextOptions,
@@ -190,20 +188,20 @@ export type {
   ResolveOptionalParams,
   ResolveRequiredParams,
   RootRoute,
+  FilebaseRouteOptionsInterface,
 } from './route'
-
 export {
   defaultSerializeError,
   getLocationChangeInfo,
   RouterCore,
-  componentTypes,
   lazyFn,
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-  processRouteTree,
   getMatchedRoutes,
+  trailingSlashOptions,
 } from './router'
+
 export type {
   ViewTransitionOptions,
   TrailingSlashOption,
@@ -242,8 +240,10 @@ export type {
   LoadRouteChunkFn,
   ClearCacheFn,
   CreateRouterFn,
-  ProcessRouteTreeResult,
+  SSROption,
 } from './router'
+
+export * from './config'
 
 export type {
   MatchLocation,
@@ -267,15 +267,16 @@ export type { OptionalStructuralSharing } from './structuralSharing'
 export {
   last,
   functionalUpdate,
-  pick,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,
   deepEqual,
-  escapeJSON,
-  shallow,
   createControlledPromise,
   isModuleNotFoundError,
+  decodePath,
+  escapeHtml,
+  isDangerousProtocol,
+  buildDevStylesUrl,
 } from './utils'
 export type {
   NoInfer,
@@ -312,6 +313,7 @@ export type {
   StrictOrFrom,
   LooseReturnType,
   LooseAsyncReturnType,
+  Awaitable,
 } from './utils'
 
 export type {
@@ -368,6 +370,8 @@ export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 export type {
   Redirect,
   RedirectOptions,
+  RedirectOptionsRoute,
+  RedirectFnRoute,
   ResolvedRedirect,
   AnyRedirect,
 } from './redirect'
@@ -419,3 +423,45 @@ export type {
   ValidateUseParamsResult,
   ValidateUseHistoryStateResult,
 } from './typePrimitives'
+
+export type {
+  AnySerializationAdapter,
+  SerializationAdapter,
+  ValidateSerializableInput,
+  ValidateSerializableInputResult,
+  SerializerExtensions,
+  ValidateSerializable,
+  RegisteredSerializableInput,
+  SerializableExtensions,
+  DefaultSerializable,
+  Serializable,
+  TSR_SERIALIZABLE,
+  TsrSerializable,
+} from './ssr/serializer/transformer'
+
+export {
+  createSerializationAdapter,
+  makeSerovalPlugin,
+  makeSsrSerovalPlugin,
+} from './ssr/serializer/transformer'
+
+export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
+
+export {
+  RawStream,
+  RawStreamSSRPlugin,
+  createRawStreamRPCPlugin,
+  createRawStreamDeserializePlugin,
+} from './ssr/serializer/RawStream'
+export type {
+  OnRawStreamCallback,
+  RawStreamHint,
+  RawStreamOptions,
+} from './ssr/serializer/RawStream'
+
+export {
+  composeRewrites,
+  executeRewriteInput,
+  executeRewriteOutput,
+} from './rewrite'
+export type { LocationRewrite, LocationRewriteFunction } from './router'

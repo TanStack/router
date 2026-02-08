@@ -1,10 +1,24 @@
-# Firebase Setup
+# TanStack Router - Authenticated Routes with Firebase Example
+
+An example demonstrating authentication with Firebase and protected routes.
+
+- [TanStack Router Docs](https://tanstack.com/router)
+- [Firebase Documentation](https://firebase.google.com/docs)
+
+## Start a new project based on this example
+
+To start a new project based on this example, run:
+
+```sh
+npx gitpick TanStack/router/tree/main/examples/react/authenticated-routes-firebase authenticated-routes-firebase
+```
+
+## Firebase Setup
 
 1. Create a [Firebase project](https://console.firebase.google.com/)
    1. By default, firebase will configure an accepted domain for localhost...update if necessary!
 2. Enable Authentication in the Firebase console
 3. Add GitHub as an authentication provider:
-
    - Go to **Authentication** > **Sign-in method** > **GitHub**
    - Enable GitHub authentication
    - You'll need to set up OAuth in your GitHub account:
@@ -23,19 +37,46 @@
 
 ## Setup .env.local
 
-Copy the .env.example provided and configure with your firebase credentials
+Copy the .env.example provided and configure with your firebase credentials:
 
-````VITE_FIREBASE_API_KEY=
+```
+VITE_FIREBASE_API_KEY=
 VITE_FIREBASE_AUTH_DOMAIN=
 VITE_FIREBASE_PROJECT_ID=
 VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=```
+VITE_FIREBASE_APP_ID=
+```
 
-## Run the app
+## Getting Started
 
-To run this example:
+Install dependencies:
 
-- `npm install` or `yarn`
-- `npm start` or `yarn start`
-````
+```sh
+pnpm install
+```
+
+Start the development server:
+
+```sh
+pnpm dev
+```
+
+## Build
+
+Build for production:
+
+```sh
+pnpm build
+```
+
+## About This Example
+
+This example demonstrates:
+
+- Firebase authentication integration
+- Protected routes with Firebase Auth
+- Route guards
+- Login/logout with Firebase
+- User session management
+- Public vs private routes

@@ -1,11 +1,12 @@
-import { Matches } from './Matches'
 import { getRouterContext } from './routerContext'
-import type * as Solid from 'solid-js'
+import { SafeFragment } from './SafeFragment'
+import { Matches } from './Matches'
 import type {
   AnyRouter,
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
+import type * as Solid from 'solid-js'
 
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -29,17 +30,15 @@ export function RouterContextProvider<
 
   const routerContext = getRouterContext()
 
-  const provider = (
-    <routerContext.Provider value={router as AnyRouter}>
-      {children()}
-    </routerContext.Provider>
+  const OptionalWrapper = router.options.Wrap || SafeFragment
+
+  return (
+    <OptionalWrapper>
+      <routerContext.Provider value={router as AnyRouter}>
+        {children()}
+      </routerContext.Provider>
+    </OptionalWrapper>
   )
-
-  if (router.options.Wrap) {
-    return <router.options.Wrap>{provider}</router.options.Wrap>
-  }
-
-  return provider
 }
 
 export function RouterProvider<

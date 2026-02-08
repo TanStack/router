@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
+import { createEffect, onMount } from 'solid-js'
 import {
   Link,
   Outlet,
@@ -1590,6 +1591,7 @@ describe('loader in the route definition', () => {
       path: '/',
     })
     const aboutRoute = createRoute({
+      ssr: false,
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async () => {
@@ -1641,6 +1643,7 @@ describe('loader in the route definition', () => {
       },
     })
     const aboutRoute = createRoute({
+      ssr: false,
       getParentRoute: () => rootRoute,
       path: '/about',
       beforeLoad: async () => {
@@ -2388,6 +2391,64 @@ describe('useRouteContext in the component', () => {
     const content = await screen.findByText(JSON.stringify({ foo: 'bar' }))
 
     expect(content).toBeInTheDocument()
+  })
+
+  // Note: This test passes in solid-router but fails in react-router, even
+  // though in issue (GitHub #6040), the bug manifests in both routers.
+  test('route context, (sleep in beforeLoad), with immediate navigation', async () => {
+    const contextValues: Array<{ data: string }> = []
+
+    const rootRoute = createRootRoute({
+      beforeLoad: async () => {
+        await sleep(WAIT_TIME)
+        return { data: 'context-from-beforeLoad' }
+      },
+      shellComponent: () => {
+        const context = rootRoute.useRouteContext()
+
+        // Track context value at render time
+        createEffect(() => {
+          const contextValue: { data: string } = context()
+          contextValues.push(contextValue)
+        })
+
+        return <Outlet />
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        const navigate = indexRoute.useNavigate()
+
+        // Navigate away immediately on mount
+        onMount(() => {
+          navigate({ to: '/other' })
+        })
+
+        return <div>Index page</div>
+      },
+    })
+
+    const otherRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+      component: () => <div>Other page</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(() => <RouterProvider router={router} />)
+
+    // Wait for navigation to complete
+    await screen.findByText('Other page')
+
+    const allContextsValid = contextValues.every(
+      (c) => c.data === 'context-from-beforeLoad',
+    )
+    expect(allContextsValid).toBe(true)
   })
 
   test('route context (sleep in loader), present root route', async () => {

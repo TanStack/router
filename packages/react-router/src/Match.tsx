@@ -6,9 +6,9 @@ import {
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
-  pick,
   rootRouteId,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -32,12 +32,19 @@ export const Match = React.memo(function MatchImpl({
   const router = useRouter()
   const matchState = useRouterState({
     select: (s) => {
-      const match = s.matches.find((d) => d.id === matchId)
+      const matchIndex = s.matches.findIndex((d) => d.id === matchId)
+      const match = s.matches[matchIndex]
       invariant(
         match,
         `Could not find match for matchId "${matchId}". Please file an issue!`,
       )
-      return pick(match, ['routeId', 'ssr', '_displayPending'])
+      return {
+        routeId: match.routeId,
+        ssr: match.ssr,
+        _displayPending: match._displayPending,
+        resetKey: s.loadedAt,
+        parentRouteId: s.matches[matchIndex - 1]?.routeId as string,
+      }
     },
     structuralSharing: true as any,
   })
@@ -79,17 +86,6 @@ export const Match = React.memo(function MatchImpl({
     ? CatchNotFound
     : SafeFragment
 
-  const resetKey = useRouterState({
-    select: (s) => s.loadedAt,
-  })
-
-  const parentRouteId = useRouterState({
-    select: (s) => {
-      const index = s.matches.findIndex((d) => d.id === matchId)
-      return s.matches[index - 1]?.routeId as string
-    },
-  })
-
   const ShellComponent = route.isRoot
     ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
     : SafeFragment
@@ -98,7 +94,7 @@ export const Match = React.memo(function MatchImpl({
       <matchContext.Provider value={matchId}>
         <ResolvedSuspenseBoundary fallback={pendingElement}>
           <ResolvedCatchBoundary
-            getResetKey={() => resetKey}
+            getResetKey={() => matchState.resetKey}
             errorComponent={routeErrorComponent || ErrorComponent}
             onCatch={(error, errorInfo) => {
               // Forward not found errors (we don't want to show the error component for these)
@@ -132,7 +128,8 @@ export const Match = React.memo(function MatchImpl({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {parentRouteId === rootRouteId && router.options.scrollRestoration ? (
+      {matchState.parentRouteId === rootRouteId &&
+      router.options.scrollRestoration ? (
         <>
           <OnRendered />
           <ScrollRestoration />
@@ -186,8 +183,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
   const { match, key, routeId } = useRouterState({
     select: (s) => {
-      const matchIndex = s.matches.findIndex((d) => d.id === matchId)
-      const match = s.matches[matchIndex]!
+      const match = s.matches.find((d) => d.id === matchId)!
       const routeId = match.routeId as string
 
       const remountFn =
@@ -204,13 +200,14 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       return {
         key,
         routeId,
-        match: pick(match, [
-          'id',
-          'status',
-          'error',
-          '_forcePending',
-          '_displayPending',
-        ]),
+        match: {
+          id: match.id,
+          status: match.status,
+          error: match.error,
+          invalid: match.invalid,
+          _forcePending: match._forcePending,
+          _displayPending: match._displayPending,
+        },
       }
     },
     structuralSharing: true as any,
@@ -227,11 +224,11 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }, [key, route.options.component, router.options.defaultComponent])
 
   if (match._displayPending) {
-    throw router.getMatch(match.id)?.displayPendingPromise
+    throw router.getMatch(match.id)?._nonReactive.displayPendingPromise
   }
 
   if (match._forcePending) {
-    throw router.getMatch(match.id)?.minPendingPromise
+    throw router.getMatch(match.id)?._nonReactive.minPendingPromise
   }
 
   // see also hydrate() in packages/router-core/src/ssr/ssr-client.ts
@@ -239,31 +236,24 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     // We're pending, and if we have a minPendingMs, we need to wait for it
     const pendingMinMs =
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs
+    if (pendingMinMs) {
+      const routerMatch = router.getMatch(match.id)
+      if (routerMatch && !routerMatch._nonReactive.minPendingPromise) {
+        // Create a promise that will resolve after the minPendingMs
+        if (!(isServer ?? router.isServer)) {
+          const minPendingPromise = createControlledPromise<void>()
 
-    if (pendingMinMs && !router.getMatch(match.id)?.minPendingPromise) {
-      // Create a promise that will resolve after the minPendingMs
-      if (!router.isServer) {
-        const minPendingPromise = createControlledPromise<void>()
+          routerMatch._nonReactive.minPendingPromise = minPendingPromise
 
-        Promise.resolve().then(() => {
-          router.updateMatch(match.id, (prev) => ({
-            ...prev,
-            minPendingPromise,
-          }))
-        })
-
-        setTimeout(() => {
-          minPendingPromise.resolve()
-
-          // We've handled the minPendingPromise, so we can delete it
-          router.updateMatch(match.id, (prev) => ({
-            ...prev,
-            minPendingPromise: undefined,
-          }))
-        }, pendingMinMs)
+          setTimeout(() => {
+            minPendingPromise.resolve()
+            // We've handled the minPendingPromise, so we can delete it
+            routerMatch._nonReactive.minPendingPromise = undefined
+          }, pendingMinMs)
+        }
       }
     }
-    throw router.getMatch(match.id)?.loadPromise
+    throw router.getMatch(match.id)?._nonReactive.loadPromise
   }
 
   if (match.status === 'notFound') {
@@ -280,7 +270,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     //   false,
     //   'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
     // )
-    throw router.getMatch(match.id)?.loadPromise
+    throw router.getMatch(match.id)?._nonReactive.loadPromise
   }
 
   if (match.status === 'error') {
@@ -289,7 +279,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     // of a suspense boundary. This is the only way to get
     // renderToPipeableStream to not hang indefinitely.
     // We'll serialize the error and rethrow it on the client.
-    if (router.isServer) {
+    if (isServer ?? router.isServer) {
       const RouteErrorComponent =
         (route.options.errorComponent ??
           router.options.defaultErrorComponent) ||
@@ -311,6 +301,12 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   return out
 })
 
+/**
+ * Render the next child match in the route tree. Typically used inside
+ * a route component to render nested routes.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/outletComponent
+ */
 export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()
   const matchId = React.useContext(matchContext)
@@ -354,7 +350,7 @@ export const Outlet = React.memo(function OutletImpl() {
 
   const nextMatch = <Match matchId={childMatchId} />
 
-  if (matchId === rootRouteId) {
+  if (routeId === rootRouteId) {
     return (
       <React.Suspense fallback={pendingElement}>{nextMatch}</React.Suspense>
     )

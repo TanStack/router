@@ -2,7 +2,7 @@ import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import babel from '@babel/core'
 import * as template from '@babel/template'
 import { getConfig } from './config'
-import { debug } from './utils'
+import { debug, normalizePath } from './utils'
 import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
@@ -10,11 +10,18 @@ import type { UnpluginFactory } from 'unplugin'
  * This plugin adds imports for createFileRoute and createLazyFileRoute to the file route.
  */
 export const unpluginRouteAutoImportFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  Partial<Config | (() => Config)> | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
-  let userConfig = options as Config
+  let userConfig: Config
 
+  function initUserConfig() {
+    if (typeof options === 'function') {
+      userConfig = options()
+    } else {
+      userConfig = getConfig(options, ROOT)
+    }
+  }
   return {
     name: 'tanstack-router:autoimport',
     enforce: 'pre',
@@ -26,7 +33,8 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
         code: /createFileRoute\(|createLazyFileRoute\(/,
       },
       handler(code, id) {
-        if (!globalThis.TSR_ROUTES_BY_ID_MAP?.has(id)) {
+        const normalizedId = normalizePath(id)
+        if (!globalThis.TSR_ROUTES_BY_ID_MAP?.has(normalizedId)) {
           return null
         }
         let routeType: 'createFileRoute' | 'createLazyFileRoute'
@@ -65,7 +73,7 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
         })
 
         if (!isCreateRouteFunctionImported) {
-          if (debug) console.info('Adding autoimports to route ', id)
+          if (debug) console.info('Adding autoimports to route ', normalizedId)
 
           const autoImportStatement = template.statement(
             `import { ${routeType} } from '${routerImportPath}'`,
@@ -74,8 +82,8 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
 
           const result = generateFromAst(ast, {
             sourceMaps: true,
-            filename: id,
-            sourceFileName: id,
+            filename: normalizedId,
+            sourceFileName: normalizedId,
           })
           if (debug) {
             logDiff(code, result.code)
@@ -91,18 +99,22 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
     vite: {
       configResolved(config) {
         ROOT = config.root
-        userConfig = getConfig(options, ROOT)
+        initUserConfig()
+      },
+      // this check may only happen after config is resolved, so we use applyToEnvironment (apply is too early)
+      applyToEnvironment() {
+        return userConfig.verboseFileRoutes === false
       },
     },
 
     rspack() {
       ROOT = process.cwd()
-      userConfig = getConfig(options, ROOT)
+      initUserConfig()
     },
 
     webpack() {
       ROOT = process.cwd()
-      userConfig = getConfig(options, ROOT)
+      initUserConfig()
     },
   }
 }

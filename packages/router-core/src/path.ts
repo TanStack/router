@@ -1,15 +1,15 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import { last } from './utils'
-import type { MatchLocation } from './RouterProvider'
-import type { AnyPathParams } from './route'
+import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
+  parseSegment,
+} from './new-process-route-tree'
+import type { LRUCache } from './lru-cache'
 
-export interface Segment {
-  type: 'pathname' | 'param' | 'wildcard'
-  value: string
-  // Add a new property to store the static segment if present
-  prefixSegment?: string
-  suffixSegment?: string
-}
-
+/** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
   return cleanPath(
     paths
@@ -20,23 +20,29 @@ export function joinPaths(paths: Array<string | undefined>) {
   )
 }
 
+/** Remove repeated slashes from a path string. */
 export function cleanPath(path: string) {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')
 }
 
+/** Trim leading slashes (except preserving root '/'). */
 export function trimPathLeft(path: string) {
   return path === '/' ? path : path.replace(/^\/{1,}/, '')
 }
 
+/** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
-  return path === '/' ? path : path.replace(/\/{1,}$/, '')
+  const len = path.length
+  return len > 1 && path[len - 1] === '/' ? path.replace(/\/{1,}$/, '') : path
 }
 
+/** Trim both leading and trailing slashes. */
 export function trimPath(path: string) {
   return trimPathRight(trimPathLeft(path))
 }
 
+/** Remove a trailing slash from value when appropriate for comparisons. */
 export function removeTrailingSlash(value: string, basepath: string): string {
   if (value?.endsWith('/') && value !== '/' && value !== `${basepath}/`) {
     return value.slice(0, -1)
@@ -48,6 +54,10 @@ export function removeTrailingSlash(value: string, basepath: string): string {
 // see the usage in the isActive under useLinkProps
 // /sample/path1 = /sample/path1/
 // /sample/path1/some <> /sample/path1
+/**
+ * Compare two pathnames for exact equality after normalizing trailing slashes
+ * relative to the provided `basepath`.
+ */
 export function exactPathTest(
   pathName1: string,
   pathName2: string,
@@ -86,211 +96,140 @@ export function exactPathTest(
 // /a/b/c + d/ = /a/b/c/d
 // /a/b/c + d/e = /a/b/c/d/e
 interface ResolvePathOptions {
-  basepath: string
   base: string
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
-  caseSensitive?: boolean
+  cache?: LRUCache<string, string>
 }
 
+/**
+ * Resolve a destination path against a base, honoring trailing-slash policy
+ * and supporting relative segments (`.`/`..`) and absolute `to` values.
+ */
 export function resolvePath({
-  basepath,
   base,
   to,
   trailingSlash = 'never',
-  caseSensitive,
+  cache,
 }: ResolvePathOptions) {
-  base = removeBasepath(basepath, base, caseSensitive)
-  to = removeBasepath(basepath, to, caseSensitive)
+  const isAbsolute = to.startsWith('/')
+  const isBase = !isAbsolute && to === '.'
 
-  let baseSegments = parsePathname(base)
-  const toSegments = parsePathname(to)
-
-  if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
-    baseSegments.pop()
+  let key
+  if (cache) {
+    // `trailingSlash` is static per router, so it doesn't need to be part of the cache key
+    key = isAbsolute ? to : isBase ? base : base + '\0' + to
+    const cached = cache.get(key)
+    if (cached) return cached
   }
 
-  toSegments.forEach((toSegment, index) => {
-    if (toSegment.value === '/') {
-      if (!index) {
-        // Leading slash
-        baseSegments = [toSegment]
-      } else if (index === toSegments.length - 1) {
-        // Trailing Slash
-        baseSegments.push(toSegment)
-      } else {
-        // ignore inter-slashes
-      }
-    } else if (toSegment.value === '..') {
+  let baseSegments: Array<string>
+  if (isBase) {
+    baseSegments = base.split('/')
+  } else if (isAbsolute) {
+    baseSegments = to.split('/')
+  } else {
+    baseSegments = base.split('/')
+    while (baseSegments.length > 1 && last(baseSegments) === '') {
       baseSegments.pop()
-    } else if (toSegment.value === '.') {
-      // ignore
-    } else {
-      baseSegments.push(toSegment)
     }
-  })
+
+    const toSegments = to.split('/')
+    for (let index = 0, length = toSegments.length; index < length; index++) {
+      const value = toSegments[index]!
+      if (value === '') {
+        if (!index) {
+          // Leading slash
+          baseSegments = [value]
+        } else if (index === length - 1) {
+          // Trailing Slash
+          baseSegments.push(value)
+        } else {
+          // ignore inter-slashes
+        }
+      } else if (value === '..') {
+        baseSegments.pop()
+      } else if (value === '.') {
+        // ignore
+      } else {
+        baseSegments.push(value)
+      }
+    }
+  }
 
   if (baseSegments.length > 1) {
-    if (last(baseSegments)?.value === '/') {
+    if (last(baseSegments) === '') {
       if (trailingSlash === 'never') {
         baseSegments.pop()
       }
     } else if (trailingSlash === 'always') {
-      baseSegments.push({ type: 'pathname', value: '/' })
+      baseSegments.push('')
     }
   }
 
-  const segmentValues = baseSegments.map((segment) => {
-    if (segment.type === 'param') {
-      const param = segment.value.substring(1)
-      if (segment.prefixSegment && segment.suffixSegment) {
-        return `${segment.prefixSegment}{$${param}}${segment.suffixSegment}`
-      } else if (segment.prefixSegment) {
-        return `${segment.prefixSegment}{$${param}}`
-      } else if (segment.suffixSegment) {
-        return `{$${param}}${segment.suffixSegment}`
-      }
+  let segment
+  let joined = ''
+  for (let i = 0; i < baseSegments.length; i++) {
+    if (i > 0) joined += '/'
+    const part = baseSegments[i]!
+    if (!part) continue
+    segment = parseSegment(part, 0, segment)
+    const kind = segment[0]
+    if (kind === SEGMENT_TYPE_PATHNAME) {
+      joined += part
+      continue
     }
-    if (segment.type === 'wildcard') {
-      if (segment.prefixSegment && segment.suffixSegment) {
-        return `${segment.prefixSegment}{$}${segment.suffixSegment}`
-      } else if (segment.prefixSegment) {
-        return `${segment.prefixSegment}{$}`
-      } else if (segment.suffixSegment) {
-        return `{$}${segment.suffixSegment}`
-      }
+    const end = segment[5]
+    const prefix = part.substring(0, segment[1])
+    const suffix = part.substring(segment[4], end)
+    const value = part.substring(segment[2], segment[3])
+    if (kind === SEGMENT_TYPE_PARAM) {
+      joined += prefix || suffix ? `${prefix}{$${value}}${suffix}` : `$${value}`
+    } else if (kind === SEGMENT_TYPE_WILDCARD) {
+      joined += prefix || suffix ? `${prefix}{$}${suffix}` : '$'
+    } else {
+      // SEGMENT_TYPE_OPTIONAL_PARAM
+      joined += `${prefix}{-$${value}}${suffix}`
     }
-    return segment.value
-  })
-  const joined = joinPaths([basepath, ...segmentValues])
-  return cleanPath(joined)
+  }
+  joined = cleanPath(joined)
+  const result = joined || '/'
+  if (key && cache) cache.set(key, result)
+  return result
 }
 
-const PARAM_RE = /^\$.{1,}$/ // $paramName
-const PARAM_W_CURLY_BRACES_RE = /^(.*?)\{(\$[a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{$paramName}suffix
-const WILDCARD_RE = /^\$$/ // $
-const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
-
 /**
- * Required: `/foo/$bar` ✅
- * Prefix and Suffix: `/foo/prefix${bar}suffix` ✅
- * Wildcard: `/foo/$` ✅
- * Wildcard with Prefix and Suffix: `/foo/prefix{$}suffix` ✅
- *
- * Future:
- * Optional: `/foo/{-bar}`
- * Optional named segment: `/foo/{bar}`
- * Optional named segment with Prefix and Suffix: `/foo/prefix{-bar}suffix`
- * Escape special characters:
- * - `/foo/[$]` - Static route
- * - `/foo/[$]{$foo} - Dynamic route with a static prefix of `$`
- * - `/foo/{$foo}[$]` - Dynamic route with a static suffix of `$`
+ * Create a pre-compiled decode config from allowed characters.
+ * This should be called once at router initialization.
  */
-export function parsePathname(pathname?: string): Array<Segment> {
-  if (!pathname) {
-    return []
-  }
-
-  pathname = cleanPath(pathname)
-
-  const segments: Array<Segment> = []
-
-  if (pathname.slice(0, 1) === '/') {
-    pathname = pathname.substring(1)
-    segments.push({
-      type: 'pathname',
-      value: '/',
-    })
-  }
-
-  if (!pathname) {
-    return segments
-  }
-
-  // Remove empty segments and '.' segments
-  const split = pathname.split('/').filter(Boolean)
-
-  segments.push(
-    ...split.map((part): Segment => {
-      // Check for wildcard with curly braces: prefix{$}suffix
-      const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
-      if (wildcardBracesMatch) {
-        const prefix = wildcardBracesMatch[1]
-        const suffix = wildcardBracesMatch[2]
-        return {
-          type: 'wildcard',
-          value: '$',
-          prefixSegment: prefix || undefined,
-          suffixSegment: suffix || undefined,
-        }
-      }
-
-      // Check for the new parameter format: prefix{$paramName}suffix
-      const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
-      if (paramBracesMatch) {
-        const prefix = paramBracesMatch[1]
-        const paramName = paramBracesMatch[2]
-        const suffix = paramBracesMatch[3]
-        return {
-          type: 'param',
-          value: '' + paramName,
-          prefixSegment: prefix || undefined,
-          suffixSegment: suffix || undefined,
-        }
-      }
-
-      // Check for bare parameter format: $paramName (without curly braces)
-      if (PARAM_RE.test(part)) {
-        const paramName = part.substring(1)
-        return {
-          type: 'param',
-          value: '$' + paramName,
-          prefixSegment: undefined,
-          suffixSegment: undefined,
-        }
-      }
-
-      // Check for bare wildcard: $ (without curly braces)
-      if (WILDCARD_RE.test(part)) {
-        return {
-          type: 'wildcard',
-          value: '$',
-          prefixSegment: undefined,
-          suffixSegment: undefined,
-        }
-      }
-
-      // Handle regular pathname segment
-      return {
-        type: 'pathname',
-        value: part.includes('%25')
-          ? part
-              .split('%25')
-              .map((segment) => decodeURI(segment))
-              .join('%25')
-          : decodeURI(part),
-      }
-    }),
+export function compileDecodeCharMap(
+  pathParamsAllowedCharacters: ReadonlyArray<string>,
+) {
+  const charMap = new Map(
+    pathParamsAllowedCharacters.map((char) => [encodeURIComponent(char), char]),
   )
-
-  if (pathname.slice(-1) === '/') {
-    pathname = pathname.substring(1)
-    segments.push({
-      type: 'pathname',
-      value: '/',
-    })
-  }
-
-  return segments
+  // Escape special regex characters and join with |
+  const pattern = Array.from(charMap.keys())
+    .map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')
+  const regex = new RegExp(pattern, 'g')
+  return (encoded: string) =>
+    encoded.replace(regex, (match) => charMap.get(match) ?? match)
 }
 
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
-  leaveWildcards?: boolean
-  leaveParams?: boolean
-  // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
-  decodeCharMap?: Map<string, string>
+  /**
+   * A function that decodes a path parameter value.
+   * Obtained from `compileDecodeCharMap(pathParamsAllowedCharacters)`.
+   */
+  decoder?: (encoded: string) => string
+  /**
+   * @internal
+   * For testing only, in development mode we use the router.isServer value
+   */
+  server?: boolean
 }
 
 type InterPolatePathResult = {
@@ -298,330 +237,200 @@ type InterPolatePathResult = {
   usedParams: Record<string, unknown>
   isMissingParams: boolean // true if any params were not available when being looked up in the params object
 }
+
+function encodeParam(
+  key: string,
+  params: InterpolatePathOptions['params'],
+  decoder: InterpolatePathOptions['decoder'],
+): any {
+  const value = params[key]
+  if (typeof value !== 'string') return value
+
+  if (key === '_splat') {
+    // Early return if value only contains URL-safe characters (performance optimization)
+    if (/^[a-zA-Z0-9\-._~!/]*$/.test(value)) return value
+    // the splat/catch-all routes shouldn't have the '/' encoded out
+    // Use encodeURIComponent for each segment to properly encode spaces,
+    // plus signs, and other special characters that encodeURI leaves unencoded
+    return value
+      .split('/')
+      .map((segment) => encodePathParam(segment, decoder))
+      .join('/')
+  } else {
+    return encodePathParam(value, decoder)
+  }
+}
+
+/**
+ * Interpolate params and wildcards into a route path template.
+ *
+ * - Encodes params safely (configurable allowed characters)
+ * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
+ */
 export function interpolatePath({
   path,
   params,
-  leaveWildcards,
-  leaveParams,
-  decodeCharMap,
+  decoder,
+  // `server` is marked @internal and stripped from .d.ts by `stripInternal`.
+  // We avoid destructuring it in the function signature so the emitted
+  // declaration doesn't reference a property that no longer exists.
+  ...rest
 }: InterpolatePathOptions): InterPolatePathResult {
-  const interpolatedPathSegments = parsePathname(path)
-
-  function encodeParam(key: string): any {
-    const value = params[key]
-    const isValueString = typeof value === 'string'
-
-    if (['*', '_splat'].includes(key)) {
-      // the splat/catch-all routes shouldn't have the '/' encoded out
-      return isValueString ? encodeURI(value) : value
-    } else {
-      return isValueString ? encodePathParam(value, decodeCharMap) : value
-    }
-  }
-
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
   let isMissingParams = false
-
   const usedParams: Record<string, unknown> = {}
-  const interpolatedPath = joinPaths(
-    interpolatedPathSegments.map((segment) => {
-      if (segment.type === 'wildcard') {
-        usedParams._splat = params._splat
-        const segmentPrefix = segment.prefixSegment || ''
-        const segmentSuffix = segment.suffixSegment || ''
 
-        // Check if _splat parameter is missing
-        if (!('_splat' in params)) {
-          isMissingParams = true
-          // For missing splat parameters, just return the prefix and suffix without the wildcard
-          if (leaveWildcards) {
-            return `${segmentPrefix}${segment.value}${segmentSuffix}`
-          }
-          // If there is a prefix or suffix, return them joined, otherwise omit the segment
-          if (segmentPrefix || segmentSuffix) {
-            return `${segmentPrefix}${segmentSuffix}`
-          }
-          return undefined
-        }
+  if (!path || path === '/')
+    return { interpolatedPath: '/', usedParams, isMissingParams }
+  if (!path.includes('$'))
+    return { interpolatedPath: path, usedParams, isMissingParams }
 
-        const value = encodeParam('_splat')
-        if (leaveWildcards) {
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
+  if (isServer ?? rest.server) {
+    // Fast path for common templates like `/posts/$id` or `/files/$`.
+    // Braced segments (`{...}`) are more complex (prefix/suffix/optional) and are
+    // handled by the general parser below.
+    if (path.indexOf('{') === -1) {
+      const length = path.length
+      let cursor = 0
+      let joined = ''
+
+      while (cursor < length) {
+        // Skip slashes between segments. '/' code is 47
+        while (cursor < length && path.charCodeAt(cursor) === 47) cursor++
+        if (cursor >= length) break
+
+        const start = cursor
+        let end = path.indexOf('/', cursor)
+        if (end === -1) end = length
+        cursor = end
+
+        const part = path.substring(start, end)
+        if (!part) continue
+
+        // `$id` or `$` (splat). '$' code is 36
+        if (part.charCodeAt(0) === 36) {
+          if (part.length === 1) {
+            const splat = params._splat
+            usedParams._splat = splat
+            // TODO: Deprecate *
+            usedParams['*'] = splat
+
+            if (!splat) {
+              isMissingParams = true
+              continue
+            }
+
+            const value = encodeParam('_splat', params, decoder)
+            joined += '/' + value
+          } else {
+            const key = part.substring(1)
+            if (!isMissingParams && !(key in params)) {
+              isMissingParams = true
+            }
+            usedParams[key] = params[key]
+
+            const value = encodeParam(key, params, decoder) ?? 'undefined'
+            joined += '/' + value
+          }
+        } else {
+          joined += '/' + part
         }
-        return `${segmentPrefix}${value}${segmentSuffix}`
       }
 
-      if (segment.type === 'param') {
-        const key = segment.value.substring(1)
-        if (!isMissingParams && !(key in params)) {
-          isMissingParams = true
-        }
-        usedParams[key] = params[key]
+      if (path.endsWith('/')) joined += '/'
 
-        const segmentPrefix = segment.prefixSegment || ''
-        const segmentSuffix = segment.suffixSegment || ''
-        if (leaveParams) {
-          const value = encodeParam(segment.value)
-          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
+      const interpolatedPath = joined || '/'
+      return { usedParams, interpolatedPath, isMissingParams }
+    }
+  }
+
+  const length = path.length
+  let cursor = 0
+  let segment
+  let joined = ''
+  while (cursor < length) {
+    const start = cursor
+    segment = parseSegment(path, start, segment)
+    const end = segment[5]
+    cursor = end + 1
+
+    if (start === end) continue
+
+    const kind = segment[0]
+
+    if (kind === SEGMENT_TYPE_PATHNAME) {
+      joined += '/' + path.substring(start, end)
+      continue
+    }
+
+    if (kind === SEGMENT_TYPE_WILDCARD) {
+      const splat = params._splat
+      usedParams._splat = splat
+      // TODO: Deprecate *
+      usedParams['*'] = splat
+
+      const prefix = path.substring(start, segment[1])
+      const suffix = path.substring(segment[4], end)
+
+      // Check if _splat parameter is missing. _splat could be missing if undefined or an empty string or some other falsy value.
+      if (!splat) {
+        isMissingParams = true
+        // For missing splat parameters, just return the prefix and suffix without the wildcard
+        // If there is a prefix or suffix, return them joined, otherwise omit the segment
+        if (prefix || suffix) {
+          joined += '/' + prefix + suffix
         }
-        return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
+        continue
       }
 
-      return segment.value
-    }),
-  )
+      const value = encodeParam('_splat', params, decoder)
+      joined += '/' + prefix + value + suffix
+      continue
+    }
+
+    if (kind === SEGMENT_TYPE_PARAM) {
+      const key = path.substring(segment[2], segment[3])
+      if (!isMissingParams && !(key in params)) {
+        isMissingParams = true
+      }
+      usedParams[key] = params[key]
+
+      const prefix = path.substring(start, segment[1])
+      const suffix = path.substring(segment[4], end)
+      const value = encodeParam(key, params, decoder) ?? 'undefined'
+      joined += '/' + prefix + value + suffix
+      continue
+    }
+
+    if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
+      const key = path.substring(segment[2], segment[3])
+      const valueRaw = params[key]
+
+      // Check if optional parameter is missing or undefined
+      if (valueRaw == null) continue
+
+      usedParams[key] = valueRaw
+
+      const prefix = path.substring(start, segment[1])
+      const suffix = path.substring(segment[4], end)
+      const value = encodeParam(key, params, decoder) ?? ''
+      joined += '/' + prefix + value + suffix
+      continue
+    }
+  }
+
+  if (path.endsWith('/')) joined += '/'
+
+  const interpolatedPath = joined || '/'
+
   return { usedParams, interpolatedPath, isMissingParams }
 }
 
-function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
-  let encoded = encodeURIComponent(value)
-  if (decodeCharMap) {
-    for (const [encodedChar, char] of decodeCharMap) {
-      encoded = encoded.replaceAll(encodedChar, char)
-    }
-  }
-  return encoded
-}
-
-export function matchPathname(
-  basepath: string,
-  currentPathname: string,
-  matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
-): AnyPathParams | undefined {
-  const pathParams = matchByPath(basepath, currentPathname, matchLocation)
-  // const searchMatched = matchBySearch(location.search, matchLocation)
-
-  if (matchLocation.to && !pathParams) {
-    return
-  }
-
-  return pathParams ?? {}
-}
-
-export function removeBasepath(
-  basepath: string,
-  pathname: string,
-  caseSensitive: boolean = false,
+function encodePathParam(
+  value: string,
+  decoder?: InterpolatePathOptions['decoder'],
 ) {
-  // normalize basepath and pathname for case-insensitive comparison if needed
-  const normalizedBasepath = caseSensitive ? basepath : basepath.toLowerCase()
-  const normalizedPathname = caseSensitive ? pathname : pathname.toLowerCase()
-
-  switch (true) {
-    // default behaviour is to serve app from the root - pathname
-    // left untouched
-    case normalizedBasepath === '/':
-      return pathname
-
-    // shortcut for removing the basepath if it matches the pathname
-    case normalizedPathname === normalizedBasepath:
-      return ''
-
-    // in case pathname is shorter than basepath - there is
-    // nothing to remove
-    case pathname.length < basepath.length:
-      return pathname
-
-    // avoid matching partial segments - strict equality handled
-    // earlier, otherwise, basepath separated from pathname with
-    // separator, therefore lack of separator means partial
-    // segment match (`/app` should not match `/application`)
-    case normalizedPathname[normalizedBasepath.length] !== '/':
-      return pathname
-
-    // remove the basepath from the pathname if it starts with it
-    case normalizedPathname.startsWith(normalizedBasepath):
-      return pathname.slice(basepath.length)
-
-    // otherwise, return the pathname as is
-    default:
-      return pathname
-  }
-}
-
-export function matchByPath(
-  basepath: string,
-  from: string,
-  matchLocation: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
-): Record<string, string> | undefined {
-  // check basepath first
-  if (basepath !== '/' && !from.startsWith(basepath)) {
-    return undefined
-  }
-  // Remove the base path from the pathname
-  from = removeBasepath(basepath, from, matchLocation.caseSensitive)
-  // Default to to $ (wildcard)
-  const to = removeBasepath(
-    basepath,
-    `${matchLocation.to ?? '$'}`,
-    matchLocation.caseSensitive,
-  )
-
-  // Parse the from and to
-  const baseSegments = parsePathname(from)
-  const routeSegments = parsePathname(to)
-
-  if (!from.startsWith('/')) {
-    baseSegments.unshift({
-      type: 'pathname',
-      value: '/',
-    })
-  }
-
-  if (!to.startsWith('/')) {
-    routeSegments.unshift({
-      type: 'pathname',
-      value: '/',
-    })
-  }
-
-  const params: Record<string, string> = {}
-
-  const isMatch = (() => {
-    for (
-      let i = 0;
-      i < Math.max(baseSegments.length, routeSegments.length);
-      i++
-    ) {
-      const baseSegment = baseSegments[i]
-      const routeSegment = routeSegments[i]
-
-      const isLastBaseSegment = i >= baseSegments.length - 1
-      const isLastRouteSegment = i >= routeSegments.length - 1
-
-      if (routeSegment) {
-        if (routeSegment.type === 'wildcard') {
-          // Capture all remaining segments for a wildcard
-          const remainingBaseSegments = baseSegments.slice(i)
-
-          let _splat: string
-
-          // If this is a wildcard with prefix/suffix, we need to handle the first segment specially
-          if (routeSegment.prefixSegment || routeSegment.suffixSegment) {
-            if (!baseSegment) return false
-
-            const prefix = routeSegment.prefixSegment || ''
-            const suffix = routeSegment.suffixSegment || ''
-
-            // Check if the base segment starts with prefix and ends with suffix
-            const baseValue = baseSegment.value
-            if ('prefixSegment' in routeSegment) {
-              if (!baseValue.startsWith(prefix)) {
-                return false
-              }
-            }
-            if ('suffixSegment' in routeSegment) {
-              if (
-                !baseSegments[baseSegments.length - 1]?.value.endsWith(suffix)
-              ) {
-                return false
-              }
-            }
-
-            let rejoinedSplat = decodeURI(
-              joinPaths(remainingBaseSegments.map((d) => d.value)),
-            )
-
-            // Remove the prefix and suffix from the rejoined splat
-            if (prefix && rejoinedSplat.startsWith(prefix)) {
-              rejoinedSplat = rejoinedSplat.slice(prefix.length)
-            }
-
-            if (suffix && rejoinedSplat.endsWith(suffix)) {
-              rejoinedSplat = rejoinedSplat.slice(
-                0,
-                rejoinedSplat.length - suffix.length,
-              )
-            }
-
-            _splat = rejoinedSplat
-          } else {
-            // If no prefix/suffix, just rejoin the remaining segments
-            _splat = decodeURI(
-              joinPaths(remainingBaseSegments.map((d) => d.value)),
-            )
-          }
-
-          // TODO: Deprecate *
-          params['*'] = _splat
-          params['_splat'] = _splat
-          return true
-        }
-
-        if (routeSegment.type === 'pathname') {
-          if (routeSegment.value === '/' && !baseSegment?.value) {
-            return true
-          }
-
-          if (baseSegment) {
-            if (matchLocation.caseSensitive) {
-              if (routeSegment.value !== baseSegment.value) {
-                return false
-              }
-            } else if (
-              routeSegment.value.toLowerCase() !==
-              baseSegment.value.toLowerCase()
-            ) {
-              return false
-            }
-          }
-        }
-
-        if (!baseSegment) {
-          return false
-        }
-
-        if (routeSegment.type === 'param') {
-          if (baseSegment.value === '/') {
-            return false
-          }
-
-          let _paramValue: string
-
-          // If this param has prefix/suffix, we need to extract the actual parameter value
-          if (routeSegment.prefixSegment || routeSegment.suffixSegment) {
-            const prefix = routeSegment.prefixSegment || ''
-            const suffix = routeSegment.suffixSegment || ''
-
-            // Check if the base segment starts with prefix and ends with suffix
-            const baseValue = baseSegment.value
-            if (prefix && !baseValue.startsWith(prefix)) {
-              return false
-            }
-            if (suffix && !baseValue.endsWith(suffix)) {
-              return false
-            }
-
-            let paramValue = baseValue
-            if (prefix && paramValue.startsWith(prefix)) {
-              paramValue = paramValue.slice(prefix.length)
-            }
-            if (suffix && paramValue.endsWith(suffix)) {
-              paramValue = paramValue.slice(
-                0,
-                paramValue.length - suffix.length,
-              )
-            }
-
-            _paramValue = decodeURIComponent(paramValue)
-          } else {
-            // If no prefix/suffix, just decode the base segment value
-            _paramValue = decodeURIComponent(baseSegment.value)
-          }
-
-          params[routeSegment.value.substring(1)] = _paramValue
-        }
-      }
-
-      if (!isLastBaseSegment && isLastRouteSegment) {
-        params['**'] = joinPaths(baseSegments.slice(i + 1).map((d) => d.value))
-        return !!matchLocation.fuzzy && routeSegment?.value !== '/'
-      }
-    }
-
-    return true
-  })()
-
-  return isMatch ? params : undefined
+  const encoded = encodeURIComponent(value)
+  return decoder?.(encoded) ?? encoded
 }

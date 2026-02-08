@@ -2,7 +2,7 @@ import { redirect } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 
 export const throwRedirect = createServerFn()
-  .validator(
+  .inputValidator(
     (opts: {
       target: 'internal' | 'external'
       reloadDocument?: boolean

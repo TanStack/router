@@ -1,6 +1,6 @@
 import * as React from 'react'
+import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
-import { useMatch } from './useMatch'
 import type {
   AnyRouter,
   FromPathOption,
@@ -9,38 +9,48 @@ import type {
   UseNavigateResult,
 } from '@tanstack/router-core'
 
+/**
+ * Imperative navigation hook.
+ *
+ * Returns a stable `navigate(options)` function to change the current location
+ * programmatically. Prefer the `Link` component for user-initiated navigation,
+ * and use this hook from effects, callbacks, or handlers where imperative
+ * navigation is required.
+ *
+ * Options:
+ * - `from`: Optional route base used to resolve relative `to` paths.
+ *
+ * @returns A function that accepts `NavigateOptions`.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useNavigateHook
+ */
 export function useNavigate<
   TRouter extends AnyRouter = RegisteredRouter,
   TDefaultFrom extends string = string,
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate, state } = useRouter()
-
-  // Just get the index of the current match to avoid rerenders
-  // as much as possible
-  const matchIndex = useMatch({
-    strict: false,
-    select: (match) => match.index,
-  })
+  const router = useRouter()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      const from =
-        options.from ??
-        _defaultOpts?.from ??
-        state.matches[matchIndex]!.fullPath
-
-      return navigate({
+      return router.navigate({
         ...options,
-        from,
+        from: options.from ?? _defaultOpts?.from,
       })
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [_defaultOpts?.from, navigate],
+    [_defaultOpts?.from, router],
   ) as UseNavigateResult<TDefaultFrom>
 }
 
+/**
+ * Component that triggers a navigation when rendered. Navigation executes
+ * in an effect after mount/update.
+ *
+ * Props are the same as `NavigateOptions` used by `navigate()`.
+ *
+ * @returns null
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/navigateComponent
+ */
 export function Navigate<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
@@ -58,7 +68,7 @@ export function Navigate<
     TMaskFrom,
     TMaskTo
   > | null>(null)
-  React.useEffect(() => {
+  useLayoutEffect(() => {
     if (previousPropsRef.current !== props) {
       navigate(props)
       previousPropsRef.current = props

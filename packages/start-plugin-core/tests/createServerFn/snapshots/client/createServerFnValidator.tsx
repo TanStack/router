@@ -1,9 +1,5 @@
+import { createClientRpc } from '@tanstack/react-start/client-rpc';
 import { createServerFn } from '@tanstack/react-start';
-import { z } from 'zod';
 export const withUseServer = createServerFn({
   method: 'GET'
-}).handler((opts, signal) => {
-  "use server";
-
-  return withUseServer.__executeServer(opts, signal);
-});
+}).handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));

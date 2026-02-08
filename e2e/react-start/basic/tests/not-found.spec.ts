@@ -1,20 +1,22 @@
 import { expect } from '@playwright/test'
 import combinateImport from 'combinate'
-import { test } from './fixture'
+import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from '../tests/utils/isSpaMode'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
 test.use({
   whitelistErrors: [
-    /Failed to load resource: the server responded with a status of 404/,
+    'Failed to load resource: the server responded with a status of 404',
+    'NotFound error during hydration for routeId',
   ],
 })
 test.describe('not-found', () => {
   test(`global not found`, async ({ page }) => {
     const response = await page.goto(`/this-page-does-not-exist/foo/bar`)
 
-    expect(response?.status()).toBe(404)
+    expect(response?.status()).toBe(isSpaMode ? 200 : 404)
 
     await expect(
       page.getByTestId('default-not-found-component'),
@@ -47,6 +49,7 @@ test.describe('not-found', () => {
         await expect(
           page.getByTestId(`via-${thrower}-notFound-component`),
         ).toBeInViewport()
+
         await expect(
           page.getByTestId(`via-${thrower}-route-component`),
         ).not.toBeInViewport()

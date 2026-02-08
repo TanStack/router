@@ -5,7 +5,7 @@ import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-p
 import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
 
-import type { Config } from './core/config'
+import type { CodeSplittingOptions, Config } from './core/config'
 
 /**
  * @example
@@ -54,4 +54,4 @@ export {
   tanstackRouter,
 }
 
-export type { Config }
+export type { Config, CodeSplittingOptions }

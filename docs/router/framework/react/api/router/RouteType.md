@@ -26,6 +26,30 @@ An instance of the `Route` has the following properties and methods:
 - Type: `(lazyImporter: () => Promise<Partial<UpdatableRouteOptions>>) => this`
 - Updates the route instance with a new lazy importer which will be resolved lazily when loading the route. This can be useful for code splitting.
 
+### `.redirect` method
+
+- Type: `(opts?: RedirectOptions) => Redirect`
+- A type-safe version of the [`redirect`](./redirectFunction.md) function that is pre-bound to the route's path.
+- The `from` parameter is automatically set to the route's `fullPath`, enabling type-safe relative redirects.
+- See [`RouteApi.redirect`](./RouteApiType.md#redirect-method) for more details.
+
+#### Example
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/dashboard/settings')({
+  beforeLoad: ({ context }) => {
+    if (!context.user) {
+      // Type-safe redirect - 'from' is automatically '/dashboard/settings'
+      throw Route.redirect({
+        to: '../login', // Relative path to sibling route
+      })
+    }
+  },
+})
+```
+
 ### ...`RouteApi` methods
 
-- All of the methods from [`RouteApi`](../RouteApiType.md) are available.
+- All of the methods from [`RouteApi`](./RouteApiType.md) are available.

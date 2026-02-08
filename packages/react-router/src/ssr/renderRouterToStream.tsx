@@ -23,6 +23,8 @@ export const renderRouterToStream = async ({
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
     const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,
+      nonce: router.options.ssr?.nonce,
+      progressiveChunkSize: Number.POSITIVE_INFINITY,
     })
 
     if (isbot(request.headers.get('User-Agent'))) {
@@ -44,6 +46,8 @@ export const renderRouterToStream = async ({
 
     try {
       const pipeable = ReactDOMServer.renderToPipeableStream(children, {
+        nonce: router.options.ssr?.nonce,
+        progressiveChunkSize: Number.POSITIVE_INFINITY,
         ...(isbot(request.headers.get('User-Agent'))
           ? {
               onAllReady() {
@@ -57,10 +61,17 @@ export const renderRouterToStream = async ({
             }),
         onError: (error, info) => {
           console.error('Error in renderToPipeableStream:', error, info)
+          // Destroy the passthrough stream on error
+          if (!reactAppPassthrough.destroyed) {
+            reactAppPassthrough.destroy(
+              error instanceof Error ? error : new Error(String(error)),
+            )
+          }
         },
       })
     } catch (e) {
       console.error('Error in renderToPipeableStream:', e)
+      reactAppPassthrough.destroy(e instanceof Error ? e : new Error(String(e)))
     }
 
     const responseStream = transformPipeableStreamWithRouter(

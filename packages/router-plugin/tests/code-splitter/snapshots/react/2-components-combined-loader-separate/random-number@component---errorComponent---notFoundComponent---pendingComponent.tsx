@@ -41,7 +41,7 @@ async function bytesSignupServerFn({
     }
   });
 }
-const SplitComponent = function Index() {
+function Index() {
   const bytesSignupMutation = useMutation({
     fn: bytesSignupServerFn
   });
@@ -57,5 +57,5 @@ const SplitComponent = function Index() {
       {gradient}
       {textColor}
     </>;
-};
-export { SplitComponent as component };
+}
+export { Index as component };

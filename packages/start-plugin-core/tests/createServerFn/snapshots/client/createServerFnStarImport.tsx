@@ -1,35 +1,14 @@
+import { createClientRpc } from '@tanstack/react-start/client-rpc';
 import * as TanStackStart from '@tanstack/react-start';
-import { z } from 'zod';
 export const withUseServer = TanStackStart.createServerFn({
   method: 'GET'
-}).handler((opts, signal) => {
-  "use server";
-
-  return withUseServer.__executeServer(opts, signal);
-});
+}).handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));
 export const withoutUseServer = TanStackStart.createServerFn({
   method: 'GET'
-}).handler((opts, signal) => {
-  "use server";
-
-  return withoutUseServer.__executeServer(opts, signal);
-});
+}).handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRob3V0VXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));
 export const withVariable = TanStackStart.createServerFn({
   method: 'GET'
-}).handler((opts, signal) => {
-  "use server";
-
-  return withVariable.__executeServer(opts, signal);
-});
-function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn: (input: z.output<TSchema>) => TResult) {
-  return async (input: unknown) => {
-    return fn(schema.parse(input));
-  };
-}
+}).handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVmFyaWFibGVfY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9"));
 export const withZodValidator = TanStackStart.createServerFn({
   method: 'GET'
-}).handler((opts, signal) => {
-  "use server";
-
-  return withZodValidator.__executeServer(opts, signal);
-});
+}).handler(createClientRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoWm9kVmFsaWRhdG9yX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ"));

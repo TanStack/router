@@ -9,8 +9,8 @@ const testValues = {
   name: 'Sean',
 }
 
-export const greetUser = createServerFn({ method: 'POST', response: 'raw' })
-  .validator((data: FormData) => {
+export const greetUser = createServerFn({ method: 'POST' })
+  .inputValidator((data: FormData) => {
     if (!(data instanceof FormData)) {
       throw new Error('Invalid! FormData is required')
     }
@@ -33,7 +33,7 @@ function SubmitPostFormDataFn() {
     <div className="p-2 m-2 grid gap-2">
       <h3>Submit POST FormData Fn Call</h3>
       <div className="overflow-y-auto">
-        It should return navigate and return{' '}
+        It should navigate to a raw response of {''}
         <code>
           <pre data-testid="expected-submit-post-formdata-server-fn-result">
             Hello, {testValues.name}!
@@ -50,7 +50,7 @@ function SubmitPostFormDataFn() {
         <button
           type="submit"
           data-testid="test-submit-post-formdata-fn-calls-btn"
-          className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         >
           Submit (native)
         </button>

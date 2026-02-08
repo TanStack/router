@@ -6,16 +6,19 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
+
+import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useMatch } from './useMatch'
+import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
@@ -40,6 +43,9 @@ export function useLinkProps<
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+  const shouldHydrateHash = !isServer && !!router.options.ssr
+  const hasHydrated = useHydrated()
+
   let hasRenderFetched = false
 
   const [local, rest] = Solid.splitProps(
@@ -115,43 +121,82 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  // If this link simply reloads the current route,
-  // make sure it has a new key so it will trigger a data refresh
-
-  // If this `to` is a valid external URL, return
-  // null for LinkUtils
-
-  const type: Solid.Accessor<'internal' | 'external'> = () => {
-    try {
-      new URL(`${local.to}`)
-      return 'external'
-    } catch {}
-    return 'internal'
-  }
+  const currentLocation = useRouterState({
+    select: (s) => s.location,
+  })
 
   const currentSearch = useRouterState({
     select: (s) => s.location.searchStr,
   })
 
-  // when `from` is not supplied, use the route of the current match as the `from` location
-  // so relative routing works as expected
-  const from = useMatch({
-    strict: false,
-    select: (match) => options.from ?? match.fullPath,
-  })
+  const from = options.from
 
-  const _options = () => ({
-    ...options,
-    from: from(),
-  })
+  const _options = () => {
+    return {
+      ...options,
+      from,
+    }
+  }
 
   const next = Solid.createMemo(() => {
     currentSearch()
     return router.buildLocation(_options() as any)
   })
 
+  const hrefOption = Solid.createMemo(() => {
+    if (_options().disabled) return undefined
+    // Use publicHref - it contains the correct href for display
+    // When a rewrite changes the origin, publicHref is the full URL
+    // Otherwise it's the origin-stripped path
+    // This avoids constructing URL objects in the hot path
+    const location = next().maskedLocation ?? next()
+    const publicHref = location.publicHref
+    const external = location.external
+
+    if (external) {
+      return { href: publicHref, external: true }
+    }
+
+    return {
+      href: router.history.createHref(publicHref) || '/',
+      external: false,
+    }
+  })
+
+  const externalLink = Solid.createMemo(() => {
+    const _href = hrefOption()
+    if (_href?.external) {
+      // Block dangerous protocols for external links
+      if (isDangerousProtocol(_href.href)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
+        }
+        return undefined
+      }
+      return _href.href
+    }
+    const to = _options().to
+    const isSafeInternal =
+      typeof to === 'string' &&
+      to.charCodeAt(0) === 47 && // '/'
+      to.charCodeAt(1) !== 47 // but not '//'
+    if (isSafeInternal) return undefined
+    try {
+      new URL(to as any)
+      // Block dangerous protocols like javascript:, data:, vbscript:
+      if (isDangerousProtocol(to as string)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${to}`)
+        }
+        return undefined
+      }
+      return to
+    } catch {}
+    return undefined
+  })
+
   const preload = Solid.createMemo(() => {
-    if (_options().reloadDocument) {
+    if (_options().reloadDocument || externalLink()) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -159,50 +204,51 @@ export function useLinkProps<
   const preloadDelay = () =>
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  const isActive = useRouterState({
-    select: (s) => {
-      if (local.activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next().pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        ).split('/')
-        const nextPathSplit = removeTrailingSlash(
-          next()?.pathname,
-          router.basepath,
-        )?.split('/')
-
-        const pathIsFuzzyEqual = nextPathSplit?.every(
-          (d, i) => d === currentPathSplit[i],
-        )
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+  const isActive = Solid.createMemo(() => {
+    if (externalLink()) return false
+    if (local.activeOptions?.exact) {
+      const testExact = exactPathTest(
+        currentLocation().pathname,
+        next().pathname,
+        router.basepath,
+      )
+      if (!testExact) {
+        return false
       }
+    } else {
+      const currentPathSplit = removeTrailingSlash(
+        currentLocation().pathname,
+        router.basepath,
+      ).split('/')
+      const nextPathSplit = removeTrailingSlash(
+        next()?.pathname,
+        router.basepath,
+      )?.split('/')
 
-      if (local.activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next().search, {
-          partial: !local.activeOptions?.exact,
-          ignoreUndefined: !local.activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
+      const pathIsFuzzyEqual = nextPathSplit?.every(
+        (d, i) => d === currentPathSplit[i],
+      )
+      if (!pathIsFuzzyEqual) {
+        return false
       }
+    }
 
-      if (local.activeOptions?.includeHash) {
-        return s.location.hash === next().hash
+    if (local.activeOptions?.includeSearch ?? true) {
+      const searchTest = deepEqual(currentLocation().search, next().search, {
+        partial: !local.activeOptions?.exact,
+        ignoreUndefined: !local.activeOptions?.explicitUndefined,
+      })
+      if (!searchTest) {
+        return false
       }
-      return true
-    },
+    }
+
+    if (local.activeOptions?.includeHash) {
+      const currentHash =
+        shouldHydrateHash && !hasHydrated() ? '' : currentLocation().hash
+      return currentHash === next().hash
+    }
+    return true
   })
 
   const doPreload = () =>
@@ -238,17 +284,12 @@ export function useLinkProps<
     }
   })
 
-  if (type() === 'external') {
+  if (externalLink()) {
     return Solid.mergeProps(
       propsSafeToSpread,
       {
-        ref,
-        get type() {
-          return type()
-        },
-        get href() {
-          return local.to
-        },
+        ref: mergeRefs(setRef, _options().ref),
+        href: externalLink(),
       },
       Solid.splitProps(local, [
         'target',
@@ -268,11 +309,18 @@ export function useLinkProps<
 
   // The click handler
   const handleClick = (e: MouseEvent) => {
+    // Check actual element's target attribute as fallback
+    const elementTarget = (
+      e.currentTarget as HTMLAnchorElement | SVGAElement
+    ).getAttribute('target')
+    const effectiveTarget =
+      local.target !== undefined ? local.target : elementTarget
+
     if (
       !local.disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!local.target || local.target === '_self') &&
+      (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
@@ -286,7 +334,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      return router.navigate({
+      router.navigate({
         ..._options(),
         replace: local.replace,
         resetScroll: local.resetScroll,
@@ -310,7 +358,7 @@ export function useLinkProps<
 
   const handleEnter = (e: MouseEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
 
     if (preload()) {
       if (eventTarget.preloadTimeout) {
@@ -326,7 +374,7 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       clearTimeout(eventTarget.preloadTimeout)
@@ -384,24 +432,13 @@ export function useLinkProps<
     ...resolvedInactiveProps().style,
   })
 
-  const href = Solid.createMemo(() => {
-    const nextLocation = next()
-    const maskedLocation = nextLocation?.maskedLocation
-
-    return _options().disabled
-      ? undefined
-      : maskedLocation
-        ? router.history.createHref(maskedLocation.href)
-        : router.history.createHref(nextLocation?.href)
-  })
-
   return Solid.mergeProps(
     propsSafeToSpread,
     resolvedActiveProps,
     resolvedInactiveProps,
     () => {
       return {
-        href: href(),
+        href: hrefOption()?.href,
         ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
@@ -415,8 +452,14 @@ export function useLinkProps<
         ]),
         disabled: !!local.disabled,
         target: local.target,
-        ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
-        ...(resolvedClassName() && { class: resolvedClassName() }),
+        ...(() => {
+          const s = resolvedStyle()
+          return Object.keys(s).length ? { style: s } : {}
+        })(),
+        ...(() => {
+          const c = resolvedClassName()
+          return c ? { class: c } : {}
+        })(),
         ...(local.disabled && {
           role: 'link',
           'aria-disabled': true,
@@ -525,7 +568,7 @@ export type LinkComponent<
 export interface LinkComponentRoute<
   in out TDefaultFrom extends string = string,
 > {
-  defaultFrom: TDefaultFrom
+  defaultFrom: TDefaultFrom;
   <
     TRouter extends AnyRouter = RegisteredRouter,
     const TTo extends string | undefined = undefined,
@@ -566,12 +609,23 @@ export const Link: LinkComponent<'a'> = (props) => {
         get isActive() {
           return (linkProps as any)['data-status'] === 'active'
         },
-        isTransitioning: false,
+        get isTransitioning() {
+          return (linkProps as any)['data-transitioning'] === 'transitioning'
+        },
       })
     }
 
     return ch satisfies Solid.JSX.Element
   })
+
+  if (local._asChild === 'svg') {
+    const [_, svgLinkProps] = Solid.splitProps(linkProps, ['class'])
+    return (
+      <svg>
+        <a {...svgLinkProps}>{children()}</a>
+      </svg>
+    )
+  }
 
   return (
     <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>

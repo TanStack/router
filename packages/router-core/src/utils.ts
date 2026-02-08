@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
@@ -184,7 +185,11 @@ export type LooseAsyncReturnType<T> = T extends (
     : TReturn
   : never
 
-export function last<T>(arr: Array<T>) {
+/**
+ * Return the last element of an array.
+ * Intended for non-empty arrays used within router internals.
+ */
+export function last<T>(arr: ReadonlyArray<T>) {
   return arr[arr.length - 1]
 }
 
@@ -192,6 +197,10 @@ function isFunction(d: any): d is Function {
   return typeof d === 'function'
 }
 
+/**
+ * Apply a value-or-updater to a previous value.
+ * Accepts either a literal value or a function of the previous value.
+ */
 export function functionalUpdate<TPrevious, TResult = TPrevious>(
   updater: Updater<TPrevious, TResult> | NonNullableUpdater<TPrevious, TResult>,
   previous: TPrevious,
@@ -203,15 +212,8 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   return updater
 }
 
-export function pick<TValue, TKey extends keyof TValue>(
-  parent: TValue,
-  keys: Array<TKey>,
-): Pick<TValue, TKey> {
-  return keys.reduce((obj: any, key: TKey) => {
-    obj[key] = parent[key]
-    return obj
-  }, {} as any)
-}
+const hasOwn = Object.prototype.hasOwnProperty
+const isEnumerable = Object.prototype.propertyIsEnumerable
 
 /**
  * This function returns `prev` if `_next` is deeply equal.
@@ -219,66 +221,88 @@ export function pick<TValue, TKey extends keyof TValue>(
  * This can be used for structural sharing between immutable JSON values for example.
  * Do not use this with signals
  */
-export function replaceEqualDeep<T>(prev: any, _next: T): T {
+export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
+  if (isServer) {
+    return _next
+  }
   if (prev === _next) {
     return prev
   }
+
+  if (_depth > 500) return _next
 
   const next = _next as any
 
   const array = isPlainArray(prev) && isPlainArray(next)
 
-  if (array || (isSimplePlainObject(prev) && isSimplePlainObject(next))) {
-    const prevItems = array
-      ? prev
-      : (Object.keys(prev) as Array<unknown>).concat(
-          Object.getOwnPropertySymbols(prev),
-        )
-    const prevSize = prevItems.length
-    const nextItems = array
-      ? next
-      : (Object.keys(next) as Array<unknown>).concat(
-          Object.getOwnPropertySymbols(next),
-        )
-    const nextSize = nextItems.length
-    const copy: any = array ? [] : {}
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
 
-    let equalItems = 0
+  const prevItems = array ? prev : getEnumerableOwnKeys(prev)
+  if (!prevItems) return next
+  const nextItems = array ? next : getEnumerableOwnKeys(next)
+  if (!nextItems) return next
+  const prevSize = prevItems.length
+  const nextSize = nextItems.length
+  const copy: any = array ? new Array(nextSize) : {}
 
-    for (let i = 0; i < nextSize; i++) {
-      const key = array ? i : (nextItems[i] as any)
-      if (
-        ((!array && prevItems.includes(key)) || array) &&
-        prev[key] === undefined &&
-        next[key] === undefined
-      ) {
-        copy[key] = undefined
-        equalItems++
-      } else {
-        copy[key] = replaceEqualDeep(prev[key], next[key])
-        if (copy[key] === prev[key] && prev[key] !== undefined) {
-          equalItems++
-        }
-      }
+  let equalItems = 0
+
+  for (let i = 0; i < nextSize; i++) {
+    const key = array ? i : (nextItems[i] as any)
+    const p = prev[key]
+    const n = next[key]
+
+    if (p === n) {
+      copy[key] = p
+      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++
+      continue
     }
 
-    return prevSize === nextSize && equalItems === prevSize ? prev : copy
+    if (
+      p === null ||
+      n === null ||
+      typeof p !== 'object' ||
+      typeof n !== 'object'
+    ) {
+      copy[key] = n
+      continue
+    }
+
+    const v = replaceEqualDeep(p, n, _depth + 1)
+    copy[key] = v
+    if (v === p) equalItems++
   }
 
-  return next
+  return prevSize === nextSize && equalItems === prevSize ? prev : copy
 }
 
 /**
- * A wrapper around `isPlainObject` with additional checks to ensure that it is not
- * only a plain object, but also one that is "clone-friendly" (doesn't have any
- * non-enumerable properties).
+ * Equivalent to `Reflect.ownKeys`, but ensures that objects are "clone-friendly":
+ * will return false if object has any non-enumerable properties.
+ *
+ * Optimized for the common case where objects have no symbol properties.
  */
-function isSimplePlainObject(o: any) {
-  return (
-    // all the checks from isPlainObject are more likely to hit so we perform them first
-    isPlainObject(o) &&
-    Object.getOwnPropertyNames(o).length === Object.keys(o).length
-  )
+function getEnumerableOwnKeys(o: object) {
+  const names = Object.getOwnPropertyNames(o)
+
+  // Fast path: check all string property names are enumerable
+  for (const name of names) {
+    if (!isEnumerable.call(o, name)) return false
+  }
+
+  // Only check symbols if the object has any (most plain objects don't)
+  const symbols = Object.getOwnPropertySymbols(o)
+
+  // Fast path: no symbols, return names directly (avoids array allocation/concat)
+  if (symbols.length === 0) return names
+
+  // Slow path: has symbols, need to check and merge
+  const keys: Array<string | symbol> = names
+  for (const symbol of symbols) {
+    if (!isEnumerable.call(o, symbol)) return false
+    keys.push(symbol)
+  }
+  return keys
 }
 
 // Copied from: https://github.com/jonschlinkert/is-plain-object
@@ -312,18 +336,17 @@ function hasObjectPrototype(o: any) {
   return Object.prototype.toString.call(o) === '[object Object]'
 }
 
+/**
+ * Check if a value is a "plain" array (no extra enumerable keys).
+ */
 export function isPlainArray(value: unknown): value is Array<unknown> {
   return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
-function getObjectKeys(obj: any, ignoreUndefined: boolean) {
-  let keys = Object.keys(obj)
-  if (ignoreUndefined) {
-    keys = keys.filter((key) => obj[key] !== undefined)
-  }
-  return keys
-}
-
+/**
+ * Perform a deep equality check with options for partial comparison and
+ * ignoring `undefined` values. Optimized for router state comparisons.
+ */
 export function deepEqual(
   a: any,
   b: any,
@@ -337,23 +360,44 @@ export function deepEqual(
     return false
   }
 
-  if (isPlainObject(a) && isPlainObject(b)) {
-    const ignoreUndefined = opts?.ignoreUndefined ?? true
-    const aKeys = getObjectKeys(a, ignoreUndefined)
-    const bKeys = getObjectKeys(b, ignoreUndefined)
-
-    if (!opts?.partial && aKeys.length !== bKeys.length) {
-      return false
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false
+    for (let i = 0, l = a.length; i < l; i++) {
+      if (!deepEqual(a[i], b[i], opts)) return false
     }
-
-    return bKeys.every((key) => deepEqual(a[key], b[key], opts))
+    return true
   }
 
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) {
-      return false
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const ignoreUndefined = opts?.ignoreUndefined ?? true
+
+    if (opts?.partial) {
+      for (const k in b) {
+        if (!ignoreUndefined || b[k] !== undefined) {
+          if (!deepEqual(a[k], b[k], opts)) return false
+        }
+      }
+      return true
     }
-    return !a.some((item, index) => !deepEqual(item, b[index], opts))
+
+    let aCount = 0
+    if (!ignoreUndefined) {
+      aCount = Object.keys(a).length
+    } else {
+      for (const k in a) {
+        if (a[k] !== undefined) aCount++
+      }
+    }
+
+    let bCount = 0
+    for (const k in b) {
+      if (!ignoreUndefined || b[k] !== undefined) {
+        bCount++
+        if (bCount > aCount || !deepEqual(a[k], b[k], opts)) return false
+      }
+    }
+
+    return aCount === bCount
   }
 
   return false
@@ -395,6 +439,10 @@ export type ControlledPromise<T> = Promise<T> & {
   value?: T
 }
 
+/**
+ * Create a promise with exposed resolve/reject and status fields.
+ * Useful for coordinating async router lifecycle operations.
+ */
 export function createControlledPromise<T>(onResolve?: (value: T) => void) {
   let resolveLoadPromise!: (value: T) => void
   let rejectLoadPromise!: (value: any) => void
@@ -422,46 +470,9 @@ export function createControlledPromise<T>(onResolve?: (value: T) => void) {
 }
 
 /**
- *
- * @deprecated use `jsesc` instead
+ * Heuristically detect dynamic import "module not found" errors
+ * across major browsers for lazy route component handling.
  */
-export function escapeJSON(jsonString: string) {
-  return jsonString
-    .replace(/\\/g, '\\\\') // Escape backslashes
-    .replace(/'/g, "\\'") // Escape single quotes
-    .replace(/"/g, '\\"') // Escape double quotes
-}
-
-export function shallow<T>(objA: T, objB: T) {
-  if (Object.is(objA, objB)) {
-    return true
-  }
-
-  if (
-    typeof objA !== 'object' ||
-    objA === null ||
-    typeof objB !== 'object' ||
-    objB === null
-  ) {
-    return false
-  }
-
-  const keysA = Object.keys(objA)
-  if (keysA.length !== Object.keys(objB).length) {
-    return false
-  }
-
-  for (const item of keysA) {
-    if (
-      !Object.prototype.hasOwnProperty.call(objB, item) ||
-      !Object.is(objA[item as keyof T], objB[item as keyof T])
-    ) {
-      return false
-    }
-  }
-  return true
-}
-
 export function isModuleNotFoundError(error: any): boolean {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
@@ -472,4 +483,196 @@ export function isModuleNotFoundError(error: any): boolean {
     error.message.startsWith('error loading dynamically imported module') ||
     error.message.startsWith('Importing a module script failed')
   )
+}
+
+export function isPromise<T>(
+  value: Promise<Awaited<T>> | T,
+): value is Promise<Awaited<T>> {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    typeof (value as Promise<T>).then === 'function',
+  )
+}
+
+export function findLast<T>(
+  array: ReadonlyArray<T>,
+  predicate: (item: T) => boolean,
+): T | undefined {
+  for (let i = array.length - 1; i >= 0; i--) {
+    const item = array[i]!
+    if (predicate(item)) return item
+  }
+  return undefined
+}
+
+/**
+ * Remove control characters that can cause open redirect vulnerabilities.
+ * Characters like \r (CR) and \n (LF) can trick URL parsers into interpreting
+ * paths like "/\r/evil.com" as "http://evil.com".
+ */
+function sanitizePathSegment(segment: string): string {
+  // Remove ASCII control characters (0x00-0x1F) and DEL (0x7F)
+  // These include CR (\r = 0x0D), LF (\n = 0x0A), and other potentially dangerous characters
+  // eslint-disable-next-line no-control-regex
+  return segment.replace(/[\x00-\x1f\x7f]/g, '')
+}
+
+function decodeSegment(segment: string): string {
+  let decoded: string
+  try {
+    decoded = decodeURI(segment)
+  } catch {
+    // if the decoding fails, try to decode the various parts leaving the malformed tags in place
+    decoded = segment.replaceAll(/%[0-9A-F]{2}/gi, (match) => {
+      try {
+        return decodeURI(match)
+      } catch {
+        return match
+      }
+    })
+  }
+  return sanitizePathSegment(decoded)
+}
+
+/**
+ * List of URL protocols that are safe for navigation.
+ * Only these protocols are allowed in redirects and navigation.
+ */
+export const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+
+/**
+ * Check if a URL string uses a protocol that is not in the safe list.
+ * Returns true for dangerous protocols like javascript:, data:, vbscript:, etc.
+ *
+ * The URL constructor correctly normalizes:
+ * - Mixed case (JavaScript: → javascript:)
+ * - Whitespace/control characters (java\nscript: → javascript:)
+ * - Leading whitespace
+ *
+ * For relative URLs (no protocol), returns false (safe).
+ *
+ * @param url - The URL string to check
+ * @returns true if the URL uses a dangerous (non-whitelisted) protocol
+ */
+export function isDangerousProtocol(url: string): boolean {
+  if (!url) return false
+
+  try {
+    // Use the URL constructor - it correctly normalizes protocols
+    // per WHATWG URL spec, handling all bypass attempts automatically
+    const parsed = new URL(url)
+    return !SAFE_URL_PROTOCOLS.includes(parsed.protocol)
+  } catch {
+    // URL constructor throws for relative URLs (no protocol)
+    // These are safe - they can't execute scripts
+    return false
+  }
+}
+
+// This utility is based on https://github.com/zertosh/htmlescape
+// License: https://github.com/zertosh/htmlescape/blob/0527ca7156a524d256101bb310a9f970f63078ad/LICENSE
+const HTML_ESCAPE_LOOKUP: { [match: string]: string } = {
+  '&': '\\u0026',
+  '>': '\\u003e',
+  '<': '\\u003c',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029',
+}
+
+const HTML_ESCAPE_REGEX = /[&><\u2028\u2029]/g
+
+/**
+ * Escape HTML special characters in a string to prevent XSS attacks
+ * when embedding strings in script tags during SSR.
+ *
+ * This is essential for preventing XSS vulnerabilities when user-controlled
+ * content is embedded in inline scripts.
+ */
+export function escapeHtml(str: string): string {
+  return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
+}
+
+export function decodePath(path: string) {
+  if (!path) return { path, handledProtocolRelativeURL: false }
+
+  // Fast path: most paths are already decoded and safe.
+  // Only fall back to the slower scan/regex path when we see a '%' (encoded),
+  // a backslash (explicitly handled), a control character, or a protocol-relative
+  // prefix which needs collapsing.
+  // eslint-disable-next-line no-control-regex
+  if (!/[%\\\x00-\x1f\x7f]/.test(path) && !path.startsWith('//')) {
+    return { path, handledProtocolRelativeURL: false }
+  }
+
+  const re = /%25|%5C/gi
+  let cursor = 0
+  let result = ''
+  let match
+  while (null !== (match = re.exec(path))) {
+    result += decodeSegment(path.slice(cursor, match.index)) + match[0]
+    cursor = re.lastIndex
+  }
+  result = result + decodeSegment(cursor ? path.slice(cursor) : path)
+
+  // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
+  // After sanitizing control characters, paths like "/\r/evil.com" become "//evil.com"
+  // Collapse leading double slashes to a single slash
+  let handledProtocolRelativeURL = false
+  if (result.startsWith('//')) {
+    handledProtocolRelativeURL = true
+    result = '/' + result.replace(/^\/+/, '')
+  }
+
+  return { path: result, handledProtocolRelativeURL }
+}
+
+/**
+ * Encodes a path the same way `new URL()` would, but without the overhead of full URL parsing.
+ *
+ * This function encodes:
+ * - Whitespace characters (spaces → %20, tabs → %09, etc.)
+ * - Non-ASCII/Unicode characters (emojis, accented characters, etc.)
+ *
+ * It preserves:
+ * - Already percent-encoded sequences (won't double-encode %2F, %25, etc.)
+ * - ASCII special characters valid in URL paths (@, $, &, +, etc.)
+ * - Forward slashes as path separators
+ *
+ * Used to generate proper href values for SSR without constructing URL objects.
+ *
+ * @example
+ * encodePathLikeUrl('/path/file name.pdf') // '/path/file%20name.pdf'
+ * encodePathLikeUrl('/path/日本語') // '/path/%E6%97%A5%E6%9C%AC%E8%AA%9E'
+ * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
+ */
+export function encodePathLikeUrl(path: string): string {
+  // Encode whitespace and non-ASCII characters that browsers encode in URLs
+
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
+  // eslint-disable-next-line no-control-regex
+  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
+  // eslint-disable-next-line no-control-regex
+  return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
+}
+
+/**
+ * Builds the dev-mode CSS styles URL for route-scoped CSS collection.
+ * Used by HeadContent components in all framework implementations to construct
+ * the URL for the `/@tanstack-start/styles.css` endpoint.
+ *
+ * @param basepath - The router's basepath (may or may not have leading slash)
+ * @param routeIds - Array of matched route IDs to include in the CSS collection
+ * @returns The full URL path for the dev styles CSS endpoint
+ */
+export function buildDevStylesUrl(
+  basepath: string,
+  routeIds: Array<string>,
+): string {
+  // Trim all leading and trailing slashes from basepath
+  const trimmedBasepath = basepath.replace(/^\/+|\/+$/g, '')
+  // Build normalized basepath: empty string for root, or '/path' for non-root
+  const normalizedBasepath = trimmedBasepath === '' ? '' : `/${trimmedBasepath}`
+  return `${normalizedBasepath}/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds.join(','))}`
 }

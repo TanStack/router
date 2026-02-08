@@ -1,5 +1,5 @@
-import { serverOnly, clientOnly } from '@tanstack/react-start'
+import { createServerOnlyFn, createClientOnlyFn } from '@tanstack/react-start'
 
-const serverFunc = serverOnly(() => 'server')
+const serverFunc = createServerOnlyFn(() => 'server')
 
-const clientFunc = clientOnly(() => 'client')
+const clientFunc = createClientOnlyFn(() => 'client')

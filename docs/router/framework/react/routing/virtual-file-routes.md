@@ -224,6 +224,43 @@ export const routes = rootRoute('root.tsx', [
 ])
 ```
 
+### Merging Physical Routes at Current Level
+
+You can also use `physical` with an empty path prefix (or a single argument) to merge routes from a physical directory directly at the current level, without adding a path prefix. This is useful when you want to organize your routes into separate directories but have them appear at the same URL level.
+
+Consider the following file structure:
+
+```
+/routes
+├── __root.tsx
+├── about.tsx
+└── features
+    ├── index.tsx
+    └── contact.tsx
+```
+
+You can merge the `features` directory routes at the root level:
+
+```tsx
+// routes.ts
+import { physical, rootRoute, route } from '@tanstack/virtual-file-routes'
+
+export const routes = rootRoute('__root.tsx', [
+  route('/about', 'about.tsx'),
+  // Merge features/ routes at root level (no path prefix)
+  physical('features'),
+  // Or equivalently: physical('', 'features')
+])
+```
+
+This will produce the following routes:
+
+- `/about` - from `about.tsx`
+- `/` - from `features/index.tsx`
+- `/contact` - from `features/contact.tsx`
+
+> **Note:** When merging at the same level, ensure there are no conflicting route paths between your virtual routes and the physical directory routes. If a conflict occurs (e.g., both have an `/about` route), the generator will throw an error.
+
 ## Virtual Routes inside of TanStack Router File Based routing
 
 The previous section showed you how you can use TanStack Router's File Based routing convention inside of a virtual route configuration.

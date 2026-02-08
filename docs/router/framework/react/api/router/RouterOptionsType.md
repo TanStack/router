@@ -136,12 +136,20 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Optional
 - The default `onCatch` handler for errors caught by the Router ErrorBoundary
 
+### `disableGlobalCatchBoundary` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- When `true`, disables the global catch boundary that normally wraps all route matches. This allows unhandled errors to bubble up to top-level error handlers in the browser.
+- Useful for testing tools, error reporting services, and debugging scenarios.
+
 ### `defaultViewTransition` property
 
 - Type: `boolean | ViewTransitionOptions`
 - Optional
 - If `true`, route navigations will be called using `document.startViewTransition()`.
-- If [`ViewTransitionOptions`](../ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
+- If [`ViewTransitionOptions`](./ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
   where `types` will be the strings array passed with `ViewTransitionOptions["types"]`. If the browser does not support viewTransition types,
   the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
 - If the browser does not support this api, this option will be ignored.
@@ -169,12 +177,59 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Type: `string`
 - Optional
 - Defaults to `/`
-- The basepath for then entire router. This is useful for mounting a router instance at a subpath.
+- The basepath for the entire router. This is useful for mounting a router instance at a subpath.
+
+### `rewrite` property
+
+- Type: `LocationRewrite`
+- Optional
+- Configures bidirectional URL transformation between the browser URL and the router's internal URL.
+- See the [URL Rewrites guide](../../guide/url-rewrites.md) for detailed usage and patterns.
+
+The `LocationRewrite` type has the following shape:
+
+```tsx
+type LocationRewrite = {
+  input?: LocationRewriteFunction
+  output?: LocationRewriteFunction
+}
+
+type LocationRewriteFunction = (opts: { url: URL }) => undefined | string | URL
+```
+
+- `input`: Transforms the URL before the router interprets it (browser → router)
+- `output`: Transforms the URL before it's written to browser history (router → browser)
+
+**Example**
+
+```tsx
+import { createRouter } from '@tanstack/react-router'
+
+const router = createRouter({
+  routeTree,
+  rewrite: {
+    input: ({ url }) => {
+      // Strip locale prefix: /en/about → /about
+      if (url.pathname.startsWith('/en')) {
+        url.pathname = url.pathname.replace(/^\/en/, '') || '/'
+      }
+      return url
+    },
+    output: ({ url }) => {
+      // Add locale prefix: /about → /en/about
+      url.pathname = `/en${url.pathname === '/' ? '' : url.pathname}`
+      return url
+    },
+  },
+})
+```
+
+When both `basepath` and `rewrite` are configured, they are automatically composed. The basepath rewrite runs first on input (stripping the basepath) and last on output (adding it back).
 
 ### `context` property
 
 - Type: `any`
-- Optional or required if the root route was created with [`createRootRouteWithContext()`](../createRootRouteWithContextFunction.md).
+- Optional or required if the root route was created with [`createRootRouteWithContext()`](./createRootRouteWithContextFunction.md).
 - The root context that will be provided to all routes in the route tree. This can be used to provide a context to all routes in the tree without having to provide it to each route individually.
 
 ### `dehydrate` method
@@ -251,7 +306,7 @@ const router = createRouter({
 - Type: `'root' | 'fuzzy'`
 - Optional
 - Defaults to `'fuzzy'`
-- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../../guide/not-found-errors.md) for more information.
+- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../guide/not-found-errors.md) for more information.
 
 ### `notFoundRoute` property
 
@@ -279,7 +334,7 @@ const router = createRouter({
 - Optional
 - Defaults to `false`
 - Configures whether structural sharing is enabled by default for fine-grained selectors.
-- See the [Render Optimizations guide](../../../guide/render-optimizations.md) for more information.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 
 ### `defaultRemountDeps` property
 

@@ -42,14 +42,7 @@ async function bytesSignupServerFn({
     }
   });
 }
-const SplitLoader = () => {
-  return {
-    randomNumber: Math.random(),
-    sponsorsPromise: defer(getSponsorsForSponsorPack())
-  };
-};
-export { SplitLoader as loader };
-const SplitComponent = function Index() {
+function Index() {
   const bytesSignupMutation = useMutation({
     fn: bytesSignupServerFn
   });
@@ -65,5 +58,12 @@ const SplitComponent = function Index() {
       {gradient}
       {textColor}
     </>;
+}
+const SplitLoader = () => {
+  return {
+    randomNumber: Math.random(),
+    sponsorsPromise: defer(getSponsorsForSponsorPack())
+  };
 };
-export { SplitComponent as component };
+export { SplitLoader as loader };
+export { Index as component };

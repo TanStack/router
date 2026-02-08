@@ -1,97 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
+  compileDecodeCharMap,
   exactPathTest,
   interpolatePath,
-  matchPathname,
-  parsePathname,
-  removeBasepath,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
 } from '../src/path'
-import type { Segment as PathSegment } from '../src/path'
-
-describe('removeBasepath', () => {
-  it.each([
-    {
-      name: '`/` should leave pathname as-is',
-      basepath: '/',
-      pathname: '/path',
-      expected: '/path',
-    },
-    {
-      name: 'should return empty string if basepath is the same as pathname',
-      basepath: '/path',
-      pathname: '/path',
-      expected: '',
-    },
-    {
-      name: 'should remove basepath from the beginning of the pathname',
-      basepath: '/app',
-      pathname: '/app/path/app',
-      expected: '/path/app',
-    },
-    {
-      name: 'should remove multisegment basepath from the beginning of the pathname',
-      basepath: '/app/new',
-      pathname: '/app/new/path/app/new',
-      expected: '/path/app/new',
-    },
-    {
-      name: 'should remove basepath only in case it matches segments completely',
-      basepath: '/app',
-      pathname: '/application',
-      expected: '/application',
-    },
-    {
-      name: 'should remove multisegment basepath only in case it matches segments completely',
-      basepath: '/app/new',
-      pathname: '/app/new-application',
-      expected: '/app/new-application',
-    },
-  ])('$name', ({ basepath, pathname, expected }) => {
-    expect(removeBasepath(basepath, pathname)).toBe(expected)
-  })
-  describe('case sensitivity', () => {
-    describe('caseSensitive = true', () => {
-      it.each([
-        {
-          name: 'should not remove basepath from the beginning of the pathname',
-          basepath: '/app',
-          pathname: '/App/path/App',
-          expected: '/App/path/App',
-        },
-        {
-          name: 'should not remove basepath from the beginning of the pathname with multiple segments',
-          basepath: '/app/New',
-          pathname: '/App/New/path/App',
-          expected: '/App/New/path/App',
-        },
-      ])('$name', ({ basepath, pathname, expected }) => {
-        expect(removeBasepath(basepath, pathname, true)).toBe(expected)
-      })
-    })
-
-    describe('caseSensitive = false', () => {
-      it.each([
-        {
-          name: 'should remove basepath from the beginning of the pathname',
-          basepath: '/App',
-          pathname: '/app/path/app',
-          expected: '/path/app',
-        },
-        {
-          name: 'should remove multisegment basepath from the beginning of the pathname',
-          basepath: '/App/New',
-          pathname: '/app/new/path/app',
-          expected: '/path/app',
-        },
-      ])('$name', ({ basepath, pathname, expected }) => {
-        expect(removeBasepath(basepath, pathname, false)).toBe(expected)
-      })
-    })
-  })
-})
+import {
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
+  findSingleMatch,
+  parseSegment,
+  processRouteTree,
+} from '../src/new-process-route-tree'
+import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
   'removeTrailingSlash with basepath $basepath',
@@ -164,47 +88,40 @@ describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
 
 describe('resolvePath', () => {
   describe.each([
-    ['/', '/', '/', '/'],
-    ['/', '/', '/a', '/a'],
-    ['/', '/', 'a/', '/a'],
-    ['/', '/', '/a/b', '/a/b'],
-    ['/', 'a', 'b', '/a/b'],
-    ['/a/b', 'c', '/a/b/c', '/a/b/c'],
-    ['/a/b', '/', 'c', '/a/b/c'],
-    ['/a/b', '/', './c', '/a/b/c'],
-    ['/', '/', 'a/b', '/a/b'],
-    ['/', '/', './a/b', '/a/b'],
-    ['/', '/a/b/c', 'd', '/a/b/c/d'],
-    ['/', '/a/b/c', './d', '/a/b/c/d'],
-    ['/', '/a/b/c', './../d', '/a/b/d'],
-    ['/', '/a/b/c/d', './../d', '/a/b/c/d'],
-    ['/', '/a/b/c', '../../d', '/a/d'],
-    ['/', '/a/b/c', '../d', '/a/b/d'],
-    ['/', '/a/b/c', '..', '/a/b'],
-    ['/', '/a/b/c', '../..', '/a'],
-    ['/', '/a/b/c', '../../..', '/'],
-    ['/', '/a/b/c/', '../../..', '/'],
-    ['/products', '/', '/products-list', '/products/products-list'],
-    ['/basepath', '/products', '.', '/basepath/products'],
-  ])('resolves correctly', (base, a, b, eq) => {
-    it(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
-      expect(resolvePath({ basepath: base, base: a, to: b })).toEqual(eq)
+    ['/', '/', '/'],
+    ['/', '/a', '/a'],
+    ['/', 'a/', '/a'],
+    ['/', '/a/b', '/a/b'],
+    ['/a', 'b', '/a/b'],
+    ['/', 'a/b', '/a/b'],
+    ['/', './a/b', '/a/b'],
+    ['/a/b/c', 'd', '/a/b/c/d'],
+    ['/a/b/c', './d', '/a/b/c/d'],
+    ['/a/b/c', './../d', '/a/b/d'],
+    ['/a/b/c/d', './../d', '/a/b/c/d'],
+    ['/a/b/c', '../../d', '/a/d'],
+    ['/a/b/c', '../d', '/a/b/d'],
+    ['/a/b/c', '..', '/a/b'],
+    ['/a/b/c', '../..', '/a'],
+    ['/a/b/c', '../../..', '/'],
+    ['/a/b/c/', '../../..', '/'],
+  ])('resolves correctly', (a, b, eq) => {
+    it(`${a} to ${b} === ${eq}`, () => {
+      expect(resolvePath({ base: a, to: b })).toEqual(eq)
     })
-    it(`Base: ${base} - ${a}/ to ${b} === ${eq} (trailing slash)`, () => {
-      expect(resolvePath({ basepath: base, base: a + '/', to: b })).toEqual(eq)
+    it(`${a}/ to ${b} === ${eq} (trailing slash)`, () => {
+      expect(resolvePath({ base: a + '/', to: b })).toEqual(eq)
     })
-    it(`Base: ${base} - ${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
-      expect(
-        resolvePath({ basepath: base, base: a + '/', to: b + '/' }),
-      ).toEqual(eq)
+    it(`${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
+      expect(resolvePath({ base: a + '/', to: b + '/' })).toEqual(eq)
     })
   })
+
   describe('trailingSlash', () => {
     describe(`'always'`, () => {
       it('keeps trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd/',
             trailingSlash: 'always',
@@ -214,7 +131,6 @@ describe('resolvePath', () => {
       it('adds trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd',
             trailingSlash: 'always',
@@ -226,7 +142,6 @@ describe('resolvePath', () => {
       it('removes trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd/',
             trailingSlash: 'never',
@@ -236,7 +151,6 @@ describe('resolvePath', () => {
       it('does not add trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd',
             trailingSlash: 'never',
@@ -248,7 +162,6 @@ describe('resolvePath', () => {
       it('keeps trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd/',
             trailingSlash: 'preserve',
@@ -258,7 +171,6 @@ describe('resolvePath', () => {
       it('does not add trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd',
             trailingSlash: 'preserve',
@@ -291,11 +203,9 @@ describe('resolvePath', () => {
           const candidate = base + trimPathLeft(to)
           expect(
             resolvePath({
-              basepath: '/',
               base,
               to: candidate,
               trailingSlash: 'never',
-              caseSensitive: false,
             }),
           ).toEqual(candidate)
         })
@@ -321,11 +231,9 @@ describe('resolvePath', () => {
           const candidate = base + trimPathLeft(to)
           expect(
             resolvePath({
-              basepath: '/',
               base,
               to: candidate,
               trailingSlash: 'never',
-              caseSensitive: false,
             }),
           ).toEqual(candidate)
         })
@@ -334,297 +242,424 @@ describe('resolvePath', () => {
   )
 })
 
-describe('interpolatePath', () => {
-  describe('regular usage', () => {
-    it.each([
-      {
-        name: 'should interpolate the path',
-        path: '/users/$id',
-        params: { id: '123' },
-        result: '/users/123',
-      },
-      {
-        name: 'should interpolate the path with multiple params',
-        path: '/users/$id/$name',
-        params: { id: '123', name: 'tanner' },
-        result: '/users/123/tanner',
-      },
-      {
-        name: 'should interpolate the path with extra params',
-        path: '/users/$id',
-        params: { id: '123', name: 'tanner' },
-        result: '/users/123',
-      },
-      {
-        name: 'should interpolate the path with missing params',
-        path: '/users/$id/$name',
-        params: { id: '123' },
-        result: '/users/123/undefined',
-      },
-      {
-        name: 'should interpolate the path with missing params and extra params',
-        path: '/users/$id',
-        params: { name: 'john' },
-        result: '/users/undefined',
-      },
-      {
-        name: 'should interpolate the path with the param being a number',
-        path: '/users/$id',
-        params: { id: 123 },
-        result: '/users/123',
-      },
-      {
-        name: 'should interpolate the path with the param being a falsey number',
-        path: '/users/$id',
-        params: { id: 0 },
-        result: '/users/0',
-      },
-      {
-        name: 'should interpolate the path with URI component encoding',
-        path: '/users/$id',
-        params: { id: '?#@john+smith' },
-        result: '/users/%3F%23%40john%2Bsmith',
-      },
-      {
-        name: 'should interpolate the path without URI encoding characters in decodeCharMap',
-        path: '/users/$id',
-        params: { id: '?#@john+smith' },
-        result: '/users/%3F%23@john+smith',
-        decodeCharMap: new Map(
-          ['@', '+'].map((char) => [encodeURIComponent(char), char]),
-        ),
-      },
-      {
-        name: 'should interpolate the path with the splat param at the end',
-        path: '/users/$',
-        params: { _splat: '123' },
-        result: '/users/123',
-      },
-      {
-        name: 'should interpolate the path with a single named path param and the splat param at the end',
-        path: '/users/$username/$',
-        params: { username: 'seancassiere', _splat: '123' },
-        result: '/users/seancassiere/123',
-      },
-      {
-        name: 'should interpolate the path with 2 named path params with the splat param at the end',
-        path: '/users/$username/$id/$',
-        params: { username: 'seancassiere', id: '123', _splat: '456' },
-        result: '/users/seancassiere/123/456',
-      },
-      {
-        name: 'should interpolate the path with multiple named path params with the splat param at the end',
-        path: '/$username/settings/$repo/$id/$',
-        params: {
-          username: 'sean-cassiere',
-          repo: 'my-repo',
-          id: '123',
-          _splat: '456',
+describe.each([{ server: true }, { server: false }])(
+  'interpolatePath (server: $server)',
+  ({ server }) => {
+    describe('regular usage', () => {
+      it.each([
+        {
+          name: 'should interpolate the path',
+          path: '/users/$id',
+          params: { id: '123' },
+          result: '/users/123',
         },
-        result: '/sean-cassiere/settings/my-repo/123/456',
-      },
-      {
-        name: 'should interpolate the path with the splat param containing slashes',
-        path: '/users/$',
-        params: { _splat: 'sean/cassiere' },
-        result: '/users/sean/cassiere',
-      },
-    ])('$name', ({ path, params, decodeCharMap, result }) => {
-      expect(
-        interpolatePath({
+        {
+          name: 'should interpolate the path',
+          path: '/users/$id',
+          params: { id: '123_' },
+          result: '/users/123_',
+        },
+        {
+          name: 'should interpolate the path with multiple params',
+          path: '/users/$id/$name',
+          params: { id: '123', name: 'tanner' },
+          result: '/users/123/tanner',
+        },
+        {
+          name: 'should interpolate the path with multiple params',
+          path: '/users/$id/$name',
+          params: { id: '123_', name: 'tanner' },
+          result: '/users/123_/tanner',
+        },
+        {
+          name: 'should interpolate the path with extra params',
+          path: '/users/$id',
+          params: { id: '123', name: 'tanner' },
+          result: '/users/123',
+        },
+        {
+          name: 'should interpolate the path with missing params',
+          path: '/users/$id/$name',
+          params: { id: '123' },
+          result: '/users/123/undefined',
+        },
+        {
+          name: 'should interpolate the path with missing params and extra params',
+          path: '/users/$id',
+          params: { name: 'john' },
+          result: '/users/undefined',
+        },
+        {
+          name: 'should interpolate the path with the param being a number',
+          path: '/users/$id',
+          params: { id: 123 },
+          result: '/users/123',
+        },
+        {
+          name: 'should interpolate the path with the param being a falsey number',
+          path: '/users/$id',
+          params: { id: 0 },
+          result: '/users/0',
+        },
+        {
+          name: 'should interpolate the path with URI component encoding',
+          path: '/users/$id',
+          params: { id: '?#@john+smith' },
+          result: '/users/%3F%23%40john%2Bsmith',
+        },
+        {
+          name: 'should interpolate the path without URI encoding characters in decodeCharMap',
+          path: '/users/$id',
+          params: { id: '?#@john+smith' },
+          result: '/users/%3F%23@john+smith',
+          decoder: compileDecodeCharMap(['@', '+']),
+        },
+        {
+          name: 'should interpolate the path with the splat param at the end',
+          path: '/users/$',
+          params: { _splat: '123' },
+          result: '/users/123',
+        },
+        {
+          name: 'should interpolate the path with a single named path param and the splat param at the end',
+          path: '/users/$username/$',
+          params: { username: 'seancassiere', _splat: '123' },
+          result: '/users/seancassiere/123',
+        },
+        {
+          name: 'should interpolate the path with 2 named path params with the splat param at the end',
+          path: '/users/$username/$id/$',
+          params: { username: 'seancassiere', id: '123', _splat: '456' },
+          result: '/users/seancassiere/123/456',
+        },
+        {
+          name: 'should interpolate the path with multiple named path params with the splat param at the end',
+          path: '/$username/settings/$repo/$id/$',
+          params: {
+            username: 'sean-cassiere',
+            repo: 'my-repo',
+            id: '123',
+            _splat: '456',
+          },
+          result: '/sean-cassiere/settings/my-repo/123/456',
+        },
+        {
+          name: 'should interpolate the path with the splat param containing slashes',
+          path: '/users/$',
+          params: { _splat: 'sean/cassiere' },
+          result: '/users/sean/cassiere',
+        },
+      ])('$name', ({ path, params, decoder, result }) => {
+        expect(
+          interpolatePath({
+            path,
+            params,
+            decoder,
+            server,
+          }).interpolatedPath,
+        ).toBe(result)
+      })
+    })
+
+    describe('preserve trailing slash', () => {
+      it.each([
+        {
+          path: '/',
+          params: {},
+          result: '/',
+        },
+        {
+          path: '/a/b/',
+          params: {},
+          result: '/a/b/',
+        },
+        {
+          path: '/a/$id/',
+          params: { id: '123' },
+          result: '/a/123/',
+        },
+        {
+          path: '/a/{-$id}/',
+          params: { id: '123' },
+          result: '/a/123/',
+        },
+      ])(
+        'should preserve trailing slash for $path',
+        ({ path, params, result }) => {
+          expect(
+            interpolatePath({
+              path,
+              params,
+              server,
+            }).interpolatedPath,
+          ).toBe(result)
+        },
+      )
+    })
+
+    describe('wildcard (prefix + suffix)', () => {
+      it.each([
+        {
+          name: 'regular',
+          to: '/$',
+          params: { _splat: 'bar/foo/me' },
+          result: '/bar/foo/me',
+        },
+        {
+          name: 'regular curly braces',
+          to: '/{$}',
+          params: { _splat: 'bar/foo/me' },
+          result: '/bar/foo/me',
+        },
+        {
+          name: 'with prefix',
+          to: '/prefix{$}',
+          params: { _splat: 'bar' },
+          result: '/prefixbar',
+        },
+        {
+          name: 'with suffix',
+          to: '/{$}-suffix',
+          params: { _splat: 'bar' },
+          result: '/bar-suffix',
+        },
+        {
+          name: 'with prefix + suffix',
+          to: '/prefix{$}-suffix',
+          params: { _splat: 'bar' },
+          result: '/prefixbar-suffix',
+        },
+      ])('$name', ({ to, params, result }) => {
+        expect(
+          interpolatePath({
+            path: to,
+            params,
+            server,
+          }).interpolatedPath,
+        ).toBe(result)
+      })
+    })
+
+    describe('splat params with special characters', () => {
+      it.each([
+        {
+          name: 'should encode spaces in splat param',
+          path: '/$',
+          params: { _splat: 'file name.pdf' },
+          result: '/file%20name.pdf',
+        },
+        {
+          name: 'should preserve parentheses in splat param (RFC 3986 unreserved)',
+          path: '/$',
+          params: { _splat: 'file(1).pdf' },
+          result: '/file(1).pdf',
+        },
+        {
+          name: 'should encode brackets in splat param',
+          path: '/$',
+          params: { _splat: 'file[1].pdf' },
+          result: '/file%5B1%5D.pdf',
+        },
+        {
+          name: 'should encode spaces in nested splat param paths',
+          path: '/$',
+          params: { _splat: 'folder/sub folder/file name.pdf' },
+          result: '/folder/sub%20folder/file%20name.pdf',
+        },
+        {
+          name: 'should encode spaces and brackets but preserve parentheses',
+          path: '/$',
+          params: { _splat: 'docs/file (copy) [2].pdf' },
+          result: '/docs/file%20(copy)%20%5B2%5D.pdf',
+        },
+        {
+          name: 'should encode hash in splat param',
+          path: '/$',
+          params: { _splat: 'page#section' },
+          result: '/page%23section',
+        },
+        {
+          name: 'should handle splat param with prefix and special characters',
+          path: '/files/prefix{$}',
+          params: { _splat: 'my file.pdf' },
+          result: '/files/prefixmy%20file.pdf',
+        },
+        {
+          name: 'should encode plus signs in splat param',
+          path: '/$',
+          params: { _splat: 'file+name.pdf' },
+          result: '/file%2Bname.pdf',
+        },
+        {
+          name: 'should encode equals signs in splat param',
+          path: '/$',
+          params: { _splat: 'query=value' },
+          result: '/query%3Dvalue',
+        },
+      ])('$name', ({ path, params, result }) => {
+        expect(
+          interpolatePath({
+            path,
+            params,
+            server,
+          }).interpolatedPath,
+        ).toBe(result)
+      })
+    })
+
+    describe('named params (prefix + suffix)', () => {
+      it.each([
+        {
+          name: 'regular',
+          to: '/$foo',
+          params: { foo: 'bar' },
+          result: '/bar',
+        },
+        {
+          name: 'regular curly braces',
+          to: '/{$foo}',
+          params: { foo: 'bar' },
+          result: '/bar',
+        },
+        {
+          name: 'with prefix',
+          to: '/prefix{$bar}',
+          params: { bar: 'baz' },
+          result: '/prefixbaz',
+        },
+        {
+          name: 'with suffix',
+          to: '/{$foo}.suffix',
+          params: { foo: 'bar' },
+          result: '/bar.suffix',
+        },
+        {
+          name: 'with suffix',
+          to: '/{$foo}.suffix',
+          params: { foo: 'bar_' },
+          result: '/bar_.suffix',
+        },
+        {
+          name: 'with prefix and suffix',
+          to: '/prefix{$param}.suffix',
+          params: { param: 'foobar' },
+          result: '/prefixfoobar.suffix',
+        },
+      ])('$name', ({ to, params, result }) => {
+        expect(
+          interpolatePath({
+            path: to,
+            params,
+            server,
+          }).interpolatedPath,
+        ).toBe(result)
+      })
+    })
+
+    describe('should handle missing _splat parameter for', () => {
+      it.each([
+        {
+          name: 'basic splat route',
+          path: '/hello/$',
+          params: {},
+          expectedResult: '/hello',
+        },
+        {
+          name: 'splat route with prefix',
+          path: '/hello/prefix{$}',
+          params: {},
+          expectedResult: '/hello/prefix',
+        },
+        {
+          name: 'splat route with suffix',
+          path: '/hello/{$}suffix',
+          params: {},
+          expectedResult: '/hello/suffix',
+        },
+        {
+          name: 'splat route with prefix and suffix',
+          path: '/hello/prefix{$}suffix',
+          params: {},
+          expectedResult: '/hello/prefixsuffix',
+        },
+        {
+          name: 'splat route with empty splat',
+          path: '/hello/$',
+          params: {
+            _splat: '',
+          },
+          expectedResult: '/hello',
+        },
+        {
+          name: 'splat route with undefined splat',
+          path: '/hello/$',
+          params: {
+            _splat: undefined,
+          },
+          expectedResult: '/hello',
+        },
+      ])('$name', ({ path, params, expectedResult }) => {
+        const result = interpolatePath({
           path,
           params,
-          decodeCharMap,
-        }).interpolatedPath,
-      ).toBe(result)
-    })
-  })
-
-  describe('wildcard (prefix + suffix)', () => {
-    it.each([
-      {
-        name: 'regular',
-        to: '/$',
-        params: { _splat: 'bar/foo/me' },
-        result: '/bar/foo/me',
-      },
-      {
-        name: 'regular curly braces',
-        to: '/{$}',
-        params: { _splat: 'bar/foo/me' },
-        result: '/bar/foo/me',
-      },
-      {
-        name: 'with prefix',
-        to: '/prefix{$}',
-        params: { _splat: 'bar' },
-        result: '/prefixbar',
-      },
-      {
-        name: 'with suffix',
-        to: '/{$}-suffix',
-        params: { _splat: 'bar' },
-        result: '/bar-suffix',
-      },
-      {
-        name: 'with prefix + suffix',
-        to: '/prefix{$}-suffix',
-        params: { _splat: 'bar' },
-        result: '/prefixbar-suffix',
-      },
-    ])('$name', ({ to, params, result }) => {
-      expect(
-        interpolatePath({
-          path: to,
-          params,
-        }).interpolatedPath,
-      ).toBe(result)
-    })
-  })
-
-  describe('named params (prefix + suffix)', () => {
-    it.each([
-      {
-        name: 'regular',
-        to: '/$foo',
-        params: { foo: 'bar' },
-        result: '/bar',
-      },
-      {
-        name: 'regular curly braces',
-        to: '/{$foo}',
-        params: { foo: 'bar' },
-        result: '/bar',
-      },
-      {
-        name: 'with prefix',
-        to: '/prefix{$bar}',
-        params: { bar: 'baz' },
-        result: '/prefixbaz',
-      },
-      {
-        name: 'with suffix',
-        to: '/{$foo}.suffix',
-        params: { foo: 'bar' },
-        result: '/bar.suffix',
-      },
-      {
-        name: 'with prefix and suffix',
-        to: '/prefix{$param}.suffix',
-        params: { param: 'foobar' },
-        result: '/prefixfoobar.suffix',
-      },
-    ])('$name', ({ to, params, result }) => {
-      expect(
-        interpolatePath({
-          path: to,
-          params,
-        }).interpolatedPath,
-      ).toBe(result)
-    })
-  })
-
-  describe('should handle missing _splat parameter for', () => {
-    it.each([
-      {
-        name: 'basic splat route',
-        path: '/hello/$',
-        params: {},
-        expectedResult: '/hello',
-      },
-      {
-        name: 'splat route with prefix',
-        path: '/hello/prefix{$}',
-        params: {},
-        expectedResult: '/hello/prefix',
-      },
-      {
-        name: 'splat route with suffix',
-        path: '/hello/{$}suffix',
-        params: {},
-        expectedResult: '/hello/suffix',
-      },
-      {
-        name: 'splat route with prefix and suffix',
-        path: '/hello/prefix{$}suffix',
-        params: {},
-        expectedResult: '/hello/prefixsuffix',
-      },
-      {
-        name: 'nested splat route',
-        path: '/users/$id/$',
-        params: { id: '123' },
-        expectedResult: '/users/123',
-      },
-    ])('$name', ({ path, params, expectedResult }) => {
-      const result = interpolatePath({
-        path,
-        params,
+          server,
+        })
+        expect(result.interpolatedPath).toBe(expectedResult)
+        expect(result.isMissingParams).toBe(true)
       })
-      expect(result.interpolatedPath).toBe(expectedResult)
-      expect(result.isMissingParams).toBe(true)
     })
-  })
-})
+
+    describe('resolvePath + interpolatePath', () => {
+      it.each(['never', 'preserve', 'always'] as const)(
+        'trailing slash: %s',
+        (trailingSlash) => {
+          const tail = trailingSlash === 'always' ? '/' : ''
+          const defaultedFromPath = '/'
+          const fromPath = resolvePath({
+            base: defaultedFromPath,
+            to: '.',
+            trailingSlash,
+          })
+          const nextTo = resolvePath({
+            base: fromPath,
+            to: '/splat/$',
+            trailingSlash,
+          })
+          const nextParams = { _splat: '' }
+          const interpolatedNextTo = interpolatePath({
+            path: nextTo,
+            params: nextParams,
+            server,
+          }).interpolatedPath
+          expect(interpolatedNextTo).toBe(`/splat${tail}`)
+        },
+      )
+    })
+  },
+)
 
 describe('matchPathname', () => {
-  describe('basepath matching', () => {
-    it.each([
-      {
-        name: 'should match when the input is the same as the basepath',
-        basepath: '/basepath',
-        input: '/basepath',
-        matchingOptions: {
-          to: '/',
-        },
-        expectedMatchedParams: {},
-      },
-      {
-        name: 'should match when the input starts with the basepath and `to` is set to the remaining',
-        basepath: '/basepath',
-        input: '/basepath/abc',
-        matchingOptions: {
-          to: '/abc',
-        },
-        expectedMatchedParams: {},
-      },
-      {
-        name: 'should not match when the input is `/` and does not start with the basepath',
-        basepath: '/basepath',
-        input: '/',
-        matchingOptions: {
-          to: '/',
-        },
-        expectedMatchedParams: undefined,
-      },
-      {
-        name: 'should not match when the input completely does not start with the basepath',
-        basepath: '/basepath',
-        input: '/abc',
-        matchingOptions: {
-          to: '/abc',
-        },
-        expectedMatchedParams: undefined,
-      },
-      {
-        name: 'should not match when the input only partially matches the basepath',
-        basepath: '/base',
-        input: '/basepath/abc',
-        matchingOptions: {
-          to: '/abc',
-        },
-        expectedMatchedParams: undefined,
-      },
-    ])(
-      '$name',
-      ({ basepath, input, matchingOptions, expectedMatchedParams }) => {
-        expect(matchPathname(basepath, input, matchingOptions)).toStrictEqual(
-          expectedMatchedParams,
-        )
-      },
-    )
+  const { processedTree } = processRouteTree({
+    id: '__root__',
+    isRoot: true,
+    fullPath: '/',
+    path: '/',
   })
-
+  const matchPathname = (
+    from: string,
+    options: { to: string; caseSensitive?: boolean; fuzzy?: boolean },
+  ) => {
+    const match = findSingleMatch(
+      options.to,
+      options.caseSensitive ?? false,
+      options.fuzzy ?? false,
+      from,
+      processedTree,
+    )
+    const result = match ? match.rawParams : undefined
+    if (options.to && !result) return
+    return result ?? {}
+  }
   describe('path param(s) matching', () => {
     it.each([
       {
@@ -700,7 +735,7 @@ describe('matchPathname', () => {
         },
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-      expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+      expect(matchPathname(input, matchingOptions)).toStrictEqual(
         expectedMatchedParams,
       )
     })
@@ -764,7 +799,7 @@ describe('matchPathname', () => {
         },
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-      expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+      expect(matchPathname(input, matchingOptions)).toStrictEqual(
         expectedMatchedParams,
       )
     })
@@ -783,6 +818,16 @@ describe('matchPathname', () => {
         },
       },
       {
+        name: 'regular',
+        input: '/docs/foo_',
+        matchingOptions: {
+          to: '/docs/$bar',
+        },
+        expectedMatchedParams: {
+          bar: 'foo_',
+        },
+      },
+      {
         name: 'regular curly braces',
         input: '/docs/foo',
         matchingOptions: {
@@ -790,6 +835,16 @@ describe('matchPathname', () => {
         },
         expectedMatchedParams: {
           bar: 'foo',
+        },
+      },
+      {
+        name: 'with prefix',
+        input: '/docs/prefixfoo_',
+        matchingOptions: {
+          to: '/docs/prefix{$bar}',
+        },
+        expectedMatchedParams: {
+          bar: 'foo_',
         },
       },
       {
@@ -823,7 +878,7 @@ describe('matchPathname', () => {
         },
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-      expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+      expect(matchPathname(input, matchingOptions)).toStrictEqual(
         expectedMatchedParams,
       )
     })
@@ -836,6 +891,42 @@ describe('parsePathname', () => {
     to: string | undefined
     expected: Array<PathSegment>
   }>
+
+  type PathSegment = {
+    type: SegmentKind
+    value: string
+    prefixSegment?: string
+    suffixSegment?: string
+  }
+
+  const parsePathname = (to: string | undefined) => {
+    let cursor = 0
+    let data
+    const path = to ?? ''
+    const segments: Array<PathSegment> = []
+    while (cursor < path.length) {
+      const start = cursor
+      data = parseSegment(path, start, data)
+      const end = data[5]
+      cursor = end + 1
+      const type = data[0]
+      const value = path.substring(data[2], data[3])
+      const prefix = path.substring(start, data[1])
+      const suffix = path.substring(data[4], end)
+      const segment: PathSegment = {
+        type,
+        value,
+      }
+      if (prefix) {
+        segment.prefixSegment = prefix
+      }
+      if (suffix) {
+        segment.suffixSegment = suffix
+      }
+      segments.push(segment)
+    }
+    return segments
+  }
 
   describe('regular usage', () => {
     it.each([
@@ -852,89 +943,88 @@ describe('parsePathname', () => {
       {
         name: 'should handle pathname at root',
         to: '/',
-        expected: [{ type: 'pathname', value: '/' }],
+        expected: [{ type: SEGMENT_TYPE_PATHNAME, value: '' }],
       },
       {
         name: 'should handle pathname with a single segment',
         to: '/foo',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'foo' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
         ],
       },
       {
         name: 'should handle pathname with multiple segments',
         to: '/foo/bar/baz',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'foo' },
-          { type: 'pathname', value: 'bar' },
-          { type: 'pathname', value: 'baz' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'bar' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'baz' },
         ],
       },
       {
         name: 'should handle pathname with a trailing slash',
         to: '/foo/',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'foo' },
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
         ],
       },
       {
         name: 'should handle named params',
         to: '/foo/$bar',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'foo' },
-          { type: 'param', value: '$bar' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
+          { type: SEGMENT_TYPE_PARAM, value: 'bar' },
         ],
       },
       {
         name: 'should handle named params at the root',
         to: '/$bar',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'param', value: '$bar' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PARAM, value: 'bar' },
         ],
       },
       {
         name: 'should handle named params followed by a segment',
         to: '/foo/$bar/baz',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'foo' },
-          { type: 'param', value: '$bar' },
-          { type: 'pathname', value: 'baz' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
+          { type: SEGMENT_TYPE_PARAM, value: 'bar' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'baz' },
         ],
       },
       {
         name: 'should handle multiple named params',
         to: '/foo/$bar/$baz/qux/$quux',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'foo' },
-          { type: 'param', value: '$bar' },
-          { type: 'param', value: '$baz' },
-          { type: 'pathname', value: 'qux' },
-          { type: 'param', value: '$quux' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
+          { type: SEGMENT_TYPE_PARAM, value: 'bar' },
+          { type: SEGMENT_TYPE_PARAM, value: 'baz' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'qux' },
+          { type: SEGMENT_TYPE_PARAM, value: 'quux' },
         ],
       },
       {
         name: 'should handle splat params',
         to: '/foo/$',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'foo' },
-          { type: 'wildcard', value: '$' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
+          { type: SEGMENT_TYPE_WILDCARD, value: '$' },
         ],
       },
       {
         name: 'should handle splat params at the root',
         to: '/$',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'wildcard', value: '$' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_WILDCARD, value: '$' },
         ],
       },
     ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {
@@ -949,25 +1039,25 @@ describe('parsePathname', () => {
         name: 'regular',
         to: '/$',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'wildcard', value: '$' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_WILDCARD, value: '$' },
         ],
       },
       {
         name: 'regular curly braces',
         to: '/{$}',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'wildcard', value: '$' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_WILDCARD, value: '$' },
         ],
       },
       {
         name: 'with prefix (regular text)',
         to: '/foo{$}',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'wildcard',
+            type: SEGMENT_TYPE_WILDCARD,
             value: '$',
             prefixSegment: 'foo',
           },
@@ -977,9 +1067,9 @@ describe('parsePathname', () => {
         name: 'with prefix + followed by special character',
         to: '/foo.{$}',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'wildcard',
+            type: SEGMENT_TYPE_WILDCARD,
             value: '$',
             prefixSegment: 'foo.',
           },
@@ -989,9 +1079,9 @@ describe('parsePathname', () => {
         name: 'with suffix',
         to: '/{$}-foo',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'wildcard',
+            type: SEGMENT_TYPE_WILDCARD,
             value: '$',
             suffixSegment: '-foo',
           },
@@ -1001,9 +1091,9 @@ describe('parsePathname', () => {
         name: 'with prefix + suffix',
         to: '/foo{$}-bar',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'wildcard',
+            type: SEGMENT_TYPE_WILDCARD,
             value: '$',
             prefixSegment: 'foo',
             suffixSegment: '-bar',
@@ -1014,13 +1104,13 @@ describe('parsePathname', () => {
         name: 'with prefix + followed by special character and a segment',
         to: '/foo.{$}/bar',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'wildcard',
+            type: SEGMENT_TYPE_WILDCARD,
             value: '$',
             prefixSegment: 'foo.',
+            suffixSegment: '/bar',
           },
-          { type: 'pathname', value: 'bar' },
         ],
       },
     ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {
@@ -1035,26 +1125,26 @@ describe('parsePathname', () => {
         name: 'regular',
         to: '/$bar',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'param', value: '$bar' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PARAM, value: 'bar' },
         ],
       },
       {
         name: 'regular curly braces',
         to: '/{$bar}',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'param', value: '$bar' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PARAM, value: 'bar' },
         ],
       },
       {
         name: 'with prefix (regular text)',
         to: '/foo{$bar}',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'param',
-            value: '$bar',
+            type: SEGMENT_TYPE_PARAM,
+            value: 'bar',
             prefixSegment: 'foo',
           },
         ],
@@ -1063,10 +1153,10 @@ describe('parsePathname', () => {
         name: 'with prefix + followed by special character',
         to: '/foo.{$bar}',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'param',
-            value: '$bar',
+            type: SEGMENT_TYPE_PARAM,
+            value: 'bar',
             prefixSegment: 'foo.',
           },
         ],
@@ -1075,10 +1165,10 @@ describe('parsePathname', () => {
         name: 'with suffix',
         to: '/{$bar}.foo',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'param',
-            value: '$bar',
+            type: SEGMENT_TYPE_PARAM,
+            value: 'bar',
             suffixSegment: '.foo',
           },
         ],
@@ -1087,10 +1177,10 @@ describe('parsePathname', () => {
         name: 'with suffix + started by special character',
         to: '/{$bar}.foo',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'param',
-            value: '$bar',
+            type: SEGMENT_TYPE_PARAM,
+            value: 'bar',
             suffixSegment: '.foo',
           },
         ],
@@ -1099,23 +1189,23 @@ describe('parsePathname', () => {
         name: 'with suffix + started by special character and followed by segment',
         to: '/{$bar}.foo/baz',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'param',
-            value: '$bar',
+            type: SEGMENT_TYPE_PARAM,
+            value: 'bar',
             suffixSegment: '.foo',
           },
-          { type: 'pathname', value: 'baz' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'baz' },
         ],
       },
       {
         name: 'with suffix + prefix',
         to: '/foo{$bar}.baz',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
           {
-            type: 'param',
-            value: '$bar',
+            type: SEGMENT_TYPE_PARAM,
+            value: 'bar',
             prefixSegment: 'foo',
             suffixSegment: '.baz',
           },
