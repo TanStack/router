@@ -3,6 +3,7 @@ import * as Vue from 'vue'
 import { pipeToWebWritable, renderToString } from 'vue/server-renderer'
 import { isbot } from 'isbot'
 import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
+import { FastResponse } from 'srvx'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
 import type { ReadableStream } from 'node:stream/web'
@@ -62,7 +63,7 @@ export const renderRouterToStream = async ({
       fullHtml = fullHtml.slice(htmlOpenIndex)
     }
 
-    return new Response(`<!DOCTYPE html>${fullHtml}`, {
+    return new FastResponse(`<!DOCTYPE html>${fullHtml}`, {
       status: router.state.statusCode,
       headers: responseHeaders,
     })
@@ -78,7 +79,7 @@ export const renderRouterToStream = async ({
     doctypedStream as unknown as ReadableStream,
   )
 
-  return new Response(responseStream as any, {
+  return new FastResponse(responseStream as any, {
     status: router.state.statusCode,
     headers: responseHeaders,
   })
