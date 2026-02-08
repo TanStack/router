@@ -19,6 +19,7 @@ export default mergeConfig(
       './src/rsbuild/index.ts',
       './src/rsbuild/start-compiler-loader.ts',
       './src/rsbuild/route-tree-loader.ts',
+      './src/rsbuild/start-storage-context-stub.ts',
     ],
     srcDir: './src',
     outDir: './dist',

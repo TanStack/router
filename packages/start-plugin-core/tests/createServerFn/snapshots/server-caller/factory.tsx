@@ -1,5 +1,8 @@
 import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
+import { myAuthedFn_createServerFn_handler, deleteUserFn_createServerFn_handler } from "./test.ts?tss-serverfn-split";
 import { createServerFn, createMiddleware } from '@tanstack/react-start';
+globalThis.__tssServerFnHandlers = globalThis.__tssServerFnHandlers || [];
+globalThis.__tssServerFnHandlers.push(myAuthedFn_createServerFn_handler, deleteUserFn_createServerFn_handler);
 const authMiddleware = createMiddleware({
   type: 'function'
 }).server(({

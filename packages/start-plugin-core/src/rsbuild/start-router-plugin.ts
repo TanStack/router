@@ -132,7 +132,7 @@ export function tanStackStartRouterRsbuild(
     return {
       ...routerConfig,
       target: corePluginOpts.framework,
-      routeTreeFileFooter: getRouteTreeFileFooter,
+      routeTreeFileFooter: getRouteTreeFileFooter(),
       plugins,
     }
   })

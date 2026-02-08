@@ -14,16 +14,20 @@ type StatsAsset = string | { name?: string }
 type StatsChunk = {
   files?: Array<string>
   auxiliaryFiles?: Array<string>
-  modules?: Array<{ name?: string; identifier?: string }>
+  modules?: Array<StatsModule>
+  names?: Array<string>
+  entry?: boolean
+  initial?: boolean
+}
+
+type StatsModule = {
+  name?: string
+  identifier?: string
+  nameForCondition?: string
 }
 
 type StatsJson = {
-  entrypoints?: Record<
-    string,
-    {
-      assets?: Array<StatsAsset>
-    }
-  >
+  entrypoints?: Record<string, { assets?: Array<StatsAsset> }>
   chunks?: Array<StatsChunk>
 }
 
@@ -55,24 +59,103 @@ function createCssTags(
   }))
 }
 
+function createEntryScriptTags(
+  basePath: string,
+  assets: Array<string>,
+): Array<RouterManagedTag> {
+  return assets.map((asset) => ({
+    tag: 'script',
+    attrs: {
+      type: 'module',
+      async: true,
+      src: joinURL(basePath, asset),
+    },
+  }))
+}
+
 function unique(items: Array<string>) {
   return Array.from(new Set(items))
 }
 
-function getStatsEntryAssets(statsJson: StatsJson): Array<string> {
+function getRouteModuleFilePath(module: StatsModule): string | undefined {
+  const moduleId = module.identifier ?? module.name ?? ''
+  if (!moduleId.includes(tsrSplit)) return undefined
+
+  if (module.nameForCondition) {
+    return module.nameForCondition
+  }
+
+  const resource = moduleId.split('!').pop() ?? moduleId
+  const cleanedResource = resource.startsWith('module|')
+    ? resource.slice('module|'.length)
+    : resource
+  const [resourcePath, queryString] = cleanedResource.split('?')
+  if (!queryString?.includes(tsrSplit)) return undefined
+
+  return resourcePath
+}
+
+function getStatsEntryPointName(statsJson: StatsJson): string | undefined {
   const entrypoints = statsJson.entrypoints ?? {}
-  const entrypoint =
-    entrypoints['index'] ??
-    entrypoints['main'] ??
-    entrypoints[Object.keys(entrypoints)[0] ?? '']
+  if (entrypoints['index']) return 'index'
+  if (entrypoints['main']) return 'main'
+  return Object.keys(entrypoints)[0]
+}
 
-  if (!entrypoint?.assets) return []
+function getStatsEntryAssets(statsJson: StatsJson): {
+  entrypointName?: string
+  assets: Array<string>
+} {
+  const entrypoints = statsJson.entrypoints ?? {}
+  const entrypointName = getStatsEntryPointName(statsJson)
+  const entrypoint = entrypointName ? entrypoints[entrypointName] : undefined
 
+  if (!entrypoint?.assets) {
+    return { entrypointName, assets: [] }
+  }
+
+  return {
+    entrypointName,
+    assets: unique(
+      entrypoint.assets
+        .map(getAssetName)
+        .filter((asset): asset is string => Boolean(asset)),
+    ),
+  }
+}
+
+function getEntryChunkAssets(
+  statsJson: StatsJson,
+  entrypointName?: string,
+): Array<string> {
+  if (!entrypointName) return []
+  const chunks = statsJson.chunks ?? []
+  const entryChunks = chunks.filter((chunk) => {
+    if (chunk.entry) return true
+    const names = chunk.names ?? []
+    return names.includes(entrypointName)
+  })
   return unique(
-    entrypoint.assets
-      .map(getAssetName)
-      .filter((asset): asset is string => Boolean(asset)),
+    entryChunks.flatMap((chunk) => chunk.files ?? []).filter(isJsAsset),
   )
+}
+
+function pickEntryAsset(
+  assets: Array<string>,
+  entrypointName?: string,
+): string | undefined {
+  if (assets.length === 0) return undefined
+  if (entrypointName) {
+    const match = assets.find((asset) => {
+      const baseName = path.posix.basename(asset)
+      return (
+        baseName === `${entrypointName}.js` ||
+        baseName.startsWith(`${entrypointName}.`)
+      )
+    })
+    if (match) return match
+  }
+  return assets[assets.length - 1]
 }
 
 function buildStartManifest({
@@ -82,11 +165,17 @@ function buildStartManifest({
   statsJson: StatsJson
   basePath: string
 }): Manifest & { clientEntry: string } {
-  const entryAssets = getStatsEntryAssets(statsJson)
+  const { entrypointName, assets: entryAssets } =
+    getStatsEntryAssets(statsJson)
   const entryJsAssets = unique(entryAssets.filter(isJsAsset))
   const entryCssAssets = unique(entryAssets.filter(isCssAsset))
 
-  const entryFile = entryJsAssets[0]
+  const entryFile =
+    pickEntryAsset(entryJsAssets, entrypointName) ??
+    pickEntryAsset(
+      getEntryChunkAssets(statsJson, entrypointName),
+      entrypointName,
+    )
   if (!entryFile) {
     throw new Error('No client entry file found in rsbuild stats')
   }
@@ -98,17 +187,14 @@ function buildStartManifest({
   for (const chunk of statsJson.chunks ?? []) {
     const modules = chunk.modules ?? []
     for (const mod of modules) {
-      const id = mod.identifier ?? mod.name ?? ''
-      if (!id.includes(tsrSplit)) continue
-      const [fileId, query] = id.split('?')
-      if (!fileId || !query) continue
-      const searchParams = new URLSearchParams(query)
-      if (!searchParams.has(tsrSplit)) continue
-      const existingChunks = routeChunks[fileId]
+      const filePath = getRouteModuleFilePath(mod)
+      if (!filePath) continue
+      const normalizedPath = path.normalize(filePath)
+      const existingChunks = routeChunks[normalizedPath]
       if (existingChunks) {
         existingChunks.push(chunk)
       } else {
-        routeChunks[fileId] = [chunk]
+        routeChunks[normalizedPath] = [chunk]
       }
     }
   }
@@ -116,7 +202,7 @@ function buildStartManifest({
   const manifest: Manifest = { routes: {} }
 
   Object.entries(routeTreeRoutes).forEach(([routeId, route]) => {
-    const chunks = routeChunks[route.filePath]
+    const chunks = routeChunks[path.normalize(route.filePath)]
     if (!chunks?.length) {
       manifest.routes[routeId] = {}
       return
@@ -140,11 +226,16 @@ function buildStartManifest({
     }
   })
 
+  const entryScriptAssets = entryJsAssets.filter(
+    (asset) => asset !== entryFile,
+  )
+
   manifest.routes[rootRouteId] = {
     ...(manifest.routes[rootRouteId] ?? {}),
     preloads: entryJsAssets.map((asset) => joinURL(basePath, asset)),
     assets: [
       ...createCssTags(basePath, entryCssAssets),
+      ...createEntryScriptTags(basePath, entryScriptAssets),
       ...(manifest.routes[rootRouteId]?.assets ?? []),
     ],
   }
@@ -168,9 +259,9 @@ export function createStartManifestRspackPlugin(opts: {
             all: false,
             entrypoints: true,
             chunks: true,
+            chunkModules: true,
             modules: true,
           })
-
           const manifest = buildStartManifest({
             statsJson,
             basePath: opts.basePath,
@@ -196,7 +287,7 @@ export function createStartManifestVirtualModulePlugin(opts: {
   clientOutputDir: string
 }) {
   const manifestPath = path.join(opts.clientOutputDir, START_MANIFEST_FILE)
-  return createRspackPlugin(() => ({
+  const pluginFactory = createRspackPlugin(() => ({
     name: 'tanstack-start:manifest:virtual',
     resolveId(id) {
       if (id === VIRTUAL_MODULES.startManifest) {
@@ -223,4 +314,5 @@ export const tsrStartManifest = () => {
 `
     },
   }))
+  return pluginFactory()
 }

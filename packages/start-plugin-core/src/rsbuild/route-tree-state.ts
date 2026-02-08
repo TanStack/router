@@ -1,5 +1,6 @@
+import { Generator } from '@tanstack/router-generator'
 import { pruneServerOnlySubtrees } from '../start-router-plugin/pruneServerOnlySubtrees'
-import type { Generator } from '@tanstack/router-generator'
+import type { Config } from '@tanstack/router-generator'
 
 let generatorInstance: Generator | null = null
 
@@ -7,11 +8,22 @@ export function setGeneratorInstance(generator: Generator) {
   generatorInstance = generator
 }
 
-export async function getClientRouteTreeContent() {
-  if (!generatorInstance) {
-    throw new Error('Generator instance not initialized for route tree loader')
+export async function getClientRouteTreeContent(options?: {
+  routerConfig?: Config
+  root?: string
+}) {
+  let generator = generatorInstance
+  if (!generator) {
+    if (!options?.routerConfig || !options.root) {
+      throw new Error('Generator instance not initialized for route tree loader')
+    }
+    generator = new Generator({
+      config: options.routerConfig,
+      root: options.root,
+    })
+    await generator.run()
   }
-  const crawlingResult = await generatorInstance.getCrawlingResult()
+  const crawlingResult = await generator.getCrawlingResult()
   if (!crawlingResult) {
     throw new Error('Crawling result not available')
   }
@@ -20,7 +32,7 @@ export async function getClientRouteTreeContent() {
     ...crawlingResult.acc,
     ...prunedAcc,
   }
-  const buildResult = generatorInstance.buildRouteTree({
+  const buildResult = generator.buildRouteTree({
     ...crawlingResult,
     acc,
     config: {

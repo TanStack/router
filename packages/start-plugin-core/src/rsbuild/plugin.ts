@@ -9,14 +9,17 @@ import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { resolveEntry } from '../resolve-entries'
 import { parseStartConfig } from '../schema'
 import { createInjectedHeadScriptsPlugin } from './injected-head-scripts-plugin'
-import { createServerFnResolverPlugin } from './start-compiler-plugin'
+import {
+  SERVER_FN_MANIFEST_TEMP_FILE,
+  createServerFnManifestRspackPlugin,
+  createServerFnResolverPlugin,
+} from './start-compiler-plugin'
 import {
   createStartManifestRspackPlugin,
   createStartManifestVirtualModulePlugin,
 } from './start-manifest-plugin'
 import { postServerBuildRsbuild } from './post-server-build'
 import { tanStackStartRouterRsbuild } from './start-router-plugin'
-import type { ViteEnvironmentNames } from '../constants'
 import type { TanStackStartInputConfig } from '../schema'
 import type {
   GetConfigFn,
@@ -36,6 +39,52 @@ function isFullUrl(str: string): boolean {
   } catch {
     return false
   }
+}
+
+function buildRouteTreeModuleDeclaration(opts: {
+  generatedRouteTreePath: string
+  routerFilePath: string
+  startFilePath?: string
+  framework: string
+}) {
+  const getImportPath = (absolutePath: string) => {
+    let relativePath = path.relative(
+      path.dirname(opts.generatedRouteTreePath),
+      absolutePath,
+    )
+    if (!relativePath.startsWith('.')) {
+      relativePath = `./${relativePath}`
+    }
+    return relativePath.split(path.sep).join('/')
+  }
+
+  const result: Array<string> = [
+    `import type { getRouter } from '${getImportPath(opts.routerFilePath)}'`,
+  ]
+  if (opts.startFilePath) {
+    result.push(
+      `import type { startInstance } from '${getImportPath(opts.startFilePath)}'`,
+    )
+  } else {
+    result.push(
+      `import type { createStart } from '@tanstack/${opts.framework}-start'`,
+    )
+  }
+  result.push(
+    `declare module '@tanstack/${opts.framework}-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>`,
+  )
+  if (opts.startFilePath) {
+    result.push(
+      `    config: Awaited<ReturnType<typeof startInstance.getOptions>>`,
+    )
+  }
+  result.push(`  }
+}`)
+
+  return result.join('\n')
 }
 
 function defineReplaceEnv<TKey extends string, TValue extends string>(
@@ -104,7 +153,7 @@ function mergeEnvConfig(base: any, next: any) {
 function getOutputDirectory(
   root: string,
   config: any,
-  environmentName: ViteEnvironmentNames,
+  environmentName: string,
   directoryName: string,
 ) {
   const envDistPath =
@@ -166,6 +215,8 @@ export function TanStackStartRsbuildPluginCore(
   let resolvedServerEntryPath: string | undefined
   let resolvedServerOutputDir: string | undefined
   let resolvedClientOutputDir: string | undefined
+  let routeTreeModuleDeclaration: string | null = null
+  let routeTreeGeneratedPath: string | null = null
 
   return [
     {
@@ -253,6 +304,8 @@ export function TanStackStartRsbuildPluginCore(
               startFilePath ?? corePluginOpts.defaultEntryPaths.start,
             [ENTRY_POINTS.router]: routerFilePath,
           }
+          const resolvedClientEntry = entryAliasConfiguration[ENTRY_POINTS.client]
+          const resolvedServerEntry = entryAliasConfiguration[ENTRY_POINTS.server]
 
           const clientOutputDir = getOutputDirectory(
             root,
@@ -268,8 +321,16 @@ export function TanStackStartRsbuildPluginCore(
             'server',
           )
           resolvedServerOutputDir = serverOutputDir
+          const serverFnManifestTempPath = path.join(
+            serverOutputDir,
+            SERVER_FN_MANIFEST_TEMP_FILE,
+          )
 
           const isDev = api.context?.command === 'serve'
+          const defineViteEnv = (key: string, fallback = '') => {
+            const value = process.env[key] ?? fallback
+            return defineReplaceEnv(key, value)
+          }
           const defineValues = {
             ...defineReplaceEnv('TSS_SERVER_FN_BASE', TSS_SERVER_FN_BASE),
             ...defineReplaceEnv('TSS_CLIENT_OUTPUT_DIR', clientOutputDir),
@@ -277,6 +338,7 @@ export function TanStackStartRsbuildPluginCore(
               'TSS_ROUTER_BASEPATH',
               startConfig.router.basepath,
             ),
+            ...defineReplaceEnv('TSS_BUNDLER', 'rsbuild'),
             ...defineReplaceEnv('TSS_DEV_SERVER', isDev ? 'true' : 'false'),
             ...(isDev
               ? defineReplaceEnv(
@@ -284,6 +346,8 @@ export function TanStackStartRsbuildPluginCore(
                   startConfig.spa?.enabled ? 'true' : 'false',
                 )
               : {}),
+            ...defineViteEnv('VITE_NODE_ENV', 'production'),
+            ...defineViteEnv('VITE_EXTERNAL_PORT', ''),
           }
 
           const routerPlugins = tanStackStartRouterRsbuild(
@@ -291,14 +355,63 @@ export function TanStackStartRsbuildPluginCore(
             getConfig,
             corePluginOpts,
           )
+          const clientRouterConfig = {
+            ...startConfig.router,
+            routeTreeFileHeader: [],
+            routeTreeFileFooter: [],
+            plugins: [],
+          }
+          const generatedRouteTreePath = routerPlugins.getGeneratedRouteTreePath()
+          const routeTreeModuleDeclarationValue = buildRouteTreeModuleDeclaration({
+            generatedRouteTreePath,
+            routerFilePath: resolvedStartConfig.routerFilePath,
+            startFilePath: resolvedStartConfig.startFilePath,
+            framework: corePluginOpts.framework,
+          })
+          routeTreeModuleDeclaration = routeTreeModuleDeclarationValue
+          routeTreeGeneratedPath = generatedRouteTreePath
+          const registerDeclaration = `declare module '@tanstack/${corePluginOpts.framework}-start'`
+          if (fs.existsSync(generatedRouteTreePath)) {
+            const existingTree = fs.readFileSync(
+              generatedRouteTreePath,
+              'utf-8',
+            )
+            if (!existingTree.includes(registerDeclaration)) {
+              fs.rmSync(generatedRouteTreePath)
+            }
+          }
 
           const startCompilerLoaderPath = resolveLoaderPath(
             './start-compiler-loader',
           )
+          const startStorageContextStubPath = resolveLoaderPath(
+            './start-storage-context-stub',
+          )
+          const clientAliasOverrides = {
+            '@tanstack/start-storage-context': startStorageContextStubPath,
+          }
 
-          const loaderRule = (env: 'client' | 'server', envName: string) => ({
+          const startClientCoreDistPath = path.resolve(
+            root,
+            'packages/start-client-core/dist/esm',
+          )
+          const startClientCoreDistPattern =
+            /[\\/]start-client-core[\\/]dist[\\/]esm[\\/]/
+          const loaderIncludePaths: Array<string | RegExp> = [
+            resolvedStartConfig.srcDirectory,
+          ]
+          if (fs.existsSync(startClientCoreDistPath)) {
+            loaderIncludePaths.push(startClientCoreDistPath)
+          }
+          loaderIncludePaths.push(startClientCoreDistPattern)
+
+          const loaderRule = (
+            env: 'client' | 'server',
+            envName: string,
+            manifestPath?: string,
+          ) => ({
             test: /\.[cm]?[jt]sx?$/,
-            exclude: /node_modules/,
+            include: loaderIncludePaths,
             enforce: 'pre',
             use: [
               {
@@ -310,6 +423,7 @@ export function TanStackStartRsbuildPluginCore(
                   framework: corePluginOpts.framework,
                   providerEnvName: serverFnProviderEnv,
                   generateFunctionId: startPluginOpts?.serverFns?.generateFunctionId,
+                  manifestPath,
                 },
               },
             ],
@@ -319,8 +433,11 @@ export function TanStackStartRsbuildPluginCore(
 
           const clientEnvConfig = {
             source: {
-              entry: { index: ENTRY_POINTS.client },
-              alias: entryAliasConfiguration,
+              entry: { index: resolvedClientEntry },
+              alias: {
+                ...entryAliasConfiguration,
+                ...clientAliasOverrides,
+              },
               define: defineValues,
             },
             output: {
@@ -345,12 +462,23 @@ export function TanStackStartRsbuildPluginCore(
                     loaderRule('client', VITE_ENVIRONMENT_NAMES.client),
                     {
                       include: [routerPlugins.getGeneratedRouteTreePath()],
-                      use: [{ loader: routerPlugins.routeTreeLoaderPath }],
+                      use: [
+                        {
+                          loader: routerPlugins.routeTreeLoaderPath,
+                          options: {
+                            routerConfig: clientRouterConfig,
+                            root,
+                          },
+                        },
+                      ],
                     },
                   ],
                 },
                 resolve: {
-                  alias: entryAliasConfiguration,
+                  alias: {
+                    ...entryAliasConfiguration,
+                    ...clientAliasOverrides,
+                  },
                 },
               },
             },
@@ -358,7 +486,7 @@ export function TanStackStartRsbuildPluginCore(
 
           const serverEnvConfig = {
             source: {
-              entry: { server: ENTRY_POINTS.server },
+              entry: { server: resolvedServerEntry },
               alias: entryAliasConfiguration,
               define: defineValues,
             },
@@ -370,6 +498,17 @@ export function TanStackStartRsbuildPluginCore(
             },
             tools: {
               rspack: {
+                experiments: {
+                  outputModule: true,
+                },
+                output: {
+                  module: true,
+                  chunkFormat: 'module',
+                  chunkLoading: 'import',
+                  library: {
+                    type: 'module',
+                  },
+                },
                 plugins: [
                   routerPlugins.generatorPlugin,
                   routerPlugins.serverCodeSplitter,
@@ -377,6 +516,10 @@ export function TanStackStartRsbuildPluginCore(
                   createServerFnResolverPlugin({
                     environmentName: VITE_ENVIRONMENT_NAMES.server,
                     providerEnvName: serverFnProviderEnv,
+                    serverOutputDir,
+                  }),
+                  createServerFnManifestRspackPlugin({
+                    serverOutputDir,
                   }),
                   createInjectedHeadScriptsPlugin(),
                   createStartManifestVirtualModulePlugin({
@@ -384,7 +527,13 @@ export function TanStackStartRsbuildPluginCore(
                   }),
                 ],
                 module: {
-                  rules: [loaderRule('server', VITE_ENVIRONMENT_NAMES.server)],
+                  rules: [
+                    loaderRule(
+                      'server',
+                      VITE_ENVIRONMENT_NAMES.server,
+                      serverFnManifestTempPath,
+                    ),
+                  ],
                 },
                 resolve: {
                   alias: entryAliasConfiguration,
@@ -461,31 +610,63 @@ export function TanStackStartRsbuildPluginCore(
           }
 
           if (!ssrIsProvider) {
+            const providerOutputDir = getOutputDirectory(
+              root,
+              config,
+              serverFnProviderEnv,
+              serverFnProviderEnv,
+            )
+            const providerManifestTempPath = path.join(
+              providerOutputDir,
+              SERVER_FN_MANIFEST_TEMP_FILE,
+            )
             nextConfig.environments = {
               ...nextConfig.environments,
               [serverFnProviderEnv]: mergeEnvConfig(
                 config.environments?.[serverFnProviderEnv],
                 {
                   source: {
-                    entry: { provider: ENTRY_POINTS.server },
+                    entry: { provider: resolvedServerEntry },
                     alias: entryAliasConfiguration,
                     define: defineValues,
                   },
                   output: {
                     target: 'node',
+                    distPath: {
+                      root: path.relative(root, providerOutputDir),
+                    },
                   },
                   tools: {
                     rspack: {
+                      experiments: {
+                        outputModule: true,
+                      },
+                      output: {
+                        module: true,
+                        chunkFormat: 'module',
+                        chunkLoading: 'import',
+                        library: {
+                          type: 'module',
+                        },
+                      },
                       plugins: [
                         createServerFnResolverPlugin({
                           environmentName: serverFnProviderEnv,
                           providerEnvName: serverFnProviderEnv,
+                          serverOutputDir: providerOutputDir,
+                        }),
+                        createServerFnManifestRspackPlugin({
+                          serverOutputDir: providerOutputDir,
                         }),
                         createInjectedHeadScriptsPlugin(),
                       ],
                       module: {
                         rules: [
-                          loaderRule('server', serverFnProviderEnv),
+                          loaderRule(
+                            'server',
+                            serverFnProviderEnv,
+                            providerManifestTempPath,
+                          ),
                         ],
                       },
                       resolve: {
@@ -556,6 +737,20 @@ export function TanStackStartRsbuildPluginCore(
             clientOutputDir,
             serverOutputDir,
           })
+              if (routeTreeGeneratedPath && routeTreeModuleDeclaration) {
+                if (fs.existsSync(routeTreeGeneratedPath)) {
+                  const existingTree = fs.readFileSync(
+                    routeTreeGeneratedPath,
+                    'utf-8',
+                  )
+                  if (!existingTree.includes(routeTreeModuleDeclaration)) {
+                    fs.appendFileSync(
+                      routeTreeGeneratedPath,
+                      `\n\n${routeTreeModuleDeclaration}\n`,
+                    )
+                  }
+                }
+              }
         })
       },
     },

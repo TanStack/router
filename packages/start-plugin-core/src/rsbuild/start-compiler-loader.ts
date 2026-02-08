@@ -1,4 +1,5 @@
-import { promises as fsp } from 'node:fs'
+import fs, { promises as fsp } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import {
   KindDetectionPatterns,
@@ -21,16 +22,22 @@ type LoaderOptions = {
   framework: CompileStartFrameworkOptions
   providerEnvName: string
   generateFunctionId?: GenerateFunctionIdFnOptional
+  manifestPath?: string
 }
 
 const compilers = new Map<string, StartCompiler>()
 const serverFnsById: Record<string, ServerFn> = {}
+const require = createRequire(import.meta.url)
+const appendServerFnsToManifest = (
+  manifestPath: string,
+  data: Record<string, ServerFn>,
+) => {
+  if (!manifestPath || Object.keys(data).length === 0) return
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
+  fs.appendFileSync(manifestPath, `${JSON.stringify(data)}\n`)
+}
 
 export const getServerFnsById = () => serverFnsById
-
-const onServerFnsById = (d: Record<string, ServerFn>) => {
-  Object.assign(serverFnsById, d)
-}
 
 // Derive transform code filter from KindDetectionPatterns (single source of truth)
 function getTransformCodeFilterForEnv(env: 'client' | 'server'): Array<RegExp> {
@@ -112,17 +119,36 @@ async function resolveId(
   const baseContext = importer
     ? path.dirname(cleanId(importer))
     : loaderContext.context
+  const resolveContext =
+    source.startsWith('.') || source.startsWith('/')
+      ? baseContext
+      : loaderContext.rootContext || baseContext
 
   return new Promise((resolve) => {
-    loaderContext.resolve(
-      baseContext,
+    const resolver =
+      loaderContext.getResolve?.({
+        conditionNames: ['import', 'module', 'default'],
+      }) ?? loaderContext.resolve
+
+    resolver(
+      resolveContext,
       source,
       (err: Error | null, result?: string) => {
-      if (err || !result) {
-        resolve(null)
-        return
-      }
-      resolve(cleanId(result))
+        if (!err && result) {
+          resolve(cleanId(result))
+          return
+        }
+        try {
+          const resolved = require.resolve(source, {
+            paths: [
+              baseContext,
+              loaderContext.rootContext || loaderContext.context,
+            ].filter(Boolean),
+          })
+          resolve(cleanId(resolved))
+        } catch {
+          resolve(null)
+        }
       },
     )
   })
@@ -162,8 +188,10 @@ export default function startCompilerLoader(
   const root = options.root || process.cwd()
   const framework = options.framework
   const providerEnvName = options.providerEnvName
+  const manifestPath = options.manifestPath
 
-  if (!shouldTransformCode(code, env)) {
+  const shouldTransform = shouldTransformCode(code, env)
+  if (!shouldTransform) {
     callback(null, code, map)
     return
   }
@@ -174,6 +202,14 @@ export default function startCompilerLoader(
       this.mode === 'production' || this._compiler?.options?.mode === 'production'
         ? 'build'
         : 'dev'
+    const shouldPersistManifest = Boolean(manifestPath) && mode === 'build'
+    const onServerFnsById = (d: Record<string, ServerFn>) => {
+      Object.assign(serverFnsById, d)
+      if (shouldPersistManifest && manifestPath) {
+        appendServerFnsToManifest(manifestPath, d)
+      }
+    }
+
     compiler = new StartCompiler({
       env,
       envName,
@@ -194,10 +230,17 @@ export default function startCompilerLoader(
   }
 
   const detectedKinds = detectKindsInCode(code, env)
-
+  const resourceQuery =
+    typeof this.resourceQuery === 'string' ? this.resourceQuery : ''
+  const baseResource =
+    typeof this.resource === 'string' ? this.resource : this.resourcePath
+  const resourceId =
+    resourceQuery && !baseResource.includes(resourceQuery)
+      ? `${baseResource}${resourceQuery}`
+      : baseResource
   compiler
     .compile({
-      id: cleanId(this.resourcePath),
+      id: resourceId,
       code,
       detectedKinds,
     })
