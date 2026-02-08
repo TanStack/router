@@ -4,6 +4,7 @@ import type {
   AllLoaderData,
   AllParams,
   FullSearchSchema,
+  FullStateSchema,
   ParseRoute,
   RouteById,
   RouteIds,
@@ -120,6 +121,7 @@ export interface RouteMatch<
   out TFullPath,
   out TAllParams,
   out TFullSearchSchema,
+  out TFullStateSchema,
   out TLoaderData,
   out TAllContext,
   out TLoaderDeps,
@@ -136,6 +138,7 @@ export interface RouteMatch<
   error: unknown
   paramsError: unknown
   searchError: unknown
+  stateError: unknown
   updatedAt: number
   _nonReactive: {
     /** @internal */
@@ -159,6 +162,8 @@ export interface RouteMatch<
   context: TAllContext
   search: TFullSearchSchema
   _strictSearch: TFullSearchSchema
+  state: TFullStateSchema
+  _strictState: TFullStateSchema
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
@@ -212,6 +217,7 @@ export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
   TRoute['types']['fullPath'],
   TRoute['types']['allParams'],
   TRoute['types']['fullSearchSchema'],
+  TRoute['types']['fullStateSchema'],
   TRoute['types']['loaderData'],
   TRoute['types']['allContext'],
   TRoute['types']['loaderDeps']
@@ -231,6 +237,9 @@ export type MakeRouteMatch<
     ? FullSearchSchema<TRouteTree>
     : RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
   TStrict extends false
+    ? FullStateSchema<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['fullStateSchema'],
+  TStrict extends false
     ? AllLoaderData<TRouteTree>
     : RouteById<TRouteTree, TRouteId>['types']['loaderData'],
   TStrict extends false
@@ -239,7 +248,7 @@ export type MakeRouteMatch<
   RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
 >
 
-export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
+export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any, any>
 
 export type MakeRouteMatchUnion<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -250,6 +259,7 @@ export type MakeRouteMatchUnion<
       TRoute['fullPath'],
       TRoute['types']['allParams'],
       TRoute['types']['fullSearchSchema'],
+      TRoute['types']['fullStateSchema'],
       TRoute['types']['loaderData'],
       TRoute['types']['allContext'],
       TRoute['types']['loaderDeps']

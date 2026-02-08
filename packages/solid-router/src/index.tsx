@@ -40,6 +40,7 @@ export type {
   ResolveOptionalParams,
   ResolveRequiredParams,
   SearchSchemaInput,
+  StateSchemaInput,
   AnyContext,
   RouteContext,
   PreloadableObj,
@@ -94,6 +95,8 @@ export type {
   ResolveValidatorOutputFn,
   ResolveSearchValidatorInput,
   ResolveSearchValidatorInputFn,
+  ResolveStateValidatorInput,
+  ResolveStateValidatorInputFn,
   Validator,
   ValidatorAdapter,
   ValidatorObj,
@@ -299,6 +302,7 @@ export { useNavigate, Navigate } from './useNavigate'
 
 export { useParams } from './useParams'
 export { useSearch } from './useSearch'
+export { useHistoryState } from './useHistoryState'
 
 export {
   getRouterContext, // SSR
@@ -328,6 +332,7 @@ export type {
   ValidateToPath,
   ValidateSearch,
   ValidateParams,
+  ValidateHistoryState,
   InferFrom,
   InferTo,
   InferMaskTo,
