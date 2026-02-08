@@ -5,9 +5,12 @@ import {
   transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
+import { FastResponse } from 'srvx'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { ReadableStream } from 'node:stream/web'
 import type { ReactNode } from 'react'
+
+globalThis.Response = FastResponse
 
 export const renderRouterToStream = async ({
   request,

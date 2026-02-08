@@ -3,9 +3,12 @@ import * as Vue from 'vue'
 import { pipeToWebWritable, renderToString } from 'vue/server-renderer'
 import { isbot } from 'isbot'
 import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
+import { FastResponse } from 'srvx'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
 import type { ReadableStream } from 'node:stream/web'
+
+globalThis.Response = FastResponse
 
 function prependDoctype(
   readable: globalThis.ReadableStream,
