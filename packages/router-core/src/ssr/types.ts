@@ -5,6 +5,8 @@ export interface DehydratedMatch {
   i: MakeRouteMatch['id']
   b?: MakeRouteMatch['__beforeLoadContext']
   l?: MakeRouteMatch['loaderData']
+  /** route context — only present when serialize is true for context */
+  m?: MakeRouteMatch['__routeContext']
   e?: MakeRouteMatch['error']
   u: MakeRouteMatch['updatedAt']
   s: MakeRouteMatch['status']

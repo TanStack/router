@@ -2,6 +2,7 @@ import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
 import invariant from 'tiny-invariant'
 import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
+import { builtinDefaultSerialize, shouldSerialize } from '../lifecycle'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
@@ -34,25 +35,66 @@ const TSR_PREFIX = GLOBAL_TSR + '.router='
 const P_PREFIX = GLOBAL_TSR + '.p(()=>'
 const P_SUFFIX = ')'
 
-export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
+export function dehydrateMatch(
+  match: AnyRouteMatch,
+  router: AnyRouter,
+): DehydratedMatch {
+  const route = router.looseRoutesById[match.routeId]!
+  const defaults = router.options.defaultSerialize
+
   const dehydratedMatch: DehydratedMatch = {
     i: match.id,
     u: match.updatedAt,
     s: match.status,
   }
 
-  const properties = [
-    ['__beforeLoadContext', 'b'],
-    ['loaderData', 'l'],
-    ['error', 'e'],
-    ['ssr', 'ssr'],
-  ] as const
-
-  for (const [key, shorthand] of properties) {
-    if (match[key] !== undefined) {
-      dehydratedMatch[shorthand] = match[key]
-    }
+  // Conditionally include beforeLoad context
+  if (
+    match.__beforeLoadContext !== undefined &&
+    route.options.beforeLoad &&
+    shouldSerialize(
+      route.options.beforeLoad,
+      defaults?.beforeLoad,
+      builtinDefaultSerialize.beforeLoad,
+    )
+  ) {
+    dehydratedMatch.b = match.__beforeLoadContext
   }
+
+  // Conditionally include loader data
+  if (
+    match.loaderData !== undefined &&
+    route.options.loader &&
+    shouldSerialize(
+      route.options.loader,
+      defaults?.loader,
+      builtinDefaultSerialize.loader,
+    )
+  ) {
+    dehydratedMatch.l = match.loaderData
+  }
+
+  // Conditionally include route context
+  if (
+    match.__routeContext !== undefined &&
+    route.options.context &&
+    shouldSerialize(
+      route.options.context,
+      defaults?.context,
+      builtinDefaultSerialize.context,
+    )
+  ) {
+    dehydratedMatch.m = match.__routeContext
+  }
+
+  // Always include error and ssr if present
+  if (match.error !== undefined) {
+    dehydratedMatch.e = match.error
+  }
+  if (match.ssr !== undefined) {
+    dehydratedMatch.ssr = match.ssr
+  }
+
   return dehydratedMatch
 }
 
@@ -203,7 +245,7 @@ export function attachRouterServerSsrUtils({
         // In SPA mode we only want to dehydrate the root match
         matchesToDehydrate = matchesToDehydrate.slice(0, 1)
       }
-      const matches = matchesToDehydrate.map(dehydrateMatch)
+      const matches = matchesToDehydrate.map((m) => dehydrateMatch(m, router))
 
       let manifestToDehydrate: Manifest | undefined = undefined
       // For currently matched routes, send full manifest (preloads + assets)

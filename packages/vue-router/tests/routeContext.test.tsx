@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/vue'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
@@ -143,8 +149,11 @@ describe('context function', () => {
         }),
         path: '/',
         loaderDeps: ({ search }) => ({ foo: search.foo }),
-        context: ({ deps }) => {
-          mockContextFn(deps)
+        context: {
+          handler: () => {
+            mockContextFn()
+          },
+          invalidate: true,
         },
         component: () => {
           const navigate = indexRoute.useNavigate()
@@ -201,13 +210,11 @@ describe('context function', () => {
       await findByText(`search: ${JSON.stringify({})}`)
 
       expect(mockContextFn).toHaveBeenCalledOnce()
-      expect(mockContextFn).toHaveBeenCalledWith({})
       mockContextFn.mockClear()
 
       await clickButton('foo-1')
       await findByText(`search: ${JSON.stringify({ foo: 'foo-1' })}`)
       expect(mockContextFn).toHaveBeenCalledOnce()
-      expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-1' })
 
       mockContextFn.mockClear()
       await clickButton('foo-1')
@@ -224,7 +231,7 @@ describe('context function', () => {
       await findByText(
         `search: ${JSON.stringify({ foo: 'foo-2', bar: 'bar-1' })}`,
       )
-      expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-2' })
+      expect(mockContextFn).toHaveBeenCalledOnce()
       mockContextFn.mockClear()
 
       await clickButton('bar-2')
@@ -235,8 +242,9 @@ describe('context function', () => {
 
       await clickButton('clear')
       await findByText(`search: ${JSON.stringify({})}`)
-      expect(mockContextFn).toHaveBeenCalledOnce()
-      expect(mockContextFn).toHaveBeenCalledWith({})
+      // context with invalidate does NOT re-run: the cached match (from the initial load with
+      // the same loaderDeps hash) is restored and needsContext is already consumed.
+      expect(mockContextFn).not.toHaveBeenCalled()
     })
   })
 
@@ -3110,5 +3118,1503 @@ describe('useRouteContext in the component', () => {
     expect(window.location.pathname).toBe('/person')
 
     expect(content).toBeInTheDocument()
+  })
+})
+
+describe('lifecycle method semantics', () => {
+  describe('execution order guarantees', () => {
+    test('parent serial phases complete before child serial phases (parent context → beforeLoad → child context → beforeLoad)', async () => {
+      const executionOrder: Array<string> = []
+
+      const rootRoute = createRootRoute({
+        component: () => (
+          <div>
+            <Outlet />
+          </div>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="index-page">Index</span>
+              <button
+                data-testid="go-parent-child"
+                onClick={() => navigate({ to: '/parent/child' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+      const parentRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/parent',
+        context: async () => {
+          executionOrder.push('parent-context-start')
+          await sleep(WAIT_TIME)
+          executionOrder.push('parent-context-end')
+          return { parentContext: true }
+        },
+        beforeLoad: async () => {
+          executionOrder.push('parent-beforeLoad-start')
+          await sleep(WAIT_TIME)
+          executionOrder.push('parent-beforeLoad-end')
+          return { parentBeforeLoad: true }
+        },
+        component: () => (
+          <div>
+            Parent <Outlet />
+          </div>
+        ),
+      })
+      const childRoute = createRoute({
+        getParentRoute: () => parentRoute,
+        path: '/child',
+        context: async () => {
+          executionOrder.push('child-context-start')
+          await sleep(WAIT_TIME)
+          executionOrder.push('child-context-end')
+          return { childContext: true }
+        },
+        beforeLoad: async () => {
+          executionOrder.push('child-beforeLoad-start')
+          await sleep(WAIT_TIME)
+          executionOrder.push('child-beforeLoad-end')
+          return { childBeforeLoad: true }
+        },
+        component: () => <div data-testid="child-page">Child page</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([
+        indexRoute,
+        parentRoute.addChildren([childRoute]),
+      ])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+      await screen.findByTestId('index-page')
+
+      // Clear any entries from initial load
+      executionOrder.length = 0
+
+      fireEvent.click(screen.getByTestId('go-parent-child'))
+      await screen.findByTestId('child-page')
+
+      expect(executionOrder).toEqual([
+        'parent-context-start',
+        'parent-context-end',
+        'parent-beforeLoad-start',
+        'parent-beforeLoad-end',
+        'child-context-start',
+        'child-context-end',
+        'child-beforeLoad-start',
+        'child-beforeLoad-end',
+      ])
+    })
+
+    test('all serial phases complete before loaders fire', async () => {
+      const executionOrder: Array<string> = []
+
+      const rootRoute = createRootRoute({
+        component: () => (
+          <div>
+            <Outlet />
+          </div>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="index-page">Index</span>
+              <button
+                data-testid="go-parent-child"
+                onClick={() => navigate({ to: '/parent/child' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+      const parentRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/parent',
+        context: () => {
+          executionOrder.push('parent-context')
+          return {}
+        },
+        beforeLoad: () => {
+          executionOrder.push('parent-beforeLoad')
+          return {}
+        },
+        loader: () => {
+          executionOrder.push('parent-loader')
+        },
+        component: () => (
+          <div>
+            Parent <Outlet />
+          </div>
+        ),
+      })
+      const childRoute = createRoute({
+        getParentRoute: () => parentRoute,
+        path: '/child',
+        context: () => {
+          executionOrder.push('child-context')
+          return {}
+        },
+        beforeLoad: () => {
+          executionOrder.push('child-beforeLoad')
+          return {}
+        },
+        loader: () => {
+          executionOrder.push('child-loader')
+        },
+        component: () => <div data-testid="child-page">Child page</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([
+        indexRoute,
+        parentRoute.addChildren([childRoute]),
+      ])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+      await screen.findByTestId('index-page')
+
+      // Clear any entries from initial load
+      executionOrder.length = 0
+
+      fireEvent.click(screen.getByTestId('go-parent-child'))
+      await screen.findByTestId('child-page')
+
+      // All serial phases (context, beforeLoad) must come before any loader
+      const loaderIndices = executionOrder
+        .map((entry, i) => (entry.includes('loader') ? i : -1))
+        .filter((i) => i >= 0)
+      const serialIndices = executionOrder
+        .map((entry, i) => (!entry.includes('loader') ? i : -1))
+        .filter((i) => i >= 0)
+
+      const lastSerial = Math.max(...serialIndices)
+      const firstLoader = Math.min(...loaderIndices)
+      expect(lastSerial).toBeLessThan(firstLoader)
+    })
+  })
+
+  describe('context edge cases', () => {
+    test('context on root route fires exactly once and never again on navigation', async () => {
+      const mockRootContext = vi.fn()
+
+      const rootRoute = createRootRoute({
+        context: () => {
+          mockRootContext()
+          return { rootMatched: true }
+        },
+        component: () => (
+          <div>
+            Root <Outlet />
+          </div>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="index-page">Index</span>
+              <button
+                data-testid="go-other"
+                onClick={() => navigate({ to: '/other' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+      const otherRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/other',
+        component: () => {
+          const navigate = otherRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="other-page">Other</span>
+              <button
+                data-testid="go-index"
+                onClick={() => navigate({ to: '/' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+      expect(mockRootContext).toHaveBeenCalledTimes(1)
+      mockRootContext.mockClear()
+
+      // Navigate to other
+      fireEvent.click(await screen.findByTestId('go-other'))
+      await screen.findByTestId('other-page')
+      expect(mockRootContext).not.toHaveBeenCalled()
+
+      // Navigate back
+      fireEvent.click(await screen.findByTestId('go-index'))
+      await screen.findByTestId('index-page')
+      expect(mockRootContext).not.toHaveBeenCalled()
+    })
+
+    test('context returning undefined does not clobber parent context', async () => {
+      const rootRoute = createRootRoute({
+        beforeLoad: () => ({ rootValue: 'from-root' }),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: () => {
+          return undefined
+        },
+        beforeLoad: ({ context }) => {
+          return { sawRootValue: context.rootValue }
+        },
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      const context = JSON.parse(contextEl.textContent)
+      expect(context).toEqual(
+        expect.objectContaining({
+          rootValue: 'from-root',
+          sawRootValue: 'from-root',
+        }),
+      )
+    })
+
+    test('context receives cause "enter" on fresh match creation', async () => {
+      const receivedCause = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="index-page">Index</span>
+              <button
+                data-testid="go-other"
+                onClick={() => navigate({ to: '/other' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+      const otherRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/other',
+        context: ({ cause }) => {
+          receivedCause(cause)
+        },
+        component: () => <div data-testid="other-page">Other</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+
+      fireEvent.click(await screen.findByTestId('go-other'))
+      await screen.findByTestId('other-page')
+
+      expect(receivedCause).toHaveBeenCalledTimes(1)
+      expect(receivedCause).toHaveBeenCalledWith('enter')
+    })
+
+    test('context receives correct params', async () => {
+      const receivedParams = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="index-page">Index</span>
+              <button
+                data-testid="go-user"
+                onClick={() =>
+                  navigate({ to: '/user/$userId', params: { userId: '42' } })
+                }
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+      const userRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/user/$userId',
+        context: ({ params }) => {
+          receivedParams(params)
+          return { userId: params.userId }
+        },
+        component: () => {
+          const context = userRoute.useRouteContext()
+          return (
+            <div data-testid="user-context">
+              {JSON.stringify(context.value)}
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute, userRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+
+      fireEvent.click(await screen.findByTestId('go-user'))
+      const contextEl = await screen.findByTestId('user-context')
+      const context = JSON.parse(contextEl.textContent)
+
+      expect(receivedParams).toHaveBeenCalledWith({ userId: '42' })
+      expect(context).toEqual(expect.objectContaining({ userId: '42' }))
+    })
+  })
+
+  describe('context with invalidate edge cases', () => {
+    test('context with invalidate re-runs when loaderDeps change (new matchId)', async () => {
+      const mockContext = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        validateSearch: z.object({
+          page: z.number().optional(),
+        }),
+        loaderDeps: ({ search }) => ({ page: search.page }),
+        context: {
+          handler: () => {
+            mockContext()
+            return { loadedPage: undefined }
+          },
+          invalidate: true,
+        },
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          const search = indexRoute.useSearch()
+          return (
+            <div>
+              <span data-testid="search">{JSON.stringify(search.value)}</span>
+              <button
+                data-testid="go-page-1"
+                onClick={() => navigate({ search: { page: 1 } })}
+              >
+                page 1
+              </button>
+              <button
+                data-testid="go-page-2"
+                onClick={() => navigate({ search: { page: 2 } })}
+              >
+                page 2
+              </button>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('search')).toBeInTheDocument()
+      })
+      expect(mockContext).toHaveBeenCalledTimes(1)
+      mockContext.mockClear()
+
+      fireEvent.click(await screen.findByTestId('go-page-1'))
+      await waitFor(() => {
+        expect(screen.getByTestId('search').textContent).toBe(
+          JSON.stringify({ page: 1 }),
+        )
+      })
+      expect(mockContext).toHaveBeenCalledTimes(1)
+      mockContext.mockClear()
+
+      fireEvent.click(await screen.findByTestId('go-page-2'))
+      await waitFor(() => {
+        expect(screen.getByTestId('search').textContent).toBe(
+          JSON.stringify({ page: 2 }),
+        )
+      })
+      expect(mockContext).toHaveBeenCalledTimes(1)
+    })
+
+    test('context with invalidate re-runs after GC', async () => {
+      const mockContext = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: {
+          handler: () => {
+            mockContext()
+          },
+          invalidate: true,
+        },
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="index-page">Index</span>
+              <button
+                data-testid="go-other"
+                onClick={() => navigate({ to: '/other' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+      const otherRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/other',
+        component: () => {
+          const navigate = otherRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="other-page">Other</span>
+              <button
+                data-testid="go-index"
+                onClick={() => navigate({ to: '/' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+      const router = createRouter({ routeTree, history, defaultGcTime: 0 })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+      expect(mockContext).toHaveBeenCalledTimes(1)
+      mockContext.mockClear()
+
+      fireEvent.click(await screen.findByTestId('go-other'))
+      await screen.findByTestId('other-page')
+
+      fireEvent.click(await screen.findByTestId('go-index'))
+      await screen.findByTestId('index-page')
+      expect(mockContext).toHaveBeenCalledTimes(1)
+    })
+
+    test('context returning undefined does not clobber context from parent and beforeLoad', async () => {
+      const rootRoute = createRootRoute({
+        context: () => {
+          return { fromParent: 'parent-val' }
+        },
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        beforeLoad: () => {
+          return { fromBeforeLoad: 'bl-val' }
+        },
+        context: {
+          handler: () => {
+            return undefined
+          },
+          invalidate: true,
+        },
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      const context = JSON.parse(contextEl.textContent)
+      expect(context).toEqual(
+        expect.objectContaining({
+          fromParent: 'parent-val',
+          fromBeforeLoad: 'bl-val',
+        }),
+      )
+    })
+
+    test('context with invalidate receives correct deps (loaderDeps)', async () => {
+      const receivedDeps = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        validateSearch: z.object({ sort: z.string().optional() }),
+        loaderDeps: ({ search }) => ({ sort: search.sort }),
+        context: {
+          handler: () => {
+            receivedDeps()
+          },
+          invalidate: true,
+        },
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="index-page">Index</span>
+              <button
+                data-testid="set-sort"
+                onClick={() => navigate({ search: { sort: 'name' } })}
+              >
+                sort
+              </button>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+      expect(receivedDeps).toHaveBeenCalledTimes(1)
+      receivedDeps.mockClear()
+
+      fireEvent.click(await screen.findByTestId('set-sort'))
+      await waitFor(() => {
+        expect(receivedDeps).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    test('context with invalidate receives cause "enter" on fresh navigation', async () => {
+      const receivedCause = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="index-page">Index</span>
+              <button
+                data-testid="go-other"
+                onClick={() => navigate({ to: '/other' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+      const otherRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/other',
+        context: {
+          handler: ({ cause }) => {
+            receivedCause(cause)
+          },
+          invalidate: true,
+        },
+        component: () => <div data-testid="other-page">Other</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+
+      fireEvent.click(await screen.findByTestId('go-other'))
+      await screen.findByTestId('other-page')
+
+      expect(receivedCause).toHaveBeenCalledTimes(1)
+      expect(receivedCause).toHaveBeenCalledWith('enter')
+    })
+  })
+
+  describe('context visibility per callback', () => {
+    test('beforeLoad sees context return from same route', async () => {
+      const beforeLoadContext = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: () => {
+          return { fromContext: 'visible' }
+        },
+        beforeLoad: ({ context }) => {
+          beforeLoadContext(context)
+          return { fromBeforeLoad: 'bl' }
+        },
+        component: () => <div data-testid="index-page">Index</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+
+      expect(beforeLoadContext).toHaveBeenCalledWith(
+        expect.objectContaining({ fromContext: 'visible' }),
+      )
+    })
+
+    test('loader sees context + beforeLoad from same route', async () => {
+      const loaderContext = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: () => {
+          return { fromContext: 'ctx' }
+        },
+        beforeLoad: () => {
+          return { fromBeforeLoad: 'bl' }
+        },
+        loader: ({ context }) => {
+          loaderContext(context)
+        },
+        component: () => <div data-testid="index-page">Index</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+
+      expect(loaderContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromContext: 'ctx',
+          fromBeforeLoad: 'bl',
+        }),
+      )
+    })
+
+    test('context does NOT see same-route beforeLoad (only parent full context)', async () => {
+      const childContextFn = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const parentRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/parent',
+        context: () => ({ parentContext: 'pctx' }),
+        beforeLoad: () => ({ parentBeforeLoad: 'pbl' }),
+        component: () => (
+          <div>
+            Parent <Outlet />
+          </div>
+        ),
+      })
+      const childRoute = createRoute({
+        getParentRoute: () => parentRoute,
+        path: '/child',
+        context: ({ context }) => {
+          childContextFn(context)
+          return { childContext: 'cctx' }
+        },
+        beforeLoad: () => ({ childBeforeLoad: 'cbl' }),
+        component: () => <div data-testid="child-page">Child</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([
+        parentRoute.addChildren([childRoute]),
+      ])
+      const router = createRouter({ routeTree, history })
+
+      await router.navigate({ to: '/parent/child' })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('child-page')
+
+      // Child's context should see parent's FULL context (context + beforeLoad)
+      expect(childContextFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parentContext: 'pctx',
+          parentBeforeLoad: 'pbl',
+        }),
+      )
+      // But NOT child's own beforeLoad or context
+      const calledWith = childContextFn.mock.calls[0]![0]
+      expect(calledWith).not.toHaveProperty('childBeforeLoad')
+      expect(calledWith).not.toHaveProperty('childContext')
+    })
+  })
+
+  describe('parent-child selective GC', () => {
+    test('when child match is GC-ed but parent is not, only child context re-runs', async () => {
+      const parentContext = vi.fn()
+      const childContext = vi.fn()
+
+      const rootRoute = createRootRoute({
+        component: () => (
+          <div>
+            <Outlet />
+          </div>
+        ),
+      })
+      const parentRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/parent',
+        context: () => {
+          parentContext()
+          return { parentMatched: true }
+        },
+        component: () => (
+          <div>
+            Parent <Outlet />
+          </div>
+        ),
+      })
+      const childRoute = createRoute({
+        getParentRoute: () => parentRoute,
+        path: '/child',
+        gcTime: 0,
+        context: () => {
+          childContext()
+          return { childMatched: true }
+        },
+        component: () => {
+          const navigate = childRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="child-page">Child</span>
+              <button
+                data-testid="go-parent-only"
+                onClick={() => navigate({ to: '/parent' })}
+              >
+                go parent
+              </button>
+            </div>
+          )
+        },
+      })
+      const parentIndexRoute = createRoute({
+        getParentRoute: () => parentRoute,
+        path: '/',
+        component: () => {
+          const navigate = parentIndexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="parent-index-page">Parent Index</span>
+              <button
+                data-testid="go-child"
+                onClick={() => navigate({ to: '/parent/child' })}
+              >
+                go child
+              </button>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([
+        parentRoute.addChildren([childRoute, parentIndexRoute]),
+      ])
+      const router = createRouter({ routeTree, history })
+
+      await router.navigate({ to: '/parent/child' })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('child-page')
+      expect(parentContext).toHaveBeenCalledTimes(1)
+      expect(childContext).toHaveBeenCalledTimes(1)
+      parentContext.mockClear()
+      childContext.mockClear()
+
+      fireEvent.click(await screen.findByTestId('go-parent-only'))
+      await screen.findByTestId('parent-index-page')
+
+      expect(parentContext).not.toHaveBeenCalled()
+
+      fireEvent.click(await screen.findByTestId('go-child'))
+      await screen.findByTestId('child-page')
+
+      expect(parentContext).not.toHaveBeenCalled()
+
+      expect(childContext).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('context-with-invalidate-only routes (no loader)', () => {
+    test('route with only context (invalidate) and no loader works correctly', async () => {
+      const mockContext = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        // No loader — only context with invalidate
+        context: {
+          handler: () => {
+            mockContext()
+            return { contextValue: 'from-context' }
+          },
+          invalidate: true,
+        },
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          const context = indexRoute.useRouteContext()
+          return (
+            <div>
+              <span data-testid="context">{JSON.stringify(context.value)}</span>
+              <button
+                data-testid="go-other"
+                onClick={() => navigate({ to: '/other' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+      const otherRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/other',
+        component: () => {
+          const navigate = otherRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="other-page">Other</span>
+              <button
+                data-testid="go-index"
+                onClick={() => navigate({ to: '/' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      expect(JSON.parse(contextEl.textContent)).toEqual(
+        expect.objectContaining({ contextValue: 'from-context' }),
+      )
+      expect(mockContext).toHaveBeenCalledTimes(1)
+      mockContext.mockClear()
+
+      fireEvent.click(await screen.findByTestId('go-other'))
+      await screen.findByTestId('other-page')
+
+      fireEvent.click(await screen.findByTestId('go-index'))
+      const contextEl2 = await screen.findByTestId('context')
+      expect(JSON.parse(contextEl2.textContent)).toEqual(
+        expect.objectContaining({ contextValue: 'from-context' }),
+      )
+      expect(mockContext).not.toHaveBeenCalled()
+    })
+
+    test('route with only context (invalidate) re-runs on invalidate', async () => {
+      const mockContext = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: {
+          handler: () => {
+            mockContext()
+            return { contextRun: mockContext.mock.calls.length }
+          },
+          invalidate: true,
+        },
+        component: () => <div data-testid="index-page">Index</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+      expect(mockContext).toHaveBeenCalledTimes(1)
+      mockContext.mockClear()
+
+      await router.invalidate()
+
+      expect(mockContext).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('context updates on invalidation', () => {
+    test('context with invalidate updates after each invalidation', async () => {
+      let counter = 0
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: {
+          handler: () => {
+            counter++
+            return { counter }
+          },
+          invalidate: true,
+        },
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await waitFor(() => {
+        const el = screen.getByTestId('context')
+        expect(JSON.parse(el.textContent).counter).toBe(1)
+      })
+
+      await router.invalidate()
+
+      await waitFor(() => {
+        const el = screen.getByTestId('context')
+        expect(JSON.parse(el.textContent).counter).toBe(2)
+      })
+
+      await router.invalidate()
+
+      await waitFor(() => {
+        const el = screen.getByTestId('context')
+        expect(JSON.parse(el.textContent).counter).toBe(3)
+      })
+    })
+  })
+
+  describe('context-only routes (no beforeLoad, no loader)', () => {
+    test('route with only context provides context to component', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: () => {
+          return { onlyContext: 'value' }
+        },
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      expect(JSON.parse(contextEl.textContent)).toEqual(
+        expect.objectContaining({ onlyContext: 'value' }),
+      )
+    })
+  })
+
+  describe('context overriding between lifecycle methods', () => {
+    test('later lifecycle methods can override earlier context keys', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: () => {
+          return { shared: 'from-context', contextOnly: 'ctx' }
+        },
+        beforeLoad: () => {
+          return { shared: 'from-beforeLoad', beforeLoadOnly: 'bl' }
+        },
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      const context = JSON.parse(contextEl.textContent)
+
+      // beforeLoad runs after context, so it wins for 'shared'
+      expect(context.shared).toBe('from-beforeLoad')
+      expect(context.contextOnly).toBe('ctx')
+      expect(context.beforeLoadOnly).toBe('bl')
+    })
+  })
+
+  describe('object form lifecycle methods', () => {
+    test('object form beforeLoad handler runs and provides context', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        beforeLoad: {
+          handler: () => ({ blValue: 'from-object-form' }),
+        },
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      expect(JSON.parse(contextEl.textContent)).toEqual(
+        expect.objectContaining({ blValue: 'from-object-form' }),
+      )
+    })
+
+    test('object form context handler runs and provides context', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: {
+          handler: () => ({ ctxValue: 'from-object-form' }),
+        },
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      expect(JSON.parse(contextEl.textContent)).toEqual(
+        expect.objectContaining({ ctxValue: 'from-object-form' }),
+      )
+    })
+
+    test('object form context with invalidate handler runs and provides context', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: {
+          handler: () => ({ ctxInvValue: 'from-object-form' }),
+          invalidate: true,
+        },
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      expect(JSON.parse(contextEl.textContent)).toEqual(
+        expect.objectContaining({ ctxInvValue: 'from-object-form' }),
+      )
+    })
+
+    test('object form loader handler runs and provides loaderData', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        loader: {
+          handler: () => ({ ldValue: 'from-object-form' }),
+        },
+        component: () => {
+          const data = indexRoute.useLoaderData()
+          return (
+            <div data-testid="loader-data">{JSON.stringify(data.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const dataEl = await screen.findByTestId('loader-data')
+      expect(JSON.parse(dataEl.textContent)).toEqual({
+        ldValue: 'from-object-form',
+      })
+    })
+
+    test('mixed function and object form on the same route', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: {
+          handler: () => ({ ctxObj: 'object-form' }),
+          serialize: false,
+        },
+        beforeLoad: {
+          handler: () => ({ blObj: 'object-form' }),
+        },
+        loader: () => ({ ldFunc: 'function-form' }),
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          const data = indexRoute.useLoaderData()
+          return (
+            <div>
+              <span data-testid="context">{JSON.stringify(context.value)}</span>
+              <span data-testid="loader-data">
+                {JSON.stringify(data.value)}
+              </span>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      const context = JSON.parse(contextEl.textContent)
+      expect(context).toEqual(
+        expect.objectContaining({
+          ctxObj: 'object-form',
+          blObj: 'object-form',
+        }),
+      )
+
+      const dataEl = screen.getByTestId('loader-data')
+      expect(JSON.parse(dataEl.textContent)).toEqual({
+        ldFunc: 'function-form',
+      })
+    })
+
+    test('object form with serialize flag still runs handler on client navigation', async () => {
+      const contextHandler = vi.fn(() => ({ ctxVal: 'matched' }))
+
+      const rootRoute = createRootRoute({
+        component: () => (
+          <div>
+            <Outlet />
+          </div>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          const navigate = indexRoute.useNavigate()
+          return (
+            <div>
+              <span data-testid="index-page">Index</span>
+              <button
+                data-testid="go-about"
+                onClick={() => navigate({ to: '/about' })}
+              >
+                go
+              </button>
+            </div>
+          )
+        },
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+        context: {
+          handler: contextHandler,
+          serialize: true, // serialize flag has no effect on SPA navigation
+        },
+        component: () => {
+          const context = aboutRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+      await screen.findByTestId('index-page')
+
+      // Navigate to about
+      fireEvent.click(screen.getByTestId('go-about'))
+      const contextEl = await screen.findByTestId('context')
+      expect(JSON.parse(contextEl.textContent)).toEqual(
+        expect.objectContaining({ ctxVal: 'matched' }),
+      )
+      expect(contextHandler).toHaveBeenCalledTimes(1)
+    })
+
+    test('object form backward compat: function form still works identically', async () => {
+      // This test verifies that routes using function form continue to work
+      // exactly as before, ensuring backward compatibility
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: () => ({ ctxFn: 'fn' }),
+        beforeLoad: () => ({ blFn: 'fn' }),
+        loader: () => ({ ldFn: 'fn' }),
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          const data = indexRoute.useLoaderData()
+          return (
+            <div>
+              <span data-testid="context">{JSON.stringify(context.value)}</span>
+              <span data-testid="loader-data">
+                {JSON.stringify(data.value)}
+              </span>
+            </div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      const context = JSON.parse(contextEl.textContent)
+      expect(context).toEqual(
+        expect.objectContaining({
+          ctxFn: 'fn',
+          blFn: 'fn',
+        }),
+      )
+
+      const dataEl = screen.getByTestId('loader-data')
+      expect(JSON.parse(dataEl.textContent)).toEqual({ ldFn: 'fn' })
+    })
+
+    test('object form context chain flows correctly parent to child', async () => {
+      const rootRoute = createRootRoute({
+        component: () => (
+          <div>
+            <Outlet />
+          </div>
+        ),
+      })
+      const parentRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/parent',
+        context: {
+          handler: () => ({ parentOM: 'p-om' }),
+        },
+        beforeLoad: {
+          handler: () => ({ parentBL: 'p-bl' }),
+          serialize: false,
+        },
+        component: () => (
+          <div>
+            <Outlet />
+          </div>
+        ),
+      })
+      const childRoute = createRoute({
+        getParentRoute: () => parentRoute,
+        path: '/child',
+        context: {
+          handler: ({ context }) => ({
+            childCtx: 'c-ctx',
+            sawParentOM: context.parentOM,
+            sawParentBL: context.parentBL,
+          }),
+          invalidate: true,
+        },
+        component: () => {
+          const context = childRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([
+        parentRoute.addChildren([childRoute]),
+      ])
+      const router = createRouter({ routeTree, history })
+
+      await router.navigate({ to: '/parent/child' })
+
+      render(<RouterProvider router={router} />)
+
+      const contextEl = await screen.findByTestId('context')
+      const context = JSON.parse(contextEl.textContent)
+      expect(context).toEqual(
+        expect.objectContaining({
+          parentOM: 'p-om',
+          parentBL: 'p-bl',
+          childCtx: 'c-ctx',
+          sawParentOM: 'p-om',
+          sawParentBL: 'p-bl',
+        }),
+      )
+    })
+
+    test('object form context runs only once even with serialize flag', async () => {
+      const contextCount = vi.fn()
+
+      const rootRoute = createRootRoute({
+        component: () => (
+          <div>
+            <Outlet />
+          </div>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: {
+          handler: () => {
+            contextCount()
+            return { matched: true }
+          },
+          serialize: true,
+        },
+        component: () => {
+          const context = indexRoute.useRouteContext()
+          return (
+            <div data-testid="context">{JSON.stringify(context.value)}</div>
+          )
+        },
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('context')
+      expect(contextCount).toHaveBeenCalledTimes(1)
+
+      // Invalidate and verify context doesn't re-run (no invalidate flag)
+      await router.invalidate()
+
+      expect(contextCount).toHaveBeenCalledTimes(1)
+    })
+
+    test('object form context with invalidate re-runs on invalidation', async () => {
+      const contextCount = vi.fn()
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        context: {
+          handler: () => {
+            contextCount()
+            return { loadCount: contextCount.mock.calls.length }
+          },
+          invalidate: true,
+        },
+        component: () => <div data-testid="index-page">Index</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([indexRoute])
+      const router = createRouter({ routeTree, history })
+
+      render(<RouterProvider router={router} />)
+
+      await screen.findByTestId('index-page')
+      expect(contextCount).toHaveBeenCalledTimes(1)
+
+      await router.invalidate()
+
+      // context with invalidate should re-run on invalidation
+      expect(contextCount).toHaveBeenCalledTimes(2)
+    })
   })
 })

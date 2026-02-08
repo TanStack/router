@@ -1,0 +1,36 @@
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  margin: 0;
+  padding: 16px;
+}
+
+a {
+  color: #0070f3;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+nav {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 16px;
+}
+
+.lifecycle-log {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  padding: 8px;
+  margin: 8px 0;
+  font-family: monospace;
+  font-size: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}

@@ -106,6 +106,18 @@ export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
 
+export {
+  builtinDefaultSerialize,
+  resolveHandler,
+  shouldSerialize,
+} from './lifecycle'
+export type {
+  LifecycleOption,
+  ContextLifecycleOption,
+  DefaultSerializeConfig,
+  ExtractHandler,
+} from './lifecycle'
+
 export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
 export type {
   AnyPathParams,
@@ -137,7 +149,6 @@ export type {
   StringifyParamsFn,
   ParamsOptions,
   UpdatableStaticRouteOption,
-  ContextReturnType,
   ContextAsyncReturnType,
   ResolveRouteContext,
   ResolveLoaderData,
@@ -169,9 +180,10 @@ export type {
   UpdatableRouteOptions,
   RouteLoaderFn,
   LoaderFnContext,
-  RouteContextFn,
+  ContextFn,
   ContextOptions,
   RouteContextOptions,
+  ContextFnOptions,
   BeforeLoadContextOptions,
   RootRouteOptions,
   RootRouteOptionsExtensions,

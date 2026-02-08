@@ -5,11 +5,13 @@ import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
+import { resolveHandler } from './lifecycle'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
 import type {
   AnyRoute,
   BeforeLoadContextOptions,
+  ContextFnOptions,
   LoaderFnContext,
   SsrContextOptions,
 } from './route'
@@ -427,6 +429,7 @@ const executeBeforeLoad = (
 
   // Build context from all parent matches, excluding current match's __beforeLoadContext
   // (since we're about to execute beforeLoad for this match)
+  // Include current match's __routeContext since context runs before beforeLoad
   const context = {
     ...buildMatchContext(inner, index, false),
     ...match.__routeContext,
@@ -489,7 +492,9 @@ const executeBeforeLoad = (
 
   let beforeLoadContext
   try {
-    beforeLoadContext = route.options.beforeLoad(beforeLoadFnContext)
+    beforeLoadContext = resolveHandler(route.options.beforeLoad)!(
+      beforeLoadFnContext,
+    )
     if (isPromise(beforeLoadContext)) {
       pending()
       return beforeLoadContext
@@ -505,6 +510,101 @@ const executeBeforeLoad = (
 
   updateContext(beforeLoadContext)
   return
+}
+
+const executeContext = (
+  inner: InnerLoadContext,
+  matchId: string,
+  index: number,
+  route: AnyRoute,
+): void | Promise<void> => {
+  const match = inner.router.getMatch(matchId)!
+
+  // Determine whether to run:
+  // - needsContext: true for new matches (set in router.ts on match creation)
+  // - invalidate: true + match.invalid: re-run on router.invalidate()
+  const shouldRunForInvalidate =
+    typeof route.options.context !== 'function' &&
+    route.options.context?.invalidate === true &&
+    match.invalid
+
+  if (!match._nonReactive.needsContext && !shouldRunForInvalidate) return
+  if (!route.options.context) {
+    // Clear the flag even if there's no context handler
+    match._nonReactive.needsContext = false
+    return
+  }
+
+  // Clear early so it never lingers if context throws
+  match._nonReactive.needsContext = false
+
+  // Build context from all parent matches (excluding current match)
+  const context = buildMatchContext(inner, index, false)
+  const { params, cause, loaderDeps } = match
+  const preload = resolvePreload(inner, matchId)
+
+  const contextFnContext: ContextFnOptions<any, any, any, any> = {
+    params,
+    preload,
+    context,
+    location: inner.location,
+    navigate: (opts: any) =>
+      inner.router.navigate({
+        ...opts,
+        _fromLocation: inner.location,
+      }),
+    buildLocation: inner.router.buildLocation,
+    cause: preload ? 'preload' : cause,
+    matches: inner.matches,
+    routeId: route.id,
+    abortController: match.abortController,
+    ...inner.router.options.additionalContext,
+  }
+
+  const updateRouteContext = (routeContext: any) => {
+    if (routeContext === undefined) return
+    if (isRedirect(routeContext) || isNotFound(routeContext)) {
+      handleSerialError(inner, index, routeContext, 'CONTEXT')
+    }
+
+    inner.updateMatch(matchId, (prev) => ({
+      ...prev,
+      __routeContext: routeContext,
+    }))
+  }
+
+  let routeContext
+  try {
+    routeContext = resolveHandler(route.options.context)!(contextFnContext)
+    if (isPromise(routeContext)) {
+      return routeContext
+        .catch((err) => {
+          handleSerialError(inner, index, err, 'CONTEXT')
+        })
+        .then(updateRouteContext)
+    }
+  } catch (err) {
+    handleSerialError(inner, index, err, 'CONTEXT')
+  }
+
+  updateRouteContext(routeContext)
+  return
+}
+
+const handleContext = (
+  inner: InnerLoadContext,
+  index: number,
+): void | Promise<void> => {
+  const { id: matchId, routeId } = inner.matches[index]!
+  const route = inner.router.looseRoutesById[routeId]!
+
+  if (shouldSkipLoader(inner, matchId)) return
+
+  // Skip context execution during preload when route opts out of preloading
+  const preload = resolvePreload(inner, matchId)
+  if (preload && route.options.preload === false) return
+
+  return executeContext(inner, matchId, index, route)
 }
 
 const handleBeforeLoad = (
@@ -636,7 +736,7 @@ const runLoader = async (
       }
 
       // Kick off the loader!
-      const loaderResult = route.options.loader?.(
+      const loaderResult = resolveHandler(route.options.loader)?.(
         getLoaderContext(inner, matchId, index, route),
       )
       const loaderResultIsPromise =
@@ -897,8 +997,10 @@ export async function loadMatches(arg: {
   }
 
   try {
-    // Execute all beforeLoads one by one
+    // Execute context and beforeLoad serially per-route, parent → child
     for (let i = 0; i < inner.matches.length; i++) {
+      const ctx = handleContext(inner, i)
+      if (isPromise(ctx)) await ctx
       const beforeLoad = handleBeforeLoad(inner, i)
       if (isPromise(beforeLoad)) await beforeLoad
     }

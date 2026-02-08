@@ -149,6 +149,8 @@ export interface RouteMatch<
     minPendingPromise?: ControlledPromise<void>
     dehydrated?: boolean
     /** @internal */
+    needsContext?: boolean
+    /** @internal */
     error?: unknown
   }
   loaderData?: TLoaderData

@@ -184,6 +184,145 @@ describe('redirect', () => {
       expect(nestedFooLoaderMock).toHaveBeenCalled()
     })
 
+    test('when `redirect` is thrown in `context`', async () => {
+      const nestedLoaderMock = vi.fn()
+      const nestedFooLoaderMock = vi.fn()
+
+      const rootRoute = createRootRoute({})
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <div>
+              <h1>Index page</h1>
+              <Link to="/about">link to about</Link>
+            </div>
+          )
+        },
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+        context: async () => {
+          await sleep(WAIT_TIME)
+          throw redirect({ to: '/nested/foo' })
+        },
+      })
+      const nestedRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/nested',
+        loader: async () => {
+          await sleep(WAIT_TIME)
+          nestedLoaderMock('nested')
+        },
+      })
+      const fooRoute = createRoute({
+        getParentRoute: () => nestedRoute,
+        path: '/foo',
+        loader: async () => {
+          await sleep(WAIT_TIME)
+          nestedFooLoaderMock('foo')
+        },
+        component: () => <div>Nested Foo page</div>,
+      })
+      const routeTree = rootRoute.addChildren([
+        nestedRoute.addChildren([fooRoute]),
+        aboutRoute,
+        indexRoute,
+      ])
+      const router = createRouter({ routeTree })
+
+      render(() => <RouterProvider router={router} />)
+
+      const linkToAbout = await screen.findByText('link to about')
+
+      expect(linkToAbout).toBeInTheDocument()
+
+      fireEvent.click(linkToAbout)
+
+      const fooElement = await screen.findByText('Nested Foo page')
+
+      expect(fooElement).toBeInTheDocument()
+
+      expect(router.state.location.href).toBe('/nested/foo')
+      expect(window.location.pathname).toBe('/nested/foo')
+
+      expect(nestedLoaderMock).toHaveBeenCalled()
+      expect(nestedFooLoaderMock).toHaveBeenCalled()
+    })
+
+    test('when `redirect` is thrown in `context` with invalidate', async () => {
+      const nestedLoaderMock = vi.fn()
+      const nestedFooLoaderMock = vi.fn()
+
+      const rootRoute = createRootRoute({})
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <div>
+              <h1>Index page</h1>
+              <Link to="/about">link to about</Link>
+            </div>
+          )
+        },
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+        context: {
+          handler: async () => {
+            await sleep(WAIT_TIME)
+            throw redirect({ to: '/nested/foo' })
+          },
+          invalidate: true,
+        },
+      })
+      const nestedRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/nested',
+        loader: async () => {
+          await sleep(WAIT_TIME)
+          nestedLoaderMock('nested')
+        },
+      })
+      const fooRoute = createRoute({
+        getParentRoute: () => nestedRoute,
+        path: '/foo',
+        loader: async () => {
+          await sleep(WAIT_TIME)
+          nestedFooLoaderMock('foo')
+        },
+        component: () => <div>Nested Foo page</div>,
+      })
+      const routeTree = rootRoute.addChildren([
+        nestedRoute.addChildren([fooRoute]),
+        aboutRoute,
+        indexRoute,
+      ])
+      const router = createRouter({ routeTree })
+
+      render(() => <RouterProvider router={router} />)
+
+      const linkToAbout = await screen.findByText('link to about')
+
+      expect(linkToAbout).toBeInTheDocument()
+
+      fireEvent.click(linkToAbout)
+
+      const fooElement = await screen.findByText('Nested Foo page')
+
+      expect(fooElement).toBeInTheDocument()
+
+      expect(router.state.location.href).toBe('/nested/foo')
+      expect(window.location.pathname).toBe('/nested/foo')
+
+      expect(nestedLoaderMock).toHaveBeenCalled()
+      expect(nestedFooLoaderMock).toHaveBeenCalled()
+    })
+
     test('when `redirect` is thrown in `loader` after `router.invalidate()`', async () => {
       let shouldRedirect = false
 
@@ -283,6 +422,107 @@ describe('redirect', () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
         // Mock server mode
+        isServer: true,
+        history: createMemoryHistory({
+          initialEntries: ['/'],
+        }),
+      })
+
+      await router.load()
+
+      expect(router.state.redirect).toBeDefined()
+      expect(router.state.redirect).toBeInstanceOf(Response)
+      invariant(router.state.redirect)
+
+      expect(router.state.redirect.options).toEqual({
+        _fromLocation: expect.objectContaining({
+          hash: '',
+          href: '/',
+          pathname: '/',
+          search: {},
+          searchStr: '',
+        }),
+        to: '/about',
+        href: '/about',
+        statusCode: 307,
+      })
+    })
+
+    test('when `redirect` is thrown in `context`', async () => {
+      const rootRoute = createRootRoute()
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+        context: () => {
+          throw redirect({
+            to: '/about',
+          })
+        },
+      })
+
+      const aboutRoute = createRoute({
+        path: '/about',
+        getParentRoute: () => rootRoute,
+        component: () => {
+          return 'About'
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+        isServer: true,
+        history: createMemoryHistory({
+          initialEntries: ['/'],
+        }),
+      })
+
+      await router.load()
+
+      expect(router.state.redirect).toBeDefined()
+      expect(router.state.redirect).toBeInstanceOf(Response)
+      invariant(router.state.redirect)
+
+      expect(router.state.redirect.options).toEqual({
+        _fromLocation: expect.objectContaining({
+          hash: '',
+          href: '/',
+          pathname: '/',
+          search: {},
+          searchStr: '',
+        }),
+        to: '/about',
+        href: '/about',
+        statusCode: 307,
+      })
+    })
+
+    test('when `redirect` is thrown in `context` with invalidate', async () => {
+      const rootRoute = createRootRoute()
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+        context: {
+          handler: () => {
+            throw redirect({
+              to: '/about',
+            })
+          },
+          invalidate: true,
+        },
+      })
+
+      const aboutRoute = createRoute({
+        path: '/about',
+        getParentRoute: () => rootRoute,
+        component: () => {
+          return 'About'
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
         isServer: true,
         history: createMemoryHistory({
           initialEntries: ['/'],

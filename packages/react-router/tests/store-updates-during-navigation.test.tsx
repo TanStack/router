@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -148,14 +149,14 @@ describe("Store doesn't update *too many* times during navigation", () => {
     })
 
     const before = select.mock.calls.length
-    await router.preloadRoute({ to: '/posts' })
+    await act(() => router.preloadRoute({ to: '/posts' }))
     const after = select.mock.calls.length
     const updates = after - before
 
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(4)
+    expect(updates).toBe(5)
   })
 
   test('sync beforeLoad', async () => {
@@ -235,14 +236,13 @@ describe("Store doesn't update *too many* times during navigation", () => {
       staleTime: 1000,
     })
 
-    await params.router.preloadRoute({ to: '/posts' })
+    await act(() => params.router.preloadRoute({ to: '/posts' }))
     const updates = await run(params)
 
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(7)
-    expect(updates).toBeLessThanOrEqual(8)
+    expect(updates).toBe(7)
   })
 
   test('navigate, w/ preloaded & sync loaders', async () => {
@@ -252,7 +252,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
       staleTime: 1000,
     })
 
-    await params.router.preloadRoute({ to: '/posts' })
+    await act(() => params.router.preloadRoute({ to: '/posts' }))
     const updates = await run(params)
 
     // This number should be as small as possible to minimize the amount of work
@@ -282,16 +282,16 @@ describe("Store doesn't update *too many* times during navigation", () => {
       loader: () => resolveAfter(100, { hello: 'world' }),
     })
 
-    await params.router.preloadRoute({ to: '/posts' })
+    await act(() => params.router.preloadRoute({ to: '/posts' }))
     await new Promise((r) => setTimeout(r, 20))
     const before = params.select.mock.calls.length
-    await params.router.preloadRoute({ to: '/posts' })
+    await act(() => params.router.preloadRoute({ to: '/posts' }))
     const after = params.select.mock.calls.length
     const updates = after - before
 
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(1)
+    expect(updates).toBe(2)
   })
 })

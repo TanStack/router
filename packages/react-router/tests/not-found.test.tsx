@@ -245,3 +245,130 @@ test('defaultNotFoundComponent and notFoundComponent receives data props via spr
   const errorMessageComponent = await screen.findByTestId('message')
   expect(errorMessageComponent).toHaveTextContent(customData.message)
 })
+
+test('notFoundComponent is rendered when `notFound` is thrown in `context`', async () => {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <div data-testid="root-component">
+        <h1>Root Component</h1>
+        <Link data-testid="link-to-target" to="/target">
+          link to target
+        </Link>
+        <Outlet />
+      </div>
+    ),
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => (
+      <div data-testid="index-component">
+        <h2>Index Page</h2>
+      </div>
+    ),
+  })
+
+  const targetRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    context: () => {
+      throw notFound({ data: { message: 'Not found from context' } })
+    },
+    component: () => (
+      <div data-testid="target-component">Should not render</div>
+    ),
+    notFoundComponent: (props: NotFoundRouteProps) => (
+      <div data-testid="target-not-found">
+        {(props.data as { message: string })?.message}
+      </div>
+    ),
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+  await router.load()
+  await screen.findByTestId('root-component')
+
+  const link = screen.getByTestId('link-to-target')
+  link.click()
+
+  const notFoundComponent = await screen.findByTestId(
+    'target-not-found',
+    {},
+    { timeout: 1000 },
+  )
+  expect(notFoundComponent).toBeInTheDocument()
+  expect(notFoundComponent).toHaveTextContent('Not found from context')
+})
+
+test('notFoundComponent is rendered when `notFound` is thrown in `context` with invalidate', async () => {
+  const rootRoute = createRootRoute({
+    component: () => (
+      <div data-testid="root-component">
+        <h1>Root Component</h1>
+        <Link data-testid="link-to-target" to="/target">
+          link to target
+        </Link>
+        <Outlet />
+      </div>
+    ),
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => (
+      <div data-testid="index-component">
+        <h2>Index Page</h2>
+      </div>
+    ),
+  })
+
+  const targetRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    context: {
+      handler: () => {
+        throw notFound({
+          data: { message: 'Not found from context with invalidate' },
+        })
+      },
+      invalidate: true,
+    },
+    component: () => (
+      <div data-testid="target-component">Should not render</div>
+    ),
+    notFoundComponent: (props: NotFoundRouteProps) => (
+      <div data-testid="target-not-found">
+        {(props.data as { message: string })?.message}
+      </div>
+    ),
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+  await router.load()
+  await screen.findByTestId('root-component')
+
+  const link = screen.getByTestId('link-to-target')
+  link.click()
+
+  const notFoundComponent = await screen.findByTestId(
+    'target-not-found',
+    {},
+    { timeout: 1000 },
+  )
+  expect(notFoundComponent).toBeInTheDocument()
+  expect(notFoundComponent).toHaveTextContent(
+    'Not found from context with invalidate',
+  )
+})

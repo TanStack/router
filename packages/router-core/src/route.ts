@@ -17,7 +17,13 @@ import type {
 } from './Matches'
 import type { RootRouteId } from './root'
 import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
-import type { AnyRouter, Register, RegisteredRouter, SSROption } from './router'
+import type {
+  AnyRouter,
+  Register,
+  RegisteredConfigType,
+  RegisteredRouter,
+  SSROption,
+} from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
   Assign,
@@ -44,6 +50,74 @@ import type {
   ValidatorObj,
 } from './validators'
 import type { ValidateSerializableLifecycleResult } from './ssr/serializer/transformer'
+import type { DefaultSerializeConfig, ExtractHandler } from './lifecycle'
+
+// ---------------------------------------------------------------------------
+// Type-level serialize resolution helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Read `defaultSerialize` from the registered config (via TRegister).
+ * Returns `unknown` if no config registered.
+ */
+type RegisteredDefaultSerialize<TRegister> = RegisteredConfigType<
+  TRegister,
+  'defaultSerialize'
+>
+
+/**
+ * Resolve the registered default serialize flag for a specific method.
+ * Falls back to TBuiltin if the registered config doesn't specify the method.
+ */
+type MethodDefaultSerialize<
+  TRegister,
+  TMethod extends keyof DefaultSerializeConfig,
+  TBuiltin extends boolean,
+> =
+  unknown extends RegisteredDefaultSerialize<TRegister>
+    ? TBuiltin
+    : RegisteredDefaultSerialize<TRegister> extends DefaultSerializeConfig
+      ? undefined extends RegisteredDefaultSerialize<TRegister>[TMethod]
+        ? TBuiltin
+        : NonNullable<RegisteredDefaultSerialize<TRegister>[TMethod]>
+      : TBuiltin
+
+/**
+ * Resolve effective serialize for a lifecycle option at the type level.
+ *
+ * Priority: explicit object-form serialize > registered config default > builtin default.
+ *
+ * For the function form, T will be a function type and OptionSerialize<T> is `undefined`,
+ * so it falls through to the config/builtin default.
+ */
+type OptionSerialize<T> = T extends { serialize: infer S extends boolean }
+  ? S
+  : undefined
+
+type EffectiveSerialize<
+  TRegister,
+  TMethod extends keyof DefaultSerializeConfig,
+  TBuiltin extends boolean,
+  TOption,
+> =
+  OptionSerialize<TOption> extends boolean
+    ? OptionSerialize<TOption>
+    : MethodDefaultSerialize<TRegister, TMethod, TBuiltin>
+
+/**
+ * Conditionally apply serialization validation based on the effective serialize flag.
+ * When serialize is true, validates that the return type is serializable.
+ * When serialize is false, allows any return type.
+ */
+type ValidateIfSerializable<
+  TRegister,
+  TParentRoute extends AnyRoute,
+  TSSR,
+  TFn,
+  TSerialize extends boolean,
+> = TSerialize extends true
+  ? ValidateSerializableLifecycleResult<TRegister, TParentRoute, TSSR, TFn>
+  : any
 
 export type AnyPathParams = {}
 
@@ -277,26 +351,26 @@ export type TrimPathRight<T extends string> = T extends '/'
 
 export type ContextReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
-  : LooseReturnType<TContextFn> extends never
+  : LooseAsyncReturnType<ExtractHandler<TContextFn>> extends never
     ? AnyContext
-    : LooseReturnType<TContextFn>
+    : LooseAsyncReturnType<ExtractHandler<TContextFn>>
 
 export type ContextAsyncReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
-  : LooseAsyncReturnType<TContextFn> extends never
+  : LooseAsyncReturnType<ExtractHandler<TContextFn>> extends never
     ? AnyContext
-    : LooseAsyncReturnType<TContextFn>
+    : LooseAsyncReturnType<ExtractHandler<TContextFn>>
 
-export type ResolveRouteContext<TRouteContextFn, TBeforeLoadFn> = Assign<
-  ContextReturnType<TRouteContextFn>,
+export type ResolveRouteContext<TContextFn, TBeforeLoadFn> = Assign<
+  ContextReturnType<TContextFn>,
   ContextAsyncReturnType<TBeforeLoadFn>
 >
 
 export type ResolveLoaderData<TLoaderFn> = unknown extends TLoaderFn
   ? TLoaderFn
-  : LooseAsyncReturnType<TLoaderFn> extends never
+  : LooseAsyncReturnType<ExtractHandler<TLoaderFn>> extends never
     ? undefined
-    : LooseAsyncReturnType<TLoaderFn>
+    : LooseAsyncReturnType<ExtractHandler<TLoaderFn>>
 
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
@@ -331,19 +405,19 @@ export type RouteContextParameter<
 export type BeforeLoadContextParameter<
   TParentRoute extends AnyRoute,
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
 > = Assign<
   RouteContextParameter<TParentRoute, TRouterContext>,
-  ContextReturnType<TRouteContextFn>
+  ContextReturnType<TContextFn>
 >
 
 export type ResolveAllContext<
   TParentRoute extends AnyRoute,
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
 > = Assign<
-  BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>,
+  BeforeLoadContextParameter<TParentRoute, TRouterContext, TContextFn>,
   ContextAsyncReturnType<TBeforeLoadFn>
 >
 export interface FullSearchSchemaOption<
@@ -389,7 +463,7 @@ export interface RouteTypes<
   in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
-  in out TRouteContextFn,
+  in out TContextFn,
   in out TBeforeLoadFn,
   in out TLoaderDeps,
   in out TLoaderFn,
@@ -416,13 +490,13 @@ export interface RouteTypes<
   params: TParams
   allParams: ResolveAllParamsFromParent<TParentRoute, TParams>
   routerContext: TRouterContext
-  routeContext: ResolveRouteContext<TRouteContextFn, TBeforeLoadFn>
-  routeContextFn: TRouteContextFn
+  routeContext: ResolveRouteContext<TContextFn, TBeforeLoadFn>
+  contextFn: TContextFn
   beforeLoadFn: TBeforeLoadFn
   allContext: ResolveAllContext<
     TParentRoute,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn
   >
   children: TChildren
@@ -471,7 +545,7 @@ export type RouteAddChildrenFn<
   in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
-  in out TRouteContextFn,
+  in out TContextFn,
   in out TBeforeLoadFn,
   in out TLoaderDeps extends Record<string, any>,
   in out TLoaderFn,
@@ -494,7 +568,7 @@ export type RouteAddChildrenFn<
   TSearchValidator,
   TParams,
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
@@ -515,7 +589,7 @@ export type RouteAddFileChildrenFn<
   in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
-  in out TRouteContextFn,
+  in out TContextFn,
   in out TBeforeLoadFn,
   in out TLoaderDeps extends Record<string, any>,
   in out TLoaderFn,
@@ -535,7 +609,7 @@ export type RouteAddFileChildrenFn<
   TSearchValidator,
   TParams,
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
@@ -556,7 +630,7 @@ export type RouteAddFileTypesFn<
   TSearchValidator,
   TParams,
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TLoaderDeps extends Record<string, any>,
   TLoaderFn,
@@ -574,7 +648,7 @@ export type RouteAddFileTypesFn<
   TSearchValidator,
   TParams,
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
@@ -595,7 +669,7 @@ export interface Route<
   in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
-  in out TRouteContextFn,
+  in out TContextFn,
   in out TBeforeLoadFn,
   in out TLoaderDeps extends Record<string, any>,
   in out TLoaderFn,
@@ -618,7 +692,7 @@ export interface Route<
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -640,7 +714,7 @@ export interface Route<
     TLoaderDeps,
     TLoaderFn,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TSSR,
     TServerMiddlewares,
@@ -663,7 +737,7 @@ export interface Route<
         TSearchValidator,
         TParams,
         TRouterContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn,
         TLoaderDeps,
         TLoaderFn,
@@ -692,7 +766,7 @@ export interface Route<
       TLoaderFn,
       TLoaderDeps,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn
     >,
   ) => this
@@ -707,7 +781,7 @@ export interface Route<
       TSearchValidator,
       TParams,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
@@ -728,7 +802,7 @@ export interface Route<
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -747,7 +821,7 @@ export interface Route<
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -766,7 +840,7 @@ export interface Route<
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -822,7 +896,7 @@ export type RouteOptions<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TRouterContext = {},
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TSSR = unknown,
   TServerMiddlewares = unknown,
@@ -838,7 +912,7 @@ export type RouteOptions<
   TLoaderDeps,
   TLoaderFn,
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TSSR,
   TServerMiddlewares,
@@ -853,24 +927,17 @@ export type RouteOptions<
     NoInfer<TLoaderFn>,
     NoInfer<TLoaderDeps>,
     NoInfer<TRouterContext>,
-    NoInfer<TRouteContextFn>,
+    NoInfer<TContextFn>,
     NoInfer<TBeforeLoadFn>
   >
 
-export type RouteContextFn<
+export type ContextFn<
   in out TParentRoute extends AnyRoute,
-  in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
   in out TRouteId,
 > = (
-  ctx: RouteContextOptions<
-    TParentRoute,
-    TSearchValidator,
-    TParams,
-    TRouterContext,
-    TRouteId
-  >,
+  ctx: ContextFnOptions<TParentRoute, TParams, TRouterContext, TRouteId>,
 ) => any
 
 export type FileBaseRouteOptions<
@@ -883,7 +950,7 @@ export type FileBaseRouteOptions<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TRouterContext = {},
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TRemountDepsFn = AnyContext,
   TSSR = unknown,
@@ -900,7 +967,7 @@ export type FileBaseRouteOptions<
     TLoaderDeps,
     TLoaderFn,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TRemountDepsFn,
     TSSR,
@@ -918,7 +985,7 @@ export interface FilebaseRouteOptionsInterface<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TRouterContext = {},
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TRemountDepsFn = AnyContext,
   TSSR = unknown,
@@ -935,9 +1002,9 @@ export interface FilebaseRouteOptionsInterface<
           TParentRoute,
           TId,
           TParams,
-          TLoaderDeps,
+          NoInfer<TLoaderDeps>,
           TRouterContext,
-          TRouteContextFn,
+          TContextFn,
           TBeforeLoadFn,
           TServerMiddlewares,
           THandlers
@@ -945,16 +1012,29 @@ export interface FilebaseRouteOptionsInterface<
       ) => any)
 
   context?: Constrain<
-    TRouteContextFn,
-    (
-      ctx: RouteContextOptions<
+    TContextFn,
+    | ((
+        ctx: ContextFnOptions<TParentRoute, TParams, TRouterContext, TId>,
+      ) => ValidateIfSerializable<
+        TRegister,
         TParentRoute,
-        TParams,
-        TRouterContext,
-        TLoaderDeps,
-        TId
-      >,
-    ) => any
+        TSSR,
+        TContextFn,
+        MethodDefaultSerialize<TRegister, 'context', false>
+      >)
+    | {
+        handler: (
+          ctx: ContextFnOptions<TParentRoute, TParams, TRouterContext, TId>,
+        ) => ValidateIfSerializable<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TContextFn,
+          EffectiveSerialize<TRegister, 'context', false, TContextFn>
+        >
+        serialize?: boolean
+        invalidate?: boolean
+      }
   >
 
   ssr?: Constrain<
@@ -972,24 +1052,47 @@ export interface FilebaseRouteOptionsInterface<
   // If thrown during a preload event, the error will be logged to the console.
   beforeLoad?: Constrain<
     TBeforeLoadFn,
-    (
-      ctx: BeforeLoadContextOptions<
+    | ((
+        ctx: BeforeLoadContextOptions<
+          TRegister,
+          TParentRoute,
+          TSearchValidator,
+          TParams,
+          TRouterContext,
+          TContextFn,
+          TId,
+          TServerMiddlewares,
+          THandlers
+        >,
+      ) => ValidateIfSerializable<
         TRegister,
         TParentRoute,
-        TSearchValidator,
-        TParams,
-        TRouterContext,
-        TRouteContextFn,
-        TId,
-        TServerMiddlewares,
-        THandlers
-      >,
-    ) => ValidateSerializableLifecycleResult<
-      TRegister,
-      TParentRoute,
-      TSSR,
-      TBeforeLoadFn
-    >
+        TSSR,
+        TBeforeLoadFn,
+        MethodDefaultSerialize<TRegister, 'beforeLoad', true>
+      >)
+    | {
+        handler: (
+          ctx: BeforeLoadContextOptions<
+            TRegister,
+            TParentRoute,
+            TSearchValidator,
+            TParams,
+            TRouterContext,
+            TContextFn,
+            TId,
+            TServerMiddlewares,
+            THandlers
+          >,
+        ) => ValidateIfSerializable<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TBeforeLoadFn,
+          EffectiveSerialize<TRegister, 'beforeLoad', true, TBeforeLoadFn>
+        >
+        serialize?: boolean
+      }
   >
 
   loaderDeps?: (
@@ -1003,32 +1106,56 @@ export interface FilebaseRouteOptionsInterface<
         TId,
         ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
         Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>,
-        TLoaderDeps
+        NoInfer<TLoaderDeps>
       >,
     ) => any
   >
 
   loader?: Constrain<
     TLoaderFn,
-    (
-      ctx: LoaderFnContext<
+    | ((
+        ctx: LoaderFnContext<
+          TRegister,
+          TParentRoute,
+          TId,
+          TParams,
+          NoInfer<TLoaderDeps>,
+          TRouterContext,
+          TContextFn,
+          TBeforeLoadFn,
+          TServerMiddlewares,
+          THandlers
+        >,
+      ) => ValidateIfSerializable<
         TRegister,
         TParentRoute,
-        TId,
-        TParams,
-        TLoaderDeps,
-        TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn,
-        TServerMiddlewares,
-        THandlers
-      >,
-    ) => ValidateSerializableLifecycleResult<
-      TRegister,
-      TParentRoute,
-      TSSR,
-      TLoaderFn
-    >
+        TSSR,
+        TLoaderFn,
+        MethodDefaultSerialize<TRegister, 'loader', true>
+      >)
+    | {
+        handler: (
+          ctx: LoaderFnContext<
+            TRegister,
+            TParentRoute,
+            TId,
+            TParams,
+            NoInfer<TLoaderDeps>,
+            TRouterContext,
+            TContextFn,
+            TBeforeLoadFn,
+            TServerMiddlewares,
+            THandlers
+          >,
+        ) => ValidateIfSerializable<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TLoaderFn,
+          EffectiveSerialize<TRegister, 'loader', true, TLoaderFn>
+        >
+        serialize?: boolean
+      }
   >
 }
 
@@ -1043,7 +1170,7 @@ export type BaseRouteOptions<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TRouterContext = {},
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TSSR = unknown,
   TServerMiddlewares = unknown,
@@ -1059,7 +1186,7 @@ export type BaseRouteOptions<
     TLoaderDeps,
     TLoaderFn,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     AnyContext,
     TSSR,
@@ -1092,10 +1219,17 @@ export interface RouteContextOptions<
   in out TParentRoute extends AnyRoute,
   in out TParams,
   in out TRouterContext,
-  in out TLoaderDeps,
   in out TRouteId,
 > extends ContextOptions<TParentRoute, TParams, TRouteId> {
-  deps: TLoaderDeps
+  context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
+}
+
+export interface ContextFnOptions<
+  in out TParentRoute extends AnyRoute,
+  in out TParams,
+  in out TRouterContext,
+  in out TRouteId,
+> extends ContextOptions<TParentRoute, TParams, TRouteId> {
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
 
@@ -1126,7 +1260,7 @@ export interface BeforeLoadContextOptions<
   in out TSearchValidator,
   in out TParams,
   in out TRouterContext,
-  in out TRouteContextFn,
+  in out TContextFn,
   in out TRouteId,
   in out TServerMiddlewares,
   in out THandlers,
@@ -1135,7 +1269,7 @@ export interface BeforeLoadContextOptions<
     ContextOptions<TParentRoute, TParams, TRouteId>,
     FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
-    BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>
+    BeforeLoadContextParameter<TParentRoute, TRouterContext, TContextFn>
   >
 }
 
@@ -1147,7 +1281,7 @@ type AssetFnContextOptions<
   in out TSearchValidator,
   in out TLoaderFn,
   in out TRouterContext,
-  in out TRouteContextFn,
+  in out TContextFn,
   in out TBeforeLoadFn,
   in out TLoaderDeps,
 > = {
@@ -1164,7 +1298,7 @@ type AssetFnContextOptions<
       ResolveAllContext<
         TParentRoute,
         TRouterContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn
       >,
       TLoaderDeps
@@ -1176,12 +1310,7 @@ type AssetFnContextOptions<
     ResolveAllParamsFromParent<TParentRoute, TParams>,
     ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
     ResolveLoaderData<TLoaderFn>,
-    ResolveAllContext<
-      TParentRoute,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn
-    >,
+    ResolveAllContext<TParentRoute, TRouterContext, TContextFn, TBeforeLoadFn>,
     TLoaderDeps
   >
   params: ResolveAllParamsFromParent<TParentRoute, TParams>
@@ -1206,7 +1335,7 @@ export interface UpdatableRouteOptions<
   in out TLoaderFn,
   in out TLoaderDeps,
   in out TRouterContext,
-  in out TRouteContextFn,
+  in out TContextFn,
   in out TBeforeLoadFn,
 >
   extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
@@ -1293,7 +1422,7 @@ export interface UpdatableRouteOptions<
       ResolveAllContext<
         TParentRoute,
         TRouterContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn
       >,
       TLoaderDeps
@@ -1309,7 +1438,7 @@ export interface UpdatableRouteOptions<
       ResolveAllContext<
         TParentRoute,
         TRouterContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn
       >,
       TLoaderDeps
@@ -1325,7 +1454,7 @@ export interface UpdatableRouteOptions<
       ResolveAllContext<
         TParentRoute,
         TRouterContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn
       >,
       TLoaderDeps
@@ -1340,7 +1469,7 @@ export interface UpdatableRouteOptions<
       TSearchValidator,
       TLoaderFn,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps
     >,
@@ -1354,7 +1483,7 @@ export interface UpdatableRouteOptions<
       TSearchValidator,
       TLoaderFn,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps
     >,
@@ -1373,7 +1502,7 @@ export interface UpdatableRouteOptions<
       TSearchValidator,
       TLoaderFn,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps
     >,
@@ -1396,7 +1525,7 @@ export type RouteLoaderFn<
   in out TParams = {},
   in out TLoaderDeps = {},
   in out TRouterContext = {},
-  in out TRouteContextFn = AnyContext,
+  in out TContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
   in out TServerMiddlewares = unknown,
   in out THandlers = undefined,
@@ -1408,7 +1537,7 @@ export type RouteLoaderFn<
     TParams,
     TLoaderDeps,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TServerMiddlewares,
     THandlers
@@ -1422,7 +1551,7 @@ export interface LoaderFnContext<
   in out TParams = {},
   in out TLoaderDeps = {},
   in out TRouterContext = {},
-  in out TRouteContextFn = AnyContext,
+  in out TContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
   in out TServerMiddlewares = unknown,
   in out THandlers = undefined,
@@ -1432,12 +1561,7 @@ export interface LoaderFnContext<
   params: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
   deps: TLoaderDeps
   context: Expand<
-    ResolveAllContext<
-      TParentRoute,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn
-    >
+    ResolveAllContext<TParentRoute, TRouterContext, TContextFn, TBeforeLoadFn>
   >
   location: ParsedLocation // Do not supply search schema here so as to demotivate people from trying to shortcut loaderDeps
   /**
@@ -1462,7 +1586,7 @@ export interface RootRouteOptions<
   TRegister = unknown,
   TSearchValidator = undefined,
   TRouterContext = {},
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
@@ -1484,7 +1608,7 @@ export interface RootRouteOptions<
         TLoaderDeps,
         TLoaderFn,
         TRouterContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn,
         TSSR,
         TServerMiddlewares,
@@ -1565,7 +1689,7 @@ export class BaseRoute<
   in out TSearchValidator = undefined,
   in out TParams = ResolveParams<TPath>,
   in out TRouterContext = AnyContext,
-  in out TRouteContextFn = AnyContext,
+  in out TContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
   in out TLoaderDeps extends Record<string, any> = {},
   in out TLoaderFn = undefined,
@@ -1588,7 +1712,7 @@ export class BaseRoute<
     TLoaderDeps,
     TLoaderFn,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TSSR,
     TServerMiddlewares,
@@ -1634,7 +1758,7 @@ export class BaseRoute<
         TSearchValidator,
         TParams,
         TRouterContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn,
         TLoaderDeps,
         TLoaderFn,
@@ -1664,7 +1788,7 @@ export class BaseRoute<
       TLoaderDeps,
       TLoaderFn,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TSSR,
       TServerMiddlewares,
@@ -1689,7 +1813,7 @@ export class BaseRoute<
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -1716,7 +1840,7 @@ export class BaseRoute<
           TLoaderDeps,
           TLoaderFn,
           TRouterContext,
-          TRouteContextFn,
+          TContextFn,
           TBeforeLoadFn,
           TSSR,
           TServerMiddlewares
@@ -1781,7 +1905,7 @@ export class BaseRoute<
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -1803,7 +1927,7 @@ export class BaseRoute<
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -1833,7 +1957,7 @@ export class BaseRoute<
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -1855,7 +1979,7 @@ export class BaseRoute<
         TParams,
         TLoaderDeps,
         TRouterContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn
       >
     >
@@ -1871,7 +1995,7 @@ export class BaseRoute<
       TSearchValidator,
       TParams,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
       TNewLoaderFn,
@@ -1893,7 +2017,7 @@ export class BaseRoute<
       TLoaderFn,
       TLoaderDeps,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn
     >,
   ): this => {
@@ -1912,7 +2036,7 @@ export class BaseRoute<
       TSearchValidator,
       TParams,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
@@ -1965,7 +2089,7 @@ export interface RootRoute<
   in out TRegister,
   in out TSearchValidator = undefined,
   in out TRouterContext = {},
-  in out TRouteContextFn = AnyContext,
+  in out TContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
   in out TLoaderDeps extends Record<string, any> = {},
   in out TLoaderFn = undefined,
@@ -1984,7 +2108,7 @@ export interface RootRoute<
   TSearchValidator, // TSearchValidator
   {}, // TParams
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
@@ -1999,7 +2123,7 @@ export class BaseRootRoute<
   in out TRegister = Register,
   in out TSearchValidator = undefined,
   in out TRouterContext = {},
-  in out TRouteContextFn = AnyContext,
+  in out TContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
   in out TLoaderDeps extends Record<string, any> = {},
   in out TLoaderFn = undefined,
@@ -2018,7 +2142,7 @@ export class BaseRootRoute<
   TSearchValidator, // TSearchValidator
   {}, // TParams
   TRouterContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
@@ -2033,7 +2157,7 @@ export class BaseRootRoute<
       TRegister,
       TSearchValidator,
       TRouterContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
