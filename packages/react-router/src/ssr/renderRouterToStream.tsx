@@ -5,6 +5,7 @@ import {
   transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
+import { FastResponse } from 'srvx'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { ReadableStream } from 'node:stream/web'
 import type { ReactNode } from 'react'
@@ -35,7 +36,7 @@ export const renderRouterToStream = async ({
       router,
       stream as unknown as ReadableStream,
     )
-    return new Response(responseStream as any, {
+    return new FastResponse(responseStream as any, {
       status: router.state.statusCode,
       headers: responseHeaders,
     })
@@ -78,7 +79,7 @@ export const renderRouterToStream = async ({
       router,
       reactAppPassthrough,
     )
-    return new Response(responseStream as any, {
+    return new FastResponse(responseStream as any, {
       status: router.state.statusCode,
       headers: responseHeaders,
     })
