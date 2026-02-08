@@ -8,8 +8,6 @@ import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
 import type { ReadableStream } from 'node:stream/web'
 
-globalThis.Response = FastResponse
-
 function prependDoctype(
   readable: globalThis.ReadableStream,
 ): NodeReadableStream<Uint8Array> {
@@ -65,7 +63,7 @@ export const renderRouterToStream = async ({
       fullHtml = fullHtml.slice(htmlOpenIndex)
     }
 
-    return new Response(`<!DOCTYPE html>${fullHtml}`, {
+    return new FastResponse(`<!DOCTYPE html>${fullHtml}`, {
       status: router.state.statusCode,
       headers: responseHeaders,
     })
@@ -81,7 +79,7 @@ export const renderRouterToStream = async ({
     doctypedStream as unknown as ReadableStream,
   )
 
-  return new Response(responseStream as any, {
+  return new FastResponse(responseStream as any, {
     status: router.state.statusCode,
     headers: responseHeaders,
   })

@@ -7,8 +7,6 @@ import type { JSXElement } from 'solid-js'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
-globalThis.Response = FastResponse
-
 export const renderRouterToStream = async ({
   request,
   router,
@@ -54,7 +52,7 @@ export const renderRouterToStream = async ({
     router,
     readable as unknown as ReadableStream,
   )
-  return new Response(responseStream as any, {
+  return new FastResponse(responseStream as any, {
     status: router.state.statusCode,
     headers: responseHeaders,
   })
