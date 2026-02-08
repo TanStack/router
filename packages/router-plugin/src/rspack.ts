@@ -4,6 +4,7 @@ import { configSchema } from './core/config'
 import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
 import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
+import { unpluginRouteAutoImportFactory } from './core/route-autoimport-plugin'
 import type { CodeSplittingOptions, Config } from './core/config'
 
 /**
@@ -40,6 +41,13 @@ const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
   unpluginRouterCodeSplitterFactory,
 )
 
+const tanstackRouterGenerator = TanStackRouterGeneratorRspack
+const tanstackRouterCodeSplitter = TanStackRouterCodeSplitterRspack
+
+const TanStackRouterAutoImportRspack = /* #__PURE__ */ createRspackPlugin(
+  unpluginRouteAutoImportFactory,
+)
+
 /**
  * @example
  * ```ts
@@ -57,12 +65,17 @@ const TanStackRouterRspack = /* #__PURE__ */ createRspackPlugin(
   unpluginRouterComposedFactory,
 )
 const tanstackRouter = TanStackRouterRspack
+const tanstackRouterAutoImport = TanStackRouterAutoImportRspack
 export default TanStackRouterRspack
 export {
   configSchema,
   TanStackRouterRspack,
   TanStackRouterGeneratorRspack,
   TanStackRouterCodeSplitterRspack,
+  TanStackRouterAutoImportRspack,
+  tanstackRouterGenerator,
+  tanstackRouterCodeSplitter,
+  tanstackRouterAutoImport,
   tanstackRouter,
 }
 export type { Config, CodeSplittingOptions }

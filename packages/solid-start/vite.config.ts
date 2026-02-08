@@ -31,6 +31,7 @@ export default mergeConfig(
       './src/server-rpc.ts',
       './src/server.tsx',
       './src/plugin/vite.ts',
+      './src/plugin/rsbuild.ts',
     ],
     externalDeps: [
       '@tanstack/solid-start-client',

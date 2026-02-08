@@ -14,7 +14,12 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
-    entry: './src/index.ts',
+    entry: [
+      './src/index.ts',
+      './src/rsbuild/index.ts',
+      './src/rsbuild/start-compiler-loader.ts',
+      './src/rsbuild/route-tree-loader.ts',
+    ],
     srcDir: './src',
     outDir: './dist',
     cjs: false,
