@@ -10,6 +10,14 @@ if (!command) {
 
 const bundler = process.env.BUNDLER === 'rsbuild' ? 'rsbuild' : 'vite'
 
+const extractPort = (args) => {
+  const portIndex = args.indexOf('--port')
+  if (portIndex >= 0 && args[portIndex + 1]) {
+    return args[portIndex + 1]
+  }
+  return null
+}
+
 const run = (cmd, cmdArgs) =>
   new Promise((resolve, reject) => {
     const child = spawn(cmd, cmdArgs, {
@@ -27,10 +35,18 @@ const run = (cmd, cmdArgs) =>
   })
 
 try {
-  await run(bundler, [command, ...args])
+  if (bundler === 'rsbuild' && command === 'preview') {
+    const port = extractPort(args)
+    if (port) {
+      process.env.PORT = port
+    }
+    await run('node', ['server.js'])
+  } else {
+    await run(bundler, [command, ...args])
 
-  if (command === 'build') {
-    await run('tsc', ['--noEmit'])
+    if (command === 'build') {
+      await run('tsc', ['--noEmit'])
+    }
   }
 } catch (error) {
   console.error(error)

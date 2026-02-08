@@ -40,18 +40,7 @@ export default defineConfig({
       prerender: isPrerender ? prerenderConfiguration : undefined,
     }),
   ],
-  tools: {
-    rspack: {
-      module: {
-        rules: [
-          {
-            resourceQuery: /url/,
-            type: 'asset/resource',
-          },
-        ],
-      },
-    },
-  },
+  tools: {},
   source: {
     alias: {
       '~': path.resolve(currentDir, 'src'),
