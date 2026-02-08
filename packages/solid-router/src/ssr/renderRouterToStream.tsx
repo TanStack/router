@@ -5,6 +5,7 @@ import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
+import { FastResponse } from 'srvx'
 
 export const renderRouterToStream = async ({
   request,
@@ -51,7 +52,7 @@ export const renderRouterToStream = async ({
     router,
     readable as unknown as ReadableStream,
   )
-  return new Response(responseStream as any, {
+  return new FastResponse(responseStream as any, {
     status: router.state.statusCode,
     headers: responseHeaders,
   })
