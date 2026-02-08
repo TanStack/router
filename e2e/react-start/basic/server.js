@@ -18,7 +18,12 @@ export async function createStartServer() {
 
   // to keep testing uniform stop express from redirecting /posts to /posts/
   // when serving pre-rendered pages
-  app.use(express.static('./dist/client', { redirect: !isPrerender }))
+  app.use(
+    express.static('./dist/client', {
+      redirect: !isPrerender,
+      ...(isPrerender ? {} : { index: false }),
+    }),
+  )
 
   app.use(async (req, res, next) => {
     try {
