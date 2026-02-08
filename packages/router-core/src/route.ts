@@ -886,6 +886,7 @@ export type AnyRoute = Route<
   any,
   any,
   any,
+  any,
   any
 >
 
@@ -965,6 +966,7 @@ export type FileBaseRouteOptions<
   TId extends string = string,
   TPath extends string = string,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TParams = {},
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
@@ -982,6 +984,7 @@ export type FileBaseRouteOptions<
     TId,
     TPath,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TLoaderDeps,
     TLoaderFn,
