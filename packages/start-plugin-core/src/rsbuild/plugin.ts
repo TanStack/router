@@ -327,6 +327,7 @@ export function TanStackStartRsbuildPluginCore(
           )
 
           const isDev = api.context?.command === 'serve'
+          const isBuild = api.context?.command === 'build'
           const defineViteEnv = (key: string, fallback = '') => {
             const value = process.env[key] ?? fallback
             return defineReplaceEnv(key, value)
@@ -348,6 +349,13 @@ export function TanStackStartRsbuildPluginCore(
               : {}),
             ...defineViteEnv('VITE_NODE_ENV', 'production'),
             ...defineViteEnv('VITE_EXTERNAL_PORT', ''),
+            ...(isBuild && startConfig.server.build.staticNodeEnv
+              ? {
+                  'process.env.NODE_ENV': JSON.stringify(
+                    process.env.NODE_ENV ?? 'production',
+                  ),
+                }
+              : {}),
           }
 
           const routerPlugins = tanStackStartRouterRsbuild(
@@ -737,20 +745,20 @@ export function TanStackStartRsbuildPluginCore(
             clientOutputDir,
             serverOutputDir,
           })
-              if (routeTreeGeneratedPath && routeTreeModuleDeclaration) {
-                if (fs.existsSync(routeTreeGeneratedPath)) {
-                  const existingTree = fs.readFileSync(
-                    routeTreeGeneratedPath,
-                    'utf-8',
-                  )
-                  if (!existingTree.includes(routeTreeModuleDeclaration)) {
-                    fs.appendFileSync(
-                      routeTreeGeneratedPath,
-                      `\n\n${routeTreeModuleDeclaration}\n`,
-                    )
-                  }
-                }
+          if (routeTreeGeneratedPath && routeTreeModuleDeclaration) {
+            if (fs.existsSync(routeTreeGeneratedPath)) {
+              const existingTree = fs.readFileSync(
+                routeTreeGeneratedPath,
+                'utf-8',
+              )
+              if (!existingTree.includes(routeTreeModuleDeclaration)) {
+                fs.appendFileSync(
+                  routeTreeGeneratedPath,
+                  `\n\n${routeTreeModuleDeclaration}\n`,
+                )
               }
+            }
+          }
         })
       },
     },
