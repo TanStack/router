@@ -126,6 +126,7 @@ Share authentication state across your application:
 ```tsx
 // contexts/auth.tsx
 import { createContext, useContext, ReactNode } from 'react'
+import { useHydrated } from '@tanstack/react-router' 
 import { useServerFn } from '@tanstack/react-start'
 import { getCurrentUserFn } from '../server/auth'
 
@@ -155,7 +156,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
+  const { data: user, isLoading, refetch } = useServerFn(getCurrentUserFn)
+  const hydrated = useHydrated()
+
   if (!context) {
+    if (!hydrated) {
+      return {
+        user,
+        isLoading,
+        refetch,
+      }
+    }
     throw new Error('useAuth must be used within AuthProvider')
   }
   return context
