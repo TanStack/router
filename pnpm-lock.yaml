@@ -12019,9 +12019,6 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
-      srvx:
-        specifier: ^0.11.2
-        version: 0.11.2
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
