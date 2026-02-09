@@ -44,11 +44,6 @@ export const handleServerAction = async ({
   context: any
   serverFnId: string
 }) => {
-  const controller = new AbortController()
-  const signal = controller.signal
-  const abort = () => controller.abort()
-  request.signal.addEventListener('abort', abort)
-
   const method = request.method
   const methodUpper = method.toUpperCase()
   const methodLower = method.toLowerCase()
@@ -116,7 +111,7 @@ export const handleServerAction = async ({
             }
           }
 
-          return await action(params, signal)
+          return await action(params)
         }
 
         // Get requests use the query string
@@ -134,7 +129,7 @@ export const handleServerAction = async ({
           payload.context = safeObjectMerge(context, payload.context)
           payload.method = methodUpper
           // Send it through!
-          return await action(payload, signal)
+          return await action(payload)
         }
 
         if (methodLower !== 'post') {
@@ -149,7 +144,7 @@ export const handleServerAction = async ({
         const payload = jsonPayload ? parsePayload(jsonPayload) : {}
         payload.context = safeObjectMerge(payload.context, context)
         payload.method = methodUpper
-        return await action(payload, signal)
+        return await action(payload)
       })()
 
       const unwrapped = res.result || res.error
@@ -355,8 +350,6 @@ export const handleServerAction = async ({
       })
     }
   })()
-
-  request.signal.removeEventListener('abort', abort)
 
   return response
 }
