@@ -27,9 +27,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: Start Nx Agents
+        if: ${{ env.NX_CLOUD_ACCESS_TOKEN != '' }}
         run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install
       - name: Get base and head commits for `nx affected`
         uses: nrwl/nx-set-shas@v4.4.0
         with:
@@ -37,7 +40,7 @@ jobs:
       - name: Run Checks
         run: pnpm run test:pr --parallel=3
       - name: Stop Nx Agents
-        if: ${{ always() }}
+        if: ${{ always() && env.NX_CLOUD_ACCESS_TOKEN != '' }}
         run: npx nx-cloud stop-all-agents
   preview:
     name: Preview
@@ -52,4 +55,5 @@ jobs:
       - name: Build Packages
         run: pnpm run build:all
       - name: Publish Previews
+        if: ${{ github.repository_owner == 'TanStack' }}
         run: pnpx pkg-pr-new publish --pnpm './packages/*' --template './examples/*/*'
