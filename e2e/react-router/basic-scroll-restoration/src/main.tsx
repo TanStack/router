@@ -20,21 +20,42 @@ const rootRoute = createRootRoute({
 function RootComponent() {
   return (
     <>
-      <div className="p-2 flex gap-2 sticky top-0 border-b bg-gray-100 dark:bg-gray-900">
-        <Link to="/" className="[&.active]:font-bold">
-          Home
-        </Link>{' '}
-        <Link to="/about" className="[&.active]:font-bold">
-          About
-        </Link>
-        <Link to="/about" resetScroll={false}>
-          About (No Reset)
-        </Link>
-        <Link to="/by-element" className="[&.active]:font-bold">
-          By-Element
-        </Link>
+      <div
+        id="sidebar"
+        className="fixed left-0 top-0 w-48 h-screen overflow-auto border-r bg-gray-50 dark:bg-gray-800 z-10"
+      >
+        <div className="p-2 space-y-2">
+          {Array.from({ length: 30 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-[50px] p-2 rounded bg-gray-200 dark:bg-gray-700 text-sm"
+            >
+              Sidebar Item {i + 1}
+            </div>
+          ))}
+        </div>
       </div>
-      <Outlet />
+      <div className="ml-48">
+        <div className="p-2 flex gap-2 sticky top-0 border-b bg-gray-100 dark:bg-gray-900">
+          <Link to="/" className="[&.active]:font-bold">
+            Home
+          </Link>{' '}
+          <Link to="/about" className="[&.active]:font-bold">
+            About
+          </Link>
+          <Link to="/about" resetScroll={false}>
+            About (No Reset)
+          </Link>
+          <Link to="/bar" resetScroll={false}>
+            Bar (No Reset)
+          </Link>
+          <Link to="/by-element" className="[&.active]:font-bold">
+            By-Element
+          </Link>
+        </div>
+        <Outlet />
+
+      </div>
       <TanStackRouterDevtools />
     </>
   )
@@ -268,6 +289,7 @@ const router = createRouter({
   defaultPreload: 'intent',
   scrollRestoration: true,
   getScrollRestorationKey: (location) => location.pathname,
+  scrollToTopSelectors: ['#sidebar'],
 })
 
 declare global {

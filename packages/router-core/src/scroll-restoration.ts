@@ -110,6 +110,15 @@ export function getCssSelector(el: any): string {
   return `${path.reverse().join(' > ')}`.toLowerCase()
 }
 
+function findMatchingSelector(el: Element, selectors: Array<string | (() => Element | null | undefined)>): string | undefined {
+  for (const selector of selectors) {
+    if (typeof selector === 'string' && el.matches(selector)) {
+      return selector;
+    }
+  }
+  return undefined;
+}
+
 let ignoreScroll = false
 
 // NOTE: This function must remain pure and not use any outside variables
@@ -302,7 +311,8 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       if (attrId) {
         elementSelector = `[data-scroll-restoration-id="${attrId}"]`
       } else {
-        elementSelector = getCssSelector(event.target)
+        elementSelector = findMatchingSelector(event.target as Element, router.options.scrollToTopSelectors ?? []) 
+          ?? getCssSelector(event.target)
       }
     }
 
@@ -341,7 +351,44 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 
     // If the user doesn't want to restore the scroll position,
     // we don't need to do anything.
+    //
+    // Remember the current scroll position of window and scroll to top selectors,
+    // in order to restore them if the user goes back without scrolling.
     if (!router.resetNextScroll) {
+      scrollRestorationCache.set((state) => {
+        if (event.fromLocation) {
+          const fromKey = getKey(event.fromLocation);
+          const newState = {} as ScrollRestorationByElement;
+
+          const windowState = state[fromKey]?.['window'];
+
+          if (windowState) {
+            newState['window'] = {
+              scrollX: windowState.scrollX,
+              scrollY: windowState.scrollY,
+            };
+          }
+          
+          if (router.options.scrollToTopSelectors) {
+            for (const selector of router.options.scrollToTopSelectors) {
+              if (typeof selector === 'string') {
+                const oldElement = state[fromKey]?.[selector];
+
+                if (oldElement) {
+                  newState[selector] = {
+                    scrollX: oldElement.scrollX,
+                    scrollY: oldElement.scrollY,
+                  }
+                }
+              }
+            }
+          }
+
+          state[cacheKey] = newState;
+        }
+  
+        return state
+      });
       router.resetNextScroll = true
       return
     }
