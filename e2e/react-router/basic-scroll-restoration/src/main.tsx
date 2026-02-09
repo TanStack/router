@@ -288,7 +288,6 @@ const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
   scrollRestoration: true,
-  getScrollRestorationKey: (location) => location.pathname,
   scrollToTopSelectors: ['#sidebar'],
 })
 
