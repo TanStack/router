@@ -225,6 +225,17 @@ export default defineConfig({
 })
 ```
 
+#### Performance Tip: FastResponse
+
+If you're deploying to Node.js with Nitro (which uses [srvx](https://srvx.h3.dev/) under the hood), you can get a ~5% throughput improvement by replacing the global `Response` constructor with srvx's optimized `FastResponse`. Add this to your server entry point (`src/server.ts`):
+
+```ts
+import { FastResponse } from 'srvx'
+globalThis.Response = FastResponse
+```
+
+This works because srvx's `FastResponse` includes an optimized `_toNodeResponse()` path that avoids the overhead of the standard Web `Response` to Node.js conversion. This optimization only applies to Node.js deployments using Nitro/h3/srvx.
+
 ### Vercel
 
 Follow the [`Nitro`](#nitro) deployment instructions.
