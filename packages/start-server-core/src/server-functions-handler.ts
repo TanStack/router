@@ -413,13 +413,10 @@ function isResponseLike(value: unknown): value is Response {
 function getRedirectOptions(
   value: unknown,
 ): Record<string, unknown> | undefined {
-  if (value === null || typeof value !== 'object') {
+  if (!isRedirect(value)) {
     return undefined
   }
-  if (!('options' in value)) {
-    return undefined
-  }
-  return (value as { options?: Record<string, unknown> }).options
+  return value.options as Record<string, unknown>
 }
 
 function getResponseHeaders(value: unknown): Headers | undefined {

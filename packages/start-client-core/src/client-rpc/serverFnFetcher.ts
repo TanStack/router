@@ -53,24 +53,16 @@ function parseRedirectFallback(payload: unknown) {
   if (!payload || typeof payload !== 'object') {
     return undefined
   }
-  const candidate = payload as {
-    statusCode?: unknown
-    code?: unknown
-    to?: unknown
-    href?: unknown
-  }
-  const statusCode =
-    typeof candidate.statusCode === 'number'
-      ? candidate.statusCode
-      : typeof candidate.code === 'number'
-        ? candidate.code
-        : undefined
-  const hasLocation =
-    typeof candidate.to === 'string' || typeof candidate.href === 'string'
-  if (statusCode === undefined || !hasLocation) {
+  if (!('isSerializedRedirect' in payload)) {
     return undefined
   }
-  return redirect(candidate as any)
+  if (
+    (payload as { isSerializedRedirect?: boolean }).isSerializedRedirect !==
+    true
+  ) {
+    return undefined
+  }
+  return redirect(payload as any)
 }
 // caller =>
 //   serverFnFetcher =>
