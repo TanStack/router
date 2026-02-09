@@ -236,9 +236,7 @@ export async function prerender({
             logger.warn(
               `Encountered error, retrying: ${page.path} in ${resolvedDelay}ms`,
             )
-            await new Promise((resolve) =>
-              setTimeout(resolve, resolvedDelay),
-            )
+            await new Promise((resolve) => setTimeout(resolve, resolvedDelay))
             retriesByPath.set(page.path, retries + 1)
             seen.delete(page.path)
             addCrawlPageTask(page)

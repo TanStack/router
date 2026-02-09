@@ -330,8 +330,7 @@ export const handleServerAction = async ({
             { headers: getResponseHeaders(error) },
           )
         }
-        const isRedirectResponse =
-          isRedirect(error) || Boolean(redirectOptions)
+        const isRedirectResponse = isRedirect(error) || Boolean(redirectOptions)
         if (isRedirectResponse) {
           return error
         }

@@ -719,7 +719,10 @@ export function TanStackStartRsbuildPluginCore(
                   outputCandidates.find((candidate) =>
                     fs.existsSync(path.join(serverOutputDir, candidate)),
                   ) ?? 'server.js'
-                const serverEntryPath = path.join(serverOutputDir, outputFilename)
+                const serverEntryPath = path.join(
+                  serverOutputDir,
+                  outputFilename,
+                )
                 const imported = await import(
                   pathToFileURL(serverEntryPath).toString()
                 )
