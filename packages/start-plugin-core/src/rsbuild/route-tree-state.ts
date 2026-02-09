@@ -15,7 +15,9 @@ export async function getClientRouteTreeContent(options?: {
   let generator = generatorInstance
   if (!generator) {
     if (!options?.routerConfig || !options.root) {
-      throw new Error('Generator instance not initialized for route tree loader')
+      throw new Error(
+        'Generator instance not initialized for route tree loader',
+      )
     }
     generator = new Generator({
       config: options.routerConfig,

@@ -130,27 +130,23 @@ async function resolveId(
         conditionNames: ['import', 'module', 'default'],
       }) ?? loaderContext.resolve
 
-    resolver(
-      resolveContext,
-      source,
-      (err: Error | null, result?: string) => {
-        if (!err && result) {
-          resolve(cleanId(result))
-          return
-        }
-        try {
-          const resolved = require.resolve(source, {
-            paths: [
-              baseContext,
-              loaderContext.rootContext || loaderContext.context,
-            ].filter(Boolean),
-          })
-          resolve(cleanId(resolved))
-        } catch {
-          resolve(null)
-        }
-      },
-    )
+    resolver(resolveContext, source, (err: Error | null, result?: string) => {
+      if (!err && result) {
+        resolve(cleanId(result))
+        return
+      }
+      try {
+        const resolved = require.resolve(source, {
+          paths: [
+            baseContext,
+            loaderContext.rootContext || loaderContext.context,
+          ].filter(Boolean),
+        })
+        resolve(cleanId(resolved))
+      } catch {
+        resolve(null)
+      }
+    })
   })
 }
 
@@ -163,7 +159,7 @@ async function loadModule(
   const resolvedPath =
     cleaned.startsWith('.') || cleaned.startsWith('/')
       ? cleaned
-      : (await resolveId(loaderContext, cleaned)) ?? cleaned
+      : ((await resolveId(loaderContext, cleaned)) ?? cleaned)
 
   if (resolvedPath.includes('\0')) return
 
@@ -175,11 +171,7 @@ async function loadModule(
   }
 }
 
-export default function startCompilerLoader(
-  this: any,
-  code: string,
-  map: any,
-) {
+export default function startCompilerLoader(this: any, code: string, map: any) {
   const callback = this.async()
   const options = this.getOptions() as LoaderOptions
 
@@ -199,7 +191,8 @@ export default function startCompilerLoader(
   let compiler = compilers.get(envName)
   if (!compiler) {
     const mode =
-      this.mode === 'production' || this._compiler?.options?.mode === 'production'
+      this.mode === 'production' ||
+      this._compiler?.options?.mode === 'production'
         ? 'build'
         : 'dev'
     const shouldPersistManifest = Boolean(manifestPath) && mode === 'build'

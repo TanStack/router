@@ -65,7 +65,9 @@ const getCompilationModuleIdentifiers = (module: any) =>
     module.resource,
     module.userRequest,
     module.request,
-    typeof module.identifier === 'function' ? module.identifier() : module.identifier,
+    typeof module.identifier === 'function'
+      ? module.identifier()
+      : module.identifier,
     module.debugId,
   ]
     .filter(Boolean)
@@ -301,19 +303,21 @@ export function createServerFnManifestRspackPlugin(opts: {
           )
           const chunkGraph = compilation?.chunkGraph
           const moduleGraph = compilation?.moduleGraph
-          const compilationEntries = compilationModules.flatMap((module: any) => {
-            const identifiers = getCompilationModuleIdentifiers(module)
-            if (identifiers.length === 0) return []
-            const chunkFiles = chunkGraph
-              ? Array.from(chunkGraph.getModuleChunksIterable(module) ?? []).flatMap(
-                  (chunk: any) => getChunkFiles(chunk),
-                )
-              : []
-            return identifiers.map((identifier) => ({
-              identifier,
-              files: chunkFiles,
-            }))
-          })
+          const compilationEntries = compilationModules.flatMap(
+            (module: any) => {
+              const identifiers = getCompilationModuleIdentifiers(module)
+              if (identifiers.length === 0) return []
+              const chunkFiles = chunkGraph
+                ? Array.from(
+                    chunkGraph.getModuleChunksIterable(module) ?? [],
+                  ).flatMap((chunk: any) => getChunkFiles(chunk))
+                : []
+              return identifiers.map((identifier) => ({
+                identifier,
+                files: chunkFiles,
+              }))
+            },
+          )
           const assetFiles = (statsJson?.assets ?? [])
             .map((asset: any) => asset.name ?? asset)
             .filter((name: string) => typeof name === 'string')
@@ -328,7 +332,8 @@ export function createServerFnManifestRspackPlugin(opts: {
                 ? compilation.assets.get(assetName)
                 : undefined)
             const sourceValue =
-              assetFromCompilation && typeof assetFromCompilation.source === 'function'
+              assetFromCompilation &&
+              typeof assetFromCompilation.source === 'function'
                 ? assetFromCompilation.source()
                 : assetFromCompilation
             if (typeof sourceValue === 'string') return sourceValue
@@ -357,7 +362,10 @@ export function createServerFnManifestRspackPlugin(opts: {
           }
           const manifestWithImporters: Record<string, ServerFn> = {}
           for (const [id, info] of Object.entries(mergedServerFnsById)) {
-            const normalizedExtracted = info.extractedFilename.replace(/\\/g, '/')
+            const normalizedExtracted = info.extractedFilename.replace(
+              /\\/g,
+              '/',
+            )
             const normalizedFilename = info.filename.replace(/\\/g, '/')
             const searchTokens = [
               normalizedExtracted,
@@ -377,8 +385,10 @@ export function createServerFnManifestRspackPlugin(opts: {
                 identifier.includes(normalizedFilename),
               ),
             )
-            const matchedModule = matchedModuleByExtracted ?? matchedModuleByFilename
-            const chunkIds = matchedModule?.chunks ?? matchedModule?.chunkIds ?? []
+            const matchedModule =
+              matchedModuleByExtracted ?? matchedModuleByFilename
+            const chunkIds =
+              matchedModule?.chunks ?? matchedModule?.chunkIds ?? []
             const statsModuleId = matchedModule?.id ?? matchedModule?.moduleId
             const chunkFiles = chunkIds.flatMap((chunkId: any) => {
               return chunksById.get(chunkId) ?? []
@@ -401,7 +411,8 @@ export function createServerFnManifestRspackPlugin(opts: {
                 ),
             )
             const matchedCompilationModule =
-              matchedCompilationModuleByExtracted ?? matchedCompilationModuleByFilename
+              matchedCompilationModuleByExtracted ??
+              matchedCompilationModuleByFilename
             const exportsInfo = matchedCompilationModule
               ? moduleGraph?.getExportsInfo?.(matchedCompilationModule)
               : null
@@ -418,9 +429,16 @@ export function createServerFnManifestRspackPlugin(opts: {
                 : undefined
             const compilationChunkIds =
               matchedCompilationModule && chunkGraph
-                ? Array.from(chunkGraph.getModuleChunksIterable(matchedCompilationModule))
+                ? Array.from(
+                    chunkGraph.getModuleChunksIterable(
+                      matchedCompilationModule,
+                    ),
+                  )
                     .map((chunk: any) => chunk.id)
-                    .filter((chunkId: any) => chunkId !== undefined && chunkId !== null)
+                    .filter(
+                      (chunkId: any) =>
+                        chunkId !== undefined && chunkId !== null,
+                    )
                 : []
             const compilationModuleId =
               matchedCompilationModule?.id ??
@@ -472,7 +490,8 @@ export function createServerFnManifestRspackPlugin(opts: {
                   : compilationChunkIds.length > 0
                     ? compilationChunkIds
                     : undefined,
-              importerModuleId: statsModuleId ?? (compilationModuleId ?? undefined),
+              importerModuleId:
+                statsModuleId ?? compilationModuleId ?? undefined,
             }
           }
           const extractExportName = (
@@ -529,9 +548,7 @@ export function createServerFnManifestRspackPlugin(opts: {
             if (idIndex === -1) return undefined
             const beforeId = content.slice(Math.max(0, idIndex - 1500), idIndex)
             const matches = Array.from(
-              beforeId.matchAll(
-                /(?:^|[,{])\s*([0-9]+)\s*:\s*(?:function|\()/g,
-              ),
+              beforeId.matchAll(/(?:^|[,{])\s*([0-9]+)\s*:\s*(?:function|\()/g),
             )
             const moduleId = matches[matches.length - 1]?.[1]
             if (!moduleId) return undefined

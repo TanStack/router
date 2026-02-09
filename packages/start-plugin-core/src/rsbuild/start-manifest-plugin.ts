@@ -165,8 +165,7 @@ function buildStartManifest({
   statsJson: StatsJson
   basePath: string
 }): Manifest & { clientEntry: string } {
-  const { entrypointName, assets: entryAssets } =
-    getStatsEntryAssets(statsJson)
+  const { entrypointName, assets: entryAssets } = getStatsEntryAssets(statsJson)
   const entryJsAssets = unique(entryAssets.filter(isJsAsset))
   const entryCssAssets = unique(entryAssets.filter(isCssAsset))
 
@@ -226,9 +225,7 @@ function buildStartManifest({
     }
   })
 
-  const entryScriptAssets = entryJsAssets.filter(
-    (asset) => asset !== entryFile,
-  )
+  const entryScriptAssets = entryJsAssets.filter((asset) => asset !== entryFile)
 
   manifest.routes[rootRouteId] = {
     ...(manifest.routes[rootRouteId] ?? {}),
@@ -272,11 +269,7 @@ export function createStartManifestRspackPlugin(opts: {
             START_MANIFEST_FILE,
           )
           await fsp.mkdir(path.dirname(manifestPath), { recursive: true })
-          await fsp.writeFile(
-            manifestPath,
-            JSON.stringify(manifest),
-            'utf-8',
-          )
+          await fsp.writeFile(manifestPath, JSON.stringify(manifest), 'utf-8')
         },
       )
     },

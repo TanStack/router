@@ -304,8 +304,10 @@ export function TanStackStartRsbuildPluginCore(
               startFilePath ?? corePluginOpts.defaultEntryPaths.start,
             [ENTRY_POINTS.router]: routerFilePath,
           }
-          const resolvedClientEntry = entryAliasConfiguration[ENTRY_POINTS.client]
-          const resolvedServerEntry = entryAliasConfiguration[ENTRY_POINTS.server]
+          const resolvedClientEntry =
+            entryAliasConfiguration[ENTRY_POINTS.client]
+          const resolvedServerEntry =
+            entryAliasConfiguration[ENTRY_POINTS.server]
 
           const clientOutputDir = getOutputDirectory(
             root,
@@ -369,13 +371,15 @@ export function TanStackStartRsbuildPluginCore(
             routeTreeFileFooter: [],
             plugins: [],
           }
-          const generatedRouteTreePath = routerPlugins.getGeneratedRouteTreePath()
-          const routeTreeModuleDeclarationValue = buildRouteTreeModuleDeclaration({
-            generatedRouteTreePath,
-            routerFilePath: resolvedStartConfig.routerFilePath,
-            startFilePath: resolvedStartConfig.startFilePath,
-            framework: corePluginOpts.framework,
-          })
+          const generatedRouteTreePath =
+            routerPlugins.getGeneratedRouteTreePath()
+          const routeTreeModuleDeclarationValue =
+            buildRouteTreeModuleDeclaration({
+              generatedRouteTreePath,
+              routerFilePath: resolvedStartConfig.routerFilePath,
+              startFilePath: resolvedStartConfig.startFilePath,
+              framework: corePluginOpts.framework,
+            })
           routeTreeModuleDeclaration = routeTreeModuleDeclarationValue
           routeTreeGeneratedPath = generatedRouteTreePath
           const registerDeclaration = `declare module '@tanstack/${corePluginOpts.framework}-start'`
@@ -430,7 +434,8 @@ export function TanStackStartRsbuildPluginCore(
                   root,
                   framework: corePluginOpts.framework,
                   providerEnvName: serverFnProviderEnv,
-                  generateFunctionId: startPluginOpts?.serverFns?.generateFunctionId,
+                  generateFunctionId:
+                    startPluginOpts?.serverFns?.generateFunctionId,
                   manifestPath,
                 },
               },
@@ -557,9 +562,8 @@ export function TanStackStartRsbuildPluginCore(
             if (startConfig.vite?.installDevServerMiddleware === false) {
               return
             }
-            const serverEnv = context.environments?.[
-              VITE_ENVIRONMENT_NAMES.server
-            ]
+            const serverEnv =
+              context.environments?.[VITE_ENVIRONMENT_NAMES.server]
             middlewares.push(async (req: any, res: any, next: any) => {
               if (res.headersSent || res.writableEnded) {
                 return next()
@@ -573,7 +577,10 @@ export function TanStackStartRsbuildPluginCore(
                 if (!serverBuild?.fetch) {
                   return next()
                 }
-                req.url = joinURL(resolvedStartConfig.viteAppBase, req.url ?? '/')
+                req.url = joinURL(
+                  resolvedStartConfig.viteAppBase,
+                  req.url ?? '/',
+                )
                 const webReq = new NodeRequest({ req, res })
                 const webRes = await serverBuild.fetch(webReq)
                 return sendNodeResponse(res, webRes)
