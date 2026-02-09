@@ -174,7 +174,7 @@ export const handleServerAction = async ({
 
       if (isResponseLike(unwrapped)) {
         const isRedirectResponse =
-          isRedirect(unwrapped) || Boolean(getRedirectOptions(unwrapped))
+          isRedirect(unwrapped) || Boolean(redirectOptions)
         if (isRedirectResponse) {
           return unwrapped
         }
@@ -331,7 +331,7 @@ export const handleServerAction = async ({
           )
         }
         const isRedirectResponse =
-          isRedirect(error) || Boolean(getRedirectOptions(error))
+          isRedirect(error) || Boolean(redirectOptions)
         if (isRedirectResponse) {
           return error
         }
@@ -406,8 +406,11 @@ function isResponseLike(value: unknown): value is Response {
   if (!('status' in value) || !('headers' in value)) {
     return false
   }
-  const headers = (value as { headers?: { get?: unknown } }).headers
-  return typeof headers?.get === 'function'
+  const headers = (value as { headers?: { get?: unknown; set?: unknown } })
+    .headers
+  return (
+    typeof headers?.get === 'function' && typeof headers?.set === 'function'
+  )
 }
 
 function getRedirectOptions(

@@ -3,7 +3,10 @@ import path from 'node:path'
 import { createRspackPlugin } from 'unplugin'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
-import { getServerFnsById } from './start-compiler-loader'
+import {
+  getServerFnsById,
+  resetServerFnCompilerState,
+} from './start-compiler-loader'
 import type { ServerFn } from '../start-compiler-plugin/types'
 
 const SERVER_FN_MANIFEST_FILE = 'tanstack-start-server-fn-manifest.json'
@@ -79,8 +82,8 @@ function generateManifestModule(
 ): string {
   const manifestEntries = Object.entries(serverFnsById)
     .map(([id, fn]) => {
-      const baseEntry = `'${id}': {
-                functionName: '${fn.functionName}',
+      const baseEntry = `${JSON.stringify(id)}: {
+                functionName: ${JSON.stringify(fn.functionName)},
         importer: () => import(${JSON.stringify(fn.extractedFilename)})${
           includeClientReferencedCheck
             ? `,
@@ -180,8 +183,7 @@ function generateManifestModuleFromFile(
         cached = JSON.parse(raw)
         return cached
       } catch (error) {
-        cached = {}
-        return cached
+        return {}
       }
     }
 
@@ -262,6 +264,7 @@ export function createServerFnManifestRspackPlugin(opts: {
       compiler.hooks.beforeRun.tapPromise(
         'tanstack-start:server-fn-manifest',
         async () => {
+          resetServerFnCompilerState()
           await fsp.rm(tempManifestPath, { force: true })
         },
       )
@@ -514,8 +517,14 @@ export function createServerFnManifestRspackPlugin(opts: {
             const handlerVar =
               assignmentMatches[assignmentMatches.length - 1]?.[1]
             if (!handlerVar) return undefined
+            const escapedHandlerVar = handlerVar.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              '\\$&',
+            )
             const exportMatch = scope.match(
-              new RegExp(`([A-Za-z_$][\\\\w$]*):\\\\(\\\\)=>${handlerVar}`),
+              new RegExp(
+                `([A-Za-z_$][\\\\w$]*):\\\\(\\\\)=>${escapedHandlerVar}`,
+              ),
             )
             return exportMatch?.[1]
           }

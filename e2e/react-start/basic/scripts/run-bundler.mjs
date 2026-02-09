@@ -25,6 +25,9 @@ const run = (cmd, cmdArgs) =>
       env: process.env,
       shell: process.platform === 'win32',
     })
+    child.on('error', (error) => {
+      reject(error)
+    })
     child.on('close', (code) => {
       if (code === 0) {
         resolve()

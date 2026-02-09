@@ -43,7 +43,7 @@ export async function postServerBuild({
       prerender: {
         ...startConfig.spa.prerender,
         headers: {
-          ...startConfig.spa.prerender.headers,
+          ...(startConfig.spa.prerender.headers ?? {}),
           [HEADERS.TSS_SHELL]: 'true',
         },
       },

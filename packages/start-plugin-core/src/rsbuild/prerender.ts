@@ -232,11 +232,15 @@ export async function prerender({
           }
         } catch (error) {
           if (retries < (prerenderOptions.retryCount ?? 0)) {
-            logger.warn(`Encountered error, retrying: ${page.path} in 500ms`)
+            const resolvedDelay = prerenderOptions.retryDelay ?? 500
+            logger.warn(
+              `Encountered error, retrying: ${page.path} in ${resolvedDelay}ms`,
+            )
             await new Promise((resolve) =>
-              setTimeout(resolve, prerenderOptions.retryDelay),
+              setTimeout(resolve, resolvedDelay),
             )
             retriesByPath.set(page.path, retries + 1)
+            seen.delete(page.path)
             addCrawlPageTask(page)
           } else {
             if (prerenderOptions.failOnError ?? true) {

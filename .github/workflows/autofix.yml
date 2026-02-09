@@ -10,8 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   autofix:

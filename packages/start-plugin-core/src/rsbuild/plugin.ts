@@ -598,9 +598,9 @@ export function TanStackStartRsbuildPluginCore(
             if (typeof existingSetupMiddlewares === 'function') {
               existingSetupMiddlewares(middlewares, context)
             } else if (Array.isArray(existingSetupMiddlewares)) {
-              existingSetupMiddlewares.forEach((fn: any) =>
-                fn(middlewares, context),
-              )
+              existingSetupMiddlewares.forEach((fn: any) => {
+                fn(middlewares, context)
+              })
             }
             setupMiddlewares(middlewares, context)
           }
@@ -714,11 +714,12 @@ export function TanStackStartRsbuildPluginCore(
               }
 
               if (!serverBuild) {
-                const outputFilename = 'server.js'
-                const serverEntryPath = path.join(
-                  serverOutputDir,
-                  outputFilename,
-                )
+                const outputCandidates = ['server.js', 'server.mjs', 'index.js']
+                const outputFilename =
+                  outputCandidates.find((candidate) =>
+                    fs.existsSync(path.join(serverOutputDir, candidate)),
+                  ) ?? 'server.js'
+                const serverEntryPath = path.join(serverOutputDir, outputFilename)
                 const imported = await import(
                   pathToFileURL(serverEntryPath).toString()
                 )

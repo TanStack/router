@@ -21,6 +21,11 @@ import type { Plugin as SerovalPlugin } from 'seroval'
 
 let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
 
+type ResponseLike = Pick<
+  Response,
+  'status' | 'ok' | 'headers' | 'body' | 'json' | 'text'
+>
+
 /**
  * Checks if an object has at least one own enumerable property.
  * More efficient than Object.keys(obj).length > 0 as it short-circuits on first property.
@@ -35,7 +40,7 @@ function hasOwnProperties(obj: object): boolean {
   return false
 }
 
-function isResponseLike(value: unknown): value is Response {
+function isResponseLike(value: unknown): value is ResponseLike {
   if (value instanceof Response) {
     return true
   }
@@ -45,8 +50,22 @@ function isResponseLike(value: unknown): value is Response {
   if (!('status' in value) || !('headers' in value)) {
     return false
   }
-  const headers = (value as { headers?: { get?: unknown } }).headers
-  return typeof headers?.get === 'function'
+  const candidate = value as {
+    headers?: { get?: unknown; set?: unknown }
+    json?: unknown
+    text?: unknown
+    body?: unknown
+    ok?: unknown
+  }
+  const headers = candidate.headers
+  return (
+    typeof headers?.get === 'function' &&
+    typeof headers?.set === 'function' &&
+    typeof candidate.json === 'function' &&
+    typeof candidate.text === 'function' &&
+    'body' in candidate &&
+    typeof candidate.ok === 'boolean'
+  )
 }
 
 function parseRedirectFallback(payload: unknown) {
@@ -199,7 +218,7 @@ async function getFetchBody(
  * @throws If the response is invalid or an error occurs during processing.
  */
 async function getResponse(fn: () => Promise<Response>) {
-  let response: Response
+  let response: ResponseLike
   try {
     response = await fn() // client => server => fn => server => client
   } catch (error) {

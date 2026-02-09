@@ -38,6 +38,12 @@ const appendServerFnsToManifest = (
 }
 
 export const getServerFnsById = () => serverFnsById
+export const resetServerFnCompilerState = () => {
+  compilers.clear()
+  for (const key of Object.keys(serverFnsById)) {
+    delete serverFnsById[key]
+  }
+}
 
 // Derive transform code filter from KindDetectionPatterns (single source of truth)
 function getTransformCodeFilterForEnv(env: 'client' | 'server'): Array<RegExp> {
@@ -130,23 +136,27 @@ async function resolveId(
         conditionNames: ['import', 'module', 'default'],
       }) ?? loaderContext.resolve
 
-    resolver(resolveContext, source, (err: Error | null, result?: string) => {
-      if (!err && result) {
-        resolve(cleanId(result))
-        return
-      }
-      try {
-        const resolved = require.resolve(source, {
-          paths: [
-            baseContext,
-            loaderContext.rootContext || loaderContext.context,
-          ].filter(Boolean),
-        })
-        resolve(cleanId(resolved))
-      } catch {
-        resolve(null)
-      }
-    })
+    try {
+      resolver(resolveContext, source, (err: Error | null, result?: string) => {
+        if (!err && result) {
+          resolve(cleanId(result))
+          return
+        }
+        try {
+          const resolved = require.resolve(source, {
+            paths: [
+              baseContext,
+              loaderContext.rootContext || loaderContext.context,
+            ].filter(Boolean),
+          })
+          resolve(cleanId(resolved))
+        } catch {
+          resolve(null)
+        }
+      })
+    } catch {
+      resolve(null)
+    }
   })
 }
 
