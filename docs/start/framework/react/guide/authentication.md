@@ -154,8 +154,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth() {
+  const hydrated = useHydrated()
   const context = useContext(AuthContext)
+
   if (!context) {
+    if (!hydrated) {
+       const { data: user, isLoading, refetch } = useServerFn(getCurrentUserFn)
+       return { user, isLoading, refetch }
+    }
     throw new Error('useAuth must be used within AuthProvider')
   }
   return context
