@@ -227,7 +227,15 @@ export default defineConfig({
 
 #### Performance Tip: FastResponse
 
-If you're deploying to Node.js with Nitro (which uses [srvx](https://srvx.h3.dev/) under the hood), you can get a ~5% throughput improvement by replacing the global `Response` constructor with srvx's optimized `FastResponse`. Add this to your server entry point (`src/server.ts`):
+If you're deploying to Node.js with Nitro (which uses [srvx](https://srvx.h3.dev/) under the hood), you can get a ~5% throughput improvement by replacing the global `Response` constructor with srvx's optimized `FastResponse`.
+
+First, install srvx:
+
+```bash
+pnpm install srvx
+```
+
+Then add this to your server entry point (`src/server.ts`):
 
 ```ts
 import { FastResponse } from 'srvx'
