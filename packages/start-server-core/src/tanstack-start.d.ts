@@ -1,4 +1,4 @@
-declare module 'tanstack-start-manifest:v' {
+declare module 'tanstack-start-manifest' {
   import type { Manifest } from '@tanstack/router-core'
 
   export const tsrStartManifest: () => Manifest & { clientEntry: string }
@@ -18,6 +18,6 @@ declare module '#tanstack-start-server-fn-resolver' {
   ): Promise<ServerFn>
 }
 
-declare module 'tanstack-start-injected-head-scripts:v' {
+declare module 'tanstack-start-injected-head-scripts' {
   export const injectedHeadScripts: string | undefined
 }

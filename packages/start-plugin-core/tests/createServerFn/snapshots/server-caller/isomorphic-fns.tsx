@@ -1,7 +1,10 @@
 import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
+import { getServerEnv_createServerFn_handler, getServerEcho_createServerFn_handler } from "./test.ts?tss-serverfn-split";
 import { createFileRoute } from '@tanstack/react-router';
 import { createIsomorphicFn, createServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
+globalThis.__tssServerFnHandlers = globalThis.__tssServerFnHandlers || [];
+globalThis.__tssServerFnHandlers.push(getServerEnv_createServerFn_handler, getServerEcho_createServerFn_handler);
 const getEnv = createIsomorphicFn().server(() => 'server').client(() => 'client');
 const getServerEnv = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJnZXRTZXJ2ZXJFbnZfY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["getServerEnv_createServerFn_handler"])));
 const getEcho = createIsomorphicFn().server((input: string) => 'server received ' + input).client(input => 'client received ' + input);

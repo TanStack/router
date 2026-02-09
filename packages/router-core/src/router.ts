@@ -2048,7 +2048,7 @@ export class RouterCore<
    * Commit a previously built location to history (push/replace), optionally
    * using view transitions and scroll restoration options.
    */
-  commitLocation: CommitLocationFn = async ({
+  commitLocation: CommitLocationFn = ({
     viewTransition,
     ignoreBlocker,
     ...next
@@ -2379,7 +2379,7 @@ export class RouterCore<
             onReady: async () => {
               // Wrap batch in framework-specific transition wrapper (e.g., Solid's startTransition)
               this.startTransition(() => {
-                this.startViewTransition(async () => {
+                this.startViewTransition(() => {
                   // this.viewTransitionPromise = createControlledPromise<true>()
 
                   // Commit the pending matches. If a previous match was
@@ -2442,6 +2442,8 @@ export class RouterCore<
                       )
                     })
                   })
+
+                  return Promise.resolve()
                 })
               })
             },

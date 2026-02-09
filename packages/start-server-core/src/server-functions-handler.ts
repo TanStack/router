@@ -50,6 +50,10 @@ export const handleServerAction = async ({
   const url = new URL(request.url)
 
   const action = await getServerFnById(serverFnId, { fromClient: true })
+  const executableAction =
+    typeof (action as any)?.__executeServer === 'function'
+      ? (action as any).__executeServer.bind(action)
+      : action
 
   const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
 
@@ -111,7 +115,8 @@ export const handleServerAction = async ({
             }
           }
 
-          return await action(params)
+          const result = await executableAction(params)
+          return result
         }
 
         // Get requests use the query string
@@ -129,7 +134,8 @@ export const handleServerAction = async ({
           payload.context = safeObjectMerge(context, payload.context)
           payload.method = methodUpper
           // Send it through!
-          return await action(payload)
+          const result = await executableAction(payload)
+          return result
         }
 
         if (methodLower !== 'post') {
@@ -144,7 +150,8 @@ export const handleServerAction = async ({
         const payload = jsonPayload ? parsePayload(jsonPayload) : {}
         payload.context = safeObjectMerge(payload.context, context)
         payload.method = methodUpper
-        return await action(payload)
+        const result = await executableAction(payload)
+        return result
       })()
 
       const unwrapped = res.result || res.error
@@ -157,8 +164,18 @@ export const handleServerAction = async ({
         return unwrapped
       }
 
-      if (unwrapped instanceof Response) {
-        if (isRedirect(unwrapped)) {
+      const redirectOptions = getRedirectOptions(unwrapped)
+      if (redirectOptions) {
+        return Response.json(
+          { ...redirectOptions, isSerializedRedirect: true },
+          { headers: getResponseHeaders(unwrapped) },
+        )
+      }
+
+      if (isResponseLike(unwrapped)) {
+        const isRedirectResponse =
+          isRedirect(unwrapped) || Boolean(getRedirectOptions(unwrapped))
+        if (isRedirectResponse) {
           return unwrapped
         }
         unwrapped.headers.set(X_TSS_RAW_RESPONSE, 'true')
@@ -305,7 +322,20 @@ export const handleServerAction = async ({
         })
       }
     } catch (error: any) {
-      if (error instanceof Response) {
+      if (isResponseLike(error)) {
+        const redirectOptions = getRedirectOptions(error)
+        if (redirectOptions && isServerFn) {
+          return Response.json(
+            { ...redirectOptions, isSerializedRedirect: true },
+            { headers: getResponseHeaders(error) },
+          )
+        }
+        const isRedirectResponse =
+          isRedirect(error) || Boolean(getRedirectOptions(error))
+        if (isRedirectResponse) {
+          return error
+        }
+        error.headers.set(X_TSS_RAW_RESPONSE, 'true')
         return error
       }
       // else if (
@@ -364,4 +394,38 @@ function isNotFoundResponse(error: any) {
       ...(headers || {}),
     },
   })
+}
+
+function isResponseLike(value: unknown): value is Response {
+  if (value instanceof Response) {
+    return true
+  }
+  if (value === null || typeof value !== 'object') {
+    return false
+  }
+  if (!('status' in value) || !('headers' in value)) {
+    return false
+  }
+  const headers = (value as { headers?: { get?: unknown } }).headers
+  return typeof headers?.get === 'function'
+}
+
+function getRedirectOptions(
+  value: unknown,
+): Record<string, unknown> | undefined {
+  if (!isRedirect(value)) {
+    return undefined
+  }
+  return value.options as Record<string, unknown>
+}
+
+function getResponseHeaders(value: unknown): Headers | undefined {
+  if (value === null || typeof value !== 'object') {
+    return undefined
+  }
+  if (!('headers' in value)) {
+    return undefined
+  }
+  const headers = (value as { headers?: Headers }).headers
+  return headers
 }

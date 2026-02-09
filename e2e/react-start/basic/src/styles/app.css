@@ -1,30 +1,52 @@
-@import 'tailwindcss' source('../');
-
-@layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
-  }
+*,
+*::before,
+*::after,
+::backdrop,
+::file-selector-button {
+  box-sizing: border-box;
+  border-color: #e5e7eb;
 }
 
-@layer base {
-  html {
-    color-scheme: light dark;
-  }
+html {
+  color-scheme: light dark;
+}
 
-  * {
-    @apply border-gray-200 dark:border-gray-800;
-  }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #f9fafb;
+  color: #111827;
+}
 
-  html,
-  body {
-    @apply text-gray-900 bg-gray-50 dark:bg-gray-950 dark:text-gray-200;
-  }
+.using-mouse * {
+  outline: none !important;
+}
 
-  .using-mouse * {
-    outline: none !important;
-  }
+.p-2 {
+  padding: 0.5rem;
+}
+
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.italic {
+  font-style: italic;
 }

@@ -3,6 +3,7 @@ import {
   encode,
   isNotFound,
   parseRedirect,
+  redirect,
 } from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
@@ -32,6 +33,36 @@ function hasOwnProperties(obj: object): boolean {
     }
   }
   return false
+}
+
+function isResponseLike(value: unknown): value is Response {
+  if (value instanceof Response) {
+    return true
+  }
+  if (value === null || typeof value !== 'object') {
+    return false
+  }
+  if (!('status' in value) || !('headers' in value)) {
+    return false
+  }
+  const headers = (value as { headers?: { get?: unknown } }).headers
+  return typeof headers?.get === 'function'
+}
+
+function parseRedirectFallback(payload: unknown) {
+  if (!payload || typeof payload !== 'object') {
+    return undefined
+  }
+  if (!('isSerializedRedirect' in payload)) {
+    return undefined
+  }
+  if (
+    (payload as { isSerializedRedirect?: boolean }).isSerializedRedirect !==
+    true
+  ) {
+    return undefined
+  }
+  return redirect(payload as any)
 }
 // caller =>
 //   serverFnFetcher =>
@@ -172,7 +203,7 @@ async function getResponse(fn: () => Promise<Response>) {
   try {
     response = await fn() // client => server => fn => server => client
   } catch (error) {
-    if (error instanceof Response) {
+    if (isResponseLike(error)) {
       response = error
     } else {
       console.log(error)
@@ -240,6 +271,14 @@ async function getResponse(fn: () => Promise<Response>) {
     }
 
     invariant(result, 'expected result to be resolved')
+    const serializedRedirect =
+      parseRedirect(result) ?? parseRedirectFallback(result)
+    if (serializedRedirect) {
+      throw serializedRedirect
+    }
+    if (isNotFound(result)) {
+      throw result
+    }
     if (result instanceof Error) {
       throw result
     }
@@ -251,9 +290,10 @@ async function getResponse(fn: () => Promise<Response>) {
   // if it's JSON
   if (contentType.includes('application/json')) {
     const jsonPayload = await response.json()
-    const redirect = parseRedirect(jsonPayload)
-    if (redirect) {
-      throw redirect
+    const redirectResult =
+      parseRedirect(jsonPayload) ?? parseRedirectFallback(jsonPayload)
+    if (redirectResult) {
+      throw redirectResult
     }
     if (isNotFound(jsonPayload)) {
       throw jsonPayload
