@@ -2,7 +2,6 @@ import * as Solid from 'solid-js/web'
 import { isbot } from 'isbot'
 import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
-import { FastResponse } from 'srvx'
 import type { JSXElement } from 'solid-js'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
@@ -52,7 +51,7 @@ export const renderRouterToStream = async ({
     router,
     readable as unknown as ReadableStream,
   )
-  return new FastResponse(responseStream as any, {
+  return new Response(responseStream as any, {
     status: router.state.statusCode,
     headers: responseHeaders,
   })
