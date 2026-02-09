@@ -1522,9 +1522,7 @@ export class RouterCore<
         match = {
           ...existingMatch,
           cause,
-          params: previousMatch
-            ? replaceEqualDeep(previousMatch.params, routeParams)
-            : routeParams,
+          params: previousMatch?.params ?? routeParams,
           _strictParams: strictParams,
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
@@ -1545,9 +1543,7 @@ export class RouterCore<
           ssr: (isServer ?? this.isServer) ? undefined : route.options.ssr,
           index,
           routeId: route.id,
-          params: previousMatch
-            ? replaceEqualDeep(previousMatch.params, routeParams)
-            : routeParams,
+          params: previousMatch?.params ?? routeParams,
           _strictParams: strictParams,
           pathname: interpolatedPath,
           updatedAt: Date.now(),
