@@ -110,6 +110,10 @@ export function getCssSelector(el: any): string {
   return `${path.reverse().join(' > ')}`.toLowerCase()
 }
 
+/** 
+ * Finds the first matching string selector for a given element from a list of selectors.
+ * Ignores function selectors, see https://github.com/TanStack/router/pull/6632
+ */
 function findMatchingSelector(el: Element, selectors: Array<string | (() => Element | null | undefined)>): string | undefined {
   for (const selector of selectors) {
     if (typeof selector === 'string' && el.matches(selector)) {
@@ -311,7 +315,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       if (attrId) {
         elementSelector = `[data-scroll-restoration-id="${attrId}"]`
       } else {
-        elementSelector = findMatchingSelector(event.target as Element, router.options.scrollToTopSelectors ?? []) 
+        elementSelector = findMatchingSelector(event.target as Element, router.options.scrollToTopSelectors ?? [])
           ?? getCssSelector(event.target)
       }
     }
@@ -384,7 +388,8 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
             }
           }
 
-          state[cacheKey] = newState;
+          state[cacheKey] ||= {} as ScrollRestorationByElement
+          state[cacheKey] = { ...state[cacheKey], ...newState };
         }
   
         return state
