@@ -14,7 +14,10 @@ function getImportPath(
   generatedRouteTreePath: string,
   absolutePath: string,
 ): string {
-  let relativePath = path.relative(path.dirname(generatedRouteTreePath), absolutePath)
+  let relativePath = path.relative(
+    path.dirname(generatedRouteTreePath),
+    absolutePath,
+  )
 
   if (!relativePath.startsWith('.')) {
     relativePath = `./${relativePath}`
