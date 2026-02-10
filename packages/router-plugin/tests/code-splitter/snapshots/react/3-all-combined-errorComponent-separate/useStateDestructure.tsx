@@ -491,7 +491,7 @@ Check it out at https://tanstack.com/start/`,
             src={`https://stackblitz.com/github/${repo}/tree/${branch}/examples/${framework}/simple?embed=1&theme=${
               isDark ? 'dark' : 'light'
             }`}
-            title={`tanstack/${framework}-query: basic`}
+            title={`tannerlinsley/${framework}-query: basic`}
             sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
             className="shadow-2xl"
             loading="lazy"
