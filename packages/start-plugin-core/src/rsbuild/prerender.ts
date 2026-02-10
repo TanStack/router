@@ -47,6 +47,7 @@ export async function prerender({
     routerBaseUrl,
   )
 
+  const previousPrerenderingEnv = process.env.TSS_PRERENDERING
   process.env.TSS_PRERENDERING = 'true'
 
   const serverBuild = await import(pathToFileURL(serverEntryPath).toString())
@@ -92,6 +93,13 @@ export async function prerender({
     })
   } catch (error) {
     logger.error(error)
+    throw error
+  } finally {
+    if (previousPrerenderingEnv === undefined) {
+      delete process.env.TSS_PRERENDERING
+    } else {
+      process.env.TSS_PRERENDERING = previousPrerenderingEnv
+    }
   }
 
   function extractLinks(html: string): Array<string> {
@@ -184,8 +192,9 @@ export async function prerender({
             ? cleanPagePath + 'index'
             : cleanPagePath
 
+          const spaPrerender = startConfig.spa?.prerender
           const isSpaShell =
-            startConfig.spa?.prerender.outputPath === cleanPagePath
+            !!spaPrerender && spaPrerender.outputPath === cleanPagePath
 
           let htmlPath: string
           if (isSpaShell) {

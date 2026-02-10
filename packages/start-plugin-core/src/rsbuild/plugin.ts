@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'node:url'
 
 import { joinPaths } from '@tanstack/router-core'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
@@ -8,7 +8,9 @@ import { joinURL } from 'ufo'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { resolveEntry } from '../resolve-entries'
 import { parseStartConfig } from '../schema'
+import { createRouteTreeModuleDeclaration } from '../start-router-plugin/route-tree-module-declaration'
 import { createInjectedHeadScriptsPlugin } from './injected-head-scripts-plugin'
+import { resolveLoaderPath } from './resolve-loader-path'
 import {
   SERVER_FN_MANIFEST_TEMP_FILE,
   createServerFnManifestRspackPlugin,
@@ -39,52 +41,6 @@ function isFullUrl(str: string): boolean {
   } catch {
     return false
   }
-}
-
-function buildRouteTreeModuleDeclaration(opts: {
-  generatedRouteTreePath: string
-  routerFilePath: string
-  startFilePath?: string
-  framework: string
-}) {
-  const getImportPath = (absolutePath: string) => {
-    let relativePath = path.relative(
-      path.dirname(opts.generatedRouteTreePath),
-      absolutePath,
-    )
-    if (!relativePath.startsWith('.')) {
-      relativePath = `./${relativePath}`
-    }
-    return relativePath.split(path.sep).join('/')
-  }
-
-  const result: Array<string> = [
-    `import type { getRouter } from '${getImportPath(opts.routerFilePath)}'`,
-  ]
-  if (opts.startFilePath) {
-    result.push(
-      `import type { startInstance } from '${getImportPath(opts.startFilePath)}'`,
-    )
-  } else {
-    result.push(
-      `import type { createStart } from '@tanstack/${opts.framework}-start'`,
-    )
-  }
-  result.push(
-    `declare module '@tanstack/${opts.framework}-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>`,
-  )
-  if (opts.startFilePath) {
-    result.push(
-      `    config: Awaited<ReturnType<typeof startInstance.getOptions>>`,
-    )
-  }
-  result.push(`  }
-}`)
-
-  return result.join('\n')
 }
 
 function defineReplaceEnv<TKey extends string, TValue extends string>(
@@ -168,16 +124,6 @@ function getOutputDirectory(
 function toPluginArray(plugin: any) {
   if (!plugin) return []
   return Array.isArray(plugin) ? plugin : [plugin]
-}
-
-function resolveLoaderPath(relativePath: string) {
-  const currentDir = path.dirname(fileURLToPath(import.meta.url))
-  const basePath = path.resolve(currentDir, relativePath)
-  const jsPath = `${basePath}.js`
-  const tsPath = `${basePath}.ts`
-  if (fs.existsSync(jsPath)) return jsPath
-  if (fs.existsSync(tsPath)) return tsPath
-  return jsPath
 }
 
 export function TanStackStartRsbuildPluginCore(
@@ -374,7 +320,7 @@ export function TanStackStartRsbuildPluginCore(
           const generatedRouteTreePath =
             routerPlugins.getGeneratedRouteTreePath()
           const routeTreeModuleDeclarationValue =
-            buildRouteTreeModuleDeclaration({
+            createRouteTreeModuleDeclaration({
               generatedRouteTreePath,
               routerFilePath: resolvedStartConfig.routerFilePath,
               startFilePath: resolvedStartConfig.startFilePath,
@@ -389,7 +335,16 @@ export function TanStackStartRsbuildPluginCore(
               'utf-8',
             )
             if (!existingTree.includes(registerDeclaration)) {
-              fs.rmSync(generatedRouteTreePath)
+              const staleRouteTreePath = `${generatedRouteTreePath}.stale`
+              try {
+                fs.renameSync(generatedRouteTreePath, staleRouteTreePath)
+                fs.rmSync(staleRouteTreePath)
+              } catch (error: any) {
+                // Ignore transient concurrent-generation races and continue.
+                if (!['ENOENT', 'EBUSY'].includes(error?.code)) {
+                  throw error
+                }
+              }
             }
           }
 
@@ -577,11 +532,12 @@ export function TanStackStartRsbuildPluginCore(
                 if (!serverBuild?.fetch) {
                   return next()
                 }
-                req.url = joinURL(
+                const requestWithBaseUrl = Object.create(req)
+                requestWithBaseUrl.url = joinURL(
                   resolvedStartConfig.viteAppBase,
                   req.url ?? '/',
                 )
-                const webReq = new NodeRequest({ req, res })
+                const webReq = new NodeRequest({ req: requestWithBaseUrl, res })
                 const webRes = await serverBuild.fetch(webReq)
                 return sendNodeResponse(res, webRes)
               } catch (error) {
@@ -732,10 +688,13 @@ export function TanStackStartRsbuildPluginCore(
               if (!serverBuild?.fetch) {
                 return next()
               }
+              const requestWithBaseUrl = Object.create(req)
+              requestWithBaseUrl.url = joinURL(
+                resolvedStartConfig.viteAppBase,
+                req.url ?? '/',
+              )
 
-              req.url = joinURL(resolvedStartConfig.viteAppBase, req.url ?? '/')
-
-              const webReq = new NodeRequest({ req, res })
+              const webReq = new NodeRequest({ req: requestWithBaseUrl, res })
               const webRes: Response = await serverBuild.fetch(webReq)
               return sendNodeResponse(res, webRes)
             } catch (error) {

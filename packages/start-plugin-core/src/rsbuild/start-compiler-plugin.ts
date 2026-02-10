@@ -261,12 +261,17 @@ export function createServerFnManifestRspackPlugin(opts: {
 
   return {
     apply(compiler: any) {
+      const resetManifestState = async () => {
+        resetServerFnCompilerState()
+        await fsp.rm(tempManifestPath, { force: true })
+      }
       compiler.hooks.beforeRun.tapPromise(
         'tanstack-start:server-fn-manifest',
-        async () => {
-          resetServerFnCompilerState()
-          await fsp.rm(tempManifestPath, { force: true })
-        },
+        resetManifestState,
+      )
+      compiler.hooks.watchRun.tapPromise(
+        'tanstack-start:server-fn-manifest',
+        resetManifestState,
       )
       compiler.hooks.afterEmit.tapPromise(
         'tanstack-start:server-fn-manifest',

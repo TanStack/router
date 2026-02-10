@@ -18,6 +18,7 @@ import {
 import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
+import type { RedirectOptions } from '@tanstack/router-core'
 
 let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
 
@@ -77,7 +78,7 @@ function parseRedirectFallback(payload: unknown) {
   ) {
     return undefined
   }
-  return redirect(payload as any)
+  return redirect(payload as unknown as RedirectOptions)
 }
 // caller =>
 //   serverFnFetcher =>

@@ -167,11 +167,10 @@ async function loadModule(
 ) {
   const cleaned = cleanId(id)
   const resolvedPath =
-    cleaned.startsWith('.') || cleaned.startsWith('/')
-      ? cleaned
-      : ((await resolveId(loaderContext, cleaned)) ?? cleaned)
+    (await resolveId(loaderContext, cleaned)) ??
+    (path.isAbsolute(cleaned) ? cleaned : null)
 
-  if (resolvedPath.includes('\0')) return
+  if (!resolvedPath || resolvedPath.includes('\0')) return
 
   try {
     const code = await fsp.readFile(resolvedPath, 'utf-8')
