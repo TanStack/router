@@ -358,18 +358,11 @@ export function TanStackStartRsbuildPluginCore(
             '@tanstack/start-storage-context': startStorageContextStubPath,
           }
 
-          const startClientCoreDistPath = path.resolve(
-            root,
-            'packages/start-client-core/dist/esm',
-          )
           const startClientCoreDistPattern =
             /[\\/]start-client-core[\\/]dist[\\/]esm[\\/]/
           const loaderIncludePaths: Array<string | RegExp> = [
             resolvedStartConfig.srcDirectory,
           ]
-          if (fs.existsSync(startClientCoreDistPath)) {
-            loaderIncludePaths.push(startClientCoreDistPath)
-          }
           loaderIncludePaths.push(startClientCoreDistPattern)
 
           const loaderRule = (

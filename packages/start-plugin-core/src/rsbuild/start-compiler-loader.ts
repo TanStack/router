@@ -26,6 +26,7 @@ type LoaderOptions = {
 }
 
 const compilers = new Map<string, StartCompiler>()
+const loaderContexts = new Map<string, any>()
 const serverFnsById: Record<string, ServerFn> = {}
 const require = createRequire(import.meta.url)
 const appendServerFnsToManifest = (
@@ -40,6 +41,7 @@ const appendServerFnsToManifest = (
 export const getServerFnsById = () => serverFnsById
 export const resetServerFnCompilerState = () => {
   compilers.clear()
+  loaderContexts.clear()
   for (const key of Object.keys(serverFnsById)) {
     delete serverFnsById[key]
   }
@@ -197,6 +199,8 @@ export default function startCompilerLoader(this: any, code: string, map: any) {
     return
   }
 
+  loaderContexts.set(envName, this)
+
   let compiler = compilers.get(envName)
   if (!compiler) {
     const mode =
@@ -224,9 +228,10 @@ export default function startCompilerLoader(this: any, code: string, map: any) {
       generateFunctionId: options.generateFunctionId,
       onServerFnsById,
       getKnownServerFns: () => serverFnsById,
-      loadModule: async (id: string) => loadModule(compiler!, this, id),
+      loadModule: async (id: string) =>
+        loadModule(compiler!, loaderContexts.get(envName), id),
       resolveId: async (source: string, importer?: string) =>
-        resolveId(this, source, importer),
+        resolveId(loaderContexts.get(envName), source, importer),
     })
     compilers.set(envName, compiler)
   }
