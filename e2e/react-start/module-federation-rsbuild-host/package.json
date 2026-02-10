@@ -8,7 +8,10 @@
     "build": "rsbuild build",
     "preview": "rsbuild preview",
     "start": "node server.js",
-    "test:e2e": "rm -rf dist; rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e:ssr": "rm -rf dist; rm -rf port*.txt; HOST_MODE=ssr playwright test --project=chromium",
+    "test:e2e:spa": "rm -rf dist; rm -rf port*.txt; HOST_MODE=spa playwright test --project=chromium",
+    "test:e2e:prerender": "rm -rf dist; rm -rf port*.txt; HOST_MODE=prerender playwright test --project=chromium",
+    "test:e2e": "pnpm test:e2e:ssr && pnpm test:e2e:spa && pnpm test:e2e:prerender"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

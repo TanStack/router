@@ -6,6 +6,13 @@ using:
 - `@module-federation/rsbuild-plugin`
 - `@module-federation/node/runtimePlugin`
 
+It also demonstrates:
+
+- Dynamic route registration from a remote module (Option B)
+- Selective SSR (`ssr: false`) on a federated route
+- Federated server route and server function handlers
+- Start mode matrix via `HOST_MODE`: `ssr`, `spa`, `prerender`
+
 ## Run with the remote app
 
 1. Start the remote app first:
@@ -21,10 +28,22 @@ pnpm preview --port 3001
 
 ```sh
 pnpm install
-REMOTE_PORT=3001 pnpm build
+HOST_MODE=ssr REMOTE_PORT=3001 pnpm build
 PORT=3000 pnpm start
 ```
 
 3. Open `http://localhost:3000`.
 
 The host renders the remote component during SSR and hydrates it on the client.
+
+## Try other Start modes
+
+```sh
+# SPA mode
+HOST_MODE=spa REMOTE_PORT=3001 pnpm build
+PORT=3000 pnpm start
+
+# Static prerender mode
+HOST_MODE=prerender REMOTE_PORT=3001 pnpm build
+PORT=3000 pnpm start
+```

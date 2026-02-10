@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { promises as fsp } from 'node:fs'
 import os from 'node:os'
@@ -18,6 +19,7 @@ export async function prerender({
   serverEntryPath: string
 }) {
   const logger = createLogger('prerender')
+  const require = createRequire(import.meta.url)
   logger.info('Prerendering pages...')
 
   if (startConfig.prerender?.enabled) {
@@ -50,7 +52,18 @@ export async function prerender({
   const previousPrerenderingEnv = process.env.TSS_PRERENDERING
   process.env.TSS_PRERENDERING = 'true'
 
-  const serverBuild = await import(pathToFileURL(serverEntryPath).toString())
+  let serverBuild: any
+  try {
+    const cjsServerEntryPath = `${serverEntryPath}.cjs`
+    await fsp.copyFile(serverEntryPath, cjsServerEntryPath)
+    serverBuild = require(cjsServerEntryPath)
+    if (serverBuild && typeof serverBuild.then === 'function') {
+      serverBuild = await serverBuild
+    }
+    await fsp.unlink(cjsServerEntryPath).catch(() => {})
+  } catch {
+    serverBuild = await import(pathToFileURL(serverEntryPath).toString())
+  }
   const fetchHandler = serverBuild.default?.fetch ?? serverBuild.fetch
   if (!fetchHandler) {
     throw new Error('Server build does not export a fetch handler')

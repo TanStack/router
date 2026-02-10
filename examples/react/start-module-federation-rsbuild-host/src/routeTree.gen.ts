@@ -9,38 +9,91 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ServerFnMfRouteImport } from './routes/server-fn-mf'
+import { Route as SelectiveClientOnlyRouteImport } from './routes/selective-client-only'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiFederatedDataRouteImport } from './routes/api/federated-data'
 
+const ServerFnMfRoute = ServerFnMfRouteImport.update({
+  id: '/server-fn-mf',
+  path: '/server-fn-mf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SelectiveClientOnlyRoute = SelectiveClientOnlyRouteImport.update({
+  id: '/selective-client-only',
+  path: '/selective-client-only',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFederatedDataRoute = ApiFederatedDataRouteImport.update({
+  id: '/api/federated-data',
+  path: '/api/federated-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/selective-client-only': typeof SelectiveClientOnlyRoute
+  '/server-fn-mf': typeof ServerFnMfRoute
+  '/api/federated-data': typeof ApiFederatedDataRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/selective-client-only': typeof SelectiveClientOnlyRoute
+  '/server-fn-mf': typeof ServerFnMfRoute
+  '/api/federated-data': typeof ApiFederatedDataRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/selective-client-only': typeof SelectiveClientOnlyRoute
+  '/server-fn-mf': typeof ServerFnMfRoute
+  '/api/federated-data': typeof ApiFederatedDataRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/selective-client-only'
+    | '/server-fn-mf'
+    | '/api/federated-data'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/selective-client-only' | '/server-fn-mf' | '/api/federated-data'
+  id:
+    | '__root__'
+    | '/'
+    | '/selective-client-only'
+    | '/server-fn-mf'
+    | '/api/federated-data'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SelectiveClientOnlyRoute: typeof SelectiveClientOnlyRoute
+  ServerFnMfRoute: typeof ServerFnMfRoute
+  ApiFederatedDataRoute: typeof ApiFederatedDataRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/server-fn-mf': {
+      id: '/server-fn-mf'
+      path: '/server-fn-mf'
+      fullPath: '/server-fn-mf'
+      preLoaderRoute: typeof ServerFnMfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/selective-client-only': {
+      id: '/selective-client-only'
+      path: '/selective-client-only'
+      fullPath: '/selective-client-only'
+      preLoaderRoute: typeof SelectiveClientOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +101,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/federated-data': {
+      id: '/api/federated-data'
+      path: '/api/federated-data'
+      fullPath: '/api/federated-data'
+      preLoaderRoute: typeof ApiFederatedDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SelectiveClientOnlyRoute: SelectiveClientOnlyRoute,
+  ServerFnMfRoute: ServerFnMfRoute,
+  ApiFederatedDataRoute: ApiFederatedDataRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

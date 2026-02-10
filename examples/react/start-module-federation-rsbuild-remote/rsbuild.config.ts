@@ -16,6 +16,8 @@ export default defineConfig({
       filename: 'remoteEntry.js',
       exposes: {
         './message': './src/message.tsx',
+        './routes': './src/routes.tsx',
+        './server-data': './src/server-data.ts',
       },
       runtimePlugins: [require.resolve('@module-federation/node/runtimePlugin')],
       shared: {
@@ -67,6 +69,8 @@ export default defineConfig({
               dts: false,
               exposes: {
                 './message': './src/message.tsx',
+                './routes': './src/routes.tsx',
+                './server-data': './src/server-data.ts',
               },
               runtimePlugins: [
                 require.resolve('@module-federation/node/runtimePlugin'),

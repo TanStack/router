@@ -4,6 +4,7 @@ import packageJson from './package.json' with { type: 'json' }
 
 const HOST_PORT = await getTestServerPort(packageJson.name)
 const REMOTE_PORT = await getTestServerPort(`${packageJson.name}-remote`)
+const HOST_MODE = process.env.HOST_MODE || 'ssr'
 const baseURL = `http://localhost:${HOST_PORT}`
 
 export default defineConfig({
@@ -34,6 +35,7 @@ export default defineConfig({
       env: {
         PORT: String(HOST_PORT),
         REMOTE_PORT: String(REMOTE_PORT),
+        HOST_MODE,
       },
       timeout: 120_000,
     },

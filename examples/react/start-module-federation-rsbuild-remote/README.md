@@ -7,6 +7,8 @@ This example is the **remote app** used by the host example:
 It exposes:
 
 - `mf_remote/message`
+- `mf_remote/routes` (dynamic route registrations)
+- `mf_remote/server-data` (server-side federated data helper)
 
 via `@module-federation/rsbuild-plugin`, and serves chunks over HTTP.
 
