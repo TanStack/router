@@ -45,6 +45,27 @@ type ToOptions<
   state?:
     | Record<string, any>
     | ((prevState: Record<string, unknown>) => Record<string, unknown>)
+  // `mask` is another navigation object used to mask the URL shown in the browser for this navigation.
+  mask?: ToMaskOptions<TRouteTree>
+}
+
+type ToMaskOptions<TRouteTree extends AnyRoute = AnyRoute> = {
+  // `from`, `to`, `params`, `search`, `hash`, and `state` behave the same as in `ToOptions`.
+  // `mask` itself is not allowed inside `ToMaskOptions`.
+  from?: string
+  to: string
+  params:
+    | Record<string, unknown>
+    | ((prevParams: Record<string, unknown>) => Record<string, unknown>)
+  search:
+    | Record<string, unknown>
+    | ((prevSearch: Record<string, unknown>) => Record<string, unknown>)
+  hash?: string | ((prevHash: string) => string)
+  state?:
+    | Record<string, any>
+    | ((prevState: Record<string, unknown>) => Record<string, unknown>)
+  // If true, the URL will unmask on page reload.
+  unmaskOnReload?: boolean
 }
 ```
 
@@ -85,6 +106,8 @@ export type NavigateOptions<
 }
 ```
 
+`NavigateOptions` includes all `ToOptions` fields, including `mask`.
+
 ### `LinkOptions` Interface
 
 Anywhere an actual `<a>` tag the `LinkOptions` interface which extends `NavigateOptions` will be available:
@@ -112,6 +135,8 @@ export type LinkOptions<
   disabled?: boolean
 }
 ```
+
+Since `LinkOptions` extends `NavigateOptions`, it also supports `mask`.
 
 ## Navigation API
 
