@@ -408,7 +408,9 @@ function isResponseLike(value: unknown): value is Response {
   const headers = (value as { headers?: { get?: unknown; set?: unknown } })
     .headers
   return (
-    typeof headers?.get === 'function' && typeof headers?.set === 'function'
+    !!headers &&
+    typeof headers.get === 'function' &&
+    typeof headers.set === 'function'
   )
 }
 
