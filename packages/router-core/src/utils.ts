@@ -593,8 +593,8 @@ export function escapeHtml(str: string): string {
   return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
 }
 
-export function decodePath(path: string, decodeIgnore?: Array<string>): string {
-  if (!path) return path
+export function decodePath(path: string) {
+  if (!path) return { path, handledProtocolRelativeURL: false }
 
   // Fast path: most paths are already decoded and safe.
   // Only fall back to the slower scan/regex path when we see a '%' (encoded),
@@ -602,12 +602,10 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   // prefix which needs collapsing.
   // eslint-disable-next-line no-control-regex
   if (!/[%\\\x00-\x1f\x7f]/.test(path) && !path.startsWith('//')) {
-    return path
+    return { path, handledProtocolRelativeURL: false }
   }
 
-  const re = decodeIgnore
-    ? new RegExp(`${decodeIgnore.join('|')}`, 'gi')
-    : /%25|%5C/gi
+  const re = /%25|%5C/gi
   let cursor = 0
   let result = ''
   let match
@@ -620,11 +618,13 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
   // After sanitizing control characters, paths like "/\r/evil.com" become "//evil.com"
   // Collapse leading double slashes to a single slash
+  let handledProtocolRelativeURL = false
   if (result.startsWith('//')) {
+    handledProtocolRelativeURL = true
     result = '/' + result.replace(/^\/+/, '')
   }
 
-  return result
+  return { path: result, handledProtocolRelativeURL }
 }
 
 /**

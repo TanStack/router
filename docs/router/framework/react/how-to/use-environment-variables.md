@@ -436,13 +436,13 @@ export const Route = createFileRoute('/api-data')({
 // vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
   plugins: [
     react(),
-    // TanStackRouterVite generates route tree and enables file-based routing
-    TanStackRouterVite(),
+    // tanstackRouter generates route tree and enables file-based routing
+    tanstackRouter(),
   ],
   // Environment variables are handled automatically
   // Custom environment variable handling:
