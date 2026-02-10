@@ -162,7 +162,7 @@ Create a `content-collections.ts` file in your project root:
 // content-collections.ts
 import { defineCollection, defineConfig } from '@content-collections/core'
 import matter from 'gray-matter'
-import { z } from "zod"
+import { z } from 'zod'
 
 function extractFrontMatter(content: string) {
   const { data, content: body, excerpt } = matter(content, { excerpt: true })
