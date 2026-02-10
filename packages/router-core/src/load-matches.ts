@@ -543,10 +543,11 @@ const executeContext = (
   const { params, cause, loaderDeps } = match
   const preload = resolvePreload(inner, matchId)
 
-  const contextFnContext: ContextFnOptions<any, any, any, any> = {
+  const contextFnContext: ContextFnOptions<any, any, any, any, any> = {
     params,
     preload,
     context,
+    deps: loaderDeps,
     location: inner.location,
     navigate: (opts: any) =>
       inner.router.navigate({

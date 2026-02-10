@@ -2464,6 +2464,9 @@ test('object form with params and search', () => {
   const invoiceRoute = createRoute({
     path: '$invoiceId',
     getParentRoute: () => invoicesRoute,
+    loaderDeps: (deps) => ({
+      currentPage: deps.search.page,
+    }),
     context: {
       handler: (opts) => {
         expectTypeOf(opts).toEqualTypeOf<{
@@ -2474,6 +2477,7 @@ test('object form with params and search', () => {
           navigate: NavigateFn
           buildLocation: BuildLocationFn
           cause: 'preload' | 'enter' | 'stay'
+          deps: { currentPage: number }
           context: {
             userId: string
             invoiceEnv: string
@@ -2485,9 +2489,6 @@ test('object form with params and search', () => {
         return { detailEnv: 'staging' }
       },
     },
-    loaderDeps: (deps) => ({
-      currentPage: deps.search.page,
-    }),
     loader: {
       handler: (opts) => {
         expectTypeOf(opts.params).toEqualTypeOf<{ invoiceId: string }>()

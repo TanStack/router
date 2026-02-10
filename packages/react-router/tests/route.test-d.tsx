@@ -37,6 +37,7 @@ test('when creating the root with context', () => {
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -85,6 +86,7 @@ test('when creating the root with context using object form with invalidate', ()
           abortController: AbortController
           preload: boolean
           params: {}
+          deps: {}
           location: ParsedLocation
           navigate: NavigateFn
           buildLocation: BuildLocationFn
@@ -134,6 +136,7 @@ test('when creating the root route with context and context option', () => {
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -240,6 +243,7 @@ test('when creating the root route with context and context option with invalida
           abortController: AbortController
           preload: boolean
           params: {}
+          deps: {}
           location: ParsedLocation
           navigate: NavigateFn
           buildLocation: BuildLocationFn
@@ -318,6 +322,7 @@ test('when creating the root route with context, context option, beforeLoad and 
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -403,6 +408,7 @@ test('when creating the root route with context, context option, beforeLoad and 
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -514,6 +520,7 @@ test('when creating a child route with context from the root route with context'
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -566,6 +573,7 @@ test('when creating a child route with context option with invalidate from the r
           abortController: AbortController
           preload: boolean
           params: {}
+          deps: {}
           location: ParsedLocation
           navigate: NavigateFn
           buildLocation: BuildLocationFn
@@ -936,6 +944,7 @@ test('when creating a child route with params, search with context from the root
         abortController: AbortController
         preload: boolean
         params: { invoiceId: string }
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -986,6 +995,7 @@ test('when creating a child route with params, search, loaderDeps with context o
           abortController: AbortController
           preload: boolean
           params: { invoiceId: string }
+          deps: { page: number }
           location: ParsedLocation
           navigate: NavigateFn
           buildLocation: BuildLocationFn
@@ -1012,6 +1022,7 @@ test('when creating a child route with params, search with context, beforeLoad a
         abortController: AbortController
         preload: boolean
         params: { invoiceId: string }
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -1151,6 +1162,7 @@ test('when creating a child route with context from a parent with context', () =
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -1172,6 +1184,7 @@ test('when creating a child route with context from a parent with context', () =
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -1298,6 +1311,7 @@ test('when creating a child route with context, beforeLoad, search, params, load
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -1340,6 +1354,7 @@ test('when creating a child route with context, beforeLoad, search, params, load
         abortController: AbortController
         preload: boolean
         params: { invoiceId: string }
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -1389,6 +1404,7 @@ test('when creating a child route with context, beforeLoad, search, params, load
         abortController: AbortController
         preload: boolean
         params: { invoiceId: string; detailId: string }
+        deps: { detailPage: number; invoicePage: number }
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -2157,6 +2173,7 @@ test('object form context is accepted on root route', () => {
           abortController: AbortController
           preload: boolean
           params: {}
+          deps: {}
           location: ParsedLocation
           navigate: NavigateFn
           buildLocation: BuildLocationFn
@@ -2215,6 +2232,7 @@ test('object form context with invalidate is accepted on root route', () => {
           context: {}
           matches: Array<MakeRouteMatchUnion>
           routeId: '__root__'
+          deps: {}
         }>()
         return { cache: 'initialized' }
       },
@@ -2558,6 +2576,7 @@ test('object form with params and search', () => {
           navigate: NavigateFn
           buildLocation: BuildLocationFn
           cause: 'preload' | 'enter' | 'stay'
+          deps: {}
           context: { userId: string }
           matches: Array<MakeRouteMatchUnion>
           routeId: '/invoices'
@@ -2588,6 +2607,9 @@ test('object form with params and search', () => {
   const invoiceRoute = createRoute({
     path: '$invoiceId',
     getParentRoute: () => invoicesRoute,
+    loaderDeps: (deps) => ({
+      currentPage: deps.search.page,
+    }),
     context: {
       handler: (opts) => {
         expectTypeOf(opts).toEqualTypeOf<{
@@ -2598,6 +2620,7 @@ test('object form with params and search', () => {
           navigate: NavigateFn
           buildLocation: BuildLocationFn
           cause: 'preload' | 'enter' | 'stay'
+          deps: { currentPage: number }
           context: {
             userId: string
             invoiceEnv: string
@@ -2609,9 +2632,6 @@ test('object form with params and search', () => {
         return { detailEnv: 'staging' }
       },
     },
-    loaderDeps: (deps) => ({
-      currentPage: deps.search.page,
-    }),
     loader: {
       handler: (opts) => {
         expectTypeOf(opts.params).toEqualTypeOf<{ invoiceId: string }>()

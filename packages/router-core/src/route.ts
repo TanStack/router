@@ -936,8 +936,15 @@ export type ContextFn<
   in out TParams,
   in out TRouterContext,
   in out TRouteId,
+  in out TLoaderDeps,
 > = (
-  ctx: ContextFnOptions<TParentRoute, TParams, TRouterContext, TRouteId>,
+  ctx: ContextFnOptions<
+    TParentRoute,
+    TParams,
+    TRouterContext,
+    TRouteId,
+    TLoaderDeps
+  >,
 ) => any
 
 export type FileBaseRouteOptions<
@@ -1014,7 +1021,13 @@ export interface FilebaseRouteOptionsInterface<
   context?: Constrain<
     TContextFn,
     | ((
-        ctx: ContextFnOptions<TParentRoute, TParams, TRouterContext, TId>,
+        ctx: ContextFnOptions<
+          TParentRoute,
+          TParams,
+          TRouterContext,
+          TId,
+          NoInfer<TLoaderDeps>
+        >,
       ) => ValidateIfSerializable<
         TRegister,
         TParentRoute,
@@ -1024,7 +1037,13 @@ export interface FilebaseRouteOptionsInterface<
       >)
     | {
         handler: (
-          ctx: ContextFnOptions<TParentRoute, TParams, TRouterContext, TId>,
+          ctx: ContextFnOptions<
+            TParentRoute,
+            TParams,
+            TRouterContext,
+            TId,
+            NoInfer<TLoaderDeps>
+          >,
         ) => ValidateIfSerializable<
           TRegister,
           TParentRoute,
@@ -1220,8 +1239,10 @@ export interface RouteContextOptions<
   in out TParams,
   in out TRouterContext,
   in out TRouteId,
+  in out TLoaderDeps,
 > extends ContextOptions<TParentRoute, TParams, TRouteId> {
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
+  deps: TLoaderDeps
 }
 
 export interface ContextFnOptions<
@@ -1229,8 +1250,10 @@ export interface ContextFnOptions<
   in out TParams,
   in out TRouterContext,
   in out TRouteId,
+  in out TLoaderDeps,
 > extends ContextOptions<TParentRoute, TParams, TRouteId> {
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
+  deps: TLoaderDeps
 }
 
 export interface SsrContextOptions<

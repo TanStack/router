@@ -187,9 +187,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           builtinDefaultSerialize.context,
         )
       ) {
-        const contextFnContext: ContextFnOptions<any, any, any, any> = {
+        const contextFnContext: ContextFnOptions<any, any, any, any, any> = {
           params: match.params,
           context: parentContext ?? {},
+          deps: match.loaderDeps,
           location,
           navigate,
           buildLocation: router.buildLocation,
