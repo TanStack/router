@@ -1,1 +1,0 @@
-"use strict";exports.ids=["454"],exports.modules={923(e,t,s){s.r(t),s.d(t,{FederatedMessage:()=>o});var r=s(742),d=s(119);function o(){let[e,t]=d.useState(0);return(0,r.jsxs)("button",{"data-testid":"federated-button",onClick:()=>t(e=>e+1),type:"button",children:["Federated message from remote (count: ",e,")"]})}}};
