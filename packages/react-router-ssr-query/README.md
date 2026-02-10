@@ -26,6 +26,6 @@
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow @TannerLinsley" />
 </a>
 
-Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/TanStack/react-query), [React Table](https://github.com/TanStack/react-table), [React Charts](https://github.com/TanStack/react-charts), [React Virtual](https://github.com/TanStack/react-virtual)
+Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/TanStack/query), [React Table](https://github.com/TanStack/table), [React Charts](https://github.com/TanStack/react-charts), [React Virtual](https://github.com/TanStack/virtual)
 
 ## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!
