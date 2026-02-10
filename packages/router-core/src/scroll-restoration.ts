@@ -110,7 +110,7 @@ export function getCssSelector(el: any): string {
   return `${path.reverse().join(' > ')}`.toLowerCase()
 }
 
-/** 
+/**
  * Finds the first matching string selector for a given element from a list of selectors.
  * Ignores function selectors, see https://github.com/TanStack/router/pull/6632
  */
