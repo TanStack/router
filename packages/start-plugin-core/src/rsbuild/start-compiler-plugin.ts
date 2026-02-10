@@ -205,7 +205,10 @@ ${clientReferencedCheck}
                 fnModule = __webpack_require__(serverFnInfo.importerModuleId)
               } else {
                 const importerPath = serverFnInfo.importerPath ?? serverFnInfo.extractedFilename
-                fnModule = await import(/* webpackIgnore: true */ pathToFileURL(importerPath).href)
+                const importerHref = /^https?:\\/\\//.test(importerPath)
+                  ? importerPath
+                  : pathToFileURL(importerPath).href
+                fnModule = await import(/* webpackIgnore: true */ importerHref)
               }
 
               if (!fnModule) {
