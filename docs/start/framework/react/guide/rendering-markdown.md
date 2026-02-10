@@ -88,6 +88,8 @@ Create a React component that renders the processed HTML with custom element han
 // src/components/Markdown.tsx
 import parse, { type HTMLReactParserOptions, Element } from 'html-react-parser'
 import { renderMarkdown, type MarkdownResult } from '~/utils/markdown'
+import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 
 type MarkdownProps = {
   content: string
