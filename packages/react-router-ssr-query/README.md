@@ -2,7 +2,7 @@
 
 # TanStack React Router
 
-![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/header_router.png)
+![TanStack Router Header](https://raw.githubusercontent.com/TanStack/router/main/media/header_router.png)
 
 🤖 Type-safe router w/ built-in caching & URL state management for React!
 
@@ -16,9 +16,9 @@
   <img alt="" src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" />
 </a><a href="#badge">
     <img alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg">
-  </a><a href="https://github.com/tanstack/router/discussions">
+  </a><a href="https://github.com/TanStack/router/discussions">
   <img alt="Join the discussion on Github" src="https://img.shields.io/badge/Github%20Discussions%20%26%20Support-Chat%20now!-blue" />
-</a><a href="https://bestofjs.org/projects/router"><img alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=tanstack%2Frouter%26since=daily" /></a><a href="https://github.com/tanstack/router" target="\_parent">
+</a><a href="https://bestofjs.org/projects/router"><img alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=tanstack%2Frouter%26since=daily" /></a><a href="https://github.com/TanStack/router" target="\_parent">
   <img alt="" src="https://img.shields.io/github/stars/tanstack/router.svg?style=social&label=Star" />
 </a><a href="https://twitter.com/tan_stack" target="\_parent">
   <img alt="" src="https://img.shields.io/twitter/follow/tan_stack.svg?style=social&label=Follow @TanStack" />
@@ -26,6 +26,6 @@
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow @TannerLinsley" />
 </a>
 
-Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/tannerlinsley/react-query), [React Table](https://github.com/tanstack/react-table), [React Charts](https://github.com/tannerlinsley/react-charts), [React Virtual](https://github.com/tannerlinsley/react-virtual)
+Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/TanStack/react-query), [React Table](https://github.com/TanStack/react-table), [React Charts](https://github.com/TanStack/react-charts), [React Virtual](https://github.com/TanStack/react-virtual)
 
 ## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!

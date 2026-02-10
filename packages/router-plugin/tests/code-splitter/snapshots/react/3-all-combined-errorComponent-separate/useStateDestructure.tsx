@@ -188,7 +188,7 @@ export default function VersionIndex() {
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-center">
           <a
-            href={`https://github.com/tanstack/tanstack.com`}
+            href={`https://github.com/TanStack/tanstack.com`}
             className={`flex items-center gap-2 py-2 px-4 bg-cyan-700 rounded text-white uppercase font-extrabold`}
           >
             <FaGithub /> View TanStack.com Source
@@ -491,7 +491,7 @@ Check it out at https://tanstack.com/start/`,
             src={`https://stackblitz.com/github/${repo}/tree/${branch}/examples/${framework}/simple?embed=1&theme=${
               isDark ? 'dark' : 'light'
             }`}
-            title={`tannerlinsley/${framework}-query: basic`}
+            title={`tanstack/${framework}-query: basic`}
             sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
             className="shadow-2xl"
             loading="lazy"
