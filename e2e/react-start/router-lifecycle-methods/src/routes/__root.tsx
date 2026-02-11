@@ -77,38 +77,50 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             Post 1 Comments
           </Link>
-          <Link to="/serialize-defaults" data-testid="link-serialize-defaults">
-            Serialize Defaults
+          <Link to="/dehydrate-defaults" data-testid="link-dehydrate-defaults">
+            Dehydrate Defaults
           </Link>
-          <Link to="/serialize-all-true" data-testid="link-serialize-all-true">
-            Serialize All True
-          </Link>
-          <Link
-            to="/serialize-all-false"
-            data-testid="link-serialize-all-false"
-          >
-            Serialize All False
-          </Link>
-          <Link to="/serialize-mixed" data-testid="link-serialize-mixed">
-            Serialize Mixed
+          <Link to="/dehydrate-all-true" data-testid="link-dehydrate-all-true">
+            Dehydrate All True
           </Link>
           <Link
-            to="/serialize-beforeload-false"
-            data-testid="link-serialize-beforeload-false"
+            to="/dehydrate-all-false"
+            data-testid="link-dehydrate-all-false"
           >
-            Serialize BeforeLoad False
+            Dehydrate All False
+          </Link>
+          <Link to="/dehydrate-mixed" data-testid="link-dehydrate-mixed">
+            Dehydrate Mixed
           </Link>
           <Link
-            to="/serialize-loader-false"
-            data-testid="link-serialize-loader-false"
+            to="/dehydrate-beforeload-false"
+            data-testid="link-dehydrate-beforeload-false"
           >
-            Serialize Loader False
+            Dehydrate BeforeLoad False
           </Link>
           <Link
-            to="/serialize-context-true"
-            data-testid="link-serialize-context-true"
+            to="/dehydrate-loader-false"
+            data-testid="link-dehydrate-loader-false"
           >
-            Serialize Context True
+            Dehydrate Loader False
+          </Link>
+          <Link
+            to="/dehydrate-context-true"
+            data-testid="link-dehydrate-context-true"
+          >
+            Dehydrate Context True
+          </Link>
+          <Link to="/dehydrate-fn" data-testid="link-dehydrate-fn">
+            Dehydrate Functions
+          </Link>
+          <Link to="/dehydrate-partial" data-testid="link-dehydrate-partial">
+            Dehydrate Partial
+          </Link>
+          <Link to="/revalidate-context" data-testid="link-revalidate-context">
+            Revalidate Context
+          </Link>
+          <Link to="/stale-revalidate" data-testid="link-stale-revalidate">
+            Stale Revalidate
           </Link>
         </nav>
         <hr />

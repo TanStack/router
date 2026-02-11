@@ -2,7 +2,11 @@ import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
 import invariant from 'tiny-invariant'
 import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
-import { builtinDefaultSerialize, shouldSerialize } from '../lifecycle'
+import {
+  builtinDefaultDehydrate,
+  getDehydrateFn,
+  shouldDehydrate,
+} from '../lifecycle'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
@@ -40,7 +44,7 @@ export function dehydrateMatch(
   router: AnyRouter,
 ): DehydratedMatch {
   const route = router.looseRoutesById[match.routeId]!
-  const defaults = router.options.defaultSerialize
+  const defaults = router.options.defaultDehydrate
 
   const dehydratedMatch: DehydratedMatch = {
     i: match.id,
@@ -52,39 +56,48 @@ export function dehydrateMatch(
   if (
     match.__beforeLoadContext !== undefined &&
     route.options.beforeLoad &&
-    shouldSerialize(
+    shouldDehydrate(
       route.options.beforeLoad,
       defaults?.beforeLoad,
-      builtinDefaultSerialize.beforeLoad,
+      builtinDefaultDehydrate.beforeLoad,
     )
   ) {
-    dehydratedMatch.b = match.__beforeLoadContext
+    const dehydrateFn = getDehydrateFn(route.options.beforeLoad)
+    dehydratedMatch.b = dehydrateFn
+      ? dehydrateFn(match.__beforeLoadContext)
+      : match.__beforeLoadContext
   }
 
   // Conditionally include loader data
   if (
     match.loaderData !== undefined &&
     route.options.loader &&
-    shouldSerialize(
+    shouldDehydrate(
       route.options.loader,
       defaults?.loader,
-      builtinDefaultSerialize.loader,
+      builtinDefaultDehydrate.loader,
     )
   ) {
-    dehydratedMatch.l = match.loaderData
+    const dehydrateFn = getDehydrateFn(route.options.loader)
+    dehydratedMatch.l = dehydrateFn
+      ? dehydrateFn(match.loaderData)
+      : match.loaderData
   }
 
   // Conditionally include route context
   if (
     match.__routeContext !== undefined &&
     route.options.context &&
-    shouldSerialize(
+    shouldDehydrate(
       route.options.context,
       defaults?.context,
-      builtinDefaultSerialize.context,
+      builtinDefaultDehydrate.context,
     )
   ) {
-    dehydratedMatch.m = match.__routeContext
+    const dehydrateFn = getDehydrateFn(route.options.context)
+    dehydratedMatch.m = dehydrateFn
+      ? dehydrateFn(match.__routeContext)
+      : match.__routeContext
   }
 
   // Always include error and ssr if present

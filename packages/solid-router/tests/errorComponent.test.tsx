@@ -202,7 +202,7 @@ describe('errorComponent is rendered when an Error is thrown in lifecycle method
         handler: () => {
           throw new Error('context invalidate error thrown')
         },
-        invalidate: true,
+        revalidate: true,
       },
       component: function About() {
         return <div>About route content</div>
@@ -268,7 +268,7 @@ describe('errorComponent is rendered when an Error is thrown in lifecycle method
         handler: () => {
           throw new Error('context invalidate error thrown')
         },
-        invalidate: true,
+        revalidate: true,
       },
       component: function Home() {
         return <div>Index route content</div>
@@ -355,7 +355,7 @@ describe('errorComponent is rendered when an Error is thrown in lifecycle method
           await new Promise((resolve) => setTimeout(resolve, 100))
           throw new Error('async context invalidate error')
         },
-        invalidate: true,
+        revalidate: true,
       },
       component: function About() {
         return <div>About route content</div>

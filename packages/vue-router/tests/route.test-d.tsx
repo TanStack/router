@@ -78,7 +78,7 @@ test('when creating the root with beforeLoad', () => {
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 })
 
-test('when creating the root with context using object form with invalidate', () => {
+test('when creating the root with context using object form with revalidate', () => {
   const rootRoute = createRootRoute({
     context: {
       handler: (opts) => {
@@ -96,7 +96,7 @@ test('when creating the root with context using object form with invalidate', ()
           matches: Array<MakeRouteMatchUnion>
         }>()
       },
-      invalidate: true,
+      revalidate: true,
     },
   })
 
@@ -213,7 +213,7 @@ test('when creating the root route with context and beforeLoad', () => {
     .toEqualTypeOf<((context: { userId: string }) => unknown) | undefined>()
 })
 
-test('when creating the root route with context and context option using object form with invalidate', () => {
+test('when creating the root route with context and context option using object form with revalidate', () => {
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
 
   const rootRoute = createRouteResult({
@@ -233,7 +233,7 @@ test('when creating the root route with context and context option using object 
           matches: Array<MakeRouteMatchUnion>
         }>()
       },
-      invalidate: true,
+      revalidate: true,
     },
   })
 
@@ -1866,7 +1866,7 @@ test('object form context is accepted on root route', () => {
         }>()
         return { env: 'production' }
       },
-      serialize: false,
+      dehydrate: false,
     },
   })
 
@@ -1892,14 +1892,14 @@ test('object form beforeLoad is accepted on root route', () => {
         }>()
         return { perm: 'admin' }
       },
-      serialize: true,
+      dehydrate: true,
     },
   })
 
   expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
 })
 
-test('object form context with invalidate is accepted on root route', () => {
+test('object form context with revalidate is accepted on root route', () => {
   const rootRoute = createRootRoute({
     context: {
       handler: (_opts) => {
@@ -1908,8 +1908,8 @@ test('object form context with invalidate is accepted on root route', () => {
         // that the handler accepts and returns the correct types
         return { cache: 'initialized' }
       },
-      invalidate: true,
-      serialize: false,
+      revalidate: true,
+      dehydrate: false,
     },
   })
 
@@ -1937,7 +1937,7 @@ test('object form loader is accepted on child route', () => {
         }>()
         return { data: 'loaded' }
       },
-      serialize: true,
+      dehydrate: true,
     },
   })
 
@@ -1952,7 +1952,7 @@ test('object form context flows into beforeLoad handler context', () => {
     path: 'invoices',
     context: {
       handler: () => ({ env: 'production' }),
-      serialize: false,
+      dehydrate: false,
     },
     beforeLoad: {
       handler: (opts) => {
@@ -1975,7 +1975,7 @@ test('object form context -> beforeLoad -> loader full context chain', () => {
     path: 'invoices',
     context: {
       handler: () => ({ env: 'prod' }),
-      serialize: false,
+      dehydrate: false,
     },
     beforeLoad: {
       handler: (opts) => {
@@ -1985,7 +1985,7 @@ test('object form context -> beforeLoad -> loader full context chain', () => {
         }>()
         return { perm: 'view' as const }
       },
-      serialize: true,
+      dehydrate: true,
     },
     loader: {
       handler: (opts) => {
@@ -1996,7 +1996,7 @@ test('object form context -> beforeLoad -> loader full context chain', () => {
         }>()
         return { items: ['a', 'b'] }
       },
-      serialize: true,
+      dehydrate: true,
     },
   })
 
@@ -2031,7 +2031,7 @@ test('mixed function and object form on the same route', () => {
         }>()
         return { perm: 'edit' as const }
       },
-      serialize: false,
+      dehydrate: false,
     },
     // object form for loader
     loader: {
@@ -2068,11 +2068,11 @@ test('object form parent-child context propagation', () => {
     path: 'parent',
     context: {
       handler: () => ({ parentEnv: 'env1' }),
-      serialize: true,
+      dehydrate: true,
     },
     beforeLoad: {
       handler: () => ({ parentPerm: 'admin' as const }),
-      serialize: false,
+      dehydrate: false,
     },
   })
 
@@ -2089,7 +2089,7 @@ test('object form parent-child context propagation', () => {
         }>()
         return { childEnv: 'env2' }
       },
-      serialize: false,
+      dehydrate: false,
     },
     beforeLoad: {
       handler: (opts) => {
@@ -2140,7 +2140,7 @@ test('object form parent-child context propagation', () => {
   >()
 })
 
-test('object form without serialize: full context chain with useRouteContext and useLoaderData', () => {
+test('object form without dehydrate: full context chain with useRouteContext and useLoaderData', () => {
   const rootRoute = createRootRouteWithContext<{ appId: string }>()()
 
   const testRoute = createRoute({
@@ -2151,7 +2151,7 @@ test('object form without serialize: full context chain with useRouteContext and
         expectTypeOf(opts.context).toEqualTypeOf<{ appId: string }>()
         return { env: 'test' }
       },
-      // no serialize specified
+      // no dehydrate specified
     },
     beforeLoad: {
       handler: (opts) => {
@@ -2161,7 +2161,7 @@ test('object form without serialize: full context chain with useRouteContext and
         }>()
         return { perm: 'view' as const }
       },
-      // no serialize specified
+      // no dehydrate specified
     },
     loader: {
       handler: (opts) => {
@@ -2172,7 +2172,7 @@ test('object form without serialize: full context chain with useRouteContext and
         }>()
         return { data: [1, 2, 3] }
       },
-      // no serialize specified
+      // no dehydrate specified
     },
   })
 
@@ -2204,7 +2204,7 @@ test('object form non-serializable returns flow into context chain', () => {
     path: 'test',
     context: {
       handler: () => ({ cleanup: () => console.log('cleanup') }),
-      serialize: false,
+      dehydrate: false,
     },
     beforeLoad: {
       handler: (opts) => {
@@ -2214,7 +2214,7 @@ test('object form non-serializable returns flow into context chain', () => {
         }>()
         return { compute: (x: number) => x * 2 }
       },
-      serialize: false,
+      dehydrate: false,
     },
     loader: {
       handler: (opts) => {
@@ -2224,7 +2224,7 @@ test('object form non-serializable returns flow into context chain', () => {
         }>()
         return { items: ['a'] }
       },
-      serialize: false,
+      dehydrate: false,
     },
   })
 

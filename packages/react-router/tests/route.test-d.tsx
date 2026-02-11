@@ -78,7 +78,7 @@ test('when creating the root with beforeLoad', () => {
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 })
 
-test('when creating the root with context using object form with invalidate', () => {
+test('when creating the root with context using object form with revalidate', () => {
   const rootRoute = createRootRoute({
     context: {
       handler: (opts) => {
@@ -96,7 +96,7 @@ test('when creating the root with context using object form with invalidate', ()
           routeId: '__root__'
         }>()
       },
-      invalidate: true,
+      revalidate: true,
     },
   })
 
@@ -233,7 +233,7 @@ test('when creating the root route with context and beforeLoad', () => {
     .toEqualTypeOf<((context: { userId: string }) => unknown) | undefined>()
 })
 
-test('when creating the root route with context and context option with invalidate', () => {
+test('when creating the root route with context and context option with revalidate', () => {
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
 
   const rootRoute = createRouteResult({
@@ -253,7 +253,7 @@ test('when creating the root route with context and context option with invalida
           routeId: '__root__'
         }>()
       },
-      invalidate: true,
+      revalidate: true,
     },
   })
 
@@ -561,7 +561,7 @@ test('when creating a child route with beforeLoad from the root route with conte
   })
 })
 
-test('when creating a child route with context option with invalidate from the root route with context', () => {
+test('when creating a child route with context option with revalidate from the root route with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   createRoute({
@@ -583,7 +583,7 @@ test('when creating a child route with context option with invalidate from the r
           routeId: '/invoices'
         }>()
       },
-      invalidate: true,
+      revalidate: true,
     },
   })
 })
@@ -981,7 +981,7 @@ test('when creating a child route with params, search with beforeLoad from the r
   })
 })
 
-test('when creating a child route with params, search, loaderDeps with context option with invalidate from the root route with context', () => {
+test('when creating a child route with params, search, loaderDeps with context option with revalidate from the root route with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   createRoute({
@@ -1005,7 +1005,7 @@ test('when creating a child route with params, search, loaderDeps with context o
           routeId: '/invoices/$invoiceId'
         }>()
       },
-      invalidate: true,
+      revalidate: true,
     },
   })
 })
@@ -2184,7 +2184,7 @@ test('object form context is accepted on root route', () => {
         }>()
         return { env: 'production' }
       },
-      serialize: false,
+      dehydrate: false,
     },
   })
 
@@ -2210,14 +2210,14 @@ test('object form beforeLoad is accepted on root route', () => {
         }>()
         return { perm: 'admin' }
       },
-      serialize: true,
+      dehydrate: true,
     },
   })
 
   expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
 })
 
-test('object form context with invalidate is accepted on root route', () => {
+test('object form context with revalidate is accepted on root route', () => {
   const rootRoute = createRootRoute({
     context: {
       handler: (opts) => {
@@ -2236,8 +2236,8 @@ test('object form context with invalidate is accepted on root route', () => {
         }>()
         return { cache: 'initialized' }
       },
-      invalidate: true,
-      serialize: false,
+      revalidate: true,
+      dehydrate: false,
     },
   })
 
@@ -2265,7 +2265,7 @@ test('object form loader is accepted on child route', () => {
         }>()
         return { data: 'loaded' }
       },
-      serialize: true,
+      dehydrate: true,
     },
   })
 
@@ -2280,7 +2280,7 @@ test('object form context flows into beforeLoad handler context', () => {
     path: 'invoices',
     context: {
       handler: () => ({ env: 'production' }),
-      serialize: false,
+      dehydrate: false,
     },
     beforeLoad: {
       handler: (opts) => {
@@ -2303,7 +2303,7 @@ test('object form context -> beforeLoad -> loader full context chain', () => {
     path: 'invoices',
     context: {
       handler: () => ({ env: 'prod' }),
-      serialize: false,
+      dehydrate: false,
     },
     beforeLoad: {
       handler: (opts) => {
@@ -2313,7 +2313,7 @@ test('object form context -> beforeLoad -> loader full context chain', () => {
         }>()
         return { perm: 'view' as const }
       },
-      serialize: true,
+      dehydrate: true,
     },
     loader: {
       handler: (opts) => {
@@ -2324,7 +2324,7 @@ test('object form context -> beforeLoad -> loader full context chain', () => {
         }>()
         return { items: ['a', 'b'] }
       },
-      serialize: true,
+      dehydrate: true,
     },
   })
 
@@ -2358,7 +2358,7 @@ test('mixed function and object form on the same route', () => {
         }>()
         return { perm: 'edit' as const }
       },
-      serialize: false,
+      dehydrate: false,
     },
     // object form for loader
     loader: {
@@ -2394,11 +2394,11 @@ test('object form parent-child context propagation', () => {
     path: 'parent',
     context: {
       handler: () => ({ parentEnv: 'env1' }),
-      serialize: true,
+      dehydrate: true,
     },
     beforeLoad: {
       handler: () => ({ parentPerm: 'admin' as const }),
-      serialize: false,
+      dehydrate: false,
     },
   })
 
@@ -2415,7 +2415,7 @@ test('object form parent-child context propagation', () => {
         }>()
         return { childEnv: 'env2' }
       },
-      serialize: false,
+      dehydrate: false,
     },
     beforeLoad: {
       handler: (opts) => {
@@ -2463,7 +2463,7 @@ test('object form parent-child context propagation', () => {
   }>()
 })
 
-test('object form without serialize: full context chain with useRouteContext and useLoaderData', () => {
+test('object form without dehydrate: full context chain with useRouteContext and useLoaderData', () => {
   const rootRoute = createRootRouteWithContext<{ appId: string }>()()
 
   const testRoute = createRoute({
@@ -2474,7 +2474,7 @@ test('object form without serialize: full context chain with useRouteContext and
         expectTypeOf(opts.context).toEqualTypeOf<{ appId: string }>()
         return { env: 'test' }
       },
-      // no serialize specified
+      // no dehydrate specified
     },
     beforeLoad: {
       handler: (opts) => {
@@ -2484,7 +2484,7 @@ test('object form without serialize: full context chain with useRouteContext and
         }>()
         return { perm: 'view' as const }
       },
-      // no serialize specified
+      // no dehydrate specified
     },
     loader: {
       handler: (opts) => {
@@ -2524,7 +2524,7 @@ test('object form non-serializable returns flow into context chain', () => {
     path: 'test',
     context: {
       handler: () => ({ cleanup: () => console.log('cleanup') }),
-      serialize: false,
+      dehydrate: false,
     },
     beforeLoad: {
       handler: (opts) => {
@@ -2534,7 +2534,7 @@ test('object form non-serializable returns flow into context chain', () => {
         }>()
         return { compute: (x: number) => x * 2 }
       },
-      serialize: false,
+      dehydrate: false,
     },
     loader: {
       handler: (opts) => {
@@ -2544,7 +2544,7 @@ test('object form non-serializable returns flow into context chain', () => {
         }>()
         return { items: ['a'] }
       },
-      serialize: false,
+      dehydrate: false,
     },
   })
 
@@ -2878,4 +2878,215 @@ test('three-level object form context accumulation', () => {
     l2Before: string
     l3Ctx: string
   }>()
+})
+
+// ---------------------------------------------------------------------------
+// dehydrate: fn requires hydrate (RequireHydrateIfDehydrateFn)
+// ---------------------------------------------------------------------------
+
+test('dehydrate function with hydrate compiles on context', () => {
+  const rootRoute = createRootRoute({
+    context: {
+      handler: () => ({ createdAt: new Date() }),
+      dehydrate: (value: { createdAt: Date }) => ({
+        createdAt: value.createdAt.toISOString(),
+      }),
+      hydrate: (wire: { createdAt: string }) => ({
+        createdAt: new Date(wire.createdAt),
+      }),
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+})
+
+test('dehydrate function with hydrate compiles on beforeLoad', () => {
+  const rootRoute = createRootRoute({
+    beforeLoad: {
+      handler: () => ({ ts: new Date() }),
+      dehydrate: (value: { ts: Date }) => ({ ts: value.ts.toISOString() }),
+      hydrate: (wire: { ts: string }) => ({ ts: new Date(wire.ts) }),
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+})
+
+test('dehydrate function with hydrate compiles on loader', () => {
+  const rootRoute = createRootRoute()
+
+  const childRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'child',
+    loader: {
+      handler: () => ({ loadedAt: new Date() }),
+      dehydrate: (value: { loadedAt: Date }) => ({
+        loadedAt: value.loadedAt.toISOString(),
+      }),
+      hydrate: (wire: { loadedAt: string }) => ({
+        loadedAt: new Date(wire.loadedAt),
+      }),
+    },
+  })
+
+  expectTypeOf(childRoute.fullPath).toEqualTypeOf<'/child'>()
+})
+
+test('dehydrate: true compiles without hydrate on context', () => {
+  const rootRoute = createRootRoute({
+    context: {
+      handler: () => ({ count: 42 }),
+      dehydrate: true,
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+})
+
+test('dehydrate: false compiles without hydrate on context', () => {
+  const rootRoute = createRootRoute({
+    context: {
+      handler: () => ({ fn: () => 'hello' }),
+      dehydrate: false,
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+})
+
+test('dehydrate function WITHOUT hydrate is a type error on context', () => {
+  createRootRoute({
+    // @ts-expect-error dehydrate function requires hydrate
+    context: {
+      handler: () => ({ createdAt: new Date() }),
+      dehydrate: (value: { createdAt: Date }) => ({
+        createdAt: value.createdAt.toISOString(),
+      }),
+      // hydrate intentionally omitted — should be a type error
+    },
+  })
+})
+
+test('dehydrate function WITHOUT hydrate is a type error on beforeLoad', () => {
+  createRootRoute({
+    // @ts-expect-error dehydrate function requires hydrate
+    beforeLoad: {
+      handler: () => ({ ts: new Date() }),
+      dehydrate: (value: { ts: Date }) => ({ ts: value.ts.toISOString() }),
+      // hydrate intentionally omitted
+    },
+  })
+})
+
+test('dehydrate function WITHOUT hydrate is a type error on loader', () => {
+  const rootRoute = createRootRoute()
+
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'child',
+    // @ts-expect-error dehydrate function requires hydrate
+    loader: {
+      handler: () => ({ loadedAt: new Date() }),
+      dehydrate: (value: { loadedAt: Date }) => ({
+        loadedAt: value.loadedAt.toISOString(),
+      }),
+      // hydrate intentionally omitted
+    },
+  })
+})
+
+// ---------------------------------------------------------------------------
+// dehydrate fn with mixed serializable + non-serializable handler return
+//
+// The handler return type contains functions/Dates/RegExp (non-serializable).
+// The dehydrate fn strips those, returning only the serializable subset.
+// This must compile — ValidateIfSerializable should NOT check the handler
+// return when dehydrate is a function (only the dehydrate output is checked).
+// ---------------------------------------------------------------------------
+
+test('dehydrate fn with non-serializable handler return compiles on context', () => {
+  const rootRoute = createRootRoute({
+    context: {
+      handler: () => ({
+        label: 'hello',
+        createdAt: new Date(),
+        format: (v: string) => `[${v}]`,
+      }),
+      dehydrate: (value: {
+        label: string
+        createdAt: Date
+        format: (v: string) => string
+      }) => ({
+        label: value.label,
+        createdAtISO: value.createdAt.toISOString(),
+      }),
+      hydrate: (wire: { label: string; createdAtISO: string }) => ({
+        label: wire.label,
+        createdAt: new Date(wire.createdAtISO),
+        format: (v: string) => `[${v}]`,
+      }),
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+})
+
+test('dehydrate fn with non-serializable handler return compiles on beforeLoad', () => {
+  const rootRoute = createRootRoute({
+    beforeLoad: {
+      handler: () => ({
+        tag: 'bl',
+        count: 42,
+        pattern: /^hello-\d+$/i,
+      }),
+      dehydrate: (value: { tag: string; count: number; pattern: RegExp }) => ({
+        tag: value.tag,
+        count: value.count,
+        patternSource: value.pattern.source,
+      }),
+      hydrate: (wire: {
+        tag: string
+        count: number
+        patternSource: string
+      }) => ({
+        tag: wire.tag,
+        count: wire.count,
+        pattern: new RegExp(wire.patternSource),
+      }),
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+})
+
+test('dehydrate fn with non-serializable handler return compiles on loader', () => {
+  const rootRoute = createRootRoute()
+
+  const childRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'child',
+    loader: {
+      handler: () => ({
+        title: 'data',
+        scores: [10, 20, 30],
+        computeAvg: () => 20,
+      }),
+      dehydrate: (value: {
+        title: string
+        scores: Array<number>
+        computeAvg: () => number
+      }) => ({
+        title: value.title,
+        scores: value.scores,
+      }),
+      hydrate: (wire: { title: string; scores: Array<number> }) => ({
+        title: wire.title,
+        scores: wire.scores,
+        computeAvg: () =>
+          wire.scores.reduce((a, b) => a + b, 0) / wire.scores.length,
+      }),
+    },
+  })
+
+  expectTypeOf(childRoute.fullPath).toEqualTypeOf<'/child'>()
 })

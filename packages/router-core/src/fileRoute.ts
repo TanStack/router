@@ -49,6 +49,9 @@ export interface FileRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = unknown,
+  TBeforeLoadWire = unknown,
+  TLoaderWire = unknown,
 >
   extends
     FileBaseRouteOptions<
@@ -66,7 +69,10 @@ export interface FileRouteOptions<
       AnyContext,
       TSSR,
       TServerMiddlewares,
-      THandlers
+      THandlers,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -98,6 +104,9 @@ export type CreateFileRoute<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = unknown,
+  TBeforeLoadWire = unknown,
+  TLoaderWire = unknown,
 >(
   options?: FileRouteOptions<
     TRegister,
@@ -114,7 +123,10 @@ export type CreateFileRoute<
     TLoaderFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire
   >,
 ) => Route<
   TRegister,

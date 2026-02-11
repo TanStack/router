@@ -3,7 +3,7 @@ import type { ExtractHandler } from '../src'
 
 test('ExtractHandler extracts handler from object form', () => {
   type Fn = (x: string) => number
-  type ObjForm = { handler: Fn; serialize?: boolean }
+  type ObjForm = { handler: Fn; dehydrate?: boolean }
 
   expectTypeOf<ExtractHandler<Fn>>().toEqualTypeOf<Fn>()
   expectTypeOf<ExtractHandler<ObjForm>>().toEqualTypeOf<Fn>()

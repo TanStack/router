@@ -154,7 +154,7 @@ describe('context function', () => {
           handler: () => {
             mockContextFn()
           },
-          invalidate: true,
+          revalidate: true,
         },
         component: () => {
           const navigate = indexRoute.useNavigate()
@@ -243,7 +243,7 @@ describe('context function', () => {
 
       await clickButton('clear')
       await findByText(`search: ${JSON.stringify({})}`)
-      // context with invalidate does NOT re-run: the cached match (from the initial load with
+      // context with revalidate does NOT re-run: the cached match (from the initial load with
       // the same loaderDeps hash) is restored and the context is already consumed.
       expect(mockContextFn).not.toHaveBeenCalled()
     })
@@ -3578,8 +3578,8 @@ describe('lifecycle method semantics', () => {
     })
   })
 
-  describe('context with invalidate edge cases', () => {
-    test('context with invalidate re-runs when loaderDeps change (new matchId)', async () => {
+  describe('context with revalidate edge cases', () => {
+    test('context with revalidate re-runs when loaderDeps change (new matchId)', async () => {
       const mockContext = vi.fn()
 
       const rootRoute = createRootRoute()
@@ -3595,7 +3595,7 @@ describe('lifecycle method semantics', () => {
             mockContext()
             return { loadedPage: undefined }
           },
-          invalidate: true,
+          revalidate: true,
         },
         component: () => {
           const navigate = indexRoute.useNavigate()
@@ -3649,7 +3649,7 @@ describe('lifecycle method semantics', () => {
       expect(mockContext).toHaveBeenCalledTimes(1)
     })
 
-    test('context with invalidate re-runs after GC', async () => {
+    test('context with revalidate re-runs after GC', async () => {
       const mockContext = vi.fn()
 
       const rootRoute = createRootRoute()
@@ -3660,7 +3660,7 @@ describe('lifecycle method semantics', () => {
           handler: () => {
             mockContext()
           },
-          invalidate: true,
+          revalidate: true,
         },
         component: () => {
           const navigate = indexRoute.useNavigate()
@@ -3745,7 +3745,7 @@ describe('lifecycle method semantics', () => {
       )
     })
 
-    test('context with invalidate receives correct deps (loaderDeps)', async () => {
+    test('context with revalidate receives correct deps (loaderDeps)', async () => {
       const receivedDeps = vi.fn()
 
       const rootRoute = createRootRoute()
@@ -3758,7 +3758,7 @@ describe('lifecycle method semantics', () => {
           handler: () => {
             receivedDeps()
           },
-          invalidate: true,
+          revalidate: true,
         },
         component: () => {
           const navigate = indexRoute.useNavigate()
@@ -3791,7 +3791,7 @@ describe('lifecycle method semantics', () => {
       })
     })
 
-    test('context with invalidate receives cause "enter" on fresh navigation', async () => {
+    test('context with revalidate receives cause "enter" on fresh navigation', async () => {
       const receivedCause = vi.fn()
 
       const rootRoute = createRootRoute()
@@ -3817,10 +3817,11 @@ describe('lifecycle method semantics', () => {
         getParentRoute: () => rootRoute,
         path: '/other',
         context: {
-          handler: ({ cause }) => {
+          handler: (opts: { cause: string }) => {
+            const { cause } = opts
             receivedCause(cause)
           },
-          invalidate: true,
+          revalidate: true,
         },
         component: () => <div data-testid="other-page">Other</div>,
       })
@@ -4049,8 +4050,8 @@ describe('lifecycle method semantics', () => {
     })
   })
 
-  describe('context-with-invalidate-only routes (no loader)', () => {
-    test('route with only context (invalidate) is GC-protected and works correctly', async () => {
+  describe('context-with-revalidate-only routes (no loader)', () => {
+    test('route with only context (revalidate) is GC-protected and works correctly', async () => {
       const mockContext = vi.fn()
 
       const rootRoute = createRootRoute()
@@ -4062,7 +4063,7 @@ describe('lifecycle method semantics', () => {
             mockContext()
             return { contextValue: 'from-context' }
           },
-          invalidate: true,
+          revalidate: true,
         },
         component: () => {
           const navigate = indexRoute.useNavigate()
@@ -4122,7 +4123,7 @@ describe('lifecycle method semantics', () => {
       expect(mockContext).not.toHaveBeenCalled()
     })
 
-    test('route with only context (invalidate) re-runs on invalidate', async () => {
+    test('route with only context (revalidate) re-runs on invalidate', async () => {
       const mockContext = vi.fn()
 
       const rootRoute = createRootRoute()
@@ -4134,7 +4135,7 @@ describe('lifecycle method semantics', () => {
             mockContext()
             return { contextRun: mockContext.mock.calls.length }
           },
-          invalidate: true,
+          revalidate: true,
         },
         component: () => <div data-testid="index-page">Index</div>,
       })
@@ -4155,7 +4156,7 @@ describe('lifecycle method semantics', () => {
   })
 
   describe('context updates on invalidation', () => {
-    test('context from context with invalidate updates after each invalidation', async () => {
+    test('context from context with revalidate updates after each invalidation', async () => {
       let counter = 0
 
       const rootRoute = createRootRoute()
@@ -4167,7 +4168,7 @@ describe('lifecycle method semantics', () => {
             counter++
             return { counter }
           },
-          invalidate: true,
+          revalidate: true,
         },
         component: () => {
           const context = indexRoute.useRouteContext()
@@ -4311,14 +4312,14 @@ describe('lifecycle method semantics', () => {
       )
     })
 
-    test('object form context with invalidate handler runs and provides context', async () => {
+    test('object form context with revalidate handler runs and provides context', async () => {
       const rootRoute = createRootRoute()
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
         context: {
           handler: () => ({ ctxValue: 'from-object-form' }),
-          invalidate: true,
+          revalidate: true,
         },
         component: () => {
           const context = indexRoute.useRouteContext()
@@ -4404,7 +4405,7 @@ describe('lifecycle method semantics', () => {
       })
     })
 
-    test('object form with serialize flag still runs handler on client navigation', async () => {
+    test('object form with dehydrate flag still runs handler on client navigation', async () => {
       const contextHandler = vi.fn(() => ({ ctxVal: 'matched' }))
 
       const rootRoute = createRootRoute({
@@ -4437,7 +4438,7 @@ describe('lifecycle method semantics', () => {
         path: '/about',
         context: {
           handler: contextHandler,
-          serialize: true,
+          dehydrate: true,
         },
         component: () => {
           const context = aboutRoute.useRouteContext()
@@ -4513,7 +4514,7 @@ describe('lifecycle method semantics', () => {
         },
         beforeLoad: {
           handler: () => ({ parentBL: 'p-bl' }),
-          serialize: false,
+          dehydrate: false,
         },
         component: () => (
           <div>
@@ -4525,11 +4526,14 @@ describe('lifecycle method semantics', () => {
         getParentRoute: () => parentRoute,
         path: '/child',
         context: {
-          handler: ({ context }) => ({
-            childCtx: 'c-ctx',
-            sawParentOM: context.parentOM,
-            sawParentBL: context.parentBL,
-          }),
+          handler: (opts: { context: any }) => {
+            const { context } = opts
+            return {
+              childCtx: 'c-ctx',
+              sawParentOM: context.parentOM,
+              sawParentBL: context.parentBL,
+            }
+          },
         },
         component: () => {
           const context = childRoute.useRouteContext()
@@ -4559,7 +4563,7 @@ describe('lifecycle method semantics', () => {
       )
     })
 
-    test('object form context runs only once even with serialize flag', async () => {
+    test('object form context runs only once even with dehydrate flag', async () => {
       const contextCount = vi.fn()
 
       const rootRoute = createRootRoute({
@@ -4577,7 +4581,7 @@ describe('lifecycle method semantics', () => {
             contextCount()
             return { matched: true }
           },
-          serialize: true,
+          dehydrate: true,
         },
         component: () => {
           const context = indexRoute.useRouteContext()
@@ -4599,7 +4603,7 @@ describe('lifecycle method semantics', () => {
       expect(contextCount).toHaveBeenCalledTimes(1)
     })
 
-    test('object form context with invalidate re-runs on invalidation', async () => {
+    test('object form context with revalidate re-runs on invalidation', async () => {
       const contextCount = vi.fn()
 
       const rootRoute = createRootRoute()
@@ -4611,7 +4615,7 @@ describe('lifecycle method semantics', () => {
             contextCount()
             return { runCount: contextCount.mock.calls.length }
           },
-          invalidate: true,
+          revalidate: true,
         },
         component: () => <div data-testid="index-page">Index</div>,
       })
@@ -4626,7 +4630,7 @@ describe('lifecycle method semantics', () => {
 
       await router.invalidate()
 
-      // context with invalidate should re-run on invalidation
+      // context with revalidate should re-run on invalidation
       expect(contextCount).toHaveBeenCalledTimes(2)
     })
   })

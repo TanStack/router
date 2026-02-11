@@ -107,14 +107,16 @@ export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
 
 export {
-  builtinDefaultSerialize,
+  builtinDefaultDehydrate,
   resolveHandler,
-  shouldSerialize,
+  shouldDehydrate,
+  getDehydrateFn,
+  getHydrateFn,
+  getRevalidateFn,
 } from './lifecycle'
 export type {
   LifecycleOption,
-  ContextLifecycleOption,
-  DefaultSerializeConfig,
+  DefaultDehydrateConfig,
   ExtractHandler,
 } from './lifecycle'
 

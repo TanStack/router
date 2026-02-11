@@ -6,9 +6,7 @@ import type {
   RegisteredSsr,
   SSROption,
 } from '../../router'
-import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
-import type { ExtractHandler } from '../../lifecycle'
 import type { RawStream } from './RawStream'
 
 declare const TSR_SERIALIZABLE: unique symbol
@@ -261,7 +259,7 @@ export type ValidateSerializableLifecycleResult<
   TFn,
 > =
   false extends RegisteredSsr<TRegister>
-    ? any
+    ? unknown
     : ValidateSerializableLifecycleResultSSR<
           TRegister,
           TParentRoute,
@@ -278,13 +276,10 @@ export type ValidateSerializableLifecycleResultSSR<
   TFn,
 > =
   ResolveAllSSR<TParentRoute, TSSR> extends false
-    ? any
+    ? unknown
     : RegisteredSSROption<TRegister> extends false
-      ? any
-      : ValidateSerializableInput<
-          TRegister,
-          LooseReturnType<ExtractHandler<TFn>>
-        >
+      ? unknown
+      : ValidateSerializableInput<TRegister, TFn>
 
 type ResolveArrayShape<
   T extends ReadonlyArray<unknown>,

@@ -9,58 +9,82 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SerializeMixedRouteImport } from './routes/serialize-mixed'
-import { Route as SerializeLoaderFalseRouteImport } from './routes/serialize-loader-false'
-import { Route as SerializeDefaultsRouteImport } from './routes/serialize-defaults'
-import { Route as SerializeContextTrueRouteImport } from './routes/serialize-context-true'
-import { Route as SerializeBeforeloadFalseRouteImport } from './routes/serialize-beforeload-false'
-import { Route as SerializeAllTrueRouteImport } from './routes/serialize-all-true'
-import { Route as SerializeAllFalseRouteImport } from './routes/serialize-all-false'
+import { Route as StaleRevalidateRouteImport } from './routes/stale-revalidate'
+import { Route as RevalidateContextRouteImport } from './routes/revalidate-context'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as DehydratePartialRouteImport } from './routes/dehydrate-partial'
+import { Route as DehydrateMixedRouteImport } from './routes/dehydrate-mixed'
+import { Route as DehydrateLoaderFalseRouteImport } from './routes/dehydrate-loader-false'
+import { Route as DehydrateFnRouteImport } from './routes/dehydrate-fn'
+import { Route as DehydrateDefaultsRouteImport } from './routes/dehydrate-defaults'
+import { Route as DehydrateContextTrueRouteImport } from './routes/dehydrate-context-true'
+import { Route as DehydrateBeforeloadFalseRouteImport } from './routes/dehydrate-beforeload-false'
+import { Route as DehydrateAllTrueRouteImport } from './routes/dehydrate-all-true'
+import { Route as DehydrateAllFalseRouteImport } from './routes/dehydrate-all-false'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as PostsPostIdCommentsRouteImport } from './routes/posts.$postId.comments'
 
-const SerializeMixedRoute = SerializeMixedRouteImport.update({
-  id: '/serialize-mixed',
-  path: '/serialize-mixed',
+const StaleRevalidateRoute = StaleRevalidateRouteImport.update({
+  id: '/stale-revalidate',
+  path: '/stale-revalidate',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SerializeLoaderFalseRoute = SerializeLoaderFalseRouteImport.update({
-  id: '/serialize-loader-false',
-  path: '/serialize-loader-false',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SerializeDefaultsRoute = SerializeDefaultsRouteImport.update({
-  id: '/serialize-defaults',
-  path: '/serialize-defaults',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SerializeContextTrueRoute = SerializeContextTrueRouteImport.update({
-  id: '/serialize-context-true',
-  path: '/serialize-context-true',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SerializeBeforeloadFalseRoute =
-  SerializeBeforeloadFalseRouteImport.update({
-    id: '/serialize-beforeload-false',
-    path: '/serialize-beforeload-false',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const SerializeAllTrueRoute = SerializeAllTrueRouteImport.update({
-  id: '/serialize-all-true',
-  path: '/serialize-all-true',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SerializeAllFalseRoute = SerializeAllFalseRouteImport.update({
-  id: '/serialize-all-false',
-  path: '/serialize-all-false',
+const RevalidateContextRoute = RevalidateContextRouteImport.update({
+  id: '/revalidate-context',
+  path: '/revalidate-context',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DehydratePartialRoute = DehydratePartialRouteImport.update({
+  id: '/dehydrate-partial',
+  path: '/dehydrate-partial',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DehydrateMixedRoute = DehydrateMixedRouteImport.update({
+  id: '/dehydrate-mixed',
+  path: '/dehydrate-mixed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DehydrateLoaderFalseRoute = DehydrateLoaderFalseRouteImport.update({
+  id: '/dehydrate-loader-false',
+  path: '/dehydrate-loader-false',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DehydrateFnRoute = DehydrateFnRouteImport.update({
+  id: '/dehydrate-fn',
+  path: '/dehydrate-fn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DehydrateDefaultsRoute = DehydrateDefaultsRouteImport.update({
+  id: '/dehydrate-defaults',
+  path: '/dehydrate-defaults',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DehydrateContextTrueRoute = DehydrateContextTrueRouteImport.update({
+  id: '/dehydrate-context-true',
+  path: '/dehydrate-context-true',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DehydrateBeforeloadFalseRoute =
+  DehydrateBeforeloadFalseRouteImport.update({
+    id: '/dehydrate-beforeload-false',
+    path: '/dehydrate-beforeload-false',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DehydrateAllTrueRoute = DehydrateAllTrueRouteImport.update({
+  id: '/dehydrate-all-true',
+  path: '/dehydrate-all-true',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DehydrateAllFalseRoute = DehydrateAllFalseRouteImport.update({
+  id: '/dehydrate-all-false',
+  path: '/dehydrate-all-false',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -86,27 +110,35 @@ const PostsPostIdCommentsRoute = PostsPostIdCommentsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dehydrate-all-false': typeof DehydrateAllFalseRoute
+  '/dehydrate-all-true': typeof DehydrateAllTrueRoute
+  '/dehydrate-beforeload-false': typeof DehydrateBeforeloadFalseRoute
+  '/dehydrate-context-true': typeof DehydrateContextTrueRoute
+  '/dehydrate-defaults': typeof DehydrateDefaultsRoute
+  '/dehydrate-fn': typeof DehydrateFnRoute
+  '/dehydrate-loader-false': typeof DehydrateLoaderFalseRoute
+  '/dehydrate-mixed': typeof DehydrateMixedRoute
+  '/dehydrate-partial': typeof DehydratePartialRoute
   '/posts': typeof PostsRouteWithChildren
-  '/serialize-all-false': typeof SerializeAllFalseRoute
-  '/serialize-all-true': typeof SerializeAllTrueRoute
-  '/serialize-beforeload-false': typeof SerializeBeforeloadFalseRoute
-  '/serialize-context-true': typeof SerializeContextTrueRoute
-  '/serialize-defaults': typeof SerializeDefaultsRoute
-  '/serialize-loader-false': typeof SerializeLoaderFalseRoute
-  '/serialize-mixed': typeof SerializeMixedRoute
+  '/revalidate-context': typeof RevalidateContextRoute
+  '/stale-revalidate': typeof StaleRevalidateRoute
   '/posts/$postId': typeof PostsPostIdRouteWithChildren
   '/posts/': typeof PostsIndexRoute
   '/posts/$postId/comments': typeof PostsPostIdCommentsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/serialize-all-false': typeof SerializeAllFalseRoute
-  '/serialize-all-true': typeof SerializeAllTrueRoute
-  '/serialize-beforeload-false': typeof SerializeBeforeloadFalseRoute
-  '/serialize-context-true': typeof SerializeContextTrueRoute
-  '/serialize-defaults': typeof SerializeDefaultsRoute
-  '/serialize-loader-false': typeof SerializeLoaderFalseRoute
-  '/serialize-mixed': typeof SerializeMixedRoute
+  '/dehydrate-all-false': typeof DehydrateAllFalseRoute
+  '/dehydrate-all-true': typeof DehydrateAllTrueRoute
+  '/dehydrate-beforeload-false': typeof DehydrateBeforeloadFalseRoute
+  '/dehydrate-context-true': typeof DehydrateContextTrueRoute
+  '/dehydrate-defaults': typeof DehydrateDefaultsRoute
+  '/dehydrate-fn': typeof DehydrateFnRoute
+  '/dehydrate-loader-false': typeof DehydrateLoaderFalseRoute
+  '/dehydrate-mixed': typeof DehydrateMixedRoute
+  '/dehydrate-partial': typeof DehydratePartialRoute
+  '/revalidate-context': typeof RevalidateContextRoute
+  '/stale-revalidate': typeof StaleRevalidateRoute
   '/posts/$postId': typeof PostsPostIdRouteWithChildren
   '/posts': typeof PostsIndexRoute
   '/posts/$postId/comments': typeof PostsPostIdCommentsRoute
@@ -114,14 +146,18 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dehydrate-all-false': typeof DehydrateAllFalseRoute
+  '/dehydrate-all-true': typeof DehydrateAllTrueRoute
+  '/dehydrate-beforeload-false': typeof DehydrateBeforeloadFalseRoute
+  '/dehydrate-context-true': typeof DehydrateContextTrueRoute
+  '/dehydrate-defaults': typeof DehydrateDefaultsRoute
+  '/dehydrate-fn': typeof DehydrateFnRoute
+  '/dehydrate-loader-false': typeof DehydrateLoaderFalseRoute
+  '/dehydrate-mixed': typeof DehydrateMixedRoute
+  '/dehydrate-partial': typeof DehydratePartialRoute
   '/posts': typeof PostsRouteWithChildren
-  '/serialize-all-false': typeof SerializeAllFalseRoute
-  '/serialize-all-true': typeof SerializeAllTrueRoute
-  '/serialize-beforeload-false': typeof SerializeBeforeloadFalseRoute
-  '/serialize-context-true': typeof SerializeContextTrueRoute
-  '/serialize-defaults': typeof SerializeDefaultsRoute
-  '/serialize-loader-false': typeof SerializeLoaderFalseRoute
-  '/serialize-mixed': typeof SerializeMixedRoute
+  '/revalidate-context': typeof RevalidateContextRoute
+  '/stale-revalidate': typeof StaleRevalidateRoute
   '/posts/$postId': typeof PostsPostIdRouteWithChildren
   '/posts/': typeof PostsIndexRoute
   '/posts/$postId/comments': typeof PostsPostIdCommentsRoute
@@ -130,41 +166,53 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dehydrate-all-false'
+    | '/dehydrate-all-true'
+    | '/dehydrate-beforeload-false'
+    | '/dehydrate-context-true'
+    | '/dehydrate-defaults'
+    | '/dehydrate-fn'
+    | '/dehydrate-loader-false'
+    | '/dehydrate-mixed'
+    | '/dehydrate-partial'
     | '/posts'
-    | '/serialize-all-false'
-    | '/serialize-all-true'
-    | '/serialize-beforeload-false'
-    | '/serialize-context-true'
-    | '/serialize-defaults'
-    | '/serialize-loader-false'
-    | '/serialize-mixed'
+    | '/revalidate-context'
+    | '/stale-revalidate'
     | '/posts/$postId'
     | '/posts/'
     | '/posts/$postId/comments'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/serialize-all-false'
-    | '/serialize-all-true'
-    | '/serialize-beforeload-false'
-    | '/serialize-context-true'
-    | '/serialize-defaults'
-    | '/serialize-loader-false'
-    | '/serialize-mixed'
+    | '/dehydrate-all-false'
+    | '/dehydrate-all-true'
+    | '/dehydrate-beforeload-false'
+    | '/dehydrate-context-true'
+    | '/dehydrate-defaults'
+    | '/dehydrate-fn'
+    | '/dehydrate-loader-false'
+    | '/dehydrate-mixed'
+    | '/dehydrate-partial'
+    | '/revalidate-context'
+    | '/stale-revalidate'
     | '/posts/$postId'
     | '/posts'
     | '/posts/$postId/comments'
   id:
     | '__root__'
     | '/'
+    | '/dehydrate-all-false'
+    | '/dehydrate-all-true'
+    | '/dehydrate-beforeload-false'
+    | '/dehydrate-context-true'
+    | '/dehydrate-defaults'
+    | '/dehydrate-fn'
+    | '/dehydrate-loader-false'
+    | '/dehydrate-mixed'
+    | '/dehydrate-partial'
     | '/posts'
-    | '/serialize-all-false'
-    | '/serialize-all-true'
-    | '/serialize-beforeload-false'
-    | '/serialize-context-true'
-    | '/serialize-defaults'
-    | '/serialize-loader-false'
-    | '/serialize-mixed'
+    | '/revalidate-context'
+    | '/stale-revalidate'
     | '/posts/$postId'
     | '/posts/'
     | '/posts/$postId/comments'
@@ -172,65 +220,34 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DehydrateAllFalseRoute: typeof DehydrateAllFalseRoute
+  DehydrateAllTrueRoute: typeof DehydrateAllTrueRoute
+  DehydrateBeforeloadFalseRoute: typeof DehydrateBeforeloadFalseRoute
+  DehydrateContextTrueRoute: typeof DehydrateContextTrueRoute
+  DehydrateDefaultsRoute: typeof DehydrateDefaultsRoute
+  DehydrateFnRoute: typeof DehydrateFnRoute
+  DehydrateLoaderFalseRoute: typeof DehydrateLoaderFalseRoute
+  DehydrateMixedRoute: typeof DehydrateMixedRoute
+  DehydratePartialRoute: typeof DehydratePartialRoute
   PostsRoute: typeof PostsRouteWithChildren
-  SerializeAllFalseRoute: typeof SerializeAllFalseRoute
-  SerializeAllTrueRoute: typeof SerializeAllTrueRoute
-  SerializeBeforeloadFalseRoute: typeof SerializeBeforeloadFalseRoute
-  SerializeContextTrueRoute: typeof SerializeContextTrueRoute
-  SerializeDefaultsRoute: typeof SerializeDefaultsRoute
-  SerializeLoaderFalseRoute: typeof SerializeLoaderFalseRoute
-  SerializeMixedRoute: typeof SerializeMixedRoute
+  RevalidateContextRoute: typeof RevalidateContextRoute
+  StaleRevalidateRoute: typeof StaleRevalidateRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/serialize-mixed': {
-      id: '/serialize-mixed'
-      path: '/serialize-mixed'
-      fullPath: '/serialize-mixed'
-      preLoaderRoute: typeof SerializeMixedRouteImport
+    '/stale-revalidate': {
+      id: '/stale-revalidate'
+      path: '/stale-revalidate'
+      fullPath: '/stale-revalidate'
+      preLoaderRoute: typeof StaleRevalidateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/serialize-loader-false': {
-      id: '/serialize-loader-false'
-      path: '/serialize-loader-false'
-      fullPath: '/serialize-loader-false'
-      preLoaderRoute: typeof SerializeLoaderFalseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/serialize-defaults': {
-      id: '/serialize-defaults'
-      path: '/serialize-defaults'
-      fullPath: '/serialize-defaults'
-      preLoaderRoute: typeof SerializeDefaultsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/serialize-context-true': {
-      id: '/serialize-context-true'
-      path: '/serialize-context-true'
-      fullPath: '/serialize-context-true'
-      preLoaderRoute: typeof SerializeContextTrueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/serialize-beforeload-false': {
-      id: '/serialize-beforeload-false'
-      path: '/serialize-beforeload-false'
-      fullPath: '/serialize-beforeload-false'
-      preLoaderRoute: typeof SerializeBeforeloadFalseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/serialize-all-true': {
-      id: '/serialize-all-true'
-      path: '/serialize-all-true'
-      fullPath: '/serialize-all-true'
-      preLoaderRoute: typeof SerializeAllTrueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/serialize-all-false': {
-      id: '/serialize-all-false'
-      path: '/serialize-all-false'
-      fullPath: '/serialize-all-false'
-      preLoaderRoute: typeof SerializeAllFalseRouteImport
+    '/revalidate-context': {
+      id: '/revalidate-context'
+      path: '/revalidate-context'
+      fullPath: '/revalidate-context'
+      preLoaderRoute: typeof RevalidateContextRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts': {
@@ -238,6 +255,69 @@ declare module '@tanstack/react-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dehydrate-partial': {
+      id: '/dehydrate-partial'
+      path: '/dehydrate-partial'
+      fullPath: '/dehydrate-partial'
+      preLoaderRoute: typeof DehydratePartialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dehydrate-mixed': {
+      id: '/dehydrate-mixed'
+      path: '/dehydrate-mixed'
+      fullPath: '/dehydrate-mixed'
+      preLoaderRoute: typeof DehydrateMixedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dehydrate-loader-false': {
+      id: '/dehydrate-loader-false'
+      path: '/dehydrate-loader-false'
+      fullPath: '/dehydrate-loader-false'
+      preLoaderRoute: typeof DehydrateLoaderFalseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dehydrate-fn': {
+      id: '/dehydrate-fn'
+      path: '/dehydrate-fn'
+      fullPath: '/dehydrate-fn'
+      preLoaderRoute: typeof DehydrateFnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dehydrate-defaults': {
+      id: '/dehydrate-defaults'
+      path: '/dehydrate-defaults'
+      fullPath: '/dehydrate-defaults'
+      preLoaderRoute: typeof DehydrateDefaultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dehydrate-context-true': {
+      id: '/dehydrate-context-true'
+      path: '/dehydrate-context-true'
+      fullPath: '/dehydrate-context-true'
+      preLoaderRoute: typeof DehydrateContextTrueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dehydrate-beforeload-false': {
+      id: '/dehydrate-beforeload-false'
+      path: '/dehydrate-beforeload-false'
+      fullPath: '/dehydrate-beforeload-false'
+      preLoaderRoute: typeof DehydrateBeforeloadFalseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dehydrate-all-true': {
+      id: '/dehydrate-all-true'
+      path: '/dehydrate-all-true'
+      fullPath: '/dehydrate-all-true'
+      preLoaderRoute: typeof DehydrateAllTrueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dehydrate-all-false': {
+      id: '/dehydrate-all-false'
+      path: '/dehydrate-all-false'
+      fullPath: '/dehydrate-all-false'
+      preLoaderRoute: typeof DehydrateAllFalseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -297,14 +377,18 @@ const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DehydrateAllFalseRoute: DehydrateAllFalseRoute,
+  DehydrateAllTrueRoute: DehydrateAllTrueRoute,
+  DehydrateBeforeloadFalseRoute: DehydrateBeforeloadFalseRoute,
+  DehydrateContextTrueRoute: DehydrateContextTrueRoute,
+  DehydrateDefaultsRoute: DehydrateDefaultsRoute,
+  DehydrateFnRoute: DehydrateFnRoute,
+  DehydrateLoaderFalseRoute: DehydrateLoaderFalseRoute,
+  DehydrateMixedRoute: DehydrateMixedRoute,
+  DehydratePartialRoute: DehydratePartialRoute,
   PostsRoute: PostsRouteWithChildren,
-  SerializeAllFalseRoute: SerializeAllFalseRoute,
-  SerializeAllTrueRoute: SerializeAllTrueRoute,
-  SerializeBeforeloadFalseRoute: SerializeBeforeloadFalseRoute,
-  SerializeContextTrueRoute: SerializeContextTrueRoute,
-  SerializeDefaultsRoute: SerializeDefaultsRoute,
-  SerializeLoaderFalseRoute: SerializeLoaderFalseRoute,
-  SerializeMixedRoute: SerializeMixedRoute,
+  RevalidateContextRoute: RevalidateContextRoute,
+  StaleRevalidateRoute: StaleRevalidateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

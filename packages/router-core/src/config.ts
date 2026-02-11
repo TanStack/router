@@ -1,59 +1,59 @@
 import type { SSROption } from './router'
-import type { DefaultSerializeConfig } from './lifecycle'
+import type { DefaultDehydrateConfig } from './lifecycle'
 import type { AnySerializationAdapter } from './ssr/serializer/transformer'
 
 export interface RouterConfigOptions<
   in out TSerializationAdapters,
   in out TDefaultSsr,
-  in out TDefaultSerialize,
+  in out TDefaultDehydrate,
 > {
   serializationAdapters?: TSerializationAdapters
   defaultSsr?: TDefaultSsr
-  defaultSerialize?: TDefaultSerialize
+  defaultDehydrate?: TDefaultDehydrate
 }
 
 export interface RouterConfig<
   in out TSerializationAdapters,
   in out TDefaultSsr,
-  in out TDefaultSerialize,
+  in out TDefaultDehydrate,
 > {
   '~types': RouterConfigTypes<
     TSerializationAdapters,
     TDefaultSsr,
-    TDefaultSerialize
+    TDefaultDehydrate
   >
   serializationAdapters: TSerializationAdapters
   defaultSsr: TDefaultSsr | undefined
-  defaultSerialize: TDefaultSerialize | undefined
+  defaultDehydrate: TDefaultDehydrate | undefined
 }
 
 export interface RouterConfigTypes<
   in out TSerializationAdapters,
   in out TDefaultSsr,
-  in out TDefaultSerialize,
+  in out TDefaultDehydrate,
 > {
   serializationAdapters: TSerializationAdapters
   defaultSsr: TDefaultSsr
-  defaultSerialize: TDefaultSerialize
+  defaultDehydrate: TDefaultDehydrate
 }
 
 export const createRouterConfig = <
   const TSerializationAdapters extends ReadonlyArray<AnySerializationAdapter> =
     [],
   TDefaultSsr extends SSROption = SSROption,
-  TDefaultSerialize extends DefaultSerializeConfig = DefaultSerializeConfig,
+  TDefaultDehydrate extends DefaultDehydrateConfig = DefaultDehydrateConfig,
 >(
   options: RouterConfigOptions<
     TSerializationAdapters,
     TDefaultSsr,
-    TDefaultSerialize
+    TDefaultDehydrate
   >,
-): RouterConfig<TSerializationAdapters, TDefaultSsr, TDefaultSerialize> => {
+): RouterConfig<TSerializationAdapters, TDefaultSsr, TDefaultDehydrate> => {
   return {
     serializationAdapters: options.serializationAdapters,
     defaultSsr: options.defaultSsr,
-    defaultSerialize: options.defaultSerialize,
-  } as RouterConfig<TSerializationAdapters, TDefaultSsr, TDefaultSerialize>
+    defaultDehydrate: options.defaultDehydrate,
+  } as RouterConfig<TSerializationAdapters, TDefaultSsr, TDefaultDehydrate>
 }
 
 export type AnyRouterConfig = RouterConfig<any, any, any>

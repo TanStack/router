@@ -523,11 +523,11 @@ describe('hydrate', () => {
       expect(indexContextFn).toHaveBeenCalledTimes(1)
     })
 
-    it('context with invalidate:true is re-executed after router.invalidate() post-hydration', async () => {
+    it('context with revalidate:true is re-executed after router.invalidate() post-hydration', async () => {
       const indexContextFn = vi.fn(() => ({ indexCtx: 1 }))
 
       const { router } = setupHydration({
-        indexContext: { handler: indexContextFn, invalidate: true },
+        indexContext: { handler: indexContextFn, revalidate: true },
       })
 
       await hydrate(router)
@@ -537,11 +537,11 @@ describe('hydrate', () => {
       // Invalidate — router.invalidate() internally calls router.load()
       await router.invalidate()
 
-      // context with invalidate:true should be called again because invalidation sets invalid=true
+      // context with revalidate:true should be called again because invalidation sets invalid=true
       expect(indexContextFn).toHaveBeenCalledTimes(2)
     })
 
-    it('context (without invalidate) is NOT re-executed after router.invalidate() post-hydration', async () => {
+    it('context (without revalidate) is NOT re-executed after router.invalidate() post-hydration', async () => {
       const indexContextFn = vi.fn(() => ({ indexM: 1 }))
 
       const { router } = setupHydration({
@@ -555,7 +555,7 @@ describe('hydrate', () => {
       // Invalidate — router.invalidate() internally calls router.load()
       await router.invalidate()
 
-      // context (without invalidate) should NOT be called again
+      // context (without revalidate) should NOT be called again
       expect(indexContextFn).toHaveBeenCalledTimes(1)
     })
 
@@ -636,18 +636,18 @@ describe('hydrate', () => {
     })
   })
 
-  describe('serialize flag combinations during hydration', () => {
+  describe('dehydrate flag combinations during hydration', () => {
     /**
-     * Setup helper for serialize-aware hydration tests.
+     * Setup helper for dehydrate-aware hydration tests.
      * Allows context, beforeLoad, and loader lifecycle methods with object form
-     * (serialize flag), and configurable dehydrated match payloads including m? field.
+     * (dehydrate flag), and configurable dehydrated match payloads including m? field.
      */
-    function setupSerializeHydration({
+    function setupDehydrateHydration({
       rootOptions,
       indexOptions,
       dehydratedRoot,
       dehydratedIndex,
-      routerDefaultSerialize,
+      routerDefaultDehydrate,
     }: {
       rootOptions?: {
         context?: any
@@ -673,7 +673,7 @@ describe('hydrate', () => {
         e: any
         ssr: any
       }>
-      routerDefaultSerialize?: {
+      routerDefaultDehydrate?: {
         beforeLoad?: boolean
         loader?: boolean
         context?: boolean
@@ -702,8 +702,8 @@ describe('hydrate', () => {
         history,
         isServer: true,
       }
-      if (routerDefaultSerialize) {
-        routerOptions.defaultSerialize = routerDefaultSerialize
+      if (routerDefaultDehydrate) {
+        routerOptions.defaultDehydrate = routerDefaultDehydrate
       }
       const router = new RouterCore(routerOptions)
 
@@ -748,17 +748,17 @@ describe('hydrate', () => {
       return { router, rootRoute, indexRoute }
     }
 
-    // --- beforeLoad with serialize: false ---
+    // --- beforeLoad with dehydrate: false ---
 
-    it('beforeLoad with serialize: false — NOT in dehydrated data, re-executed on client', async () => {
+    it('beforeLoad with dehydrate: false — NOT in dehydrated data, re-executed on client', async () => {
       const indexBeforeLoad = vi.fn(() => ({ fromBL: 'client-reexec' }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          beforeLoad: { handler: indexBeforeLoad, serialize: false },
+          beforeLoad: { handler: indexBeforeLoad, dehydrate: false },
         },
         dehydratedRoot: {},
-        // No `b` field in dehydrated data (serialize:false means server didn't include it)
+        // No `b` field in dehydrated data (dehydrate:false means server didn't include it)
         dehydratedIndex: { l: {} },
       })
 
@@ -776,18 +776,18 @@ describe('hydrate', () => {
       )
     })
 
-    it('beforeLoad with serialize: true (default) — in dehydrated data, NOT re-executed on client', async () => {
+    it('beforeLoad with dehydrate: true (default) — in dehydrated data, NOT re-executed on client', async () => {
       const indexBeforeLoad = vi.fn(() => ({
         fromBL: 'should-not-run',
       }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          // function form = default serialize: true for beforeLoad
+          // function form = default dehydrate: true for beforeLoad
           beforeLoad: indexBeforeLoad,
         },
         dehydratedRoot: {},
-        // Server provided `b` field (serialize:true means it's dehydrated)
+        // Server provided `b` field (dehydrate:true means it's dehydrated)
         dehydratedIndex: {
           b: { fromBL: 'from-server' },
           l: {},
@@ -806,17 +806,17 @@ describe('hydrate', () => {
       )
     })
 
-    // --- loader with serialize: false ---
+    // --- loader with dehydrate: false ---
 
-    it('loader with serialize: false — NOT in dehydrated data, re-executed on client', async () => {
+    it('loader with dehydrate: false — NOT in dehydrated data, re-executed on client', async () => {
       const indexLoader = vi.fn(() => ({ loaderVal: 'client-reexec' }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          loader: { handler: indexLoader, serialize: false },
+          loader: { handler: indexLoader, dehydrate: false },
         },
         dehydratedRoot: {},
-        // No `l` field with data (serialize:false means server didn't include it)
+        // No `l` field with data (dehydrate:false means server didn't include it)
         dehydratedIndex: { b: {} },
       })
 
@@ -829,14 +829,14 @@ describe('hydrate', () => {
       expect(indexMatch.loaderData).toEqual({ loaderVal: 'client-reexec' })
     })
 
-    it('loader with serialize: true (default) — in dehydrated data, NOT re-executed on client', async () => {
+    it('loader with dehydrate: true (default) — in dehydrated data, NOT re-executed on client', async () => {
       const indexLoader = vi.fn(() => ({
         loaderVal: 'should-not-run',
       }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          // function form = default serialize: true for loader
+          // function form = default dehydrate: true for loader
           loader: indexLoader,
         },
         dehydratedRoot: {},
@@ -855,19 +855,19 @@ describe('hydrate', () => {
       expect(indexMatch.loaderData).toEqual({ loaderVal: 'from-server' })
     })
 
-    // --- context with serialize: true ---
+    // --- context with dehydrate: true ---
 
-    it('context with serialize: true — IS in dehydrated data, NOT re-executed on client', async () => {
+    it('context with dehydrate: true — IS in dehydrated data, NOT re-executed on client', async () => {
       const indexContextFn = vi.fn(() => ({
         fromCtx: 'should-not-run',
       }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          context: { handler: indexContextFn, serialize: true },
+          context: { handler: indexContextFn, dehydrate: true },
         },
         dehydratedRoot: {},
-        // Server provided `m` field (serialize:true means it's dehydrated)
+        // Server provided `m` field (dehydrate:true means it's dehydrated)
         dehydratedIndex: {
           m: { fromCtx: 'from-server' },
           l: {},
@@ -886,18 +886,18 @@ describe('hydrate', () => {
       )
     })
 
-    it('context with serialize: false (default) — NOT in dehydrated data, re-executed on client', async () => {
+    it('context with dehydrate: false (default) — NOT in dehydrated data, re-executed on client', async () => {
       const indexContextFn = vi.fn(() => ({
         fromCtx: 'client-reexec',
       }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          // function form = default serialize: false for context
+          // function form = default dehydrate: false for context
           context: indexContextFn,
         },
         dehydratedRoot: {},
-        // No `m` field (serialize:false means server didn't include it)
+        // No `m` field (dehydrate:false means server didn't include it)
         dehydratedIndex: { l: {} },
       })
 
@@ -913,12 +913,12 @@ describe('hydrate', () => {
       )
     })
 
-    // --- needsContext flags with serialize combinations ---
+    // --- needsContext flags with dehydrate combinations ---
 
-    it('needsContext cleared regardless of serialize flag (serialize: true)', async () => {
-      const { router } = setupSerializeHydration({
+    it('needsContext cleared regardless of dehydrate flag (dehydrate: true)', async () => {
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          context: { handler: () => ({ v: 1 }), serialize: true },
+          context: { handler: () => ({ v: 1 }), dehydrate: true },
         },
         dehydratedRoot: {},
         dehydratedIndex: { m: { v: 1 }, l: {} },
@@ -931,10 +931,10 @@ describe('hydrate', () => {
       }
     })
 
-    it('needsContext cleared regardless of serialize flag (serialize: false)', async () => {
-      const { router } = setupSerializeHydration({
+    it('needsContext cleared regardless of dehydrate flag (dehydrate: false)', async () => {
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          context: { handler: () => ({ v: 1 }), serialize: false },
+          context: { handler: () => ({ v: 1 }), dehydrate: false },
         },
         dehydratedRoot: {},
         dehydratedIndex: { l: {} },
@@ -947,36 +947,36 @@ describe('hydrate', () => {
       }
     })
 
-    // --- Mixed serialize: inverted from defaults ---
+    // --- Mixed dehydrate: inverted from defaults ---
 
-    it('mixed serialize: beforeLoad=false, loader=true, context=true', async () => {
+    it('mixed dehydrate: beforeLoad=false, loader=true, context=true', async () => {
       const indexBeforeLoad = vi.fn(() => ({ bl: 'reexec' }))
       const indexLoader = vi.fn(() => ({ ld: 'should-not-run' }))
       const indexContextFn = vi.fn(() => ({ ctx: 'should-not-run' }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          beforeLoad: { handler: indexBeforeLoad, serialize: false },
-          loader: { handler: indexLoader, serialize: true },
-          context: { handler: indexContextFn, serialize: true },
+          beforeLoad: { handler: indexBeforeLoad, dehydrate: false },
+          loader: { handler: indexLoader, dehydrate: true },
+          context: { handler: indexContextFn, dehydrate: true },
         },
         dehydratedRoot: {},
         dehydratedIndex: {
-          // beforeLoad NOT included (serialize:false)
-          // loader IS included (serialize:true)
+          // beforeLoad NOT included (dehydrate:false)
+          // loader IS included (dehydrate:true)
           l: { ld: 'from-server' },
-          // context IS included (serialize:true)
+          // context IS included (dehydrate:true)
           m: { ctx: 'from-server' },
         },
       })
 
       await hydrate(router)
 
-      // beforeLoad was re-executed (serialize:false)
+      // beforeLoad was re-executed (dehydrate:false)
       expect(indexBeforeLoad).toHaveBeenCalledTimes(1)
-      // loader was NOT re-executed (serialize:true, data from wire)
+      // loader was NOT re-executed (dehydrate:true, data from wire)
       expect(indexLoader).not.toHaveBeenCalled()
-      // context was NOT re-executed (serialize:true, data from wire)
+      // context was NOT re-executed (dehydrate:true, data from wire)
       expect(indexContextFn).not.toHaveBeenCalled()
 
       const indexMatch = router.state.matches[1] as AnyRouteMatch
@@ -991,18 +991,18 @@ describe('hydrate', () => {
       )
     })
 
-    // --- All serialize: true (everything from wire) ---
+    // --- All dehydrate: true (everything from wire) ---
 
-    it('all serialize: true — no handlers re-executed, all data from wire', async () => {
+    it('all dehydrate: true — no handlers re-executed, all data from wire', async () => {
       const indexContextFn = vi.fn(() => ({ ctx: 'nope' }))
       const indexBeforeLoad = vi.fn(() => ({ bl: 'nope' }))
       const indexLoader = vi.fn(() => ({ ld: 'nope' }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          context: { handler: indexContextFn, serialize: true },
-          beforeLoad: { handler: indexBeforeLoad, serialize: true },
-          loader: { handler: indexLoader, serialize: true },
+          context: { handler: indexContextFn, dehydrate: true },
+          beforeLoad: { handler: indexBeforeLoad, dehydrate: true },
+          loader: { handler: indexLoader, dehydrate: true },
         },
         dehydratedRoot: {},
         dehydratedIndex: {
@@ -1024,18 +1024,18 @@ describe('hydrate', () => {
       expect(indexMatch.loaderData).toEqual({ ld: 'server' })
     })
 
-    // --- All serialize: false (everything re-executed) ---
+    // --- All dehydrate: false (everything re-executed) ---
 
-    it('all serialize: false — all handlers re-executed, no data from wire', async () => {
+    it('all dehydrate: false — all handlers re-executed, no data from wire', async () => {
       const indexContextFn = vi.fn(() => ({ ctx: 'reexec' }))
       const indexBeforeLoad = vi.fn(() => ({ bl: 'reexec' }))
       const indexLoader = vi.fn(() => ({ ld: 'reexec' }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          context: { handler: indexContextFn, serialize: false },
-          beforeLoad: { handler: indexBeforeLoad, serialize: false },
-          loader: { handler: indexLoader, serialize: false },
+          context: { handler: indexContextFn, dehydrate: false },
+          beforeLoad: { handler: indexBeforeLoad, dehydrate: false },
+          loader: { handler: indexLoader, dehydrate: false },
         },
         dehydratedRoot: {},
         // No b/l/m — nothing serialized
@@ -1054,9 +1054,9 @@ describe('hydrate', () => {
       expect(indexMatch.loaderData).toEqual({ ld: 'reexec' })
     })
 
-    // --- Context chain integrity with mixed serialize across parent-child ---
+    // --- Context chain integrity with mixed dehydrate across parent-child ---
 
-    it('parent-child mixed serialize: parent beforeLoad=false, child context=true — context chain intact', async () => {
+    it('parent-child mixed dehydrate: parent beforeLoad=false, child context=true — context chain intact', async () => {
       const rootBeforeLoad = vi.fn(() => ({
         rootBL: 'root-client-reexec',
       }))
@@ -1067,13 +1067,13 @@ describe('hydrate', () => {
         indexCtx: 'should-not-run',
       }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         rootOptions: {
-          beforeLoad: { handler: rootBeforeLoad, serialize: false },
-          context: rootContextFn, // function form — default serialize: false for context
+          beforeLoad: { handler: rootBeforeLoad, dehydrate: false },
+          context: rootContextFn, // function form — default dehydrate: false for context
         },
         indexOptions: {
-          context: { handler: indexContextFn, serialize: true },
+          context: { handler: indexContextFn, dehydrate: true },
         },
         dehydratedRoot: {
           // No `b` — beforeLoad not serialized
@@ -1088,11 +1088,11 @@ describe('hydrate', () => {
 
       await hydrate(router)
 
-      // Root handlers re-executed (serialize:false)
+      // Root handlers re-executed (dehydrate:false)
       expect(rootBeforeLoad).toHaveBeenCalledTimes(1)
       expect(rootContextFn).toHaveBeenCalledTimes(1)
 
-      // Index context NOT re-executed (serialize:true, data from wire)
+      // Index context NOT re-executed (dehydrate:true, data from wire)
       expect(indexContextFn).not.toHaveBeenCalled()
 
       const indexMatch = router.state.matches[1] as AnyRouteMatch
@@ -1108,15 +1108,15 @@ describe('hydrate', () => {
       )
     })
 
-    // --- Router-level defaultSerialize overrides ---
+    // --- Router-level defaultDehydrate overrides ---
 
-    it('router-level defaultSerialize overrides builtin defaults', async () => {
-      // Override: context defaults to serialize:true (builtin is false)
-      // Override: beforeLoad defaults to serialize:false (builtin is true)
+    it('router-level defaultDehydrate overrides builtin defaults', async () => {
+      // Override: context defaults to dehydrate:true (builtin is false)
+      // Override: beforeLoad defaults to dehydrate:false (builtin is true)
       const indexContextFn = vi.fn(() => ({ ctx: 'should-not-run' }))
       const indexBeforeLoad = vi.fn(() => ({ bl: 'reexec' }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
           context: indexContextFn, // function form — router default: true
           beforeLoad: indexBeforeLoad, // function form — router default: false
@@ -1128,7 +1128,7 @@ describe('hydrate', () => {
           // beforeLoad NOT in payload because router default is false
           l: {},
         },
-        routerDefaultSerialize: {
+        routerDefaultDehydrate: {
           context: true,
           beforeLoad: false,
         },
@@ -1136,9 +1136,9 @@ describe('hydrate', () => {
 
       await hydrate(router)
 
-      // context NOT re-executed (router default: serialize true)
+      // context NOT re-executed (router default: dehydrate true)
       expect(indexContextFn).not.toHaveBeenCalled()
-      // beforeLoad IS re-executed (router default: serialize false)
+      // beforeLoad IS re-executed (router default: dehydrate false)
       expect(indexBeforeLoad).toHaveBeenCalledTimes(1)
 
       const indexMatch = router.state.matches[1] as AnyRouteMatch
@@ -1146,29 +1146,29 @@ describe('hydrate', () => {
       expect(indexMatch.__beforeLoadContext).toEqual({ bl: 'reexec' })
     })
 
-    // --- method-level serialize overrides router-level defaults ---
+    // --- method-level dehydrate overrides router-level defaults ---
 
-    it('method-level serialize overrides router-level defaults', async () => {
-      // Router default: context=true, but method says serialize:false
+    it('method-level dehydrate overrides router-level defaults', async () => {
+      // Router default: context=true, but method says dehydrate:false
       const indexContextFn = vi.fn(() => ({ ctx: 'reexec' }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          context: { handler: indexContextFn, serialize: false },
+          context: { handler: indexContextFn, dehydrate: false },
         },
         dehydratedRoot: {},
         dehydratedIndex: {
-          // No `m` — method-level serialize:false wins
+          // No `m` — method-level dehydrate:false wins
           l: {},
         },
-        routerDefaultSerialize: {
+        routerDefaultDehydrate: {
           context: true, // would normally prevent re-execution
         },
       })
 
       await hydrate(router)
 
-      // Method-level serialize:false wins — handler IS re-executed
+      // Method-level dehydrate:false wins — handler IS re-executed
       expect(indexContextFn).toHaveBeenCalledTimes(1)
 
       const indexMatch = router.state.matches[1] as AnyRouteMatch
@@ -1180,19 +1180,19 @@ describe('hydrate', () => {
     it('re-executed loader sees context from serialized context and re-executed beforeLoad', async () => {
       let loaderCtxCapture: any = null
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          context: { handler: () => ({ ctx: 'wire' }), serialize: true },
+          context: { handler: () => ({ ctx: 'wire' }), dehydrate: true },
           beforeLoad: {
             handler: () => ({ bl: 'client' }),
-            serialize: false,
+            dehydrate: false,
           },
           loader: {
             handler: ({ context }: { context: any }) => {
               loaderCtxCapture = context
               return { ld: 'reexec' }
             },
-            serialize: false,
+            dehydrate: false,
           },
         },
         dehydratedRoot: {},
@@ -1220,22 +1220,22 @@ describe('hydrate', () => {
     it('re-executed loader gets full context from context + beforeLoad', async () => {
       let loaderCtxCapture: any = null
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
           context: {
             handler: () => ({ ctx: 'from-wire' }),
-            serialize: true,
+            dehydrate: true,
           },
           beforeLoad: {
             handler: () => ({ bl: 'from-client' }),
-            serialize: false,
+            dehydrate: false,
           },
           loader: {
             handler: ({ context }: { context: any }) => {
               loaderCtxCapture = context
               return { ld: 'reexec' }
             },
-            serialize: false,
+            dehydrate: false,
           },
         },
         dehydratedRoot: {},
@@ -1257,15 +1257,15 @@ describe('hydrate', () => {
       expect(indexMatch.loaderData).toEqual({ ld: 'reexec' })
     })
 
-    // --- Object form without explicit serialize uses builtin defaults ---
+    // --- Object form without explicit dehydrate uses builtin defaults ---
 
-    it('object form without serialize property uses builtin defaults', async () => {
-      // beforeLoad object form without serialize → builtin default: true → NOT re-executed
+    it('object form without dehydrate property uses builtin defaults', async () => {
+      // beforeLoad object form without dehydrate → builtin default: true → NOT re-executed
       const indexBeforeLoad = vi.fn(() => ({ bl: 'should-not-run' }))
-      // context object form without serialize → builtin default: false → re-executed
+      // context object form without dehydrate → builtin default: false → re-executed
       const indexContextFn = vi.fn(() => ({ ctx: 'reexec' }))
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
           beforeLoad: { handler: indexBeforeLoad },
           context: { handler: indexContextFn },
@@ -1282,7 +1282,7 @@ describe('hydrate', () => {
 
       // beforeLoad NOT re-executed (builtin default: true → from wire)
       expect(indexBeforeLoad).not.toHaveBeenCalled()
-      // context IS re-executed (builtin default: false → not serialized)
+      // context IS re-executed (builtin default: false → not dehydrated)
       expect(indexContextFn).toHaveBeenCalledTimes(1)
 
       const indexMatch = router.state.matches[1] as AnyRouteMatch
@@ -1308,12 +1308,12 @@ describe('hydrate', () => {
         return { indexLd: 2 }
       })
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         rootOptions: {
-          loader: { handler: rootLoader, serialize: false },
+          loader: { handler: rootLoader, dehydrate: false },
         },
         indexOptions: {
-          loader: { handler: indexLoader, serialize: false },
+          loader: { handler: indexLoader, dehydrate: false },
         },
         dehydratedRoot: {},
         dehydratedIndex: {},
@@ -1342,17 +1342,17 @@ describe('hydrate', () => {
       expect(indexMatch.loaderData).toEqual({ indexLd: 2 })
     })
 
-    // --- serialize:false handler throws during hydration ---
+    // --- dehydrate:false handler throws during hydration ---
 
-    it('beforeLoad with serialize:false that throws sets match.error and re-throws', async () => {
+    it('beforeLoad with dehydrate:false that throws sets match.error and re-throws', async () => {
       const thrownError = new Error('beforeLoad boom')
       const indexBeforeLoad = vi.fn(() => {
         throw thrownError
       })
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          beforeLoad: { handler: indexBeforeLoad, serialize: false },
+          beforeLoad: { handler: indexBeforeLoad, dehydrate: false },
         },
         dehydratedRoot: {},
         dehydratedIndex: { l: {} },
@@ -1366,15 +1366,15 @@ describe('hydrate', () => {
       expect(indexMatch.error).toBe(thrownError)
     })
 
-    it('context with serialize:false that throws sets match.error and re-throws', async () => {
+    it('context with dehydrate:false that throws sets match.error and re-throws', async () => {
       const thrownError = new Error('context boom')
       const indexContextFn = vi.fn(() => {
         throw thrownError
       })
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          context: { handler: indexContextFn, serialize: false },
+          context: { handler: indexContextFn, dehydrate: false },
         },
         dehydratedRoot: {},
         dehydratedIndex: { l: {} },
@@ -1388,16 +1388,16 @@ describe('hydrate', () => {
       expect(indexMatch.error).toBe(thrownError)
     })
 
-    it('loader with serialize:false that throws captures error on match (no re-throw)', async () => {
+    it('loader with dehydrate:false that throws captures error on match (no re-throw)', async () => {
       const thrownError = new Error('loader boom')
       const indexLoader = vi.fn(() => {
         throw thrownError
       })
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      const { router } = setupSerializeHydration({
+      const { router } = setupDehydrateHydration({
         indexOptions: {
-          loader: { handler: indexLoader, serialize: false },
+          loader: { handler: indexLoader, dehydrate: false },
         },
         dehydratedRoot: {},
         dehydratedIndex: {},
@@ -1416,6 +1416,70 @@ describe('hydrate', () => {
       )
 
       consoleSpy.mockRestore()
+    })
+
+    it('dehydrate fn + hydrate fn: wire payload is transformed then reconstructed', async () => {
+      const ctxHydrate = vi.fn((wire: { iso: string }) => ({
+        dt: new Date(wire.iso),
+      }))
+      const blHydrate = vi.fn((wire: { iso: string }) => ({
+        dt: new Date(wire.iso),
+      }))
+      const ldHydrate = vi.fn((wire: { iso: string }) => ({
+        dt: new Date(wire.iso),
+      }))
+
+      const { router } = setupDehydrateHydration({
+        indexOptions: {
+          context: {
+            handler: () => ({ dt: new Date('1900-01-01T00:00:00.000Z') }),
+            dehydrate: (value: { dt: Date }) => ({
+              iso: value.dt.toISOString(),
+            }),
+            hydrate: ctxHydrate,
+          },
+          beforeLoad: {
+            handler: () => ({ dt: new Date('1900-01-01T00:00:00.000Z') }),
+            dehydrate: (value: { dt: Date }) => ({
+              iso: value.dt.toISOString(),
+            }),
+            hydrate: blHydrate,
+          },
+          loader: {
+            handler: () => ({ dt: new Date('1900-01-01T00:00:00.000Z') }),
+            dehydrate: (value: { dt: Date }) => ({
+              iso: value.dt.toISOString(),
+            }),
+            hydrate: ldHydrate,
+          },
+        },
+        dehydratedRoot: {},
+        dehydratedIndex: {
+          m: { iso: '2020-01-01T00:00:00.000Z' },
+          b: { iso: '2021-01-01T00:00:00.000Z' },
+          l: { iso: '2022-01-01T00:00:00.000Z' },
+        },
+      })
+
+      await hydrate(router)
+
+      expect(ctxHydrate).toHaveBeenCalledTimes(1)
+      expect(blHydrate).toHaveBeenCalledTimes(1)
+      expect(ldHydrate).toHaveBeenCalledTimes(1)
+
+      const indexMatch = router.state.matches[1] as AnyRouteMatch
+      expect((indexMatch.__routeContext as any).dt).toBeInstanceOf(Date)
+      expect(
+        ((indexMatch.__routeContext as any).dt as Date).toISOString(),
+      ).toBe('2020-01-01T00:00:00.000Z')
+      expect((indexMatch.__beforeLoadContext as any).dt).toBeInstanceOf(Date)
+      expect(
+        ((indexMatch.__beforeLoadContext as any).dt as Date).toISOString(),
+      ).toBe('2021-01-01T00:00:00.000Z')
+      expect((indexMatch.loaderData as any).dt).toBeInstanceOf(Date)
+      expect(((indexMatch.loaderData as any).dt as Date).toISOString()).toBe(
+        '2022-01-01T00:00:00.000Z',
+      )
     })
   })
 })

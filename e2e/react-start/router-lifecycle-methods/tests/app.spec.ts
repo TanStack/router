@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
-import { getEffectiveDefaults } from './utils/serializeDefaults'
+import { getEffectiveDefaults } from './utils/dehydrateDefaults'
 
 test.describe('lifecycle methods - SSR', () => {
   test('home page renders root and index lifecycle context', async ({
@@ -255,117 +255,117 @@ test.describe('lifecycle methods - context accumulation', () => {
 })
 
 // ============================================================================
-// Serialize tests — blackbox testing using createIsomorphicFn
+// Dehydrate tests — blackbox testing using createIsomorphicFn
 //
 // Each route's lifecycle methods return 'server-{prefix}-{method}' on server
 // and 'client-{prefix}-{method}' on client (via createIsomorphicFn).
 //
-// Serialized methods → server runs handler, value is sent to client via wire
+// Dehydrated methods → server runs handler, value is sent to client via wire
 //   → DOM shows 'server-{prefix}-{method}'
-// Non-serialized methods → client re-executes the handler
+// Non-dehydrated methods → client re-executes the handler
 //   → DOM shows 'client-{prefix}-{method}'
 //
 // This applies to both SSR page loads and client-side navigation.
 //
-// The effective serialization depends on three levels (highest priority first):
-// 1. Method-level: { handler, serialize: true/false } on the route option
-// 2. Router-level: defaultSerialize from start.ts (controlled by SERIALIZE_DEFAULTS env var)
+// The effective dehydration depends on three levels (highest priority first):
+// 1. Method-level: { handler, dehydrate: true/false } on the route option
+// 2. Router-level: defaultDehydrate from start.ts (controlled by DEHYDRATE_DEFAULTS env var)
 // 3. Builtin defaults: { beforeLoad: true, loader: true, context: false }
 // ============================================================================
 
 /**
  * Compute the expected rendered value for a method.
- * @param prefix - Route prefix (e.g. 'sd', 'sat')
+ * @param prefix - Route prefix (e.g. 'dd', 'dat')
  * @param method - Method name (e.g. 'context', 'beforeLoad')
- * @param serialized - Whether the method is effectively serialized
+ * @param dehydrated - Whether the method is effectively dehydrated
  */
 function expectedValue(
   prefix: string,
   method: string,
-  serialized: boolean,
+  dehydrated: boolean,
 ): string {
-  const env = serialized ? 'server' : 'client'
+  const env = dehydrated ? 'server' : 'client'
   return `${env}-${prefix}-${method}`
 }
 
-// Route-specific serialize configs:
-// Each entry describes whether each method is effectively serialized.
-// For routes with explicit serialize flags, those always win.
-// For routes using function form (no explicit serialize), the effective
-// default comes from getEffectiveDefaults() which reads SERIALIZE_DEFAULTS.
+// Route-specific dehydrate configs:
+// Each entry describes whether each method is effectively dehydrated.
+// For routes with explicit dehydrate flags, those always win.
+// For routes using function form (no explicit dehydrate), the effective
+// default comes from getEffectiveDefaults() which reads DEHYDRATE_DEFAULTS.
 
-interface RouteSerializeConfig {
+interface RouteDehydrateConfig {
   path: string
   prefix: string
   heading: string
   headingTestId: string
-  // For each method: true if serialize flag is explicit, with the value.
+  // For each method: true if dehydrate flag is explicit, with the value.
   // null means "use defaults" (function form).
   context: boolean | null
   beforeLoad: boolean | null
   loader: boolean | null
 }
 
-const serializeRoutes: Array<RouteSerializeConfig> = [
+const dehydrateRoutes: Array<RouteDehydrateConfig> = [
   {
-    path: '/serialize-defaults',
-    prefix: 'sd',
-    heading: 'Serialize Defaults',
-    headingTestId: 'sd-heading',
+    path: '/dehydrate-defaults',
+    prefix: 'dd',
+    heading: 'Dehydrate Defaults',
+    headingTestId: 'dd-heading',
     context: null, // function form → uses defaults
     beforeLoad: null,
     loader: null,
   },
   {
-    path: '/serialize-all-true',
-    prefix: 'sat',
-    heading: 'Serialize All True',
-    headingTestId: 'sat-heading',
+    path: '/dehydrate-all-true',
+    prefix: 'dat',
+    heading: 'Dehydrate All True',
+    headingTestId: 'dat-heading',
     context: true,
     beforeLoad: true,
     loader: true,
   },
   {
-    path: '/serialize-all-false',
-    prefix: 'saf',
-    heading: 'Serialize All False',
-    headingTestId: 'saf-heading',
+    path: '/dehydrate-all-false',
+    prefix: 'daf',
+    heading: 'Dehydrate All False',
+    headingTestId: 'daf-heading',
     context: false,
     beforeLoad: false,
     loader: false,
   },
   {
-    path: '/serialize-mixed',
-    prefix: 'sm',
-    heading: 'Serialize Mixed',
-    headingTestId: 'sm-heading',
+    path: '/dehydrate-mixed',
+    prefix: 'dm',
+    heading: 'Dehydrate Mixed',
+    headingTestId: 'dm-heading',
     context: true,
     beforeLoad: false,
     loader: true,
   },
   {
-    path: '/serialize-beforeload-false',
-    prefix: 'sbf',
-    heading: 'Serialize BeforeLoad False',
-    headingTestId: 'sbf-heading',
+    path: '/dehydrate-beforeload-false',
+    prefix: 'dbf',
+    heading: 'Dehydrate BeforeLoad False',
+    headingTestId: 'dbf-heading',
     context: null,
     beforeLoad: false,
     loader: null,
   },
   {
-    path: '/serialize-loader-false',
-    prefix: 'slf',
-    heading: 'Serialize Loader False',
-    headingTestId: 'slf-heading',
+    path: '/dehydrate-loader-false',
+    prefix: 'dlf',
+    heading: 'Dehydrate Loader False',
+    headingTestId: 'dlf-heading',
     context: null,
     beforeLoad: null,
     loader: false,
   },
   {
-    path: '/serialize-context-true',
-    prefix: 'sct',
-    heading: 'Serialize Context True',
-    headingTestId: 'sct-heading',
+    path: '/dehydrate-context-true',
+    prefix: 'dct',
+    heading: 'Dehydrate Context True',
+    headingTestId: 'dct-heading',
     context: true,
     beforeLoad: null,
     loader: null,
@@ -373,10 +373,10 @@ const serializeRoutes: Array<RouteSerializeConfig> = [
 ]
 
 /**
- * Resolve the effective serialize flag for a method on a route.
+ * Resolve the effective dehydrate flag for a method on a route.
  * Method-level explicit flag wins; otherwise uses the router-level default.
  */
-function isEffectivelySerialized(
+function isEffectivelyDehydrated(
   explicitFlag: boolean | null,
   defaultFlag: boolean,
 ): boolean {
@@ -388,8 +388,8 @@ function isEffectivelySerialized(
  * Execution path modes for getExpectedValues:
  *
  * 'ssr' — Direct page.goto(route). All 3 methods run on server during SSR.
- *   Serialized methods → server value sent to client via wire → 'server-*'
- *   Non-serialized methods → client re-executes after hydration → 'client-*'
+ *   Dehydrated methods → server value sent to client via wire → 'server-*'
+ *   Non-dehydrated methods → client re-executes after hydration → 'client-*'
  *
  * 'clientNav' — Client-side navigation (link click) after hydration. No server
  *   involvement. All methods run locally on the client → 'client-*' for everything.
@@ -407,7 +407,7 @@ type ExecutionPath = 'ssr' | 'clientNav' | 'roundTrip'
  * and the execution path.
  */
 function getExpectedValues(
-  route: RouteSerializeConfig,
+  route: RouteDehydrateConfig,
   mode: ExecutionPath = 'ssr',
 ) {
   const defaults = getEffectiveDefaults()
@@ -422,25 +422,25 @@ function getExpectedValues(
     }
   }
 
-  // For SSR, serialize config determines which env runs each method
-  const contextSerialized = isEffectivelySerialized(
+  // For SSR, dehydrate config determines which env runs each method
+  const contextDehydrated = isEffectivelyDehydrated(
     route.context,
     defaults.context,
   )
-  const beforeLoadSerialized = isEffectivelySerialized(
+  const beforeLoadDehydrated = isEffectivelyDehydrated(
     route.beforeLoad,
     defaults.beforeLoad,
   )
-  const loaderSerialized = isEffectivelySerialized(
+  const loaderDehydrated = isEffectivelyDehydrated(
     route.loader,
     defaults.loader,
   )
 
   if (mode === 'ssr') {
     return {
-      context: expectedValue(prefix, 'context', contextSerialized),
-      beforeLoad: expectedValue(prefix, 'beforeLoad', beforeLoadSerialized),
-      loader: expectedValue(prefix, 'loader', loaderSerialized),
+      context: expectedValue(prefix, 'context', contextDehydrated),
+      beforeLoad: expectedValue(prefix, 'beforeLoad', beforeLoadDehydrated),
+      loader: expectedValue(prefix, 'loader', loaderDehydrated),
     }
   }
 
@@ -449,7 +449,7 @@ function getExpectedValues(
   // Re-running methods always run on the client (no server calls).
   return {
     // context: CACHED from SSR hydration (never re-runs for existing match)
-    context: expectedValue(prefix, 'context', contextSerialized),
+    context: expectedValue(prefix, 'context', contextDehydrated),
     // beforeLoad: ALWAYS re-runs on client
     beforeLoad: expectedValue(prefix, 'beforeLoad', false),
     // loader: RE-RUNS on client (staleTime=0, considered stale)
@@ -457,8 +457,8 @@ function getExpectedValues(
   }
 }
 
-test.describe('serialize - SSR rendering and hydration', () => {
-  for (const route of serializeRoutes) {
+test.describe('dehydrate - SSR rendering and hydration', () => {
+  for (const route of dehydrateRoutes) {
     test(`${route.path}: renders correct values after hydration`, async ({
       page,
     }) => {
@@ -485,12 +485,12 @@ test.describe('serialize - SSR rendering and hydration', () => {
   }
 })
 
-test.describe('serialize - client navigation', () => {
+test.describe('dehydrate - client navigation', () => {
   // Client-side navigation runs all lifecycle methods on the client.
   // No server involvement. We must wait for hydration before clicking links,
   // otherwise the click may trigger a full page navigation (SSR) instead.
-  for (const route of serializeRoutes) {
-    test(`client nav to ${route.path}: values match serialize config`, async ({
+  for (const route of dehydrateRoutes) {
+    test(`client nav to ${route.path}: values match dehydrate config`, async ({
       page,
     }) => {
       await page.goto('/')
@@ -517,23 +517,23 @@ test.describe('serialize - client navigation', () => {
     })
   }
 
-  test('navigating between serialize routes preserves root context', async ({
+  test('navigating between dehydrate routes preserves root context', async ({
     page,
   }) => {
-    await page.goto('/serialize-defaults')
+    await page.goto('/dehydrate-defaults')
     await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
-    await expect(page.getByTestId('sd-heading')).toHaveText(
-      'Serialize Defaults',
+    await expect(page.getByTestId('dd-heading')).toHaveText(
+      'Dehydrate Defaults',
     )
     await expect(page.getByTestId('root-context')).toHaveText('root-context')
     await expect(page.getByTestId('root-beforeLoad')).toHaveText(
       'root-beforeLoad',
     )
 
-    // Navigate to serialize-all-true
-    await page.getByTestId('link-serialize-all-true').click()
-    await expect(page.getByTestId('sat-heading')).toHaveText(
-      'Serialize All True',
+    // Navigate to dehydrate-all-true
+    await page.getByTestId('link-dehydrate-all-true').click()
+    await expect(page.getByTestId('dat-heading')).toHaveText(
+      'Dehydrate All True',
     )
 
     // Root context should still be correct
@@ -543,13 +543,13 @@ test.describe('serialize - client navigation', () => {
     )
   })
 
-  test('navigating from serialize route back to home works correctly', async ({
+  test('navigating from dehydrate route back to home works correctly', async ({
     page,
   }) => {
-    await page.goto('/serialize-all-false')
+    await page.goto('/dehydrate-all-false')
     await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
-    await expect(page.getByTestId('saf-heading')).toHaveText(
-      'Serialize All False',
+    await expect(page.getByTestId('daf-heading')).toHaveText(
+      'Dehydrate All False',
     )
 
     await page.getByTestId('link-home').click()
@@ -563,12 +563,12 @@ test.describe('serialize - client navigation', () => {
   })
 })
 
-test.describe('serialize - post-hydration round-trip', () => {
+test.describe('dehydrate - post-hydration round-trip', () => {
   // After SSR + hydration, navigate away and back. On the return trip:
   // - context: CACHED from SSR (match already exists) → retains SSR hydration value
   // - beforeLoad: ALWAYS re-runs → 'client-*'
   // - loader: RE-RUNS (staleTime=0, considered stale) → 'client-*'
-  for (const route of serializeRoutes) {
+  for (const route of dehydrateRoutes) {
     test(`${route.path}: round-trip has correct caching behavior`, async ({
       page,
     }) => {
@@ -615,4 +615,383 @@ test.describe('serialize - post-hydration round-trip', () => {
       )
     })
   }
+})
+
+// ============================================================================
+// Dehydrate functions — dehydrate/hydrate function pairs
+//
+// The dehydrate-fn route uses Date objects in each lifecycle method.
+// dehydrate converts Date → ISO string for the wire.
+// hydrate reconstructs Date from ISO string on the client.
+//
+// Server dates are 2020-* and client dates are 2099-*.
+// After SSR hydration, all values should be server dates (dehydrated + hydrated).
+// After client navigation, all values should be client dates (handler runs locally).
+// ============================================================================
+
+test.describe('dehydrate-fn - dehydrate/hydrate function pairs', () => {
+  test('SSR: all dates are server-side and hydrated as Date instances', async ({
+    page,
+  }) => {
+    await page.goto('/dehydrate-fn')
+    await expect(page.getByTestId('dfn-heading')).toHaveText(
+      'Dehydrate Functions',
+    )
+
+    // All values should be server dates (dehydrated from server, hydrated on client)
+    await expect(page.getByTestId('dfn-context')).toHaveText(
+      '2020-01-01T00:00:00.000Z',
+    )
+    await expect(page.getByTestId('dfn-beforeLoad')).toHaveText(
+      '2020-06-15T00:00:00.000Z',
+    )
+    await expect(page.getByTestId('dfn-loader')).toHaveText(
+      '2020-12-25T00:00:00.000Z',
+    )
+
+    // Verify hydrate correctly reconstructed Date instances
+    await expect(page.getByTestId('dfn-context-type')).toHaveText('Date')
+    await expect(page.getByTestId('dfn-beforeLoad-type')).toHaveText('Date')
+    await expect(page.getByTestId('dfn-loader-type')).toHaveText('Date')
+  })
+
+  test('client nav: all dates are client-side Date instances', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+    await expect(page.getByTestId('index-heading')).toHaveText('Home')
+
+    await page.getByTestId('link-dehydrate-fn').click()
+    await expect(page.getByTestId('dfn-heading')).toHaveText(
+      'Dehydrate Functions',
+    )
+
+    // All values should be client dates (handler runs locally)
+    await expect(page.getByTestId('dfn-context')).toHaveText(
+      '2099-01-01T00:00:00.000Z',
+    )
+    await expect(page.getByTestId('dfn-beforeLoad')).toHaveText(
+      '2099-06-15T00:00:00.000Z',
+    )
+    await expect(page.getByTestId('dfn-loader')).toHaveText(
+      '2099-12-25T00:00:00.000Z',
+    )
+
+    // Verify Date instances
+    await expect(page.getByTestId('dfn-context-type')).toHaveText('Date')
+    await expect(page.getByTestId('dfn-beforeLoad-type')).toHaveText('Date')
+    await expect(page.getByTestId('dfn-loader-type')).toHaveText('Date')
+  })
+
+  test('round-trip: context retains SSR date, beforeLoad/loader re-run on client', async ({
+    page,
+  }) => {
+    // Step 1: SSR page load
+    await page.goto('/dehydrate-fn')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+    await expect(page.getByTestId('dfn-heading')).toHaveText(
+      'Dehydrate Functions',
+    )
+
+    // Verify SSR values
+    await expect(page.getByTestId('dfn-context')).toHaveText(
+      '2020-01-01T00:00:00.000Z',
+    )
+    await expect(page.getByTestId('dfn-beforeLoad')).toHaveText(
+      '2020-06-15T00:00:00.000Z',
+    )
+    await expect(page.getByTestId('dfn-loader')).toHaveText(
+      '2020-12-25T00:00:00.000Z',
+    )
+
+    // Step 2: Navigate away
+    await page.getByTestId('link-home').click()
+    await expect(page.getByTestId('index-heading')).toHaveText('Home')
+
+    // Step 3: Navigate back (client navigation with existing caches)
+    await page.getByTestId('link-dehydrate-fn').click()
+    await expect(page.getByTestId('dfn-heading')).toHaveText(
+      'Dehydrate Functions',
+    )
+
+    // context: CACHED from SSR hydration → retains server date
+    await expect(page.getByTestId('dfn-context')).toHaveText(
+      '2020-01-01T00:00:00.000Z',
+    )
+    // beforeLoad: ALWAYS re-runs on client → client date
+    await expect(page.getByTestId('dfn-beforeLoad')).toHaveText(
+      '2099-06-15T00:00:00.000Z',
+    )
+    // loader: RE-RUNS on client (staleTime=0) → client date
+    await expect(page.getByTestId('dfn-loader')).toHaveText(
+      '2099-12-25T00:00:00.000Z',
+    )
+
+    // All should still be Date instances
+    await expect(page.getByTestId('dfn-context-type')).toHaveText('Date')
+    await expect(page.getByTestId('dfn-beforeLoad-type')).toHaveText('Date')
+    await expect(page.getByTestId('dfn-loader-type')).toHaveText('Date')
+  })
+})
+
+// ============================================================================
+// Revalidate context tests
+//
+// The revalidate-context route has a context handler that tracks how many times
+// it has been called (global counter). It uses revalidate: true to re-run the
+// handler when the route is invalidated.
+//
+// The route also dehydrates the context (dehydrate: true) so SSR values
+// are sent via wire.
+// ============================================================================
+
+test.describe('revalidate-context - context revalidation', () => {
+  test('SSR: context shows server source and runCount=1', async ({ page }) => {
+    await page.goto('/revalidate-context')
+    await expect(page.getByTestId('rc-heading')).toHaveText(
+      'Revalidate Context',
+    )
+
+    await expect(page.getByTestId('rc-context-source')).toHaveText('server')
+    await expect(page.getByTestId('rc-context-runCount')).toHaveText('1')
+  })
+
+  test('client nav: context shows client source and runCount=1', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+    await expect(page.getByTestId('index-heading')).toHaveText('Home')
+
+    await page.getByTestId('link-revalidate-context').click()
+    await expect(page.getByTestId('rc-heading')).toHaveText(
+      'Revalidate Context',
+    )
+
+    await expect(page.getByTestId('rc-context-source')).toHaveText('client')
+    await expect(page.getByTestId('rc-context-runCount')).toHaveText('1')
+  })
+
+  test('invalidation: clicking invalidate re-runs context handler', async ({
+    page,
+  }) => {
+    // Use client-side navigation to avoid server module counter interference
+    // between tests (the server process persists across test cases).
+    await page.goto('/')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+
+    // Client-nav to revalidate-context route (server counter not involved)
+    await page.getByTestId('link-revalidate-context').click()
+    await expect(page.getByTestId('rc-heading')).toHaveText(
+      'Revalidate Context',
+    )
+
+    // After client navigation, handler runs on client — runCount=1, source='client'
+    await expect(page.getByTestId('rc-context-source')).toHaveText('client')
+    await expect(page.getByTestId('rc-context-runCount')).toHaveText('1')
+
+    // Click invalidate — should trigger revalidation since revalidate: true
+    await page.getByTestId('rc-invalidate-btn').click()
+
+    // After invalidation the handler re-runs on the client.
+    // Client module counter increments: 1→2
+    await expect(page.getByTestId('rc-context-source')).toHaveText('client')
+    await expect(page.getByTestId('rc-context-runCount')).toHaveText('2')
+  })
+})
+
+// ============================================================================
+// Dehydrate partial — partial hydration of mixed serializable/non-serializable
+//
+// Each lifecycle returns an object with both serializable fields (string,
+// number, array) and non-serializable fields (Date, function, RegExp).
+// `dehydrate` strips the non-serializable parts for the wire payload.
+// `hydrate` reconstructs the full shape on the client from the wire data.
+//
+// Server prefixes are "server-*", client prefixes are "client-*".
+// After SSR: serializable fields show server values, non-serializable parts
+// are reconstructed via hydrate.
+// After client nav: everything runs locally with client prefixes.
+// ============================================================================
+
+test.describe('dehydrate-partial - partial hydration', () => {
+  test('SSR: all fields present with server origin, non-serializable parts reconstructed', async ({
+    page,
+  }) => {
+    await page.goto('/dehydrate-partial')
+    await expect(page.getByTestId('dp-heading')).toHaveText('Dehydrate Partial')
+
+    // Serializable fields — server origin
+    await expect(page.getByTestId('dp-context-label')).toHaveText('server-ctx')
+    await expect(page.getByTestId('dp-beforeLoad-tag')).toHaveText('server-bl')
+    await expect(page.getByTestId('dp-loader-title')).toHaveText('server-ldr')
+    await expect(page.getByTestId('dp-beforeLoad-count')).toHaveText('42')
+
+    // Non-serializable: Date reconstructed via hydrate
+    await expect(page.getByTestId('dp-context-date')).toHaveText(
+      '2024-03-15T12:00:00.000Z',
+    )
+    await expect(page.getByTestId('dp-context-date-type')).toHaveText('Date')
+
+    // Non-serializable: function reconstructed via hydrate
+    await expect(page.getByTestId('dp-context-format')).toHaveText(
+      '[server-ctx] test',
+    )
+    await expect(page.getByTestId('dp-context-format-type')).toHaveText(
+      'function',
+    )
+
+    // Non-serializable: RegExp reconstructed via hydrate
+    await expect(page.getByTestId('dp-beforeLoad-pattern')).toHaveText(
+      '^hello-\\d+$',
+    )
+    await expect(page.getByTestId('dp-beforeLoad-pattern-type')).toHaveText(
+      'RegExp',
+    )
+    await expect(page.getByTestId('dp-beforeLoad-pattern-test')).toHaveText(
+      'true',
+    )
+
+    // Non-serializable: computeAvg function reconstructed via hydrate
+    await expect(page.getByTestId('dp-loader-scores')).toHaveText('10,20,30')
+    await expect(page.getByTestId('dp-loader-avg')).toHaveText('20')
+    await expect(page.getByTestId('dp-loader-avg-type')).toHaveText('function')
+  })
+
+  test('client nav: all fields present with client origin', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+    await expect(page.getByTestId('index-heading')).toHaveText('Home')
+
+    await page.getByTestId('link-dehydrate-partial').click()
+    await expect(page.getByTestId('dp-heading')).toHaveText('Dehydrate Partial')
+
+    // Serializable fields — client origin
+    await expect(page.getByTestId('dp-context-label')).toHaveText('client-ctx')
+    await expect(page.getByTestId('dp-beforeLoad-tag')).toHaveText('client-bl')
+    await expect(page.getByTestId('dp-loader-title')).toHaveText('client-ldr')
+    await expect(page.getByTestId('dp-beforeLoad-count')).toHaveText('42')
+
+    // Non-serializable: all types present (handler ran locally)
+    await expect(page.getByTestId('dp-context-date-type')).toHaveText('Date')
+    await expect(page.getByTestId('dp-context-format')).toHaveText(
+      '[client-ctx] test',
+    )
+    await expect(page.getByTestId('dp-context-format-type')).toHaveText(
+      'function',
+    )
+    await expect(page.getByTestId('dp-beforeLoad-pattern-type')).toHaveText(
+      'RegExp',
+    )
+    await expect(page.getByTestId('dp-beforeLoad-pattern-test')).toHaveText(
+      'true',
+    )
+    await expect(page.getByTestId('dp-loader-avg')).toHaveText('20')
+    await expect(page.getByTestId('dp-loader-avg-type')).toHaveText('function')
+  })
+
+  test('round-trip: context retains SSR hydrated values, beforeLoad/loader re-run on client', async ({
+    page,
+  }) => {
+    // Step 1: SSR page load
+    await page.goto('/dehydrate-partial')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+    await expect(page.getByTestId('dp-heading')).toHaveText('Dehydrate Partial')
+
+    // Verify SSR values
+    await expect(page.getByTestId('dp-context-label')).toHaveText('server-ctx')
+    await expect(page.getByTestId('dp-context-format')).toHaveText(
+      '[server-ctx] test',
+    )
+
+    // Step 2: Navigate away
+    await page.getByTestId('link-home').click()
+    await expect(page.getByTestId('index-heading')).toHaveText('Home')
+
+    // Step 3: Navigate back (client navigation with existing caches)
+    await page.getByTestId('link-dehydrate-partial').click()
+    await expect(page.getByTestId('dp-heading')).toHaveText('Dehydrate Partial')
+
+    // context: CACHED from SSR hydration → retains server values
+    await expect(page.getByTestId('dp-context-label')).toHaveText('server-ctx')
+    await expect(page.getByTestId('dp-context-date-type')).toHaveText('Date')
+    await expect(page.getByTestId('dp-context-format')).toHaveText(
+      '[server-ctx] test',
+    )
+    await expect(page.getByTestId('dp-context-format-type')).toHaveText(
+      'function',
+    )
+
+    // beforeLoad: ALWAYS re-runs → client values
+    await expect(page.getByTestId('dp-beforeLoad-tag')).toHaveText('client-bl')
+    await expect(page.getByTestId('dp-beforeLoad-pattern-type')).toHaveText(
+      'RegExp',
+    )
+
+    // loader: RE-RUNS (staleTime=0) → client values
+    await expect(page.getByTestId('dp-loader-title')).toHaveText('client-ldr')
+    await expect(page.getByTestId('dp-loader-avg-type')).toHaveText('function')
+  })
+})
+
+// ============================================================================
+// Stale revalidate — staleTime-triggered context revalidation
+//
+// The route uses staleTime: 200ms with revalidate: true. When the context
+// cache is older than 200ms, navigating back to the route triggers the
+// context handler to re-run.
+// ============================================================================
+
+test.describe('stale-revalidate - staleTime-triggered context revalidation', () => {
+  test('SSR: context shows server source and runCount=1', async ({ page }) => {
+    await page.goto('/stale-revalidate')
+    await expect(page.getByTestId('sr-heading')).toHaveText('Stale Revalidate')
+
+    await expect(page.getByTestId('sr-context-source')).toHaveText('server')
+    await expect(page.getByTestId('sr-context-runCount')).toHaveText('1')
+  })
+
+  test('client nav: context shows client source and runCount=1', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+    await expect(page.getByTestId('index-heading')).toHaveText('Home')
+
+    await page.getByTestId('link-stale-revalidate').click()
+    await expect(page.getByTestId('sr-heading')).toHaveText('Stale Revalidate')
+
+    await expect(page.getByTestId('sr-context-source')).toHaveText('client')
+    await expect(page.getByTestId('sr-context-runCount')).toHaveText('1')
+  })
+
+  test('stale revalidation: context re-runs after staleTime elapses', async ({
+    page,
+  }) => {
+    // Step 1: Navigate to the page (client-side, fresh context)
+    await page.goto('/')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+
+    await page.getByTestId('link-stale-revalidate').click()
+    await expect(page.getByTestId('sr-heading')).toHaveText('Stale Revalidate')
+    await expect(page.getByTestId('sr-context-runCount')).toHaveText('1')
+
+    // Step 2: Navigate away
+    await page.getByTestId('link-home').click()
+    await expect(page.getByTestId('index-heading')).toHaveText('Home')
+
+    // Step 3: Wait past the staleTime (200ms + buffer)
+    await page.waitForTimeout(400)
+
+    // Step 4: Navigate back — context is now stale, should re-run
+    await page.getByTestId('link-stale-revalidate').click()
+    await expect(page.getByTestId('sr-heading')).toHaveText('Stale Revalidate')
+
+    // Context handler re-ran due to staleness → runCount incremented
+    await expect(page.getByTestId('sr-context-runCount')).toHaveText('2')
+    await expect(page.getByTestId('sr-context-source')).toHaveText('client')
+  })
 })

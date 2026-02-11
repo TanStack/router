@@ -1,18 +1,18 @@
 import { createStart } from '@tanstack/react-start'
 
 /**
- * Default serialize configuration controlled by VITE_SERIALIZE_DEFAULTS env var.
+ * Default dehydrate configuration controlled by VITE_DEHYDRATE_DEFAULTS env var.
  *
  * Values:
- * - "" (unset): No defaultSerialize set — uses builtin defaults
+ * - "" (unset): No defaultDehydrate set — uses builtin defaults
  *   { beforeLoad: true, loader: true, context: false }
- * - "all-true": All methods serialize by default
+ * - "all-true": All methods dehydrate by default
  *   { beforeLoad: true, loader: true, context: true }
- * - "all-false": No methods serialize by default
+ * - "all-false": No methods dehydrate by default
  *   { beforeLoad: false, loader: false, context: false }
  */
-function getDefaultSerialize() {
-  const mode = import.meta.env.VITE_SERIALIZE_DEFAULTS || ''
+function getDefaultDehydrate() {
+  const mode = import.meta.env.VITE_DEHYDRATE_DEFAULTS || ''
   switch (mode) {
     case 'all-true':
       return {
@@ -32,5 +32,5 @@ function getDefaultSerialize() {
 }
 
 export const startInstance = createStart(() => ({
-  defaultSerialize: getDefaultSerialize(),
+  defaultDehydrate: getDefaultDehydrate(),
 }))

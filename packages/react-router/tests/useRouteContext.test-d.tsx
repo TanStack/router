@@ -260,7 +260,7 @@ test('when context returns context', () => {
   }>()
 })
 
-test('when context with invalidate returns context', () => {
+test('when context with revalidate returns context', () => {
   interface Context {
     userId: string
   }
@@ -270,7 +270,7 @@ test('when context with invalidate returns context', () => {
   const invoicesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: 'invoices',
-    context: { handler: () => ({ invoiceList: [1, 2, 3] }), invalidate: true },
+    context: { handler: () => ({ invoiceList: [1, 2, 3] }), revalidate: true },
   })
 
   const invoiceRoute = createRoute({
@@ -478,7 +478,7 @@ test('when non-strict mode with context across routes', () => {
   const postsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: 'posts',
-    context: { handler: () => ({ postData: 'data' }), invalidate: true },
+    context: { handler: () => ({ postData: 'data' }), revalidate: true },
   })
 
   const routeTree = rootRoute.addChildren([

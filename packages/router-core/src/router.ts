@@ -41,7 +41,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
-import type { DefaultSerializeConfig } from './lifecycle'
+import type { DefaultDehydrateConfig } from './lifecycle'
 import type { LRUCache } from './lru-cache'
 import type {
   ProcessRouteTreeResult,
@@ -403,13 +403,13 @@ export interface RouterOptions<
   defaultSsr?: SSROption
 
   /**
-   * Default serialize configuration for lifecycle methods.
+   * Default dehydrate configuration for lifecycle methods.
    * Controls whether each method's return value is included in the
    * dehydrated SSR payload.
    *
    * Built-in defaults: `{ beforeLoad: true, loader: true, context: false }`
    */
-  defaultSerialize?: DefaultSerializeConfig
+  defaultDehydrate?: DefaultDehydrateConfig
 
   search?: {
     /**

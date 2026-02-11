@@ -2,36 +2,56 @@
 // Types
 // ---------------------------------------------------------------------------
 
-/**
- * A lifecycle option can be either a plain handler function or an object
- * `{ handler, serialize? }`.  The serialize flag controls whether the
- * method's return value is included in the dehydrated SSR payload.
- */
-export type LifecycleOption<TFn> = TFn | { handler: TFn; serialize?: boolean }
+export type DehydrateOption<TValue = any, TWire = any> =
+  | boolean
+  | ((value: TValue) => TWire)
+
+export type HydrateOption<TValue = any, TWire = any> = (wire: TWire) => TValue
 
 /**
- * The `context` route option supports an additional `invalidate` flag
- * that controls whether the handler re-runs on `router.invalidate()`.
- *
- * This is a structural superset of `LifecycleOption<TFn>` — the existing
- * `resolveHandler()` and `shouldSerialize()` helpers accept it without
- * any signature changes.
+ * Lifecycle methods (context/beforeLoad/loader) accept either a plain handler
+ * function or an object form with additional capabilities.
  */
-export type ContextLifecycleOption<TFn> =
+export type LifecycleOption<TFn, TValue = any, TWire = any> =
   | TFn
-  | { handler: TFn; serialize?: boolean; invalidate?: boolean }
+  | ({
+      handler: TFn
+      /**
+       * Context-only: Controls invalid/stale behavior.
+       * - true: handler can re-run on invalid/stale
+       * - function: called instead of handler on invalid/stale
+       */
+      revalidate?:
+        | boolean
+        | ((
+            ctx: any & { prev: TValue | undefined },
+          ) => TValue | Promise<TValue>)
+    } & (
+      | {
+          dehydrate?: undefined | false
+          hydrate?: HydrateOption<TValue, TWire>
+        }
+      | {
+          dehydrate: true
+          hydrate?: HydrateOption<TValue, TWire>
+        }
+      | {
+          dehydrate: (value: TValue) => TWire
+          hydrate: HydrateOption<TValue, TWire>
+        }
+    ))
 
-export interface DefaultSerializeConfig {
+export interface DefaultDehydrateConfig {
   beforeLoad?: boolean
   loader?: boolean
   context?: boolean
 }
 
 /**
- * Built-in default SSR serialization behavior.
+ * Built-in default SSR dehydration behavior.
  * Used as the final fallback when neither the method nor the router provides a value.
  */
-export const builtinDefaultSerialize: Required<DefaultSerializeConfig> = {
+export const builtinDefaultDehydrate: Required<DefaultDehydrateConfig> = {
   beforeLoad: true,
   loader: true,
   context: false,
@@ -54,11 +74,11 @@ export function resolveHandler<TFn>(
 }
 
 /**
- * Determine whether a lifecycle method's return value should be serialized
+ * Determine whether a lifecycle method's return value should be dehydrated
  * (included in the dehydrated SSR payload).
  *
  * Three-level priority:
- *   method-level object form  >  router-level defaultSerialize  >  built-in default
+ *   method-level object form  >  router-level defaultDehydrate  >  built-in default
  *
  * Only call this when the lifecycle option actually exists on the route.
  *
@@ -66,18 +86,42 @@ export function resolveHandler<TFn>(
  * @param routerDefault  The router-level default for this specific method
  * @param builtinDefault  The built-in default for this method
  */
-export function shouldSerialize(
+export function shouldDehydrate(
   option: LifecycleOption<any>,
   routerDefault: boolean | undefined,
   builtinDefault: boolean,
 ): boolean {
-  // Object form — check method-level serialize flag first
   if (typeof option !== 'function') {
-    const s = (option as { serialize?: boolean }).serialize
-    if (s !== undefined) return s
+    const d = (option as { dehydrate?: boolean | ((value: any) => any) })
+      .dehydrate
+    if (typeof d === 'boolean') return d
+    if (typeof d === 'function') return true
   }
-  // Fall through to router default, then built-in default
   return routerDefault ?? builtinDefault
+}
+
+export function getDehydrateFn(
+  option: LifecycleOption<any> | undefined,
+): ((value: any) => any) | undefined {
+  if (!option || typeof option === 'function') return undefined
+  const d = option.dehydrate
+  return typeof d === 'function' ? d : undefined
+}
+
+export function getHydrateFn(
+  option: LifecycleOption<any> | undefined,
+): ((wire: any) => any) | undefined {
+  if (!option || typeof option === 'function') return undefined
+  const h = option.hydrate
+  return typeof h === 'function' ? h : undefined
+}
+
+export function getRevalidateFn(
+  option: LifecycleOption<any> | undefined,
+): ((ctx: any & { prev: any }) => any) | undefined {
+  if (!option || typeof option === 'function') return undefined
+  const r = option.revalidate
+  return typeof r === 'function' ? r : undefined
 }
 
 // ---------------------------------------------------------------------------

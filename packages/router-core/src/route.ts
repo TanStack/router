@@ -31,7 +31,6 @@ import type {
   Constrain,
   Expand,
   IntersectAssign,
-  LooseAsyncReturnType,
   LooseReturnType,
   NoInfer,
 } from './utils'
@@ -50,74 +49,52 @@ import type {
   ValidatorObj,
 } from './validators'
 import type { ValidateSerializableLifecycleResult } from './ssr/serializer/transformer'
-import type { DefaultSerializeConfig, ExtractHandler } from './lifecycle'
+import type { DefaultDehydrateConfig } from './lifecycle'
 
 // ---------------------------------------------------------------------------
-// Type-level serialize resolution helpers
+// Type-level dehydrate resolution helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Read `defaultSerialize` from the registered config (via TRegister).
+ * Read `defaultDehydrate` from the registered config (via TRegister).
  * Returns `unknown` if no config registered.
  */
-type RegisteredDefaultSerialize<TRegister> = RegisteredConfigType<
+type RegisteredDefaultDehydrate<TRegister> = RegisteredConfigType<
   TRegister,
-  'defaultSerialize'
+  'defaultDehydrate'
 >
 
 /**
- * Resolve the registered default serialize flag for a specific method.
+ * Resolve the registered default dehydrate flag for a specific method.
  * Falls back to TBuiltin if the registered config doesn't specify the method.
  */
-type MethodDefaultSerialize<
+type MethodDefaultDehydrate<
   TRegister,
-  TMethod extends keyof DefaultSerializeConfig,
+  TMethod extends keyof DefaultDehydrateConfig,
   TBuiltin extends boolean,
 > =
-  unknown extends RegisteredDefaultSerialize<TRegister>
+  unknown extends RegisteredDefaultDehydrate<TRegister>
     ? TBuiltin
-    : RegisteredDefaultSerialize<TRegister> extends DefaultSerializeConfig
-      ? undefined extends RegisteredDefaultSerialize<TRegister>[TMethod]
+    : RegisteredDefaultDehydrate<TRegister> extends DefaultDehydrateConfig
+      ? undefined extends RegisteredDefaultDehydrate<TRegister>[TMethod]
         ? TBuiltin
-        : NonNullable<RegisteredDefaultSerialize<TRegister>[TMethod]>
+        : NonNullable<RegisteredDefaultDehydrate<TRegister>[TMethod]>
       : TBuiltin
 
 /**
- * Resolve effective serialize for a lifecycle option at the type level.
- *
- * Priority: explicit object-form serialize > registered config default > builtin default.
- *
- * For the function form, T will be a function type and OptionSerialize<T> is `undefined`,
- * so it falls through to the config/builtin default.
- */
-type OptionSerialize<T> = T extends { serialize: infer S extends boolean }
-  ? S
-  : undefined
-
-type EffectiveSerialize<
-  TRegister,
-  TMethod extends keyof DefaultSerializeConfig,
-  TBuiltin extends boolean,
-  TOption,
-> =
-  OptionSerialize<TOption> extends boolean
-    ? OptionSerialize<TOption>
-    : MethodDefaultSerialize<TRegister, TMethod, TBuiltin>
-
-/**
- * Conditionally apply serialization validation based on the effective serialize flag.
- * When serialize is true, validates that the return type is serializable.
- * When serialize is false, allows any return type.
+ * Conditionally apply serialization validation based on the effective dehydrate flag.
+ * When dehydrate is true, validates that the handler return type is serializable.
+ * When dehydrate is false, allows any return type.
  */
 type ValidateIfSerializable<
   TRegister,
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
-  TSerialize extends boolean,
-> = TSerialize extends true
+  TDehydrate extends boolean,
+> = TDehydrate extends true
   ? ValidateSerializableLifecycleResult<TRegister, TParentRoute, TSSR, TFn>
-  : any
+  : unknown
 
 export type AnyPathParams = {}
 
@@ -351,15 +328,11 @@ export type TrimPathRight<T extends string> = T extends '/'
 
 export type ContextReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
-  : LooseAsyncReturnType<ExtractHandler<TContextFn>> extends never
-    ? AnyContext
-    : LooseAsyncReturnType<ExtractHandler<TContextFn>>
+  : TContextFn
 
 export type ContextAsyncReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
-  : LooseAsyncReturnType<ExtractHandler<TContextFn>> extends never
-    ? AnyContext
-    : LooseAsyncReturnType<ExtractHandler<TContextFn>>
+  : TContextFn
 
 export type ResolveRouteContext<TContextFn, TBeforeLoadFn> = Assign<
   ContextReturnType<TContextFn>,
@@ -368,9 +341,7 @@ export type ResolveRouteContext<TContextFn, TBeforeLoadFn> = Assign<
 
 export type ResolveLoaderData<TLoaderFn> = unknown extends TLoaderFn
   ? TLoaderFn
-  : LooseAsyncReturnType<ExtractHandler<TLoaderFn>> extends never
-    ? undefined
-    : LooseAsyncReturnType<ExtractHandler<TLoaderFn>>
+  : TLoaderFn
 
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
@@ -963,6 +934,9 @@ export type FileBaseRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = unknown,
+  TBeforeLoadWire = unknown,
+  TLoaderWire = unknown,
 > = ParamsOptions<TPath, TParams> &
   FilebaseRouteOptionsInterface<
     TRegister,
@@ -979,7 +953,10 @@ export type FileBaseRouteOptions<
     TRemountDepsFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire
   >
 
 export interface FilebaseRouteOptionsInterface<
@@ -998,6 +975,9 @@ export interface FilebaseRouteOptionsInterface<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = unknown,
+  TBeforeLoadWire = unknown,
+  TLoaderWire = unknown,
 > {
   validateSearch?: Constrain<TSearchValidator, AnyValidator, DefaultValidator>
 
@@ -1018,8 +998,7 @@ export interface FilebaseRouteOptionsInterface<
         >,
       ) => any)
 
-  context?: Constrain<
-    TContextFn,
+  context?: // Function form
     | ((
         ctx: ContextFnOptions<
           TParentRoute,
@@ -1028,13 +1007,15 @@ export interface FilebaseRouteOptionsInterface<
           TId,
           NoInfer<TLoaderDeps>
         >,
-      ) => ValidateIfSerializable<
-        TRegister,
-        TParentRoute,
-        TSSR,
-        TContextFn,
-        MethodDefaultSerialize<TRegister, 'context', false>
-      >)
+      ) => TContextFn &
+        ValidateIfSerializable<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TContextFn,
+          MethodDefaultDehydrate<TRegister, 'context', false>
+        >)
+    // Object form WITHOUT dehydrate fn
     | {
         handler: (
           ctx: ContextFnOptions<
@@ -1044,17 +1025,35 @@ export interface FilebaseRouteOptionsInterface<
             TId,
             NoInfer<TLoaderDeps>
           >,
-        ) => ValidateIfSerializable<
-          TRegister,
-          TParentRoute,
-          TSSR,
-          TContextFn,
-          EffectiveSerialize<TRegister, 'context', false, TContextFn>
-        >
-        serialize?: boolean
-        invalidate?: boolean
+        ) => TContextFn &
+          ValidateIfSerializable<
+            TRegister,
+            TParentRoute,
+            TSSR,
+            TContextFn,
+            MethodDefaultDehydrate<TRegister, 'context', false>
+          >
+        /** Context-only: controls invalid/stale rerun behavior */
+        revalidate?: boolean | ((ctx: any & { prev: any }) => any)
+        dehydrate?: undefined | false | true
+        hydrate?: undefined
       }
-  >
+    // Object form WITH dehydrate fn
+    | {
+        handler: (
+          ctx: ContextFnOptions<
+            TParentRoute,
+            TParams,
+            TRouterContext,
+            TId,
+            NoInfer<TLoaderDeps>
+          >,
+        ) => TContextFn
+        /** Context-only: controls invalid/stale rerun behavior */
+        revalidate?: boolean | ((ctx: any & { prev: any }) => any)
+        dehydrate: (value: NoInfer<TContextFn>) => TContextWire
+        hydrate: (wire: NoInfer<TContextWire>) => NoInfer<TContextFn>
+      }
 
   ssr?: Constrain<
     TSSR,
@@ -1069,8 +1068,7 @@ export interface FilebaseRouteOptionsInterface<
   // If an error is thrown here, the route's loader will not be called.
   // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function.
   // If thrown during a preload event, the error will be logged to the console.
-  beforeLoad?: Constrain<
-    TBeforeLoadFn,
+  beforeLoad?: // Function form
     | ((
         ctx: BeforeLoadContextOptions<
           TRegister,
@@ -1083,13 +1081,15 @@ export interface FilebaseRouteOptionsInterface<
           TServerMiddlewares,
           THandlers
         >,
-      ) => ValidateIfSerializable<
-        TRegister,
-        TParentRoute,
-        TSSR,
-        TBeforeLoadFn,
-        MethodDefaultSerialize<TRegister, 'beforeLoad', true>
-      >)
+      ) => TBeforeLoadFn &
+        ValidateIfSerializable<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TBeforeLoadFn,
+          MethodDefaultDehydrate<TRegister, 'beforeLoad', true>
+        >)
+    // Object form WITHOUT dehydrate fn
     | {
         handler: (
           ctx: BeforeLoadContextOptions<
@@ -1103,16 +1103,35 @@ export interface FilebaseRouteOptionsInterface<
             TServerMiddlewares,
             THandlers
           >,
-        ) => ValidateIfSerializable<
-          TRegister,
-          TParentRoute,
-          TSSR,
-          TBeforeLoadFn,
-          EffectiveSerialize<TRegister, 'beforeLoad', true, TBeforeLoadFn>
-        >
-        serialize?: boolean
+        ) => TBeforeLoadFn &
+          ValidateIfSerializable<
+            TRegister,
+            TParentRoute,
+            TSSR,
+            TBeforeLoadFn,
+            MethodDefaultDehydrate<TRegister, 'beforeLoad', true>
+          >
+        dehydrate?: undefined | false | true
+        hydrate?: undefined
       }
-  >
+    // Object form WITH dehydrate fn
+    | {
+        handler: (
+          ctx: BeforeLoadContextOptions<
+            TRegister,
+            TParentRoute,
+            TSearchValidator,
+            TParams,
+            TRouterContext,
+            TContextFn,
+            TId,
+            TServerMiddlewares,
+            THandlers
+          >,
+        ) => TBeforeLoadFn
+        dehydrate: (value: NoInfer<TBeforeLoadFn>) => TBeforeLoadWire
+        hydrate: (wire: NoInfer<TBeforeLoadWire>) => NoInfer<TBeforeLoadFn>
+      }
 
   loaderDeps?: (
     opts: FullSearchSchemaOption<TParentRoute, TSearchValidator>,
@@ -1130,8 +1149,7 @@ export interface FilebaseRouteOptionsInterface<
     ) => any
   >
 
-  loader?: Constrain<
-    TLoaderFn,
+  loader?: // Function form
     | ((
         ctx: LoaderFnContext<
           TRegister,
@@ -1145,13 +1163,15 @@ export interface FilebaseRouteOptionsInterface<
           TServerMiddlewares,
           THandlers
         >,
-      ) => ValidateIfSerializable<
-        TRegister,
-        TParentRoute,
-        TSSR,
-        TLoaderFn,
-        MethodDefaultSerialize<TRegister, 'loader', true>
-      >)
+      ) => TLoaderFn &
+        ValidateIfSerializable<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TLoaderFn,
+          MethodDefaultDehydrate<TRegister, 'loader', true>
+        >)
+    // Object form WITHOUT dehydrate fn
     | {
         handler: (
           ctx: LoaderFnContext<
@@ -1166,16 +1186,36 @@ export interface FilebaseRouteOptionsInterface<
             TServerMiddlewares,
             THandlers
           >,
-        ) => ValidateIfSerializable<
-          TRegister,
-          TParentRoute,
-          TSSR,
-          TLoaderFn,
-          EffectiveSerialize<TRegister, 'loader', true, TLoaderFn>
-        >
-        serialize?: boolean
+        ) => TLoaderFn &
+          ValidateIfSerializable<
+            TRegister,
+            TParentRoute,
+            TSSR,
+            TLoaderFn,
+            MethodDefaultDehydrate<TRegister, 'loader', true>
+          >
+        dehydrate?: undefined | false | true
+        hydrate?: undefined
       }
-  >
+    // Object form WITH dehydrate fn
+    | {
+        handler: (
+          ctx: LoaderFnContext<
+            TRegister,
+            TParentRoute,
+            TId,
+            TParams,
+            NoInfer<TLoaderDeps>,
+            TRouterContext,
+            TContextFn,
+            TBeforeLoadFn,
+            TServerMiddlewares,
+            THandlers
+          >,
+        ) => TLoaderFn
+        dehydrate: (value: NoInfer<TLoaderFn>) => TLoaderWire
+        hydrate: (wire: NoInfer<TLoaderWire>) => NoInfer<TLoaderFn>
+      }
 }
 
 export type BaseRouteOptions<

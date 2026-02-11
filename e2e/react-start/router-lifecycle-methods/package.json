@@ -5,16 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",
-    "dev:allTrue": "VITE_SERIALIZE_DEFAULTS=all-true vite dev --port 3000",
-    "dev:allFalse": "VITE_SERIALIZE_DEFAULTS=all-false vite dev --port 3000",
+    "dev:allTrue": "VITE_DEHYDRATE_DEFAULTS=all-true vite dev --port 3000",
+    "dev:allFalse": "VITE_DEHYDRATE_DEFAULTS=all-false vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e": "pnpm run test:e2e:defaults && pnpm run test:e2e:allTrue && pnpm run test:e2e:allFalse",
     "test:e2e:defaults": "rm -rf dist; rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e:allTrue": "rm -rf dist; rm -rf port*.txt; SERIALIZE_DEFAULTS=all-true playwright test --project=chromium",
-    "test:e2e:allFalse": "rm -rf dist; rm -rf port*.txt; SERIALIZE_DEFAULTS=all-false playwright test --project=chromium"
+    "test:e2e:allTrue": "rm -rf dist; rm -rf port*.txt; DEHYDRATE_DEFAULTS=all-true playwright test --project=chromium",
+    "test:e2e:allFalse": "rm -rf dist; rm -rf port*.txt; DEHYDRATE_DEFAULTS=all-false playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

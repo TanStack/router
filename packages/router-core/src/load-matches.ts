@@ -520,16 +520,41 @@ const executeContext = (
 ): void | Promise<void> => {
   const match = inner.router.getMatch(matchId)!
 
-  // Determine whether to run:
-  // - needsContext: true for new matches (set in router.ts on match creation)
-  // - invalidate: true + match.invalid: re-run on router.invalidate()
-  const shouldRunForInvalidate =
-    typeof route.options.context !== 'function' &&
-    route.options.context?.invalidate === true &&
-    match.invalid
+  const needsContext = !!match._nonReactive.needsContext
+  const contextOption = route.options.context
+  const revalidateOption =
+    typeof contextOption === 'function' ? undefined : contextOption?.revalidate
+  const optedIn =
+    revalidateOption === true || typeof revalidateOption === 'function'
 
-  if (!match._nonReactive.needsContext && !shouldRunForInvalidate) return
-  if (!route.options.context) {
+  // Determine cause: initial / invalid / stale
+  let contextCause: 'initial' | 'invalid' | 'stale' | 'none' = 'none'
+  if (needsContext) {
+    contextCause = 'initial'
+  } else if (match.invalid && optedIn) {
+    contextCause = 'invalid'
+  } else if (!match.invalid && optedIn) {
+    // Check staleness — context defaults to Infinity (never stale) unlike
+    // loader which defaults to 0.  An explicit route-level staleTime still
+    // applies when provided.
+    const preload = resolvePreload(inner, matchId)
+    const age = Date.now() - match.updatedAt
+    const staleAge = preload
+      ? (route.options.preloadStaleTime ??
+        inner.router.options.defaultPreloadStaleTime ??
+        30_000)
+      : (route.options.staleTime ??
+        inner.router.options.defaultStaleTime ??
+        Infinity)
+
+    if (match.status === 'success' && age > staleAge) {
+      contextCause = 'stale'
+    }
+  }
+
+  if (contextCause === 'none') return
+
+  if (!contextOption) {
     // Clear the flag even if there's no context handler
     match._nonReactive.needsContext = false
     return
@@ -568,15 +593,37 @@ const executeContext = (
       handleSerialError(inner, index, routeContext, 'CONTEXT')
     }
 
+    // First commit __routeContext so buildMatchContext can read it
     inner.updateMatch(matchId, (prev) => ({
       ...prev,
       __routeContext: routeContext,
+    }))
+
+    // Now rebuild the merged context from the committed store.
+    // We do NOT update updatedAt here — that is managed by the loader
+    // completion so the loader's stale-time check isn't short-circuited
+    // by a context-only revalidation.
+    inner.updateMatch(matchId, (prev) => ({
+      ...prev,
+      context: buildMatchContext(inner, index),
     }))
   }
 
   let routeContext
   try {
-    routeContext = resolveHandler(route.options.context)!(contextFnContext)
+    const shouldRevalidate =
+      contextCause === 'invalid' || contextCause === 'stale'
+
+    const handler =
+      shouldRevalidate && typeof revalidateOption === 'function'
+        ? revalidateOption
+        : resolveHandler(contextOption)!
+
+    routeContext = handler(
+      shouldRevalidate && typeof revalidateOption === 'function'
+        ? ({ ...contextFnContext, prev: match.__routeContext } as any)
+        : contextFnContext,
+    )
     if (isPromise(routeContext)) {
       return routeContext
         .catch((err) => {
@@ -599,7 +646,8 @@ const handleContext = (
   const { id: matchId, routeId } = inner.matches[index]!
   const route = inner.router.looseRoutesById[routeId]!
 
-  if (shouldSkipLoader(inner, matchId)) return
+  const skipResult = shouldSkipLoader(inner, matchId)
+  if (skipResult) return
 
   // Skip context execution during preload when route opts out of preloading
   const preload = resolvePreload(inner, matchId)

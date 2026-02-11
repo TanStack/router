@@ -3,9 +3,10 @@ import { batch } from '../utils/batch'
 import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
 import {
-  builtinDefaultSerialize,
+  builtinDefaultDehydrate,
+  getHydrateFn,
   resolveHandler,
-  shouldSerialize,
+  shouldDehydrate,
 } from '../lifecycle'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
 import type { DehydratedMatch, TsrSsrGlobal } from './types'
@@ -21,25 +22,15 @@ declare global {
   }
 }
 
-function hydrateMatch(
-  match: AnyRouteMatch,
-  deyhydratedMatch: DehydratedMatch,
-): void {
+function hydrateMatch(match: AnyRouteMatch, deyhydratedMatch: DehydratedMatch) {
   match.id = deyhydratedMatch.i
-  // Restore contexts from wire when serialized (fields are undefined when serialize: false)
-  if (deyhydratedMatch.b !== undefined) {
-    match.__beforeLoadContext = deyhydratedMatch.b
-  }
-  if (deyhydratedMatch.l !== undefined) {
-    match.loaderData = deyhydratedMatch.l
-  }
-  if (deyhydratedMatch.m !== undefined) {
-    match.__routeContext = deyhydratedMatch.m
-  }
   match.status = deyhydratedMatch.s
   match.ssr = deyhydratedMatch.ssr
   match.updatedAt = deyhydratedMatch.u
   match.error = deyhydratedMatch.e
+
+  // Wire payloads (when dehydrated) are applied later after we have access to route options
+  // so we can run optional hydrate(wire) transforms.
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {
@@ -139,6 +130,29 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     hydrateMatch(match, dehydratedMatch)
     setRouteSsr(match)
 
+    // Apply dehydrated wire payloads (and hydrate transforms if present)
+    {
+      const route = router.looseRoutesById[match.routeId]!
+      if (dehydratedMatch.m !== undefined) {
+        const hydrateFn = getHydrateFn(route.options.context)
+        match.__routeContext = hydrateFn
+          ? hydrateFn(dehydratedMatch.m)
+          : dehydratedMatch.m
+      }
+      if (dehydratedMatch.b !== undefined) {
+        const hydrateFn = getHydrateFn(route.options.beforeLoad)
+        match.__beforeLoadContext = hydrateFn
+          ? hydrateFn(dehydratedMatch.b)
+          : dehydratedMatch.b
+      }
+      if (dehydratedMatch.l !== undefined) {
+        const hydrateFn = getHydrateFn(route.options.loader)
+        match.loaderData = hydrateFn
+          ? hydrateFn(dehydratedMatch.l)
+          : dehydratedMatch.l
+      }
+    }
+
     match._nonReactive.dehydrated = match.ssr !== false
 
     if (match.ssr === 'data-only' || match.ssr === false) {
@@ -159,7 +173,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // Allow the user to handle custom hydration data
   await router.options.hydrate?.(dehydratedData)
 
-  const defaults = router.options.defaultSerialize
+  const defaults = router.options.defaultDehydrate
   const additionalContext = router.options.additionalContext
   const location = router.state.location
   const navigate = (opts: any) =>
@@ -181,10 +195,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       // --- context ---
       if (
         route.options.context &&
-        !shouldSerialize(
+        !shouldDehydrate(
           route.options.context,
           defaults?.context,
-          builtinDefaultSerialize.context,
+          builtinDefaultDehydrate.context,
         )
       ) {
         const contextFnContext: ContextFnOptions<any, any, any, any, any> = {
@@ -215,10 +229,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       // --- beforeLoad ---
       if (
         route.options.beforeLoad &&
-        !shouldSerialize(
+        !shouldDehydrate(
           route.options.beforeLoad,
           defaults?.beforeLoad,
-          builtinDefaultSerialize.beforeLoad,
+          builtinDefaultDehydrate.beforeLoad,
         )
       ) {
         const beforeLoadFnContext: BeforeLoadContextOptions<
@@ -261,10 +275,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       // --- loader (collect for parallel phase) ---
       if (
         route.options.loader &&
-        !shouldSerialize(
+        !shouldDehydrate(
           route.options.loader,
           defaults?.loader,
-          builtinDefaultSerialize.loader,
+          builtinDefaultDehydrate.loader,
         )
       ) {
         const contextForLoader = {

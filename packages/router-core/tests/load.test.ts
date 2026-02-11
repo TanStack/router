@@ -8,11 +8,12 @@ import {
   redirect,
   rootRouteId,
 } from '../src'
-import type { RootRouteOptions } from '../src'
 
-type AnyRouteOptions = RootRouteOptions<any>
-type BeforeLoad = Extract<NonNullable<AnyRouteOptions['beforeLoad']>, Function>
-type Loader = Extract<NonNullable<AnyRouteOptions['loader']>, Function>
+// Permissive function types for runtime test helpers — these don't need
+// strict return-type checking since the tests only care about call counts
+// and runtime behaviour, not the exact type of the returned value.
+type BeforeLoad = (...args: Array<any>) => any
+type Loader = (...args: Array<any>) => any
 
 describe('redirect resolution', () => {
   test('resolveRedirect normalizes same-origin Location to path-only', async () => {
@@ -129,8 +130,8 @@ describe('beforeLoad skip or exec', () => {
   })
 
   test('exec if rejected preload (notFound)', async () => {
-    const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
-      if (preload) throw notFound()
+    const beforeLoad = vi.fn<BeforeLoad>(async (ctx: { preload: boolean }) => {
+      if (ctx.preload) throw notFound()
       await Promise.resolve()
     })
     const router = setup({
@@ -144,9 +145,9 @@ describe('beforeLoad skip or exec', () => {
   })
 
   test('exec if pending preload (notFound)', async () => {
-    const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
+    const beforeLoad = vi.fn<BeforeLoad>(async (ctx: { preload: boolean }) => {
       await sleep(100)
-      if (preload) throw notFound()
+      if (ctx.preload) throw notFound()
     })
     const router = setup({
       beforeLoad,
@@ -159,8 +160,8 @@ describe('beforeLoad skip or exec', () => {
   })
 
   test('exec if rejected preload (redirect)', async () => {
-    const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
-      if (preload) throw redirect({ to: '/bar' })
+    const beforeLoad = vi.fn<BeforeLoad>(async (ctx: { preload: boolean }) => {
+      if (ctx.preload) throw redirect({ to: '/bar' })
       await Promise.resolve()
     })
     const router = setup({
@@ -175,9 +176,9 @@ describe('beforeLoad skip or exec', () => {
   })
 
   test('exec if pending preload (redirect)', async () => {
-    const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
+    const beforeLoad = vi.fn<BeforeLoad>(async (ctx: { preload: boolean }) => {
       await sleep(100)
-      if (preload) throw redirect({ to: '/bar' })
+      if (ctx.preload) throw redirect({ to: '/bar' })
     })
     const router = setup({
       beforeLoad,
@@ -191,8 +192,8 @@ describe('beforeLoad skip or exec', () => {
   })
 
   test('exec if rejected preload (error)', async () => {
-    const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
-      if (preload) throw new Error('error')
+    const beforeLoad = vi.fn<BeforeLoad>(async (ctx: { preload: boolean }) => {
+      if (ctx.preload) throw new Error('error')
       await Promise.resolve()
     })
     const router = setup({
@@ -206,9 +207,9 @@ describe('beforeLoad skip or exec', () => {
   })
 
   test('exec if pending preload (error)', async () => {
-    const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
+    const beforeLoad = vi.fn<BeforeLoad>(async (ctx: { preload: boolean }) => {
       await sleep(100)
-      if (preload) throw new Error('error')
+      if (ctx.preload) throw new Error('error')
     })
     const router = setup({
       beforeLoad,
@@ -324,8 +325,8 @@ describe('loader skip or exec', () => {
   })
 
   test('exec if rejected preload (notFound)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
-      if (preload) throw notFound()
+    const loader = vi.fn<Loader>(async (ctx: { preload: boolean }) => {
+      if (ctx.preload) throw notFound()
       await Promise.resolve()
     })
     const router = setup({
@@ -339,9 +340,9 @@ describe('loader skip or exec', () => {
   })
 
   test('skip if pending preload (notFound)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
+    const loader = vi.fn<Loader>(async (ctx: { preload: boolean }) => {
       await sleep(100)
-      if (preload) throw notFound()
+      if (ctx.preload) throw notFound()
     })
     const router = setup({
       loader,
@@ -354,8 +355,8 @@ describe('loader skip or exec', () => {
   })
 
   test('exec if rejected preload (redirect)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
-      if (preload) throw redirect({ to: '/bar' })
+    const loader = vi.fn<Loader>(async (ctx: { preload: boolean }) => {
+      if (ctx.preload) throw redirect({ to: '/bar' })
       await Promise.resolve()
     })
     const router = setup({
@@ -370,9 +371,9 @@ describe('loader skip or exec', () => {
   })
 
   test('skip if pending preload (redirect)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
+    const loader = vi.fn<Loader>(async (ctx: { preload: boolean }) => {
       await sleep(100)
-      if (preload) throw redirect({ to: '/bar' })
+      if (ctx.preload) throw redirect({ to: '/bar' })
     })
     const router = setup({
       loader,
@@ -386,8 +387,8 @@ describe('loader skip or exec', () => {
   })
 
   test('exec if rejected preload (error)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
-      if (preload) throw new Error('error')
+    const loader = vi.fn<Loader>(async (ctx: { preload: boolean }) => {
+      if (ctx.preload) throw new Error('error')
       await Promise.resolve()
     })
     const router = setup({
@@ -401,9 +402,9 @@ describe('loader skip or exec', () => {
   })
 
   test('skip if pending preload (error)', async () => {
-    const loader = vi.fn<Loader>(async ({ preload }) => {
+    const loader = vi.fn<Loader>(async (ctx: { preload: boolean }) => {
       await sleep(100)
-      if (preload) throw new Error('error')
+      if (ctx.preload) throw new Error('error')
     })
     const router = setup({
       loader,
@@ -987,8 +988,8 @@ describe('context semantics', () => {
     expect(args.params).toEqual({ fooId: '123' })
     expect(args.context).toEqual({ routerCtx: 'test', rootCtx: 'hello' })
     expect(args.routeId).toBe('/foo/$fooId')
-    // context does NOT receive deps or search
-    expect(args.deps).toBeUndefined()
+    // context receives deps (loaderDeps output), but not search
+    expect(args.deps).toEqual({ page: 1 })
     expect(args.cause).toBe('enter')
     expect(args.preload).toBe(false)
     expect(args.search).toBeUndefined()
@@ -1006,7 +1007,7 @@ describe('context semantics', () => {
     expect(loaderArgs.context).toEqual({ fromContext: 'data' })
   })
 
-  test('context (without invalidate) does NOT re-run after router.invalidate()', async () => {
+  test('context (without revalidate) does NOT re-run after router.invalidate()', async () => {
     const contextFn = vi.fn(() => ({ data: 'fresh' }))
     const loader = vi.fn()
 
@@ -1032,13 +1033,13 @@ describe('context semantics', () => {
     await router.navigate({ to: '/foo' })
     expect(contextFn).toHaveBeenCalledTimes(1)
 
-    // Invalidate and reload — context should NOT re-run (no invalidate flag)
+    // Invalidate and reload — context should NOT re-run (no revalidate flag)
     await router.invalidate()
     expect(contextFn).toHaveBeenCalledTimes(1)
   })
 })
 
-describe('context with invalidate semantics', () => {
+describe('context with revalidate semantics', () => {
   const setup = ({
     contextFn,
     loader,
@@ -1074,24 +1075,24 @@ describe('context with invalidate semantics', () => {
     return router
   }
 
-  test('context with invalidate:true does not run when route is not visited', async () => {
+  test('context with revalidate:true does not run when route is not visited', async () => {
     const handler = vi.fn()
-    const router = setup({ contextFn: { handler, invalidate: true } })
+    const router = setup({ contextFn: { handler, revalidate: true } })
     await router.load()
     expect(handler).toHaveBeenCalledTimes(0)
   })
 
-  test('context with invalidate:true runs on first navigation', async () => {
+  test('context with revalidate:true runs on first navigation', async () => {
     const handler = vi.fn(() => ({ loaded: true }))
-    const router = setup({ contextFn: { handler, invalidate: true } })
+    const router = setup({ contextFn: { handler, revalidate: true } })
     await router.navigate({ to: '/foo' })
     expect(handler).toHaveBeenCalledTimes(1)
   })
 
-  test('context with invalidate:true return value extends context available in loader', async () => {
+  test('context with revalidate:true return value extends context available in loader', async () => {
     const handler = vi.fn(() => ({ fromContext: 'loadData' }))
     const loader = vi.fn()
-    const router = setup({ contextFn: { handler, invalidate: true }, loader })
+    const router = setup({ contextFn: { handler, revalidate: true }, loader })
     await router.navigate({ to: '/foo' })
 
     expect(loader).toHaveBeenCalledTimes(1)
@@ -1099,7 +1100,7 @@ describe('context with invalidate semantics', () => {
     expect(loaderArgs.context).toEqual({ fromContext: 'loadData' })
   })
 
-  test('context with invalidate:true is async (returned promise is awaited)', async () => {
+  test('context with revalidate:true is async (returned promise is awaited)', async () => {
     const callOrder: Array<string> = []
     const handler = vi.fn(async () => {
       await sleep(50)
@@ -1109,14 +1110,14 @@ describe('context with invalidate semantics', () => {
     const loader = vi.fn(() => {
       callOrder.push('loader')
     })
-    const router = setup({ contextFn: { handler, invalidate: true }, loader })
+    const router = setup({ contextFn: { handler, revalidate: true }, loader })
     await router.navigate({ to: '/foo' })
 
     // context completes before loader starts (serial then parallel)
     expect(callOrder).toEqual(['context', 'loader'])
   })
 
-  test('context with invalidate:true does not re-run on cached match (not invalid)', async () => {
+  test('context with revalidate:true does not re-run on cached match (not invalid)', async () => {
     const handler = vi.fn(() => ({ data: 'fresh' }))
     const loader = vi.fn()
 
@@ -1124,7 +1125,7 @@ describe('context with invalidate semantics', () => {
     const fooRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/foo',
-      context: { handler, invalidate: true },
+      context: { handler, revalidate: true },
       loader,
       gcTime: 5000,
     })
@@ -1153,7 +1154,7 @@ describe('context with invalidate semantics', () => {
     expect(handler).toHaveBeenCalledTimes(1)
   })
 
-  test('context with invalidate:true re-runs after router.invalidate()', async () => {
+  test('context with revalidate:true re-runs after router.invalidate()', async () => {
     const handler = vi.fn(() => ({ data: 'fresh' }))
     const loader = vi.fn()
 
@@ -1161,7 +1162,7 @@ describe('context with invalidate semantics', () => {
     const fooRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/foo',
-      context: { handler, invalidate: true },
+      context: { handler, revalidate: true },
       loader,
       staleTime: 5000,
       gcTime: 5000,
@@ -1179,12 +1180,12 @@ describe('context with invalidate semantics', () => {
     await router.navigate({ to: '/foo' })
     expect(handler).toHaveBeenCalledTimes(1)
 
-    // Invalidate and reload — context should re-run (invalidate: true)
+    // Invalidate and reload — context should re-run (revalidate: true)
     await router.invalidate()
     expect(handler).toHaveBeenCalledTimes(2)
   })
 
-  test('context with invalidate:true re-runs when loaderDeps change (new match)', async () => {
+  test('context with revalidate:true re-runs when loaderDeps change (new match)', async () => {
     const handler = vi.fn()
 
     const rootRoute = new BaseRootRoute({
@@ -1196,7 +1197,7 @@ describe('context with invalidate semantics', () => {
       getParentRoute: () => rootRoute,
       path: '/foo',
       loaderDeps: (deps: any) => ({ page: deps.search.page }),
-      context: { handler, invalidate: true },
+      context: { handler, revalidate: true },
       gcTime: 10_000,
     })
     const routeTree = rootRoute.addChildren([fooRoute])
@@ -1214,53 +1215,56 @@ describe('context with invalidate semantics', () => {
     expect(handler).toHaveBeenCalledTimes(2)
   })
 
-  test('context with invalidate:true does not re-run on stale cached match (only on invalid)', async () => {
+  test('context with revalidate:true re-runs on stale cached match', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2020-01-01T00:00:00.000Z'))
 
-    const handler = vi.fn(() => ({ loaded: true }))
+    try {
+      const handler = vi.fn(() => ({ loaded: true }))
 
-    const rootRoute = new BaseRootRoute({})
-    const fooRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/foo',
-      context: { handler, invalidate: true },
-      gcTime: 60_000,
-    })
-    const barRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/bar',
-    })
-    const routeTree = rootRoute.addChildren([fooRoute, barRoute])
+      const rootRoute = new BaseRootRoute({})
+      const fooRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/foo',
+        context: { handler, revalidate: true },
+        staleTime: 0,
+        gcTime: 60_000,
+      })
+      const barRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/bar',
+      })
+      const routeTree = rootRoute.addChildren([fooRoute, barRoute])
 
-    const router = new RouterCore({
-      routeTree,
-      history: createMemoryHistory(),
-    })
+      const router = new RouterCore({
+        routeTree,
+        history: createMemoryHistory(),
+      })
 
-    await router.navigate({ to: '/foo' })
-    expect(handler).toHaveBeenCalledTimes(1)
+      await router.navigate({ to: '/foo' })
+      expect(handler).toHaveBeenCalledTimes(1)
 
-    await router.navigate({ to: '/bar' })
+      await router.navigate({ to: '/bar' })
 
-    // Advance time — staleness is irrelevant for context with invalidate
-    vi.setSystemTime(new Date('2020-01-01T00:01:00.000Z'))
-    await router.navigate({ to: '/foo' })
+      // Advance time — staleness should trigger revalidation when opted in
+      vi.setSystemTime(new Date('2020-01-01T00:01:00.000Z'))
+      await router.navigate({ to: '/foo' })
 
-    // context should NOT re-run — needsContext was consumed, not invalid
-    expect(handler).toHaveBeenCalledTimes(1)
-
-    vi.useRealTimers()
+      // context should re-run — opted in via revalidate and match is stale
+      expect(handler).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  test('context with invalidate:true re-runs when match is GC-ed and re-created', async () => {
+  test('context with revalidate:true re-runs when match is GC-ed and re-created', async () => {
     const handler = vi.fn(() => ({ loaded: true }))
 
     const rootRoute = new BaseRootRoute({})
     const fooRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/foo',
-      context: { handler, invalidate: true },
+      context: { handler, revalidate: true },
       gcTime: 0,
     })
     const barRoute = new BaseRoute({
@@ -1297,7 +1301,7 @@ describe('context with invalidate semantics', () => {
     const fooRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/foo',
-      context: { handler, invalidate: true },
+      context: { handler, revalidate: true },
       preload: false,
     })
     const routeTree = rootRoute.addChildren([fooRoute])

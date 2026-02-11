@@ -99,6 +99,9 @@ export class FileRoute<
     TSSR = unknown,
     const TMiddlewares = unknown,
     THandlers = undefined,
+    TContextWire = unknown,
+    TBeforeLoadWire = unknown,
+    TLoaderWire = unknown,
   >(
     options?: FileBaseRouteOptions<
       TRegister,
@@ -115,7 +118,10 @@ export class FileRoute<
       AnyContext,
       TSSR,
       TMiddlewares,
-      THandlers
+      THandlers,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     > &
       UpdatableRouteOptions<
         TParentRoute,

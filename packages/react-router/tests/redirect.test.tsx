@@ -357,7 +357,7 @@ describe('redirect', () => {
             await sleep(WAIT_TIME)
             throw redirect({ to: '/nested/foo' })
           },
-          invalidate: true,
+          revalidate: true,
         },
       })
       const nestedRoute = createRoute({
@@ -576,7 +576,7 @@ describe('redirect', () => {
               to: '/about',
             })
           },
-          invalidate: true,
+          revalidate: true,
         },
       })
 

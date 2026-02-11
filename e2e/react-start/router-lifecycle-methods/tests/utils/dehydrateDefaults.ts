@@ -1,5 +1,5 @@
 /**
- * The SERIALIZE_DEFAULTS env var controls what defaultSerialize config
+ * The DEHYDRATE_DEFAULTS env var controls what defaultDehydrate config
  * is passed to createStart(). Tests read this to know what the effective
  * defaults are and compute expected values accordingly.
  *
@@ -8,8 +8,8 @@
  * - "all-true": { beforeLoad: true, loader: true, context: true }
  * - "all-false": { beforeLoad: false, loader: false, context: false }
  */
-export const serializeDefaultsMode: string =
-  process.env.SERIALIZE_DEFAULTS || ''
+export const dehydrateDefaultsMode: string =
+  process.env.DEHYDRATE_DEFAULTS || ''
 
 export interface MethodDefaults {
   context: boolean
@@ -18,12 +18,12 @@ export interface MethodDefaults {
 }
 
 /**
- * Returns the effective default serialize flag for each lifecycle method,
- * considering the SERIALIZE_DEFAULTS env var (router-level defaultSerialize)
+ * Returns the effective default dehydrate flag for each lifecycle method,
+ * considering the DEHYDRATE_DEFAULTS env var (router-level defaultDehydrate)
  * and the builtin defaults.
  */
 export function getEffectiveDefaults(): MethodDefaults {
-  switch (serializeDefaultsMode) {
+  switch (dehydrateDefaultsMode) {
     case 'all-true':
       return {
         context: true,

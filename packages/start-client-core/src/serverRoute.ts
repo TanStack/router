@@ -29,6 +29,9 @@ declare module '@tanstack/router-core' {
     TSSR = unknown,
     TServerMiddlewares = unknown,
     THandlers = undefined,
+    TContextWire = unknown,
+    TBeforeLoadWire = unknown,
+    TLoaderWire = unknown,
   > {
     server?: RouteServerOptions<
       TRegister,
