@@ -30,7 +30,9 @@ export type LifecycleOption<
        */
       revalidate?:
         | boolean
-        | ((ctx: TRevalidateCtx & { prev: TValue | undefined }) => TValue | Promise<TValue>)
+        | ((
+            ctx: TRevalidateCtx & { prev: TValue | undefined },
+          ) => TValue | Promise<TValue>)
     } & (
       | {
           dehydrate?: undefined | false
@@ -57,30 +59,35 @@ type AnyLifecycleObject = {
 
 type AnyLifecycleOption = AnyLifecycleFunction | AnyLifecycleObject
 
-type ResolveHandlerFromOption<TOption> = TOption extends { handler: infer THandler }
+type ResolveHandlerFromOption<TOption> = TOption extends {
+  handler: infer THandler
+}
   ? THandler
   : TOption
 
-type ResolveDehydrateFromOption<TOption> =
-  TOption extends { dehydrate: infer TDehydrate }
-    ? TDehydrate extends AnyLifecycleFunction
-      ? TDehydrate
-      : never
+type ResolveDehydrateFromOption<TOption> = TOption extends {
+  dehydrate: infer TDehydrate
+}
+  ? TDehydrate extends AnyLifecycleFunction
+    ? TDehydrate
     : never
+  : never
 
-type ResolveHydrateFromOption<TOption> =
-  TOption extends { hydrate: infer THydrate }
-    ? THydrate extends AnyLifecycleFunction
-      ? THydrate
-      : never
+type ResolveHydrateFromOption<TOption> = TOption extends {
+  hydrate: infer THydrate
+}
+  ? THydrate extends AnyLifecycleFunction
+    ? THydrate
     : never
+  : never
 
-type ResolveRevalidateFromOption<TOption> =
-  TOption extends { revalidate: infer TRevalidate }
-    ? TRevalidate extends AnyLifecycleFunction
-      ? TRevalidate
-      : never
+type ResolveRevalidateFromOption<TOption> = TOption extends {
+  revalidate: infer TRevalidate
+}
+  ? TRevalidate extends AnyLifecycleFunction
+    ? TRevalidate
     : never
+  : never
 
 export interface DefaultDehydrateConfig {
   beforeLoad?: boolean
@@ -110,7 +117,8 @@ export function resolveHandler<TOption extends AnyLifecycleOption>(
   option: TOption | undefined,
 ): ResolveHandlerFromOption<TOption> | undefined {
   if (option === undefined) return undefined
-  if (typeof option === 'function') return option as ResolveHandlerFromOption<TOption>
+  if (typeof option === 'function')
+    return option as ResolveHandlerFromOption<TOption>
   return option.handler as ResolveHandlerFromOption<TOption>
 }
 

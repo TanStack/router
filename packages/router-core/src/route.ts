@@ -1024,8 +1024,7 @@ export interface FilebaseRouteOptionsInterface<
         >,
       ) => any)
 
-  context?:
-    // Function form
+  context?: // Function form
     | ((
         ctx: ContextFnOptions<
           TParentRoute,
@@ -1037,10 +1036,10 @@ export interface FilebaseRouteOptionsInterface<
       ) => TContextFn &
         ValidateIfSerializable<
           TRegister,
-            TParentRoute,
-            TSSR,
-            TContextFn,
-            MethodDefaultDehydrate<TRegister, 'context', false>
+          TParentRoute,
+          TSSR,
+          TContextFn,
+          MethodDefaultDehydrate<TRegister, 'context', false>
         >)
     // Object form WITHOUT dehydrate fn
     | {
@@ -1105,9 +1104,9 @@ export interface FilebaseRouteOptionsInterface<
                 NoInfer<TLoaderDeps>
               > & { prev: NoInfer<TContextFn> | undefined },
             ) => TContextFn)
-        dehydrate: (
-          ctx: { data: NoInfer<TContextFn> },
-        ) => Constrain<
+        dehydrate: (ctx: {
+          data: NoInfer<TContextFn>
+        }) => Constrain<
           TContextWire,
           ValidateSerializableLifecycleResult<
             TRegister,
@@ -1132,8 +1131,7 @@ export interface FilebaseRouteOptionsInterface<
   // If an error is thrown here, the route's loader will not be called.
   // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function.
   // If thrown during a preload event, the error will be logged to the console.
-  beforeLoad?:
-    // Function form
+  beforeLoad?: // Function form
     | ((
         ctx: BeforeLoadContextOptions<
           TRegister,
@@ -1194,9 +1192,9 @@ export interface FilebaseRouteOptionsInterface<
             THandlers
           >,
         ) => TBeforeLoadFn
-        dehydrate: (
-          ctx: { data: NoInfer<TBeforeLoadFn> },
-        ) => Constrain<
+        dehydrate: (ctx: {
+          data: NoInfer<TBeforeLoadFn>
+        }) => Constrain<
           TBeforeLoadWire,
           ValidateSerializableLifecycleResult<
             TRegister,
@@ -1205,7 +1203,9 @@ export interface FilebaseRouteOptionsInterface<
             TBeforeLoadWire
           >
         >
-        hydrate: (ctx: { data: NoInfer<TBeforeLoadWire> }) => NoInfer<TBeforeLoadFn>
+        hydrate: (ctx: {
+          data: NoInfer<TBeforeLoadWire>
+        }) => NoInfer<TBeforeLoadFn>
       }
 
   loaderDeps?: (
@@ -1224,8 +1224,7 @@ export interface FilebaseRouteOptionsInterface<
     ) => any
   >
 
-  loader?:
-    // Function form
+  loader?: // Function form
     | ((
         ctx: LoaderFnContext<
           TRegister,
@@ -1289,9 +1288,9 @@ export interface FilebaseRouteOptionsInterface<
             THandlers
           >,
         ) => TLoaderFn
-        dehydrate: (
-          ctx: { data: NoInfer<TLoaderFn> },
-        ) => Constrain<
+        dehydrate: (ctx: {
+          data: NoInfer<TLoaderFn>
+        }) => Constrain<
           TLoaderWire,
           ValidateSerializableLifecycleResult<
             TRegister,

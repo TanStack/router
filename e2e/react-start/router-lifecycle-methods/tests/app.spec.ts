@@ -872,9 +872,7 @@ test.describe('revalidate-context-fn - functional revalidation with prev', () =>
     await page.getByTestId('rcf-invalidate-btn').click()
     await expect(page.getByTestId('rcf-context-source')).toHaveText('client')
     await expect(page.getByTestId('rcf-context-value')).toHaveText('2')
-    await expect(page.getByTestId('rcf-context-revalidated')).toHaveText(
-      'true',
-    )
+    await expect(page.getByTestId('rcf-context-revalidated')).toHaveText('true')
     await expect(page.getByTestId('rcf-context-revalidateRunCount')).toHaveText(
       '1',
     )
