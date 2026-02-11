@@ -100,3 +100,7 @@ The server entry point is where you can configure server-specific behavior:
 - Logging and monitoring
 
 This flexibility allows you to customize how your TanStack Start application handles server-side rendering while maintaining the framework's conventions.
+
+## Cloudflare Workers
+
+When deploying to Cloudflare Workers, you can extend `server.ts` to handle additional Workers features like queues, scheduled events, and Durable Objects. For a comprehensive guide, see the [Cloudflare Workers documentation for TanStack Start](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/#custom-entrypoints).
