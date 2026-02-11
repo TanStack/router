@@ -2888,11 +2888,11 @@ test('dehydrate function with hydrate compiles on context', () => {
   const rootRoute = createRootRoute({
     context: {
       handler: () => ({ createdAt: new Date() }),
-      dehydrate: (value: { createdAt: Date }) => ({
-        createdAt: value.createdAt.toISOString(),
+      dehydrate: ({ data }) => ({
+        createdAt: data.createdAt.toISOString(),
       }),
-      hydrate: (wire: { createdAt: string }) => ({
-        createdAt: new Date(wire.createdAt),
+      hydrate: ({ data }) => ({
+        createdAt: new Date(data.createdAt),
       }),
     },
   })
@@ -2904,8 +2904,8 @@ test('dehydrate function with hydrate compiles on beforeLoad', () => {
   const rootRoute = createRootRoute({
     beforeLoad: {
       handler: () => ({ ts: new Date() }),
-      dehydrate: (value: { ts: Date }) => ({ ts: value.ts.toISOString() }),
-      hydrate: (wire: { ts: string }) => ({ ts: new Date(wire.ts) }),
+      dehydrate: ({ data }) => ({ ts: data.ts.toISOString() }),
+      hydrate: ({ data }) => ({ ts: new Date(data.ts) }),
     },
   })
 
@@ -2920,11 +2920,11 @@ test('dehydrate function with hydrate compiles on loader', () => {
     path: 'child',
     loader: {
       handler: () => ({ loadedAt: new Date() }),
-      dehydrate: (value: { loadedAt: Date }) => ({
-        loadedAt: value.loadedAt.toISOString(),
+      dehydrate: ({ data }) => ({
+        loadedAt: data.loadedAt.toISOString(),
       }),
-      hydrate: (wire: { loadedAt: string }) => ({
-        loadedAt: new Date(wire.loadedAt),
+      hydrate: ({ data }) => ({
+        loadedAt: new Date(data.loadedAt),
       }),
     },
   })
@@ -2959,8 +2959,8 @@ test('dehydrate function WITHOUT hydrate is a type error on context', () => {
     // @ts-expect-error dehydrate function requires hydrate
     context: {
       handler: () => ({ createdAt: new Date() }),
-      dehydrate: (value: { createdAt: Date }) => ({
-        createdAt: value.createdAt.toISOString(),
+      dehydrate: ({ data }) => ({
+        createdAt: data.createdAt.toISOString(),
       }),
       // hydrate intentionally omitted — should be a type error
     },
@@ -2972,7 +2972,7 @@ test('dehydrate function WITHOUT hydrate is a type error on beforeLoad', () => {
     // @ts-expect-error dehydrate function requires hydrate
     beforeLoad: {
       handler: () => ({ ts: new Date() }),
-      dehydrate: (value: { ts: Date }) => ({ ts: value.ts.toISOString() }),
+      dehydrate: ({ data }) => ({ ts: data.ts.toISOString() }),
       // hydrate intentionally omitted
     },
   })
@@ -2987,8 +2987,8 @@ test('dehydrate function WITHOUT hydrate is a type error on loader', () => {
     // @ts-expect-error dehydrate function requires hydrate
     loader: {
       handler: () => ({ loadedAt: new Date() }),
-      dehydrate: (value: { loadedAt: Date }) => ({
-        loadedAt: value.loadedAt.toISOString(),
+      dehydrate: ({ data }) => ({
+        loadedAt: data.loadedAt.toISOString(),
       }),
       // hydrate intentionally omitted
     },
@@ -3012,17 +3012,13 @@ test('dehydrate fn with non-serializable handler return compiles on context', ()
         createdAt: new Date(),
         format: (v: string) => `[${v}]`,
       }),
-      dehydrate: (value: {
-        label: string
-        createdAt: Date
-        format: (v: string) => string
-      }) => ({
-        label: value.label,
-        createdAtISO: value.createdAt.toISOString(),
+      dehydrate: ({ data }) => ({
+        label: data.label,
+        createdAtISO: data.createdAt.toISOString(),
       }),
-      hydrate: (wire: { label: string; createdAtISO: string }) => ({
-        label: wire.label,
-        createdAt: new Date(wire.createdAtISO),
+      hydrate: ({ data }) => ({
+        label: data.label,
+        createdAt: new Date(data.createdAtISO),
         format: (v: string) => `[${v}]`,
       }),
     },
@@ -3039,19 +3035,15 @@ test('dehydrate fn with non-serializable handler return compiles on beforeLoad',
         count: 42,
         pattern: /^hello-\d+$/i,
       }),
-      dehydrate: (value: { tag: string; count: number; pattern: RegExp }) => ({
-        tag: value.tag,
-        count: value.count,
-        patternSource: value.pattern.source,
+      dehydrate: ({ data }) => ({
+        tag: data.tag,
+        count: data.count,
+        patternSource: data.pattern.source,
       }),
-      hydrate: (wire: {
-        tag: string
-        count: number
-        patternSource: string
-      }) => ({
-        tag: wire.tag,
-        count: wire.count,
-        pattern: new RegExp(wire.patternSource),
+      hydrate: ({ data }) => ({
+        tag: data.tag,
+        count: data.count,
+        pattern: new RegExp(data.patternSource),
       }),
     },
   })
@@ -3071,22 +3063,65 @@ test('dehydrate fn with non-serializable handler return compiles on loader', () 
         scores: [10, 20, 30],
         computeAvg: () => 20,
       }),
-      dehydrate: (value: {
-        title: string
-        scores: Array<number>
-        computeAvg: () => number
-      }) => ({
-        title: value.title,
-        scores: value.scores,
+      dehydrate: ({ data }) => ({
+        title: data.title,
+        scores: data.scores,
       }),
-      hydrate: (wire: { title: string; scores: Array<number> }) => ({
-        title: wire.title,
-        scores: wire.scores,
+      hydrate: ({ data }) => ({
+        title: data.title,
+        scores: data.scores,
         computeAvg: () =>
-          wire.scores.reduce((a, b) => a + b, 0) / wire.scores.length,
+          data.scores.reduce((a, b) => a + b, 0) / data.scores.length,
       }),
     },
   })
 
   expectTypeOf(childRoute.fullPath).toEqualTypeOf<'/child'>()
+})
+
+test('dehydrate fn returning non-serializable wire is a type error on context', () => {
+  createRootRoute({
+    // @ts-expect-error dehydrate output must be serializable
+    context: {
+      handler: () => ({ createdAt: new Date() }),
+      dehydrate: () => ({
+        toISO: () => new Date().toISOString(),
+      }),
+      hydrate: () => ({
+        createdAt: new Date(),
+      }),
+    },
+  })
+})
+
+test('dehydrate fn returning non-serializable wire is a type error on beforeLoad', () => {
+  createRootRoute({
+    // @ts-expect-error dehydrate output must be serializable
+    beforeLoad: {
+      handler: () => ({ count: 1 }),
+      dehydrate: () => ({
+        getCount: () => 1,
+      }),
+      hydrate: () => ({ count: 1 }),
+    },
+  })
+})
+
+test('dehydrate fn returning non-serializable wire is a type error on loader', () => {
+  const rootRoute = createRootRoute()
+
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'child',
+    // @ts-expect-error dehydrate output must be serializable
+    loader: {
+      handler: () => ({ loadedAt: new Date() }),
+      dehydrate: () => ({
+        format: () => new Date().toISOString(),
+      }),
+      hydrate: () => ({
+        loadedAt: new Date(),
+      }),
+    },
+  })
 })

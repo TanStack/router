@@ -2,17 +2,24 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export type DehydrateOption<TValue = any, TWire = any> =
+export type DehydrateOption<TValue = unknown, TWire = unknown> =
   | boolean
-  | ((value: TValue) => TWire)
+  | ((ctx: { data: TValue }) => TWire)
 
-export type HydrateOption<TValue = any, TWire = any> = (wire: TWire) => TValue
+export type HydrateOption<TValue = unknown, TWire = unknown> = (ctx: {
+  data: TWire
+}) => TValue
 
 /**
  * Lifecycle methods (context/beforeLoad/loader) accept either a plain handler
  * function or an object form with additional capabilities.
  */
-export type LifecycleOption<TFn, TValue = any, TWire = any> =
+export type LifecycleOption<
+  TFn,
+  TValue = unknown,
+  TWire = unknown,
+  TRevalidateCtx = unknown,
+> =
   | TFn
   | ({
       handler: TFn
@@ -23,9 +30,7 @@ export type LifecycleOption<TFn, TValue = any, TWire = any> =
        */
       revalidate?:
         | boolean
-        | ((
-            ctx: any & { prev: TValue | undefined },
-          ) => TValue | Promise<TValue>)
+        | ((ctx: TRevalidateCtx & { prev: TValue | undefined }) => TValue | Promise<TValue>)
     } & (
       | {
           dehydrate?: undefined | false
@@ -36,10 +41,46 @@ export type LifecycleOption<TFn, TValue = any, TWire = any> =
           hydrate?: HydrateOption<TValue, TWire>
         }
       | {
-          dehydrate: (value: TValue) => TWire
+          dehydrate: (ctx: { data: TValue }) => TWire
           hydrate: HydrateOption<TValue, TWire>
         }
     ))
+
+type AnyLifecycleFunction = (...args: Array<any>) => any
+
+type AnyLifecycleObject = {
+  handler: AnyLifecycleFunction
+  revalidate?: boolean | ((ctx: any) => any)
+  dehydrate?: boolean | ((ctx: { data: any }) => any)
+  hydrate?: (ctx: { data: any }) => any
+}
+
+type AnyLifecycleOption = AnyLifecycleFunction | AnyLifecycleObject
+
+type ResolveHandlerFromOption<TOption> = TOption extends { handler: infer THandler }
+  ? THandler
+  : TOption
+
+type ResolveDehydrateFromOption<TOption> =
+  TOption extends { dehydrate: infer TDehydrate }
+    ? TDehydrate extends AnyLifecycleFunction
+      ? TDehydrate
+      : never
+    : never
+
+type ResolveHydrateFromOption<TOption> =
+  TOption extends { hydrate: infer THydrate }
+    ? THydrate extends AnyLifecycleFunction
+      ? THydrate
+      : never
+    : never
+
+type ResolveRevalidateFromOption<TOption> =
+  TOption extends { revalidate: infer TRevalidate }
+    ? TRevalidate extends AnyLifecycleFunction
+      ? TRevalidate
+      : never
+    : never
 
 export interface DefaultDehydrateConfig {
   beforeLoad?: boolean
@@ -65,12 +106,12 @@ export const builtinDefaultDehydrate: Required<DefaultDehydrateConfig> = {
  * Extract just the handler from either the function form or object form.
  * Zero allocations — no intermediate object created.
  */
-export function resolveHandler<TFn>(
-  option: LifecycleOption<TFn> | undefined,
-): TFn | undefined {
+export function resolveHandler<TOption extends AnyLifecycleOption>(
+  option: TOption | undefined,
+): ResolveHandlerFromOption<TOption> | undefined {
   if (option === undefined) return undefined
-  if (typeof option === 'function') return option
-  return (option as { handler: TFn }).handler
+  if (typeof option === 'function') return option as ResolveHandlerFromOption<TOption>
+  return option.handler as ResolveHandlerFromOption<TOption>
 }
 
 /**
@@ -86,42 +127,47 @@ export function resolveHandler<TFn>(
  * @param routerDefault  The router-level default for this specific method
  * @param builtinDefault  The built-in default for this method
  */
-export function shouldDehydrate(
-  option: LifecycleOption<any>,
+export function shouldDehydrate<TOption extends AnyLifecycleOption>(
+  option: TOption,
   routerDefault: boolean | undefined,
   builtinDefault: boolean,
 ): boolean {
   if (typeof option !== 'function') {
-    const d = (option as { dehydrate?: boolean | ((value: any) => any) })
-      .dehydrate
+    const d = option.dehydrate
     if (typeof d === 'boolean') return d
     if (typeof d === 'function') return true
   }
   return routerDefault ?? builtinDefault
 }
 
-export function getDehydrateFn(
-  option: LifecycleOption<any> | undefined,
-): ((value: any) => any) | undefined {
+export function getDehydrateFn<TOption extends AnyLifecycleOption>(
+  option: TOption | undefined,
+): ResolveDehydrateFromOption<TOption> | undefined {
   if (!option || typeof option === 'function') return undefined
   const d = option.dehydrate
-  return typeof d === 'function' ? d : undefined
+  return (typeof d === 'function' ? d : undefined) as
+    | ResolveDehydrateFromOption<TOption>
+    | undefined
 }
 
-export function getHydrateFn(
-  option: LifecycleOption<any> | undefined,
-): ((wire: any) => any) | undefined {
+export function getHydrateFn<TOption extends AnyLifecycleOption>(
+  option: TOption | undefined,
+): ResolveHydrateFromOption<TOption> | undefined {
   if (!option || typeof option === 'function') return undefined
   const h = option.hydrate
-  return typeof h === 'function' ? h : undefined
+  return (typeof h === 'function' ? h : undefined) as
+    | ResolveHydrateFromOption<TOption>
+    | undefined
 }
 
-export function getRevalidateFn(
-  option: LifecycleOption<any> | undefined,
-): ((ctx: any & { prev: any }) => any) | undefined {
+export function getRevalidateFn<TOption extends AnyLifecycleOption>(
+  option: TOption | undefined,
+): ResolveRevalidateFromOption<TOption> | undefined {
   if (!option || typeof option === 'function') return undefined
   const r = option.revalidate
-  return typeof r === 'function' ? r : undefined
+  return (typeof r === 'function' ? r : undefined) as
+    | ResolveRevalidateFromOption<TOption>
+    | undefined
 }
 
 // ---------------------------------------------------------------------------

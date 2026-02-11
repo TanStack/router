@@ -1419,36 +1419,36 @@ describe('hydrate', () => {
     })
 
     it('dehydrate fn + hydrate fn: wire payload is transformed then reconstructed', async () => {
-      const ctxHydrate = vi.fn((wire: { iso: string }) => ({
-        dt: new Date(wire.iso),
+      const ctxHydrate = vi.fn(({ data }: { data: { iso: string } }) => ({
+        dt: new Date(data.iso),
       }))
-      const blHydrate = vi.fn((wire: { iso: string }) => ({
-        dt: new Date(wire.iso),
+      const blHydrate = vi.fn(({ data }: { data: { iso: string } }) => ({
+        dt: new Date(data.iso),
       }))
-      const ldHydrate = vi.fn((wire: { iso: string }) => ({
-        dt: new Date(wire.iso),
+      const ldHydrate = vi.fn(({ data }: { data: { iso: string } }) => ({
+        dt: new Date(data.iso),
       }))
 
       const { router } = setupDehydrateHydration({
         indexOptions: {
           context: {
             handler: () => ({ dt: new Date('1900-01-01T00:00:00.000Z') }),
-            dehydrate: (value: { dt: Date }) => ({
-              iso: value.dt.toISOString(),
+            dehydrate: ({ data }: { data: { dt: Date } }) => ({
+              iso: data.dt.toISOString(),
             }),
             hydrate: ctxHydrate,
           },
           beforeLoad: {
             handler: () => ({ dt: new Date('1900-01-01T00:00:00.000Z') }),
-            dehydrate: (value: { dt: Date }) => ({
-              iso: value.dt.toISOString(),
+            dehydrate: ({ data }: { data: { dt: Date } }) => ({
+              iso: data.dt.toISOString(),
             }),
             hydrate: blHydrate,
           },
           loader: {
             handler: () => ({ dt: new Date('1900-01-01T00:00:00.000Z') }),
-            dehydrate: (value: { dt: Date }) => ({
-              iso: value.dt.toISOString(),
+            dehydrate: ({ data }: { data: { dt: Date } }) => ({
+              iso: data.dt.toISOString(),
             }),
             hydrate: ldHydrate,
           },

@@ -23,29 +23,29 @@ const getLoaderDate = createIsomorphicFn()
 export const Route = createFileRoute('/dehydrate-fn')({
   context: {
     handler: () => ({ createdAt: getContextDate() }),
-    dehydrate: (value: { createdAt: Date }) => ({
-      createdAt: value.createdAt.toISOString(),
+    dehydrate: ({ data }) => ({
+      createdAt: data.createdAt.toISOString(),
     }),
-    hydrate: (wire: { createdAt: string }) => ({
-      createdAt: new Date(wire.createdAt),
+    hydrate: ({ data }) => ({
+      createdAt: new Date(data.createdAt),
     }),
   },
   beforeLoad: {
     handler: () => ({ processedAt: getBeforeLoadDate() }),
-    dehydrate: (value: { processedAt: Date }) => ({
-      processedAt: value.processedAt.toISOString(),
+    dehydrate: ({ data }) => ({
+      processedAt: data.processedAt.toISOString(),
     }),
-    hydrate: (wire: { processedAt: string }) => ({
-      processedAt: new Date(wire.processedAt),
+    hydrate: ({ data }) => ({
+      processedAt: new Date(data.processedAt),
     }),
   },
   loader: {
     handler: () => ({ loadedAt: getLoaderDate() }),
-    dehydrate: (value: { loadedAt: Date }) => ({
-      loadedAt: value.loadedAt.toISOString(),
+    dehydrate: ({ data }) => ({
+      loadedAt: data.loadedAt.toISOString(),
     }),
-    hydrate: (wire: { loadedAt: string }) => ({
-      loadedAt: new Date(wire.loadedAt),
+    hydrate: ({ data }) => ({
+      loadedAt: new Date(data.loadedAt),
     }),
   },
   ssr: 'data-only',

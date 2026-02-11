@@ -64,7 +64,7 @@ export function dehydrateMatch(
   ) {
     const dehydrateFn = getDehydrateFn(route.options.beforeLoad)
     dehydratedMatch.b = dehydrateFn
-      ? dehydrateFn(match.__beforeLoadContext)
+      ? (dehydrateFn({ data: match.__beforeLoadContext }) as typeof match.__beforeLoadContext)
       : match.__beforeLoadContext
   }
 
@@ -80,7 +80,7 @@ export function dehydrateMatch(
   ) {
     const dehydrateFn = getDehydrateFn(route.options.loader)
     dehydratedMatch.l = dehydrateFn
-      ? dehydrateFn(match.loaderData)
+      ? (dehydrateFn({ data: match.loaderData }) as typeof match.loaderData)
       : match.loaderData
   }
 
@@ -96,7 +96,7 @@ export function dehydrateMatch(
   ) {
     const dehydrateFn = getDehydrateFn(route.options.context)
     dehydratedMatch.m = dehydrateFn
-      ? dehydrateFn(match.__routeContext)
+      ? (dehydrateFn({ data: match.__routeContext }) as typeof match.__routeContext)
       : match.__routeContext
   }
 

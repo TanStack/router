@@ -338,7 +338,7 @@ test('notFoundComponent is rendered when `notFound` is thrown in `context` with 
           data: { message: 'Not found from context with invalidate' },
         })
       },
-      invalidate: true,
+      revalidate: true,
     },
     component: () => (
       <div data-testid="target-component">Should not render</div>

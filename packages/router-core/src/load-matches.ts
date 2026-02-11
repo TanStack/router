@@ -614,16 +614,13 @@ const executeContext = (
     const shouldRevalidate =
       contextCause === 'invalid' || contextCause === 'stale'
 
-    const handler =
+    routeContext =
       shouldRevalidate && typeof revalidateOption === 'function'
-        ? revalidateOption
-        : resolveHandler(contextOption)!
-
-    routeContext = handler(
-      shouldRevalidate && typeof revalidateOption === 'function'
-        ? ({ ...contextFnContext, prev: match.__routeContext } as any)
-        : contextFnContext,
-    )
+        ? revalidateOption({
+            ...contextFnContext,
+            prev: match.__routeContext,
+          })
+        : resolveHandler(contextOption)!(contextFnContext)
     if (isPromise(routeContext)) {
       return routeContext
         .catch((err) => {

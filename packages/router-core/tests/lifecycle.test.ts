@@ -104,8 +104,12 @@ describe('shouldDehydrate', () => {
   test('object form with dehydrate function is treated as truthy', () => {
     const option = {
       handler: () => ({ dt: new Date() }),
-      dehydrate: (v: any) => ({ iso: v.dt.toISOString() }),
-      hydrate: (w: any) => ({ dt: new Date(w.iso) }),
+      dehydrate: ({ data }: { data: { dt: Date } }) => ({
+        iso: data.dt.toISOString(),
+      }),
+      hydrate: ({ data }: { data: { iso: string } }) => ({
+        dt: new Date(data.iso),
+      }),
     }
     // dehydrate-function overrides router default false and builtin false
     expect(shouldDehydrate(option, false, false)).toBe(true)
@@ -139,8 +143,12 @@ describe('getDehydrateFn', () => {
   })
 
   test('returns the dehydrate function for object form with dehydrate function', () => {
-    const dehydrate = (v: any) => v.toString()
-    const option = { handler: () => 'hello', dehydrate, hydrate: (w: any) => w }
+    const dehydrate = ({ data }: { data: number }) => data.toString()
+    const option = {
+      handler: () => 1,
+      dehydrate,
+      hydrate: ({ data }: { data: string }) => Number(data),
+    }
     expect(getDehydrateFn(option)).toBe(dehydrate)
   })
 })
@@ -159,10 +167,10 @@ describe('getHydrateFn', () => {
   })
 
   test('returns the hydrate function for object form with hydrate function', () => {
-    const hydrateFn = (w: any) => new Date(w)
+    const hydrateFn = ({ data }: { data: string }) => new Date(data)
     const option = {
       handler: () => new Date(),
-      dehydrate: (v: any) => v.toISOString(),
+      dehydrate: ({ data }: { data: Date }) => data.toISOString(),
       hydrate: hydrateFn,
     }
     expect(getHydrateFn(option)).toBe(hydrateFn)
@@ -195,7 +203,7 @@ describe('getRevalidateFn', () => {
   })
 
   test('returns the revalidate function for object form with revalidate function', () => {
-    const revalidateFn = (ctx: any) => ctx.prev + 1
+    const revalidateFn = (ctx: { prev: number }) => ctx.prev + 1
     const option = { handler: () => 1, revalidate: revalidateFn }
     expect(getRevalidateFn(option)).toBe(revalidateFn)
   })

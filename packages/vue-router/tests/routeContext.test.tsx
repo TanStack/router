@@ -4339,7 +4339,7 @@ describe('lifecycle method semantics', () => {
         path: '/',
         context: {
           handler: () => ({ ctxObj: 'object-form' }),
-          serialize: false,
+          dehydrate: false,
         },
         beforeLoad: {
           handler: () => ({ blObj: 'object-form' }),

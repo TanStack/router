@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StaleRevalidateRouteImport } from './routes/stale-revalidate'
+import { Route as RevalidateContextFnRouteImport } from './routes/revalidate-context-fn'
 import { Route as RevalidateContextRouteImport } from './routes/revalidate-context'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as DehydratePartialRouteImport } from './routes/dehydrate-partial'
@@ -29,6 +30,11 @@ import { Route as PostsPostIdCommentsRouteImport } from './routes/posts.$postId.
 const StaleRevalidateRoute = StaleRevalidateRouteImport.update({
   id: '/stale-revalidate',
   path: '/stale-revalidate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RevalidateContextFnRoute = RevalidateContextFnRouteImport.update({
+  id: '/revalidate-context-fn',
+  path: '/revalidate-context-fn',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RevalidateContextRoute = RevalidateContextRouteImport.update({
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/dehydrate-partial': typeof DehydratePartialRoute
   '/posts': typeof PostsRouteWithChildren
   '/revalidate-context': typeof RevalidateContextRoute
+  '/revalidate-context-fn': typeof RevalidateContextFnRoute
   '/stale-revalidate': typeof StaleRevalidateRoute
   '/posts/$postId': typeof PostsPostIdRouteWithChildren
   '/posts/': typeof PostsIndexRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/dehydrate-mixed': typeof DehydrateMixedRoute
   '/dehydrate-partial': typeof DehydratePartialRoute
   '/revalidate-context': typeof RevalidateContextRoute
+  '/revalidate-context-fn': typeof RevalidateContextFnRoute
   '/stale-revalidate': typeof StaleRevalidateRoute
   '/posts/$postId': typeof PostsPostIdRouteWithChildren
   '/posts': typeof PostsIndexRoute
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/dehydrate-partial': typeof DehydratePartialRoute
   '/posts': typeof PostsRouteWithChildren
   '/revalidate-context': typeof RevalidateContextRoute
+  '/revalidate-context-fn': typeof RevalidateContextFnRoute
   '/stale-revalidate': typeof StaleRevalidateRoute
   '/posts/$postId': typeof PostsPostIdRouteWithChildren
   '/posts/': typeof PostsIndexRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/dehydrate-partial'
     | '/posts'
     | '/revalidate-context'
+    | '/revalidate-context-fn'
     | '/stale-revalidate'
     | '/posts/$postId'
     | '/posts/'
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/dehydrate-mixed'
     | '/dehydrate-partial'
     | '/revalidate-context'
+    | '/revalidate-context-fn'
     | '/stale-revalidate'
     | '/posts/$postId'
     | '/posts'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '/dehydrate-partial'
     | '/posts'
     | '/revalidate-context'
+    | '/revalidate-context-fn'
     | '/stale-revalidate'
     | '/posts/$postId'
     | '/posts/'
@@ -231,6 +243,7 @@ export interface RootRouteChildren {
   DehydratePartialRoute: typeof DehydratePartialRoute
   PostsRoute: typeof PostsRouteWithChildren
   RevalidateContextRoute: typeof RevalidateContextRoute
+  RevalidateContextFnRoute: typeof RevalidateContextFnRoute
   StaleRevalidateRoute: typeof StaleRevalidateRoute
 }
 
@@ -241,6 +254,13 @@ declare module '@tanstack/react-router' {
       path: '/stale-revalidate'
       fullPath: '/stale-revalidate'
       preLoaderRoute: typeof StaleRevalidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/revalidate-context-fn': {
+      id: '/revalidate-context-fn'
+      path: '/revalidate-context-fn'
+      fullPath: '/revalidate-context-fn'
+      preLoaderRoute: typeof RevalidateContextFnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/revalidate-context': {
@@ -388,6 +408,7 @@ const rootRouteChildren: RootRouteChildren = {
   DehydratePartialRoute: DehydratePartialRoute,
   PostsRoute: PostsRouteWithChildren,
   RevalidateContextRoute: RevalidateContextRoute,
+  RevalidateContextFnRoute: RevalidateContextFnRoute,
   StaleRevalidateRoute: StaleRevalidateRoute,
 }
 export const routeTree = rootRouteImport

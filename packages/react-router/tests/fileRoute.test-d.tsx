@@ -100,3 +100,54 @@ test('when creating a folder group', () => {
   expectTypeOf<'(auth)/protected'>(protectedRoute.path)
   expectTypeOf<'/protected'>(protectedRoute.id)
 })
+
+test('file route object lifecycle options compile', () => {
+  const objectRoute = createFileRoute('/invoices')({
+    context: {
+      handler: () => ({ createdAt: new Date() }),
+      revalidate: true,
+      dehydrate: ({ data }) => ({
+        createdAt: data.createdAt.toISOString(),
+      }),
+      hydrate: ({ data }) => ({
+        createdAt: new Date(data.createdAt),
+      }),
+    },
+    beforeLoad: {
+      handler: (ctx) => {
+        expectTypeOf(ctx.context).toEqualTypeOf<{ createdAt: Date }>()
+        return { permission: 'view' as const }
+      },
+      dehydrate: true,
+    },
+    loader: {
+      handler: (ctx) => {
+        expectTypeOf(ctx.context).toEqualTypeOf<{
+          createdAt: Date
+          permission: 'view'
+        }>()
+        return { loadedAt: new Date() }
+      },
+      dehydrate: ({ data }) => ({
+        loadedAt: data.loadedAt.toISOString(),
+      }),
+      hydrate: ({ data }) => ({
+        loadedAt: new Date(data.loadedAt),
+      }),
+    },
+  })
+
+  expectTypeOf(objectRoute.fullPath).toEqualTypeOf<'/invoices'>()
+})
+
+test('file route dehydrate fn requires hydrate', () => {
+  createFileRoute('/invoices')({
+    // @ts-expect-error dehydrate function requires hydrate
+    context: {
+      handler: () => ({ createdAt: new Date() }),
+      dehydrate: ({ data }) => ({
+        createdAt: data.createdAt.toISOString(),
+      }),
+    },
+  })
+})

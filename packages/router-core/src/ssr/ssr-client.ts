@@ -136,19 +136,19 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       if (dehydratedMatch.m !== undefined) {
         const hydrateFn = getHydrateFn(route.options.context)
         match.__routeContext = hydrateFn
-          ? hydrateFn(dehydratedMatch.m)
+          ? (hydrateFn({ data: dehydratedMatch.m }) as typeof match.__routeContext)
           : dehydratedMatch.m
       }
       if (dehydratedMatch.b !== undefined) {
         const hydrateFn = getHydrateFn(route.options.beforeLoad)
         match.__beforeLoadContext = hydrateFn
-          ? hydrateFn(dehydratedMatch.b)
+          ? (hydrateFn({ data: dehydratedMatch.b }) as typeof match.__beforeLoadContext)
           : dehydratedMatch.b
       }
       if (dehydratedMatch.l !== undefined) {
         const hydrateFn = getHydrateFn(route.options.loader)
         match.loaderData = hydrateFn
-          ? hydrateFn(dehydratedMatch.l)
+          ? (hydrateFn({ data: dehydratedMatch.l }) as typeof match.loaderData)
           : dehydratedMatch.l
       }
     }

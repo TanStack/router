@@ -43,14 +43,14 @@ export const Route = createFileRoute('/dehydrate-partial')({
         format: (v: string) => `[${label}] ${v}`,
       }
     },
-    dehydrate: (value) => ({
-      label: value.label,
-      createdAtISO: value.createdAt.toISOString(),
+    dehydrate: ({ data }) => ({
+      label: data.label,
+      createdAtISO: data.createdAt.toISOString(),
     }),
-    hydrate: (wire) => ({
-      label: wire.label,
-      createdAt: new Date(wire.createdAtISO),
-      format: (v: string) => `[${wire.label}] ${v}`,
+    hydrate: ({ data }) => ({
+      label: data.label,
+      createdAt: new Date(data.createdAtISO),
+      format: (v: string) => `[${data.label}] ${v}`,
     }),
   },
 
@@ -60,16 +60,16 @@ export const Route = createFileRoute('/dehydrate-partial')({
       count: 42,
       pattern: /^hello-\d+$/i,
     }),
-    dehydrate: (value) => ({
-      tag: value.tag,
-      count: value.count,
-      patternSource: value.pattern.source,
-      patternFlags: value.pattern.flags,
+    dehydrate: ({ data }) => ({
+      tag: data.tag,
+      count: data.count,
+      patternSource: data.pattern.source,
+      patternFlags: data.pattern.flags,
     }),
-    hydrate: (wire) => ({
-      tag: wire.tag,
-      count: wire.count,
-      pattern: new RegExp(wire.patternSource, wire.patternFlags),
+    hydrate: ({ data }) => ({
+      tag: data.tag,
+      count: data.count,
+      pattern: new RegExp(data.patternSource, data.patternFlags),
     }),
   },
 
@@ -82,15 +82,15 @@ export const Route = createFileRoute('/dehydrate-partial')({
         computeAvg: () => scores.reduce((a, b) => a + b, 0) / scores.length,
       }
     },
-    dehydrate: (value) => ({
-      title: value.title,
-      scores: value.scores,
+    dehydrate: ({ data }) => ({
+      title: data.title,
+      scores: data.scores,
     }),
-    hydrate: (wire) => ({
-      title: wire.title,
-      scores: wire.scores,
+    hydrate: ({ data }) => ({
+      title: data.title,
+      scores: data.scores,
       computeAvg: () =>
-        wire.scores.reduce((a, b) => a + b, 0) / wire.scores.length,
+        data.scores.reduce((a, b) => a + b, 0) / data.scores.length,
     }),
   },
 

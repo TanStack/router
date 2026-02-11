@@ -119,6 +119,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link to="/revalidate-context" data-testid="link-revalidate-context">
             Revalidate Context
           </Link>
+          <Link
+            to="/revalidate-context-fn"
+            data-testid="link-revalidate-context-fn"
+          >
+            Revalidate Context Function
+          </Link>
           <Link to="/stale-revalidate" data-testid="link-stale-revalidate">
             Stale Revalidate
           </Link>

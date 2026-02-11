@@ -56,6 +56,9 @@ type VueSFC = {
   render?: Function
 }
 
+type NormalizeRouteContext<T> = [T] extends [never] ? AnyContext : T
+type NormalizeRouteLoader<T> = [T] extends [never] ? undefined : T
+
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
     component?: RouteComponent | VueSFC
@@ -354,10 +357,10 @@ export function createRoute<
   TSearchValidator,
   TParams,
   AnyContext,
-  TContextFn,
-  TBeforeLoadFn,
+  NormalizeRouteContext<TContextFn>,
+  NormalizeRouteContext<TBeforeLoadFn>,
   TLoaderDeps,
-  TLoaderFn,
+  NormalizeRouteLoader<TLoaderFn>,
   TChildren,
   unknown,
   TSSR,
@@ -373,15 +376,15 @@ export function createRoute<
     TSearchValidator,
     TParams,
     AnyContext,
-    TContextFn,
-    TBeforeLoadFn,
+    NormalizeRouteContext<TContextFn>,
+    NormalizeRouteContext<TBeforeLoadFn>,
     TLoaderDeps,
-    TLoaderFn,
+    NormalizeRouteLoader<TLoaderFn>,
     TChildren,
     unknown,
     TSSR,
     THandlers
-  >(options)
+  >(options as any)
 }
 
 export type AnyRootRoute = RootRoute<
@@ -677,10 +680,10 @@ export function createRootRoute<
   TRegister,
   TSearchValidator,
   TRouterContext,
-  TContextFn,
-  TBeforeLoadFn,
+  NormalizeRouteContext<TContextFn>,
+  NormalizeRouteContext<TBeforeLoadFn>,
   TLoaderDeps,
-  TLoaderFn,
+  NormalizeRouteLoader<TLoaderFn>,
   unknown,
   unknown,
   TSSR,
@@ -691,14 +694,14 @@ export function createRootRoute<
     TRegister,
     TSearchValidator,
     TRouterContext,
-    TContextFn,
-    TBeforeLoadFn,
+    NormalizeRouteContext<TContextFn>,
+    NormalizeRouteContext<TBeforeLoadFn>,
     TLoaderDeps,
-    TLoaderFn,
+    NormalizeRouteLoader<TLoaderFn>,
     unknown,
     unknown,
     TSSR,
     TServerMiddlewares,
     THandlers
-  >(options)
+  >(options as any)
 }

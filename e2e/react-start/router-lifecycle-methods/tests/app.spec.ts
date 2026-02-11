@@ -802,6 +802,93 @@ test.describe('revalidate-context - context revalidation', () => {
 })
 
 // ============================================================================
+// Revalidate context function tests
+//
+// The revalidate-context-fn route uses `revalidate` as a function and reads
+// `ctx.prev` to derive the next context value. This verifies the callback path
+// (not just `revalidate: true`) and confirms `prev` is wired correctly.
+// ============================================================================
+
+test.describe('revalidate-context-fn - functional revalidation with prev', () => {
+  test('SSR: context comes from handler (not revalidate fn)', async ({
+    page,
+  }) => {
+    await page.goto('/revalidate-context-fn')
+    await expect(page.getByTestId('rcf-heading')).toHaveText(
+      'Revalidate Context Function',
+    )
+
+    await expect(page.getByTestId('rcf-context-source')).toHaveText('server')
+    await expect(page.getByTestId('rcf-context-value')).toHaveText('1')
+    await expect(page.getByTestId('rcf-context-revalidated')).toHaveText(
+      'false',
+    )
+    await expect(page.getByTestId('rcf-context-revalidateRunCount')).toHaveText(
+      '0',
+    )
+  })
+
+  test('client nav: initial context comes from handler on client', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+    await expect(page.getByTestId('index-heading')).toHaveText('Home')
+
+    await page.getByTestId('link-revalidate-context-fn').click()
+    await expect(page.getByTestId('rcf-heading')).toHaveText(
+      'Revalidate Context Function',
+    )
+
+    await expect(page.getByTestId('rcf-context-source')).toHaveText('client')
+    await expect(page.getByTestId('rcf-context-value')).toHaveText('1')
+    await expect(page.getByTestId('rcf-context-revalidated')).toHaveText(
+      'false',
+    )
+    await expect(page.getByTestId('rcf-context-revalidateRunCount')).toHaveText(
+      '0',
+    )
+  })
+
+  test('invalidation: revalidate fn runs and uses prev value', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('hydrated')).toHaveText('hydrated')
+    await page.getByTestId('link-revalidate-context-fn').click()
+    await expect(page.getByTestId('rcf-heading')).toHaveText(
+      'Revalidate Context Function',
+    )
+
+    await expect(page.getByTestId('rcf-context-value')).toHaveText('1')
+    await expect(page.getByTestId('rcf-context-revalidated')).toHaveText(
+      'false',
+    )
+    await expect(page.getByTestId('rcf-context-revalidateRunCount')).toHaveText(
+      '0',
+    )
+
+    // First invalidation: prev.value=1 -> revalidate returns value=2
+    await page.getByTestId('rcf-invalidate-btn').click()
+    await expect(page.getByTestId('rcf-context-source')).toHaveText('client')
+    await expect(page.getByTestId('rcf-context-value')).toHaveText('2')
+    await expect(page.getByTestId('rcf-context-revalidated')).toHaveText(
+      'true',
+    )
+    await expect(page.getByTestId('rcf-context-revalidateRunCount')).toHaveText(
+      '1',
+    )
+
+    // Second invalidation: prev.value=2 -> revalidate returns value=3
+    await page.getByTestId('rcf-invalidate-btn').click()
+    await expect(page.getByTestId('rcf-context-value')).toHaveText('3')
+    await expect(page.getByTestId('rcf-context-revalidateRunCount')).toHaveText(
+      '2',
+    )
+  })
+})
+
+// ============================================================================
 // Dehydrate partial — partial hydration of mixed serializable/non-serializable
 //
 // Each lifecycle returns an object with both serializable fields (string,
