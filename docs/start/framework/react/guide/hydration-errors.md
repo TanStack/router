@@ -100,8 +100,8 @@ export function AppBoot() {
 - Wrap unstable UI in `<ClientOnly>` to avoid SSR and mismatches
 
 ```tsx
-import { ClientOnly } from '@tanstack/react-router';
-<ClientOnly fallback={<span>—</span>}>
+import { ClientOnly } from '@tanstack/react-router'
+;<ClientOnly fallback={<span>—</span>}>
   <RelativeTime ts={someTs} />
 </ClientOnly>
 ```
