@@ -41,8 +41,8 @@
     "@eslint-react/eslint-plugin": "^1.26.2",
     "@playwright/test": "^1.57.0",
     "@tanstack/config": "0.22.0",
-    "@tanstack/react-query": "^5.90.19",
     "@tanstack/query-core": "^5.90.19",
+    "@tanstack/react-query": "^5.90.19",
     "@types/node": "25.0.9",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
@@ -123,6 +123,9 @@
       "@tanstack/router-utils": "workspace:*",
       "@tanstack/start-static-server-functions": "workspace:*",
       "@tanstack/nitro-v2-vite-plugin": "workspace:*"
+    },
+    "patchedDependencies": {
+      "@module-federation/rsbuild-plugin@2.0.1": "patches/@module-federation__rsbuild-plugin@2.0.1.patch"
     }
   }
 }
