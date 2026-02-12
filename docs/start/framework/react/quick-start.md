@@ -5,7 +5,7 @@ title: Quick Start
 
 ## Impatient?
 
-The fastest way to get a Start project up and running is with the cli. Just run
+The fastest way to get a Start project up and running is with the CLI. Just run
 
 ```
 pnpm create @tanstack/start@latest
@@ -34,7 +34,7 @@ Once you've cloned the example you want, head back to the [Routing](./guide/rout
 
 ## Examples
 
-TanStack Start has load of examples to get you started. Pick one of the examples below to get started!
+TanStack Start has a load of examples to get you started. Pick one of the examples below to get started!
 
 - [Basic](https://github.com/TanStack/router/tree/main/examples/react/start-basic) (start-basic)
 - [Basic + Auth](https://github.com/TanStack/router/tree/main/examples/react/start-basic-auth) (start-basic-auth)
@@ -66,7 +66,7 @@ npm install
 npm run dev
 ```
 
-Once you've clone or deployed an example, head back to the [Routing](./guide/routing) guide to learn how to use TanStack Start!
+Once you've cloned or deployed an example, head back to the [Routing](./guide/routing) guide to learn how to use TanStack Start!
 
 ## Other Router Examples
 
