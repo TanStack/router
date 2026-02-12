@@ -131,11 +131,13 @@ Do / Don't (required)
 Add an explicit block in the agent file with:
 
 Do:
+
 - Resolve the skills root by checking dependency installation first, then repo-local `.agents`, then global `.agents`, then fallback locations.
 - Route into the correct sub-area/topic using only `{{SKILL_PACK_SLUG}}/SKILL.md` and any indexes it references.
 - Output the next `SKILL.md` index file path(s) to consult (relative to the resolved skills root).
 
 Don't:
+
 - Mention installer/CLI behavior, flags, or registration.
 - Invent topics that are not present in the SKILL indexes.
 - Provide build/test/lint instructions.
@@ -207,3 +209,4 @@ Update behavior when the agent file already exists
 - Keep existing valid content and structure; change only what is outdated or missing.
 - Ensure "Skills routing" exists and matches the SKILL indexes.
 - Do not introduce new structural assumptions unless confirmed by the indexes.
+```
