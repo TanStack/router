@@ -1,0 +1,222 @@
+From 48db8ab0ec012713c1db457d18ad921deac3e1bf Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Thu, 12 Feb 2026 05:09:21 +0000
+Subject: [PATCH] refactor(rsbuild-plugin): auto-detect default environment by
+ caller
+
+---
+ .../guide/build-plugins/plugins-rsbuild.mdx   |  7 ++-
+ .../guide/build-plugins/plugins-rsbuild.mdx   |  7 ++-
+ packages/rsbuild-plugin/README.md             | 14 ++++++
+ packages/rsbuild-plugin/src/cli/index.ts      | 37 +++++++++++++-
+ .../src/cli/node-target.spec.ts               | 50 +++++++++++++++++--
+ 5 files changed, 107 insertions(+), 8 deletions(-)
+
+diff --git a/apps/website-new/docs/en/guide/build-plugins/plugins-rsbuild.mdx b/apps/website-new/docs/en/guide/build-plugins/plugins-rsbuild.mdx
+index f12ff8c45..42df4d6c6 100644
+--- a/apps/website-new/docs/en/guide/build-plugins/plugins-rsbuild.mdx
++++ b/apps/website-new/docs/en/guide/build-plugins/plugins-rsbuild.mdx
+@@ -154,7 +154,12 @@ export default defineConfig({
+ #### environment
+ 
+ * Type: `string`
+-* Default: `'mf'`
++* Default: auto-detected by caller/tooling:
++  * Rslib: `'mf'`
++  * Rsbuild app + `target: 'web'`: `'web'`
++  * Rsbuild app + `target: 'node'`: `'node'`
++  * Rspress + `target: 'web'`: `'web'`
++  * Rspress + `target: 'node'`: `'node'`
+ 
+ Environment name used by `target: 'node'` to select which environment config receives Node-target federation behavior.
+ 
+diff --git a/apps/website-new/docs/zh/guide/build-plugins/plugins-rsbuild.mdx b/apps/website-new/docs/zh/guide/build-plugins/plugins-rsbuild.mdx
+index 3ed367767..ed2127936 100644
+--- a/apps/website-new/docs/zh/guide/build-plugins/plugins-rsbuild.mdx
++++ b/apps/website-new/docs/zh/guide/build-plugins/plugins-rsbuild.mdx
+@@ -153,7 +153,12 @@ export default defineConfig({
+ #### environment
+ 
+ * 类型：`string`
+-* 默认值：`'mf'`
++* 默认值：按调用方/工具自动推断：
++  * Rslib：`'mf'`
++  * Rsbuild App + `target: 'web'`：`'web'`
++  * Rsbuild App + `target: 'node'`：`'node'`
++  * Rspress + `target: 'web'`：`'web'`
++  * Rspress + `target: 'node'`：`'node'`
+ 
+ 在 `target: 'node'` 下用于指定要应用 Node Federation 行为的环境名称。
+ 
+diff --git a/packages/rsbuild-plugin/README.md b/packages/rsbuild-plugin/README.md
+index 4a5e0f9f6..c9fdb3d35 100644
+--- a/packages/rsbuild-plugin/README.md
++++ b/packages/rsbuild-plugin/README.md
+@@ -67,6 +67,20 @@ export default defineConfig({
+ 
+ `target: 'dual'` support remains scoped to Rslib/Rspress workflows.
+ 
++### Default environment detection
++
++If `environment` is omitted, the plugin will choose a default per tool:
++
++- **Rslib**: `mf`
++- **Rsbuild app**:
++  - `target: 'web'` → `web`
++  - `target: 'node'` → `node`
++- **Rspress**:
++  - `target: 'web'` → `web`
++  - `target: 'node'` → `node`
++
++You can still override with `environment` when your project uses custom names.
++
+ ### Rslib Module
+ 
+ ```js
+diff --git a/packages/rsbuild-plugin/src/cli/index.ts b/packages/rsbuild-plugin/src/cli/index.ts
+index ea5cc823a..fbbad9ef7 100644
+--- a/packages/rsbuild-plugin/src/cli/index.ts
++++ b/packages/rsbuild-plugin/src/cli/index.ts
+@@ -46,7 +46,7 @@ type RSBUILD_PLUGIN_OPTIONS = {
+   ssr?: boolean;
+   // ssr dir, default is ssr
+   ssrDir?: string;
+-  // target copy environment name, default is mf
++  // target environment name. If omitted, defaults are inferred by caller/tool.
+   environment?: string;
+ };
+ 
+@@ -74,6 +74,33 @@ export { RSBUILD_PLUGIN_MODULE_FEDERATION_NAME, PLUGIN_NAME, SSR_DIR };
+ const LIB_FORMAT = ['umd', 'modern-module'];
+ 
+ const DEFAULT_MF_ENVIRONMENT_NAME = 'mf';
++const DEFAULT_WEB_ENVIRONMENT_NAME = 'web';
++const DEFAULT_NODE_ENVIRONMENT_NAME = 'node';
++
++const resolveDefaultEnvironmentName = ({
++  callerName,
++  target,
++}: {
++  callerName: string;
++  target: RSBUILD_PLUGIN_OPTIONS['target'];
++}) => {
++  if (callerName === CALL_NAME_MAP.RSLIB) {
++    return DEFAULT_MF_ENVIRONMENT_NAME;
++  }
++
++  if (callerName === CALL_NAME_MAP.RSPRESS) {
++    if (target === 'node') {
++      return DEFAULT_NODE_ENVIRONMENT_NAME;
++    }
++    return DEFAULT_WEB_ENVIRONMENT_NAME;
++  }
++
++  if (target === 'node') {
++    return DEFAULT_NODE_ENVIRONMENT_NAME;
++  }
++
++  return DEFAULT_WEB_ENVIRONMENT_NAME;
++};
+ 
+ function isStoryBook(rsbuildConfig: RsbuildConfig) {
+   if (
+@@ -121,7 +148,7 @@ export const pluginModuleFederation = (
+       target = 'web',
+       ssr = undefined,
+       ssrDir = SSR_DIR,
+-      environment = DEFAULT_MF_ENVIRONMENT_NAME,
++      environment: configuredEnvironment,
+     } = rsbuildOptions || {};
+     if (ssr) {
+       throw new Error(
+@@ -139,6 +166,12 @@ export const pluginModuleFederation = (
+     const isRslib = callerName === CALL_NAME_MAP.RSLIB;
+     const isRspress = callerName === CALL_NAME_MAP.RSPRESS;
+     const isSSR = target === 'dual';
++    const environment =
++      configuredEnvironment ??
++      resolveDefaultEnvironmentName({
++        callerName,
++        target,
++      });
+ 
+     if (isSSR && !isStoryBook(originalRsbuildConfig)) {
+       if (!isRslib && !isRspress) {
+diff --git a/packages/rsbuild-plugin/src/cli/node-target.spec.ts b/packages/rsbuild-plugin/src/cli/node-target.spec.ts
+index 3c7dfbb07..680faa4f9 100644
+--- a/packages/rsbuild-plugin/src/cli/node-target.spec.ts
++++ b/packages/rsbuild-plugin/src/cli/node-target.spec.ts
+@@ -1,5 +1,6 @@
+ import { describe, expect, it, vi } from 'vitest';
+ import { pluginModuleFederation } from './index';
++import { CALL_NAME_MAP } from '../constant';
+ 
+ import type { moduleFederationPlugin } from '@module-federation/sdk';
+ import type { Rspack } from '@rsbuild/core';
+@@ -85,6 +86,44 @@ describe('pluginModuleFederation node target environment behavior', () => {
+     );
+   });
+ 
++  it('defaults to the rsbuild node environment when target=node and environment is omitted', () => {
++    const plugin = pluginModuleFederation(createMfOptions(), {
++      target: 'node',
++    });
++    const { api, rsbuildConfig } = createMockApi({
++      environments: {
++        web: {},
++        node: {},
++      },
++    });
++
++    plugin.setup(api as any);
++
++    expect(rsbuildConfig.environments.node.tools?.rspack).toBeDefined();
++    expect(rsbuildConfig.environments.web.tools?.rspack).toBeUndefined();
++  });
++
++  it('defaults to the rspress node environment when target=node and environment is omitted', () => {
++    const plugin = pluginModuleFederation(createMfOptions(), {
++      target: 'node',
++    });
++    const { api, rsbuildConfig } = createMockApi(
++      {
++        environments: {
++          web: {},
++          node: {},
++          node_md: {},
++        },
++      },
++      CALL_NAME_MAP.RSPRESS,
++    );
++
++    plugin.setup(api as any);
++
++    expect(rsbuildConfig.environments.node.tools?.rspack).toBeDefined();
++    expect(rsbuildConfig.environments.web.tools?.rspack).toBeUndefined();
++  });
++
+   it('still applies MF to the selected node environment when output is commonjs-like', () => {
+     const plugin = pluginModuleFederation(createMfOptions(), {
+       target: 'node',
+@@ -154,11 +193,14 @@ describe('pluginModuleFederation node target environment behavior', () => {
+     const plugin = pluginModuleFederation(createMfOptions(), {
+       target: 'node',
+     });
+-    const { api, rsbuildConfig } = createMockApi({
+-      environments: {
+-        mf: {},
++    const { api, rsbuildConfig } = createMockApi(
++      {
++        environments: {
++          mf: {},
++        },
+       },
+-    });
++      CALL_NAME_MAP.RSLIB,
++    );
+ 
+     plugin.setup(api as any);
+ 
+-- 
+2.43.0
+
