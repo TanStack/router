@@ -889,6 +889,9 @@ describe('loadRouteChunk', () => {
     // Verify _lazyLoaded was NOT set to true (the import failed)
     expect((fooRoute as any)._lazyLoaded).toBe(false)
 
+    // Verify _componentsLoaded was NOT set to true (lazy options never loaded)
+    expect((fooRoute as any)._componentsLoaded).toBeFalsy()
+
     process.removeListener('unhandledRejection', unhandledRejection)
   })
 
@@ -924,6 +927,62 @@ describe('loadRouteChunk', () => {
     expect((fooRoute as any)._lazyPromise).toBeUndefined()
     // The component from lazy options should be merged
     expect(fooRoute.options.component).toBe(lazyOptions.options.component)
+    // Components should be marked as loaded
+    expect((fooRoute as any)._componentsLoaded).toBe(true)
+  })
+
+  test('should allow retry after lazyFn failure', async () => {
+    const unhandledRejection = vi.fn()
+    process.on('unhandledRejection', unhandledRejection)
+
+    const rootRoute = new BaseRootRoute({})
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+    })
+
+    // First call: lazyFn fails
+    ;(fooRoute as any).lazyFn = () =>
+      Promise.reject(
+        new TypeError('Failed to fetch dynamically imported module'),
+      )
+    ;(fooRoute as any)._lazyLoaded = false
+    ;(fooRoute as any)._lazyPromise = undefined
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.loadRouteChunk(fooRoute as any)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // After failure: everything should be reset for retry
+    expect((fooRoute as any)._lazyLoaded).toBe(false)
+    expect((fooRoute as any)._lazyPromise).toBeUndefined()
+    expect((fooRoute as any)._componentsLoaded).toBeFalsy()
+
+    // Second call: lazyFn succeeds
+    const lazyOptions = {
+      options: {
+        id: 'foo-id',
+        component: () => null,
+      },
+    }
+    ;(fooRoute as any).lazyFn = () => Promise.resolve(lazyOptions)
+
+    await router.loadRouteChunk(fooRoute as any)
+
+    // After retry: everything should be loaded
+    expect((fooRoute as any)._lazyLoaded).toBe(true)
+    expect((fooRoute as any)._componentsLoaded).toBe(true)
+    expect(fooRoute.options.component).toBe(lazyOptions.options.component)
+
+    expect(unhandledRejection).not.toHaveBeenCalled()
+    process.removeListener('unhandledRejection', unhandledRejection)
   })
 })
 
