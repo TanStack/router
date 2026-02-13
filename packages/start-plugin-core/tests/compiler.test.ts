@@ -543,6 +543,24 @@ describe('calling result of createServerOnlyFn/createClientOnlyFn', () => {
     expect(result).not.toBeNull()
     expect(result!.code).toContain('server-only-value')
   })
+
+  test('aliased factory is still detected as a candidate', async () => {
+    // `const createSO = createServerOnlyFn` is an alias, not an invocation.
+    // `createSO(() => ...)` should still be treated as ServerOnlyFn.
+    const compiler = createFullCompiler('server')
+
+    const code = `
+      import { createServerOnlyFn } from '@tanstack/react-start'
+
+      const createSO = createServerOnlyFn
+      const myFn = createSO(() => 'aliased-server-only')
+    `
+
+    const result = await compiler.compile({ code, id: 'alias-test.ts' })
+    expect(result).not.toBeNull()
+    // The factory should be unwrapped on server env
+    expect(result!.code).toContain('aliased-server-only')
+  })
 })
 
 describe('re-export chain resolution', () => {
