@@ -15,7 +15,7 @@
     "@tanstack/solid-start": "^1.159.5",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0",
-    "zod": "^3.24.2"
+    "zod": "^3.25.0 || ^4.0.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",

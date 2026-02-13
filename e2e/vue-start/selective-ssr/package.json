@@ -15,7 +15,7 @@
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
     "vue": "^3.5.25",
-    "zod": "^3.24.2"
+    "zod": "^3.25.0 || ^4.0.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",

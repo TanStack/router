@@ -271,8 +271,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -320,8 +320,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -369,8 +369,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -473,8 +473,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -571,8 +571,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -623,8 +623,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -957,8 +957,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -1058,8 +1058,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -1159,8 +1159,8 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
 
   e2e/react-start/basic-auth:
     dependencies:
@@ -1329,7 +1329,7 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^4.1.12
+        specifier: ^3.25.0 || ^4.0.0
         version: 4.1.12
     devDependencies:
       '@playwright/test':
@@ -1812,8 +1812,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -1876,8 +1876,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -1940,8 +1940,8 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -1995,8 +1995,8 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -2062,8 +2062,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -2193,8 +2193,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -2459,8 +2459,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -2523,8 +2523,8 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -2646,8 +2646,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -2689,8 +2689,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -2729,8 +2729,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -2852,8 +2852,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -2895,8 +2895,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -2938,8 +2938,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -3150,8 +3150,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -3233,8 +3233,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -3285,8 +3285,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -3471,7 +3471,7 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^4.1.12
+        specifier: ^3.25.0 || ^4.0.0
         version: 4.1.12
     devDependencies:
       '@playwright/test':
@@ -3704,8 +3704,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -3759,8 +3759,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -3805,8 +3805,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -3854,8 +3854,8 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -3912,8 +3912,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -3982,8 +3982,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -4034,8 +4034,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -4086,8 +4086,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -4144,8 +4144,8 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -4291,8 +4291,8 @@ importers:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@eslint/js':
         specifier: ^9.36.0
@@ -4355,8 +4355,8 @@ importers:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.8.3)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@eslint/js':
         specifier: ^9.36.0
@@ -4422,8 +4422,8 @@ importers:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.8.3)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -4682,8 +4682,8 @@ importers:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.8.3)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -4936,8 +4936,8 @@ importers:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.8.3)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -5095,8 +5095,8 @@ importers:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -5330,7 +5330,7 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^4.1.12
+        specifier: ^3.25.0 || ^4.0.0
         version: 4.1.12
     devDependencies:
       '@playwright/test':
@@ -5498,8 +5498,8 @@ importers:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -5556,8 +5556,8 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -5605,8 +5605,8 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -5654,8 +5654,8 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -5721,8 +5721,8 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -5794,8 +5794,8 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -5849,8 +5849,8 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -5904,8 +5904,8 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -5965,8 +5965,8 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@playwright/test':
         specifier: ^1.57.0
@@ -6026,8 +6026,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6078,8 +6078,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6164,8 +6164,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6253,8 +6253,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6391,8 +6391,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6538,8 +6538,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6587,8 +6587,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6630,8 +6630,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6719,8 +6719,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6768,8 +6768,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6820,8 +6820,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6875,8 +6875,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -6924,8 +6924,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -7090,8 +7090,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -7130,8 +7130,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -7379,8 +7379,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
@@ -7419,8 +7419,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -7625,8 +7625,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -7742,8 +7742,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -7846,8 +7846,8 @@ importers:
         specifier: 1.0.0-beta.15
         version: 1.0.0-beta.15(typescript@5.8.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
@@ -7889,8 +7889,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/node':
         specifier: 25.0.9
@@ -7935,8 +7935,8 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -8385,7 +8385,7 @@ importers:
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17(vitest@4.0.17))(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -8502,8 +8502,8 @@ importers:
         specifier: ^1.3.3
         version: 1.3.3
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -8713,8 +8713,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/node':
         specifier: 25.0.9
@@ -8756,8 +8756,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/node':
         specifier: 25.0.9
@@ -8854,8 +8854,8 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -8930,8 +8930,8 @@ importers:
         specifier: ^1.3.3
         version: 1.3.3
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -9031,8 +9031,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -9077,8 +9077,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/react':
         specifier: ^19.2.8
@@ -9132,8 +9132,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/express':
         specifier: ^4.17.23
@@ -9199,8 +9199,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/express':
         specifier: ^4.17.23
@@ -9245,8 +9245,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -9288,8 +9288,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -9362,8 +9362,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -9427,8 +9427,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -9547,8 +9547,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -9636,8 +9636,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -9682,8 +9682,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -9722,8 +9722,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -9756,8 +9756,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -9827,8 +9827,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -9864,8 +9864,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -9910,8 +9910,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -9956,8 +9956,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -9996,8 +9996,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -10126,8 +10126,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       esbuild:
         specifier: ^0.25.0
@@ -10157,8 +10157,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tanstack/router-plugin':
         specifier: workspace:*
@@ -10446,8 +10446,8 @@ importers:
         specifier: 1.0.0-beta.15
         version: 1.0.0-beta.15(typescript@5.9.2)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10
@@ -10675,7 +10675,7 @@ importers:
     devDependencies:
       '@netlify/vite-plugin-tanstack-start':
         specifier: ^1.1.4
-        version: 1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.9.2)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tailwindcss/vite':
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -10901,7 +10901,7 @@ importers:
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17(vitest@4.0.17))(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -10948,8 +10948,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/node':
         specifier: 25.0.9
@@ -10991,8 +10991,8 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/node':
         specifier: 25.0.9
@@ -11120,8 +11120,8 @@ importers:
         specifier: 1.9.10
         version: 1.9.10
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/node':
         specifier: 25.0.9
@@ -11203,8 +11203,8 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.18
@@ -11252,8 +11252,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -11289,8 +11289,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -11335,8 +11335,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/express':
         specifier: ^4.17.23
@@ -11415,8 +11415,8 @@ importers:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.8.3)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@eslint/js':
         specifier: ^9.36.0
@@ -11476,8 +11476,8 @@ importers:
         specifier: ^3.5.16
         version: 3.5.25(typescript@5.8.3)
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: ^5.2.3
@@ -11589,8 +11589,8 @@ importers:
         specifier: ^0.2.57
         version: 0.2.57
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
 
   packages/react-router-devtools:
     dependencies:
@@ -11867,8 +11867,8 @@ importers:
         specifier: ^4.19.2
         version: 4.19.2
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@tanstack/react-router':
         specifier: workspace:*
@@ -11928,8 +11928,8 @@ importers:
         specifier: '>=5.92.0'
         version: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/babel__core':
         specifier: ^7.20.5
@@ -12045,8 +12045,8 @@ importers:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       zod:
-        specifier: ^3.23.8
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
 
   packages/solid-router-devtools:
     dependencies:
@@ -12271,8 +12271,8 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       zod:
-        specifier: ^3.24.2
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
     devDependencies:
       '@types/babel__code-frame':
         specifier: ^7.0.6
@@ -12300,7 +12300,7 @@ importers:
         version: link:../start-storage-context
       h3-v2:
         specifier: npm:h3@2.0.1-rc.14
-        version: h3@2.0.1-rc.14(crossws@0.4.4(srvx@0.11.4))
+        version: h3@2.0.1-rc.14(crossws@0.4.4(srvx@0.10.1))
       seroval:
         specifier: ^1.4.2
         version: 1.4.2
@@ -12411,8 +12411,8 @@ importers:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.3)
       zod:
-        specifier: ^3.23.8
-        version: 3.25.57
+        specifier: ^3.25.0 || ^4.0.0
+        version: 4.1.12
 
   packages/vue-router-devtools:
     dependencies:
@@ -27468,13 +27468,13 @@ snapshots:
       uuid: 11.1.0
       write-file-atomic: 5.0.1
 
-  '@netlify/dev@4.6.3(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.55.3)':
+  '@netlify/dev@4.6.3(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.9.2)(rollup@4.55.3)':
     dependencies:
       '@netlify/blobs': 10.1.0
       '@netlify/config': 23.2.0
       '@netlify/dev-utils': 4.3.0
       '@netlify/edge-functions-dev': 1.0.0
-      '@netlify/functions-dev': 1.0.0(encoding@0.1.13)(rollup@4.55.3)
+      '@netlify/functions-dev': 1.0.0(rollup@4.55.3)
       '@netlify/headers': 2.1.0
       '@netlify/images': 1.3.0(@netlify/blobs@10.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.9.2)
       '@netlify/redirects': 3.1.0
@@ -27542,12 +27542,12 @@ snapshots:
     dependencies:
       '@netlify/types': 2.1.0
 
-  '@netlify/functions-dev@1.0.0(encoding@0.1.13)(rollup@4.55.3)':
+  '@netlify/functions-dev@1.0.0(rollup@4.55.3)':
     dependencies:
       '@netlify/blobs': 10.1.0
       '@netlify/dev-utils': 4.3.0
       '@netlify/functions': 5.0.0
-      '@netlify/zip-it-and-ship-it': 14.1.11(encoding@0.1.13)(rollup@4.55.3)
+      '@netlify/zip-it-and-ship-it': 14.1.11(rollup@4.55.3)
       cron-parser: 4.9.0
       decache: 4.6.2
       extract-zip: 2.0.1
@@ -27637,9 +27637,9 @@ snapshots:
 
   '@netlify/types@2.1.0': {}
 
-  '@netlify/vite-plugin-tanstack-start@1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
+  '@netlify/vite-plugin-tanstack-start@1.1.4(@tanstack/solid-start@packages+solid-start)(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.9.2)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
-      '@netlify/vite-plugin': 2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@netlify/vite-plugin': 2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.9.2)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     optionalDependencies:
       '@tanstack/solid-start': link:packages/solid-start
@@ -27667,9 +27667,9 @@ snapshots:
       - supports-color
       - uploadthing
 
-  '@netlify/vite-plugin@2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
+  '@netlify/vite-plugin@2.7.4(babel-plugin-macros@3.1.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.9.2)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
     dependencies:
-      '@netlify/dev': 4.6.3(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(encoding@0.1.13)(ioredis@5.9.2)(rollup@4.55.3)
+      '@netlify/dev': 4.6.3(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.9.2)(rollup@4.55.3)
       '@netlify/dev-utils': 4.3.0
       dedent: 1.7.0(babel-plugin-macros@3.1.0)
       vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -27697,13 +27697,13 @@ snapshots:
       - supports-color
       - uploadthing
 
-  '@netlify/zip-it-and-ship-it@14.1.11(encoding@0.1.13)(rollup@4.55.3)':
+  '@netlify/zip-it-and-ship-it@14.1.11(rollup@4.55.3)':
     dependencies:
       '@babel/parser': 7.28.5
       '@babel/types': 7.28.4
       '@netlify/binary-info': 1.0.0
       '@netlify/serverless-functions-api': 2.7.1
-      '@vercel/nft': 0.29.4(encoding@0.1.13)(rollup@4.55.3)
+      '@vercel/nft': 0.29.4(rollup@4.55.3)
       archiver: 7.0.1
       common-path-prefix: 3.0.0
       copy-file: 11.1.0
@@ -30953,7 +30953,7 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
-  '@vercel/nft@0.29.4(encoding@0.1.13)(rollup@4.55.3)':
+  '@vercel/nft@0.29.4(rollup@4.55.3)':
     dependencies:
       '@mapbox/node-pre-gyp': 2.0.0(encoding@0.1.13)
       '@rollup/pluginutils': 5.1.4(rollup@4.55.3)
@@ -34171,7 +34171,7 @@ snapshots:
     optionalDependencies:
       crossws: 0.4.3(srvx@0.10.1)
 
-  h3@2.0.1-rc.14(crossws@0.4.4(srvx@0.11.4)):
+  h3@2.0.1-rc.14(crossws@0.4.4(srvx@0.10.1)):
     dependencies:
       rou3: 0.7.12
       srvx: 0.11.2
@@ -35535,7 +35535,7 @@ snapshots:
       consola: 3.4.2
       crossws: 0.4.4(srvx@0.11.4)
       db0: 0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3)
-      h3: 2.0.1-rc.14(crossws@0.4.4(srvx@0.11.4))
+      h3: 2.0.1-rc.14(crossws@0.4.4(srvx@0.10.1))
       hookable: 6.0.1
       nf3: 0.3.10
       ofetch: 2.0.0-alpha.3
@@ -38459,7 +38459,7 @@ snapshots:
     optionalDependencies:
       vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
 
-  vitest@3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17(vitest@4.0.17))(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1):
+  vitest@3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
