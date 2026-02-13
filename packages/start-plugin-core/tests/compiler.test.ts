@@ -497,7 +497,7 @@ describe('calling result of createServerOnlyFn/createClientOnlyFn', () => {
 
        export const personServerFn = createServerFn({ method: 'GET' })
         .handler(({ data: name }) => {
-          return { name, randomNumber }
+          return { name }
         })
     `
 
