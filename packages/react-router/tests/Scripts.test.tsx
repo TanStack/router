@@ -221,3 +221,355 @@ describe('ssr HeadContent', () => {
     )
   })
 })
+
+describe('data script rendering', () => {
+  test('data script renders content on server (SSR)', async () => {
+    const jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: 'Test Article',
+    })
+
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          type: 'application/ld+json',
+          children: jsonLd,
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <div data-testid="ssr-root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
+    })
+
+    await router.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+
+    expect(html).toContain('application/ld+json')
+    expect(html).toContain(jsonLd)
+  })
+
+  test('data script preserves content on client', async () => {
+    const jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Test',
+    })
+
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          type: 'application/ld+json',
+          children: jsonLd,
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <div data-testid="data-client-root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    await router.load()
+
+    const { container } = await act(() =>
+      render(<RouterProvider router={router} />),
+    )
+
+    const rootEl = container.querySelector('[data-testid="data-client-root"]')
+    expect(rootEl).not.toBeNull()
+
+    const scriptEl = container.querySelector(
+      'script[type="application/ld+json"]',
+    )
+    expect(scriptEl).not.toBeNull()
+    expect(scriptEl!.innerHTML).toBe(jsonLd)
+  })
+
+  test('executable script still renders empty on client', async () => {
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          children: 'console.log("hello")',
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <div data-testid="exec-root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    await router.load()
+
+    const { container } = await act(() =>
+      render(<RouterProvider router={router} />),
+    )
+
+    const rootEl = container.querySelector('[data-testid="exec-root"]')
+    expect(rootEl).not.toBeNull()
+
+    const scripts = container.querySelectorAll('script:not([type])')
+    const inlineScript = Array.from(scripts).find(
+      (s) => !s.hasAttribute('src'),
+    )
+    expect(inlineScript).not.toBeNull()
+    // Executable scripts should render empty (content applied via useEffect)
+    expect(inlineScript!.innerHTML).toBe('')
+  })
+
+  test('module script still renders empty on client', async () => {
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          type: 'module',
+          children: 'import { foo } from "./foo.js"',
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <div data-testid="module-root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    await router.load()
+
+    const { container } = await act(() =>
+      render(<RouterProvider router={router} />),
+    )
+
+    const rootEl = container.querySelector('[data-testid="module-root"]')
+    expect(rootEl).not.toBeNull()
+
+    const moduleScript = container.querySelector('script[type="module"]')
+    expect(moduleScript).not.toBeNull()
+    // Module scripts should render empty (content applied via useEffect)
+    expect(moduleScript!.innerHTML).toBe('')
+  })
+
+  test('application/json data script preserves content', async () => {
+    const jsonData = JSON.stringify({ config: { theme: 'dark' } })
+
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          type: 'application/json',
+          children: jsonData,
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <div data-testid="json-root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    await router.load()
+
+    const { container } = await act(() =>
+      render(<RouterProvider router={router} />),
+    )
+
+    const rootEl = container.querySelector('[data-testid="json-root"]')
+    expect(rootEl).not.toBeNull()
+
+    const scriptEl = container.querySelector(
+      'script[type="application/json"]',
+    )
+    expect(scriptEl).not.toBeNull()
+    expect(scriptEl!.innerHTML).toBe(jsonData)
+  })
+
+  test('data script does not duplicate into document.head', async () => {
+    const jsonLd = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'Test Org',
+    })
+
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          type: 'application/ld+json',
+          children: jsonLd,
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <div data-testid="dup-root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    await router.load()
+
+    const { container } = await act(() =>
+      render(<RouterProvider router={router} />),
+    )
+
+    const rootEl = container.querySelector('[data-testid="dup-root"]')
+    expect(rootEl).not.toBeNull()
+
+    // Data scripts should NOT be duplicated into document.head by useEffect
+    const headScripts = document.head.querySelectorAll(
+      'script[type="application/ld+json"]',
+    )
+    expect(headScripts.length).toBe(0)
+
+    // Should only exist once in the container
+    const containerScripts = container.querySelectorAll(
+      'script[type="application/ld+json"]',
+    )
+    expect(containerScripts.length).toBe(1)
+    expect(containerScripts[0]!.innerHTML).toBe(jsonLd)
+  })
+
+  test('empty string type is treated as executable, not data script', async () => {
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          type: '',
+          children: 'console.log("empty type")',
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <div data-testid="empty-type-root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    await router.load()
+
+    const { container } = await act(() =>
+      render(<RouterProvider router={router} />),
+    )
+
+    const rootEl = container.querySelector('[data-testid="empty-type-root"]')
+    expect(rootEl).not.toBeNull()
+
+    const scriptEl = container.querySelector('script[type=""]')
+    expect(scriptEl).not.toBeNull()
+    // Empty type = text/javascript per HTML spec, should render empty like executable scripts
+    expect(scriptEl!.innerHTML).toBe('')
+  })
+})
