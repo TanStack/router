@@ -56,6 +56,10 @@ type DirectCallSetup = {
 }
 type JSXSetup = { type: 'jsx'; componentName: string }
 
+function isLookupKind(kind: Kind): kind is LookupKind {
+  return kind in LookupSetup
+}
+
 const LookupSetup: Record<
   LookupKind,
   MethodChainSetup | DirectCallSetup | JSXSetup
@@ -1120,6 +1124,18 @@ export class StartCompiler {
       fileId,
       visited,
     )
+    // For directCall kinds (ServerOnlyFn, ClientOnlyFn), the var binding holds
+    // the RESULT of calling the factory, not the factory itself.
+    // e.g., `const myFn = createServerOnlyFn(() => ...)` — myFn is a regular
+    // function, not a factory. Don't propagate the factory kind to the binding,
+    // otherwise `myFn()` would incorrectly match as a directCall candidate.
+    if (
+      isLookupKind(resolvedKind) &&
+      LookupSetup[resolvedKind].type === 'directCall'
+    ) {
+      binding.resolvedKind = 'None'
+      return 'None'
+    }
     binding.resolvedKind = resolvedKind
     return resolvedKind
   }
