@@ -101,6 +101,19 @@ export const Route = createFileRoute('/todos')({
 })
 ```
 
+You can use it in your components with the `useRouteContext` hook:
+
+```tsx
+import { createFileRoute, useRouteContext } from '@tanstack/react-router';
+
+export const Route = createFileRoute('/todos')({ component: Todos });
+
+function Todos() {
+  const routeContext = Route.useRouteContext();
+  return <div>Todos from {routeContext.user.id}</div>;
+}
+```
+
 You can even inject data fetching and mutation implementations themselves! In fact, this is highly recommended 😜
 
 Let's try this with a simple function to fetch some todos:
