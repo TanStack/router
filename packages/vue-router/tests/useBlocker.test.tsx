@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
 import * as Vue from 'vue'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import {
   Block,
   RouterProvider,

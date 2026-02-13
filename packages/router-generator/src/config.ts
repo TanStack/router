@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
 

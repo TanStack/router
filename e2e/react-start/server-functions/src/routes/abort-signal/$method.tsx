@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 import React from 'react'
-import z from 'zod'
+import z from 'zod/v4'
 
 export const Route = createFileRoute('/abort-signal/$method')({
   params: z.object({

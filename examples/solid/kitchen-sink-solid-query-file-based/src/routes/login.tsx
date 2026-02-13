@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { createFileRoute, useRouter } from '@tanstack/solid-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const Route = createFileRoute('/login')({
   validateSearch: z.object({

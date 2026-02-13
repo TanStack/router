@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import z from 'zod'
+import z from 'zod/v4'
 import { makeQueryOptions } from '~/queryOptions'
 
 export const Route = createFileRoute('/loader-fetchQuery/$type')({

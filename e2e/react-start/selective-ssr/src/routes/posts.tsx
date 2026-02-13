@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
-import z from 'zod'
+import z from 'zod/v4'
 import { ssrSchema } from '~/search'
 
 export const Route = createFileRoute('/posts')({

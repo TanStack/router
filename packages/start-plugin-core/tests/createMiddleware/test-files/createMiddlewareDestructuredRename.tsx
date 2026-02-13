@@ -1,5 +1,5 @@
 import { createMiddleware as middlewareFn } from '@tanstack/react-start'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const withUseServer = middlewareFn({
   id: 'test',

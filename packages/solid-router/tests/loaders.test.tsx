@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import {
   Link,
   Outlet,

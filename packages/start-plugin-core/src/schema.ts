@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
 import type { TanStackStartVitePluginCoreOptions } from './types'
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import React from 'react'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const Route = createFileRoute('/async-validation')({
   component: RouteComponent,

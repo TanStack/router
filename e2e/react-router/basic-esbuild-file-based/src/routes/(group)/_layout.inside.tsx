@@ -1,5 +1,5 @@
 import { createFileRoute, getRouteApi, useSearch } from '@tanstack/react-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { zodValidator } from '@tanstack/zod-adapter'
 
 const routeApi = getRouteApi('/(group)/_layout/inside')

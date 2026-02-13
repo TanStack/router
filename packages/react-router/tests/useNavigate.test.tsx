@@ -9,7 +9,7 @@ import {
   screen,
 } from '@testing-library/react'
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 import { trailingSlashOptions } from '@tanstack/router-core'
 import {

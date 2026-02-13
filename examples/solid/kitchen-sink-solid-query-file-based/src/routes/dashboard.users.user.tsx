@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/solid-query'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { createFileRoute } from '@tanstack/solid-router'
 import { userQueryOptions } from '../utils/queryOptions'
 

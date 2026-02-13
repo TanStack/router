@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/solid-router'
 import { fallback, zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { Suspense } from 'solid-js'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'

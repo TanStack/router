@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
 import { Suspense, createResource } from 'solid-js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const Route = createFileRoute('/transition/count/create-resource')({
   validateSearch: z.object({

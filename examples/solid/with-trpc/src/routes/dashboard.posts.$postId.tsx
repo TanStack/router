@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { Link, createFileRoute } from '@tanstack/solid-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const Route = createFileRoute('/dashboard/posts/$postId')({
   validateSearch: z.object({

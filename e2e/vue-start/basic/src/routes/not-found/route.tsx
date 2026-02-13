@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/vue-router'
-import z from 'zod'
+import z from 'zod/v4'
 
 export const Route = createFileRoute('/not-found')({
   validateSearch: z.object({

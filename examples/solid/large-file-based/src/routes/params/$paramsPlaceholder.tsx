@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { queryOptions } from '@tanstack/solid-query'
 
 const params = z.object({

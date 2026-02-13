@@ -1,5 +1,5 @@
 import { redirect, createFileRoute } from '@tanstack/solid-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const Route = createFileRoute('/search-params/loader-throws-redirect')({
   validateSearch: z.object({

@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { setResponseStatus } from '@tanstack/react-start/server'
 import { useState } from 'react'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { CustomError } from '~/CustomError'
 
 const schema = z.object({ hello: z.string() })

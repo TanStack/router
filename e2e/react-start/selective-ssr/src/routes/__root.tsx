@@ -9,7 +9,7 @@ import {
   createRootRoute,
   useRouterState,
 } from '@tanstack/react-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { ssrSchema } from '~/search'
 import appCss from '~/styles/app.css?url'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'

@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import { setResponseStatus } from '@tanstack/solid-start/server'
 import { createSignal } from 'solid-js'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { CustomError } from '~/CustomError'
 
 const schema = z.object({ hello: z.string() })

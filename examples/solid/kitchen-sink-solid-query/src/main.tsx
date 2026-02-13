@@ -27,7 +27,7 @@ import {
   useQuery,
 } from '@tanstack/solid-query'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import {
   fetchInvoiceById,
   fetchInvoices,

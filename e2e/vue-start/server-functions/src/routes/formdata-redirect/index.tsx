@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/vue-router'
 import { createServerFn, useServerFn } from '@tanstack/vue-start'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const Route = createFileRoute('/formdata-redirect/')({
   component: SubmitPostFormDataFn,
