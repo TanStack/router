@@ -57,7 +57,7 @@ type ShouldBlockFnArgs = {
 
 - Optional
 - Type: `BlockerFn`
-- The function that returns a `boolean` or `Promise<boolean>` indicating whether to allow navigation.
+- The function that returns a `boolean` or `Promise<boolean>` indicating whether the navigation should be blocked (`true` blocks, `false` allows).
 
 ### `options.condition` option (⚠️ deprecated)
 
