@@ -17,6 +17,35 @@ For full-stack applications that use Start, and even for single-page application
 
 To manage the document head, it's required that you render both the `<HeadContent />` and `<Scripts />` components and use the `routeOptions.head` property to manage the head of a route, which returns an object with `title`, `meta`, `links`, `styles`, and `scripts` properties.
 
+## The `head` Property in Routes
+
+You can define a `head` function inside route definitions to dynamically manage document-level metadata.
+
+### Usage
+
+```tsx
+export const Route = createFileRoute('/')({
+  head: () => ({
+    title: 'My Home Page',
+    meta: [
+      { name: 'description', content: 'Welcome to my app!' },
+      { property: 'og:title', content: 'My App' },
+    ],
+    links: [
+      { rel: 'icon', href: '/favicon.ico' },
+    ],
+    styles: [
+      {
+        media: 'all and (max-width: 768px)',
+        children: `body { font-size: 14px; }`,
+      },
+    ],
+    scripts: [
+      { src: 'https://example.com/script.js' },
+    ]
+  }),
+})
+
 ## Managing the Document Head
 
 ```tsx
