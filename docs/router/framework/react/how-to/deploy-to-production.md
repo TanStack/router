@@ -247,6 +247,57 @@ jobs:
 
 ---
 
+## Dokploy Deployment
+
+Choose Railpack in Build Type section and set `RAILPACK_START_CMD="bun run .output/server/index.mjs"` in Environment Settings tab.
+
+Second way is to choose Dockerfile in Build Type then follow these steps:
+
+### 1. Create `Dockerfile`
+
+```dockerfile
+# Use Bun base image
+FROM oven/bun:1.3.2-alpine AS base
+WORKDIR /app
+
+# Install dependencies stage
+FROM base AS deps
+COPY package.json bun.lock ./
+RUN bun install
+
+# Build stage
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Build the application
+RUN bun run build
+
+# Production stage
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Copy built application
+COPY --from=builder /app/.output ./.output
+COPY --from=builder /app/package.json ./package.json
+
+# Expose port
+EXPOSE 3000
+
+# Start the application
+CMD ["bun", "run", ".output/server/index.mjs"]
+```
+
+### 2. Dokploy Project Config
+
+In Dokploy Application, in the General Tab, select the provider for your codebase as usual then in Build Type section choose Dockerfile and set Docker File to `./Dockerfile`
+and Docker Context Path to `.`
+
+---
+
 ## Firebase Hosting
 
 ### 1. Create `firebase.json`
