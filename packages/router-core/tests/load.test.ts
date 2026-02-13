@@ -846,6 +846,87 @@ describe('routeId in context options', () => {
   })
 })
 
+describe('loadRouteChunk', () => {
+  test('should not produce unhandled rejection when lazyFn fails', async () => {
+    const unhandledRejection = vi.fn()
+    process.on('unhandledRejection', unhandledRejection)
+
+    const rootRoute = new BaseRootRoute({})
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+    })
+
+    // Simulate a dynamic import failure (e.g. network error, stale chunk)
+    ;(fooRoute as any).lazyFn = () =>
+      Promise.reject(
+        new TypeError(
+          'Failed to fetch dynamically imported module: /assets/foo.lazy-abc123.js',
+        ),
+      )
+    ;(fooRoute as any)._lazyLoaded = false
+    ;(fooRoute as any)._lazyPromise = undefined
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    // Call loadRouteChunk via the router instance
+    await router.loadRouteChunk(fooRoute as any)
+
+    // Give microtask queue time to flush any unhandled rejections
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(unhandledRejection).not.toHaveBeenCalled()
+
+    // Verify _lazyPromise was cleaned up, allowing retry on next navigation
+    expect((fooRoute as any)._lazyPromise).toBeUndefined()
+
+    // Verify _lazyLoaded was NOT set to true (the import failed)
+    expect((fooRoute as any)._lazyLoaded).toBe(false)
+
+    process.removeListener('unhandledRejection', unhandledRejection)
+  })
+
+  test('should still work normally when lazyFn succeeds', async () => {
+    const rootRoute = new BaseRootRoute({})
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+    })
+
+    const lazyOptions = {
+      options: {
+        id: 'foo-id',
+        component: () => null,
+      },
+    }
+
+    ;(fooRoute as any).lazyFn = () => Promise.resolve(lazyOptions)
+    ;(fooRoute as any)._lazyLoaded = false
+    ;(fooRoute as any)._lazyPromise = undefined
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.loadRouteChunk(fooRoute as any)
+
+    expect((fooRoute as any)._lazyLoaded).toBe(true)
+    expect((fooRoute as any)._lazyPromise).toBeUndefined()
+    // The component from lazy options should be merged
+    expect(fooRoute.options.component).toBe(lazyOptions.options.component)
+  })
+})
+
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
