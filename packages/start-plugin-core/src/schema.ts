@@ -95,14 +95,15 @@ const pagePrerenderOptionsSchema = z.object({
   retryCount: z.number().optional(),
   retryDelay: z.number().optional(),
   onSuccess: z
-    .function()
-    .args(
-      z.object({
-        page: pageBaseSchema,
-        html: z.string(),
-      }),
-    )
-    .returns(z.any())
+    .function({
+      input: z.tuple([
+        z.object({
+          page: pageBaseSchema,
+          html: z.string(),
+        })
+      ]),
+      output: z.any(),
+    })
     .optional(),
   headers: z.record(z.string(), z.string()).optional(),
 })
@@ -140,16 +141,16 @@ const tanstackStartOptionsSchema = z
         entry: z.string().optional(),
         basepath: z.string().optional(),
       })
-      .and(tsrConfig.optional().default({}))
+      .and(tsrConfig.optional().prefault({}))
       .optional()
-      .default({}),
+      .prefault({}),
     client: z
       .object({
         entry: z.string().optional(),
         base: z.string().optional().default('/_build'),
       })
       .optional()
-      .default({}),
+      .prefault({}),
     server: z
       .object({
         entry: z.string().optional(),
@@ -158,26 +159,27 @@ const tanstackStartOptionsSchema = z
             staticNodeEnv: z.boolean().optional().default(true),
           })
           .optional()
-          .default({}),
+          .prefault({}),
       })
       .optional()
-      .default({}),
+      .prefault({}),
     serverFns: z
       .object({
         base: z.string().optional().default('/_serverFn'),
         generateFunctionId: z
-          .function()
-          .args(
-            z.object({
+          .function({
+            input: z.tuple([
+              z.object({
               filename: z.string(),
               functionName: z.string(),
-            }),
-          )
-          .returns(z.string().optional())
+              })
+            ]),
+            output: z.string().optional(),
+          })
           .optional(),
       })
       .optional()
-      .default({}),
+      .prefault({}),
     pages: z.array(pageSchema).optional().default([]),
     sitemap: z
       .object({
@@ -190,7 +192,7 @@ const tanstackStartOptionsSchema = z
       .object({
         enabled: z.boolean().optional(),
         concurrency: z.number().optional(),
-        filter: z.function().args(pageSchema).returns(z.any()).optional(),
+        filter: z.function({ input: z.tuple([pageSchema]), output: z.any() }).optional(),
         failOnError: z.boolean().optional(),
         autoStaticPathsDiscovery: z.boolean().optional(),
         maxRedirects: z.number().min(0).optional(),
@@ -203,7 +205,7 @@ const tanstackStartOptionsSchema = z
       .optional(),
   })
   .optional()
-  .default({})
+  .prefault({})
 
 export type Page = z.infer<typeof pageSchema>
 

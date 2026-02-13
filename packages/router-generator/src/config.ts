@@ -55,7 +55,7 @@ export const configSchema = baseConfigSchema.extend({
   routeTreeFileFooter: z
     .union([
       z.array(z.string()).optional().default([]),
-      z.function().returns(z.array(z.string())),
+      z.function({ output: z.array(z.string()) }),
     ])
     .optional(),
   autoCodeSplitting: z.boolean().optional(),
