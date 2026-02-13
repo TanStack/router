@@ -531,6 +531,7 @@ export function createStartHandler<TRegister = Register>(
         )
         const ctx = await executeMiddleware([...middlewares, serverFnHandler], {
           request,
+          pathname: url.pathname,
           context: createNullProtoObject(requestOpts?.context),
         })
 
@@ -625,7 +626,7 @@ export function createStartHandler<TRegister = Register>(
       )
       const ctx = await executeMiddleware(
         [...middlewares, requestHandlerMiddleware],
-        { request, context: createNullProtoObject(requestOpts?.context) },
+        { request, pathname: url.pathname, context: createNullProtoObject(requestOpts?.context) },
       )
 
       return handleRedirectResponse(ctx.response, request, getRouter)
