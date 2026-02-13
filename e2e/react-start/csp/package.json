@@ -8,7 +8,9 @@
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e:strictCsp": "rm -rf port*.txt; VITE_CSP=strict playwright test --project=chromium",
+    "test:e2e:nonceOnlyCsp": "rm -rf port*.txt; VITE_CSP= playwright test --project=chromium",
+    "test:e2e": "pnpm run test:e2e:strictCsp && pnpm run test:e2e:nonceOnlyCsp"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

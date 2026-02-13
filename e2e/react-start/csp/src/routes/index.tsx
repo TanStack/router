@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -20,6 +20,11 @@ function Home() {
       <button data-testid="counter-btn" onClick={() => setCount((c) => c + 1)}>
         Count: <span data-testid="counter-value">{count}</span>
       </button>
+      <p>
+        <Link to="/other" data-testid="other-link">
+          Test Navigation
+        </Link>
+      </p>
     </div>
   )
 }

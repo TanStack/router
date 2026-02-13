@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import { trustedTanStackPolicy } from './utils'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 interface ScriptAttrs {
@@ -50,6 +51,8 @@ function Script({
 }) {
   const router = useRouter()
 
+  const hasContent = children != null
+
   React.useEffect(() => {
     if (attrs?.src) {
       const normSrc = (() => {
@@ -70,16 +73,24 @@ function Script({
 
       const script = document.createElement('script')
 
+      if (children) {
+        script.textContent = children
+      }
+
       for (const [key, value] of Object.entries(attrs)) {
         if (
           key !== 'suppressHydrationWarning' &&
           value !== undefined &&
           value !== false
         ) {
-          script.setAttribute(
-            key,
-            typeof value === 'boolean' ? '' : String(value),
-          )
+          if (key === 'src') {
+            script.src = value as string
+          } else {
+            script.setAttribute(
+              key,
+              typeof value === 'boolean' ? '' : String(value),
+            )
+          }
         }
       }
 
@@ -92,7 +103,7 @@ function Script({
       }
     }
 
-    if (typeof children === 'string') {
+    if (hasContent) {
       const typeAttr =
         typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
       const nonceAttr =
@@ -124,10 +135,14 @@ function Script({
             value !== undefined &&
             value !== false
           ) {
-            script.setAttribute(
-              key,
-              typeof value === 'boolean' ? '' : String(value),
-            )
+            if (key === 'src') {
+              script.src = value as string
+            } else {
+              script.setAttribute(
+                key,
+                typeof value === 'boolean' ? '' : String(value),
+              )
+            }
           }
         }
       }
@@ -142,15 +157,17 @@ function Script({
     }
 
     return undefined
-  }, [attrs, children])
+  }, [attrs, children, hasContent])
 
   if (!(isServer ?? router.isServer)) {
-    const { src, ...rest } = attrs || {}
+    const { src: _src, ...rest } = attrs || {}
     // render an empty script on the client just to avoid hydration errors
     return (
       <script
         suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: '' }}
+        dangerouslySetInnerHTML={{
+          __html: trustedTanStackPolicy.createHTML(''),
+        }}
         {...rest}
       ></script>
     )
@@ -160,11 +177,13 @@ function Script({
     return <script {...attrs} suppressHydrationWarning />
   }
 
-  if (typeof children === 'string') {
+  if (hasContent) {
     return (
       <script
         {...attrs}
-        dangerouslySetInnerHTML={{ __html: children }}
+        dangerouslySetInnerHTML={{
+          __html: children,
+        }}
         suppressHydrationWarning
       />
     )
