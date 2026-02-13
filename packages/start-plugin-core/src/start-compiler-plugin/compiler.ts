@@ -1124,14 +1124,17 @@ export class StartCompiler {
       fileId,
       visited,
     )
-    // For directCall kinds (ServerOnlyFn, ClientOnlyFn), the var binding holds
-    // the RESULT of calling the factory, not the factory itself.
-    // e.g., `const myFn = createServerOnlyFn(() => ...)` — myFn is a regular
-    // function, not a factory. Don't propagate the factory kind to the binding,
-    // otherwise `myFn()` would incorrectly match as a directCall candidate.
+    // When a var binding's init is a call to a directCall factory
+    // (e.g., `const myFn = createServerOnlyFn(() => ...)`), the binding holds
+    // the RESULT of the factory, not the factory itself. Clear the kind so
+    // `myFn()` isn't incorrectly matched as a directCall candidate.
+    // We only clear when the init is a CallExpression — an alias like
+    // `const createSO = createServerOnlyFn` should still propagate the kind.
     if (
       isLookupKind(resolvedKind) &&
-      LookupSetup[resolvedKind].type === 'directCall'
+      LookupSetup[resolvedKind].type === 'directCall' &&
+      binding.init &&
+      t.isCallExpression(binding.init)
     ) {
       binding.resolvedKind = 'None'
       return 'None'
