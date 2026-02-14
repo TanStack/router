@@ -203,6 +203,21 @@ export const Route = createFileRoute('/')({
     expect(result.size).toBe(0)
   })
 
+  it('returns empty when no local bindings exist (only imports + Route)', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component: () => <div>hello</div>,
+  errorComponent: () => <div>error</div>,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    expect(result.size).toBe(0)
+  })
+
   it('does not fast-path when there is a non-split and a split group', () => {
     const code = `
 import { createFileRoute } from '@tanstack/react-router'

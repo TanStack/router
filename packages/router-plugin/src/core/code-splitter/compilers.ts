@@ -242,6 +242,23 @@ export function computeSharedBindings(opts: {
 }): Set<string> {
   const ast = parseAst(opts)
 
+  // Early bailout: collect all module-level locally-declared binding names.
+  // This is a cheap loop over program.body (no traversal). If the file has
+  // no local bindings (aside from `Route`), nothing can be shared — skip
+  // the expensive babel.traverse entirely.
+  const localModuleLevelBindings = new Set<string>()
+  for (const node of ast.program.body) {
+    collectLocalBindingsFromStatement(node, localModuleLevelBindings)
+  }
+
+  // File-based routes always export a route config binding (usually `Route`).
+  // This must never be extracted into the shared module.
+  localModuleLevelBindings.delete('Route')
+
+  if (localModuleLevelBindings.size === 0) {
+    return new Set()
+  }
+
   function findIndexForSplitNode(str: string) {
     return opts.codeSplitGroupings.findIndex((group) =>
       group.includes(str as any),
@@ -288,20 +305,6 @@ export function computeSharedBindings(opts: {
   }
 
   if (!hasNonSplit && splitGroupsPresent.size < 2) return new Set()
-
-  // Collect all module-level locally-declared binding names
-  const localModuleLevelBindings = new Set<string>()
-  for (const node of ast.program.body) {
-    collectLocalBindingsFromStatement(node, localModuleLevelBindings)
-  }
-
-  // File-based routes always export a route config binding (usually `Route`).
-  // This must never be extracted into the shared module.
-  localModuleLevelBindings.delete('Route')
-
-  if (localModuleLevelBindings.size === 0) {
-    return new Set()
-  }
 
   // Build dependency graph up front — needed for transitive expansion per-property.
   // This graph excludes `Route` (deleted above) so group attribution works correctly.
