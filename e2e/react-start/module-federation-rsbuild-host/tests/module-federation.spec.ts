@@ -23,6 +23,7 @@ type ManifestSharedEntry = {
   shareScope?: string
   assets?: {
     js?: SharedAssetGroup
+    css?: SharedAssetGroup
   }
 }
 
@@ -34,6 +35,7 @@ type ManifestExposeEntry = {
   requires?: Array<unknown>
   assets?: {
     js?: SharedAssetGroup
+    css?: SharedAssetGroup
   }
 }
 
@@ -44,6 +46,8 @@ type ManifestRemoteEntryMetadata = {
 }
 
 type ManifestTypesMetadata = {
+  path?: string
+  name?: string
   zip?: string
   api?: string
 }
@@ -360,6 +364,8 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
     expect(stats.metaData?.publicPath).toBe(manifest.metaData?.publicPath)
     expect(stats.metaData?.types?.zip).toBe(manifest.metaData?.types?.zip)
     expect(stats.metaData?.types?.api).toBe(manifest.metaData?.types?.api)
+    expect(stats.metaData?.types?.path).toBe(manifest.metaData?.types?.path)
+    expect(stats.metaData?.types?.name).toBe(manifest.metaData?.types?.name)
     expect(stats.metaData?.buildInfo?.buildVersion).toBe(
       manifest.metaData?.buildInfo?.buildVersion,
     )
@@ -405,6 +411,12 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
       expect(
         sortAssetPaths(statsShared?.assets?.js?.async ?? []),
       ).toEqual(sortAssetPaths(manifestShared?.assets?.js?.async ?? []))
+      expect(
+        sortAssetPaths(statsShared?.assets?.css?.sync ?? []),
+      ).toEqual(sortAssetPaths(manifestShared?.assets?.css?.sync ?? []))
+      expect(
+        sortAssetPaths(statsShared?.assets?.css?.async ?? []),
+      ).toEqual(sortAssetPaths(manifestShared?.assets?.css?.async ?? []))
     }
 
     const manifestExposesByName = getExposesByName(manifest)
@@ -423,6 +435,12 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
       expect(
         sortAssetPaths(statsExpose?.assets?.js?.async ?? []),
       ).toEqual(sortAssetPaths(manifestExpose?.assets?.js?.async ?? []))
+      expect(
+        sortAssetPaths(statsExpose?.assets?.css?.sync ?? []),
+      ).toEqual(sortAssetPaths(manifestExpose?.assets?.css?.sync ?? []))
+      expect(
+        sortAssetPaths(statsExpose?.assets?.css?.async ?? []),
+      ).toEqual(sortAssetPaths(manifestExpose?.assets?.css?.async ?? []))
     }
   }
 
