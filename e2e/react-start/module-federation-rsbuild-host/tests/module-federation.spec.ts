@@ -16,6 +16,9 @@ type ManifestSharedEntry = {
   version?: string
   requiredVersion?: string
   fallback?: string
+  import?: boolean
+  eager?: boolean
+  shareScope?: string
   assets?: {
     js?: SharedAssetGroup
   }
@@ -25,6 +28,8 @@ type ManifestExposeEntry = {
   id?: string
   name?: string
   path?: string
+  file?: string
+  requires?: Array<unknown>
   assets?: {
     js?: SharedAssetGroup
   }
@@ -239,6 +244,33 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     const body = await response.text()
     expect(body.startsWith('{')).toBeTruthy()
   }
+})
+
+test('keeps node shared ownership contract in federation stats', async ({ page }) => {
+  const ssrStats = await fetchManifest(page, ['/ssr/mf-stats.json'])
+  const browserStats = await fetchManifest(page, ['/dist/mf-stats.json'])
+
+  const ssrSharedByName = getSharedByName(ssrStats)
+  const browserSharedByName = getSharedByName(browserStats)
+
+  const ssrReact = ssrSharedByName.get('react')
+  const ssrReactDom = ssrSharedByName.get('react-dom')
+  const browserReact = browserSharedByName.get('react')
+  const browserReactDom = browserSharedByName.get('react-dom')
+
+  expect(ssrReact?.import).toBe(false)
+  expect(ssrReactDom?.import).toBe(false)
+  expect(ssrReact?.shareScope).toBe('default')
+  expect(ssrReactDom?.shareScope).toBe('default')
+  expect(ssrReact?.eager).toBe(false)
+  expect(ssrReactDom?.eager).toBe(false)
+
+  expect(browserReact?.import).toBeUndefined()
+  expect(browserReactDom?.import).toBeUndefined()
+  expect(browserReact?.shareScope).toBe('default')
+  expect(browserReactDom?.shareScope).toBe('default')
+  expect(browserReact?.eager).toBe(false)
+  expect(browserReactDom?.eager).toBe(false)
 })
 
 test('serves browser federated types zip over HTTP', async ({ page }) => {
