@@ -9,9 +9,11 @@ const HOST_MODE = process.env.HOST_MODE || 'ssr'
 
 type SharedAssetGroup = {
   sync?: Array<string>
+  async?: Array<string>
 }
 
 type ManifestSharedEntry = {
+  id?: string
   name?: string
   version?: string
   requiredVersion?: string
@@ -110,6 +112,22 @@ function getSortedEntryNames<T extends { name?: string }>(entries: Array<T>) {
     .map((entry) => entry.name)
     .filter((name): name is string => Boolean(name))
     .sort()
+}
+
+function sortAssetPaths(assetPaths: Array<string>) {
+  return [...assetPaths].sort()
+}
+
+function normalizeShareScope(shareScope?: string) {
+  return shareScope ?? 'default'
+}
+
+function normalizeEager(eager?: boolean) {
+  return eager ?? false
+}
+
+function normalizeImport(importFlag?: boolean) {
+  return importFlag ?? false
 }
 
 function assertRelativeJsAssetPaths(assetPaths: Array<string>) {
@@ -361,6 +379,51 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
     expect(stats.remotes ?? []).toEqual([])
     expect((stats.shared ?? []).length).toBe(2)
     expect((stats.exposes ?? []).length).toBe(3)
+
+    const manifestSharedByName = getSharedByName(manifest)
+    const statsSharedByName = getSharedByName(stats)
+    for (const sharedName of getSortedEntryNames(manifest.shared ?? [])) {
+      const manifestShared = manifestSharedByName.get(sharedName)
+      const statsShared = statsSharedByName.get(sharedName)
+
+      expect(statsShared?.id).toBe(manifestShared?.id)
+      expect(statsShared?.version).toBe(manifestShared?.version)
+      expect(statsShared?.requiredVersion).toBe(manifestShared?.requiredVersion)
+      expect(statsShared?.fallback).toBe(manifestShared?.fallback)
+      expect(normalizeShareScope(statsShared?.shareScope)).toBe(
+        normalizeShareScope(manifestShared?.shareScope),
+      )
+      expect(normalizeImport(statsShared?.import)).toBe(
+        normalizeImport(manifestShared?.import),
+      )
+      expect(normalizeEager(statsShared?.eager)).toBe(
+        normalizeEager(manifestShared?.eager),
+      )
+      expect(
+        sortAssetPaths(statsShared?.assets?.js?.sync ?? []),
+      ).toEqual(sortAssetPaths(manifestShared?.assets?.js?.sync ?? []))
+      expect(
+        sortAssetPaths(statsShared?.assets?.js?.async ?? []),
+      ).toEqual(sortAssetPaths(manifestShared?.assets?.js?.async ?? []))
+    }
+
+    const manifestExposesByName = getExposesByName(manifest)
+    const statsExposesByName = getExposesByName(stats)
+    for (const exposeName of getSortedEntryNames(manifest.exposes ?? [])) {
+      const manifestExpose = manifestExposesByName.get(exposeName)
+      const statsExpose = statsExposesByName.get(exposeName)
+
+      expect(statsExpose?.id).toBe(manifestExpose?.id)
+      expect(statsExpose?.path).toBe(manifestExpose?.path)
+      expect(statsExpose?.file).toBeDefined()
+      expect(statsExpose?.requires ?? []).toEqual(manifestExpose?.requires ?? [])
+      expect(
+        sortAssetPaths(statsExpose?.assets?.js?.sync ?? []),
+      ).toEqual(sortAssetPaths(manifestExpose?.assets?.js?.sync ?? []))
+      expect(
+        sortAssetPaths(statsExpose?.assets?.js?.async ?? []),
+      ).toEqual(sortAssetPaths(manifestExpose?.assets?.js?.async ?? []))
+    }
   }
 
   for (const stats of [browserStats, ssrStats]) {
