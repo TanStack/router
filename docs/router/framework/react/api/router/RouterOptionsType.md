@@ -150,7 +150,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Optional
 - Defaults to `DEFAULT_PROTOCOL_ALLOWLIST` which includes:
   - Web navigation: `http:`, `https:`
-  - Common browser-safe actions: `mailto:`, `tel:`, `sms:`
+  - Common browser-safe actions: `mailto:`, `tel:`
 - An array of URL protocols that are allowed in links, redirects, and navigation. Absolute URLs with protocols not in this list are rejected to prevent security vulnerabilities like XSS attacks.
 - The router creates a `Set` from this array internally for efficient lookup.
 
