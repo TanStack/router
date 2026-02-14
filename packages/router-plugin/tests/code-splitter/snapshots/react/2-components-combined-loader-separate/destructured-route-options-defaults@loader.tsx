@@ -1,18 +1,2 @@
-function defaultLoader() {
-  return {
-    message: 'default'
-  };
-}
-const createBits = () => ({
-  component: ActualComponent,
-  loader: () => ({
-    message: 'hello'
-  })
-});
-const {
-  loader = defaultLoader
-} = createBits();
-function ActualComponent() {
-  return <div>About</div>;
-}
+import { loader } from "destructured-route-options-defaults.tsx?tsr-shared=1";
 export { loader };

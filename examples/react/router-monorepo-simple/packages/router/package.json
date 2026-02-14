@@ -10,7 +10,7 @@
   "dependencies": {
     "@tanstack/history": "^1.154.14",
     "@tanstack/react-router": "^1.159.10",
-    "@tanstack/router-plugin": "^1.159.11",
+    "@tanstack/router-plugin": "^1.159.12",
     "redaxios": "^0.5.1",
     "zod": "^3.24.2",
     "react": "^19.0.0",
