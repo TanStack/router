@@ -288,11 +288,12 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     expectedTypesZip,
     expectedTypesApi,
     expectedPublicPath,
+    expectedSharedRequiredVersion,
   ] of [
-    ['/dist/mf-manifest.json', 'global', '@mf-types.zip', '@mf-types.d.ts', `${REMOTE_ORIGIN}/`],
-    ['/dist/mf-stats.json', 'global', '@mf-types.zip', '@mf-types.d.ts', `${REMOTE_ORIGIN}/`],
-    ['/ssr/mf-manifest.json', 'commonjs-module', '', '', `${REMOTE_ORIGIN}/ssr/`],
-    ['/ssr/mf-stats.json', 'commonjs-module', '', '', `${REMOTE_ORIGIN}/ssr/`],
+    ['/dist/mf-manifest.json', 'global', '@mf-types.zip', '@mf-types.d.ts', `${REMOTE_ORIGIN}/`, '^19.2.3'],
+    ['/dist/mf-stats.json', 'global', '@mf-types.zip', '@mf-types.d.ts', `${REMOTE_ORIGIN}/`, '^19.2.3'],
+    ['/ssr/mf-manifest.json', 'commonjs-module', '', '', `${REMOTE_ORIGIN}/ssr/`, '^*'],
+    ['/ssr/mf-stats.json', 'commonjs-module', '', '', `${REMOTE_ORIGIN}/ssr/`, '^*'],
   ] as const) {
     const response = await page.request.get(`${REMOTE_ORIGIN}${path}`)
     expect(response.ok()).toBeTruthy()
@@ -322,6 +323,10 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     const reactDom = sharedByName.get('react-dom')
     expect(react).toBeDefined()
     expect(reactDom).toBeDefined()
+    expect(react?.requiredVersion).toBe(expectedSharedRequiredVersion)
+    expect(reactDom?.requiredVersion).toBe(expectedSharedRequiredVersion)
+    expect(react?.fallback).toBe('')
+    expect(reactDom?.fallback).toBe('')
     if (path.startsWith('/ssr/')) {
       expect(react?.version).toBe('*')
       expect(reactDom?.version).toBe('*')
@@ -329,6 +334,12 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
       expect(react?.version).not.toBe('*')
       expect(reactDom?.version).not.toBe('*')
     }
+
+    const exposesByName = getExposesByName(parsed)
+    expect(exposesByName.size).toBe(3)
+    expect(exposesByName.get('message')).toBeDefined()
+    expect(exposesByName.get('routes')).toBeDefined()
+    expect(exposesByName.get('server-data')).toBeDefined()
   }
 })
 
