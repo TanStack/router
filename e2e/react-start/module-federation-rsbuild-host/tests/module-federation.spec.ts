@@ -282,6 +282,12 @@ test('serves remote entries as javascript over HTTP', async ({ page }) => {
 })
 
 test('serves federation manifest and stats endpoints as JSON', async ({ page }) => {
+  const expectedExposePaths = {
+    message: './message',
+    routes: './routes',
+    'server-data': './server-data',
+  } as const
+
   for (const [
     path,
     expectedRemoteType,
@@ -337,9 +343,12 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
 
     const exposesByName = getExposesByName(parsed)
     expect(exposesByName.size).toBe(3)
-    expect(exposesByName.get('message')).toBeDefined()
-    expect(exposesByName.get('routes')).toBeDefined()
-    expect(exposesByName.get('server-data')).toBeDefined()
+    for (const [exposeName, exposePath] of Object.entries(expectedExposePaths)) {
+      const expose = exposesByName.get(exposeName)
+      expect(expose).toBeDefined()
+      expect(expose?.id).toBe(`mf_remote:${exposeName}`)
+      expect(expose?.path).toBe(exposePath)
+    }
   }
 })
 
