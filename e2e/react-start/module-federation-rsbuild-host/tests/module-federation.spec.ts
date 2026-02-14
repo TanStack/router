@@ -306,13 +306,15 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     expectedRemoteType,
     expectedTypesZip,
     expectedTypesApi,
+    expectedTypesPath,
+    expectedTypesName,
     expectedPublicPath,
     expectedSharedRequiredVersion,
   ] of [
-    ['/dist/mf-manifest.json', 'global', '@mf-types.zip', '@mf-types.d.ts', `${REMOTE_ORIGIN}/`, '^19.2.3'],
-    ['/dist/mf-stats.json', 'global', '@mf-types.zip', '@mf-types.d.ts', `${REMOTE_ORIGIN}/`, '^19.2.3'],
-    ['/ssr/mf-manifest.json', 'commonjs-module', '', '', `${REMOTE_ORIGIN}/ssr/`, '^*'],
-    ['/ssr/mf-stats.json', 'commonjs-module', '', '', `${REMOTE_ORIGIN}/ssr/`, '^*'],
+    ['/dist/mf-manifest.json', 'global', '@mf-types.zip', '@mf-types.d.ts', '', '', `${REMOTE_ORIGIN}/`, '^19.2.3'],
+    ['/dist/mf-stats.json', 'global', '@mf-types.zip', '@mf-types.d.ts', '', '', `${REMOTE_ORIGIN}/`, '^19.2.3'],
+    ['/ssr/mf-manifest.json', 'commonjs-module', '', '', '', '', `${REMOTE_ORIGIN}/ssr/`, '^*'],
+    ['/ssr/mf-stats.json', 'commonjs-module', '', '', '', '', `${REMOTE_ORIGIN}/ssr/`, '^*'],
   ] as const) {
     const response = await page.request.get(`${REMOTE_ORIGIN}${path}`)
     expect(response.ok()).toBeTruthy()
@@ -337,6 +339,8 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     expect(parsed.metaData?.remoteEntry?.path).toBe('')
     expect(parsed.metaData?.types?.zip).toBe(expectedTypesZip)
     expect(parsed.metaData?.types?.api).toBe(expectedTypesApi)
+    expect(parsed.metaData?.types?.path).toBe(expectedTypesPath)
+    expect(parsed.metaData?.types?.name).toBe(expectedTypesName)
     expect(parsed.metaData?.pluginVersion).toBeDefined()
     expect(isVersionLike(parsed.metaData?.pluginVersion)).toBeTruthy()
     expect(parsed.metaData?.buildInfo?.buildVersion).toBe('local')

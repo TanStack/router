@@ -68,6 +68,7 @@ Federation stats contract is also verified:
 - JSON endpoint checks assert path-specific metadata values:
   - `/dist/*` endpoints return `remoteEntry.type: 'global'`, browser `types` metadata, and root publicPath.
   - `/ssr/*` endpoints return `remoteEntry.type: 'commonjs-module'`, empty SSR `types` metadata, and `/ssr/` publicPath.
+- Endpoint `types.path` and `types.name` metadata are expected to stay empty strings (`''`) across both browser and SSR JSON payloads.
 - Endpoint payloads also keep consistent plugin/build metadata across all JSON endpoints (`pluginVersion`, `buildVersion`, `buildName`).
 - `pluginVersion` values are also expected to be SemVer-like strings on all JSON endpoints.
 - JSON endpoint payloads also enforce mode-correct shared version semantics (`react`/`react-dom` wildcard only on SSR endpoints).

@@ -48,6 +48,7 @@ For the remote web target (browser manifest), expected contract is:
 - Endpoint payloads should keep identity metadata stable (`metaData.name: mf_remote`, `metaData.type: app`, `buildInfo.buildVersion: local`).
 - Endpoint payloads should keep global metadata invariants (`globalName: mf_remote`, `prefetchInterface: false`, `remoteEntry.path: ''`).
 - `/dist/*` and `/ssr/*` JSON endpoints should each report their expected remoteEntry type/types metadata/publicPath values.
+- `types.path` and `types.name` should remain empty strings (`''`) across browser and SSR endpoint payloads.
 - Build/plugin metadata fields are expected to remain consistent across all federation JSON endpoints.
 - `pluginVersion` values should also remain SemVer-like across all federation JSON endpoints.
 - Shared version metadata should stay mode-correct across endpoints (browser concrete versions, SSR wildcard versions).
