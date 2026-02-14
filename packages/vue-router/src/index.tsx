@@ -246,7 +246,7 @@ export {
   redirect,
   isRedirect,
   createRouterConfig,
-  DEFAULT_PROTOCOL_BLOCKLIST,
+  DEFAULT_PROTOCOL_ALLOWLIST,
 } from '@tanstack/router-core'
 
 export {

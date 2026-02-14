@@ -118,7 +118,7 @@ export function useLinkProps<
     ) {
       try {
         new URL(to)
-        if (isDangerousProtocol(to, router.protocolBlocklist)) {
+        if (isDangerousProtocol(to, router.protocolAllowlist)) {
           if (process.env.NODE_ENV !== 'production') {
             console.warn(`Blocked Link with dangerous protocol: ${to}`)
           }
@@ -170,7 +170,7 @@ export function useLinkProps<
 
     const externalLink = (() => {
       if (hrefOption?.external) {
-        if (isDangerousProtocol(hrefOption.href, router.protocolBlocklist)) {
+        if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
           if (process.env.NODE_ENV !== 'production') {
             console.warn(
               `Blocked Link with dangerous protocol: ${hrefOption.href}`,
@@ -187,7 +187,7 @@ export function useLinkProps<
       if (typeof to === 'string' && to.indexOf(':') > -1) {
         try {
           new URL(to)
-          if (isDangerousProtocol(to, router.protocolBlocklist)) {
+          if (isDangerousProtocol(to, router.protocolAllowlist)) {
             if (process.env.NODE_ENV !== 'production') {
               console.warn(`Blocked Link with dangerous protocol: ${to}`)
             }
@@ -438,7 +438,7 @@ export function useLinkProps<
   const externalLink = React.useMemo(() => {
     if (hrefOption?.external) {
       // Block dangerous protocols for external links
-      if (isDangerousProtocol(hrefOption.href, router.protocolBlocklist)) {
+      if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(
             `Blocked Link with dangerous protocol: ${hrefOption.href}`,
@@ -454,7 +454,7 @@ export function useLinkProps<
     try {
       new URL(to as any)
       // Block dangerous protocols like javascript:, blob:, data:
-      if (isDangerousProtocol(to, router.protocolBlocklist)) {
+      if (isDangerousProtocol(to, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
@@ -463,7 +463,7 @@ export function useLinkProps<
       return to
     } catch {}
     return undefined
-  }, [to, hrefOption, router.protocolBlocklist])
+  }, [to, hrefOption, router.protocolAllowlist])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isActive = useRouterState({

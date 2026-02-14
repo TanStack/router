@@ -536,41 +536,22 @@ function decodeSegment(segment: string): string {
 }
 
 /**
- * Default list of URL protocols to block in links, redirects, and navigation.
- * These protocols can be used to execute arbitrary code, access local files,
- * or interact with browser internals in ways that could be exploited.
+ * Default list of URL protocols to allow in links, redirects, and navigation.
+ * Any absolute URL protocol not in this list is treated as dangerous by default.
  */
-export const DEFAULT_PROTOCOL_BLOCKLIST = [
-  // Script execution protocols - can run arbitrary code
-  'javascript:', // Executes JavaScript in the current context (XSS vector)
-  'vbscript:', // Executes VBScript in IE/legacy browsers
+export const DEFAULT_PROTOCOL_ALLOWLIST = [
+  // Standard web navigation
+  'http:',
+  'https:',
 
-  // Local file access - can read sensitive files from the user's system
-  'file:', // Access to local filesystem (e.g., file:///etc/passwd)
-
-  // Data embedding protocols - can be used for XSS or data exfiltration
-  'blob:', // References blob URLs, can bypass CSP in some cases
-  'data:', // Inline data URLs, commonly used for XSS attacks
-
-  // Browser internal protocols - can access browser configuration/internals
-  'about:', // Browser internals (about:blank is safe, but about:config in Firefox could be targeted)
-
-  // Platform-specific protocols - can access app resources or extensions
-  'ms-appx:', // Windows UWP app local resources
-  'ms-appx-web:', // Windows UWP web app resources
-  'ms-browser-extension:', // Windows browser extension protocol
-  'chrome-extension:', // Chrome extension protocol (could trigger extension actions)
-  'moz-extension:', // Firefox extension protocol
-
-  // Archive/resource protocols - potential path traversal or information disclosure
-  'jar:', // Java archive protocol (path traversal attacks in some contexts)
-  'view-source:', // Information disclosure (reveals page source code)
-  'resource:', // Firefox internal resources
-  'wyciwyg:', // Firefox "what you cache is what you get" protocol
+  // Common browser-safe actions
+  'mailto:',
+  'tel:',
+  'sms:',
 ]
 
 /**
- * Check if a URL string uses a protocol that is in the blocklist.
+ * Check if a URL string uses a protocol that is not in the allowlist.
  * Returns true for blocked protocols like javascript:, blob:, data:, etc.
  *
  * The URL constructor correctly normalizes:
@@ -581,12 +562,12 @@ export const DEFAULT_PROTOCOL_BLOCKLIST = [
  * For relative URLs (no protocol), returns false (safe).
  *
  * @param url - The URL string to check
- * @param blocklist - Set of protocols to block
- * @returns true if the URL uses a blocked protocol
+ * @param allowlist - Set of protocols to allow
+ * @returns true if the URL uses a protocol that is not allowed
  */
 export function isDangerousProtocol(
   url: string,
-  blocklist: Set<string>,
+  allowlist: Set<string>,
 ): boolean {
   if (!url) return false
 
@@ -594,7 +575,7 @@ export function isDangerousProtocol(
     // Use the URL constructor - it correctly normalizes protocols
     // per WHATWG URL spec, handling all bypass attempts automatically
     const parsed = new URL(url)
-    return blocklist.has(parsed.protocol)
+    return !allowlist.has(parsed.protocol)
   } catch {
     // URL constructor throws for relative URLs (no protocol)
     // These are safe - they can't execute scripts
