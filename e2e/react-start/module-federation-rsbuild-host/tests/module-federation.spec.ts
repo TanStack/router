@@ -281,12 +281,18 @@ test('serves remote entries as javascript over HTTP', async ({ page }) => {
 })
 
 test('serves federation manifest and stats endpoints as JSON', async ({ page }) => {
-  for (const path of [
-    '/dist/mf-manifest.json',
-    '/dist/mf-stats.json',
-    '/ssr/mf-manifest.json',
-    '/ssr/mf-stats.json',
-  ]) {
+  for (const [
+    path,
+    expectedRemoteType,
+    expectedTypesZip,
+    expectedTypesApi,
+    expectedPublicPath,
+  ] of [
+    ['/dist/mf-manifest.json', 'global', '@mf-types.zip', '@mf-types.d.ts', `${REMOTE_ORIGIN}/`],
+    ['/dist/mf-stats.json', 'global', '@mf-types.zip', '@mf-types.d.ts', `${REMOTE_ORIGIN}/`],
+    ['/ssr/mf-manifest.json', 'commonjs-module', '', '', `${REMOTE_ORIGIN}/ssr/`],
+    ['/ssr/mf-stats.json', 'commonjs-module', '', '', `${REMOTE_ORIGIN}/ssr/`],
+  ] as const) {
     const response = await page.request.get(`${REMOTE_ORIGIN}${path}`)
     expect(response.ok()).toBeTruthy()
 
@@ -299,7 +305,11 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     const parsed = JSON.parse(body) as MfManifest
     expect(parsed.id).toBe('mf_remote')
     expect(parsed.name).toBe('mf_remote')
+    expect(parsed.metaData?.remoteEntry?.type).toBe(expectedRemoteType)
+    expect(parsed.metaData?.publicPath).toBe(expectedPublicPath)
     expect(parsed.metaData?.remoteEntry?.name).toBe('remoteEntry.js')
+    expect(parsed.metaData?.types?.zip).toBe(expectedTypesZip)
+    expect(parsed.metaData?.types?.api).toBe(expectedTypesApi)
     expect(parsed.metaData?.pluginVersion).toBeDefined()
     expect(Array.isArray(parsed.shared)).toBeTruthy()
     expect(Array.isArray(parsed.exposes)).toBeTruthy()
