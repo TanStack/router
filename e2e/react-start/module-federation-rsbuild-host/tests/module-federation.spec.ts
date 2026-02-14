@@ -215,6 +215,25 @@ test('serves remote entries as javascript over HTTP', async ({ page }) => {
   }
 })
 
+test('serves federation manifest and stats endpoints as JSON', async ({ page }) => {
+  for (const path of [
+    '/dist/mf-manifest.json',
+    '/dist/mf-stats.json',
+    '/ssr/mf-manifest.json',
+    '/ssr/mf-stats.json',
+  ]) {
+    const response = await page.request.get(`${REMOTE_ORIGIN}${path}`)
+    expect(response.ok()).toBeTruthy()
+
+    const contentType = (response.headers()['content-type'] ?? '').toLowerCase()
+    expect(contentType.includes('text/html')).toBeFalsy()
+    expect(contentType.includes('application/json')).toBeTruthy()
+
+    const body = await response.text()
+    expect(body.startsWith('{')).toBeTruthy()
+  }
+})
+
 test('serves browser federated types zip over HTTP', async ({ page }) => {
   const manifest = await fetchManifest(page, [
     '/mf-manifest.json',
