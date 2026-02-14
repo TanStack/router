@@ -40,6 +40,7 @@ For the remote web target (browser manifest), expected contract is:
 - SSR stats shared entries should set `import: false` for React/ReactDOM; browser stats should omit `import`.
 - Manifest and stats metadata should remain aligned across browser and SSR outputs.
 - Stats entry ids and cardinality should remain stable (`shared: 2`, `exposes: 3`, ids under `mf_remote:*`).
+- Metadata parity should include remoteEntry name/path plus build/plugin version fields.
 
 That combination keeps React shared ownership on the host and avoids SSR
 runtime fallback chunk loading conflicts with `@module-federation/node`.

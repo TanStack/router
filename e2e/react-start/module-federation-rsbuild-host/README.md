@@ -58,6 +58,7 @@ Federation stats contract is also verified:
 - Browser stats shared entries omit `import` and keep standard web sharing metadata.
 - Manifest and stats metadata stay aligned (identity, remote entry type/publicPath, types metadata, shared/expose names).
 - Stats outputs keep exact expected cardinality (`shared: 2`, `exposes: 3`) and stable ids (`mf_remote:*`).
+- Alignment also covers build/plugin metadata (`buildInfo`, `pluginVersion`) and remoteEntry name/path fields.
 
 Remote entry payloads are also validated directly over HTTP at:
 
