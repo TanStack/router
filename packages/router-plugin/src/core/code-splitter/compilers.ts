@@ -248,20 +248,6 @@ export function computeSharedBindings(opts: {
     )
   }
 
-  // Collect all module-level locally-declared binding names
-  const localModuleLevelBindings = new Set<string>()
-  for (const node of ast.program.body) {
-    collectLocalBindingsFromStatement(node, localModuleLevelBindings)
-  }
-
-  // File-based routes always export a route config binding (usually `Route`).
-  // This must never be extracted into the shared module.
-  localModuleLevelBindings.delete('Route')
-
-  if (localModuleLevelBindings.size === 0) {
-    return new Set()
-  }
-
   // Find the route options object — needs babel.traverse for scope resolution
   let routeOptions: t.ObjectExpression | undefined
 
@@ -284,6 +270,33 @@ export function computeSharedBindings(opts: {
   })
 
   if (!routeOptions) return new Set()
+
+  // Fast path: if fewer than 2 distinct groups are referenced by route options,
+  // nothing can be shared and we can skip the rest of the work.
+  const groupsPresent = new Set<number>()
+  for (const prop of routeOptions.properties) {
+    if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) continue
+    if (prop.key.name === 'codeSplitGroupings') continue
+    if (t.isIdentifier(prop.value) && prop.value.name === 'undefined') continue
+    const groupIndex = findIndexForSplitNode(prop.key.name) // -1 if non-split
+    groupsPresent.add(groupIndex)
+  }
+
+  if (groupsPresent.size < 2) return new Set()
+
+  // Collect all module-level locally-declared binding names
+  const localModuleLevelBindings = new Set<string>()
+  for (const node of ast.program.body) {
+    collectLocalBindingsFromStatement(node, localModuleLevelBindings)
+  }
+
+  // File-based routes always export a route config binding (usually `Route`).
+  // This must never be extracted into the shared module.
+  localModuleLevelBindings.delete('Route')
+
+  if (localModuleLevelBindings.size === 0) {
+    return new Set()
+  }
 
   // Build dependency graph up front — needed for transitive expansion per-property.
   // This graph excludes `Route` (deleted above) so group attribution works correctly.
