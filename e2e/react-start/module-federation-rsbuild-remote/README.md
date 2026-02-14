@@ -26,6 +26,7 @@ For the node-target federation config we use:
 - `shared.react.import: false`
 - `shared.react-dom.import: false`
 - SSR manifest `metaData.remoteEntry.type: 'commonjs-module'`
+- SSR manifest `metaData.publicPath` points to `http://<remote-origin>/ssr/`
 - empty SSR shared fallback JS assets for React/ReactDOM
 
 Web-target shared config remains standard singleton sharing (no `import: false`)
@@ -34,6 +35,7 @@ to preserve normal browser-side shared behavior.
 Expected browser manifest contract for the web target:
 
 - `metaData.remoteEntry.type: 'global'`
+- `metaData.publicPath` points to `http://<remote-origin>/`
 - React/ReactDOM browser shared fallback JS assets are present.
 
 This keeps React ownership on the host side in node SSR runtime and avoids

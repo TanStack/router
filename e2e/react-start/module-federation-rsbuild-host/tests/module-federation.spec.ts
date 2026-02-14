@@ -25,6 +25,7 @@ type ManifestRemoteEntryMetadata = {
 type MfManifest = {
   metaData?: {
     remoteEntry?: ManifestRemoteEntryMetadata
+    publicPath?: string
   }
   shared?: Array<ManifestSharedEntry>
 }
@@ -108,6 +109,7 @@ test('loads remote entry over http at runtime', async ({
 test('serves node-compatible remote SSR manifest metadata', async ({ page }) => {
   const manifest = await fetchManifest(page, ['/ssr/mf-manifest.json'])
   expect(manifest?.metaData?.remoteEntry?.type).toBe('commonjs-module')
+  expect(manifest?.metaData?.publicPath).toBe(`${REMOTE_ORIGIN}/ssr/`)
 
   const sharedByName = getSharedByName(manifest)
   const reactShared = sharedByName.get('react')
@@ -125,6 +127,7 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
     '/dist/mf-manifest.json',
   ])
   expect(manifest?.metaData?.remoteEntry?.type).toBe('global')
+  expect(manifest?.metaData?.publicPath).toBe(`${REMOTE_ORIGIN}/`)
 
   const sharedByName = getSharedByName(manifest)
   const reactShared = sharedByName.get('react')
