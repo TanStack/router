@@ -56,6 +56,7 @@ Federation stats contract expectations:
 - Shared/expose asset lists remain aligned between manifest and stats outputs.
 - Types metadata (`path`/`name`) and shared/expose CSS asset lists are also expected to match between outputs.
 - JSON endpoint contract also checks identity fields and remote entry/plugin metadata presence.
+- Endpoint payloads are expected to keep identity metadata stable (`metaData.name: mf_remote`, `metaData.type: app`, `buildInfo.buildVersion: local`).
 - Endpoint payloads are expected to keep global metadata invariants (`globalName: mf_remote`, `prefetchInterface: false`, `remoteEntry.path: ''`).
 - JSON endpoint checks also validate path-specific metadata:
   - `/dist/*` endpoints use browser remote entry/type metadata and browser types metadata.
