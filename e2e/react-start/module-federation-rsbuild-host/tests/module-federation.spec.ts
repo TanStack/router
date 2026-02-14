@@ -71,6 +71,31 @@ test('serves node-compatible remote SSR manifest metadata', async ({ page }) => 
   expect(reactDomShared?.assets?.js?.sync ?? []).toEqual([])
 })
 
+test('serves browser manifest with shared fallback assets', async ({ page }) => {
+  const primaryResponse = await page.request.get(
+    `${REMOTE_ORIGIN}/mf-manifest.json`,
+  )
+  const primaryBody = await primaryResponse.text()
+  const manifestResponse =
+    primaryResponse.ok() && primaryBody.trim().startsWith('{')
+      ? primaryResponse
+      : await page.request.get(`${REMOTE_ORIGIN}/dist/mf-manifest.json`)
+  expect(manifestResponse.ok()).toBeTruthy()
+
+  const manifest = await manifestResponse.json()
+  expect(manifest?.metaData?.remoteEntry?.type).toBe('global')
+
+  const sharedByName = new Map(
+    (manifest?.shared ?? []).map((shared: any) => [shared.name, shared]),
+  )
+
+  const reactShared = sharedByName.get('react')
+  const reactDomShared = sharedByName.get('react-dom')
+
+  expect((reactShared?.assets?.js?.sync ?? []).length).toBeGreaterThan(0)
+  expect((reactDomShared?.assets?.js?.sync ?? []).length).toBeGreaterThan(0)
+})
+
 test('dynamically registers and renders remote routes', async ({ page }) => {
   test.skip(
     HOST_MODE !== 'ssr',
