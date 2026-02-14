@@ -66,6 +66,7 @@ Federation stats contract is also verified:
 - JSON endpoint checks assert path-specific metadata values:
   - `/dist/*` endpoints return `remoteEntry.type: 'global'`, browser `types` metadata, and root publicPath.
   - `/ssr/*` endpoints return `remoteEntry.type: 'commonjs-module'`, empty SSR `types` metadata, and `/ssr/` publicPath.
+- Endpoint payloads also keep consistent plugin/build metadata across all JSON endpoints (`pluginVersion`, `buildVersion`, `buildName`).
 
 Remote entry payloads are also validated directly over HTTP at:
 

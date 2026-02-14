@@ -59,6 +59,7 @@ Federation stats contract expectations:
 - JSON endpoint checks also validate path-specific metadata:
   - `/dist/*` endpoints use browser remote entry/type metadata and browser types metadata.
   - `/ssr/*` endpoints use node remote entry/type metadata and empty SSR types metadata.
+- `pluginVersion` and build metadata fields remain consistent across all JSON endpoints.
 
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
 JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).

@@ -48,6 +48,7 @@ Expected browser manifest contract for web target:
 - Types metadata (`path`/`name`) and CSS asset list parity is expected between manifest and stats.
 - JSON endpoint payloads are expected to include identity and remote entry/plugin metadata fields.
 - `/dist/*` vs `/ssr/*` endpoint metadata should remain mode-correct (remoteEntry type, types metadata, publicPath).
+- Build/plugin metadata should stay consistent across all federation JSON endpoints.
 
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.
