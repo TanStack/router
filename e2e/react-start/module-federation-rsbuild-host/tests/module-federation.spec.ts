@@ -159,6 +159,8 @@ function assertManifestIdentity(manifest: MfManifest) {
   expect(manifest.name).toBe('mf_remote')
   expect(manifest.metaData?.name).toBe('mf_remote')
   expect(manifest.metaData?.type).toBe('app')
+  expect(manifest.metaData?.pluginVersion).toBeDefined()
+  expect((manifest.metaData?.pluginVersion?.length ?? 0) > 0).toBeTruthy()
   expect(manifest.metaData?.globalName).toBe('mf_remote')
   expect(manifest.metaData?.prefetchInterface).toBe(false)
   expect(manifest.metaData?.buildInfo?.buildVersion).toBe('local')
@@ -293,6 +295,13 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
 
     const body = await response.text()
     expect(body.startsWith('{')).toBeTruthy()
+    const parsed = JSON.parse(body) as MfManifest
+    expect(parsed.id).toBe('mf_remote')
+    expect(parsed.name).toBe('mf_remote')
+    expect(parsed.metaData?.remoteEntry?.name).toBe('remoteEntry.js')
+    expect(parsed.metaData?.pluginVersion).toBeDefined()
+    expect(Array.isArray(parsed.shared)).toBeTruthy()
+    expect(Array.isArray(parsed.exposes)).toBeTruthy()
   }
 })
 
@@ -349,6 +358,9 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
   const browserStats = await fetchManifest(page, ['/dist/mf-stats.json'])
   const ssrManifest = await fetchManifest(page, ['/ssr/mf-manifest.json'])
   const ssrStats = await fetchManifest(page, ['/ssr/mf-stats.json'])
+
+  expect(browserManifest.metaData?.pluginVersion).toBe(ssrManifest.metaData?.pluginVersion)
+  expect(browserStats.metaData?.pluginVersion).toBe(ssrStats.metaData?.pluginVersion)
 
   for (const [manifest, stats] of [
     [browserManifest, browserStats],
