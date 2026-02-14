@@ -47,6 +47,7 @@ type MfManifest = {
   }
   shared?: Array<ManifestSharedEntry>
   exposes?: Array<ManifestExposeEntry>
+  remotes?: Array<unknown>
 }
 
 async function fetchManifest(
@@ -183,6 +184,8 @@ test('serves node-compatible remote SSR manifest metadata', async ({ page }) => 
   expect(manifest?.metaData?.types?.api).toBe('')
 
   const sharedByName = getSharedByName(manifest)
+  expect(sharedByName.size).toBe(2)
+  expect(manifest.remotes ?? []).toEqual([])
   const reactShared = sharedByName.get('react')
   const reactDomShared = sharedByName.get('react-dom')
 
@@ -211,6 +214,8 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
   expect(manifest?.metaData?.types?.api).toBe('@mf-types.d.ts')
 
   const sharedByName = getSharedByName(manifest)
+  expect(sharedByName.size).toBe(2)
+  expect(manifest.remotes ?? []).toEqual([])
   const reactShared = sharedByName.get('react')
   const reactDomShared = sharedByName.get('react-dom')
 
