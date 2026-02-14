@@ -583,6 +583,14 @@ export function compileCodeSplitVirtualRoute(
           let splitNode = splitKey.node
           const splitMeta = { ...splitKey.meta, shouldRemoveNode: true }
 
+          // Track the original identifier name before resolving through bindings,
+          // needed for destructured patterns where the binding resolves to the
+          // entire VariableDeclarator (ObjectPattern) rather than the specific binding
+          let originalIdentName: string | undefined
+          if (t.isIdentifier(splitNode)) {
+            originalIdentName = splitNode.name
+          }
+
           while (t.isIdentifier(splitNode)) {
             const binding = programPath.scope.getBinding(splitNode.name)
             splitNode = binding?.path.node
@@ -629,6 +637,13 @@ export function compileCodeSplitVirtualRoute(
             } else if (t.isVariableDeclarator(splitNode)) {
               if (t.isIdentifier(splitNode.id)) {
                 splitMeta.localExporterIdent = splitNode.id.name
+                splitMeta.shouldRemoveNode = false
+              } else if (t.isObjectPattern(splitNode.id)) {
+                // Destructured binding like `const { component: MyComp } = createBits()`
+                // Use the original identifier name that was tracked before resolving
+                if (originalIdentName) {
+                  splitMeta.localExporterIdent = originalIdentName
+                }
                 splitMeta.shouldRemoveNode = false
               } else {
                 throw new Error(
@@ -733,13 +748,48 @@ export function compileCodeSplitVirtualRoute(
 
             if (path.node.declaration) {
               if (t.isVariableDeclaration(path.node.declaration)) {
+                const specifiers = path.node.declaration.declarations.flatMap(
+                  (decl) => {
+                    if (t.isIdentifier(decl.id)) {
+                      return [
+                        t.importSpecifier(
+                          t.identifier(decl.id.name),
+                          t.identifier(decl.id.name),
+                        ),
+                      ]
+                    }
+
+                    if (t.isObjectPattern(decl.id)) {
+                      return collectIdentifiersFromPattern(decl.id).map(
+                        (name) =>
+                          t.importSpecifier(
+                            t.identifier(name),
+                            t.identifier(name),
+                          ),
+                      )
+                    }
+
+                    if (t.isArrayPattern(decl.id)) {
+                      return collectIdentifiersFromPattern(decl.id).map(
+                        (name) =>
+                          t.importSpecifier(
+                            t.identifier(name),
+                            t.identifier(name),
+                          ),
+                      )
+                    }
+
+                    return []
+                  },
+                )
+
+                if (specifiers.length === 0) {
+                  path.remove()
+                  return
+                }
+
                 const importDecl = t.importDeclaration(
-                  path.node.declaration.declarations.map((decl) =>
-                    t.importSpecifier(
-                      t.identifier((decl.id as any).name),
-                      t.identifier((decl.id as any).name),
-                    ),
-                  ),
+                  specifiers,
                   t.stringLiteral(
                     removeSplitSearchParamFromFilename(opts.filename),
                   ),
@@ -921,6 +971,50 @@ function getImportSpecifierAndPathFromLocalName(
   return { specifier, path }
 }
 
+/**
+ * Recursively collects all identifier names from a destructuring pattern
+ * (ObjectPattern, ArrayPattern, AssignmentPattern, RestElement).
+ */
+function collectIdentifiersFromPattern(
+  node: t.LVal | t.Node | null | undefined,
+): Array<string> {
+  if (!node) {
+    return []
+  }
+
+  if (t.isIdentifier(node)) {
+    return [node.name]
+  }
+
+  if (t.isAssignmentPattern(node)) {
+    return collectIdentifiersFromPattern(node.left)
+  }
+
+  if (t.isRestElement(node)) {
+    return collectIdentifiersFromPattern(node.argument)
+  }
+
+  if (t.isObjectPattern(node)) {
+    return node.properties.flatMap((prop) => {
+      if (t.isObjectProperty(prop)) {
+        return collectIdentifiersFromPattern(prop.value as t.LVal)
+      }
+      if (t.isRestElement(prop)) {
+        return collectIdentifiersFromPattern(prop.argument)
+      }
+      return []
+    })
+  }
+
+  if (t.isArrayPattern(node)) {
+    return node.elements.flatMap((element) =>
+      collectIdentifiersFromPattern(element),
+    )
+  }
+
+  return []
+}
+
 // Reusable function to get literal value or resolve variable to literal
 function resolveIdentifier(path: any, node: any): t.Node | undefined {
   if (t.isIdentifier(node)) {
@@ -945,6 +1039,41 @@ function resolveIdentifier(path: any, node: any): t.Node | undefined {
 function removeIdentifierLiteral(path: babel.NodePath, node: t.Identifier) {
   const binding = path.scope.getBinding(node.name)
   if (binding) {
+    // If the binding is a destructured property from an ObjectPattern,
+    // only remove that property instead of the entire declaration
+    if (
+      t.isVariableDeclarator(binding.path.node) &&
+      t.isObjectPattern(binding.path.node.id)
+    ) {
+      const objectPattern = binding.path.node.id
+      objectPattern.properties = objectPattern.properties.filter((prop) => {
+        if (!t.isObjectProperty(prop)) {
+          return true
+        }
+
+        if (t.isIdentifier(prop.value) && prop.value.name === node.name) {
+          return false
+        }
+
+        if (
+          t.isAssignmentPattern(prop.value) &&
+          t.isIdentifier(prop.value.left) &&
+          prop.value.left.name === node.name
+        ) {
+          return false
+        }
+
+        return true
+      })
+
+      // If no properties remain, remove the entire declaration
+      if (objectPattern.properties.length === 0) {
+        binding.path.remove()
+      }
+
+      return
+    }
+
     binding.path.remove()
   }
 }
@@ -961,6 +1090,15 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
             if (t.isVariableDeclarator(decl)) {
               if (t.isIdentifier(decl.id)) {
                 if (decl.id.name === node.name) {
+                  found = true
+                }
+              } else if (
+                t.isObjectPattern(decl.id) ||
+                t.isArrayPattern(decl.id)
+              ) {
+                // Handle destructured exports like `export const { a, b } = fn()`
+                const names = collectIdentifiersFromPattern(decl.id)
+                if (names.includes(node.name)) {
                   found = true
                 }
               }
@@ -1017,6 +1155,16 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
             if (t.isVariableDeclarator(decl)) {
               if (t.isIdentifier(decl.id)) {
                 if (decl.id.name === node.name) {
+                  path.remove()
+                  removed = true
+                }
+              } else if (
+                t.isObjectPattern(decl.id) ||
+                t.isArrayPattern(decl.id)
+              ) {
+                // Handle destructured exports like `export const { a, b } = fn()`
+                const names = collectIdentifiersFromPattern(decl.id)
+                if (names.includes(node.name)) {
                   path.remove()
                   removed = true
                 }
