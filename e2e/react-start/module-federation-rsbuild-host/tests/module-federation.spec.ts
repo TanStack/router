@@ -341,6 +341,7 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
       manifest.metaData?.buildInfo?.buildVersion,
     )
     expect(stats.metaData?.globalName).toBe(manifest.metaData?.globalName)
+    expect(stats.metaData?.prefetchInterface).toBe(manifest.metaData?.prefetchInterface)
 
     expect(getSortedEntryNames(stats.shared ?? [])).toEqual(
       getSortedEntryNames(manifest.shared ?? []),
@@ -348,6 +349,20 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
     expect(getSortedEntryNames(stats.exposes ?? [])).toEqual(
       getSortedEntryNames(manifest.exposes ?? []),
     )
+    expect(stats.remotes ?? []).toEqual([])
+    expect((stats.shared ?? []).length).toBe(2)
+    expect((stats.exposes ?? []).length).toBe(3)
+  }
+
+  for (const stats of [browserStats, ssrStats]) {
+    const sharedByName = getSharedByName(stats)
+    expect(sharedByName.get('react')?.id).toBe('mf_remote:react')
+    expect(sharedByName.get('react-dom')?.id).toBe('mf_remote:react-dom')
+
+    const exposesByName = getExposesByName(stats)
+    expect(exposesByName.get('message')?.id).toBe('mf_remote:message')
+    expect(exposesByName.get('routes')?.id).toBe('mf_remote:routes')
+    expect(exposesByName.get('server-data')?.id).toBe('mf_remote:server-data')
   }
 })
 
