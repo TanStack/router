@@ -547,7 +547,6 @@ export const DEFAULT_PROTOCOL_ALLOWLIST = [
   // Common browser-safe actions
   'mailto:',
   'tel:',
-  'sms:',
 ]
 
 /**
