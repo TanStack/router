@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_PROTOCOL_ALLOWLIST, isDangerousProtocol } from '../src/utils'
 import { redirect } from '../src/redirect'
+import { BaseRootRoute, RouterCore } from '../src'
 
 const defaultAllowlistSet = new Set(DEFAULT_PROTOCOL_ALLOWLIST)
 
@@ -64,14 +65,11 @@ describe('isDangerousProtocol', () => {
       ).toBe(false)
     })
 
-    it('should allow mailto, tel and sms', () => {
+    it('should allow mailto and tel', () => {
       expect(
         isDangerousProtocol('mailto:user@example.com', defaultAllowlistSet),
       ).toBe(false)
       expect(isDangerousProtocol('tel:+1234567890', defaultAllowlistSet)).toBe(
-        false,
-      )
-      expect(isDangerousProtocol('sms:+1234567890', defaultAllowlistSet)).toBe(
         false,
       )
     })
@@ -205,7 +203,6 @@ describe('isDangerousProtocol', () => {
         'https:',
         'mailto:',
         'tel:',
-        'sms:',
       ])
     })
   })
@@ -237,5 +234,43 @@ describe('redirect creation (no protocol validation)', () => {
 
   it('should allow redirects without href', () => {
     expect(() => redirect({ to: '/home' })).not.toThrow()
+  })
+})
+
+describe('integration test on Router', () => {
+  const inputs = [
+    'x-safari-https://example.com',
+    'googlechromes://example.com',
+    'intent://example.com#Intent;scheme=https;end',
+    'foo:bar',
+  ]
+  it('should accept weird protocols from the allowlist', () => {
+    const router = new RouterCore({
+      routeTree: new BaseRootRoute(),
+      protocolAllowlist: [
+        'x-safari-https:',
+        'googlechromes:',
+        'intent:',
+        'foo:',
+      ],
+    })
+    // Each protocol in the inputs should be accepted by resolveRedirect
+    for (const href of inputs) {
+      const redir = redirect({ href })
+      expect(() => router.resolveRedirect(redir)).not.toThrow()
+    }
+  })
+  it('should block weird protocols not in the allowlist', () => {
+    const router = new RouterCore({
+      routeTree: new BaseRootRoute(),
+      protocolAllowlist: [],
+    })
+    // Each protocol in the inputs should be blocked by resolveRedirect
+    for (const href of inputs) {
+      const redir = redirect({ href })
+      expect(() => router.resolveRedirect(redir)).toThrow(
+        /Redirect blocked: unsafe protocol/,
+      )
+    }
   })
 })
