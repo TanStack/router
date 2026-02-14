@@ -15,7 +15,7 @@ export const loginFn = createServerFn({ method: 'POST' })
     if (error) {
       return {
         error: true,
-        status: error.status,
+        status: error.status ?? 500,
         message: error.message,
       }
     }
