@@ -37,6 +37,7 @@ Expected browser manifest contract for web target:
 - React/ReactDOM shared fallback JS assets are present.
 - Browser shared JS assets are emitted as relative `static/js/...` paths.
 - Browser exposed module JS assets are also relative `static/js/...` paths.
+- JS asset entries are expected to use `.js` suffixes.
 - `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are served as JavaScript over HTTP with JavaScript content-types.
 - `/dist/@mf-types.zip` is retrievable over HTTP as a non-HTML payload.
 - SSR stats should show `import: false` for React/ReactDOM while browser stats keep `import` unset.

@@ -41,6 +41,7 @@ The e2e suite also validates the remote SSR manifest contract:
 - React/ReactDOM shared entries use wildcard metadata (`version: '*'`, `requiredVersion: '^*'`) in SSR manifest.
 - React/ReactDOM shared fallback asset lists are empty in SSR manifest.
 - Exposed module JS assets remain relative `static/js/...` paths.
+- JS asset paths are expected to end with `.js`.
 
 It also validates the browser manifest contract for the remote web target:
 

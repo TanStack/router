@@ -31,6 +31,7 @@ For the node-target federation config we use:
 - SSR React/ReactDOM shared metadata uses wildcard versions (`*` / `^*`).
 - empty SSR shared fallback JS assets for React/ReactDOM
 - exposed module JS asset entries are relative `static/js/...` paths.
+- JS asset entries are expected to end in `.js`.
 
 Web-target shared config remains standard singleton sharing (no `import: false`)
 to preserve normal browser-side shared behavior.
