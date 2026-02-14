@@ -281,7 +281,7 @@ function App() {
       <TanStackRouterDevtoolsPanel
         router={router}
         style={styles}
-        className={className}
+        class={className}
       />
     </>
   )

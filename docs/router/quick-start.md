@@ -22,7 +22,7 @@ The CLI will guide you through a short series of prompts to customize your setup
 - Toolchain setup
 - Git initialization
 
-Once complete, a new React project will be generated with TanStack Router installed and ready to use.
+Once complete, a new project will be generated with TanStack Router installed and ready to use.
 
 > [!TIP]
 > For full details on available options and templates, visit the [`create-tsrouter-app` documentation](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app).

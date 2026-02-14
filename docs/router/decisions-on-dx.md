@@ -15,7 +15,7 @@ And they are all valid questions. For the most part, people are used to using ro
 But TanStack Router is different. It's not your average routing library. It's not your average state management library. It's not your average anything.
 
 > [!TIP]
-> The examples in this guide where components and code snippets are written in React, but the same principles apply to Solid. The only difference is in the syntax and API of the framework, but the underlying concepts and design decisions are the same.
+> The examples in this guide use React for components and code snippets, but the same principles apply to Solid. The only difference is in the syntax and API of the framework, but the underlying concepts and design decisions are the same.
 
 ## TanStack Router's origin story
 
