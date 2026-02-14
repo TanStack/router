@@ -22,6 +22,7 @@ This host expects the paired remote's **node-target federation config** to use:
 - `shared.react/react-dom.import: false`
 - SSR manifest `metaData.remoteEntry.type: 'commonjs-module'`
 - SSR manifest `metaData.publicPath: 'http://<remote-origin>/ssr/'`
+- SSR manifest types metadata empty (`zip: ''`, `api: ''`)
 - SSR manifest React/ReactDOM shared metadata uses wildcard versions (`*` / `^*`)
 - SSR exposed module JS asset paths as relative `static/js/...`
 
@@ -29,10 +30,12 @@ For the remote web target (browser manifest), expected contract is:
 
 - `metaData.remoteEntry.type: 'global'`
 - `metaData.publicPath: 'http://<remote-origin>/'`
+- browser manifest types metadata points to emitted types (`@mf-types.zip`, `@mf-types.d.ts`)
 - browser React/ReactDOM shared metadata uses concrete non-wildcard versions
 - React/ReactDOM shared fallback JS asset lists are non-empty.
 - Shared JS asset entries are relative `static/js/...` paths resolved via `publicPath`.
 - Exposed module JS asset entries are also relative `static/js/...` paths.
+- `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` should serve JavaScript over HTTP.
 
 That combination keeps React shared ownership on the host and avoids SSR
 runtime fallback chunk loading conflicts with `@module-federation/node`.

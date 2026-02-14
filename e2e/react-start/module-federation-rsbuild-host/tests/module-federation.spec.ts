@@ -101,6 +101,7 @@ function assertExposeContracts(manifest: MfManifest) {
   } as const
 
   const exposesByName = getExposesByName(manifest)
+  expect(exposesByName.size).toBe(Object.keys(expectedExposePaths).length)
   for (const [exposeName, expectedPath] of Object.entries(expectedExposePaths)) {
     const exposeEntry = exposesByName.get(exposeName)
     expect(exposeEntry).toBeDefined()
