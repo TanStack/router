@@ -273,16 +273,21 @@ export function computeSharedBindings(opts: {
 
   // Fast path: if fewer than 2 distinct groups are referenced by route options,
   // nothing can be shared and we can skip the rest of the work.
-  const groupsPresent = new Set<number>()
+  const splitGroupsPresent = new Set<number>()
+  let hasNonSplit = false
   for (const prop of routeOptions.properties) {
     if (!t.isObjectProperty(prop) || !t.isIdentifier(prop.key)) continue
     if (prop.key.name === 'codeSplitGroupings') continue
     if (t.isIdentifier(prop.value) && prop.value.name === 'undefined') continue
     const groupIndex = findIndexForSplitNode(prop.key.name) // -1 if non-split
-    groupsPresent.add(groupIndex)
+    if (groupIndex === -1) {
+      hasNonSplit = true
+    } else {
+      splitGroupsPresent.add(groupIndex)
+    }
   }
 
-  if (groupsPresent.size < 2) return new Set()
+  if (!hasNonSplit && splitGroupsPresent.size < 2) return new Set()
 
   // Collect all module-level locally-declared binding names
   const localModuleLevelBindings = new Set<string>()

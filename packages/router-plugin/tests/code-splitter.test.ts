@@ -154,3 +154,68 @@ describe('code-splitter works', () => {
     )
   })
 })
+
+describe('computeSharedBindings fast paths', () => {
+  it('returns empty when only one split group is present (default groupings)', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const shared = 42
+export const Route = createFileRoute('/')({
+  component: () => shared,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    expect(result.size).toBe(0)
+  })
+
+  it('returns empty when all split props are in the same group', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const shared = 42
+export const Route = createFileRoute('/')({
+  component: () => shared,
+  loader: () => shared,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: [['component', 'loader']],
+    })
+    expect(result.size).toBe(0)
+  })
+
+  it('returns empty when all route option values are undefined', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component: undefined,
+  errorComponent: undefined,
+  notFoundComponent: undefined,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    expect(result.size).toBe(0)
+  })
+
+  it('does not fast-path when there is a non-split and a split group', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const shared = 42
+export const Route = createFileRoute('/')({
+  component: () => shared,
+  beforeLoad: () => shared,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    expect(result).toContain('shared')
+  })
+})
