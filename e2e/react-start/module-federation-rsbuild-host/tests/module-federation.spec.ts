@@ -53,6 +53,24 @@ test('loads remote entry over http at runtime', async ({
   }
 })
 
+test('serves node-compatible remote SSR manifest metadata', async ({ page }) => {
+  const response = await page.request.get(`${REMOTE_ORIGIN}/ssr/mf-manifest.json`)
+  expect(response.ok()).toBeTruthy()
+
+  const manifest = await response.json()
+  expect(manifest?.metaData?.remoteEntry?.type).toBe('commonjs-module')
+
+  const sharedByName = new Map(
+    (manifest?.shared ?? []).map((shared: any) => [shared.name, shared]),
+  )
+
+  const reactShared = sharedByName.get('react')
+  const reactDomShared = sharedByName.get('react-dom')
+
+  expect(reactShared?.assets?.js?.sync ?? []).toEqual([])
+  expect(reactDomShared?.assets?.js?.sync ?? []).toEqual([])
+})
+
 test('dynamically registers and renders remote routes', async ({ page }) => {
   test.skip(
     HOST_MODE !== 'ssr',
