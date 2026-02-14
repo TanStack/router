@@ -1020,10 +1020,7 @@ export const Route = createFileRoute('/')({
       'fixture "%s" satisfies: Route excluded, results ⊆ localBindings',
       async (filename) => {
         const file = await readFile(
-          path.join(
-            __dirname,
-            `./code-splitter/test-files/react/${filename}`,
-          ),
+          path.join(__dirname, `./code-splitter/test-files/react/${filename}`),
         )
         const code = file.toString()
 
