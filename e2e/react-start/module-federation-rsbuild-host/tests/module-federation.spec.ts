@@ -32,6 +32,8 @@ type ManifestExposeEntry = {
 
 type ManifestRemoteEntryMetadata = {
   type?: string
+  name?: string
+  path?: string
 }
 
 type ManifestTypesMetadata = {
@@ -92,6 +94,17 @@ function assertRelativeJsAssetPaths(assetPaths: Array<string>) {
     expect(assetPath.includes('file://')).toBeFalsy()
     expect(assetPath.includes('/workspace/')).toBeFalsy()
   }
+}
+
+function assertRemoteEntryMeta(
+  manifest: MfManifest,
+  expectedType: 'global' | 'commonjs-module',
+  expectedPublicPath: string,
+) {
+  expect(manifest?.metaData?.remoteEntry?.type).toBe(expectedType)
+  expect(manifest?.metaData?.remoteEntry?.name).toBe('remoteEntry.js')
+  expect(manifest?.metaData?.remoteEntry?.path).toBe('')
+  expect(manifest?.metaData?.publicPath).toBe(expectedPublicPath)
 }
 
 async function assertAssetServedAsJavaScript(
@@ -198,8 +211,7 @@ test('serves remote entries as javascript over HTTP', async ({ page }) => {
 
 test('serves node-compatible remote SSR manifest metadata', async ({ page }) => {
   const manifest = await fetchManifest(page, ['/ssr/mf-manifest.json'])
-  expect(manifest?.metaData?.remoteEntry?.type).toBe('commonjs-module')
-  expect(manifest?.metaData?.publicPath).toBe(`${REMOTE_ORIGIN}/ssr/`)
+  assertRemoteEntryMeta(manifest, 'commonjs-module', `${REMOTE_ORIGIN}/ssr/`)
   expect(manifest?.metaData?.types?.zip).toBe('')
   expect(manifest?.metaData?.types?.api).toBe('')
 
@@ -228,8 +240,7 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
     '/mf-manifest.json',
     '/dist/mf-manifest.json',
   ])
-  expect(manifest?.metaData?.remoteEntry?.type).toBe('global')
-  expect(manifest?.metaData?.publicPath).toBe(`${REMOTE_ORIGIN}/`)
+  assertRemoteEntryMeta(manifest, 'global', `${REMOTE_ORIGIN}/`)
   expect(manifest?.metaData?.types?.zip).toBe('@mf-types.zip')
   expect(manifest?.metaData?.types?.api).toBe('@mf-types.d.ts')
 
