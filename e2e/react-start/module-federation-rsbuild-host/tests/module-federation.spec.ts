@@ -46,13 +46,23 @@ type ManifestTypesMetadata = {
   api?: string
 }
 
+type ManifestBuildInfo = {
+  buildVersion?: string
+  buildName?: string
+}
+
 type MfManifest = {
   id?: string
   name?: string
   metaData?: {
+    name?: string
+    type?: string
+    buildInfo?: ManifestBuildInfo
     remoteEntry?: ManifestRemoteEntryMetadata
     publicPath?: string
     types?: ManifestTypesMetadata
+    globalName?: string
+    prefetchInterface?: boolean
   }
   shared?: Array<ManifestSharedEntry>
   exposes?: Array<ManifestExposeEntry>
@@ -117,6 +127,16 @@ function assertRemoteEntryMeta(
 function assertManifestIdentity(manifest: MfManifest) {
   expect(manifest.id).toBe('mf_remote')
   expect(manifest.name).toBe('mf_remote')
+  expect(manifest.metaData?.name).toBe('mf_remote')
+  expect(manifest.metaData?.type).toBe('app')
+  expect(manifest.metaData?.globalName).toBe('mf_remote')
+  expect(manifest.metaData?.prefetchInterface).toBe(false)
+  expect(manifest.metaData?.buildInfo?.buildVersion).toBe('local')
+  expect(
+    manifest.metaData?.buildInfo?.buildName?.includes(
+      'module-federation-rsbuild-remote',
+    ) ?? false,
+  ).toBeTruthy()
 }
 
 async function assertAssetServedAsJavaScript(
