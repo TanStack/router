@@ -214,7 +214,15 @@ test('serves remote entries as javascript over HTTP', async ({ page }) => {
 })
 
 test('serves browser federated types zip over HTTP', async ({ page }) => {
-  const response = await page.request.get(`${REMOTE_ORIGIN}/dist/@mf-types.zip`)
+  const manifest = await fetchManifest(page, [
+    '/mf-manifest.json',
+    '/dist/mf-manifest.json',
+  ])
+  const typesZip = manifest?.metaData?.types?.zip
+  expect(typesZip).toBeDefined()
+  expect(typesZip?.startsWith('@')).toBeTruthy()
+
+  const response = await page.request.get(`${REMOTE_ORIGIN}/dist/${typesZip}`)
   expect(response.ok()).toBeTruthy()
 
   const contentType = (response.headers()['content-type'] ?? '').toLowerCase()
