@@ -113,6 +113,8 @@ test('serves node-compatible remote SSR manifest metadata', async ({ page }) => 
   const reactShared = sharedByName.get('react')
   const reactDomShared = sharedByName.get('react-dom')
 
+  expect(reactShared).toBeDefined()
+  expect(reactDomShared).toBeDefined()
   expect(reactShared?.assets?.js?.sync ?? []).toEqual([])
   expect(reactDomShared?.assets?.js?.sync ?? []).toEqual([])
 })
@@ -128,6 +130,8 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
   const reactShared = sharedByName.get('react')
   const reactDomShared = sharedByName.get('react-dom')
 
+  expect(reactShared).toBeDefined()
+  expect(reactDomShared).toBeDefined()
   expect((reactShared?.assets?.js?.sync ?? []).length).toBeGreaterThan(0)
   expect((reactDomShared?.assets?.js?.sync ?? []).length).toBeGreaterThan(0)
 })
