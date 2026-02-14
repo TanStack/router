@@ -67,6 +67,7 @@ Federation stats contract is also verified:
   - `/dist/*` endpoints return `remoteEntry.type: 'global'`, browser `types` metadata, and root publicPath.
   - `/ssr/*` endpoints return `remoteEntry.type: 'commonjs-module'`, empty SSR `types` metadata, and `/ssr/` publicPath.
 - Endpoint payloads also keep consistent plugin/build metadata across all JSON endpoints (`pluginVersion`, `buildVersion`, `buildName`).
+- JSON endpoint payloads also enforce mode-correct shared version semantics (`react`/`react-dom` wildcard only on SSR endpoints).
 
 Remote entry payloads are also validated directly over HTTP at:
 

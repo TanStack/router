@@ -47,6 +47,7 @@ For the remote web target (browser manifest), expected contract is:
 - JSON endpoint validation should include identity fields and remote entry/plugin metadata presence.
 - `/dist/*` and `/ssr/*` JSON endpoints should each report their expected remoteEntry type/types metadata/publicPath values.
 - Build/plugin metadata fields are expected to remain consistent across all federation JSON endpoints.
+- Shared version metadata should stay mode-correct across endpoints (browser concrete versions, SSR wildcard versions).
 
 That combination keeps React shared ownership on the host and avoids SSR
 runtime fallback chunk loading conflicts with `@module-federation/node`.
