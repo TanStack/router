@@ -25,11 +25,15 @@ export default defineConfig({
         runtimePlugins: [require.resolve('@module-federation/node/runtimePlugin')],
         shared: {
           react: {
+            // Keep host-owned React in node runtime.
+            // With remoteType=script + node runtime plugin, remote shared fallbacks
+            // can otherwise trigger SSR chunk loading incompatibilities.
             import: false,
             singleton: true,
             requiredVersion: false,
           },
           'react-dom': {
+            // Keep host-owned ReactDOM in node runtime.
             import: false,
             singleton: true,
             requiredVersion: false,
