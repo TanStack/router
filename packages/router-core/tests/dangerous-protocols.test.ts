@@ -155,9 +155,9 @@ describe('isDangerousProtocol', () => {
       expect(isDangerousProtocol('ssh://example.com', customAllowlist)).toBe(
         false,
       )
-      expect(
-        isDangerousProtocol('javascript:alert(1)', customAllowlist),
-      ).toBe(true)
+      expect(isDangerousProtocol('javascript:alert(1)', customAllowlist)).toBe(
+        true,
+      )
       expect(isDangerousProtocol('https://example.com', customAllowlist)).toBe(
         true,
       )
