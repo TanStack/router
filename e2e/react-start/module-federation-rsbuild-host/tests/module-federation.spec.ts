@@ -18,6 +18,14 @@ type ManifestSharedEntry = {
   }
 }
 
+type ManifestExposeEntry = {
+  name?: string
+  path?: string
+  assets?: {
+    js?: SharedAssetGroup
+  }
+}
+
 type ManifestRemoteEntryMetadata = {
   type?: string
 }
@@ -28,6 +36,7 @@ type MfManifest = {
     publicPath?: string
   }
   shared?: Array<ManifestSharedEntry>
+  exposes?: Array<ManifestExposeEntry>
 }
 
 async function fetchManifest(
@@ -57,6 +66,21 @@ function getSharedByName(manifest: MfManifest) {
   return new Map(
     (manifest.shared ?? []).map((shared) => [shared.name, shared] as const),
   )
+}
+
+function getExposesByName(manifest: MfManifest) {
+  return new Map(
+    (manifest.exposes ?? []).map((expose) => [expose.name, expose] as const),
+  )
+}
+
+function assertRelativeJsAssetPaths(assetPaths: Array<string>) {
+  for (const assetPath of assetPaths) {
+    expect(assetPath.startsWith('static/js/')).toBeTruthy()
+    expect(assetPath.startsWith('/')).toBeFalsy()
+    expect(assetPath.includes('file://')).toBeFalsy()
+    expect(assetPath.includes('/workspace/')).toBeFalsy()
+  }
 }
 
 test('renders the remote module on the SSR response', async ({ page }) => {
@@ -119,6 +143,15 @@ test('serves node-compatible remote SSR manifest metadata', async ({ page }) => 
   expect(reactDomShared).toBeDefined()
   expect(reactShared?.assets?.js?.sync ?? []).toEqual([])
   expect(reactDomShared?.assets?.js?.sync ?? []).toEqual([])
+
+  const exposesByName = getExposesByName(manifest)
+  for (const exposeName of ['message', 'routes', 'server-data']) {
+    const exposeEntry = exposesByName.get(exposeName)
+    expect(exposeEntry).toBeDefined()
+    const exposeSyncAssets = exposeEntry?.assets?.js?.sync ?? []
+    expect(exposeSyncAssets.length).toBeGreaterThan(0)
+    assertRelativeJsAssetPaths(exposeSyncAssets)
+  }
 })
 
 test('serves browser manifest with shared fallback assets', async ({ page }) => {
@@ -140,12 +173,15 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
 
   expect(reactSyncAssets.length).toBeGreaterThan(0)
   expect(reactDomSyncAssets.length).toBeGreaterThan(0)
+  assertRelativeJsAssetPaths([...reactSyncAssets, ...reactDomSyncAssets])
 
-  for (const assetPath of [...reactSyncAssets, ...reactDomSyncAssets]) {
-    expect(assetPath.startsWith('static/js/')).toBeTruthy()
-    expect(assetPath.startsWith('/')).toBeFalsy()
-    expect(assetPath.includes('file://')).toBeFalsy()
-    expect(assetPath.includes('/workspace/')).toBeFalsy()
+  const exposesByName = getExposesByName(manifest)
+  for (const exposeName of ['message', 'routes', 'server-data']) {
+    const exposeEntry = exposesByName.get(exposeName)
+    expect(exposeEntry).toBeDefined()
+    const exposeSyncAssets = exposeEntry?.assets?.js?.sync ?? []
+    expect(exposeSyncAssets.length).toBeGreaterThan(0)
+    assertRelativeJsAssetPaths(exposeSyncAssets)
   }
 })
 
