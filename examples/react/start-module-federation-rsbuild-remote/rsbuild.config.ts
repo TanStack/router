@@ -46,6 +46,7 @@ export default defineConfig({
         library: {
           type: 'commonjs-module',
         },
+        remoteType: 'script',
         exposes: {
           './message': './src/message.tsx',
           './routes': './src/routes.tsx',
