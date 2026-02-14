@@ -57,6 +57,7 @@ Expected browser manifest contract for web target:
 - JSON endpoint payloads should keep `remotes` empty and only include shared entries for React + ReactDOM.
 - Shared entries are expected to stay singleton on all endpoint payloads.
 - Stats endpoints should keep shared runtime flags (`shareScope: default`, `eager: false`, SSR-only `import: false`) while manifest endpoints omit those fields.
+- Stats endpoints should keep shared usage arrays (`usedIn`, `usedExports`) as empty arrays while manifest endpoints omit them.
 - Expose ids/paths should remain stable across endpoint payloads for `message`, `routes`, and `server-data`.
 - Stats endpoint expose `requires` arrays are expected to remain empty; manifest endpoint payloads should omit `requires`.
 - Stats endpoint payloads should also keep stable expose `file` metadata (`src/message.tsx`, `src/routes.tsx`, `src/server-data.ts`).

@@ -68,6 +68,7 @@ Federation stats contract expectations:
 - JSON payloads also retain `remotes: []` and the two-entry shared set (`react`, `react-dom`).
 - Shared entries stay singleton on all endpoint payloads.
 - Stats endpoints include shared runtime flags (`shareScope: default`, `eager: false`, SSR-only `import: false`) while manifest endpoints omit those fields.
+- Stats endpoints keep shared usage arrays (`usedIn`, `usedExports`) as empty arrays while manifest endpoints omit them.
 - Expose ids/paths are expected to remain stable in endpoint payloads for `message`, `routes`, and `server-data`.
 - Stats endpoint expose `requires` arrays remain empty; manifest endpoint payloads omit `requires`.
 - Stats endpoints also keep stable expose `file` metadata (`src/message.tsx`, `src/routes.tsx`, `src/server-data.ts`).

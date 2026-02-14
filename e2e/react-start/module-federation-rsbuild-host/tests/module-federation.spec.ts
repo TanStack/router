@@ -22,6 +22,8 @@ type ManifestSharedEntry = {
   import?: boolean
   eager?: boolean
   shareScope?: string
+  usedIn?: Array<unknown>
+  usedExports?: Array<unknown>
   assets?: {
     js?: SharedAssetGroup
     css?: SharedAssetGroup
@@ -370,6 +372,10 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
       expect(reactDom?.shareScope).toBe('default')
       expect(react?.eager).toBe(false)
       expect(reactDom?.eager).toBe(false)
+      expect(react?.usedIn ?? []).toEqual([])
+      expect(reactDom?.usedIn ?? []).toEqual([])
+      expect(react?.usedExports ?? []).toEqual([])
+      expect(reactDom?.usedExports ?? []).toEqual([])
       if (path.startsWith('/ssr/')) {
         expect(react?.import).toBe(false)
         expect(reactDom?.import).toBe(false)
@@ -384,6 +390,10 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
       expect(reactDom?.eager).toBeUndefined()
       expect(react?.import).toBeUndefined()
       expect(reactDom?.import).toBeUndefined()
+      expect(react?.usedIn).toBeUndefined()
+      expect(reactDom?.usedIn).toBeUndefined()
+      expect(react?.usedExports).toBeUndefined()
+      expect(reactDom?.usedExports).toBeUndefined()
     }
     if (path.startsWith('/ssr/')) {
       expect(react?.version).toBe('*')
