@@ -35,7 +35,7 @@ For the remote web target (browser manifest), expected contract is:
 - React/ReactDOM shared fallback JS asset lists are non-empty.
 - Shared JS asset entries are relative `static/js/...` paths resolved via `publicPath`.
 - Exposed module JS asset entries are also relative `static/js/...` paths.
-- `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` should serve JavaScript over HTTP.
+- `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` should serve JavaScript over HTTP with JavaScript content-types.
 
 That combination keeps React shared ownership on the host and avoids SSR
 runtime fallback chunk loading conflicts with `@module-federation/node`.

@@ -57,5 +57,5 @@ Remote entry payloads are also validated directly over HTTP at:
 - `/dist/remoteEntry.js`
 - `/ssr/remoteEntry.js`
 
-and must return JavaScript content (not HTML fallback pages).
+and must return JavaScript content-types (not HTML fallback pages).
 

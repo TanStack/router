@@ -46,7 +46,7 @@ Expected browser manifest contract for the web target:
 - Exposed module JS asset entries are also relative `static/js/...` paths.
 
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
-JavaScript payloads over HTTP (not HTML fallbacks).
+JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).
 
 This keeps React ownership on the host side in node SSR runtime and avoids
 remote shared fallback chunk loading incompatibilities.
