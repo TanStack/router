@@ -358,10 +358,33 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     expect(reactDom).toBeDefined()
     expect(react?.id).toBe(expectedSharedIds.react)
     expect(reactDom?.id).toBe(expectedSharedIds['react-dom'])
+    expect(react?.singleton).toBe(true)
+    expect(reactDom?.singleton).toBe(true)
     expect(react?.requiredVersion).toBe(expectedSharedRequiredVersion)
     expect(reactDom?.requiredVersion).toBe(expectedSharedRequiredVersion)
     expect(react?.fallback).toBe('')
     expect(reactDom?.fallback).toBe('')
+    const isStatsEndpoint = path.endsWith('mf-stats.json')
+    if (isStatsEndpoint) {
+      expect(react?.shareScope).toBe('default')
+      expect(reactDom?.shareScope).toBe('default')
+      expect(react?.eager).toBe(false)
+      expect(reactDom?.eager).toBe(false)
+      if (path.startsWith('/ssr/')) {
+        expect(react?.import).toBe(false)
+        expect(reactDom?.import).toBe(false)
+      } else {
+        expect(react?.import).toBeUndefined()
+        expect(reactDom?.import).toBeUndefined()
+      }
+    } else {
+      expect(react?.shareScope).toBeUndefined()
+      expect(reactDom?.shareScope).toBeUndefined()
+      expect(react?.eager).toBeUndefined()
+      expect(reactDom?.eager).toBeUndefined()
+      expect(react?.import).toBeUndefined()
+      expect(reactDom?.import).toBeUndefined()
+    }
     if (path.startsWith('/ssr/')) {
       expect(react?.version).toBe('*')
       expect(reactDom?.version).toBe('*')
@@ -372,7 +395,6 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
 
     const exposesByName = getExposesByName(parsed)
     expect(exposesByName.size).toBe(3)
-    const isStatsEndpoint = path.endsWith('mf-stats.json')
     for (const [exposeName, exposePath] of Object.entries(expectedExposePaths)) {
       const expose = exposesByName.get(exposeName)
       expect(expose).toBeDefined()

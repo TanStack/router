@@ -66,6 +66,8 @@ Federation stats contract expectations:
 - `pluginVersion` is expected to remain SemVer-like on all JSON endpoints.
 - Shared version semantics remain mode-correct across endpoints (`*` only for SSR node-target shared entries).
 - JSON payloads also retain `remotes: []` and the two-entry shared set (`react`, `react-dom`).
+- Shared entries stay singleton on all endpoint payloads.
+- Stats endpoints include shared runtime flags (`shareScope: default`, `eager: false`, SSR-only `import: false`) while manifest endpoints omit those fields.
 - Expose ids/paths are expected to remain stable in endpoint payloads for `message`, `routes`, and `server-data`.
 - Stats endpoint expose `requires` arrays remain empty; manifest endpoint payloads omit `requires`.
 - Stats endpoints also keep stable expose `file` metadata (`src/message.tsx`, `src/routes.tsx`, `src/server-data.ts`).
