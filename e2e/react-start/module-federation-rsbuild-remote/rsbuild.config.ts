@@ -6,6 +6,32 @@ import { pluginModuleFederation } from '@module-federation/rsbuild-plugin'
 const require = createRequire(import.meta.url)
 const remotePort = Number(process.env.REMOTE_PORT || 3001)
 const remoteOrigin = `http://localhost:${remotePort}`
+const sharedForWeb = {
+  react: {
+    singleton: true,
+    requiredVersion: false,
+  },
+  'react-dom': {
+    singleton: true,
+    requiredVersion: false,
+  },
+}
+const sharedForNode = {
+  react: {
+    // Keep host-owned React in node runtime.
+    // With remoteType=script + node runtime plugin, remote shared fallbacks
+    // can otherwise trigger SSR chunk loading incompatibilities.
+    import: false,
+    singleton: true,
+    requiredVersion: false,
+  },
+  'react-dom': {
+    // Keep host-owned ReactDOM in node runtime.
+    import: false,
+    singleton: true,
+    requiredVersion: false,
+  },
+}
 
 export default defineConfig({
   plugins: [
@@ -23,16 +49,7 @@ export default defineConfig({
           asyncStartup: true,
         },
         runtimePlugins: [require.resolve('@module-federation/node/runtimePlugin')],
-        shared: {
-          react: {
-            singleton: true,
-            requiredVersion: false,
-          },
-          'react-dom': {
-            singleton: true,
-            requiredVersion: false,
-          },
-        },
+        shared: sharedForWeb,
       },
       {
         environment: 'web',
@@ -56,22 +73,7 @@ export default defineConfig({
           asyncStartup: true,
         },
         runtimePlugins: [require.resolve('@module-federation/node/runtimePlugin')],
-        shared: {
-          react: {
-            // Keep host-owned React in node runtime.
-            // With remoteType=script + node runtime plugin, remote shared fallbacks
-            // can otherwise trigger SSR chunk loading incompatibilities.
-            import: false,
-            singleton: true,
-            requiredVersion: false,
-          },
-          'react-dom': {
-            // Keep host-owned ReactDOM in node runtime.
-            import: false,
-            singleton: true,
-            requiredVersion: false,
-          },
-        },
+        shared: sharedForNode,
       },
       {
         target: 'node',
