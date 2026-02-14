@@ -208,11 +208,14 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       splitRouteIdentNodes.includes(p as any),
     ) as Array<SplitRouteIdentNodes>
 
+    const baseId = id.split('?')[0]!
+    const resolvedSharedBindings = sharedBindingsMap.get(baseId)
+
     const result = compileCodeSplitVirtualRoute({
       code,
       filename: id,
       splitTargets: grouping,
-      sharedBindings: sharedBindingsMap.get(id.split('?')[0]!),
+      sharedBindings: resolvedSharedBindings,
     })
 
     if (debug) {
@@ -345,6 +348,15 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           return handleCompilingVirtualFile(code, normalizedId)
         },
       },
+
+      vite: {
+        applyToEnvironment(environment) {
+          if (userConfig?.plugin?.vite?.environmentName) {
+            return userConfig.plugin.vite.environmentName === environment.name
+          }
+          return true
+        },
+      },
     },
     {
       name: 'tanstack-router:code-splitter:compile-shared-file',
@@ -379,6 +391,15 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           }
 
           return result
+        },
+      },
+
+      vite: {
+        applyToEnvironment(environment) {
+          if (userConfig?.plugin?.vite?.environmentName) {
+            return userConfig.plugin.vite.environmentName === environment.name
+          }
+          return true
         },
       },
     },
