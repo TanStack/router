@@ -32,7 +32,7 @@ const Zod = () => {
 export const Route = createFileRoute({
   validateSearch: zodValidator(
     z.object({
-      search: fallback(z.string().optional(), undefined),
+      search: z.string().optional().catch(undefined),
     }),
   ),
   loaderDeps: (opt) => ({ search: opt.search }),
