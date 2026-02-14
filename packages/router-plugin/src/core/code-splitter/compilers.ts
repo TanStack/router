@@ -1371,6 +1371,12 @@ export function compileCodeSplitVirtualRoute(
     })
   }
 
+  // If the body is empty after DCE, strip directive prologues too.
+  // A file containing only `'use client'` with no real code is useless.
+  if (ast.program.body.length === 0) {
+    ast.program.directives = []
+  }
+
   return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
@@ -1483,6 +1489,11 @@ export function compileCodeSplitSharedRoute(
   }
 
   deadCodeElimination(ast, refIdents)
+
+  // If the body is empty after DCE, strip directive prologues too.
+  if (ast.program.body.length === 0) {
+    ast.program.directives = []
+  }
 
   return generateFromAst(ast, {
     sourceMaps: true,
