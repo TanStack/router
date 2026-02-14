@@ -74,7 +74,11 @@ const buildMatchContext = (
   return context
 }
 
-const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
+const _handleNotFound = (
+  inner: InnerLoadContext,
+  err: NotFoundError,
+  routerCode?: string,
+) => {
   // Find the route that should handle the not found error
   // First check if a specific route is requested to show the error
   const routeCursor =
@@ -90,11 +94,19 @@ const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
     ).defaultNotFoundComponent
   }
 
-  // Ensure we have a notFoundComponent
-  invariant(
-    routeCursor.options.notFoundComponent,
-    'No notFoundComponent found. Please set a notFoundComponent on your route or provide a defaultNotFoundComponent to the router.',
-  )
+  // For BEFORE_LOAD errors that will walk up to a parent route,
+  // don't require notFoundComponent on the current (child) route —
+  // an ancestor will handle it. Only enforce the invariant when
+  // we've reached a route that won't walk up further.
+  const willWalkUp = routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute
+
+  if (!willWalkUp) {
+    // Ensure we have a notFoundComponent
+    invariant(
+      routeCursor.options.notFoundComponent,
+      'No notFoundComponent found. Please set a notFoundComponent on your route or provide a defaultNotFoundComponent to the router.',
+    )
+  }
 
   // Find the match for this route
   const matchForRoute = inner.matches.find((m) => m.routeId === routeCursor.id)
@@ -109,9 +121,9 @@ const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
     isFetching: false,
   }))
 
-  if ((err as any).routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
-    err.routeId = routeCursor.parentRoute.id
-    _handleNotFound(inner, err)
+  if (willWalkUp) {
+    err.routeId = routeCursor.parentRoute!.id
+    _handleNotFound(inner, err, routerCode)
   }
 }
 
@@ -119,6 +131,7 @@ const handleRedirectAndNotFound = (
   inner: InnerLoadContext,
   match: AnyRouteMatch | undefined,
   err: unknown,
+  routerCode?: string,
 ): void => {
   if (!isRedirect(err) && !isNotFound(err)) return
 
@@ -159,7 +172,7 @@ const handleRedirectAndNotFound = (
     err = inner.router.resolveRedirect(err)
     throw err
   } else {
-    _handleNotFound(inner, err)
+    _handleNotFound(inner, err, routerCode)
     throw err
   }
 }
@@ -199,13 +212,23 @@ const handleSerialError = (
 
   err.routerCode = routerCode
   inner.firstBadMatchIndex ??= index
-  handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), err)
+  handleRedirectAndNotFound(
+    inner,
+    inner.router.getMatch(matchId),
+    err,
+    routerCode,
+  )
 
   try {
     route.options.onError?.(err)
   } catch (errorHandlerErr) {
     err = errorHandlerErr
-    handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), err)
+    handleRedirectAndNotFound(
+      inner,
+      inner.router.getMatch(matchId),
+      err,
+      routerCode,
+    )
   }
 
   inner.updateMatch(matchId, (prev) => {

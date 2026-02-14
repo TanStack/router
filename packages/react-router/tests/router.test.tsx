@@ -2484,6 +2484,255 @@ describe('statusCode', () => {
   )
 })
 
+describe('notFound in beforeLoad with pendingComponent', () => {
+  it('should transition router.state.status to idle when child beforeLoad throws notFound and parent has pendingComponent with pendingMs: 0', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Root Not Found</div>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <div data-testid="home-page">
+          <Link to="/parent/child">Go to child</Link>
+        </div>
+      ),
+    })
+
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      pendingMs: 0,
+      pendingComponent: () => (
+        <div data-testid="pending-component">Loading...</div>
+      ),
+      component: () => (
+        <div data-testid="parent-component">
+          Parent
+          <Outlet />
+        </div>
+      ),
+      notFoundComponent: () => (
+        <div data-testid="parent-not-found">Parent Not Found</div>
+      ),
+    })
+
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: () => {
+        throw notFound()
+      },
+      component: () => <div data-testid="child-component">Child</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    // Wait for initial load
+    await act(() => router.latestLoadPromise)
+    expect(router.state.status).toBe('idle')
+    expect(screen.getByTestId('home-page')).toBeInTheDocument()
+
+    // Navigate to the child route that throws notFound in beforeLoad
+    await act(() => router.navigate({ to: '/parent/child' }))
+
+    // The router status should eventually become idle
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+
+    expect(router.state.statusCode).toBe(404)
+  })
+
+  it('should transition router.state.status to idle when child beforeLoad throws notFound and parent has NO pendingComponent', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Root Not Found</div>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home-page">Home</div>,
+    })
+
+    // Direct child of root (no intermediate parent)
+    const childRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      beforeLoad: () => {
+        throw notFound()
+      },
+      component: () => <div data-testid="child-component">Child</div>,
+      notFoundComponent: () => (
+        <div data-testid="child-not-found">Child Not Found</div>
+      ),
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, childRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.latestLoadPromise)
+    expect(router.state.status).toBe('idle')
+
+    await act(() => router.navigate({ to: '/child' }))
+
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+
+    expect(router.state.statusCode).toBe(404)
+  })
+
+  it('should transition router.state.status to idle when nested child beforeLoad throws notFound WITHOUT pendingComponent', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Root Not Found</div>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home-page">Home</div>,
+    })
+
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      component: () => (
+        <div data-testid="parent-component">
+          Parent
+          <Outlet />
+        </div>
+      ),
+      notFoundComponent: () => (
+        <div data-testid="parent-not-found">Parent Not Found</div>
+      ),
+    })
+
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: () => {
+        throw notFound()
+      },
+      component: () => <div data-testid="child-component">Child</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.latestLoadPromise)
+    expect(router.state.status).toBe('idle')
+
+    await act(() => router.navigate({ to: '/parent/child' }))
+
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+
+    expect(router.state.statusCode).toBe(404)
+  })
+
+  it('should transition router.state.status to idle when child async beforeLoad throws notFound and parent has pendingComponent with pendingMs: 0', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Root Not Found</div>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <div data-testid="home-page">
+          <Link to="/parent/child">Go to child</Link>
+        </div>
+      ),
+    })
+
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      pendingMs: 0,
+      pendingComponent: () => (
+        <div data-testid="pending-component">Loading...</div>
+      ),
+      component: () => (
+        <div data-testid="parent-component">
+          Parent
+          <Outlet />
+        </div>
+      ),
+      notFoundComponent: () => (
+        <div data-testid="parent-not-found">Parent Not Found</div>
+      ),
+    })
+
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        throw notFound()
+      },
+      component: () => <div data-testid="child-component">Child</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    // Wait for initial load
+    await act(() => router.latestLoadPromise)
+    expect(router.state.status).toBe('idle')
+    expect(screen.getByTestId('home-page')).toBeInTheDocument()
+
+    // Navigate to the child route that throws notFound in beforeLoad
+    await act(() => router.navigate({ to: '/parent/child' }))
+
+    // The router status should eventually become idle
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+
+    expect(router.state.statusCode).toBe(404)
+  })
+})
+
 describe('Router rewrite functionality', () => {
   it('should rewrite URLs using input before router interprets them', async () => {
     const rootRoute = createRootRoute({
