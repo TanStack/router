@@ -16,7 +16,7 @@
     "@supabase/supabase-js": "^2.48.1",
     "@tanstack/solid-router": "^1.159.10",
     "@tanstack/solid-router-devtools": "^1.159.10",
-    "@tanstack/solid-start": "^1.159.11",
+    "@tanstack/solid-start": "^1.159.12",
     "solid-js": "^1.9.9",
     "redaxios": "^0.5.1"
   },
