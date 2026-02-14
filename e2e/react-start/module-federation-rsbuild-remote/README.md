@@ -37,6 +37,7 @@ Expected browser manifest contract for the web target:
 - `metaData.remoteEntry.type: 'global'`
 - `metaData.publicPath` points to `http://<remote-origin>/`
 - React/ReactDOM browser shared fallback JS assets are present.
+- Browser shared JS asset entries are relative `static/js/...` paths.
 
 This keeps React ownership on the host side in node SSR runtime and avoids
 remote shared fallback chunk loading incompatibilities.

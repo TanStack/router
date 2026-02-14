@@ -135,8 +135,18 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
 
   expect(reactShared).toBeDefined()
   expect(reactDomShared).toBeDefined()
-  expect((reactShared?.assets?.js?.sync ?? []).length).toBeGreaterThan(0)
-  expect((reactDomShared?.assets?.js?.sync ?? []).length).toBeGreaterThan(0)
+  const reactSyncAssets = reactShared?.assets?.js?.sync ?? []
+  const reactDomSyncAssets = reactDomShared?.assets?.js?.sync ?? []
+
+  expect(reactSyncAssets.length).toBeGreaterThan(0)
+  expect(reactDomSyncAssets.length).toBeGreaterThan(0)
+
+  for (const assetPath of [...reactSyncAssets, ...reactDomSyncAssets]) {
+    expect(assetPath.startsWith('static/js/')).toBeTruthy()
+    expect(assetPath.startsWith('/')).toBeFalsy()
+    expect(assetPath.includes('file://')).toBeFalsy()
+    expect(assetPath.includes('/workspace/')).toBeFalsy()
+  }
 })
 
 test('dynamically registers and renders remote routes', async ({ page }) => {
