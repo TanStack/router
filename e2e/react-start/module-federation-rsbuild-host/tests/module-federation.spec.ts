@@ -287,6 +287,11 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     routes: './routes',
     'server-data': './server-data',
   } as const
+  const expectedExposeFiles = {
+    message: 'src/message.tsx',
+    routes: 'src/routes.tsx',
+    'server-data': 'src/server-data.ts',
+  } as const
   const expectedSharedIds = {
     react: 'mf_remote:react',
     'react-dom': 'mf_remote:react-dom',
@@ -354,6 +359,10 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
       expect(expose).toBeDefined()
       expect(expose?.id).toBe(`mf_remote:${exposeName}`)
       expect(expose?.path).toBe(exposePath)
+      expect(expose?.requires ?? []).toEqual([])
+      if (path.endsWith('mf-stats.json')) {
+        expect(expose?.file).toBe(expectedExposeFiles[exposeName])
+      }
     }
   }
 })
