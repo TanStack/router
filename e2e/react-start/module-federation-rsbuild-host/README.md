@@ -31,4 +31,5 @@ pnpm test:e2e
 Server remotes are loaded over HTTP from the remote SSR output and use:
 
 - `remoteType: 'script'` on the host SSR plugin config.
+- `shared.react/react-dom.import: false` on the remote node-target config.
 
