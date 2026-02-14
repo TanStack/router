@@ -1,5 +1,5 @@
 ---
-title: Comparison | TanStack Router & TanStack Start vs Next.js vs React Router / Remix
+title: Comparison
 toc: false
 ---
 
@@ -16,6 +16,12 @@ Feature/Capability Key:
 - 🟠 Supported via addon/community package
 - 🔶 Possible, but requires custom code/implementation/casting
 - 🛑 Not officially supported
+
+<!-- ::start:framework -->
+
+# React
+
+## Comparison | TanStack Router & TanStack Start vs Next.js vs React Router / Remix
 
 |                                                | TanStack Router / Start                          | React Router DOM [_(Website)_][router]                | Next.JS [_(Website)_][nextjs]                         |
 | ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
@@ -94,3 +100,11 @@ Feature/Capability Key:
 [gh-nextjs]: https://github.com/vercel/next.js
 [stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?label=%F0%9F%8C%9F
 [bpl-nextjs]: https://bundlephobia.com/result?p=next
+
+# Solid
+
+---
+
+We don't have a comparison table for Solid just yet. If you're interested in helping us create one, please reach out in the [TanStack Discord](https://tanstack.com/discord) or open a PR with your proposed comparison!
+
+<!-- ::end:framework -->

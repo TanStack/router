@@ -30,6 +30,10 @@
           "to": "llm-support"
         },
         {
+          "label": "Comparison",
+          "to": "comparison"
+        },
+        {
           "label": "Frequently Asked Questions",
           "to": "faq"
         }
@@ -37,12 +41,7 @@
       "frameworks": [
         {
           "label": "react",
-          "children": [
-            {
-              "label": "Comparison",
-              "to": "framework/react/comparison"
-            }
-          ]
+          "children": []
         },
         {
           "label": "solid",
