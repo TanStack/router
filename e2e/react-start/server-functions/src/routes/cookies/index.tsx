@@ -3,7 +3,8 @@ import { z } from 'zod/v4'
 
 const cookieSchema = z
   .object({ value: z.string() })
-  .catch(() => ({ value: `CLIENT-${Date.now()}` }))
+  .or(z.unknown().transform(() => ({ value: `CLIENT-${Date.now()}` })))
+
 export const Route = createFileRoute('/cookies/')({
   validateSearch: cookieSchema,
   component: RouteComponent,
