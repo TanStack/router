@@ -67,7 +67,7 @@ Federation stats contract expectations:
 - Shared version semantics remain mode-correct across endpoints (`*` only for SSR node-target shared entries).
 - JSON payloads also retain `remotes: []` and the two-entry shared set (`react`, `react-dom`).
 - Expose ids/paths are expected to remain stable in endpoint payloads for `message`, `routes`, and `server-data`.
-- Expose `requires` arrays remain empty in endpoint payloads.
+- Stats endpoint expose `requires` arrays remain empty; manifest endpoint payloads omit `requires`.
 - Stats endpoints also keep stable expose `file` metadata (`src/message.tsx`, `src/routes.tsx`, `src/server-data.ts`).
 
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve

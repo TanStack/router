@@ -55,7 +55,7 @@ For the remote web target (browser manifest), expected contract is:
 - JSON endpoint payloads should keep `remotes` empty and include only `react`/`react-dom` shared entries.
 - Shared endpoint ids should remain stable as `mf_remote:react` and `mf_remote:react-dom`.
 - Expose ids/paths in endpoint payloads should remain stable for `message`, `routes`, and `server-data`.
-- Expose `requires` arrays should remain empty in endpoint payloads.
+- Stats endpoint expose `requires` arrays should remain empty; manifest endpoint payloads should omit `requires`.
 - Stats endpoint payloads should also keep stable expose `file` values (`src/message.tsx`, `src/routes.tsx`, `src/server-data.ts`).
 
 That combination keeps React shared ownership on the host and avoids SSR

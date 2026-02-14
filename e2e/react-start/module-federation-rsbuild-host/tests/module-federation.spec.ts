@@ -372,14 +372,18 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
 
     const exposesByName = getExposesByName(parsed)
     expect(exposesByName.size).toBe(3)
+    const isStatsEndpoint = path.endsWith('mf-stats.json')
     for (const [exposeName, exposePath] of Object.entries(expectedExposePaths)) {
       const expose = exposesByName.get(exposeName)
       expect(expose).toBeDefined()
       expect(expose?.id).toBe(`mf_remote:${exposeName}`)
       expect(expose?.path).toBe(exposePath)
-      expect(expose?.requires ?? []).toEqual([])
-      if (path.endsWith('mf-stats.json')) {
+      if (isStatsEndpoint) {
+        expect(expose?.requires ?? []).toEqual([])
         expect(expose?.file).toBe(expectedExposeFiles[exposeName])
+      } else {
+        expect(expose?.requires).toBeUndefined()
+        expect(expose?.file).toBeUndefined()
       }
     }
   }
