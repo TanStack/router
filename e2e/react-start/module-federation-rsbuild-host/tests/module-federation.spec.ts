@@ -63,6 +63,7 @@ type MfManifest = {
     types?: ManifestTypesMetadata
     globalName?: string
     prefetchInterface?: boolean
+    pluginVersion?: string
   }
   shared?: Array<ManifestSharedEntry>
   exposes?: Array<ManifestExposeEntry>
@@ -333,6 +334,10 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
   ] as const) {
     expect(stats.id).toBe(manifest.id)
     expect(stats.name).toBe(manifest.name)
+    expect(stats.metaData?.name).toBe(manifest.metaData?.name)
+    expect(stats.metaData?.type).toBe(manifest.metaData?.type)
+    expect(stats.metaData?.remoteEntry?.name).toBe(manifest.metaData?.remoteEntry?.name)
+    expect(stats.metaData?.remoteEntry?.path).toBe(manifest.metaData?.remoteEntry?.path)
     expect(stats.metaData?.remoteEntry?.type).toBe(manifest.metaData?.remoteEntry?.type)
     expect(stats.metaData?.publicPath).toBe(manifest.metaData?.publicPath)
     expect(stats.metaData?.types?.zip).toBe(manifest.metaData?.types?.zip)
@@ -340,8 +345,12 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
     expect(stats.metaData?.buildInfo?.buildVersion).toBe(
       manifest.metaData?.buildInfo?.buildVersion,
     )
+    expect(stats.metaData?.buildInfo?.buildName).toBe(
+      manifest.metaData?.buildInfo?.buildName,
+    )
     expect(stats.metaData?.globalName).toBe(manifest.metaData?.globalName)
     expect(stats.metaData?.prefetchInterface).toBe(manifest.metaData?.prefetchInterface)
+    expect(stats.metaData?.pluginVersion).toBe(manifest.metaData?.pluginVersion)
 
     expect(getSortedEntryNames(stats.shared ?? [])).toEqual(
       getSortedEntryNames(manifest.shared ?? []),
