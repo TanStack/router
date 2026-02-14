@@ -1,5 +1,6 @@
 import * as z3 from 'zod/v3'
 import * as z4 from 'zod/v4/core'
+import * as z4m from 'zod/v4/mini'
 import type { ValidatorAdapter } from '@tanstack/react-router'
 
 export interface ZodTypeLike {
@@ -87,12 +88,22 @@ export const zodValidator = <
   } as zodValidatorAdapter<TOptions>
 }
 
-export const fallback = <TSchema extends z3.ZodTypeAny>(
+export const fallback = <TSchema extends z3.ZodTypeAny | z4.$ZodType>(
   schema: TSchema,
-  fallback: TSchema['_input'],
-): z3.ZodPipeline<
-  z3.ZodType<TSchema['_input'], z3.ZodTypeDef, TSchema['_input']>,
-  z3.ZodCatch<TSchema>
-> => {
-  return z3.custom<TSchema['_input']>().pipe(schema.catch(fallback))
+  fallback: ExtractInput<TSchema>,
+): TSchema extends z4.$ZodType
+  ? z4.$ZodType<ExtractOutput<TSchema>, ExtractInput<TSchema>>
+  : TSchema extends z3.ZodTypeAny ?
+    z3.ZodPipeline<
+      z3.ZodType<TSchema['_input'], z3.ZodTypeDef, TSchema['_input']>,
+      z3.ZodCatch<TSchema>
+      >
+      : never => {
+        if(schema instanceof z4.$ZodType) {
+          return z4m.catch(schema, fallback) as any
+        }
+        if(schema instanceof z3.ZodSchema) {
+          return z3.custom<ExtractInput<TSchema>>().pipe(schema.catch(fallback)) as any
+        }
+        throw new Error('Unsupported schema type')
 }

@@ -12573,7 +12573,7 @@ importers:
         version: 19.2.3(react@19.2.3)
       zod:
         specifier: ^3.25.0 || ^4.0.0
-        version: 3.25.57
+        version: 4.1.12
 
 packages:
 
