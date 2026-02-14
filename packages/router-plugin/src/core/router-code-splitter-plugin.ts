@@ -351,7 +351,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       vite: {
         applyToEnvironment(environment) {
-          if (userConfig?.plugin?.vite?.environmentName) {
+          if (userConfig.plugin?.vite?.environmentName) {
             return userConfig.plugin.vite.environmentName === environment.name
           }
           return true
@@ -396,7 +396,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       vite: {
         applyToEnvironment(environment) {
-          if (userConfig?.plugin?.vite?.environmentName) {
+          if (userConfig.plugin?.vite?.environmentName) {
             return userConfig.plugin.vite.environmentName === environment.name
           }
           return true
