@@ -57,9 +57,11 @@ For the remote web target (browser manifest), expected contract is:
 - Shared entries should stay singleton on all endpoint payloads.
 - Stats endpoints should keep shared runtime flags (`shareScope: default`, `eager: false`, SSR-only `import: false`) while manifest endpoints omit those fields.
 - Stats endpoints should keep shared usage arrays (`usedIn`, `usedExports`) as empty arrays while manifest endpoints omit them.
+- Endpoint shared JS asset semantics should stay mode-correct (`[]` for SSR shared entries, non-empty relative `static/js/*.js` for browser shared entries).
 - Expose ids/paths in endpoint payloads should remain stable for `message`, `routes`, and `server-data`.
 - Stats endpoint expose `requires` arrays should remain empty; manifest endpoint payloads should omit `requires`.
 - Stats endpoint payloads should also keep stable expose `file` values (`src/message.tsx`, `src/routes.tsx`, `src/server-data.ts`).
+- Endpoint expose sync JS asset lists should stay non-empty and use relative `static/js/*.js` paths.
 
 That combination keeps React shared ownership on the host and avoids SSR
 runtime fallback chunk loading conflicts with `@module-federation/node`.

@@ -398,9 +398,17 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     if (path.startsWith('/ssr/')) {
       expect(react?.version).toBe('*')
       expect(reactDom?.version).toBe('*')
+      expect(react?.assets?.js?.sync ?? []).toEqual([])
+      expect(reactDom?.assets?.js?.sync ?? []).toEqual([])
     } else {
       expect(react?.version).not.toBe('*')
       expect(reactDom?.version).not.toBe('*')
+      expect((react?.assets?.js?.sync ?? []).length).toBeGreaterThan(0)
+      expect((reactDom?.assets?.js?.sync ?? []).length).toBeGreaterThan(0)
+      assertRelativeJsAssetPaths([
+        ...(react?.assets?.js?.sync ?? []),
+        ...(reactDom?.assets?.js?.sync ?? []),
+      ])
     }
 
     const exposesByName = getExposesByName(parsed)
@@ -410,6 +418,9 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
       expect(expose).toBeDefined()
       expect(expose?.id).toBe(`mf_remote:${exposeName}`)
       expect(expose?.path).toBe(exposePath)
+      const exposeSyncAssets = expose?.assets?.js?.sync ?? []
+      expect(exposeSyncAssets.length).toBeGreaterThan(0)
+      assertRelativeJsAssetPaths(exposeSyncAssets)
       if (isStatsEndpoint) {
         expect(expose?.requires ?? []).toEqual([])
         expect(expose?.file).toBe(expectedExposeFiles[exposeName])

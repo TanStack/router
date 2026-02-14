@@ -77,9 +77,11 @@ Federation stats contract is also verified:
 - Shared entries remain singleton on all endpoint payloads.
 - Stats endpoints retain shared runtime flags (`shareScope: 'default'`, `eager: false`, and SSR-only `import: false`), while manifest endpoints omit those fields.
 - Stats endpoints also keep shared usage arrays (`usedIn`, `usedExports`) as empty arrays, while manifest endpoints omit them.
+- Endpoint shared JS asset semantics remain mode-correct (`[]` for SSR shared entries, non-empty relative `static/js/*.js` for browser shared entries).
 - Endpoint payloads also retain expose identity/path contracts for `message`, `routes`, and `server-data`.
 - Stats endpoint expose `requires` arrays remain empty; manifest endpoint payloads omit `requires`.
 - Stats endpoint payloads also retain stable expose `file` metadata (`src/message.tsx`, `src/routes.tsx`, `src/server-data.ts`).
+- Endpoint expose sync JS asset lists are non-empty and keep relative `static/js/*.js` paths.
 
 Remote entry payloads are also validated directly over HTTP at:
 
