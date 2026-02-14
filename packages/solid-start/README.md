@@ -2,7 +2,7 @@
 
 # TanStack Solid Start
 
-![TanStack Solid Start Header](https://github.com/tanstack/router/raw/main/media/header_start.png)
+![TanStack Solid Start Header](https://raw.githubusercontent.com/TanStack/router/main/media/header_start.png)
 
 SSR, Streaming, Server Functions, API Routes, bundling and more powered by [TanStack Router](https://tanstack.com/router) and Vite. Ready to deploy to your favorite hosting provider.
 
@@ -21,13 +21,13 @@ SSR, Streaming, Server Functions, API Routes, bundling and more powered by [TanS
 <a href="#badge">
   <img alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg">
 </a>
-<a href="https://github.com/tanstack/router/discussions">
+<a href="https://github.com/TanStack/router/discussions">
   <img alt="Join the discussion on Github" src="https://img.shields.io/badge/Github%20Discussions%20%26%20Support-Chat%20now!-blue" />
 </a>
 <a href="https://bestofjs.org/projects/router">
   <img alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=tanstack%2Frouter%26since=daily" />
 </a>
-<a href="https://github.com/tanstack/router" target="\_parent">
+<a href="https://github.com/TanStack/router" target="\_parent">
   <img alt="" src="https://img.shields.io/github/stars/tanstack/router.svg?style=social&label=Star" />
 </a>
 <a href="https://twitter.com/tan_stack" target="\_parent">
@@ -37,6 +37,6 @@ SSR, Streaming, Server Functions, API Routes, bundling and more powered by [TanS
   <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow @TannerLinsley" />
 </a>
 
-Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/tannerlinsley/react-query), [React Table](https://github.com/tanstack/react-table), [React Charts](https://github.com/tannerlinsley/react-charts), [React Virtual](https://github.com/tannerlinsley/react-virtual)
+Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [Solid Query](https://github.com/TanStack/query), [Solid Table](https://github.com/TanStack/table), [Solid Virtual](https://github.com/TanStack/virtual)
 
 Visit [tanstack.com/start](https://tanstack.com/start) for docs, guides, API and more!

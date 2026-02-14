@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import { last } from './utils'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
@@ -224,6 +225,11 @@ interface InterpolatePathOptions {
    * Obtained from `compileDecodeCharMap(pathParamsAllowedCharacters)`.
    */
   decoder?: (encoded: string) => string
+  /**
+   * @internal
+   * For testing only, in development mode we use the router.isServer value
+   */
+  server?: boolean
 }
 
 type InterPolatePathResult = {
@@ -241,8 +247,15 @@ function encodeParam(
   if (typeof value !== 'string') return value
 
   if (key === '_splat') {
+    // Early return if value only contains URL-safe characters (performance optimization)
+    if (/^[a-zA-Z0-9\-._~!/]*$/.test(value)) return value
     // the splat/catch-all routes shouldn't have the '/' encoded out
-    return encodeURI(value)
+    // Use encodeURIComponent for each segment to properly encode spaces,
+    // plus signs, and other special characters that encodeURI leaves unencoded
+    return value
+      .split('/')
+      .map((segment) => encodePathParam(segment, decoder))
+      .join('/')
   } else {
     return encodePathParam(value, decoder)
   }
@@ -258,6 +271,10 @@ export function interpolatePath({
   path,
   params,
   decoder,
+  // `server` is marked @internal and stripped from .d.ts by `stripInternal`.
+  // We avoid destructuring it in the function signature so the emitted
+  // declaration doesn't reference a property that no longer exists.
+  ...rest
 }: InterpolatePathOptions): InterPolatePathResult {
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
@@ -268,6 +285,65 @@ export function interpolatePath({
     return { interpolatedPath: '/', usedParams, isMissingParams }
   if (!path.includes('$'))
     return { interpolatedPath: path, usedParams, isMissingParams }
+
+  if (isServer ?? rest.server) {
+    // Fast path for common templates like `/posts/$id` or `/files/$`.
+    // Braced segments (`{...}`) are more complex (prefix/suffix/optional) and are
+    // handled by the general parser below.
+    if (path.indexOf('{') === -1) {
+      const length = path.length
+      let cursor = 0
+      let joined = ''
+
+      while (cursor < length) {
+        // Skip slashes between segments. '/' code is 47
+        while (cursor < length && path.charCodeAt(cursor) === 47) cursor++
+        if (cursor >= length) break
+
+        const start = cursor
+        let end = path.indexOf('/', cursor)
+        if (end === -1) end = length
+        cursor = end
+
+        const part = path.substring(start, end)
+        if (!part) continue
+
+        // `$id` or `$` (splat). '$' code is 36
+        if (part.charCodeAt(0) === 36) {
+          if (part.length === 1) {
+            const splat = params._splat
+            usedParams._splat = splat
+            // TODO: Deprecate *
+            usedParams['*'] = splat
+
+            if (!splat) {
+              isMissingParams = true
+              continue
+            }
+
+            const value = encodeParam('_splat', params, decoder)
+            joined += '/' + value
+          } else {
+            const key = part.substring(1)
+            if (!isMissingParams && !(key in params)) {
+              isMissingParams = true
+            }
+            usedParams[key] = params[key]
+
+            const value = encodeParam(key, params, decoder) ?? 'undefined'
+            joined += '/' + value
+          }
+        } else {
+          joined += '/' + part
+        }
+      }
+
+      if (path.endsWith('/')) joined += '/'
+
+      const interpolatedPath = joined || '/'
+      return { usedParams, interpolatedPath, isMissingParams }
+    }
+  }
 
   const length = path.length
   let cursor = 0

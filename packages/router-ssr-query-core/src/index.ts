@@ -2,7 +2,8 @@ import {
   dehydrate as queryDehydrate,
   hydrate as queryHydrate,
 } from '@tanstack/query-core'
-import { isRedirect, isServer } from '@tanstack/router-core'
+import { isRedirect } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import type { AnyRouter } from '@tanstack/router-core'
 import type {
   QueryClient,

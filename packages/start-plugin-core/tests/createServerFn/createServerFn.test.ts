@@ -143,7 +143,7 @@ describe('createServerFn compiles correctly', async () => {
         id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJteVNlcnZlckZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
         name: "myServerFn",
         filename: "src/test.ts"
-      }, (opts, signal) => myServerFn.__executeServer(opts, signal));
+      }, opts => myServerFn.__executeServer(opts));
       const myServerFn = createServerFn().handler(myServerFn_createServerFn_handler, myFunc);
       export { myServerFn_createServerFn_handler };"
     `)
@@ -204,7 +204,7 @@ describe('createServerFn compiles correctly', async () => {
         id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJleHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
         name: "exportedFn",
         filename: "src/test.ts"
-      }, (opts, signal) => exportedFn.__executeServer(opts, signal));
+      }, opts => exportedFn.__executeServer(opts));
       const exportedFn = createServerFn().handler(exportedFn_createServerFn_handler, async () => {
         return exportedVar;
       });
@@ -213,7 +213,7 @@ describe('createServerFn compiles correctly', async () => {
         id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJub25FeHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
         name: "nonExportedFn",
         filename: "src/test.ts"
-      }, (opts, signal) => nonExportedFn.__executeServer(opts, signal));
+      }, opts => nonExportedFn.__executeServer(opts));
       const nonExportedFn = createServerFn().handler(nonExportedFn_createServerFn_handler, async () => {
         return nonExportedVar;
       });

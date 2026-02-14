@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { isServer } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -49,8 +49,15 @@ function Script({
   children?: string
 }) {
   const router = useRouter()
+  const dataScript =
+    typeof attrs?.type === 'string' &&
+    attrs.type !== '' &&
+    attrs.type !== 'text/javascript' &&
+    attrs.type !== 'module'
 
   React.useEffect(() => {
+    if (dataScript) return
+
     if (attrs?.src) {
       const normSrc = (() => {
         try {
@@ -142,9 +149,19 @@ function Script({
     }
 
     return undefined
-  }, [attrs, children])
+  }, [attrs, children, dataScript])
 
   if (!(isServer ?? router.isServer)) {
+    if (dataScript && typeof children === 'string') {
+      return (
+        <script
+          {...attrs}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: children }}
+        />
+      )
+    }
+
     const { src, ...rest } = attrs || {}
     // render an empty script on the client just to avoid hydration errors
     return (

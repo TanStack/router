@@ -2,9 +2,9 @@ import * as Solid from 'solid-js'
 import {
   getLocationChangeInfo,
   handleHashScroll,
-  isServer,
   trimPathRight,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'

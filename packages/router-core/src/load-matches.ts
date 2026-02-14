@@ -1,10 +1,10 @@
-import { batch } from '@tanstack/store'
 import invariant from 'tiny-invariant'
+import { isServer } from '@tanstack/router-core/isServer'
+import { batch } from './utils/batch'
 import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
-import { isServer } from './isServer'
 import type { NotFoundError } from './not-found'
 import type { ParsedLocation } from './location'
 import type {
@@ -74,7 +74,11 @@ const buildMatchContext = (
   return context
 }
 
-const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
+const _handleNotFound = (
+  inner: InnerLoadContext,
+  err: NotFoundError,
+  routerCode?: string,
+) => {
   // Find the route that should handle the not found error
   // First check if a specific route is requested to show the error
   const routeCursor =
@@ -90,11 +94,19 @@ const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
     ).defaultNotFoundComponent
   }
 
-  // Ensure we have a notFoundComponent
-  invariant(
-    routeCursor.options.notFoundComponent,
-    'No notFoundComponent found. Please set a notFoundComponent on your route or provide a defaultNotFoundComponent to the router.',
-  )
+  // For BEFORE_LOAD errors that will walk up to a parent route,
+  // don't require notFoundComponent on the current (child) route —
+  // an ancestor will handle it. Only enforce the invariant when
+  // we've reached a route that won't walk up further.
+  const willWalkUp = routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute
+
+  if (!willWalkUp) {
+    // Ensure we have a notFoundComponent
+    invariant(
+      routeCursor.options.notFoundComponent,
+      'No notFoundComponent found. Please set a notFoundComponent on your route or provide a defaultNotFoundComponent to the router.',
+    )
+  }
 
   // Find the match for this route
   const matchForRoute = inner.matches.find((m) => m.routeId === routeCursor.id)
@@ -109,9 +121,9 @@ const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
     isFetching: false,
   }))
 
-  if ((err as any).routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
-    err.routeId = routeCursor.parentRoute.id
-    _handleNotFound(inner, err)
+  if (willWalkUp) {
+    err.routeId = routeCursor.parentRoute!.id
+    _handleNotFound(inner, err, routerCode)
   }
 }
 
@@ -119,6 +131,7 @@ const handleRedirectAndNotFound = (
   inner: InnerLoadContext,
   match: AnyRouteMatch | undefined,
   err: unknown,
+  routerCode?: string,
 ): void => {
   if (!isRedirect(err) && !isNotFound(err)) return
 
@@ -159,7 +172,7 @@ const handleRedirectAndNotFound = (
     err = inner.router.resolveRedirect(err)
     throw err
   } else {
-    _handleNotFound(inner, err)
+    _handleNotFound(inner, err, routerCode)
     throw err
   }
 }
@@ -199,13 +212,23 @@ const handleSerialError = (
 
   err.routerCode = routerCode
   inner.firstBadMatchIndex ??= index
-  handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), err)
+  handleRedirectAndNotFound(
+    inner,
+    inner.router.getMatch(matchId),
+    err,
+    routerCode,
+  )
 
   try {
     route.options.onError?.(err)
   } catch (errorHandlerErr) {
     err = errorHandlerErr
-    handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), err)
+    handleRedirectAndNotFound(
+      inner,
+      inner.router.getMatch(matchId),
+      err,
+      routerCode,
+    )
   }
 
   inner.updateMatch(matchId, (prev) => {
@@ -389,13 +412,6 @@ const executeBeforeLoad = (
 
   const abortController = new AbortController()
 
-  const parentMatchId = inner.matches[index - 1]?.id
-  const parentMatch = parentMatchId
-    ? inner.router.getMatch(parentMatchId)!
-    : undefined
-  const parentMatchContext =
-    parentMatch?.context ?? inner.router.options.context ?? undefined
-
   let isPending = false
   const pending = () => {
     if (isPending) return
@@ -448,6 +464,7 @@ const executeBeforeLoad = (
     any,
     any,
     any,
+    any,
     any
   > = {
     search,
@@ -464,6 +481,7 @@ const executeBeforeLoad = (
     buildLocation: inner.router.buildLocation,
     cause: preload ? 'preload' : cause,
     matches: inner.matches,
+    routeId: route.id,
     ...inner.router.options.additionalContext,
   }
 
@@ -704,6 +722,11 @@ const runLoader = async (
       let error = e
 
       if ((error as any)?.name === 'AbortError') {
+        if (match.abortController.signal.aborted) {
+          match._nonReactive.loaderPromise?.resolve()
+          match._nonReactive.loaderPromise = undefined
+          return
+        }
         inner.updateMatch(matchId, (prev) => ({
           ...prev,
           status: prev.status === 'pending' ? 'success' : prev.status,
@@ -754,6 +777,56 @@ const loadRouteMatch = async (
   inner: InnerLoadContext,
   index: number,
 ): Promise<AnyRouteMatch> => {
+  async function handleLoader(
+    preload: boolean,
+    prevMatch: AnyRouteMatch,
+    match: AnyRouteMatch,
+    route: AnyRoute,
+  ) {
+    const age = Date.now() - prevMatch.updatedAt
+
+    const staleAge = preload
+      ? (route.options.preloadStaleTime ??
+        inner.router.options.defaultPreloadStaleTime ??
+        30_000) // 30 seconds for preloads by default
+      : (route.options.staleTime ?? inner.router.options.defaultStaleTime ?? 0)
+
+    const shouldReloadOption = route.options.shouldReload
+
+    // Default to reloading the route all the time
+    // Allow shouldReload to get the last say,
+    // if provided.
+    const shouldReload =
+      typeof shouldReloadOption === 'function'
+        ? shouldReloadOption(getLoaderContext(inner, matchId, index, route))
+        : shouldReloadOption
+
+    // If the route is successful and still fresh, just resolve
+    const { status, invalid } = match
+    loaderShouldRunAsync =
+      status === 'success' && (invalid || (shouldReload ?? age > staleAge))
+    if (preload && route.options.preload === false) {
+      // Do nothing
+    } else if (loaderShouldRunAsync && !inner.sync) {
+      loaderIsRunningAsync = true
+      ;(async () => {
+        try {
+          await runLoader(inner, matchId, index, route)
+          const match = inner.router.getMatch(matchId)!
+          match._nonReactive.loaderPromise?.resolve()
+          match._nonReactive.loadPromise?.resolve()
+          match._nonReactive.loaderPromise = undefined
+        } catch (err) {
+          if (isRedirect(err)) {
+            await inner.router.navigate(err.options)
+          }
+        }
+      })()
+    } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
+      await runLoader(inner, matchId, index, route)
+    }
+  }
+
   const { id: matchId, routeId } = inner.matches[index]!
   let loaderShouldRunAsync = false
   let loaderIsRunningAsync = false
@@ -764,7 +837,9 @@ const loadRouteMatch = async (
       return inner.router.getMatch(matchId)!
     }
   } else {
-    const prevMatch = inner.router.getMatch(matchId)!
+    const prevMatch = inner.router.getMatch(matchId)! // This is where all of the stale-while-revalidate magic happens
+    const preload = resolvePreload(inner, matchId)
+
     // there is a loaderPromise, so we are in the middle of a load
     if (prevMatch._nonReactive.loaderPromise) {
       // do not block if we already have stale data we can show
@@ -779,32 +854,13 @@ const loadRouteMatch = async (
       if (error) {
         handleRedirectAndNotFound(inner, match, error)
       }
+
+      if (match.status === 'pending') {
+        await handleLoader(preload, prevMatch, match, route)
+      }
     } else {
-      // This is where all of the stale-while-revalidate magic happens
-      const age = Date.now() - prevMatch.updatedAt
-
-      const preload = resolvePreload(inner, matchId)
-
-      const staleAge = preload
-        ? (route.options.preloadStaleTime ??
-          inner.router.options.defaultPreloadStaleTime ??
-          30_000) // 30 seconds for preloads by default
-        : (route.options.staleTime ??
-          inner.router.options.defaultStaleTime ??
-          0)
-
-      const shouldReloadOption = route.options.shouldReload
-
-      // Default to reloading the route all the time
-      // Allow shouldReload to get the last say,
-      // if provided.
-      const shouldReload =
-        typeof shouldReloadOption === 'function'
-          ? shouldReloadOption(getLoaderContext(inner, matchId, index, route))
-          : shouldReloadOption
-
       const nextPreload =
-        !!preload && !inner.router.state.matches.some((d) => d.id === matchId)
+        preload && !inner.router.state.matches.some((d) => d.id === matchId)
       const match = inner.router.getMatch(matchId)!
       match._nonReactive.loaderPromise = createControlledPromise<void>()
       if (nextPreload !== match.preload) {
@@ -814,30 +870,7 @@ const loadRouteMatch = async (
         }))
       }
 
-      // If the route is successful and still fresh, just resolve
-      const { status, invalid } = match
-      loaderShouldRunAsync =
-        status === 'success' && (invalid || (shouldReload ?? age > staleAge))
-      if (preload && route.options.preload === false) {
-        // Do nothing
-      } else if (loaderShouldRunAsync && !inner.sync) {
-        loaderIsRunningAsync = true
-        ;(async () => {
-          try {
-            await runLoader(inner, matchId, index, route)
-            const match = inner.router.getMatch(matchId)!
-            match._nonReactive.loaderPromise?.resolve()
-            match._nonReactive.loadPromise?.resolve()
-            match._nonReactive.loaderPromise = undefined
-          } catch (err) {
-            if (isRedirect(err)) {
-              await inner.router.navigate(err.options)
-            }
-          }
-        })()
-      } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
-        await runLoader(inner, matchId, index, route)
-      }
+      await handleLoader(preload, prevMatch, match, route)
     }
   }
   const match = inner.router.getMatch(matchId)!

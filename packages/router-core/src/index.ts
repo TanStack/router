@@ -105,7 +105,6 @@ export {
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
-export { isServer } from './isServer'
 
 export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
 export type {

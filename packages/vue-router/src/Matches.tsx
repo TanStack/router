@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import warning from 'tiny-warning'
-import { isServer } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'

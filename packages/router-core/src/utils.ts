@@ -1,3 +1,4 @@
+import { isServer } from '@tanstack/router-core/isServer'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
@@ -221,6 +222,9 @@ const isEnumerable = Object.prototype.propertyIsEnumerable
  * Do not use this with signals
  */
 export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
+  if (isServer) {
+    return _next
+  }
   if (prev === _next) {
     return prev
   }
@@ -589,11 +593,19 @@ export function escapeHtml(str: string): string {
   return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
 }
 
-export function decodePath(path: string, decodeIgnore?: Array<string>): string {
-  if (!path) return path
-  const re = decodeIgnore
-    ? new RegExp(`${decodeIgnore.join('|')}`, 'gi')
-    : /%25|%5C/gi
+export function decodePath(path: string) {
+  if (!path) return { path, handledProtocolRelativeURL: false }
+
+  // Fast path: most paths are already decoded and safe.
+  // Only fall back to the slower scan/regex path when we see a '%' (encoded),
+  // a backslash (explicitly handled), a control character, or a protocol-relative
+  // prefix which needs collapsing.
+  // eslint-disable-next-line no-control-regex
+  if (!/[%\\\x00-\x1f\x7f]/.test(path) && !path.startsWith('//')) {
+    return { path, handledProtocolRelativeURL: false }
+  }
+
+  const re = /%25|%5C/gi
   let cursor = 0
   let result = ''
   let match
@@ -606,26 +618,43 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
   // After sanitizing control characters, paths like "/\r/evil.com" become "//evil.com"
   // Collapse leading double slashes to a single slash
+  let handledProtocolRelativeURL = false
   if (result.startsWith('//')) {
+    handledProtocolRelativeURL = true
     result = '/' + result.replace(/^\/+/, '')
   }
 
-  return result
+  return { path: result, handledProtocolRelativeURL }
 }
 
 /**
- * Encodes non-ASCII (unicode) characters in a path while preserving
- * already percent-encoded sequences. This is used to generate proper
- * href values without constructing URL objects.
+ * Encodes a path the same way `new URL()` would, but without the overhead of full URL parsing.
  *
- * Unlike encodeURI, this won't double-encode percent-encoded sequences
- * like %2F or %25 because it only targets non-ASCII characters.
+ * This function encodes:
+ * - Whitespace characters (spaces → %20, tabs → %09, etc.)
+ * - Non-ASCII/Unicode characters (emojis, accented characters, etc.)
+ *
+ * It preserves:
+ * - Already percent-encoded sequences (won't double-encode %2F, %25, etc.)
+ * - ASCII special characters valid in URL paths (@, $, &, +, etc.)
+ * - Forward slashes as path separators
+ *
+ * Used to generate proper href values for SSR without constructing URL objects.
+ *
+ * @example
+ * encodePathLikeUrl('/path/file name.pdf') // '/path/file%20name.pdf'
+ * encodePathLikeUrl('/path/日本語') // '/path/%E6%97%A5%E6%9C%AC%E8%AA%9E'
+ * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
  */
-export function encodeNonAscii(path: string): string {
+export function encodePathLikeUrl(path: string): string {
+  // Encode whitespace and non-ASCII characters that browsers encode in URLs
+
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
-  if (!/[^\u0000-\u007F]/.test(path)) return path
+  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
-  return path.replace(/[^\u0000-\u007F]/gu, encodeURIComponent)
+  return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
 }
 
 /**
