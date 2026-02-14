@@ -8,15 +8,16 @@
   "sections": [
     {
       "label": "Getting Started",
-      "children": [],
+      "children": [
+        {
+          "label": "Overview",
+          "to": "overview"
+        }
+      ],
       "frameworks": [
         {
           "label": "react",
           "children": [
-            {
-              "label": "Overview",
-              "to": "framework/react/overview"
-            },
             {
               "label": "Quick Start",
               "to": "framework/react/quick-start"
@@ -46,10 +47,6 @@
         {
           "label": "solid",
           "children": [
-            {
-              "label": "Overview",
-              "to": "framework/solid/overview"
-            },
             {
               "label": "Quick Start",
               "to": "framework/solid/quick-start"
