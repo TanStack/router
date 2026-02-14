@@ -70,10 +70,12 @@ Federation stats contract expectations:
 - Stats endpoints include shared runtime flags (`shareScope: default`, `eager: false`, SSR-only `import: false`) while manifest endpoints omit those fields.
 - Stats endpoints keep shared usage arrays (`usedIn`, `usedExports`) as empty arrays while manifest endpoints omit them.
 - Endpoint shared JS asset semantics remain mode-correct (`[]` for SSR shared entries, non-empty relative `static/js/*.js` for browser shared entries).
+- Shared endpoint payloads keep async JS asset arrays empty and CSS asset arrays empty.
 - Expose ids/paths are expected to remain stable in endpoint payloads for `message`, `routes`, and `server-data`.
 - Stats endpoint expose `requires` arrays remain empty; manifest endpoint payloads omit `requires`.
 - Stats endpoints also keep stable expose `file` metadata (`src/message.tsx`, `src/routes.tsx`, `src/server-data.ts`).
 - Endpoint expose sync JS asset lists stay non-empty and keep relative `static/js/*.js` paths.
+- Endpoint expose async JS and CSS asset arrays remain empty.
 
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
 JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).
