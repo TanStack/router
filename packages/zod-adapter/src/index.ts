@@ -1,6 +1,5 @@
 import * as z3 from 'zod/v3'
 import * as z4 from 'zod/v4/core'
-import * as z4m from 'zod/v4/mini'
 import type { ValidatorAdapter } from '@tanstack/react-router'
 
 export interface ZodTypeLike {
