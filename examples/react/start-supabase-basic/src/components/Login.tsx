@@ -37,6 +37,12 @@ export function Login() {
 
   const signupMutation = useMutation<AuthResponse, Error, AuthVariables>({
     mutationFn: signupServerFn,
+    onSuccess: async (data) => {
+      if (!data?.error) {
+        await router.invalidate()
+        router.navigate({ to: '/' })
+      }
+    },
   })
 
   return (
@@ -58,6 +64,10 @@ export function Login() {
         loginMutation.data ? (
           <>
             <div className="text-red-400">{loginMutation.data.message}</div>
+
+            {signupMutation.data?.error ? (
+              <div className="text-red-400">{signupMutation.data.message}</div>
+            ) : null}
 
             {loginMutation.data.error &&
               loginMutation.data.message === 'Invalid login credentials' && (
