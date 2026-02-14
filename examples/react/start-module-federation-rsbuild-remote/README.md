@@ -52,6 +52,8 @@ Expected browser manifest contract for web target:
 - Shared version metadata should remain mode-correct between browser and SSR endpoint payloads.
 - JSON endpoint payloads should keep `remotes` empty and only include shared entries for React + ReactDOM.
 - Expose ids/paths should remain stable across endpoint payloads for `message`, `routes`, and `server-data`.
+- Expose `requires` arrays are expected to remain empty across endpoint payloads.
+- Stats endpoint payloads should also keep stable expose `file` metadata (`src/message.tsx`, `src/routes.tsx`, `src/server-data.ts`).
 
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.
