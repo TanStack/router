@@ -213,6 +213,18 @@ test('serves remote entries as javascript over HTTP', async ({ page }) => {
   }
 })
 
+test('serves browser federated types zip over HTTP', async ({ page }) => {
+  const response = await page.request.get(`${REMOTE_ORIGIN}/dist/@mf-types.zip`)
+  expect(response.ok()).toBeTruthy()
+
+  const contentType = (response.headers()['content-type'] ?? '').toLowerCase()
+  expect(contentType).not.toBe('')
+  expect(contentType.includes('text/html')).toBeFalsy()
+
+  const body = await response.body()
+  expect(body.length).toBeGreaterThan(0)
+})
+
 test('serves node-compatible remote SSR manifest metadata', async ({ page }) => {
   const manifest = await fetchManifest(page, ['/ssr/mf-manifest.json'])
   assertRemoteEntryMeta(manifest, 'commonjs-module', `${REMOTE_ORIGIN}/ssr/`)

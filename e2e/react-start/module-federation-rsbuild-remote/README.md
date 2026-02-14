@@ -48,6 +48,9 @@ Expected browser manifest contract for the web target:
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
 JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).
 
+The browser types archive `/dist/@mf-types.zip` should also be retrievable as a
+non-HTML payload.
+
 This keeps React ownership on the host side in node SSR runtime and avoids
 remote shared fallback chunk loading incompatibilities.
 

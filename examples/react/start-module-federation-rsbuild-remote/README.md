@@ -38,6 +38,7 @@ Expected browser manifest contract for web target:
 - Browser shared JS assets are emitted as relative `static/js/...` paths.
 - Browser exposed module JS assets are also relative `static/js/...` paths.
 - `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are served as JavaScript over HTTP with JavaScript content-types.
+- `/dist/@mf-types.zip` is retrievable over HTTP as a non-HTML payload.
 
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.
