@@ -62,6 +62,7 @@ Federation stats contract expectations:
 - `pluginVersion` and build metadata fields remain consistent across all JSON endpoints.
 - Shared version semantics remain mode-correct across endpoints (`*` only for SSR node-target shared entries).
 - JSON payloads also retain `remotes: []` and the two-entry shared set (`react`, `react-dom`).
+- Expose ids/paths are expected to remain stable in endpoint payloads for `message`, `routes`, and `server-data`.
 
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
 JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).
