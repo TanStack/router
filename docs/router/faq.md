@@ -28,12 +28,26 @@ You should commit this file into git so that other developers can use it to buil
 
 No, the root route is always rendered as it is the entry point of your application.
 
-If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](./routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](./routing/routing-concepts.md#pathless-layout-routes) to conditionally render the content.
+<!-- ::start:framework -->
+
+# React
+
+If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](./framework/react/routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](./framework/react/routing/routing-concepts.md#pathless-layout-routes) to conditionally render the content.
+
+# Solid
+
+If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](./framework/solid/routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](./framework/solid/routing/routing-concepts.md#pathless-layout-routes) to conditionally render the content.
+
+<!-- ::end:framework -->
 
 You can restrict access to these routes using a conditional check in the `beforeLoad` function of the route.
 
 <details>
 <summary>What does this look like?</summary>
+
+<!-- ::start:framework -->
+
+# React
 
 ```tsx
 // src/routes/_pathless-layout.tsx
@@ -62,5 +76,37 @@ function PathlessLayoutRouteComponent() {
   )
 }
 ```
+
+# Solid
+
+```tsx
+// src/routes/_pathless-layout.tsx
+import { createFileRoute, Outlet } from '@tanstack/solid-router'
+import { isAuthenticated } from '../utils/auth'
+
+export const Route = createFileRoute('/_pathless-layout', {
+  beforeLoad: async () => {
+    // Check if the user is authenticated
+    const authed = await isAuthenticated()
+    if (!authed) {
+      // Redirect the user to the login page
+      return '/login'
+    }
+  },
+  component: PathlessLayoutRouteComponent,
+  // ...
+})
+
+function PathlessLayoutRouteComponent() {
+  return (
+    <div>
+      <h1>You are authed</h1>
+      <Outlet />
+    </div>
+  )
+}
+```
+
+<!-- ::end:framework -->
 
 </details>

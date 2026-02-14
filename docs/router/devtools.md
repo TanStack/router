@@ -12,48 +12,66 @@ When you begin your TanStack Router journey, you'll want these devtools by your 
 
 The devtools are a separate package that you need to install:
 
-```sh
-npm install @tanstack/react-router-devtools
-```
+<!-- ::start:tabs variant="package-manager" -->
 
-or
+react: @tanstack/react-router-devtools
+solid: @tanstack/solid-router-devtools
 
-```sh
-pnpm add @tanstack/react-router-devtools
-```
-
-or
-
-```sh
-yarn add @tanstack/react-router-devtools
-```
-
-or
-
-```sh
-bun add @tanstack/react-router-devtools
-```
+<!-- ::end:tabs -->
 
 ## Import the Devtools
 
-```js
+<!-- ::start:framework -->
+
+# React
+
+```tsx
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 ```
+
+# Solid
+
+```tsx
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+```
+
+<!-- ::end:framework -->
 
 ## Using Devtools in production
 
 The Devtools, if imported as `TanStackRouterDevtools` will not be shown in production. If you want to have devtools in an environment with `process.env.NODE_ENV === 'production'`, use instead `TanStackRouterDevtoolsInProd`, which has all the same options:
 
+<!-- ::start:framework -->
+
+# React
+
 ```tsx
 import { TanStackRouterDevtoolsInProd } from '@tanstack/react-router-devtools'
 ```
 
-## Using inside of the `RouterProvider`
+# Solid
+
+```tsx
+import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
+```
+
+<!-- ::end:framework -->
+
+## Using the Devtools in the root route
 
 The easiest way for the devtools to work is to render them inside of your root route (or any other route). This will automatically connect the devtools to the router instance.
 
-```tsx
-const rootRoute = createRootRoute({
+<!-- ::start:framework -->
+
+# React
+
+<!-- ::start:tabs variant="files" -->
+
+```tsx title="src/routes/__root.tsx"
+import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+
+export const Route = createRootRoute({
   component: () => (
     <>
       <Outlet />
@@ -61,23 +79,39 @@ const rootRoute = createRootRoute({
     </>
   ),
 })
-
-const routeTree = rootRoute.addChildren([
-  // ... other routes
-])
-
-const router = createRouter({
-  routeTree,
-})
-
-function App() {
-  return <RouterProvider router={router} />
-}
 ```
+
+<!-- ::end:tabs -->
+
+# Solid
+
+<!-- ::start:tabs variant="files" -->
+
+```tsx title="src/routes/__root.tsx"
+import { createRootRoute, Outlet } from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+
+export const Route = createRootRoute({
+  component: () => (
+    <>
+      <Outlet />
+      <TanStackRouterDevtools />
+    </>
+  ),
+})
+```
+
+<!-- ::end:tabs -->
+
+<!-- ::end:framework -->
 
 ## Manually passing the Router Instance
 
 If rendering the devtools inside of the `RouterProvider` isn't your cup of tea, a `router` prop for the devtools accepts the same `router` instance you pass to the `Router` component. This makes it possible to place the devtools anywhere on the page, not just inside the provider:
+
+<!-- ::start:framework -->
+
+# React
 
 ```tsx
 function App() {
@@ -90,24 +124,56 @@ function App() {
 }
 ```
 
+# Solid
+
+```tsx
+function App() {
+  return (
+    <>
+      <RouterProvider router={router} />
+      <TanStackRouterDevtools router={router} />
+    </>
+  )
+}
+```
+
+<!-- ::end:framework -->
+
 ## Floating Mode
 
 Floating Mode will mount the devtools as a fixed, floating element in your app and provide a toggle in the corner of the screen to show and hide the devtools. This toggle state will be stored and remembered in localStorage across reloads.
 
-Place the following code as high in your React app as you can. The closer it is to the root of the page, the better it will work!
+Place the following code as high in your app as you can. The closer it is to the root of the page, the better it will work!
 
-```js
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+<!-- ::start:framework -->
 
+# React
+
+```tsx
 function App() {
   return (
     <>
-      <Router />
+      <RouterProvider router={router} />
       <TanStackRouterDevtools initialIsOpen={false} />
     </>
   )
 }
 ```
+
+# Solid
+
+```tsx
+function App() {
+  return (
+    <>
+      <RouterProvider router={router} />
+      <TanStackRouterDevtools initialIsOpen={false} />
+    </>
+  )
+}
+```
+
+<!-- ::end:framework -->
 
 ### Devtools Options
 
@@ -136,18 +202,45 @@ function App() {
 
 To control the position of the devtools, import the `TanStackRouterDevtoolsPanel`:
 
-```js
+<!-- ::start:framework -->
+
+# React
+
+```tsx
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 ```
 
+# Solid
+
+```tsx
+import { TanStackRouterDevtoolsPanel } from '@tanstack/solid-router-devtools'
+```
+
+<!-- ::end:framework -->
+
 It can then be attached to provided shadow DOM target:
 
-```js
+<!-- ::start:framework -->
+
+# React
+
+```tsx
 <TanStackRouterDevtoolsPanel
   shadowDOMTarget={shadowContainer}
   router={router}
 />
 ```
+
+# Solid
+
+```tsx
+<TanStackRouterDevtoolsPanel
+  shadowDOMTarget={shadowContainer}
+  router={router}
+/>
+```
+
+<!-- ::end:framework -->
 
 Click [here](https://tanstack.com/router/latest/docs/framework/react/examples/basic-devtools-panel) to see a live example of this in StackBlitz.
 
@@ -155,13 +248,17 @@ Click [here](https://tanstack.com/router/latest/docs/framework/react/examples/ba
 
 Embedded Mode will embed the devtools as a regular component in your application. You can style it however you'd like after that!
 
-```js
+<!-- ::start:framework -->
+
+# React
+
+```tsx
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 
 function App() {
   return (
     <>
-      <Router router={router} />
+      <RouterProvider router={router} />
       <TanStackRouterDevtoolsPanel
         router={router}
         style={styles}
@@ -172,14 +269,50 @@ function App() {
 }
 ```
 
+# Solid
+
+```tsx
+import { TanStackRouterDevtoolsPanel } from '@tanstack/solid-router-devtools'
+
+function App() {
+  return (
+    <>
+      <RouterProvider router={router} />
+      <TanStackRouterDevtoolsPanel
+        router={router}
+        style={styles}
+        className={className}
+      />
+    </>
+  )
+}
+```
+
+<!-- ::end:framework -->
+
 ### DevtoolsPanel Options
 
 - `router: Router`
   - The router instance to connect to.
-- `style: StyleObject`
+
+<!-- ::start:framework -->
+
+# React
+
+- `style?: StyleObject`
   - The standard React style object used to style a component with inline styles.
-- `className: string`
+- `className?: string`
   - The standard React className property used to style a component with classes.
+
+# Solid
+
+- `style?: StyleObject`
+  - The standard Solid style object used to style a component with inline styles.
+- `class?: string`
+  - The standard Solid class property used to style a component with classes.
+
+<!-- ::end:framework -->
+
 - `isOpen?: boolean`
   - A boolean variable indicating whether the panel is open or closed.
 - `setIsOpen?: (isOpen: boolean) => void`

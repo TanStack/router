@@ -12,6 +12,26 @@
         {
           "label": "Overview",
           "to": "overview"
+        },
+        {
+          "label": "Quick Start",
+          "to": "quick-start"
+        },
+        {
+          "label": "Devtools",
+          "to": "devtools"
+        },
+        {
+          "label": "Decisions on DX",
+          "to": "decisions-on-dx"
+        },
+        {
+          "label": "LLM Assistance Support",
+          "to": "llm-support"
+        },
+        {
+          "label": "Frequently Asked Questions",
+          "to": "faq"
         }
       ],
       "frameworks": [
@@ -19,55 +39,14 @@
           "label": "react",
           "children": [
             {
-              "label": "Quick Start",
-              "to": "framework/react/quick-start"
-            },
-            {
-              "label": "Devtools",
-              "to": "framework/react/devtools"
-            },
-            {
-              "label": "Decisions on DX",
-              "to": "framework/react/decisions-on-dx"
-            },
-            {
-              "label": "LLM Assistance Support",
-              "to": "framework/react/llm-support"
-            },
-            {
               "label": "Comparison",
               "to": "framework/react/comparison"
-            },
-            {
-              "label": "Frequently Asked Questions",
-              "to": "framework/react/faq"
             }
           ]
         },
         {
           "label": "solid",
-          "children": [
-            {
-              "label": "Quick Start",
-              "to": "framework/solid/quick-start"
-            },
-            {
-              "label": "Devtools",
-              "to": "framework/solid/devtools"
-            },
-            {
-              "label": "Decisions on DX",
-              "to": "framework/solid/decisions-on-dx"
-            },
-            {
-              "label": "LLM Assistance Support",
-              "to": "framework/solid/llm-support"
-            },
-            {
-              "label": "Frequently Asked Questions",
-              "to": "framework/solid/faq"
-            }
-          ]
+          "children": []
         }
       ]
     },
