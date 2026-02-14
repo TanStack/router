@@ -65,9 +65,11 @@ export default defineConfig({
       {
         name: 'mf_host_ssr',
         remotes: {
+          // Server remotes are fetched via node runtime over HTTP from the remote SSR output.
           mf_remote: `mf_remote@${remoteOrigin}/ssr/remoteEntry.js`,
         },
         dts: false,
+        // Required by @module-federation/node runtime container loading.
         remoteType: 'script',
         experiments: {
           asyncStartup: true,
