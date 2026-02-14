@@ -13,7 +13,7 @@
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.159.10",
     "@tanstack/react-router-devtools": "^1.159.10",
-    "@tanstack/router-plugin": "^1.159.11",
+    "@tanstack/router-plugin": "^1.159.12",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
     "express": "^4.21.2",

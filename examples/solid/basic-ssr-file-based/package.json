@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "^1.159.10",
-    "@tanstack/router-plugin": "^1.159.11",
+    "@tanstack/router-plugin": "^1.159.12",
     "compression": "^1.8.0",
     "express": "^4.21.2",
     "get-port": "^7.1.0",
