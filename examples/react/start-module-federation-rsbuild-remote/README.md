@@ -45,6 +45,7 @@ Expected browser manifest contract for web target:
 - Metadata alignment should also cover remoteEntry name/path and build/plugin version fields.
 - Shared/expose asset lists are expected to match between manifest and stats outputs.
 - Types metadata (`path`/`name`) and CSS asset list parity is expected between manifest and stats.
+- JSON endpoint payloads are expected to include identity and remote entry/plugin metadata fields.
 
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.

@@ -54,6 +54,7 @@ Federation stats contract expectations:
 - Metadata alignment includes remoteEntry name/path and build/plugin version fields.
 - Shared/expose asset lists remain aligned between manifest and stats outputs.
 - Types metadata (`path`/`name`) and shared/expose CSS asset lists are also expected to match between outputs.
+- JSON endpoint contract also checks identity fields and remote entry/plugin metadata presence.
 
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
 JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).
