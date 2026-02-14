@@ -44,15 +44,13 @@ export function Login() {
       actionText="Login"
       status={loginMutation.status}
       onSubmit={(e) => {
-        e.preventDefault()
-
         const form = e.target as HTMLFormElement
         const formData = new FormData(form)
 
         loginMutation.mutate({
           data: {
-            email: formData.get('email') as string,
-            password: formData.get('password') as string,
+            email: String(formData.get('email') ?? ''),
+            password: String(formData.get('password') ?? ''),
           },
         })
       }}
@@ -68,16 +66,15 @@ export function Login() {
                     type="button"
                     className="text-blue-500 cursor-pointer"
                     onClick={(e) => {
-                      const form = (e.target as HTMLButtonElement).form
-
+                      const form = (e.currentTarget as HTMLButtonElement).form
                       if (!form) return
 
                       const formData = new FormData(form)
 
                       signupMutation.mutate({
                         data: {
-                          email: formData.get('email') as string,
-                          password: formData.get('password') as string,
+                          email: String(formData.get('email') ?? ''),
+                          password: String(formData.get('password') ?? ''),
                         },
                       })
                     }}

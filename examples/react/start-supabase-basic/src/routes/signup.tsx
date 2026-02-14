@@ -4,6 +4,18 @@ import { useMutation } from '@tanstack/react-query'
 import { Auth } from '../components/Auth'
 import { getSupabaseServerClient } from '../utils/supabase'
 
+function isSafeRedirectPath(redirectUrl: string) {
+  if (!redirectUrl.startsWith('/')) {
+    return false
+  }
+
+  if (redirectUrl.startsWith('//')) {
+    return false
+  }
+
+  return !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(redirectUrl)
+}
+
 export const signupFn = createServerFn({ method: 'POST' })
   .inputValidator(
     (d: { email: string; password: string; redirectUrl?: string }) => d,
@@ -21,8 +33,13 @@ export const signupFn = createServerFn({ method: 'POST' })
       }
     }
 
+    const redirectHref =
+      data.redirectUrl && isSafeRedirectPath(data.redirectUrl)
+        ? data.redirectUrl
+        : '/'
+
     throw redirect({
-      href: data.redirectUrl || '/',
+      href: redirectHref,
     })
   })
 
