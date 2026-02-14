@@ -13,6 +13,9 @@ type SharedAssetGroup = {
 
 type ManifestSharedEntry = {
   name?: string
+  version?: string
+  requiredVersion?: string
+  fallback?: string
   assets?: {
     js?: SharedAssetGroup
   }
@@ -162,6 +165,12 @@ test('serves node-compatible remote SSR manifest metadata', async ({ page }) => 
 
   expect(reactShared).toBeDefined()
   expect(reactDomShared).toBeDefined()
+  expect(reactShared?.version).toBe('*')
+  expect(reactShared?.requiredVersion).toBe('^*')
+  expect(reactDomShared?.version).toBe('*')
+  expect(reactDomShared?.requiredVersion).toBe('^*')
+  expect(reactShared?.fallback).toBe('')
+  expect(reactDomShared?.fallback).toBe('')
   expect(reactShared?.assets?.js?.sync ?? []).toEqual([])
   expect(reactDomShared?.assets?.js?.sync ?? []).toEqual([])
 
@@ -182,6 +191,12 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
 
   expect(reactShared).toBeDefined()
   expect(reactDomShared).toBeDefined()
+  expect(reactShared?.version).not.toBe('*')
+  expect(reactDomShared?.version).not.toBe('*')
+  expect(reactShared?.requiredVersion).not.toBe('^*')
+  expect(reactDomShared?.requiredVersion).not.toBe('^*')
+  expect(reactShared?.fallback).toBe('')
+  expect(reactDomShared?.fallback).toBe('')
   const reactSyncAssets = reactShared?.assets?.js?.sync ?? []
   const reactDomSyncAssets = reactDomShared?.assets?.js?.sync ?? []
 

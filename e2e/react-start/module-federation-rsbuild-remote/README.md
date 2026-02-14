@@ -27,6 +27,7 @@ For the node-target federation config we use:
 - `shared.react-dom.import: false`
 - SSR manifest `metaData.remoteEntry.type: 'commonjs-module'`
 - SSR manifest `metaData.publicPath` points to `http://<remote-origin>/ssr/`
+- SSR React/ReactDOM shared metadata uses wildcard versions (`*` / `^*`).
 - empty SSR shared fallback JS assets for React/ReactDOM
 - exposed module JS asset entries are relative `static/js/...` paths.
 
@@ -37,6 +38,7 @@ Expected browser manifest contract for the web target:
 
 - `metaData.remoteEntry.type: 'global'`
 - `metaData.publicPath` points to `http://<remote-origin>/`
+- browser React/ReactDOM shared metadata uses concrete non-wildcard versions.
 - React/ReactDOM browser shared fallback JS assets are present.
 - Browser shared JS asset entries are relative `static/js/...` paths.
 - Exposed module JS asset entries are also relative `static/js/...` paths.

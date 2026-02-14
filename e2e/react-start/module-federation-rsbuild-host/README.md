@@ -37,6 +37,7 @@ The e2e suite also validates the remote SSR manifest contract:
 
 - `metaData.remoteEntry.type === 'commonjs-module'`
 - `metaData.publicPath` points to `http://<remote-origin>/ssr/`
+- React/ReactDOM shared entries use wildcard metadata (`version: '*'`, `requiredVersion: '^*'`) in SSR manifest.
 - React/ReactDOM shared fallback asset lists are empty in SSR manifest.
 - Exposed module JS assets remain relative `static/js/...` paths.
 
@@ -44,6 +45,7 @@ It also validates the browser manifest contract for the remote web target:
 
 - `metaData.remoteEntry.type === 'global'`
 - `metaData.publicPath` points to `http://<remote-origin>/`
+- React/ReactDOM shared entries use concrete non-wildcard versions in browser manifest.
 - React/ReactDOM shared fallback asset lists are populated in browser manifest.
 - Browser shared JS asset entries remain relative `static/js/...` paths (resolved via HTTP `publicPath`).
 - Exposed module JS assets remain relative `static/js/...` paths.
