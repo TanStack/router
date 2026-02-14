@@ -326,6 +326,8 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     const parsed = JSON.parse(body) as MfManifest
     expect(parsed.id).toBe('mf_remote')
     expect(parsed.name).toBe('mf_remote')
+    expect(parsed.metaData?.name).toBe('mf_remote')
+    expect(parsed.metaData?.type).toBe('app')
     expect(parsed.remotes ?? []).toEqual([])
     expect(parsed.metaData?.globalName).toBe('mf_remote')
     expect(parsed.metaData?.prefetchInterface).toBe(false)
@@ -337,6 +339,10 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     expect(parsed.metaData?.types?.api).toBe(expectedTypesApi)
     expect(parsed.metaData?.pluginVersion).toBeDefined()
     expect(isVersionLike(parsed.metaData?.pluginVersion)).toBeTruthy()
+    expect(parsed.metaData?.buildInfo?.buildVersion).toBe('local')
+    expect(
+      parsed.metaData?.buildInfo?.buildName?.includes(REMOTE_PACKAGE_NAME) ?? false,
+    ).toBeTruthy()
     expect(Array.isArray(parsed.shared)).toBeTruthy()
     expect(Array.isArray(parsed.exposes)).toBeTruthy()
 
