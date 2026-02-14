@@ -12,6 +12,7 @@ import {
   computeSharedBindings,
   expandDestructuredDeclarations,
   expandTransitively,
+  removeBindingsDependingOnRoute,
 } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
 import type { CodeSplitGroupings } from '../src/core/constants'
@@ -883,5 +884,157 @@ export const Route = createFileRoute('/')({
     expect(result).toContain('x')
     expect(result).toContain('y')
     expect(result).toContain('base')
+  })
+
+  it('should NOT include bindings that transitively depend on Route', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const HEADER = 'Page'
+function usePageTitle() { return HEADER + ' - ' + Route.fullPath }
+export const Route = createFileRoute('/about')({
+  loader: () => usePageTitle(),
+  component: () => usePageTitle(),
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultGroupings,
+    })
+    // usePageTitle references Route → cannot be shared
+    expect(result).not.toContain('usePageTitle')
+    // HEADER does NOT reference Route → still safe to share
+    expect(result).toContain('HEADER')
+    // Route must never be shared
+    expect(result).not.toContain('Route')
+  })
+
+  it('should remove entire transitive chain if it reaches Route', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const routeInfo = { path: '' }
+function initRouteInfo() { routeInfo.path = Route.fullPath }
+function getTitle() { initRouteInfo(); return routeInfo.path }
+export const Route = createFileRoute('/test')({
+  loader: () => getTitle(),
+  component: () => getTitle(),
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultGroupings,
+    })
+    // getTitle → initRouteInfo → Route: entire chain cannot be shared
+    expect(result).not.toContain('getTitle')
+    expect(result).not.toContain('initRouteInfo')
+    expect(result).not.toContain('Route')
+    // routeInfo doesn't reference Route directly, but initRouteInfo does
+    // routeInfo itself may or may not be shared depending on its own deps
+  })
+
+  it('should keep bindings that do NOT depend on Route alongside ones that do', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const safeConfig = { timeout: 5000 }
+function unsafeHelper() { return Route.fullPath }
+export const Route = createFileRoute('/mixed')({
+  loader: () => ({ config: safeConfig, path: unsafeHelper() }),
+  component: () => <div>{safeConfig.timeout} {unsafeHelper()}</div>,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultGroupings,
+    })
+    expect(result).toContain('safeConfig')
+    expect(result).not.toContain('unsafeHelper')
+    expect(result).not.toContain('Route')
+  })
+})
+
+// ─── removeBindingsDependingOnRoute ───────────────────────
+
+describe('removeBindingsDependingOnRoute', () => {
+  it('should remove a binding that directly depends on Route', () => {
+    const depGraph = new Map<string, Set<string>>()
+    depGraph.set('helper', new Set(['Route']))
+    depGraph.set('Route', new Set())
+    const shared = new Set(['helper'])
+
+    removeBindingsDependingOnRoute(shared, depGraph)
+    expect(shared).not.toContain('helper')
+  })
+
+  it('should remove a binding that transitively depends on Route', () => {
+    const depGraph = new Map<string, Set<string>>()
+    depGraph.set('a', new Set(['b']))
+    depGraph.set('b', new Set(['Route']))
+    depGraph.set('Route', new Set())
+    const shared = new Set(['a'])
+
+    removeBindingsDependingOnRoute(shared, depGraph)
+    expect(shared).not.toContain('a')
+  })
+
+  it('should keep a binding that does NOT depend on Route', () => {
+    const depGraph = new Map<string, Set<string>>()
+    depGraph.set('safe', new Set(['dep']))
+    depGraph.set('dep', new Set())
+    depGraph.set('Route', new Set())
+    const shared = new Set(['safe'])
+
+    removeBindingsDependingOnRoute(shared, depGraph)
+    expect(shared).toContain('safe')
+  })
+
+  it('should handle mixed: remove Route-dependent, keep safe bindings', () => {
+    const depGraph = new Map<string, Set<string>>()
+    depGraph.set('safe', new Set(['dep']))
+    depGraph.set('dep', new Set())
+    depGraph.set('unsafe', new Set(['Route']))
+    depGraph.set('Route', new Set())
+    const shared = new Set(['safe', 'unsafe'])
+
+    removeBindingsDependingOnRoute(shared, depGraph)
+    expect(shared).toContain('safe')
+    expect(shared).not.toContain('unsafe')
+  })
+
+  it('should handle empty shared set', () => {
+    const depGraph = new Map<string, Set<string>>()
+    const shared = new Set<string>()
+
+    removeBindingsDependingOnRoute(shared, depGraph)
+    expect(shared.size).toBe(0)
+  })
+
+  it('should handle binding with no graph entry', () => {
+    const depGraph = new Map<string, Set<string>>()
+    const shared = new Set(['orphan'])
+
+    removeBindingsDependingOnRoute(shared, depGraph)
+    // No deps found → does not depend on Route → keep
+    expect(shared).toContain('orphan')
+  })
+
+  it('should handle circular deps that do NOT reach Route', () => {
+    const depGraph = new Map<string, Set<string>>()
+    depGraph.set('a', new Set(['b']))
+    depGraph.set('b', new Set(['a']))
+    depGraph.set('Route', new Set())
+    const shared = new Set(['a'])
+
+    removeBindingsDependingOnRoute(shared, depGraph)
+    expect(shared).toContain('a')
+  })
+
+  it('should handle circular deps that DO reach Route', () => {
+    const depGraph = new Map<string, Set<string>>()
+    depGraph.set('a', new Set(['b']))
+    depGraph.set('b', new Set(['a', 'Route']))
+    depGraph.set('Route', new Set())
+    const shared = new Set(['a'])
+
+    removeBindingsDependingOnRoute(shared, depGraph)
+    expect(shared).not.toContain('a')
   })
 })

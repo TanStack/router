@@ -285,9 +285,18 @@ export function computeSharedBindings(opts: {
 
   if (!routeOptions) return new Set()
 
-  // Build dependency graph up front — needed for transitive expansion per-property
+  // Build dependency graph up front — needed for transitive expansion per-property.
+  // This graph excludes `Route` (deleted above) so group attribution works correctly.
   const declMap = buildDeclarationMap(ast)
   const depGraph = buildDependencyGraph(declMap, localModuleLevelBindings)
+
+  // Build a second dependency graph that includes `Route` so we can detect
+  // bindings that transitively depend on it. Such bindings must NOT be
+  // extracted into the shared module because they would drag the Route
+  // singleton with them, duplicating it across modules.
+  const allLocalBindings = new Set(localModuleLevelBindings)
+  allLocalBindings.add('Route')
+  const fullDepGraph = buildDependencyGraph(declMap, allLocalBindings)
 
   // For each route property, track which "group" it belongs to.
   // Non-split properties get group index -1.
@@ -344,6 +353,11 @@ export function computeSharedBindings(opts: {
   // If any binding from a destructured declaration is shared,
   // all bindings from that declaration must be shared
   expandDestructuredDeclarations(ast, shared)
+
+  // Remove shared bindings that transitively depend on `Route`.
+  // The Route singleton must stay in the reference file; extracting a
+  // binding that references it would duplicate Route in the shared module.
+  removeBindingsDependingOnRoute(shared, fullDepGraph)
 
   return shared
 }
@@ -453,6 +467,53 @@ export function expandTransitively(
         shared.add(dep)
         queue.push(dep)
       }
+    }
+  }
+}
+
+/**
+ * Remove any bindings from `shared` that transitively depend on `Route`.
+ * The Route singleton must remain in the reference file; if a shared binding
+ * references it (directly or transitively), extracting that binding would
+ * duplicate Route in the shared module.
+ *
+ * Uses `depGraph` which must include `Route` as a node so the dependency
+ * chain is visible.
+ */
+export function removeBindingsDependingOnRoute(
+  shared: Set<string>,
+  depGraph: Map<string, Set<string>>,
+) {
+  const reverseGraph = new Map<string, Set<string>>()
+  for (const [name, deps] of depGraph) {
+    for (const dep of deps) {
+      let parents = reverseGraph.get(dep)
+      if (!parents) {
+        parents = new Set<string>()
+        reverseGraph.set(dep, parents)
+      }
+      parents.add(name)
+    }
+  }
+
+  // Walk backwards from Route to find all bindings that can reach it.
+  const visited = new Set<string>()
+  const queue = ['Route']
+  while (queue.length > 0) {
+    const cur = queue.pop()!
+    if (visited.has(cur)) continue
+    visited.add(cur)
+
+    const parents = reverseGraph.get(cur)
+    if (!parents) continue
+    for (const parent of parents) {
+      if (!visited.has(parent)) queue.push(parent)
+    }
+  }
+
+  for (const name of [...shared]) {
+    if (visited.has(name)) {
+      shared.delete(name)
     }
   }
 }
@@ -1403,11 +1464,18 @@ export function compileCodeSplitSharedRoute(
   for (const node of ast.program.body) {
     collectLocalBindingsFromStatement(node, localBindings)
   }
+
+  // Route must never be extracted into the shared module.
+  // Excluding it from the dep graph prevents expandTransitively from
+  // pulling it in as a transitive dependency of a shared binding.
+  localBindings.delete('Route')
+
   const declMap = buildDeclarationMap(ast)
   const depGraph = buildDependencyGraph(declMap, localBindings)
 
   // Start with shared bindings and expand transitively
   const keepBindings = new Set(opts.sharedBindings)
+  keepBindings.delete('Route')
   expandTransitively(keepBindings, depGraph)
 
   // Remove all statements except:
