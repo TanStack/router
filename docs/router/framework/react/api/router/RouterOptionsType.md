@@ -152,7 +152,11 @@ The `RouterOptions` type accepts an object with the following properties and met
   - Web navigation: `http:`, `https:`
   - Common browser-safe actions: `mailto:`, `tel:`
 - An array of URL protocols that are allowed in links, redirects, and navigation. Absolute URLs with protocols not in this list are rejected to prevent security vulnerabilities like XSS attacks.
-- The router creates a `Set` from this array internally for efficient lookup.
+- This check is applied across router navigation APIs, including:
+  - `<Link to="...">`
+  - `navigate({ to: ... })` and `navigate({ href: ... })`
+  - `redirect({ to: ... })` and `redirect({ href: ... })`
+- Protocol entries must match `URL.protocol` format (lowercase with a trailing `:`), for example `blob:` or `data:`. If you configure `protocolAllowlist: ['blob']` (without `:`), links using `blob:` will still be blocked.
 
 **Example**
 
