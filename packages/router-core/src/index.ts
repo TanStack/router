@@ -273,7 +273,7 @@ export {
   createControlledPromise,
   isModuleNotFoundError,
   decodePath,
-  DEFAULT_PROTOCOL_BLOCKLIST,
+  DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
   isDangerousProtocol,
   buildDevStylesUrl,

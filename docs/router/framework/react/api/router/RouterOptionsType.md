@@ -144,18 +144,14 @@ The `RouterOptions` type accepts an object with the following properties and met
 - When `true`, disables the global catch boundary that normally wraps all route matches. This allows unhandled errors to bubble up to top-level error handlers in the browser.
 - Useful for testing tools, error reporting services, and debugging scenarios.
 
-### `protocolBlocklist` property
+### `protocolAllowlist` property
 
 - Type: `Array<string>`
 - Optional
-- Defaults to `DEFAULT_PROTOCOL_BLOCKLIST` which includes:
-  - Script execution: `javascript:`, `vbscript:`
-  - Local file access: `file:`
-  - Data embedding: `blob:`, `data:`
-  - Browser internals: `about:`
-  - Platform-specific: `ms-appx:`, `ms-appx-web:`, `ms-browser-extension:`, `chrome-extension:`, `moz-extension:`
-  - Archive/resource: `jar:`, `view-source:`, `resource:`, `wyciwyg:`
-- An array of URL protocols to block in links, redirects, and navigation. URLs with these protocols will be rejected to prevent security vulnerabilities like XSS attacks.
+- Defaults to `DEFAULT_PROTOCOL_ALLOWLIST` which includes:
+  - Web navigation: `http:`, `https:`
+  - Common browser-safe actions: `mailto:`, `tel:`, `sms:`
+- An array of URL protocols that are allowed in links, redirects, and navigation. Absolute URLs with protocols not in this list are rejected to prevent security vulnerabilities like XSS attacks.
 - The router creates a `Set` from this array internally for efficient lookup.
 
 **Example**
@@ -163,19 +159,19 @@ The `RouterOptions` type accepts an object with the following properties and met
 ```tsx
 import {
   createRouter,
-  DEFAULT_PROTOCOL_BLOCKLIST,
+  DEFAULT_PROTOCOL_ALLOWLIST,
 } from '@tanstack/react-router'
 
-// Use a custom blocklist (replaces the default)
+// Use a custom allowlist (replaces the default)
 const router = createRouter({
   routeTree,
-  protocolBlocklist: ['javascript:', 'data:'],
+  protocolAllowlist: ['https:', 'mailto:'],
 })
 
-// Or extend the default blocklist
+// Or extend the default allowlist
 const router = createRouter({
   routeTree,
-  protocolBlocklist: [...DEFAULT_PROTOCOL_BLOCKLIST, 'ftp:', 'gopher:'],
+  protocolAllowlist: [...DEFAULT_PROTOCOL_ALLOWLIST, 'ftp:'],
 })
 ```
 

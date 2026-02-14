@@ -253,7 +253,7 @@ export { useLoaderData } from './useLoaderData'
 export {
   redirect,
   isRedirect,
-  DEFAULT_PROTOCOL_BLOCKLIST,
+  DEFAULT_PROTOCOL_ALLOWLIST,
 } from '@tanstack/router-core'
 
 export {

@@ -157,7 +157,7 @@ export function useLinkProps<
     const _href = hrefOption()
     if (_href?.external) {
       // Block dangerous protocols for external links
-      if (isDangerousProtocol(_href.href, router.protocolBlocklist)) {
+      if (isDangerousProtocol(_href.href, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
         }
@@ -174,7 +174,7 @@ export function useLinkProps<
     try {
       new URL(to as any)
       // Block dangerous protocols like javascript:, blob:, data:
-      if (isDangerousProtocol(to as string, router.protocolBlocklist)) {
+      if (isDangerousProtocol(to as string, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
