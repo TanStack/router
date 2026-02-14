@@ -465,13 +465,13 @@ Properties in the same inner array end up in the same split module:
 
 ```ts
 // Default: 3 separate split module IDs (often 3 separate chunks)
-[['component'], ['errorComponent'], ['notFoundComponent']]
-
-// Combined: component + loader in one module, error in another
-[['component', 'loader'], ['errorComponent']]
-
-// All in one module
-[['component', 'loader', 'errorComponent', 'notFoundComponent']]
+;[['component'], ['errorComponent'], ['notFoundComponent']][
+  // Combined: component + loader in one module, error in another
+  (['component', 'loader'], ['errorComponent'])
+][
+  // All in one module
+  ['component', 'loader', 'errorComponent', 'notFoundComponent']
+]
 ```
 
 ### Configuring Groupings
