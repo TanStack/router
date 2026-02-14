@@ -123,9 +123,6 @@
       "@tanstack/router-utils": "workspace:*",
       "@tanstack/start-static-server-functions": "workspace:*",
       "@tanstack/nitro-v2-vite-plugin": "workspace:*"
-    },
-    "patchedDependencies": {
-      "@module-federation/rsbuild-plugin@2.0.1": "patches/@module-federation__rsbuild-plugin@2.0.1.patch"
     }
   }
 }
