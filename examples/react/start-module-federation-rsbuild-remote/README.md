@@ -47,6 +47,7 @@ Expected browser manifest contract for web target:
 - Shared/expose asset lists are expected to match between manifest and stats outputs.
 - Types metadata (`path`/`name`) and CSS asset list parity is expected between manifest and stats.
 - JSON endpoint payloads are expected to include identity and remote entry/plugin metadata fields.
+- Endpoint payloads should preserve global metadata invariants (`globalName: mf_remote`, `prefetchInterface: false`, `remoteEntry.path: ''`).
 - `/dist/*` vs `/ssr/*` endpoint metadata should remain mode-correct (remoteEntry type, types metadata, publicPath).
 - Build/plugin metadata should stay consistent across all federation JSON endpoints.
 - `pluginVersion` values are expected to stay SemVer-like across all federation JSON endpoints.
