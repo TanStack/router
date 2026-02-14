@@ -50,6 +50,7 @@ Expected browser manifest contract for web target:
 - `/dist/*` vs `/ssr/*` endpoint metadata should remain mode-correct (remoteEntry type, types metadata, publicPath).
 - Build/plugin metadata should stay consistent across all federation JSON endpoints.
 - Shared version metadata should remain mode-correct between browser and SSR endpoint payloads.
+- JSON endpoint payloads should keep `remotes` empty and only include shared entries for React + ReactDOM.
 
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.
