@@ -8,6 +8,7 @@ import { Auth } from './Auth'
 type AuthResponse =
   | {
       error?: boolean
+      status?: number
       message?: string
     }
   | undefined
@@ -63,36 +64,37 @@ export function Login() {
       afterSubmit={
         loginMutation.data ? (
           <>
-            <div className="text-red-400">{loginMutation.data.message}</div>
+            {loginMutation.data.error && loginMutation.data.message ? (
+              <div className="text-red-400">{loginMutation.data.message}</div>
+            ) : null}
 
-            {signupMutation.data?.error ? (
+            {signupMutation.data?.error && signupMutation.data.message ? (
               <div className="text-red-400">{signupMutation.data.message}</div>
             ) : null}
 
-            {loginMutation.data.error &&
-              loginMutation.data.message === 'Invalid login credentials' && (
-                <div>
-                  <button
-                    type="button"
-                    className="text-blue-500 cursor-pointer"
-                    onClick={(e) => {
-                      const form = (e.currentTarget as HTMLButtonElement).form
-                      if (!form) return
+            {loginMutation.data.error && loginMutation.data.status === 400 && (
+              <div>
+                <button
+                  type="button"
+                  className="text-blue-500 cursor-pointer"
+                  onClick={(e) => {
+                    const form = (e.currentTarget as HTMLButtonElement).form
+                    if (!form) return
 
-                      const formData = new FormData(form)
+                    const formData = new FormData(form)
 
-                      signupMutation.mutate({
-                        data: {
-                          email: String(formData.get('email') ?? ''),
-                          password: String(formData.get('password') ?? ''),
-                        },
-                      })
-                    }}
-                  >
-                    Sign up instead?
-                  </button>
-                </div>
-              )}
+                    signupMutation.mutate({
+                      data: {
+                        email: String(formData.get('email') ?? ''),
+                        password: String(formData.get('password') ?? ''),
+                      },
+                    })
+                  }}
+                >
+                  Sign up instead?
+                </button>
+              </div>
+            )}
           </>
         ) : null
       }
