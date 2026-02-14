@@ -1,10 +1,62 @@
 import { expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { getTestServerPort, test } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 
 const REMOTE_PORT = await getTestServerPort(`${packageJson.name}-remote`)
 const REMOTE_ORIGIN = `http://localhost:${REMOTE_PORT}`
 const HOST_MODE = process.env.HOST_MODE || 'ssr'
+
+type SharedAssetGroup = {
+  sync?: Array<string>
+}
+
+type ManifestSharedEntry = {
+  name?: string
+  assets?: {
+    js?: SharedAssetGroup
+  }
+}
+
+type ManifestRemoteEntryMetadata = {
+  type?: string
+}
+
+type MfManifest = {
+  metaData?: {
+    remoteEntry?: ManifestRemoteEntryMetadata
+  }
+  shared?: Array<ManifestSharedEntry>
+}
+
+async function fetchManifest(
+  page: Page,
+  paths: Array<string>,
+): Promise<MfManifest> {
+  for (const path of paths) {
+    const response = await page.request.get(`${REMOTE_ORIGIN}${path}`)
+    if (!response.ok()) {
+      continue
+    }
+
+    const body = await response.text()
+    if (!body.trim().startsWith('{')) {
+      continue
+    }
+
+    return JSON.parse(body) as MfManifest
+  }
+
+  throw new Error(
+    `Could not load JSON manifest from any path: ${paths.join(', ')}`,
+  )
+}
+
+function getSharedByName(manifest: MfManifest) {
+  return new Map(
+    (manifest.shared ?? []).map((shared) => [shared.name, shared] as const),
+  )
+}
 
 test('renders the remote module on the SSR response', async ({ page }) => {
   const response = await page.request.get('/')
@@ -54,16 +106,10 @@ test('loads remote entry over http at runtime', async ({
 })
 
 test('serves node-compatible remote SSR manifest metadata', async ({ page }) => {
-  const response = await page.request.get(`${REMOTE_ORIGIN}/ssr/mf-manifest.json`)
-  expect(response.ok()).toBeTruthy()
-
-  const manifest = await response.json()
+  const manifest = await fetchManifest(page, ['/ssr/mf-manifest.json'])
   expect(manifest?.metaData?.remoteEntry?.type).toBe('commonjs-module')
 
-  const sharedByName = new Map(
-    (manifest?.shared ?? []).map((shared: any) => [shared.name, shared]),
-  )
-
+  const sharedByName = getSharedByName(manifest)
   const reactShared = sharedByName.get('react')
   const reactDomShared = sharedByName.get('react-dom')
 
@@ -72,23 +118,13 @@ test('serves node-compatible remote SSR manifest metadata', async ({ page }) => 
 })
 
 test('serves browser manifest with shared fallback assets', async ({ page }) => {
-  const primaryResponse = await page.request.get(
-    `${REMOTE_ORIGIN}/mf-manifest.json`,
-  )
-  const primaryBody = await primaryResponse.text()
-  const manifestResponse =
-    primaryResponse.ok() && primaryBody.trim().startsWith('{')
-      ? primaryResponse
-      : await page.request.get(`${REMOTE_ORIGIN}/dist/mf-manifest.json`)
-  expect(manifestResponse.ok()).toBeTruthy()
-
-  const manifest = await manifestResponse.json()
+  const manifest = await fetchManifest(page, [
+    '/mf-manifest.json',
+    '/dist/mf-manifest.json',
+  ])
   expect(manifest?.metaData?.remoteEntry?.type).toBe('global')
 
-  const sharedByName = new Map(
-    (manifest?.shared ?? []).map((shared: any) => [shared.name, shared]),
-  )
-
+  const sharedByName = getSharedByName(manifest)
   const reactShared = sharedByName.get('react')
   const reactDomShared = sharedByName.get('react-dom')
 
