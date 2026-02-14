@@ -306,6 +306,7 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     const parsed = JSON.parse(body) as MfManifest
     expect(parsed.id).toBe('mf_remote')
     expect(parsed.name).toBe('mf_remote')
+    expect(parsed.remotes ?? []).toEqual([])
     expect(parsed.metaData?.remoteEntry?.type).toBe(expectedRemoteType)
     expect(parsed.metaData?.publicPath).toBe(expectedPublicPath)
     expect(parsed.metaData?.remoteEntry?.name).toBe('remoteEntry.js')
@@ -314,6 +315,20 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     expect(parsed.metaData?.pluginVersion).toBeDefined()
     expect(Array.isArray(parsed.shared)).toBeTruthy()
     expect(Array.isArray(parsed.exposes)).toBeTruthy()
+
+    const sharedByName = getSharedByName(parsed)
+    expect(sharedByName.size).toBe(2)
+    const react = sharedByName.get('react')
+    const reactDom = sharedByName.get('react-dom')
+    expect(react).toBeDefined()
+    expect(reactDom).toBeDefined()
+    if (path.startsWith('/ssr/')) {
+      expect(react?.version).toBe('*')
+      expect(reactDom?.version).toBe('*')
+    } else {
+      expect(react?.version).not.toBe('*')
+      expect(reactDom?.version).not.toBe('*')
+    }
   }
 })
 
