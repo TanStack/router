@@ -49,6 +49,7 @@ For the remote web target (browser manifest), expected contract is:
 - Build/plugin metadata fields are expected to remain consistent across all federation JSON endpoints.
 - Shared version metadata should stay mode-correct across endpoints (browser concrete versions, SSR wildcard versions).
 - JSON endpoint payloads should keep `remotes` empty and include only `react`/`react-dom` shared entries.
+- Shared endpoint ids should remain stable as `mf_remote:react` and `mf_remote:react-dom`.
 - Expose ids/paths in endpoint payloads should remain stable for `message`, `routes`, and `server-data`.
 
 That combination keeps React shared ownership on the host and avoids SSR

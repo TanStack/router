@@ -69,6 +69,7 @@ Federation stats contract is also verified:
 - Endpoint payloads also keep consistent plugin/build metadata across all JSON endpoints (`pluginVersion`, `buildVersion`, `buildName`).
 - JSON endpoint payloads also enforce mode-correct shared version semantics (`react`/`react-dom` wildcard only on SSR endpoints).
 - Each JSON endpoint payload also keeps `remotes: []` and exactly two shared entries (`react`, `react-dom`).
+- Shared identity in each endpoint payload remains stable (`mf_remote:react`, `mf_remote:react-dom`).
 - Endpoint payloads also retain expose identity/path contracts for `message`, `routes`, and `server-data`.
 
 Remote entry payloads are also validated directly over HTTP at:

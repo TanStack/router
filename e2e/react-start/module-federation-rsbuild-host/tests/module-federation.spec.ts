@@ -287,6 +287,10 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     routes: './routes',
     'server-data': './server-data',
   } as const
+  const expectedSharedIds = {
+    react: 'mf_remote:react',
+    'react-dom': 'mf_remote:react-dom',
+  } as const
 
   for (const [
     path,
@@ -329,6 +333,8 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     const reactDom = sharedByName.get('react-dom')
     expect(react).toBeDefined()
     expect(reactDom).toBeDefined()
+    expect(react?.id).toBe(expectedSharedIds.react)
+    expect(reactDom?.id).toBe(expectedSharedIds['react-dom'])
     expect(react?.requiredVersion).toBe(expectedSharedRequiredVersion)
     expect(reactDom?.requiredVersion).toBe(expectedSharedRequiredVersion)
     expect(react?.fallback).toBe('')
