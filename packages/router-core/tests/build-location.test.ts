@@ -98,6 +98,50 @@ describe('buildLocation - #6490 skipRouteOnParseError respects params.stringify'
 
     expect(location.pathname).toBe('/en')
   })
+
+  test('falls back when prestringified params match a different route', () => {
+    const rootRoute = new BaseRootRoute({})
+    const englishRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/en',
+    })
+    const langRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/$lang',
+      skipRouteOnParseError: {
+        params: true,
+      },
+      params: {
+        parse: (rawParams) => {
+          if (rawParams.lang === 'en') {
+            return { lang: 'en-US' }
+          }
+
+          throw new Error('Invalid language')
+        },
+        stringify: (params) => {
+          if (params.lang === 'en-US') {
+            return { lang: 'en' }
+          }
+
+          return params
+        },
+      },
+    })
+    const routeTree = rootRoute.addChildren([englishRoute, langRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    const location = router.buildLocation({
+      to: '/$lang',
+      params: { lang: 'en-US' },
+    })
+
+    expect(location.pathname).toBe('/en-US')
+  })
 })
 
 describe('buildLocation - params function receives parsed params', () => {
