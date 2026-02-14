@@ -25,10 +25,12 @@ export default defineConfig({
         runtimePlugins: [require.resolve('@module-federation/node/runtimePlugin')],
         shared: {
           react: {
+            import: false,
             singleton: true,
             requiredVersion: false,
           },
           'react-dom': {
+            import: false,
             singleton: true,
             requiredVersion: false,
           },
