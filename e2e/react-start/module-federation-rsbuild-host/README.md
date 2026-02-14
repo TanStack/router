@@ -52,6 +52,11 @@ It also validates the browser manifest contract for the remote web target:
 - Browser shared JS asset entries remain relative `static/js/...` paths (resolved via HTTP `publicPath`).
 - Exposed module JS assets remain relative `static/js/...` paths.
 
+Federation stats contract is also verified:
+
+- SSR stats shared entries set `import: false` for `react` and `react-dom`.
+- Browser stats shared entries omit `import` and keep standard web sharing metadata.
+
 Remote entry payloads are also validated directly over HTTP at:
 
 - `/dist/remoteEntry.js`

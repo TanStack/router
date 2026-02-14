@@ -45,6 +45,11 @@ Expected browser manifest contract for the web target:
 - Browser shared JS asset entries are relative `static/js/...` paths.
 - Exposed module JS asset entries are also relative `static/js/...` paths.
 
+Federation stats contract expectations:
+
+- SSR stats include `import: false` on React/ReactDOM shared entries.
+- Browser stats do not include `import` on React/ReactDOM shared entries.
+
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
 JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).
 

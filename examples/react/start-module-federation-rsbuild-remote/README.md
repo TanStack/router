@@ -39,6 +39,7 @@ Expected browser manifest contract for web target:
 - Browser exposed module JS assets are also relative `static/js/...` paths.
 - `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are served as JavaScript over HTTP with JavaScript content-types.
 - `/dist/@mf-types.zip` is retrievable over HTTP as a non-HTML payload.
+- SSR stats should show `import: false` for React/ReactDOM while browser stats keep `import` unset.
 
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.
