@@ -104,6 +104,13 @@ function getExposesByName(manifest: MfManifest) {
   )
 }
 
+function getSortedEntryNames<T extends { name?: string }>(entries: Array<T>) {
+  return entries
+    .map((entry) => entry.name)
+    .filter((name): name is string => Boolean(name))
+    .sort()
+}
+
 function assertRelativeJsAssetPaths(assetPaths: Array<string>) {
   for (const assetPath of assetPaths) {
     expect(assetPath.startsWith('static/js/')).toBeTruthy()
@@ -311,6 +318,36 @@ test('keeps node shared ownership contract in federation stats', async ({ page }
     expect(browserExpose?.file).toBe(file)
     expect(ssrExpose?.requires ?? []).toEqual([])
     expect(browserExpose?.requires ?? []).toEqual([])
+  }
+})
+
+test('keeps federation manifest and stats metadata aligned', async ({ page }) => {
+  const browserManifest = await fetchManifest(page, ['/dist/mf-manifest.json'])
+  const browserStats = await fetchManifest(page, ['/dist/mf-stats.json'])
+  const ssrManifest = await fetchManifest(page, ['/ssr/mf-manifest.json'])
+  const ssrStats = await fetchManifest(page, ['/ssr/mf-stats.json'])
+
+  for (const [manifest, stats] of [
+    [browserManifest, browserStats],
+    [ssrManifest, ssrStats],
+  ] as const) {
+    expect(stats.id).toBe(manifest.id)
+    expect(stats.name).toBe(manifest.name)
+    expect(stats.metaData?.remoteEntry?.type).toBe(manifest.metaData?.remoteEntry?.type)
+    expect(stats.metaData?.publicPath).toBe(manifest.metaData?.publicPath)
+    expect(stats.metaData?.types?.zip).toBe(manifest.metaData?.types?.zip)
+    expect(stats.metaData?.types?.api).toBe(manifest.metaData?.types?.api)
+    expect(stats.metaData?.buildInfo?.buildVersion).toBe(
+      manifest.metaData?.buildInfo?.buildVersion,
+    )
+    expect(stats.metaData?.globalName).toBe(manifest.metaData?.globalName)
+
+    expect(getSortedEntryNames(stats.shared ?? [])).toEqual(
+      getSortedEntryNames(manifest.shared ?? []),
+    )
+    expect(getSortedEntryNames(stats.exposes ?? [])).toEqual(
+      getSortedEntryNames(manifest.exposes ?? []),
+    )
   }
 })
 
