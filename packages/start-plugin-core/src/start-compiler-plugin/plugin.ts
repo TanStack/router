@@ -1,4 +1,6 @@
+import assert from 'node:assert'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
+import { resolve as resolvePath } from 'pathe'
 import { TRANSFORM_ID_REGEX, VITE_ENVIRONMENT_NAMES } from '../constants'
 import {
   KindDetectionPatterns,
@@ -355,12 +357,60 @@ export function startCompilerPlugin(
         filter: {
           id: new RegExp(resolveViteId(validateServerFnIdVirtualModule)),
         },
-        handler(id) {
+        async handler(id) {
           const parsed = parseIdQuery(id)
-          if (parsed.query.id && serverFnsById[parsed.query.id]) {
+          const fnId = parsed.query.id
+          if (fnId && serverFnsById[fnId]) {
             return `export {}`
           }
-          this.error(`Invalid server function ID: ${parsed.query.id}`)
+
+          // ID not yet registered — the source file may not have been
+          // transformed in this dev session yet (e.g. cold restart with
+          // cached client). Try to decode the ID, discover the source
+          // file, trigger its compilation, and re-check.
+          if (fnId) {
+            try {
+              const decoded = JSON.parse(
+                Buffer.from(fnId, 'base64url').toString('utf8'),
+              )
+              if (
+                typeof decoded.file === 'string' &&
+                typeof decoded.export === 'string'
+              ) {
+                // decoded.file looks like "/@id/src/foo.ts?tss-serverfn-split"
+                // Strip the /@id/ prefix and ?tss-serverfn-split suffix to
+                // get the original source file path that needs transforming.
+                let sourceFile = decoded.file
+                if (sourceFile.startsWith('/@id/')) {
+                  sourceFile = sourceFile.slice('/@id/'.length)
+                }
+                const qIdx = sourceFile.indexOf('?')
+                if (qIdx !== -1) {
+                  sourceFile = sourceFile.slice(0, qIdx)
+                }
+
+                // Resolve to absolute path
+                const absPath = resolvePath(root, sourceFile)
+
+                // Trigger transform of the source file in this environment,
+                // which will compile createServerFn calls and populate
+                // serverFnsById as a side effect.
+                // This plugin only runs in dev (apply: 'serve'), so mode
+                // must be 'dev' — assert to narrow to DevEnvironment.
+                assert(this.environment.mode === 'dev')
+                await this.environment.fetchModule(absPath)
+
+                // Re-check after lazy compilation
+                if (serverFnsById[fnId]) {
+                  return `export {}`
+                }
+              }
+            } catch {
+              // Decoding or fetching failed — fall through to error
+            }
+          }
+
+          this.error(`Invalid server function ID: ${fnId}`)
         },
       },
     },
