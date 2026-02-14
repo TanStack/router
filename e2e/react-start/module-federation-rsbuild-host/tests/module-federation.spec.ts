@@ -19,6 +19,7 @@ type ManifestSharedEntry = {
 }
 
 type ManifestExposeEntry = {
+  id?: string
   name?: string
   path?: string
   assets?: {
@@ -83,6 +84,26 @@ function assertRelativeJsAssetPaths(assetPaths: Array<string>) {
   }
 }
 
+function assertExposeContracts(manifest: MfManifest) {
+  const expectedExposePaths = {
+    message: './message',
+    routes: './routes',
+    'server-data': './server-data',
+  } as const
+
+  const exposesByName = getExposesByName(manifest)
+  for (const [exposeName, expectedPath] of Object.entries(expectedExposePaths)) {
+    const exposeEntry = exposesByName.get(exposeName)
+    expect(exposeEntry).toBeDefined()
+    expect(exposeEntry?.path).toBe(expectedPath)
+    expect(exposeEntry?.id).toBe(`mf_remote:${exposeName}`)
+
+    const exposeSyncAssets = exposeEntry?.assets?.js?.sync ?? []
+    expect(exposeSyncAssets.length).toBeGreaterThan(0)
+    assertRelativeJsAssetPaths(exposeSyncAssets)
+  }
+}
+
 test('renders the remote module on the SSR response', async ({ page }) => {
   const response = await page.request.get('/')
   expect(response.ok()).toBeTruthy()
@@ -144,14 +165,7 @@ test('serves node-compatible remote SSR manifest metadata', async ({ page }) => 
   expect(reactShared?.assets?.js?.sync ?? []).toEqual([])
   expect(reactDomShared?.assets?.js?.sync ?? []).toEqual([])
 
-  const exposesByName = getExposesByName(manifest)
-  for (const exposeName of ['message', 'routes', 'server-data']) {
-    const exposeEntry = exposesByName.get(exposeName)
-    expect(exposeEntry).toBeDefined()
-    const exposeSyncAssets = exposeEntry?.assets?.js?.sync ?? []
-    expect(exposeSyncAssets.length).toBeGreaterThan(0)
-    assertRelativeJsAssetPaths(exposeSyncAssets)
-  }
+  assertExposeContracts(manifest)
 })
 
 test('serves browser manifest with shared fallback assets', async ({ page }) => {
@@ -175,14 +189,7 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
   expect(reactDomSyncAssets.length).toBeGreaterThan(0)
   assertRelativeJsAssetPaths([...reactSyncAssets, ...reactDomSyncAssets])
 
-  const exposesByName = getExposesByName(manifest)
-  for (const exposeName of ['message', 'routes', 'server-data']) {
-    const exposeEntry = exposesByName.get(exposeName)
-    expect(exposeEntry).toBeDefined()
-    const exposeSyncAssets = exposeEntry?.assets?.js?.sync ?? []
-    expect(exposeSyncAssets.length).toBeGreaterThan(0)
-    assertRelativeJsAssetPaths(exposeSyncAssets)
-  }
+  assertExposeContracts(manifest)
 })
 
 test('dynamically registers and renders remote routes', async ({ page }) => {
