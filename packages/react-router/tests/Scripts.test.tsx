@@ -364,9 +364,7 @@ describe('data script rendering', () => {
     expect(rootEl).not.toBeNull()
 
     const scripts = container.querySelectorAll('script:not([type])')
-    const inlineScript = Array.from(scripts).find(
-      (s) => !s.hasAttribute('src'),
-    )
+    const inlineScript = Array.from(scripts).find((s) => !s.hasAttribute('src'))
     expect(inlineScript).not.toBeNull()
     // Executable scripts should render empty (content applied via useEffect)
     expect(inlineScript!.innerHTML).toBe('')
@@ -460,9 +458,7 @@ describe('data script rendering', () => {
     const rootEl = container.querySelector('[data-testid="json-root"]')
     expect(rootEl).not.toBeNull()
 
-    const scriptEl = container.querySelector(
-      'script[type="application/json"]',
-    )
+    const scriptEl = container.querySelector('script[type="application/json"]')
     expect(scriptEl).not.toBeNull()
     expect(scriptEl!.innerHTML).toBe(jsonData)
   })
