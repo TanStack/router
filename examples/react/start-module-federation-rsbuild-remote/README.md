@@ -49,6 +49,7 @@ Expected browser manifest contract for web target:
 - JSON endpoint payloads are expected to include identity and remote entry/plugin metadata fields.
 - `/dist/*` vs `/ssr/*` endpoint metadata should remain mode-correct (remoteEntry type, types metadata, publicPath).
 - Build/plugin metadata should stay consistent across all federation JSON endpoints.
+- `pluginVersion` values are expected to stay SemVer-like across all federation JSON endpoints.
 - Shared version metadata should remain mode-correct between browser and SSR endpoint payloads.
 - JSON endpoint payloads should keep `remotes` empty and only include shared entries for React + ReactDOM.
 - Expose ids/paths should remain stable across endpoint payloads for `message`, `routes`, and `server-data`.

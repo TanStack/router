@@ -135,6 +135,10 @@ function normalizeImport(importFlag?: boolean) {
   return importFlag ?? false
 }
 
+function isVersionLike(version?: string) {
+  return /^\d+\.\d+\.\d+(?:[-+].+)?$/.test(version ?? '')
+}
+
 function assertRelativeJsAssetPaths(assetPaths: Array<string>) {
   for (const assetPath of assetPaths) {
     expect(assetPath.startsWith('static/js/')).toBeTruthy()
@@ -329,6 +333,7 @@ test('serves federation manifest and stats endpoints as JSON', async ({ page }) 
     expect(parsed.metaData?.types?.zip).toBe(expectedTypesZip)
     expect(parsed.metaData?.types?.api).toBe(expectedTypesApi)
     expect(parsed.metaData?.pluginVersion).toBeDefined()
+    expect(isVersionLike(parsed.metaData?.pluginVersion)).toBeTruthy()
     expect(Array.isArray(parsed.shared)).toBeTruthy()
     expect(Array.isArray(parsed.exposes)).toBeTruthy()
 
@@ -542,6 +547,7 @@ test('keeps plugin and build metadata consistent across json endpoints', async (
   for (const payload of endpointPayloads) {
     expect(payload.metaData?.pluginVersion).toBeDefined()
     expect((payload.metaData?.pluginVersion?.length ?? 0) > 0).toBeTruthy()
+    expect(isVersionLike(payload.metaData?.pluginVersion)).toBeTruthy()
     expect(payload.metaData?.buildInfo?.buildVersion).toBe('local')
     expect(
       payload.metaData?.buildInfo?.buildName?.includes(REMOTE_PACKAGE_NAME) ?? false,

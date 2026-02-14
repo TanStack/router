@@ -60,6 +60,7 @@ Federation stats contract expectations:
   - `/dist/*` endpoints use browser remote entry/type metadata and browser types metadata.
   - `/ssr/*` endpoints use node remote entry/type metadata and empty SSR types metadata.
 - `pluginVersion` and build metadata fields remain consistent across all JSON endpoints.
+- `pluginVersion` is expected to remain SemVer-like on all JSON endpoints.
 - Shared version semantics remain mode-correct across endpoints (`*` only for SSR node-target shared entries).
 - JSON payloads also retain `remotes: []` and the two-entry shared set (`react`, `react-dom`).
 - Expose ids/paths are expected to remain stable in endpoint payloads for `message`, `routes`, and `server-data`.
