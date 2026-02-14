@@ -19,6 +19,7 @@ For node-target federation in this setup we use:
 - `library.type: 'commonjs-module'`
 - `remoteType: 'script'`
 - `shared.react/react-dom.import: false` in the node-target config
+- SSR manifest `metaData.remoteEntry.type: 'commonjs-module'`
 
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.

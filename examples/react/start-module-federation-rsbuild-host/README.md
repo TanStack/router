@@ -20,6 +20,7 @@ This host expects the paired remote's **node-target federation config** to use:
 - `library.type: 'commonjs-module'`
 - `remoteType: 'script'`
 - `shared.react/react-dom.import: false`
+- SSR manifest `metaData.remoteEntry.type: 'commonjs-module'`
 
 That combination keeps React shared ownership on the host and avoids SSR
 runtime fallback chunk loading conflicts with `@module-federation/node`.
