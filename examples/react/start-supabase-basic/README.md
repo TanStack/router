@@ -3,6 +3,7 @@
 A TanStack Start example demonstrating integration with Supabase for authentication and database.
 
 - [TanStack Router Docs](https://tanstack.com/router)
+- [TanStack Query Docs](https://tanstack.com/query)
 - [Supabase Documentation](https://supabase.com/docs)
 
 ## Start a new project based on this example

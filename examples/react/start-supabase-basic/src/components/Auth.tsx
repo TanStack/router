@@ -22,7 +22,7 @@ export function Auth({
         >
           <div>
             <label htmlFor="email" className="block text-xs">
-              Username
+              Email
             </label>
             <input
               type="email"
@@ -44,7 +44,7 @@ export function Auth({
           </div>
           <button
             type="submit"
-            className="w-full bg-cyan-600 text-white rounded-sm py-2 font-black uppercase"
+            className="w-full bg-cyan-600 text-white rounded-sm py-2 font-black uppercase cursor-pointer"
             disabled={status === 'pending'}
           >
             {status === 'pending' ? '...' : actionText}
