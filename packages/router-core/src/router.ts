@@ -475,7 +475,7 @@ export interface RouterOptions<
    * An array of URL protocols to allow in links, redirects, and navigation.
    * Absolute URLs with protocols not in this list will be rejected.
    *
-   * @default DEFAULT_PROTOCOL_ALLOWLIST (http:, https:, mailto:, tel:, sms:)
+   * @default DEFAULT_PROTOCOL_ALLOWLIST (http:, https:, mailto:, tel:)
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#protocolallowlist-property)
    */
   protocolAllowlist?: Array<string>
