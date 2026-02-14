@@ -291,6 +291,27 @@ test('keeps node shared ownership contract in federation stats', async ({ page }
   expect(browserReactDom?.shareScope).toBe('default')
   expect(browserReact?.eager).toBe(false)
   expect(browserReactDom?.eager).toBe(false)
+
+  const expectedExposeFiles = {
+    message: 'src/message.tsx',
+    routes: 'src/routes.tsx',
+    'server-data': 'src/server-data.ts',
+  } as const
+
+  const ssrExposes = getExposesByName(ssrStats)
+  const browserExposes = getExposesByName(browserStats)
+  expect(ssrExposes.size).toBe(Object.keys(expectedExposeFiles).length)
+  expect(browserExposes.size).toBe(Object.keys(expectedExposeFiles).length)
+
+  for (const [name, file] of Object.entries(expectedExposeFiles)) {
+    const ssrExpose = ssrExposes.get(name)
+    const browserExpose = browserExposes.get(name)
+
+    expect(ssrExpose?.file).toBe(file)
+    expect(browserExpose?.file).toBe(file)
+    expect(ssrExpose?.requires ?? []).toEqual([])
+    expect(browserExpose?.requires ?? []).toEqual([])
+  }
 })
 
 test('serves browser federated types zip over HTTP', async ({ page }) => {
