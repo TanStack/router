@@ -63,6 +63,9 @@ Federation stats contract is also verified:
 - Shared/expose JS asset lists are aligned between manifest and stats for both browser and SSR outputs.
 - Types metadata parity includes `types.path` and `types.name`, and shared/expose CSS asset lists are also aligned.
 - JSON endpoint checks also validate basic payload structure (`id`, `name`, `metaData.remoteEntry.name`, `pluginVersion`).
+- JSON endpoint checks assert path-specific metadata values:
+  - `/dist/*` endpoints return `remoteEntry.type: 'global'`, browser `types` metadata, and root publicPath.
+  - `/ssr/*` endpoints return `remoteEntry.type: 'commonjs-module'`, empty SSR `types` metadata, and `/ssr/` publicPath.
 
 Remote entry payloads are also validated directly over HTTP at:
 

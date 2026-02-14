@@ -56,6 +56,9 @@ Federation stats contract expectations:
 - Shared/expose asset lists remain aligned between manifest and stats outputs.
 - Types metadata (`path`/`name`) and shared/expose CSS asset lists are also expected to match between outputs.
 - JSON endpoint contract also checks identity fields and remote entry/plugin metadata presence.
+- JSON endpoint checks also validate path-specific metadata:
+  - `/dist/*` endpoints use browser remote entry/type metadata and browser types metadata.
+  - `/ssr/*` endpoints use node remote entry/type metadata and empty SSR types metadata.
 
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
 JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).
