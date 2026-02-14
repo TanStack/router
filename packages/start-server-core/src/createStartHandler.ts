@@ -626,7 +626,11 @@ export function createStartHandler<TRegister = Register>(
       )
       const ctx = await executeMiddleware(
         [...middlewares, requestHandlerMiddleware],
-        { request, pathname: url.pathname, context: createNullProtoObject(requestOpts?.context) },
+        {
+          request,
+          pathname: url.pathname,
+          context: createNullProtoObject(requestOpts?.context),
+        },
       )
 
       return handleRedirectResponse(ctx.response, request, getRouter)
