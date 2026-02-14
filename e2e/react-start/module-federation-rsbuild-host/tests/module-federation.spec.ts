@@ -6,6 +6,7 @@ import packageJson from '../package.json' with { type: 'json' }
 const REMOTE_PORT = await getTestServerPort(`${packageJson.name}-remote`)
 const REMOTE_ORIGIN = `http://localhost:${REMOTE_PORT}`
 const HOST_MODE = process.env.HOST_MODE || 'ssr'
+const REMOTE_PACKAGE_NAME = packageJson.name.replace(/-host$/, '-remote')
 
 type SharedAssetGroup = {
   sync?: Array<string>
@@ -476,6 +477,36 @@ test('keeps federation manifest and stats metadata aligned', async ({ page }) =>
     expect(exposesByName.get('message')?.id).toBe('mf_remote:message')
     expect(exposesByName.get('routes')?.id).toBe('mf_remote:routes')
     expect(exposesByName.get('server-data')?.id).toBe('mf_remote:server-data')
+  }
+})
+
+test('keeps plugin and build metadata consistent across json endpoints', async ({
+  page,
+}) => {
+  const browserManifest = await fetchManifest(page, ['/dist/mf-manifest.json'])
+  const browserStats = await fetchManifest(page, ['/dist/mf-stats.json'])
+  const ssrManifest = await fetchManifest(page, ['/ssr/mf-manifest.json'])
+  const ssrStats = await fetchManifest(page, ['/ssr/mf-stats.json'])
+
+  const endpointPayloads = [browserManifest, browserStats, ssrManifest, ssrStats]
+  for (const payload of endpointPayloads) {
+    expect(payload.metaData?.pluginVersion).toBeDefined()
+    expect((payload.metaData?.pluginVersion?.length ?? 0) > 0).toBeTruthy()
+    expect(payload.metaData?.buildInfo?.buildVersion).toBe('local')
+    expect(
+      payload.metaData?.buildInfo?.buildName?.includes(REMOTE_PACKAGE_NAME) ?? false,
+    ).toBeTruthy()
+  }
+
+  const [firstPayload] = endpointPayloads
+  for (const payload of endpointPayloads) {
+    expect(payload.metaData?.pluginVersion).toBe(firstPayload.metaData?.pluginVersion)
+    expect(payload.metaData?.buildInfo?.buildVersion).toBe(
+      firstPayload.metaData?.buildInfo?.buildVersion,
+    )
+    expect(payload.metaData?.buildInfo?.buildName).toBe(
+      firstPayload.metaData?.buildInfo?.buildName,
+    )
   }
 })
 
