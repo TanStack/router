@@ -44,6 +44,7 @@ Expected browser manifest contract for web target:
 - Stats shared/expose ids and counts are expected to remain stable (`shared: 2`, `exposes: 3`, ids prefixed with `mf_remote:`).
 - Metadata alignment should also cover remoteEntry name/path and build/plugin version fields.
 - Shared/expose asset lists are expected to match between manifest and stats outputs.
+- Types metadata (`path`/`name`) and CSS asset list parity is expected between manifest and stats.
 
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.

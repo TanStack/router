@@ -60,6 +60,7 @@ Federation stats contract is also verified:
 - Stats outputs keep exact expected cardinality (`shared: 2`, `exposes: 3`) and stable ids (`mf_remote:*`).
 - Alignment also covers build/plugin metadata (`buildInfo`, `pluginVersion`) and remoteEntry name/path fields.
 - Shared/expose JS asset lists are aligned between manifest and stats for both browser and SSR outputs.
+- Types metadata parity includes `types.path` and `types.name`, and shared/expose CSS asset lists are also aligned.
 
 Remote entry payloads are also validated directly over HTTP at:
 
