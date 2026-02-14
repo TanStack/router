@@ -137,6 +137,7 @@ function normalizeImport(importFlag?: boolean) {
 function assertRelativeJsAssetPaths(assetPaths: Array<string>) {
   for (const assetPath of assetPaths) {
     expect(assetPath.startsWith('static/js/')).toBeTruthy()
+    expect(assetPath.endsWith('.js')).toBeTruthy()
     expect(assetPath.startsWith('/')).toBeFalsy()
     expect(assetPath.includes('file://')).toBeFalsy()
     expect(assetPath.includes('/workspace/')).toBeFalsy()
