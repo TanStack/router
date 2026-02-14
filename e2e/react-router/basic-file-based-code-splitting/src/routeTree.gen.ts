@@ -13,6 +13,7 @@ import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WithoutLoaderRouteImport } from './routes/without-loader'
 import { Route as ViewportTestRouteImport } from './routes/viewport-test'
+import { Route as SharedSingletonRouteImport } from './routes/shared-singleton'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
@@ -30,6 +31,11 @@ const WithoutLoaderRoute = WithoutLoaderRouteImport.update({
 const ViewportTestRoute = ViewportTestRouteImport.update({
   id: '/viewport-test',
   path: '/viewport-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SharedSingletonRoute = SharedSingletonRouteImport.update({
+  id: '/shared-singleton',
+  path: '/shared-singleton',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsRoute = PostsRouteImport.update({
@@ -74,6 +80,7 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteWithChildren
+  '/shared-singleton': typeof SharedSingletonRoute
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/shared-singleton': typeof SharedSingletonRoute
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/posts': typeof PostsRouteWithChildren
+  '/shared-singleton': typeof SharedSingletonRoute
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/posts'
+    | '/shared-singleton'
     | '/viewport-test'
     | '/without-loader'
     | '/posts/$postId'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/shared-singleton'
     | '/viewport-test'
     | '/without-loader'
     | '/posts/$postId'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_layout'
     | '/posts'
+    | '/shared-singleton'
     | '/viewport-test'
     | '/without-loader'
     | '/_layout/_layout-2'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   PostsRoute: typeof PostsRouteWithChildren
+  SharedSingletonRoute: typeof SharedSingletonRoute
   ViewportTestRoute: typeof ViewportTestRoute
   WithoutLoaderRoute: typeof WithoutLoaderRoute
 }
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ViewportTestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shared-singleton': {
+      id: '/shared-singleton'
+      path: '/shared-singleton'
+      fullPath: '/shared-singleton'
+      preLoaderRoute: typeof SharedSingletonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
@@ -171,7 +191,7 @@ declare module '@tanstack/react-router' {
     '/_layout': {
       id: '/_layout'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -199,7 +219,7 @@ declare module '@tanstack/react-router' {
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
@@ -245,6 +265,15 @@ declare module './routes/posts' {
     FileRoutesByPath['/posts']['id'],
     FileRoutesByPath['/posts']['path'],
     FileRoutesByPath['/posts']['fullPath']
+  >
+}
+declare module './routes/shared-singleton' {
+  const createFileRoute: CreateFileRoute<
+    '/shared-singleton',
+    FileRoutesByPath['/shared-singleton']['parentRoute'],
+    FileRoutesByPath['/shared-singleton']['id'],
+    FileRoutesByPath['/shared-singleton']['path'],
+    FileRoutesByPath['/shared-singleton']['fullPath']
   >
 }
 declare module './routes/viewport-test' {
@@ -352,6 +381,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   PostsRoute: PostsRouteWithChildren,
+  SharedSingletonRoute: SharedSingletonRoute,
   ViewportTestRoute: ViewportTestRoute,
   WithoutLoaderRoute: WithoutLoaderRoute,
 }

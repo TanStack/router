@@ -8,12 +8,15 @@ import { logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
 import {
   compileCodeSplitReferenceRoute,
+  compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
+  computeSharedBindings,
   detectCodeSplitGroupingsFromRoute,
 } from './code-splitter/compilers'
 import {
   defaultCodeSplitGroupings,
   splitRouteIdentNodes,
+  tsrShared,
   tsrSplit,
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
@@ -88,6 +91,10 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   }
   const isProduction = process.env.NODE_ENV === 'production'
 
+  // Map from normalized route file path → set of shared binding names.
+  // Populated by the reference compiler, consumed by virtual and shared compilers.
+  const sharedBindingsMap = new Map<string, Set<string>>()
+
   const getGlobalCodeSplitGroupings = () => {
     return (
       userConfig.codeSplittingOptions?.defaultBehavior ||
@@ -138,6 +145,17 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     const splitGroupings: CodeSplitGroupings =
       fromCode.groupings || pluginSplitBehavior || getGlobalCodeSplitGroupings()
 
+    // Compute shared bindings before compiling the reference route
+    const sharedBindings = computeSharedBindings({
+      code,
+      codeSplitGroupings: splitGroupings,
+    })
+    if (sharedBindings.size > 0) {
+      sharedBindingsMap.set(id, sharedBindings)
+    } else {
+      sharedBindingsMap.delete(id)
+    }
+
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
       codeSplitGroupings: splitGroupings,
@@ -149,6 +167,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         : undefined,
       addHmr:
         (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction,
+      sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
     })
 
     if (compiledReferenceRoute === null) {
@@ -193,6 +212,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       code,
       filename: id,
       splitTargets: grouping,
+      sharedBindings: sharedBindingsMap.get(id.split('?')[0]!),
     })
 
     if (debug) {
@@ -216,7 +236,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       transform: {
         filter: {
           id: {
-            exclude: tsrSplit,
+            exclude: [tsrSplit, tsrShared],
             // this is necessary for webpack / rspack to avoid matching .html files
             include: /\.(m|c)?(j|t)sx?$/,
           },
@@ -323,6 +343,42 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           url.searchParams.delete('v')
           const normalizedId = normalizePath(fileURLToPath(url))
           return handleCompilingVirtualFile(code, normalizedId)
+        },
+      },
+    },
+    {
+      name: 'tanstack-router:code-splitter:compile-shared-file',
+      enforce: 'pre',
+
+      transform: {
+        filter: {
+          id: /tsr-shared/,
+        },
+        handler(code, id) {
+          const url = pathToFileURL(id)
+          url.searchParams.delete('v')
+          const normalizedId = normalizePath(fileURLToPath(url))
+          const [baseId] = normalizedId.split('?')
+
+          if (!baseId) return null
+
+          const sharedBindings = sharedBindingsMap.get(baseId)
+          if (!sharedBindings || sharedBindings.size === 0) return null
+
+          if (debug) console.info('Compiling Shared Module: ', id)
+
+          const result = compileCodeSplitSharedRoute({
+            code,
+            sharedBindings,
+            filename: normalizedId,
+          })
+
+          if (debug) {
+            logDiff(code, result.code)
+            console.log('Output:\n', result.code + '\n\n')
+          }
+
+          return result
         },
       },
     },

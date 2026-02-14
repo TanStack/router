@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   compileCodeSplitReferenceRoute,
+  compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
+  computeSharedBindings,
 } from '../src/core/code-splitter/compilers'
 import { createIdentifier } from '../src/core/code-splitter/path-ids'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
@@ -58,6 +60,11 @@ describe('code-splitter works', () => {
             const file = await readFile(path.join(dirs.files, filename))
             const code = file.toString()
 
+            const sharedBindings = computeSharedBindings({
+              code,
+              codeSplitGroupings: grouping,
+            })
+
             const compileResult = compileCodeSplitReferenceRoute({
               code,
               filename,
@@ -65,6 +72,8 @@ describe('code-splitter works', () => {
               addHmr: false,
               codeSplitGroupings: grouping,
               targetFramework: framework,
+              sharedBindings:
+                sharedBindings.size > 0 ? sharedBindings : undefined,
             })
 
             await expect(compileResult?.code || code).toMatchFileSnapshot(
@@ -79,6 +88,11 @@ describe('code-splitter works', () => {
             const file = await readFile(path.join(dirs.files, filename))
             const code = file.toString()
 
+            const sharedBindings = computeSharedBindings({
+              code,
+              codeSplitGroupings: grouping,
+            })
+
             for (const targets of grouping) {
               const ident = createIdentifier(targets)
 
@@ -86,6 +100,8 @@ describe('code-splitter works', () => {
                 code,
                 filename: `${filename}?${ident}`,
                 splitTargets: targets,
+                sharedBindings:
+                  sharedBindings.size > 0 ? sharedBindings : undefined,
               })
 
               const snapshotFilename = path.join(
@@ -97,6 +113,41 @@ describe('code-splitter works', () => {
                 snapshotFilename,
               )
             }
+          },
+        )
+
+        it.each(filenames)(
+          `should compile "shared" for "%s"`,
+          async (filename) => {
+            const file = await readFile(path.join(dirs.files, filename))
+            const code = file.toString()
+
+            const sharedBindings = computeSharedBindings({
+              code,
+              codeSplitGroupings: grouping,
+            })
+
+            const snapshotFilename = path.join(
+              dirs.snapshots,
+              groupName,
+              `${filename.replace('.tsx', '')}@shared.tsx`,
+            )
+
+            if (sharedBindings.size === 0) {
+              // No shared module — snapshot should be empty string
+              await expect('').toMatchFileSnapshot(snapshotFilename)
+              return
+            }
+
+            const sharedResult = compileCodeSplitSharedRoute({
+              code,
+              sharedBindings,
+              filename: `${filename}?tsr-shared=1`,
+            })
+
+            await expect(sharedResult.code).toMatchFileSnapshot(
+              snapshotFilename,
+            )
           },
         )
       },
