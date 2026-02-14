@@ -5,6 +5,13 @@ import type { TanStackStartVitePluginCoreOptions } from './types'
 
 const tsrConfig = configSchema
   .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
+  .extend({
+    // Override path fields to override their defaults (e.g. './src/routes').
+    // parseStartConfig resolves these relative to srcDirectory, so the
+    // generator-level defaults would cause a doubled 'src/src/routes' path.
+    routesDirectory: z.string().optional().prefault('routes'),
+    generatedRouteTree: z.string().optional().prefault('routeTree.gen.ts'),
+  })
   .partial()
 
 export function parseStartConfig(
@@ -109,11 +116,11 @@ const pagePrerenderOptionsSchema = z.object({
 })
 
 const spaSchema = z.object({
-  enabled: z.boolean().optional().default(true),
-  maskPath: z.string().optional().default('/'),
+  enabled: z.boolean().optional().prefault(true),
+  maskPath: z.string().optional().prefault('/'),
   prerender: pagePrerenderOptionsSchema
     .optional()
-    .default({})
+    .prefault({})
     .transform((opts) => ({
       outputPath: opts.outputPath ?? '/_shell',
       crawlLinks: false,
@@ -129,13 +136,13 @@ const pageSchema = pageBaseSchema.extend({
 
 const tanstackStartOptionsSchema = z
   .object({
-    srcDirectory: z.string().optional().default('src'),
+    srcDirectory: z.string().optional().prefault('src'),
     start: z
       .object({
         entry: z.string().optional(),
       })
       .optional()
-      .default({}),
+      .prefault({}),
     router: z
       .object({
         entry: z.string().optional(),
@@ -147,7 +154,7 @@ const tanstackStartOptionsSchema = z
     client: z
       .object({
         entry: z.string().optional(),
-        base: z.string().optional().default('/_build'),
+        base: z.string().optional().prefault('/_build'),
       })
       .optional()
       .prefault({}),
@@ -156,7 +163,7 @@ const tanstackStartOptionsSchema = z
         entry: z.string().optional(),
         build: z
           .object({
-            staticNodeEnv: z.boolean().optional().default(true),
+            staticNodeEnv: z.boolean().optional().prefault(true),
           })
           .optional()
           .prefault({}),
@@ -165,7 +172,7 @@ const tanstackStartOptionsSchema = z
       .prefault({}),
     serverFns: z
       .object({
-        base: z.string().optional().default('/_serverFn'),
+        base: z.string().optional().prefault('/_serverFn'),
         generateFunctionId: z
           .function({
             input: z.tuple([
@@ -180,12 +187,12 @@ const tanstackStartOptionsSchema = z
       })
       .optional()
       .prefault({}),
-    pages: z.array(pageSchema).optional().default([]),
+    pages: z.array(pageSchema).optional().prefault([]),
     sitemap: z
       .object({
-        enabled: z.boolean().optional().default(true),
+        enabled: z.boolean().optional().prefault(true),
         host: z.string().optional(),
-        outputPath: z.string().optional().default('sitemap.xml'),
+        outputPath: z.string().optional().prefault('sitemap.xml'),
       })
       .optional(),
     prerender: z
