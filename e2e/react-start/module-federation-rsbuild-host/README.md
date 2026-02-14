@@ -57,6 +57,7 @@ Federation stats contract is also verified:
 - SSR stats shared entries set `import: false` for `react` and `react-dom`.
 - Browser stats shared entries omit `import` and keep standard web sharing metadata.
 - Manifest and stats metadata stay aligned (identity, remote entry type/publicPath, types metadata, shared/expose names).
+- Stats outputs keep exact expected cardinality (`shared: 2`, `exposes: 3`) and stable ids (`mf_remote:*`).
 
 Remote entry payloads are also validated directly over HTTP at:
 
