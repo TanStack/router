@@ -94,7 +94,26 @@ function assertRelativeJsAssetPaths(assetPaths: Array<string>) {
   }
 }
 
-function assertExposeContracts(manifest: MfManifest) {
+async function assertAssetServedAsJavaScript(
+  page: Page,
+  basePath: '/dist' | '/ssr',
+  assetPath: string,
+) {
+  const response = await page.request.get(`${REMOTE_ORIGIN}${basePath}/${assetPath}`)
+  expect(response.ok()).toBeTruthy()
+
+  const contentType = response.headers()['content-type'] ?? ''
+  expect(contentType.includes('text/html')).toBeFalsy()
+
+  const body = await response.text()
+  expect(body.startsWith('<!doctype html>')).toBeFalsy()
+}
+
+async function assertExposeContracts(
+  page: Page,
+  manifest: MfManifest,
+  basePath: '/dist' | '/ssr',
+) {
   const expectedExposePaths = {
     message: './message',
     routes: './routes',
@@ -112,6 +131,7 @@ function assertExposeContracts(manifest: MfManifest) {
     const exposeSyncAssets = exposeEntry?.assets?.js?.sync ?? []
     expect(exposeSyncAssets.length).toBeGreaterThan(0)
     assertRelativeJsAssetPaths(exposeSyncAssets)
+    await assertAssetServedAsJavaScript(page, basePath, exposeSyncAssets[0]!)
   }
 }
 
@@ -200,7 +220,7 @@ test('serves node-compatible remote SSR manifest metadata', async ({ page }) => 
   expect(reactShared?.assets?.js?.sync ?? []).toEqual([])
   expect(reactDomShared?.assets?.js?.sync ?? []).toEqual([])
 
-  assertExposeContracts(manifest)
+  await assertExposeContracts(page, manifest, '/ssr')
 })
 
 test('serves browser manifest with shared fallback assets', async ({ page }) => {
@@ -233,8 +253,10 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
   expect(reactSyncAssets.length).toBeGreaterThan(0)
   expect(reactDomSyncAssets.length).toBeGreaterThan(0)
   assertRelativeJsAssetPaths([...reactSyncAssets, ...reactDomSyncAssets])
+  await assertAssetServedAsJavaScript(page, '/dist', reactSyncAssets[0]!)
+  await assertAssetServedAsJavaScript(page, '/dist', reactDomSyncAssets[0]!)
 
-  assertExposeContracts(manifest)
+  await assertExposeContracts(page, manifest, '/dist')
 })
 
 test('dynamically registers and renders remote routes', async ({ page }) => {
