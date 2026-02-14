@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@module-federation/node": "^2.7.32",
-    "@module-federation/rsbuild-plugin": "https://pkg.pr.new/module-federation/core/@module-federation/rsbuild-plugin@4427",
+    "@module-federation/rsbuild-plugin": "https://pkg.pr.new/module-federation/core/@module-federation/rsbuild-plugin@7acb6b2621a4960848ad00f3614dc0bb239775fd",
     "@rsbuild/core": "^1.3.21",
     "@rsbuild/plugin-react": "^1.1.0",
     "@types/react": "^19.0.8",
