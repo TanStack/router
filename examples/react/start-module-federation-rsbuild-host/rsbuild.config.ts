@@ -2,7 +2,6 @@ import { defineConfig } from '@rsbuild/core'
 import { createRequire } from 'node:module'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { pluginModuleFederation } from '@module-federation/rsbuild-plugin'
-import { ModuleFederationPlugin } from '@module-federation/enhanced/rspack'
 import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 
 const require = createRequire(import.meta.url)
@@ -62,31 +61,30 @@ export default defineConfig({
         environment: 'client',
       },
     ),
+    pluginModuleFederation(
+      {
+        name: 'mf_host_ssr',
+        remotes: {
+          mf_remote: `mf_remote@${remoteOrigin}/ssr/remoteEntry.js`,
+        },
+        dts: false,
+        remoteType: 'script',
+        experiments: {
+          asyncStartup: true,
+        },
+        runtimePlugins: enableServerFederationRuntime
+          ? [require.resolve('@module-federation/node/runtimePlugin')]
+          : [],
+        shared,
+      },
+      {
+        target: 'node',
+        environment: 'ssr',
+      },
+    ),
     ...tanstackStart(startConfig),
   ],
   environments: {
-    ssr: {
-      tools: {
-        rspack: {
-          plugins: [
-            new ModuleFederationPlugin({
-              name: 'mf_host_ssr',
-              remotes: {
-                mf_remote: `mf_remote@${remoteOrigin}/ssr/remoteEntry.js`,
-              },
-              dts: false,
-              experiments: {
-                asyncStartup: true,
-              },
-              remoteType: 'script',
-              runtimePlugins: enableServerFederationRuntime
-                ? [require.resolve('@module-federation/node/runtimePlugin')]
-                : [],
-              shared,
-            }),
-          ],
-        },
-      },
-    },
+    ssr: {},
   },
 })
