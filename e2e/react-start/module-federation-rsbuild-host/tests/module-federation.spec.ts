@@ -146,7 +146,9 @@ async function assertExposeContracts(
     const exposeSyncAssets = exposeEntry?.assets?.js?.sync ?? []
     expect(exposeSyncAssets.length).toBeGreaterThan(0)
     assertRelativeJsAssetPaths(exposeSyncAssets)
-    await assertAssetServedAsJavaScript(page, basePath, exposeSyncAssets[0]!)
+    for (const exposeAsset of exposeSyncAssets) {
+      await assertAssetServedAsJavaScript(page, basePath, exposeAsset)
+    }
   }
 }
 
@@ -288,8 +290,9 @@ test('serves browser manifest with shared fallback assets', async ({ page }) => 
   expect(reactSyncAssets.length).toBeGreaterThan(0)
   expect(reactDomSyncAssets.length).toBeGreaterThan(0)
   assertRelativeJsAssetPaths([...reactSyncAssets, ...reactDomSyncAssets])
-  await assertAssetServedAsJavaScript(page, '/dist', reactSyncAssets[0]!)
-  await assertAssetServedAsJavaScript(page, '/dist', reactDomSyncAssets[0]!)
+  for (const sharedAsset of [...reactSyncAssets, ...reactDomSyncAssets]) {
+    await assertAssetServedAsJavaScript(page, '/dist', sharedAsset)
+  }
 
   await assertExposeContracts(page, manifest, '/dist')
 })
