@@ -115,8 +115,10 @@ async function assertAssetServedAsJavaScript(
   const response = await page.request.get(`${REMOTE_ORIGIN}${basePath}/${assetPath}`)
   expect(response.ok()).toBeTruthy()
 
-  const contentType = response.headers()['content-type'] ?? ''
+  const contentType = (response.headers()['content-type'] ?? '').toLowerCase()
+  expect(contentType).not.toBe('')
   expect(contentType.includes('text/html')).toBeFalsy()
+  expect(contentType.includes('javascript')).toBeTruthy()
 
   const body = await response.text()
   expect(body.startsWith('<!doctype html>')).toBeFalsy()
@@ -200,8 +202,10 @@ test('serves remote entries as javascript over HTTP', async ({ page }) => {
     const response = await page.request.get(`${REMOTE_ORIGIN}${remoteEntryPath}`)
     expect(response.ok()).toBeTruthy()
 
-    const contentType = response.headers()['content-type'] ?? ''
+    const contentType = (response.headers()['content-type'] ?? '').toLowerCase()
+    expect(contentType).not.toBe('')
     expect(contentType.includes('text/html')).toBeFalsy()
+    expect(contentType.includes('javascript')).toBeTruthy()
 
     const body = await response.text()
     expect(body.startsWith('<!doctype html>')).toBeFalsy()
