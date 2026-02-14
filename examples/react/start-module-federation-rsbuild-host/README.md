@@ -41,6 +41,7 @@ For the remote web target (browser manifest), expected contract is:
 - Manifest and stats metadata should remain aligned across browser and SSR outputs.
 - Stats entry ids and cardinality should remain stable (`shared: 2`, `exposes: 3`, ids under `mf_remote:*`).
 - Metadata parity should include remoteEntry name/path plus build/plugin version fields.
+- Shared/expose asset lists should also stay aligned between manifest and stats outputs.
 
 That combination keeps React shared ownership on the host and avoids SSR
 runtime fallback chunk loading conflicts with `@module-federation/node`.

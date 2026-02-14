@@ -52,6 +52,7 @@ Federation stats contract expectations:
 - Manifest/stats metadata contracts remain aligned across `dist` and `ssr` outputs.
 - Stats shared/expose id sets remain stable (`mf_remote:react`, `mf_remote:react-dom`, and expose ids for message/routes/server-data).
 - Metadata alignment includes remoteEntry name/path and build/plugin version fields.
+- Shared/expose asset lists remain aligned between manifest and stats outputs.
 
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
 JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).
