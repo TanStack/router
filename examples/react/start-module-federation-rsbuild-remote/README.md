@@ -40,6 +40,7 @@ Expected browser manifest contract for web target:
 - `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are served as JavaScript over HTTP with JavaScript content-types.
 - `/dist/@mf-types.zip` is retrievable over HTTP as a non-HTML payload.
 - SSR stats should show `import: false` for React/ReactDOM while browser stats keep `import` unset.
+- Manifest/stats metadata is expected to stay aligned for both browser and SSR outputs.
 
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.

@@ -49,6 +49,7 @@ Federation stats contract expectations:
 
 - SSR stats include `import: false` on React/ReactDOM shared entries.
 - Browser stats do not include `import` on React/ReactDOM shared entries.
+- Manifest/stats metadata contracts remain aligned across `dist` and `ssr` outputs.
 
 Both `/dist/remoteEntry.js` and `/ssr/remoteEntry.js` are expected to serve
 JavaScript payloads over HTTP with JavaScript content-types (not HTML fallbacks).
