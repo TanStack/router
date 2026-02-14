@@ -21,6 +21,9 @@ For node-target federation in this setup we use:
 - `shared.react/react-dom.import: false` in the node-target config
 - SSR manifest `metaData.remoteEntry.type: 'commonjs-module'`
 
+The web-target config keeps normal singleton shared config (without
+`import: false`) so client-side sharing remains unchanged.
+
 This keeps React shared ownership on the host side and avoids remote shared
 fallback chunk loading issues in SSR node runtime.
 
