@@ -13,6 +13,17 @@ It also demonstrates:
 - Federated server route and server function handlers
 - Start mode matrix via `HOST_MODE`: `ssr`, `spa`, `prerender`
 
+## SSR node runtime compatibility
+
+This host expects the paired remote's **node-target federation config** to use:
+
+- `library.type: 'commonjs-module'`
+- `remoteType: 'script'`
+- `shared.react/react-dom.import: false`
+
+That combination keeps React shared ownership on the host and avoids SSR
+runtime fallback chunk loading conflicts with `@module-federation/node`.
+
 ## Run with the remote app
 
 1. Start the remote app first:
