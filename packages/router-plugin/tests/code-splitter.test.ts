@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   compileCodeSplitReferenceRoute,
+  compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
+  computeSharedBindings,
 } from '../src/core/code-splitter/compilers'
 import { createIdentifier } from '../src/core/code-splitter/path-ids'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
@@ -58,6 +60,11 @@ describe('code-splitter works', () => {
             const file = await readFile(path.join(dirs.files, filename))
             const code = file.toString()
 
+            const sharedBindings = computeSharedBindings({
+              code,
+              codeSplitGroupings: grouping,
+            })
+
             const compileResult = compileCodeSplitReferenceRoute({
               code,
               filename,
@@ -65,6 +72,8 @@ describe('code-splitter works', () => {
               addHmr: false,
               codeSplitGroupings: grouping,
               targetFramework: framework,
+              sharedBindings:
+                sharedBindings.size > 0 ? sharedBindings : undefined,
             })
 
             await expect(compileResult?.code || code).toMatchFileSnapshot(
@@ -79,6 +88,11 @@ describe('code-splitter works', () => {
             const file = await readFile(path.join(dirs.files, filename))
             const code = file.toString()
 
+            const sharedBindings = computeSharedBindings({
+              code,
+              codeSplitGroupings: grouping,
+            })
+
             for (const targets of grouping) {
               const ident = createIdentifier(targets)
 
@@ -86,6 +100,8 @@ describe('code-splitter works', () => {
                 code,
                 filename: `${filename}?${ident}`,
                 splitTargets: targets,
+                sharedBindings:
+                  sharedBindings.size > 0 ? sharedBindings : undefined,
               })
 
               const snapshotFilename = path.join(
@@ -99,7 +115,122 @@ describe('code-splitter works', () => {
             }
           },
         )
+
+        it.each(filenames)(
+          `should compile "shared" for "%s"`,
+          async (filename) => {
+            const file = await readFile(path.join(dirs.files, filename))
+            const code = file.toString()
+
+            const sharedBindings = computeSharedBindings({
+              code,
+              codeSplitGroupings: grouping,
+            })
+
+            const snapshotFilename = path.join(
+              dirs.snapshots,
+              groupName,
+              `${filename.replace('.tsx', '')}@shared.tsx`,
+            )
+
+            if (sharedBindings.size === 0) {
+              // No shared module — snapshot should be empty string
+              await expect('').toMatchFileSnapshot(snapshotFilename)
+              return
+            }
+
+            const sharedResult = compileCodeSplitSharedRoute({
+              code,
+              sharedBindings,
+              filename: `${filename}?tsr-shared=1`,
+            })
+
+            await expect(sharedResult.code).toMatchFileSnapshot(
+              snapshotFilename,
+            )
+          },
+        )
       },
     )
+  })
+})
+
+describe('computeSharedBindings fast paths', () => {
+  it('returns empty when only one split group is present (default groupings)', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const shared = 42
+export const Route = createFileRoute('/')({
+  component: () => shared,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    expect(result.size).toBe(0)
+  })
+
+  it('returns empty when all split props are in the same group', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const shared = 42
+export const Route = createFileRoute('/')({
+  component: () => shared,
+  loader: () => shared,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: [['component', 'loader']],
+    })
+    expect(result.size).toBe(0)
+  })
+
+  it('returns empty when all route option values are undefined', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component: undefined,
+  errorComponent: undefined,
+  notFoundComponent: undefined,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    expect(result.size).toBe(0)
+  })
+
+  it('returns empty when no local bindings exist (only imports + Route)', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component: () => <div>hello</div>,
+  errorComponent: () => <div>error</div>,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    expect(result.size).toBe(0)
+  })
+
+  it('does not fast-path when there is a non-split and a split group', () => {
+    const code = `
+import { createFileRoute } from '@tanstack/react-router'
+const shared = 42
+export const Route = createFileRoute('/')({
+  component: () => shared,
+  beforeLoad: () => shared,
+})
+`
+    const result = computeSharedBindings({
+      code,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+    })
+    expect(result).toContain('shared')
   })
 })
