@@ -10,7 +10,7 @@ import { createServerFn } from '@tanstack/react-start'
 const getPathnameFromMiddleware = createServerFn().handler(
   async ({ context }) => {
     return {
-      requestMiddlewarePathname: (context as any).requestMiddlewarePathname,
+      requestMiddlewarePathname: context.requestMiddlewarePathname,
     }
   },
 )
