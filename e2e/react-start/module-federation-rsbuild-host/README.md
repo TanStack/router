@@ -38,3 +38,8 @@ The e2e suite also validates the remote SSR manifest contract:
 - `metaData.remoteEntry.type === 'commonjs-module'`
 - React/ReactDOM shared fallback asset lists are empty in SSR manifest.
 
+It also validates the browser manifest contract for the remote web target:
+
+- `metaData.remoteEntry.type === 'global'`
+- React/ReactDOM shared fallback asset lists are populated in browser manifest.
+

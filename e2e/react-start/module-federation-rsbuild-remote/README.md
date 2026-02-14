@@ -31,6 +31,11 @@ For the node-target federation config we use:
 Web-target shared config remains standard singleton sharing (no `import: false`)
 to preserve normal browser-side shared behavior.
 
+Expected browser manifest contract for the web target:
+
+- `metaData.remoteEntry.type: 'global'`
+- React/ReactDOM browser shared fallback JS assets are present.
+
 This keeps React ownership on the host side in node SSR runtime and avoids
 remote shared fallback chunk loading incompatibilities.
 

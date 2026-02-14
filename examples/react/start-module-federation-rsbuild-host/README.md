@@ -22,6 +22,11 @@ This host expects the paired remote's **node-target federation config** to use:
 - `shared.react/react-dom.import: false`
 - SSR manifest `metaData.remoteEntry.type: 'commonjs-module'`
 
+For the remote web target (browser manifest), expected contract is:
+
+- `metaData.remoteEntry.type: 'global'`
+- React/ReactDOM shared fallback JS asset lists are non-empty.
+
 That combination keeps React shared ownership on the host and avoids SSR
 runtime fallback chunk loading conflicts with `@module-federation/node`.
 
