@@ -107,8 +107,8 @@ describe('beforeLoad skip or exec', () => {
     const beforeLoad = vi.fn()
     const router = setup({ beforeLoad })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
+    expect(router.getMatch('/foo/foo')).toEqual(
+      expect.objectContaining({ id: '/foo/foo' }),
     )
     await sleep(10)
     await router.navigate({ to: '/foo' })
@@ -121,8 +121,8 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
+    expect(router.getMatch('/foo/foo')).toEqual(
+      expect.objectContaining({ id: '/foo/foo' }),
     )
     await router.navigate({ to: '/foo' })
 
@@ -290,8 +290,8 @@ describe('loader skip or exec', () => {
     const loader = vi.fn()
     const router = setup({ loader })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
+    expect(router.getMatch('/foo/foo')).toEqual(
+      expect.objectContaining({ id: '/foo/foo' }),
     )
     await sleep(10)
     await router.navigate({ to: '/foo' })
@@ -303,8 +303,8 @@ describe('loader skip or exec', () => {
     const loader = vi.fn()
     const router = setup({ loader, staleTime: 1000 })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
+    expect(router.getMatch('/foo/foo')).toEqual(
+      expect.objectContaining({ id: '/foo/foo' }),
     )
     await sleep(10)
     await router.navigate({ to: '/foo' })
@@ -317,8 +317,8 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
+    expect(router.getMatch('/foo/foo')).toEqual(
+      expect.objectContaining({ id: '/foo/foo' }),
     )
     await router.navigate({ to: '/foo' })
 

@@ -531,7 +531,6 @@ export interface RouterState<
   isLoading: boolean
   isTransitioning: boolean
   matches: Array<TRouteMatch>
-  cachedMatches: Array<TRouteMatch>
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   statusCode: number
@@ -963,6 +962,7 @@ export class RouterCore<
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   pendingBuiltLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   private pendingMatchesInternal?: Array<AnyRouteMatch>
+  private cachedMatchesInternal: Array<AnyRouteMatch> = []
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
@@ -1015,6 +1015,25 @@ export class RouterCore<
 
   isPrerendering() {
     return !!this.options.isPrerendering
+  }
+
+  private setCachedMatchesInternal = (matches: Array<AnyRouteMatch>) => {
+    this.cachedMatchesInternal = matches.filter(
+      (match) => match.status !== 'redirected',
+    )
+  }
+
+  private updateCachedMatchesInternal = (
+    updater: (matches: Array<AnyRouteMatch>) => Array<AnyRouteMatch>,
+  ) => {
+    this.setCachedMatchesInternal(updater(this.cachedMatchesInternal))
+  }
+
+  private appendCachedMatchesInternal = (matches: Array<AnyRouteMatch>) => {
+    if (!matches.length) {
+      return
+    }
+    this.setCachedMatchesInternal([...this.cachedMatchesInternal, ...matches])
   }
 
   update: UpdateFn<
@@ -1117,16 +1136,7 @@ export class RouterCore<
           getInitialRouterState(this.latestLocation),
         ) as unknown as Store<any>
       } else {
-        this.__store = new Store(getInitialRouterState(this.latestLocation), {
-          onUpdate: () => {
-            this.__store.state = {
-              ...this.state,
-              cachedMatches: this.state.cachedMatches.filter(
-                (d) => !['redirected'].includes(d.status),
-              ),
-            }
-          },
-        })
+        this.__store = new Store(getInitialRouterState(this.latestLocation))
 
         setupScrollRestoration(this)
       }
@@ -2342,6 +2352,11 @@ export class RouterCore<
     // Match the routes
     const pendingMatches = this.matchRoutes(this.latestLocation)
     this.pendingMatchesInternal = pendingMatches
+    const pendingMatchIds = new Set(pendingMatches.map((match) => match.id))
+
+    this.updateCachedMatchesInternal((matches) =>
+      matches.filter((match) => !pendingMatchIds.has(match.id)),
+    )
 
     // Ingest the new matches
     this.__store.setState((s) => ({
@@ -2350,10 +2365,6 @@ export class RouterCore<
       statusCode: 200,
       isLoading: true,
       location: this.latestLocation,
-      // If a cached moved to pendingMatches, remove it from cachedMatches
-      cachedMatches: s.cachedMatches.filter(
-        (d) => !pendingMatches.some((e) => e.id === d.id),
-      ),
     }))
   }
 
@@ -2429,21 +2440,15 @@ export class RouterCore<
                         isLoading: false,
                         loadedAt: Date.now(),
                         matches: newMatches,
-                        /**
-                         * When committing new matches, cache any exiting matches that are still usable.
-                         * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
-                         * deliberately excluded from `cachedMatches` so that subsequent invalidations
-                         * or reloads re-run their loaders instead of reusing the failed/not-found data.
-                         */
-                        cachedMatches: [
-                          ...s.cachedMatches,
-                          ...exitingMatches.filter(
-                            (d) =>
-                              d.status !== 'error' && d.status !== 'notFound',
-                          ),
-                        ],
                       }
                     })
+                    this.appendCachedMatchesInternal(
+                      exitingMatches.filter(
+                        (match) =>
+                          match.status !== 'error' &&
+                          match.status !== 'notFound',
+                      ),
+                    )
                     this.pendingMatchesInternal = undefined
                     this.clearExpiredCache()
                   })
@@ -2593,19 +2598,18 @@ export class RouterCore<
         return
       }
 
-      const matchesKey = this.state.matches.some((d) => d.id === id)
-        ? 'matches'
-        : this.state.cachedMatches.some((d) => d.id === id)
-          ? 'cachedMatches'
-          : ''
-
-      if (matchesKey) {
+      if (this.state.matches.some((d) => d.id === id)) {
         this.__store.setState((s) => ({
           ...s,
-          [matchesKey]: s[matchesKey]?.map((d) =>
-            d.id === id ? updater(d) : d,
-          ),
+          matches: s.matches.map((d) => (d.id === id ? updater(d) : d)),
         }))
+        return
+      }
+
+      if (this.cachedMatchesInternal.some((d) => d.id === id)) {
+        this.updateCachedMatchesInternal((matches) =>
+          matches.map((d) => (d.id === id ? updater(d) : d)),
+        )
       }
     })
   }
@@ -2613,7 +2617,7 @@ export class RouterCore<
   getMatch: GetMatchFn = (matchId: string): AnyRouteMatch | undefined => {
     const findFn = (d: { id: string }) => d.id === matchId
     return (
-      this.state.cachedMatches.find(findFn) ??
+      this.cachedMatchesInternal.find(findFn) ??
       this.pendingMatchesInternal?.find(findFn) ??
       this.state.matches.find(findFn)
     )
@@ -2636,8 +2640,8 @@ export class RouterCore<
       TDehydrated
     >
   > = (opts) => {
-    const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
-      if (opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true) {
+    const invalidate = <TMatch extends AnyRouteMatch>(d: TMatch): TMatch => {
+      if (opts?.filter?.(d as unknown as MakeRouteMatchUnion<this>) ?? true) {
         return {
           ...d,
           invalid: true,
@@ -2646,17 +2650,17 @@ export class RouterCore<
           d.status === 'notFound'
             ? ({ status: 'pending', error: undefined } as const)
             : undefined),
-        }
+        } as TMatch
       }
       return d
     }
 
     this.pendingMatchesInternal = this.pendingMatchesInternal?.map(invalidate)
+    this.updateCachedMatchesInternal((matches) => matches.map(invalidate))
 
     this.__store.setState((s) => ({
       ...s,
       matches: s.matches.map(invalidate),
-      cachedMatches: s.cachedMatches.map(invalidate),
     }))
 
     this.shouldViewTransition = false
@@ -2712,21 +2716,11 @@ export class RouterCore<
   clearCache: ClearCacheFn<this> = (opts) => {
     const filter = opts?.filter
     if (filter !== undefined) {
-      this.__store.setState((s) => {
-        return {
-          ...s,
-          cachedMatches: s.cachedMatches.filter(
-            (m) => !filter(m as MakeRouteMatchUnion<this>),
-          ),
-        }
-      })
+      this.updateCachedMatchesInternal((matches) =>
+        matches.filter((m) => !filter(m as MakeRouteMatchUnion<this>)),
+      )
     } else {
-      this.__store.setState((s) => {
-        return {
-          ...s,
-          cachedMatches: [],
-        }
-      })
+      this.setCachedMatchesInternal([])
     }
   }
 
@@ -2780,20 +2774,13 @@ export class RouterCore<
 
     const loadedMatchIds = new Set([
       ...activeMatchIds,
-      ...this.state.cachedMatches.map((d) => d.id),
+      ...this.cachedMatchesInternal.map((d) => d.id),
     ])
 
     // If the matches are already loaded, we need to add them to the cachedMatches
-    batch(() => {
-      matches.forEach((match) => {
-        if (!loadedMatchIds.has(match.id)) {
-          this.__store.setState((s) => ({
-            ...s,
-            cachedMatches: [...(s.cachedMatches as any), match],
-          }))
-        }
-      })
-    })
+    this.appendCachedMatchesInternal(
+      matches.filter((match) => !loadedMatchIds.has(match.id)),
+    )
 
     try {
       matches = await loadMatches({
@@ -2941,7 +2928,6 @@ export function getInitialRouterState(
     resolvedLocation: undefined,
     location,
     matches: [],
-    cachedMatches: [],
     statusCode: 200,
   }
 }
