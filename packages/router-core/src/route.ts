@@ -1230,20 +1230,26 @@ type RouteByIdFrom<TRoutesById, TId> = Extract<
   AnyRoute
 >
 
+type RouteMatchByIdFor<TRoutesById> = {
+  [K in keyof TRoutesById]: MakeRouteMatchFromRoute<
+    RouteByIdFrom<TRoutesById, K>
+  >
+}
+
 /**
  * Map a tuple of route IDs to a tuple of route matches.
  * Uses RoutesById for O(1) cached lookups per ID.
  */
 type MapIdTupleToMatches<
-  TRoutesById,
+  TRouteMatchById,
   TIds extends Array<string>,
 > = TIds extends [
   infer TFirst extends string,
   ...infer TRest extends Array<string>,
 ]
   ? [
-      MakeRouteMatchFromRoute<RouteByIdFrom<TRoutesById, TFirst>>,
-      ...MapIdTupleToMatches<TRoutesById, TRest>,
+      TRouteMatchById[TFirst & keyof TRouteMatchById],
+      ...MapIdTupleToMatches<TRouteMatchById, TRest>,
     ]
   : []
 
@@ -1261,8 +1267,16 @@ type DescendantRouteIds<
   : Extract<TAllRouteIds, `${TRouteId}/${string}`>
 
 type DescendantMatchesById<TRoutesById, TIds> = TIds extends string
-  ? MakeRouteMatchFromRoute<RouteByIdFrom<TRoutesById, TIds>>
+  ? RouteMatchByIdFor<TRoutesById>[TIds & keyof RouteMatchByIdFor<TRoutesById>]
   : never
+
+type DescendantIdsByRouteId<TRouteTree extends AnyRoute, TAllRouteIds> = {
+  [K in RouteIdsFor<TRouteTree>]: DescendantRouteIds<TAllRouteIds, K & string>
+}
+
+type AncestorIdTupleByRouteId<TRouteTree extends AnyRoute> = {
+  [K in RouteIdsFor<TRouteTree>]: AncestorIdTuple<K & string>
+}
 
 /**
  * Infer the concrete matches tuple for a route's head/scripts/headers callbacks.
@@ -1288,11 +1302,16 @@ export type InferAssetFnMatches<TRegister, TRouteId> =
       ? RoutesByIdFor<TTree> extends infer TRoutesById
         ? RouteIdsFor<TTree> extends infer TAllRouteIds
           ? [
-              ...MapIdTupleToMatches<TRoutesById, AncestorIdTuple<TRouteId>>,
+              ...MapIdTupleToMatches<
+                RouteMatchByIdFor<TRoutesById>,
+                AncestorIdTupleByRouteId<TTree>[TRouteId &
+                  keyof AncestorIdTupleByRouteId<TTree>]
+              >,
               ...Array<
                 DescendantMatchesById<
                   TRoutesById,
-                  DescendantRouteIds<TAllRouteIds, TRouteId>
+                  DescendantIdsByRouteId<TTree, TAllRouteIds>[TRouteId &
+                    keyof DescendantIdsByRouteId<TTree, TAllRouteIds>]
                 >
               >,
             ]
