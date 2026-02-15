@@ -42,13 +42,16 @@ export interface FileRouteOptions<
   TFullPath extends RouteConstraints['TFullPath'],
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = unknown,
+  TBeforeLoadWire = unknown,
+  TLoaderWire = unknown,
 >
   extends
     FileBaseRouteOptions<
@@ -61,12 +64,15 @@ export interface FileRouteOptions<
       TLoaderDeps,
       TLoaderFn,
       AnyContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       AnyContext,
       TSSR,
       TServerMiddlewares,
-      THandlers
+      THandlers,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -77,7 +83,7 @@ export interface FileRouteOptions<
       TLoaderFn,
       TLoaderDeps,
       AnyContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn
     > {}
 
@@ -91,13 +97,16 @@ export type CreateFileRoute<
   TRegister = Register,
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
-  TRouteContextFn = AnyContext,
+  TContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
+  TContextWire = unknown,
+  TBeforeLoadWire = unknown,
+  TLoaderWire = unknown,
 >(
   options?: FileRouteOptions<
     TRegister,
@@ -108,13 +117,16 @@ export type CreateFileRoute<
     TFullPath,
     TSearchValidator,
     TParams,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
     TSSR,
     TServerMiddlewares,
-    THandlers
+    THandlers,
+    TContextWire,
+    TBeforeLoadWire,
+    TLoaderWire
   >,
 ) => Route<
   TRegister,
@@ -126,7 +138,7 @@ export type CreateFileRoute<
   TSearchValidator,
   TParams,
   AnyContext,
-  TRouteContextFn,
+  TContextFn,
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,

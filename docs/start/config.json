@@ -122,6 +122,10 @@
               "to": "framework/react/guide/selective-ssr"
             },
             {
+              "label": "Lifecycle Result Serialization",
+              "to": "framework/react/guide/lifecycle-result-serialization"
+            },
+            {
               "label": "SPA Mode",
               "to": "framework/react/guide/spa-mode"
             },
@@ -237,6 +241,10 @@
             {
               "label": "Selective SSR",
               "to": "framework/solid/guide/selective-ssr"
+            },
+            {
+              "label": "Lifecycle Result Serialization",
+              "to": "framework/solid/guide/lifecycle-result-serialization"
             },
             {
               "label": "SPA Mode",

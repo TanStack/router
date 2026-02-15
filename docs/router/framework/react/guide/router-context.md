@@ -15,7 +15,7 @@ These are just suggested uses of the router context. You can use it for whatever
 
 ## Typed Router Context
 
-Like everything else, the root router context is strictly typed. This type can be augmented via any route's `beforeLoad` option as it is merged down the route match tree. To constrain the type of the root router context, you must use the `createRootRouteWithContext<YourContextTypeHere>()(routeOptions)` function to create a new router context instead of the `createRootRoute()` function to create your root route. Here's an example:
+Like everything else, the root router context is strictly typed. This type can be augmented via any route's `context` and `beforeLoad` options as it is merged down the route match tree. To constrain the type of the root router context, you must use the `createRootRouteWithContext<YourContextTypeHere>()(routeOptions)` function to create a new router context instead of the `createRootRoute()` function to create your root route. Here's an example:
 
 ```tsx
 import {
@@ -43,7 +43,7 @@ const router = createRouter({
 ```
 
 > [!TIP]
-> `MyRouterContext` only needs to contain content that will be passed directly to `createRouter` below. All other context added in `beforeLoad` will be inferred.
+> `MyRouterContext` only needs to contain content that will be passed directly to `createRouter` below. All other context added in `context` and `beforeLoad` will be inferred.
 
 ## Passing the initial Router Context
 
@@ -69,7 +69,9 @@ const router = createRouter({
 
 ### Invalidating the Router Context
 
-If you need to invalidate the context state you are passing into the router, you can call the `invalidate` method to tell the router to recompute the context. This is useful when you need to update the context state and have the router recompute the context for all routes.
+If the data you pass to the router context changes (e.g. auth state), update the router context you provide to `<RouterProvider />` and call `router.invalidate()` to re-run route lifecycles (eg. `beforeLoad`/`loader`) with the new context.
+
+By default, a route's `context` handler runs for new matches, but does not automatically re-run on `router.invalidate()`. If you want a route's `context` handler to re-run on invalidation, use the object form and set `invalidate: true`.
 
 ```tsx
 function useAuth() {
@@ -249,7 +251,14 @@ export const Route = createFileRoute('/posts')({
 
 ## Modifying the Router Context
 
-The router context is passed down the route tree and is merged at each route. This means that you can modify the context at each route and the modifications will be available to all child routes. Here's an example:
+The router context is passed down the route tree and is merged at each route. This means that you can add to the context at each route and the additions will be available to all child routes.
+
+Context is built serially from parent to child:
+
+- `route.context` runs first (serial, parent to child)
+- `route.beforeLoad` runs next (serial, parent to child)
+
+Both can return an object that is merged into the match context.
 
 - `src/routes/__root.tsx`
 
@@ -287,17 +296,21 @@ import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/todos')({
   component: Todos,
-  beforeLoad: () => {
-    return {
-      bar: true,
-    }
-  },
+  context: () => ({
+    bar: true,
+  }),
+  beforeLoad: () => ({
+    baz: true,
+  }),
   loader: ({ context }) => {
     context.foo // true
     context.bar // true
+    context.baz // true
   },
 })
 ```
+
+If you need to do redirects/guards, `beforeLoad` is a good place for that, and it can also return additional context.
 
 ## Processing Accumulated Route Context
 

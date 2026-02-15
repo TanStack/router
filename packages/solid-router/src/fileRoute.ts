@@ -80,7 +80,7 @@ export class FileRoute<
     TRegister = Register,
     TSearchValidator = undefined,
     TParams = ResolveParams<TPath>,
-    TRouteContextFn = AnyContext,
+    TContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
@@ -88,6 +88,9 @@ export class FileRoute<
     TSSR = unknown,
     TMiddlewares = unknown,
     THandlers = undefined,
+    TContextWire = unknown,
+    TBeforeLoadWire = unknown,
+    TLoaderWire = unknown,
   >(
     options?: FileBaseRouteOptions<
       TRegister,
@@ -99,12 +102,15 @@ export class FileRoute<
       TLoaderDeps,
       TLoaderFn,
       AnyContext,
-      TRouteContextFn,
+      TContextFn,
       TBeforeLoadFn,
       AnyContext,
       TSSR,
       TMiddlewares,
-      THandlers
+      THandlers,
+      TContextWire,
+      TBeforeLoadWire,
+      TLoaderWire
     > &
       UpdatableRouteOptions<
         TParentRoute,
@@ -115,7 +121,7 @@ export class FileRoute<
         TLoaderFn,
         TLoaderDeps,
         AnyContext,
-        TRouteContextFn,
+        TContextFn,
         TBeforeLoadFn
       >,
   ): Route<
@@ -128,7 +134,7 @@ export class FileRoute<
     TSearchValidator,
     TParams,
     AnyContext,
-    TRouteContextFn,
+    TContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
@@ -168,7 +174,7 @@ export function FileRouteLoader<
       TRoute['types']['params'],
       TRoute['types']['loaderDeps'],
       TRoute['types']['routerContext'],
-      TRoute['types']['routeContextFn'],
+      TRoute['types']['contextFn'],
       TRoute['types']['beforeLoadFn']
     >
   >,

@@ -30,19 +30,19 @@ test('when creating the root', () => {
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 })
 
-test('when creating the root with routeContext', () => {
+test('when creating the root with context', () => {
   const rootRoute = createRootRoute({
     context: (opts) => {
       expectTypeOf(opts).toEqualTypeOf<{
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: {}
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '__root__'
       }>()
@@ -78,6 +78,33 @@ test('when creating the root with beforeLoad', () => {
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 })
 
+test('when creating the root with context using object form with revalidate', () => {
+  const rootRoute = createRootRoute({
+    context: {
+      handler: (opts) => {
+        expectTypeOf(opts).toEqualTypeOf<{
+          abortController: AbortController
+          preload: boolean
+          params: {}
+          deps: {}
+          location: ParsedLocation<{}>
+          navigate: NavigateFn
+          buildLocation: BuildLocationFn
+          cause: 'preload' | 'enter' | 'stay'
+          context: {}
+          matches: Array<MakeRouteMatchUnion>
+          routeId: '__root__'
+        }>()
+      },
+      revalidate: true,
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+  expectTypeOf(rootRoute.id).toEqualTypeOf<'__root__'>()
+  expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
+})
+
 test('when creating the root with a loader', () => {
   const rootRoute = createRootRoute({
     loader: (opts) => {
@@ -101,7 +128,7 @@ test('when creating the root with a loader', () => {
   expectTypeOf(rootRoute.path).toEqualTypeOf<'/'>()
 })
 
-test('when creating the root route with context and routeContext', () => {
+test('when creating the root route with context and context function', () => {
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
   const rootRoute = createRouteResult({
     context: (opts) => {
@@ -109,12 +136,12 @@ test('when creating the root route with context and routeContext', () => {
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '__root__'
       }>()
@@ -186,6 +213,42 @@ test('when creating the root route with context and beforeLoad', () => {
     .toEqualTypeOf<((context: { userId: string }) => unknown) | undefined>()
 })
 
+test('when creating the root route with context and context using object form with revalidate', () => {
+  const createRouteResult = createRootRouteWithContext<{ userId: string }>()
+
+  const rootRoute = createRouteResult({
+    context: {
+      handler: (opts) => {
+        expectTypeOf(opts).toEqualTypeOf<{
+          abortController: AbortController
+          preload: boolean
+          params: {}
+          deps: {}
+          location: ParsedLocation<{}>
+          navigate: NavigateFn
+          buildLocation: BuildLocationFn
+          cause: 'preload' | 'enter' | 'stay'
+          context: { userId: string }
+          matches: Array<MakeRouteMatchUnion>
+          routeId: '__root__'
+        }>()
+      },
+      revalidate: true,
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute,
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(rootRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+    }>
+  >()
+})
+
 test('when creating the root route with context and a loader', () => {
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
 
@@ -228,7 +291,7 @@ test('when creating the root route with context and a loader', () => {
     .toEqualTypeOf<((context: { userId: string }) => unknown) | undefined>()
 })
 
-test('when creating the root route with context, routeContext, beforeLoad and a loader', () => {
+test('when creating the root route with context, context function, beforeLoad and a loader', () => {
   const createRouteResult = createRootRouteWithContext<{ userId: string }>()
 
   const rootRoute = createRouteResult({
@@ -237,12 +300,12 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '__root__'
       }>()
@@ -353,7 +416,7 @@ test('when creating a child route from the root route with context', () => {
     .toEqualTypeOf<((context: { userId: string }) => unknown) | undefined>()
 })
 
-test('when creating a child route with routeContext from the root route with context', () => {
+test('when creating a child route with context from the root route with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   createRoute({
@@ -364,12 +427,12 @@ test('when creating a child route with routeContext from the root route with con
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '/invoices'
       }>()
@@ -716,7 +779,7 @@ test('when creating a child route with params, search, loader and loaderDeps fro
   })
 })
 
-test('when creating a child route with params, search with routeContext from the root route with context', () => {
+test('when creating a child route with params, search with context from the root route with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   createRoute({
@@ -728,12 +791,12 @@ test('when creating a child route with params, search with routeContext from the
         abortController: AbortController
         preload: boolean
         params: { invoiceId: string }
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '/invoices/$invoiceId'
       }>()
@@ -765,7 +828,7 @@ test('when creating a child route with params, search with beforeLoad from the r
   })
 })
 
-test('when creating a child route with params, search with routeContext, beforeLoad and a loader from the root route with context', () => {
+test('when creating a child route with params, search with context, beforeLoad and a loader from the root route with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   createRoute({
@@ -777,12 +840,12 @@ test('when creating a child route with params, search with routeContext, beforeL
         abortController: AbortController
         preload: boolean
         params: { invoiceId: string }
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '/invoices/$invoiceId'
       }>()
@@ -896,7 +959,7 @@ test('when creating a child route with search from a parent with search', () => 
     >()
 })
 
-test('when creating a child route with routeContext from a parent with routeContext', () => {
+test('when creating a child route with context from a parent with context', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   const invoicesRoute = createRoute({
@@ -907,12 +970,12 @@ test('when creating a child route with routeContext from a parent with routeCont
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '/invoices'
       }>()
@@ -929,12 +992,12 @@ test('when creating a child route with routeContext from a parent with routeCont
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string; invoiceId: string }
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '/invoices/details'
       }>()
@@ -1046,7 +1109,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
     >()
 })
 
-test('when creating a child route with routeContext, beforeLoad, search, params, loaderDeps and loader', () => {
+test('when creating a child route with context, beforeLoad, search, params, loaderDeps and loader', () => {
   const rootRoute = createRootRouteWithContext<{ userId: string }>()()
 
   const invoicesRoute = createRoute({
@@ -1058,12 +1121,12 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         abortController: AbortController
         preload: boolean
         params: {}
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
         cause: 'preload' | 'enter' | 'stay'
         context: { userId: string }
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '/invoices'
       }>()
@@ -1101,6 +1164,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         abortController: AbortController
         preload: boolean
         params: { invoiceId: string }
+        deps: {}
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -1110,7 +1174,6 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
           env: string
           invoicePermissions: readonly ['view']
         }
-        deps: {}
         matches: Array<MakeRouteMatchUnion>
         routeId: '/invoices/$invoiceId/details'
       }>()
@@ -1151,6 +1214,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         abortController: AbortController
         preload: boolean
         params: { invoiceId: string; detailId: string }
+        deps: { detailPage: number; invoicePage: number }
         location: ParsedLocation
         navigate: NavigateFn
         buildLocation: BuildLocationFn
@@ -1162,7 +1226,6 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
           detailEnv: string
           detailsPermissions: readonly ['view']
         }
-        deps: { detailPage: number; invoicePage: number }
         matches: Array<MakeRouteMatchUnion>
         routeId: '/invoices/$invoiceId/details/$detailId'
       }>()
@@ -1607,7 +1670,7 @@ test('when creating a child route with params.parse and params.stringify with me
   >()
 })
 
-test('when routeContext throws', () => {
+test('when context throws', () => {
   const rootRoute = createRootRoute()
   const invoicesRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -1945,5 +2008,751 @@ test('when creating a route with escaped path param', () => {
 
   expectTypeOf(prefixSuffixRoute.useParams<typeof router>()).toEqualTypeOf<
     Accessor<{}>
+  >()
+})
+
+// ---------------------------------------------------------------------------
+// Object form lifecycle methods — type-level tests
+// ---------------------------------------------------------------------------
+
+test('object form context is accepted on root route', () => {
+  const rootRoute = createRootRoute({
+    context: {
+      handler: (opts) => {
+        expectTypeOf(opts).toEqualTypeOf<{
+          abortController: AbortController
+          preload: boolean
+          params: {}
+          deps: {}
+          location: ParsedLocation
+          navigate: NavigateFn
+          buildLocation: BuildLocationFn
+          cause: 'preload' | 'enter' | 'stay'
+          context: {}
+          matches: Array<MakeRouteMatchUnion>
+          routeId: '__root__'
+        }>()
+        return { env: 'production' }
+      },
+      dehydrate: false,
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+})
+
+test('object form beforeLoad is accepted on root route', () => {
+  const rootRoute = createRootRoute({
+    beforeLoad: {
+      handler: (opts) => {
+        expectTypeOf(opts).toEqualTypeOf<{
+          abortController: AbortController
+          preload: boolean
+          params: {}
+          location: ParsedLocation
+          navigate: NavigateFn
+          buildLocation: BuildLocationFn
+          cause: 'preload' | 'enter' | 'stay'
+          context: {}
+          search: {}
+          matches: Array<MakeRouteMatchUnion>
+          routeId: '__root__'
+        }>()
+        return { perm: 'admin' }
+      },
+      dehydrate: true,
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+})
+
+test('object form context with revalidate is accepted on root route', () => {
+  const rootRoute = createRootRoute({
+    context: {
+      handler: (_opts) => {
+        // Root route context handler compiles — vitest typecheck resolves search
+        // differently than tsc for the root route, so we only verify
+        // that the handler accepts and returns the correct types
+        return { cache: 'initialized' }
+      },
+      revalidate: true,
+      dehydrate: false,
+    },
+  })
+
+  expectTypeOf(rootRoute.fullPath).toEqualTypeOf<'/'>()
+})
+
+test('object form loader is accepted on child route', () => {
+  const rootRoute = createRootRoute()
+  const childRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'child',
+    loader: {
+      handler: (opts) => {
+        expectTypeOf(opts).toEqualTypeOf<{
+          abortController: AbortController
+          preload: boolean
+          params: {}
+          deps: {}
+          context: {}
+          location: ParsedLocation
+          navigate: (opts: NavigateOptions<AnyRouter>) => Promise<void> | void
+          parentMatchPromise: Promise<MakeRouteMatchFromRoute<typeof rootRoute>>
+          cause: 'preload' | 'enter' | 'stay'
+          route: AnyRoute
+        }>()
+        return { data: 'loaded' }
+      },
+      dehydrate: true,
+    },
+  })
+
+  expectTypeOf(childRoute.fullPath).toEqualTypeOf<'/child'>()
+})
+
+test('object form context context flows into beforeLoad handler context', () => {
+  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+    context: {
+      handler: () => ({ env: 'production' }),
+      dehydrate: false,
+    },
+    beforeLoad: {
+      handler: (opts) => {
+        // beforeLoad should see context function context
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          env: string
+        }>()
+        return { perm: 'admin' }
+      },
+    },
+  })
+})
+
+test('object form context flows into beforeLoad', () => {
+  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+    context: {
+      handler: () => ({ env: 'production' }),
+      dehydrate: false,
+    },
+    beforeLoad: {
+      handler: (opts) => {
+        // beforeLoad should see context's return
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          env: string
+        }>()
+        return { perm: 'admin' as const }
+      },
+      dehydrate: true,
+    },
+  })
+})
+
+test('object form full context chain: context -> beforeLoad -> loader', () => {
+  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+    context: {
+      handler: () => ({ env: 'prod' }),
+      dehydrate: false,
+    },
+    beforeLoad: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          env: string
+        }>()
+        return { perm: 'view' as const }
+      },
+      dehydrate: true,
+    },
+    loader: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          env: string
+          perm: 'view'
+        }>()
+        return { items: ['a', 'b'] }
+      },
+      dehydrate: true,
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(invoicesRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+      env: string
+      perm: 'view'
+    }>
+  >()
+})
+
+test('mixed function and object form on the same route', () => {
+  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+    // function form for context
+    context: () => ({ env: 'staging' }),
+    // object form for beforeLoad
+    beforeLoad: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          env: string
+        }>()
+        return { perm: 'edit' as const }
+      },
+      dehydrate: false,
+    },
+    // object form for loader
+    loader: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          env: string
+          perm: 'edit'
+        }>()
+        return { data: [1, 2, 3] }
+      },
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([invoicesRoute]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(invoicesRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+      env: string
+      perm: 'edit'
+    }>
+  >()
+})
+
+test('object form parent-child context propagation', () => {
+  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'parent',
+    context: {
+      handler: () => ({ parentEnv: 'env1' }),
+      dehydrate: true,
+    },
+    beforeLoad: {
+      handler: () => ({ parentPerm: 'admin' as const }),
+      dehydrate: false,
+    },
+  })
+
+  const childRoute = createRoute({
+    getParentRoute: () => parentRoute,
+    path: 'child',
+    context: {
+      handler: (opts) => {
+        // child's context sees parent's full allContext (context + beforeLoad)
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          parentEnv: string
+          parentPerm: 'admin'
+        }>()
+        return { childEnv: 'env2' }
+      },
+      dehydrate: false,
+    },
+    beforeLoad: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          parentEnv: string
+          parentPerm: 'admin'
+          childEnv: string
+        }>()
+        return { childPerm: 'viewer' as const }
+      },
+    },
+    loader: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          parentEnv: string
+          parentPerm: 'admin'
+          childEnv: string
+          childPerm: 'viewer'
+        }>()
+        return { items: [1, 2] }
+      },
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(parentRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+      parentEnv: string
+      parentPerm: 'admin'
+    }>
+  >()
+
+  expectTypeOf(childRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+      parentEnv: string
+      parentPerm: 'admin'
+      childEnv: string
+      childPerm: 'viewer'
+    }>
+  >()
+})
+
+test('object form without dehydrate: full context chain with useRouteContext and useLoaderData', () => {
+  const rootRoute = createRootRouteWithContext<{ appId: string }>()()
+
+  const testRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'test',
+    context: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{ appId: string }>()
+        return { env: 'test' }
+      },
+      // no dehydrate specified
+    },
+    beforeLoad: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          appId: string
+          env: string
+        }>()
+        return { perm: 'view' as const }
+      },
+      // no dehydrate specified
+    },
+    loader: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          appId: string
+          env: string
+          perm: 'view'
+        }>()
+        return { data: [1, 2, 3] }
+      },
+      // no dehydrate specified
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([testRoute]),
+    context: { appId: 'app1' },
+  })
+
+  expectTypeOf(testRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      appId: string
+      env: string
+      perm: 'view'
+    }>
+  >()
+
+  expectTypeOf(testRoute.useLoaderData<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      data: Array<number>
+    }>
+  >()
+})
+
+test('object form non-serializable returns flow into context chain', () => {
+  const rootRoute = createRootRoute()
+
+  const testRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'test',
+    context: {
+      handler: () => ({ cleanup: () => console.log('cleanup') }),
+      dehydrate: false,
+    },
+    beforeLoad: {
+      handler: (opts) => {
+        // beforeLoad sees context's non-serializable return in context
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          cleanup: () => void
+        }>()
+        return { compute: (x: number) => x * 2 }
+      },
+      dehydrate: false,
+    },
+    loader: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          cleanup: () => void
+          compute: (x: number) => number
+        }>()
+        return { items: ['a'] }
+      },
+      dehydrate: false,
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([testRoute]),
+  })
+
+  expectTypeOf(testRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      cleanup: () => void
+      compute: (x: number) => number
+    }>
+  >()
+})
+
+test('object form with params and search', () => {
+  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+    validateSearch: () => ({ page: 0 }),
+    context: {
+      handler: (opts) => {
+        expectTypeOf(opts).toEqualTypeOf<{
+          abortController: AbortController
+          preload: boolean
+          params: {}
+          deps: {}
+          location: ParsedLocation
+          navigate: NavigateFn
+          buildLocation: BuildLocationFn
+          cause: 'preload' | 'enter' | 'stay'
+          context: { userId: string }
+          matches: Array<MakeRouteMatchUnion>
+          routeId: '/invoices'
+        }>()
+        return { invoiceEnv: 'prod' }
+      },
+    },
+    beforeLoad: {
+      handler: (opts) => {
+        expectTypeOf(opts).toEqualTypeOf<{
+          abortController: AbortController
+          preload: boolean
+          params: {}
+          location: ParsedLocation
+          navigate: NavigateFn
+          buildLocation: BuildLocationFn
+          cause: 'preload' | 'enter' | 'stay'
+          context: { userId: string; invoiceEnv: string }
+          search: { page: number }
+          matches: Array<MakeRouteMatchUnion>
+          routeId: '/invoices'
+        }>()
+        return { invoicePermissions: ['view'] as const }
+      },
+    },
+  })
+
+  const invoiceRoute = createRoute({
+    path: '$invoiceId',
+    getParentRoute: () => invoicesRoute,
+    loaderDeps: (deps) => ({
+      currentPage: deps.search.page,
+    }),
+    context: {
+      handler: (opts) => {
+        expectTypeOf(opts).toEqualTypeOf<{
+          abortController: AbortController
+          preload: boolean
+          params: { invoiceId: string }
+          location: ParsedLocation
+          navigate: NavigateFn
+          buildLocation: BuildLocationFn
+          cause: 'preload' | 'enter' | 'stay'
+          deps: { currentPage: number }
+          context: {
+            userId: string
+            invoiceEnv: string
+            invoicePermissions: readonly ['view']
+          }
+          matches: Array<MakeRouteMatchUnion>
+          routeId: '/invoices/$invoiceId'
+        }>()
+        return { detailEnv: 'staging' }
+      },
+    },
+    loader: {
+      handler: (opts) => {
+        expectTypeOf(opts.params).toEqualTypeOf<{ invoiceId: string }>()
+        expectTypeOf(opts.deps).toEqualTypeOf<{ currentPage: number }>()
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          userId: string
+          invoiceEnv: string
+          invoicePermissions: readonly ['view']
+          detailEnv: string
+        }>()
+        return { invoice: { id: 'inv1', amount: 100 } }
+      },
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      invoicesRoute.addChildren([invoiceRoute]),
+    ]),
+    context: { userId: '123' },
+  })
+
+  expectTypeOf(invoiceRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      userId: string
+      invoiceEnv: string
+      invoicePermissions: readonly ['view']
+      detailEnv: string
+    }>
+  >()
+
+  expectTypeOf(invoiceRoute.useLoaderData<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      invoice: { id: string; amount: number }
+    }>
+  >()
+
+  expectTypeOf(invoiceRoute.useParams<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      invoiceId: string
+    }>
+  >()
+})
+
+test('object form useLoaderData with select and structuralSharing', () => {
+  const rootRoute = createRootRoute()
+
+  const childRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'child',
+    loader: {
+      handler: () =>
+        ({ items: ['a', 'b'], count: 2 }) as const satisfies {
+          items: ReadonlyArray<string>
+          count: number
+        },
+    },
+  })
+
+  const routeTree = rootRoute.addChildren([childRoute])
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(childRoute.useLoaderData<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      readonly items: readonly ['a', 'b']
+      readonly count: 2
+    }>
+  >()
+
+  expectTypeOf(childRoute.useLoaderData<typeof router, string>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((search: {
+          readonly items: readonly ['a', 'b']
+          readonly count: 2
+        }) => string)
+      | undefined
+    >()
+})
+
+test('object form useRouteContext with select', () => {
+  const rootRoute = createRootRouteWithContext<{ appId: string }>()()
+
+  const testRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'test',
+    context: {
+      handler: () => ({ env: 'prod' }),
+    },
+    beforeLoad: {
+      handler: () => ({ perm: 'admin' as const }),
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([testRoute]),
+    context: { appId: 'app1' },
+  })
+
+  expectTypeOf(testRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      appId: string
+      env: string
+      perm: 'admin'
+    }>
+  >()
+
+  expectTypeOf(testRoute.useRouteContext<typeof router>)
+    .parameter(0)
+    .exclude<undefined>()
+    .toHaveProperty('select')
+    .toEqualTypeOf<
+      | ((context: { appId: string; env: string; perm: 'admin' }) => unknown)
+      | undefined
+    >()
+})
+
+test('object form onEnter, onStay, onLeave match types', () => {
+  const rootRoute = createRootRouteWithContext<{ userId: string }>()()
+
+  const invoicesRoute = createRoute({
+    path: 'invoices',
+    getParentRoute: () => rootRoute,
+    validateSearch: () => ({ page: 0 }),
+    beforeLoad: { handler: () => ({ invoicePermissions: ['view'] as const }) },
+  })
+
+  type TExpectedParams = {}
+  type TExpectedSearch = { page: number }
+  type TExpectedContext = {
+    userId: string
+    invoicePermissions: readonly ['view']
+  }
+  type TExpectedLoaderData = { totalInvoices: number }
+  type TExpectedMatch = {
+    params: TExpectedParams
+    search: TExpectedSearch
+    context: TExpectedContext
+    loaderDeps: {}
+    beforeLoadPromise?: ControlledPromise<void>
+    loaderPromise?: ControlledPromise<void>
+    componentsPromise?: Promise<Array<void>>
+    loaderData?: TExpectedLoaderData
+  }
+
+  createRoute({
+    path: '$invoiceId',
+    getParentRoute: () => invoicesRoute,
+    context: { handler: () => ({ detailPermission: true }) },
+    loader: { handler: () => ({ totalInvoices: 42 }) },
+    onEnter: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
+    onStay: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
+    onLeave: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
+  })
+})
+
+test('object form void-returning context does not add to context', () => {
+  const rootRoute = createRootRouteWithContext<{ appId: string }>()()
+
+  const testRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'test',
+    context: {
+      handler: () => {},
+    },
+    beforeLoad: {
+      handler: () => ({ perm: 'admin' as const }),
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([testRoute]),
+    context: { appId: 'app1' },
+  })
+
+  // void context should not add anything — useRouteContext shows only root + beforeLoad
+  expectTypeOf(testRoute.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      appId: string
+      perm: 'admin'
+    }>
+  >()
+})
+
+test('three-level object form context accumulation', () => {
+  const rootRoute = createRootRouteWithContext<{ rootCtx: string }>()()
+
+  const level1 = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'l1',
+    context: { handler: () => ({ l1Match: 'a' }) },
+    beforeLoad: { handler: () => ({ l1Before: 'b' }) },
+  })
+
+  const level2 = createRoute({
+    getParentRoute: () => level1,
+    path: 'l2',
+    context: { handler: () => ({ l2Match: 'd' }) },
+    beforeLoad: { handler: () => ({ l2Before: 'e' }) },
+  })
+
+  const level3 = createRoute({
+    getParentRoute: () => level2,
+    path: 'l3',
+    context: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          rootCtx: string
+          l1Match: string
+          l1Before: string
+          l2Match: string
+          l2Before: string
+        }>()
+        return { l3Match: 'g' }
+      },
+    },
+    loader: {
+      handler: (opts) => {
+        expectTypeOf(opts.context).toEqualTypeOf<{
+          rootCtx: string
+          l1Match: string
+          l1Before: string
+          l2Match: string
+          l2Before: string
+          l3Match: string
+        }>()
+        return { data: 'final' }
+      },
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      level1.addChildren([level2.addChildren([level3])]),
+    ]),
+    context: { rootCtx: 'root' },
+  })
+
+  expectTypeOf(level3.useRouteContext<typeof router>()).toEqualTypeOf<
+    Accessor<{
+      rootCtx: string
+      l1Match: string
+      l1Before: string
+      l2Match: string
+      l2Before: string
+      l3Match: string
+    }>
   >()
 })

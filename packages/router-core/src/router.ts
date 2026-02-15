@@ -41,6 +41,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
+import type { DefaultDehydrateConfig } from './lifecycle'
 import type { LRUCache } from './lru-cache'
 import type {
   ProcessRouteTreeResult,
@@ -70,7 +71,6 @@ import type {
   AnyRoute,
   AnyRouteWithContext,
   MakeRemountDepsOptionsUnion,
-  RouteContextOptions,
   RouteLike,
   RouteMask,
   SearchMiddleware,
@@ -401,6 +401,15 @@ export interface RouterOptions<
    * @default true
    */
   defaultSsr?: SSROption
+
+  /**
+   * Default dehydrate configuration for lifecycle methods.
+   * Controls whether each method's return value is included in the
+   * dehydrated SSR payload.
+   *
+   * Built-in defaults: `{ beforeLoad: true, loader: true, context: false }`
+   */
+  defaultDehydrate?: DefaultDehydrateConfig
 
   search?: {
     /**
@@ -1535,6 +1544,7 @@ export class RouterCore<
         const status =
           route.options.loader ||
           route.options.beforeLoad ||
+          route.options.context ||
           route.lazyFn ||
           routeNeedsPreload(route)
             ? 'pending'
@@ -1561,6 +1571,7 @@ export class RouterCore<
           __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
+            needsContext: true,
           },
           __beforeLoadContext: undefined,
           context: {},
@@ -1602,7 +1613,6 @@ export class RouterCore<
 
     for (let index = 0; index < matches.length; index++) {
       const match = matches[index]!
-      const route = this.looseRoutesById[match.routeId]!
       const existingMatch = this.getMatch(match.id)
 
       // Update the match's params
@@ -1614,29 +1624,6 @@ export class RouterCore<
       if (!existingMatch) {
         const parentMatch = matches[index - 1]
         const parentContext = this.getParentContext(parentMatch)
-
-        // Update the match's context
-
-        if (route.options.context) {
-          const contextFnContext: RouteContextOptions<any, any, any, any, any> =
-            {
-              deps: match.loaderDeps,
-              params: match.params,
-              context: parentContext ?? {},
-              location: next,
-              navigate: (opts: any) =>
-                this.navigate({ ...opts, _fromLocation: next }),
-              buildLocation: this.buildLocation,
-              cause: match.cause,
-              abortController: match.abortController,
-              preload: !!match.preload,
-              matches,
-              routeId: route.id,
-            }
-          // Get the route context
-          match.__routeContext =
-            route.options.context(contextFnContext) ?? undefined
-        }
 
         match.context = {
           ...parentContext,
@@ -2702,7 +2689,7 @@ export class RouterCore<
     const filter = (d: MakeRouteMatch<TRouteTree>) => {
       const route = this.looseRoutesById[d.routeId]!
 
-      if (!route.options.loader) {
+      if (!route.options.loader && !route.options.context) {
         return true
       }
 

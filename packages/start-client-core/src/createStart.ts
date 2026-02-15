@@ -8,6 +8,7 @@ import type {
 import type { CustomFetch } from './createServerFn'
 import type {
   AnySerializationAdapter,
+  DefaultDehydrateConfig,
   Register,
   SSROption,
 } from '@tanstack/router-core'
@@ -15,17 +16,20 @@ import type {
 export interface StartInstanceOptions<
   in out TSerializationAdapters,
   in out TDefaultSsr,
+  in out TDefaultDehydrate,
   in out TRequestMiddlewares,
   in out TFunctionMiddlewares,
 > {
   '~types': StartInstanceTypes<
     TSerializationAdapters,
     TDefaultSsr,
+    TDefaultDehydrate,
     TRequestMiddlewares,
     TFunctionMiddlewares
   >
   serializationAdapters?: TSerializationAdapters
   defaultSsr?: TDefaultSsr
+  defaultDehydrate?: TDefaultDehydrate
   requestMiddleware?: TRequestMiddlewares
   functionMiddleware?: TFunctionMiddlewares
   /**
@@ -52,6 +56,7 @@ export interface StartInstanceOptions<
 export interface StartInstance<
   in out TSerializationAdapters,
   in out TDefaultSsr,
+  in out TDefaultDehydrate,
   in out TRequestMiddlewares,
   in out TFunctionMiddlewares,
 > {
@@ -60,6 +65,7 @@ export interface StartInstance<
         StartInstanceOptions<
           TSerializationAdapters,
           TDefaultSsr,
+          TDefaultDehydrate,
           TRequestMiddlewares,
           TFunctionMiddlewares
         >
@@ -67,6 +73,7 @@ export interface StartInstance<
     | StartInstanceOptions<
         TSerializationAdapters,
         TDefaultSsr,
+        TDefaultDehydrate,
         TRequestMiddlewares,
         TFunctionMiddlewares
       >
@@ -76,11 +83,13 @@ export interface StartInstance<
 export interface StartInstanceTypes<
   in out TSerializationAdapters,
   in out TDefaultSsr,
+  in out TDefaultDehydrate,
   in out TRequestMiddlewares,
   in out TFunctionMiddlewares,
 > {
   serializationAdapters: TSerializationAdapters
   defaultSsr: TDefaultSsr
+  defaultDehydrate: TDefaultDehydrate
   requestMiddleware: TRequestMiddlewares
   functionMiddleware: TFunctionMiddlewares
 }
@@ -104,6 +113,7 @@ export const createStart = <
   const TSerializationAdapters extends ReadonlyArray<AnySerializationAdapter> =
     [],
   TDefaultSsr extends SSROption = SSROption,
+  TDefaultDehydrate extends DefaultDehydrateConfig = DefaultDehydrateConfig,
   const TRequestMiddlewares extends ReadonlyArray<AnyRequestMiddleware> = [],
   const TFunctionMiddlewares extends ReadonlyArray<AnyFunctionMiddleware> = [],
 >(
@@ -113,6 +123,7 @@ export const createStart = <
           StartInstanceOptions<
             TSerializationAdapters,
             TDefaultSsr,
+            TDefaultDehydrate,
             TRequestMiddlewares,
             TFunctionMiddlewares
           >,
@@ -123,6 +134,7 @@ export const createStart = <
         StartInstanceOptions<
           TSerializationAdapters,
           TDefaultSsr,
+          TDefaultDehydrate,
           TRequestMiddlewares,
           TFunctionMiddlewares
         >,
@@ -131,6 +143,7 @@ export const createStart = <
 ): StartInstance<
   TSerializationAdapters,
   TDefaultSsr,
+  TDefaultDehydrate,
   TRequestMiddlewares,
   TFunctionMiddlewares
 > => {
@@ -151,13 +164,20 @@ export const createStart = <
   } as StartInstance<
     TSerializationAdapters,
     TDefaultSsr,
+    TDefaultDehydrate,
     TRequestMiddlewares,
     TFunctionMiddlewares
   >
 }
 
-export type AnyStartInstance = StartInstance<any, any, any, any>
-export type AnyStartInstanceOptions = StartInstanceOptions<any, any, any, any>
+export type AnyStartInstance = StartInstance<any, any, any, any, any>
+export type AnyStartInstanceOptions = StartInstanceOptions<
+  any,
+  any,
+  any,
+  any,
+  any
+>
 
 declare module '@tanstack/router-core' {
   interface SerializableExtensions {

@@ -19,6 +19,7 @@ export async function hydrateStart(): Promise<AnyRouter> {
     window.__TSS_START_OPTIONS__ = startOptions as AnyStartInstanceOptions
     serializationAdapters = startOptions.serializationAdapters
     router.options.defaultSsr = startOptions.defaultSsr
+    router.options.defaultDehydrate = startOptions.defaultDehydrate
   } else {
     serializationAdapters = []
     window.__TSS_START_OPTIONS__ = {

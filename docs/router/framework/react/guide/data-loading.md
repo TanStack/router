@@ -16,7 +16,8 @@ Every time a URL/history update is detected, the router executes the following s
 - Route Matching (Top-Down)
   - `route.params.parse`
   - `route.validateSearch`
-- Route Pre-Loading (Serial)
+- Route Pre-Loading (Serial, Parent → Child)
+  - `route.context`
   - `route.beforeLoad`
   - `route.onError`
     - `route.errorComponent` / `parentRoute.errorComponent` / `router.defaultErrorComponent`
@@ -77,7 +78,7 @@ The `loader` function receives a single object with the following properties:
   - `stay` - When the route is matched and loaded after being matched in the previous location.
 - `context` - The route's context object, which is a merged union of:
   - Parent route context
-  - This route's context as provided by the `beforeLoad` option
+  - This route's context as provided by `route.context` and `route.beforeLoad`
 - `deps` - The object value returned from the `Route.loaderDeps` function. If `Route.loaderDeps` is not defined, an empty object will be provided instead.
 - `location` - The current location
 - `params` - The route's path params
@@ -260,7 +261,7 @@ This will ensure that every preload, load, and reload event will trigger your `l
 The `context` argument passed to the `loader` function is an object containing a merged union of:
 
 - Parent route context
-- This route's context as provided by the `beforeLoad` option
+- This route's context as provided by `route.context` and `route.beforeLoad`
 
 Starting at the very top of the router, you can pass an initial context to the router via the `context` option. This context will be available to all routes in the router and get copied and extended by each route as they are matched. This happens by passing a context to a route via the `beforeLoad` option. This context will be available to all the route's child routes. The resulting context will be available to the route's `loader` function.
 

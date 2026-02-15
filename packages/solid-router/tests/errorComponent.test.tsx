@@ -134,3 +134,250 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
     })
   },
 )
+
+describe('errorComponent is rendered when an Error is thrown in lifecycle methods', () => {
+  test('an Error thrown in `context` renders errorComponent on navigate', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: function Home() {
+        return (
+          <div>
+            <Link to="/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      context: () => {
+        throw new Error('context error thrown')
+      },
+      component: function About() {
+        return <div>About route content</div>
+      },
+      errorComponent: MyErrorComponent,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+    const router = createRouter({ routeTree })
+
+    render(() => <RouterProvider router={router} />)
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+
+    expect(linkToAbout).toBeInTheDocument()
+    fireEvent.click(linkToAbout)
+
+    const errorComponent = await screen.findByText(
+      'Error: context error thrown',
+      undefined,
+      { timeout: 1500 },
+    )
+    await expect(screen.findByText('About route content')).rejects.toThrow()
+    expect(errorComponent).toBeInTheDocument()
+  })
+
+  test('an Error thrown in `context` with invalidate renders errorComponent on navigate', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: function Home() {
+        return (
+          <div>
+            <Link to="/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      context: {
+        handler: () => {
+          throw new Error('context invalidate error thrown')
+        },
+        revalidate: true,
+      },
+      component: function About() {
+        return <div>About route content</div>
+      },
+      errorComponent: MyErrorComponent,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+    const router = createRouter({ routeTree })
+
+    render(() => <RouterProvider router={router} />)
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+
+    expect(linkToAbout).toBeInTheDocument()
+    fireEvent.click(linkToAbout)
+
+    const errorComponent = await screen.findByText(
+      'Error: context invalidate error thrown',
+      undefined,
+      { timeout: 1500 },
+    )
+    await expect(screen.findByText('About route content')).rejects.toThrow()
+    expect(errorComponent).toBeInTheDocument()
+  })
+
+  test('an Error thrown in `context` renders errorComponent on first load', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      context: () => {
+        throw new Error('context error thrown')
+      },
+      component: function Home() {
+        return <div>Index route content</div>
+      },
+      errorComponent: MyErrorComponent,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+
+    render(() => <RouterProvider router={router} />)
+
+    const errorComponent = await screen.findByText(
+      'Error: context error thrown',
+      undefined,
+      { timeout: 750 },
+    )
+    await expect(screen.findByText('Index route content')).rejects.toThrow()
+    expect(errorComponent).toBeInTheDocument()
+  })
+
+  test('an Error thrown in `context` with invalidate renders errorComponent on first load', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      context: {
+        handler: () => {
+          throw new Error('context invalidate error thrown')
+        },
+        revalidate: true,
+      },
+      component: function Home() {
+        return <div>Index route content</div>
+      },
+      errorComponent: MyErrorComponent,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+
+    render(() => <RouterProvider router={router} />)
+
+    const errorComponent = await screen.findByText(
+      'Error: context invalidate error thrown',
+      undefined,
+      { timeout: 750 },
+    )
+    await expect(screen.findByText('Index route content')).rejects.toThrow()
+    expect(errorComponent).toBeInTheDocument()
+  })
+
+  test('an async Error thrown in `context` renders errorComponent', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: function Home() {
+        return (
+          <div>
+            <Link to="/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      context: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+        throw new Error('async context error')
+      },
+      component: function About() {
+        return <div>About route content</div>
+      },
+      errorComponent: MyErrorComponent,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+    const router = createRouter({ routeTree })
+
+    render(() => <RouterProvider router={router} />)
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+    fireEvent.click(linkToAbout)
+
+    const errorComponent = await screen.findByText(
+      'Error: async context error',
+      undefined,
+      { timeout: 1500 },
+    )
+    expect(errorComponent).toBeInTheDocument()
+  })
+
+  test('an async Error thrown in `context` with invalidate renders errorComponent', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: function Home() {
+        return (
+          <div>
+            <Link to="/about">link to about</Link>
+          </div>
+        )
+      },
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      context: {
+        handler: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100))
+          throw new Error('async context invalidate error')
+        },
+        revalidate: true,
+      },
+      component: function About() {
+        return <div>About route content</div>
+      },
+      errorComponent: MyErrorComponent,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+    const router = createRouter({ routeTree })
+
+    render(() => <RouterProvider router={router} />)
+
+    const linkToAbout = await screen.findByRole('link', {
+      name: 'link to about',
+    })
+    fireEvent.click(linkToAbout)
+
+    const errorComponent = await screen.findByText(
+      'Error: async context invalidate error',
+      undefined,
+      { timeout: 1500 },
+    )
+    expect(errorComponent).toBeInTheDocument()
+  })
+})
