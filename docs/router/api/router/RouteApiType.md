@@ -27,7 +27,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../framework/react/guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `RouteMatch` object or a loosened version of the `RouteMatch` object if `opts.strict` is `false`.
@@ -68,7 +68,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../framework/react/guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TFullSearchSchema` object or a loosened version of the `TFullSearchSchema` object if `opts.strict` is `false`.
@@ -91,7 +91,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../framework/react/guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TAllParams` object or a loosened version of the `TAllParams` object if `opts.strict` is `false`.
@@ -114,7 +114,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../framework/react/guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderData` object or a loosened version of the `TLoaderData` object if `opts.strict` is `false`.
@@ -137,7 +137,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../framework/react/guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderDeps` object.

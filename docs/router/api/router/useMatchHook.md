@@ -35,7 +35,7 @@ The `useMatch` hook accepts a single argument, an `options` object.
 - Type: `boolean`
 - Optional
 - Configures whether structural sharing is enabled for the value returned by `select`.
-- See the [Render Optimizations guide](../../framework/react/guide/render-optimizations.md) for more information.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 
 ### `opts.shouldThrow` option
 

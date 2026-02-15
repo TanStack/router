@@ -219,7 +219,7 @@ const router = createRouter({
 - Type: `LocationRewrite`
 - Optional
 - Configures bidirectional URL transformation between the browser URL and the router's internal URL.
-- See the [URL Rewrites guide](../../framework/react/guide/url-rewrites.md) for detailed usage and patterns.
+- See the [URL Rewrites guide](../../guide/url-rewrites.md) for detailed usage and patterns.
 
 The `LocationRewrite` type has the following shape:
 
@@ -341,7 +341,7 @@ const router = createRouter({
 - Type: `'root' | 'fuzzy'`
 - Optional
 - Defaults to `'fuzzy'`
-- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../framework/react/guide/not-found-errors.md) for more information.
+- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../guide/not-found-errors.md) for more information.
 
 ### `notFoundRoute` property
 
@@ -369,7 +369,7 @@ const router = createRouter({
 - Optional
 - Defaults to `false`
 - Configures whether structural sharing is enabled by default for fine-grained selectors.
-- See the [Render Optimizations guide](../../framework/react/guide/render-optimizations.md) for more information.
+- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 
 ### `defaultRemountDeps` property
 
