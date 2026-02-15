@@ -20,36 +20,36 @@ const RULES_DIR = './llms/rules'
 const packages = {
   'react-router': [
     {
-      paths: [`${DOCS_DIR}/router/framework/react/api/router`],
+      paths: [`${DOCS_DIR}/router/api/router`],
       description: 'TanStack Router: API',
       name: 'api',
       globs: ['src/**/*.ts', 'src/**/*.tsx'],
     },
     {
-      paths: [`${DOCS_DIR}/router/framework/react/guide`],
+      paths: [`${DOCS_DIR}/router/guide`],
       description: 'TanStack Router: Guide',
       name: 'guide',
       globs: ['src/**/*.ts', 'src/**/*.tsx'],
     },
     {
-      paths: [`${DOCS_DIR}/router/framework/react/routing`],
+      paths: [`${DOCS_DIR}/router/routing`],
       description: 'TanStack Router: Routing',
       name: 'routing',
       globs: ['src/**/*.ts', 'src/**/*.tsx'],
     },
     {
-      paths: [`${DOCS_DIR}/router/framework/react/installation`],
+      paths: [`${DOCS_DIR}/router/installation`],
       description: 'TanStack Router: Installation',
       name: 'installation',
       globs: ['src/**/*.ts', 'src/**/*.tsx'],
     },
     {
       paths: [
-        `${DOCS_DIR}/router/framework/react/overview.md`,
-        `${DOCS_DIR}/router/framework/react/quick-start.md`,
-        `${DOCS_DIR}/router/framework/react/decisions-on-dx.md`,
-        `${DOCS_DIR}/router/framework/react/devtools.md`,
-        `${DOCS_DIR}/router/framework/react/faq.md`,
+        `${DOCS_DIR}/router/overview.md`,
+        `${DOCS_DIR}/router/quick-start.md`,
+        `${DOCS_DIR}/router/decisions-on-dx.md`,
+        `${DOCS_DIR}/router/devtools.md`,
+        `${DOCS_DIR}/router/faq.md`,
       ],
       description: 'TanStack Router: Setup and Architecture',
       name: 'setup-and-architecture',
