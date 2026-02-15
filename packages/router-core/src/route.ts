@@ -1186,36 +1186,51 @@ type RegisteredRouterRouteTree<TRegister> =
     : AnyRoute
 
 /**
- * Look up a route by ID from a union of parsed routes.
+ * Extract the ancestor ID tuple from a route ID string by splitting on '/'.
+ *
+ * For '/foo/bar/baz' → ['__root__', '/foo', '/foo/bar', '/foo/bar/baz']
+ * For '__root__'     → ['__root__']
+ *
+ * This is O(D) string-only manipulation — no union operations.
  */
-type LookupRoute<TAllRoutes extends AnyRoute, TId extends string> = Extract<
-  TAllRoutes,
-  { types: { id: TId } }
->
+type AncestorIdTuple<TRouteId extends string> = TRouteId extends RootRouteId
+  ? [RootRouteId]
+  : [RootRouteId, ...BuildIdTupleFromSegments<StripLeadingSlash<TRouteId>>]
+
+type StripLeadingSlash<T extends string> = T extends `/${infer R}` ? R : T
 
 /**
- * Build a tuple of ancestor matches from a route up to the root.
- * Walks via parentRoute['types']['id'] and resolves each ancestor
- * from the concrete ParseRoute union (not the pre-addChildren ref).
- *
- * Result: [RootMatch, ..., ParentMatch, SelfMatch]
+ * Given 'foo/bar/baz' and prefix '', build ['/foo', '/foo/bar', '/foo/bar/baz'].
+ * Recursion depth = number of path segments (typically ≤ 8).
  */
-type BuildAncestorTuple<
-  TAllRoutes extends AnyRoute,
-  TRoute extends AnyRoute,
-> = TRoute['types']['id'] extends RootRouteId
-  ? [MakeRouteMatchFromRoute<TRoute>]
-  : TRoute['types']['parentRoute'] extends infer TParent extends AnyRoute
-    ? TParent['types']['id'] extends infer TParentId extends string
-      ? LookupRoute<TAllRoutes, TParentId> extends infer TConcreteParent extends
-          AnyRoute
-        ? [
-            ...BuildAncestorTuple<TAllRoutes, TConcreteParent>,
-            MakeRouteMatchFromRoute<TRoute>,
-          ]
-        : [MakeRouteMatchFromRoute<TRoute>]
-      : [MakeRouteMatchFromRoute<TRoute>]
-    : [MakeRouteMatchFromRoute<TRoute>]
+type BuildIdTupleFromSegments<
+  TSegments extends string,
+  TPrefix extends string = '',
+> = TSegments extends `${infer THead}/${infer TRest}`
+  ? [
+      `${TPrefix}/${THead}`,
+      ...BuildIdTupleFromSegments<TRest, `${TPrefix}/${THead}`>,
+    ]
+  : TSegments extends ''
+    ? []
+    : [`${TPrefix}/${TSegments}`]
+
+/**
+ * Map a tuple of route IDs to a tuple of route matches.
+ * Uses RouteById for O(1) cached lookups per ID (via the RoutesById mapped type).
+ */
+type MapIdTupleToMatches<
+  TRouteTree extends AnyRoute,
+  TIds extends Array<string>,
+> = TIds extends [
+  infer TFirst extends string,
+  ...infer TRest extends Array<string>,
+]
+  ? [
+      MakeRouteMatchFromRoute<RouteById<TRouteTree, TFirst>>,
+      ...MapIdTupleToMatches<TRouteTree, TRest>,
+    ]
+  : []
 
 /**
  * Check if TDescendantId is a direct or indirect child of TRouteId.
@@ -1244,18 +1259,36 @@ type DescendantMatchesUnion<
     : never
   : never
 
+/**
+ * Infer the concrete matches tuple for a route's head/scripts/headers callbacks.
+ *
+ * Produces: [...AncestorMatches, SelfMatch, ...DescendantMatch[]]
+ *
+ * Performance: Ancestor tuple is built by string-splitting the route ID (O(D))
+ * then looking up each ancestor via RouteById (O(1) cached mapped-type access).
+ * Descendants use a single O(N) distributive pass over ParseRoute.
+ * Total cost per route: O(D + N), where D = nesting depth, N = total routes.
+ *
+ * Note on lazy evaluation: UpdatableRouteOptions uses `in out` variance on
+ * TRegister, which forces TypeScript to fully evaluate InferAssetFnMatches
+ * for every route — even those without head/scripts/headers. True lazy
+ * evaluation would require removing TRegister from the variance contract
+ * or restructuring the API, which is out of scope for this change.
+ */
 export type InferAssetFnMatches<TRegister, TRouteId> =
   RegisteredRouterRouteTree<TRegister> extends infer TTree extends AnyRoute
     ? TRouteId extends string
-      ? ParseRoute<TTree> extends infer TAllRoutes extends AnyRoute
-        ? LookupRoute<TAllRoutes, TRouteId> extends infer TRoute extends
-            AnyRoute
-          ? [
-              ...BuildAncestorTuple<TAllRoutes, TRoute>,
-              ...Array<DescendantMatchesUnion<TAllRoutes, TRouteId>>,
-            ]
-          : never
-        : never
+      ? [
+          ...MapIdTupleToMatches<TTree, AncestorIdTuple<TRouteId>>,
+          ...Array<
+            DescendantMatchesUnion<
+              ParseRoute<TTree> extends infer TAllRoutes extends AnyRoute
+                ? TAllRoutes
+                : never,
+              TRouteId
+            >
+          >,
+        ]
       : never
     : never
 
