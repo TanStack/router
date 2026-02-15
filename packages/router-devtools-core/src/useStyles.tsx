@@ -399,6 +399,11 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       flex: 1 1 auto;
       overflow-y: auto;
     `,
+    cachedMatchesContainer: css`
+      flex: 1 1 auto;
+      overflow-y: auto;
+      max-height: 50%;
+    `,
     historyContainer: css`
       display: flex;
       flex: 1 1 auto;
