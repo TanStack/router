@@ -186,6 +186,7 @@ export type {
   CreateLazyFileRoute,
   AnySerializationAdapter,
   SerializationAdapter,
+  SerializableExtensions,
 } from '@tanstack/router-core'
 
 export {

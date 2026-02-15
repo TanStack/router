@@ -4,12 +4,13 @@ import {
   restoreScroll,
   storageKey,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { ScriptOnce } from './ScriptOnce'
 
 export function ScrollRestoration() {
   const router = useRouter()
-  if (!router.isScrollRestoring || !router.isServer) {
+  if (!router.isScrollRestoring || !(isServer ?? router.isServer)) {
     return null
   }
   if (typeof router.options.scrollRestoration === 'function') {

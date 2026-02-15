@@ -350,7 +350,7 @@ describe('encoding: path params', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.url.href.endsWith('/posts/tanner')).toBe(true)
+    expect(router.state.location.href.endsWith('/posts/tanner')).toBe(true)
     expect(router.state.location.href).toBe('/posts/tanner')
     expect(router.state.location.pathname).toBe('/posts/tanner')
   })
@@ -362,7 +362,7 @@ describe('encoding: path params', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.url.href.endsWith('/posts/%F0%9F%9A%80')).toBe(
+    expect(router.state.location.href.endsWith('/posts/%F0%9F%9A%80')).toBe(
       true,
     )
     expect(router.state.location.href).toBe('/posts/%F0%9F%9A%80')
@@ -383,9 +383,7 @@ describe('encoding: path params', () => {
       }),
     )
 
-    expect(router.state.location.url.href.endsWith('/posts/100%2525')).toBe(
-      true,
-    )
+    expect(router.state.location.href.endsWith('/posts/100%2525')).toBe(true)
     expect(router.state.location.href).toBe('/posts/100%2525')
     expect(router.state.location.pathname).toBe('/posts/100%2525')
   })
@@ -410,9 +408,7 @@ describe('encoding: path params', () => {
         )
 
         expect(
-          router.state.location.url.href.endsWith(
-            `/posts/${encodedValue}jane%25`,
-          ),
+          router.state.location.href.endsWith(`/posts/${encodedValue}jane%25`),
         ).toBe(true)
         expect(router.state.location.href).toBe(`/posts/${encodedValue}jane%25`)
         expect(router.state.location.pathname).toBe(
@@ -447,7 +443,7 @@ describe('encoding: path params', () => {
       )
 
       expect(
-        router.state.location.url.href.endsWith(`/posts/${character}jane%25`),
+        router.state.location.href.endsWith(`/posts/${character}jane%25`),
       ).toBe(true)
       expect(router.state.location.href).toBe(`/posts/${character}jane%25`)
       expect(router.state.location.pathname).toBe(`/posts/${character}jane%25`)
@@ -461,7 +457,7 @@ describe('encoding: path params', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.url.href.endsWith('/posts/%F0%9F%9A%80')).toBe(
+    expect(router.state.location.href.endsWith('/posts/%F0%9F%9A%80')).toBe(
       true,
     )
     expect(router.state.location.href).toBe('/posts/%F0%9F%9A%80')
@@ -480,7 +476,7 @@ describe('encoding: path params', () => {
     await act(() => router.load())
 
     expect(
-      router.state.location.url.href.endsWith(
+      router.state.location.href.endsWith(
         '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
       ),
     ).toBe(true)
@@ -627,7 +623,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
 
     await router.load()
 
-    expect(router.state.location.url.href.endsWith('/tanner')).toBe(true)
+    expect(router.state.location.href.endsWith('/tanner')).toBe(true)
     expect(router.state.location.href).toBe('/tanner')
     expect(router.state.location.pathname).toBe('/tanner')
   })
@@ -639,7 +635,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
 
     await router.load()
 
-    expect(router.state.location.url.href.endsWith('/%F0%9F%9A%80')).toBe(true)
+    expect(router.state.location.href.endsWith('/%F0%9F%9A%80')).toBe(true)
     expect(router.state.location.href).toBe('/%F0%9F%9A%80')
     expect(router.state.location.pathname).toBe('/🚀')
   })
@@ -657,7 +653,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
         await router.load()
 
         expect(
-          router.state.location.url.href.endsWith(`/100${encodedValue}100`),
+          router.state.location.href.endsWith(`/100${encodedValue}100`),
         ).toBe(true)
         expect(router.state.location.href).toBe(`/100${encodedValue}100`)
         expect(router.state.location.pathname).toBe(`/100${encodedValue}100`)
@@ -672,7 +668,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
 
     await router.load()
 
-    expect(router.state.location.url.href.endsWith('/%F0%9F%9A%80')).toBe(true)
+    expect(router.state.location.href.endsWith('/%F0%9F%9A%80')).toBe(true)
     expect(router.state.location.href).toBe('/%F0%9F%9A%80')
     expect(router.state.location.pathname).toBe('/🚀')
   })
@@ -689,7 +685,7 @@ describe('encoding/decoding: wildcard routes/params', () => {
     await router.load()
 
     expect(
-      router.state.location.url.href.endsWith(
+      router.state.location.href.endsWith(
         '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
       ),
     ).toBe(true)
@@ -709,12 +705,6 @@ describe('encoding/decoding: wildcard routes/params', () => {
     })
 
     await router.load()
-
-    expect(
-      router.state.location.url.href.endsWith(
-        '/framework/react/guide/file-based-routing%20tanstack',
-      ),
-    ).toBe(true)
 
     expect(router.state.location.href).toBe(
       '/framework/react/guide/file-based-routing%20tanstack',
@@ -863,7 +853,6 @@ describe('encoding/decoding: URL path segment', () => {
 
     expect(router.state.location.pathname).toBe(path)
     expect(router.state.location.href).toBe(url)
-    expect(new URL(router.state.location.url).pathname).toBe(url)
   })
 })
 
@@ -2493,6 +2482,255 @@ describe('statusCode', () => {
       })
     },
   )
+})
+
+describe('notFound in beforeLoad with pendingComponent', () => {
+  it('should transition router.state.status to idle when child beforeLoad throws notFound and parent has pendingComponent with pendingMs: 0', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Root Not Found</div>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <div data-testid="home-page">
+          <Link to="/parent/child">Go to child</Link>
+        </div>
+      ),
+    })
+
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      pendingMs: 0,
+      pendingComponent: () => (
+        <div data-testid="pending-component">Loading...</div>
+      ),
+      component: () => (
+        <div data-testid="parent-component">
+          Parent
+          <Outlet />
+        </div>
+      ),
+      notFoundComponent: () => (
+        <div data-testid="parent-not-found">Parent Not Found</div>
+      ),
+    })
+
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: () => {
+        throw notFound()
+      },
+      component: () => <div data-testid="child-component">Child</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    // Wait for initial load
+    await act(() => router.latestLoadPromise)
+    expect(router.state.status).toBe('idle')
+    expect(screen.getByTestId('home-page')).toBeInTheDocument()
+
+    // Navigate to the child route that throws notFound in beforeLoad
+    await act(() => router.navigate({ to: '/parent/child' }))
+
+    // The router status should eventually become idle
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+
+    expect(router.state.statusCode).toBe(404)
+  })
+
+  it('should transition router.state.status to idle when child beforeLoad throws notFound and parent has NO pendingComponent', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Root Not Found</div>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home-page">Home</div>,
+    })
+
+    // Direct child of root (no intermediate parent)
+    const childRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      beforeLoad: () => {
+        throw notFound()
+      },
+      component: () => <div data-testid="child-component">Child</div>,
+      notFoundComponent: () => (
+        <div data-testid="child-not-found">Child Not Found</div>
+      ),
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, childRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.latestLoadPromise)
+    expect(router.state.status).toBe('idle')
+
+    await act(() => router.navigate({ to: '/child' }))
+
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+
+    expect(router.state.statusCode).toBe(404)
+  })
+
+  it('should transition router.state.status to idle when nested child beforeLoad throws notFound WITHOUT pendingComponent', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Root Not Found</div>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home-page">Home</div>,
+    })
+
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      component: () => (
+        <div data-testid="parent-component">
+          Parent
+          <Outlet />
+        </div>
+      ),
+      notFoundComponent: () => (
+        <div data-testid="parent-not-found">Parent Not Found</div>
+      ),
+    })
+
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: () => {
+        throw notFound()
+      },
+      component: () => <div data-testid="child-component">Child</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.latestLoadPromise)
+    expect(router.state.status).toBe('idle')
+
+    await act(() => router.navigate({ to: '/parent/child' }))
+
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+
+    expect(router.state.statusCode).toBe(404)
+  })
+
+  it('should transition router.state.status to idle when child async beforeLoad throws notFound and parent has pendingComponent with pendingMs: 0', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Root Not Found</div>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <div data-testid="home-page">
+          <Link to="/parent/child">Go to child</Link>
+        </div>
+      ),
+    })
+
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      pendingMs: 0,
+      pendingComponent: () => (
+        <div data-testid="pending-component">Loading...</div>
+      ),
+      component: () => (
+        <div data-testid="parent-component">
+          Parent
+          <Outlet />
+        </div>
+      ),
+      notFoundComponent: () => (
+        <div data-testid="parent-not-found">Parent Not Found</div>
+      ),
+    })
+
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        throw notFound()
+      },
+      component: () => <div data-testid="child-component">Child</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    // Wait for initial load
+    await act(() => router.latestLoadPromise)
+    expect(router.state.status).toBe('idle')
+    expect(screen.getByTestId('home-page')).toBeInTheDocument()
+
+    // Navigate to the child route that throws notFound in beforeLoad
+    await act(() => router.navigate({ to: '/parent/child' }))
+
+    // The router status should eventually become idle
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+
+    expect(router.state.statusCode).toBe(404)
+  })
 })
 
 describe('Router rewrite functionality', () => {

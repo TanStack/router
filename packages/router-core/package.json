@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-core",
-  "version": "1.154.7",
+  "version": "1.159.9",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -66,6 +66,86 @@
       "require": {
         "types": "./dist/cjs/ssr/client.d.cts",
         "default": "./dist/cjs/ssr/client.cjs"
+      }
+    },
+    "./isServer": {
+      "development": {
+        "import": {
+          "types": "./dist/esm/isServer/development.d.ts",
+          "default": "./dist/esm/isServer/development.js"
+        },
+        "require": {
+          "types": "./dist/cjs/isServer/development.d.cts",
+          "default": "./dist/cjs/isServer/development.cjs"
+        }
+      },
+      "workerd": {
+        "import": {
+          "types": "./dist/esm/isServer/server.d.ts",
+          "default": "./dist/esm/isServer/server.js"
+        },
+        "require": {
+          "types": "./dist/cjs/isServer/server.d.cts",
+          "default": "./dist/cjs/isServer/server.cjs"
+        }
+      },
+      "worker": {
+        "import": {
+          "types": "./dist/esm/isServer/server.d.ts",
+          "default": "./dist/esm/isServer/server.js"
+        },
+        "require": {
+          "types": "./dist/cjs/isServer/server.d.cts",
+          "default": "./dist/cjs/isServer/server.cjs"
+        }
+      },
+      "browser": {
+        "import": {
+          "types": "./dist/esm/isServer/client.d.ts",
+          "default": "./dist/esm/isServer/client.js"
+        },
+        "require": {
+          "types": "./dist/cjs/isServer/client.d.cts",
+          "default": "./dist/cjs/isServer/client.cjs"
+        }
+      },
+      "deno": {
+        "import": {
+          "types": "./dist/esm/isServer/server.d.ts",
+          "default": "./dist/esm/isServer/server.js"
+        },
+        "require": {
+          "types": "./dist/cjs/isServer/server.d.cts",
+          "default": "./dist/cjs/isServer/server.cjs"
+        }
+      },
+      "node": {
+        "import": {
+          "types": "./dist/esm/isServer/server.d.ts",
+          "default": "./dist/esm/isServer/server.js"
+        },
+        "require": {
+          "types": "./dist/cjs/isServer/server.d.cts",
+          "default": "./dist/cjs/isServer/server.cjs"
+        }
+      },
+      "bun": {
+        "import": {
+          "types": "./dist/esm/isServer/server.d.ts",
+          "default": "./dist/esm/isServer/server.js"
+        },
+        "require": {
+          "types": "./dist/cjs/isServer/server.d.cts",
+          "default": "./dist/cjs/isServer/server.cjs"
+        }
+      },
+      "import": {
+        "types": "./dist/esm/isServer/client.d.ts",
+        "default": "./dist/esm/isServer/client.js"
+      },
+      "require": {
+        "types": "./dist/cjs/isServer/client.d.cts",
+        "default": "./dist/cjs/isServer/client.cjs"
       }
     },
     "./package.json": "./package.json"
