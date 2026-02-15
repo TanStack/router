@@ -1,43 +1,68 @@
 ---
-title: Installation with Rspack
+title: Installation with Vite
 ---
 
-[//]: # 'BundlerConfiguration'
+To use file-based routing with **Vite**, you'll need to install the `@tanstack/router-plugin` package.
 
-To use file-based routing with **Rspack** or **Rsbuild**, you'll need to install the `@tanstack/router-plugin` package.
+<!-- ::start:tabs variant="package-manager" mode="dev-install" -->
 
-```sh
-npm install -D @tanstack/router-plugin
-```
+react: @tanstack/router-plugin
+solid: @tanstack/router-plugin
 
-Once installed, you'll need to add the plugin to your configuration.
+<!-- ::end:tabs -->
 
-```tsx
-// rsbuild.config.ts
-import { defineConfig } from '@rsbuild/core'
-import { pluginReact } from '@rsbuild/plugin-react'
-import { tanstackRouter } from '@tanstack/router-plugin/rspack'
+Once installed, you'll need to add the plugin to your Vite configuration.
 
+<!-- ::start:framework -->
+
+# React
+
+```ts title="vite.config.ts"
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+
+// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [pluginReact()],
-  tools: {
-    rspack: {
-      plugins: [
-        tanstackRouter({
-          target: 'react',
-          autoCodeSplitting: true,
-        }),
-      ],
-    },
-  },
+  plugins: [
+    // Please make sure that '@tanstack/router-plugin' is passed before '@vitejs/plugin-react'
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+    }),
+    react(),
+    // ...
+  ],
 })
 ```
 
-Or, you can clone our [Quickstart Rspack/Rsbuild example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-rspack-file-based) and get started.
+Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-file-based) and get started.
 
-Now that you've added the plugin to your Rspack/Rsbuild configuration, you're all set to start using file-based routing with TanStack Router.
+# Solid
 
-[//]: # 'BundlerConfiguration'
+```ts title="vite.config.ts"
+import { defineConfig } from 'vite'
+import solid from 'vite-plugin-solid'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    tanstackRouter({
+      target: 'solid',
+      autoCodeSplitting: true,
+    }),
+    solid(),
+    // ...
+  ],
+})
+```
+
+Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/router/tree/main/examples/solid/quickstart-file-based) and get started.
+
+<!-- ::end:framework -->
+
+Now that you've added the plugin to your Vite configuration, you're all set to start using file-based routing with TanStack Router.
 
 ## Ignoring the generated route tree file
 
@@ -72,7 +97,7 @@ You can use those settings either at a user level or only for a single workspace
 
 ## Configuration
 
-When using the TanStack Router Plugin with Rspack (or Rsbuild) for File-based routing, it comes with some sane defaults that should work for most projects:
+When using the TanStack Router Plugin with Vite for File-based routing, it comes with some sane defaults that should work for most projects:
 
 ```json
 {
@@ -85,4 +110,4 @@ When using the TanStack Router Plugin with Rspack (or Rsbuild) for File-based ro
 
 If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by editing the configuration object passed into the `tanstackRouter` function.
 
-You can find all the available configuration options in the [File-based Routing API Reference](../../../api/file-based-routing.md).
+You can find all the available configuration options in the [File-based Routing API Reference](../api/file-based-routing.md).

@@ -8,21 +8,23 @@ To set up TanStack Router manually in a React project, follow the steps below. T
 
 #### Install TanStack Router, Vite Plugin, and the Router Devtools
 
-```sh
-npm install @tanstack/react-router @tanstack/react-router-devtools
-npm install -D @tanstack/router-plugin
-# or
-pnpm add @tanstack/react-router @tanstack/react-router-devtools
-pnpm add -D @tanstack/router-plugin
-# or
-yarn add @tanstack/react-router @tanstack/react-router-devtools
-yarn add -D @tanstack/router-plugin
-# or
-bun add @tanstack/react-router @tanstack/react-router-devtools
-bun add -D @tanstack/router-plugin
-# or
-deno add npm:@tanstack/react-router npm:@tanstack/router-plugin npm:@tanstack/react-router-devtools
-```
+Install the necessary core dependencies:
+
+<!-- ::start:tabs variant="package-managers" -->
+
+react: @tanstack/react-router @tanstack/react-router-devtools
+solid: @tanstack/solid-router @tanstack/solid-router-devtools
+
+<!-- ::end:tabs -->
+
+Install the necessary development dependencies:
+
+<!-- ::start:tabs variant="package-managers" mode="dev-install" -->
+
+react: @tanstack/router-plugin
+solid: @tanstack/router-plugin
+
+<!-- ::end:tabs -->
 
 #### Configure the Vite Plugin
 
@@ -56,9 +58,13 @@ Create the following files:
 - `src/routes/about.tsx`
 - `src/main.tsx`
 
-#### `src/routes/__root.tsx`
+<!-- ::start:framework -->
 
-```tsx
+# React
+
+<!-- ::start:tabs variant="files" -->
+
+```tsx title="src/routes/__root.tsx"
 import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
@@ -81,9 +87,7 @@ const RootLayout = () => (
 export const Route = createRootRoute({ component: RootLayout })
 ```
 
-#### `src/routes/index.tsx`
-
-```tsx
+```tsx title="src/routes/index.tsx"
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
@@ -99,9 +103,7 @@ function Index() {
 }
 ```
 
-#### `src/routes/about.tsx`
-
-```tsx
+```tsx title="src/routes/about.tsx"
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/about')({
@@ -113,13 +115,7 @@ function About() {
 }
 ```
 
-#### `src/main.tsx`
-
-Regardless of whether you are using the `@tanstack/router-plugin` package and running the `npm run dev`/`npm run build` scripts, or manually running the `tsr watch`/`tsr generate` commands from your package scripts, the route tree file will be generated at `src/routeTree.gen.ts`.
-
-Import the generated route tree and create a new router instance:
-
-```tsx
+```tsx title="src/main.tsx"
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
@@ -149,12 +145,103 @@ if (!rootElement.innerHTML) {
 }
 ```
 
+<!-- ::end:tabs -->
+
+# Solid
+
+<!-- ::start:tabs variant="files" -->
+
+```tsx title="src/routes/__root.tsx"
+import { createRootRoute, Link, Outlet } from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+
+const RootLayout = () => (
+  <>
+    <div class="p-2 flex gap-2">
+      <Link to="/" class="[&.active]:font-bold">
+        Home
+      </Link>{' '}
+      <Link to="/about" class="[&.active]:font-bold">
+        About
+      </Link>
+    </div>
+    <hr />
+    <Outlet />
+    <TanStackRouterDevtools />
+  </>
+)
+
+export const Route = createRootRoute({ component: RootLayout })
+```
+
+```tsx title="src/routes/index.tsx"
+import { createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('/')({
+  component: Index,
+})
+
+function Index() {
+  return (
+    <div class="p-2">
+      <h3>Welcome Home!</h3>
+    </div>
+  )
+}
+```
+
+```tsx title="src/routes/about.tsx"
+import { createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('/about')({
+  component: About,
+})
+
+function About() {
+  return <div class="p-2">Hello from About!</div>
+}
+```
+
+```tsx title="src/main.tsx"
+/* @refresh reload */
+import { render } from 'solid-js/web'
+import { RouterProvider, createRouter } from '@tanstack/solid-router'
+
+// Import the generated route tree
+import { routeTree } from './routeTree.gen'
+
+// Create a new router instance
+const router = createRouter({ routeTree })
+
+// Register the router instance for type safety
+declare module '@tanstack/solid-router' {
+  interface Register {
+    router: typeof router
+  }
+}
+
+// Render the app
+const rootElement = document.getElementById('root')!
+
+render(() => <RouterProvider router={router} />, rootElement)
+```
+
+<!-- ::end:tabs -->
+
+<!-- ::end:framework -->
+
+Regardless of whether you are using the `@tanstack/router-plugin` package and running the `npm run dev`/`npm run build` scripts, or manually running the `tsr watch`/`tsr generate` commands from your package scripts, the route tree file will be generated at `src/routeTree.gen.ts`.
+
 If you are working with this pattern you should change the `id` of the root `<div>` on your `index.html` file to `<div id='root'></div>`
 
 ## Using Code-Based Route Configuration
 
 > [!IMPORTANT]
 > The following example shows how to configure routes using code, and for simplicity's sake is in a single file for this demo. While code-based generation allows you to declare many routes and even the router instance in a single file, we recommend splitting your routes into separate files for better organization and performance as your application grows.
+
+<!-- ::start:framework -->
+
+# React
 
 ```tsx
 import { StrictMode } from 'react'
@@ -227,5 +314,74 @@ if (!rootElement.innerHTML) {
   )
 }
 ```
+
+# Solid
+
+```tsx
+/* @refresh reload */
+import { render } from 'solid-js/web'
+import {
+  Outlet,
+  RouterProvider,
+  Link,
+  createRouter,
+  createRoute,
+  createRootRoute,
+} from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+
+const rootRoute = createRootRoute({
+  component: () => (
+    <>
+      <div class="p-2 flex gap-2">
+        <Link to="/" class="[&.active]:font-bold">
+          Home
+        </Link>{' '}
+        <Link to="/about" class="[&.active]:font-bold">
+          About
+        </Link>
+      </div>
+      <hr />
+      <Outlet />
+      <TanStackRouterDevtools />
+    </>
+  ),
+})
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: function Index() {
+    return (
+      <div class="p-2">
+        <h3>Welcome Home!</h3>
+      </div>
+    )
+  },
+})
+
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/about',
+  component: function About() {
+    return <div class="p-2">Hello from About!</div>
+  },
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+
+const router = createRouter({ routeTree })
+
+declare module '@tanstack/solid-router' {
+  interface Register {
+    router: typeof router
+  }
+}
+
+const rootElement = document.getElementById('app')!
+render(() => <RouterProvider router={router} />, rootElement)
+```
+
+<!-- ::end:framework -->
 
 If you glossed over these examples or didn't understand something, we don't blame you, because there's so much more to learn to really take advantage of TanStack Router! Let's move on.

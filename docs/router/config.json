@@ -51,35 +51,36 @@
     },
     {
       "label": "Installation Guides",
-      "children": [],
+      "children": [
+        {
+          "label": "Manual Setup",
+          "to": "installation/manual"
+        },
+        {
+          "label": "Vite",
+          "to": "installation/with-vite"
+        },
+        {
+          "label": "Rspack/Rsbuild",
+          "to": "installation/with-rspack"
+        },
+        {
+          "label": "Webpack",
+          "to": "installation/with-webpack"
+        },
+        {
+          "label": "Esbuild",
+          "to": "installation/with-esbuild"
+        },
+        {
+          "label": "Router CLI",
+          "to": "installation/with-router-cli"
+        }
+      ],
       "frameworks": [
         {
           "label": "react",
           "children": [
-            {
-              "label": "Manual Setup",
-              "to": "framework/react/installation/manual"
-            },
-            {
-              "label": "Vite",
-              "to": "framework/react/installation/with-vite"
-            },
-            {
-              "label": "Rspack/Rsbuild",
-              "to": "framework/react/installation/with-rspack"
-            },
-            {
-              "label": "Webpack",
-              "to": "framework/react/installation/with-webpack"
-            },
-            {
-              "label": "Esbuild",
-              "to": "framework/react/installation/with-esbuild"
-            },
-            {
-              "label": "Router CLI",
-              "to": "framework/react/installation/with-router-cli"
-            },
             {
               "label": "Migrate from React Router",
               "to": "framework/react/installation/migrate-from-react-router"
@@ -92,20 +93,7 @@
         },
         {
           "label": "solid",
-          "children": [
-            {
-              "label": "Manual Setup",
-              "to": "framework/solid/installation/manual"
-            },
-            {
-              "label": "Vite",
-              "to": "framework/solid/installation/with-vite"
-            },
-            {
-              "label": "Router CLI",
-              "to": "framework/solid/installation/with-router-cli"
-            }
-          ]
+          "children": []
         }
       ]
     },

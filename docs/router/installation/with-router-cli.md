@@ -7,9 +7,12 @@ title: Installation with Router CLI
 
 To use file-based routing with the TanStack Router CLI, you'll need to install the `@tanstack/router-cli` package.
 
-```sh
-npm install -D @tanstack/router-cli
-```
+<!-- ::start:tabs variant="package-manager" mode="dev-install" -->
+
+react: @tanstack/router-cli
+solid: @tanstack/router-cli
+
+<!-- ::end:tabs -->
 
 Once installed, you'll need to amend your scripts in your `package.json` for the CLI to `watch` and `generate` files.
 
@@ -23,6 +26,25 @@ Once installed, you'll need to amend your scripts in your `package.json` for the
   }
 }
 ```
+
+<!-- ::start:framework -->
+
+# Solid
+
+If you are using TypeScript, you should also add the following options to your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js"
+  }
+}
+```
+
+With that, you're all set to start using file-based routing with TanStack Router.
+
+<!-- ::end:framework -->
 
 [//]: # 'AfterScripts'
 [//]: # 'AfterScripts'
@@ -86,18 +108,34 @@ You can use those settings either at a user level or only for a single workspace
 
 When using the TanStack Router CLI for File-based routing, it comes with some sane defaults that should work for most projects:
 
+<!-- ::start:framework -->
+
+# React
+
 ```json
 {
   "routesDirectory": "./src/routes",
   "generatedRouteTree": "./src/routeTree.gen.ts",
   "routeFileIgnorePrefix": "-",
-  "quoteStyle": "single"
+  "quoteStyle": "single",
+  "target": "react"
 }
 ```
 
+# Solid
+
+```json
+{
+  "routesDirectory": "./src/routes",
+  "generatedRouteTree": "./src/routeTree.gen.ts",
+  "routeFileIgnorePrefix": "-",
+  "quoteStyle": "single",
+  "target": "solid"
+}
+```
+
+<!-- ::end:framework -->
+
 If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by creating a `tsr.config.json` file in the root of your project directory.
 
-[//]: # 'TargetConfiguration'
-[//]: # 'TargetConfiguration'
-
-You can find all the available configuration options in the [File-based Routing API Reference](../../../api/file-based-routing.md).
+You can find all the available configuration options in the [File-based Routing API Reference](../api/file-based-routing.md).

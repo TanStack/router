@@ -1,45 +1,68 @@
 ---
-title: Installation with Vite
+title: Installation with Webpack
 ---
 
-[//]: # 'BundlerConfiguration'
+To use file-based routing with **Webpack**, you'll need to install the `@tanstack/router-plugin` package.
 
-To use file-based routing with **Vite**, you'll need to install the `@tanstack/router-plugin` package.
+<!-- ::start:tabs variant="package-manager" mode="dev-install" -->
 
-```sh
-npm install -D @tanstack/router-plugin
-```
+react: @tanstack/router-plugin
+solid: @tanstack/router-plugin
 
-Once installed, you'll need to add the plugin to your Vite configuration.
+<!-- ::end:tabs -->
 
-```ts
-// vite.config.ts
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
+Once installed, you'll need to add the plugin to your configuration.
 
-// https://vitejs.dev/config/
-export default defineConfig({
+<!-- ::start:framework -->
+
+# React
+
+```ts title="webpack.config.ts"
+import { tanstackRouter } from '@tanstack/router-plugin/webpack'
+
+export default {
   plugins: [
-    // Please make sure that '@tanstack/router-plugin' is passed before '@vitejs/plugin-react'
     tanstackRouter({
       target: 'react',
       autoCodeSplitting: true,
     }),
-    react(),
-    // ...
   ],
-})
+}
 ```
 
-Or, you can clone our [Quickstart Vite example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-file-based) and get started.
+Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-webpack-file-based) and get started.
 
-> [!WARNING]
-> If you are using the older `@tanstack/router-vite-plugin` package, you can still continue to use it, as it will be aliased to the `@tanstack/router-plugin/vite` package. However, we would recommend using the `@tanstack/router-plugin` package directly.
+# Solid
 
-Now that you've added the plugin to your Vite configuration, you're all set to start using file-based routing with TanStack Router.
+```ts title="webpack.config.ts"
+import { tanstackRouter } from '@tanstack/router-plugin/webpack'
 
-[//]: # 'BundlerConfiguration'
+export default {
+  plugins: [
+    tanstackRouter({
+      target: 'solid',
+      autoCodeSplitting: true,
+    }),
+  ],
+}
+```
+
+And in the .babelrc (SWC doesn't support solid-js, see [here](https://www.answeroverflow.com/m/1135200483116593182)), add these presets:
+
+```tsx
+// .babelrc
+
+{
+  "presets": ["babel-preset-solid", "@babel/preset-typescript"]
+}
+
+```
+
+Or, for a full webpack.config.js, you can clone our [Quickstart Webpack example](https://github.com/TanStack/router/tree/main/examples/solid/quickstart-webpack-file-based) and get started.
+
+<!-- ::end:framework -->
+
+Now that you've added the plugin to your Webpack configuration, you're all set to start using file-based routing with TanStack Router.
 
 ## Ignoring the generated route tree file
 
@@ -74,7 +97,7 @@ You can use those settings either at a user level or only for a single workspace
 
 ## Configuration
 
-When using the TanStack Router Plugin with Vite for File-based routing, it comes with some sane defaults that should work for most projects:
+When using the TanStack Router Plugin with Webpack for File-based routing, it comes with some sane defaults that should work for most projects:
 
 ```json
 {
@@ -87,4 +110,4 @@ When using the TanStack Router Plugin with Vite for File-based routing, it comes
 
 If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by editing the configuration object passed into the `tanstackRouter` function.
 
-You can find all the available configuration options in the [File-based Routing API Reference](../../../api/file-based-routing.md).
+You can find all the available configuration options in the [File-based Routing API Reference](../api/file-based-routing.md).

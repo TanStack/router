@@ -1,22 +1,27 @@
 ---
-title: Installation with Webpack
+title: Installation with Esbuild
 ---
 
-[//]: # 'BundlerConfiguration'
+To use file-based routing with **Esbuild**, you'll need to install the `@tanstack/router-plugin` package.
 
-To use file-based routing with **Webpack**, you'll need to install the `@tanstack/router-plugin` package.
+<!-- ::start:tabs variant="package-manager" mode="dev-install" -->
 
-```sh
-npm install -D @tanstack/router-plugin
-```
+react: @tanstack/router-plugin
+solid: @tanstack/router-plugin
+
+<!-- ::end:tabs -->
 
 Once installed, you'll need to add the plugin to your configuration.
 
-```tsx
-// webpack.config.ts
-import { tanstackRouter } from '@tanstack/router-plugin/webpack'
+<!-- ::start:framework -->
+
+# React
+
+```ts title="esbuild.config.js"
+import { tanstackRouter } from '@tanstack/router-plugin/esbuild'
 
 export default {
+  // ...
   plugins: [
     tanstackRouter({
       target: 'react',
@@ -26,11 +31,46 @@ export default {
 }
 ```
 
-Or, you can clone our [Quickstart Webpack example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-webpack-file-based) and get started.
+Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-esbuild-file-based) and get started.
 
-Now that you've added the plugin to your Webpack configuration, you're all set to start using file-based routing with TanStack Router.
+# Solid
 
-[//]: # 'BundlerConfiguration'
+```ts title="build.js"
+import * as esbuild from 'esbuild'
+import { solidPlugin } from 'esbuild-plugin-solid'
+import { tanstackRouter } from '@tanstack/router-plugin/esbuild'
+
+const isDev = process.argv.includes('--dev')
+
+const ctx = await esbuild.context({
+  entryPoints: ['src/main.tsx'],
+  outfile: 'dist/main.js',
+  minify: !isDev,
+  bundle: true,
+  format: 'esm',
+  target: ['esnext'],
+  sourcemap: true,
+  plugins: [
+    solidPlugin(),
+    tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
+  ],
+})
+
+if (isDev) {
+  await ctx.watch()
+  const { host, port } = await ctx.serve({ servedir: '.', port: 3005 })
+  console.log(`Server running at http://${host || 'localhost'}:${port}`)
+} else {
+  await ctx.rebuild()
+  await ctx.dispose()
+}
+```
+
+Or, you can clone our [Quickstart Esbuild example](https://github.com/TanStack/router/tree/main/examples/solid/quickstart-esbuild-file-based) and get started.
+
+<!-- ::end:framework -->
+
+Now that you've added the plugin to your Esbuild configuration, you're all set to start using file-based routing with TanStack Router.
 
 ## Ignoring the generated route tree file
 
@@ -65,7 +105,7 @@ You can use those settings either at a user level or only for a single workspace
 
 ## Configuration
 
-When using the TanStack Router Plugin with Webpack for File-based routing, it comes with some sane defaults that should work for most projects:
+When using the TanStack Router Plugin with Esbuild for File-based routing, it comes with some sane defaults that should work for most projects:
 
 ```json
 {
@@ -78,4 +118,4 @@ When using the TanStack Router Plugin with Webpack for File-based routing, it co
 
 If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by editing the configuration object passed into the `tanstackRouter` function.
 
-You can find all the available configuration options in the [File-based Routing API Reference](../../../api/file-based-routing.md).
+You can find all the available configuration options in the [File-based Routing API Reference](../api/file-based-routing.md).

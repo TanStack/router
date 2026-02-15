@@ -2,18 +2,46 @@
 title: Installation with Rspack
 ---
 
-[//]: # 'BundlerConfiguration'
-
 To use file-based routing with **Rspack** or **Rsbuild**, you'll need to install the `@tanstack/router-plugin` package.
 
-```sh
-npm install -D @tanstack/router-plugin
-```
+<!-- ::start:tabs variant="package-manager" mode="dev-install" -->
+
+react: @tanstack/router-plugin
+solid: @tanstack/router-plugin
+
+<!-- ::end:tabs -->
 
 Once installed, you'll need to add the plugin to your configuration.
 
-```tsx
-// rsbuild.config.ts
+<!-- ::start:framework -->
+
+# React
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { tanstackRouter } from '@tanstack/router-plugin/rspack'
+
+export default defineConfig({
+  plugins: [pluginReact()],
+  tools: {
+    rspack: {
+      plugins: [
+        tanstackRouter({
+          target: 'react',
+          autoCodeSplitting: true,
+        }),
+      ],
+    },
+  },
+})
+```
+
+Or, you can clone our [Quickstart Rspack/Rsbuild example](https://github.com/TanStack/router/tree/main/examples/react/quickstart-rspack-file-based) and get started.
+
+# Solid
+
+```ts title="rsbuild.config.ts"
 import { defineConfig } from '@rsbuild/core'
 import { pluginBabel } from '@rsbuild/plugin-babel'
 import { pluginSolid } from '@rsbuild/plugin-solid'
@@ -36,9 +64,9 @@ export default defineConfig({
 
 Or, you can clone our [Quickstart Rspack/Rsbuild example](https://github.com/TanStack/router/tree/main/examples/solid/quickstart-rspack-file-based) and get started.
 
-Now that you've added the plugin to your Rspack/Rsbuild configuration, you're all set to start using file-based routing with TanStack Router.
+<!-- ::end:framework -->
 
-[//]: # 'BundlerConfiguration'
+Now that you've added the plugin to your Rspack/Rsbuild configuration, you're all set to start using file-based routing with TanStack Router.
 
 ## Ignoring the generated route tree file
 
@@ -86,4 +114,4 @@ When using the TanStack Router Plugin with Rspack (or Rsbuild) for File-based ro
 
 If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by editing the configuration object passed into the `tanstackRouter` function.
 
-You can find all the available configuration options in the [File-based Routing API Reference](../../../api/file-based-routing.md).
+You can find all the available configuration options in the [File-based Routing API Reference](../api/file-based-routing.md).
