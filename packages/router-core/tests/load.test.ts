@@ -798,6 +798,116 @@ describe('routeId in context options', () => {
   })
 })
 
+describe('internal devtools matches store', () => {
+  test('tracks pending during navigation and clears it after commit', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader: async () => {
+        await sleep(20)
+        return { page: 'foo' }
+      },
+    })
+    const barRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/bar',
+      loader: async () => {
+        await sleep(20)
+        return { page: 'bar' }
+      },
+    })
+    const routeTree = rootRoute.addChildren([fooRoute, barRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo' })
+
+    const navigation = router.navigate({ to: '/bar' })
+    await Promise.resolve()
+
+    expect(
+      router.__storeDevtoolsMatches.state.pendingMatches?.some(
+        (match) => match.routeId === '/bar',
+      ),
+    ).toBe(true)
+
+    await navigation
+
+    expect(router.__storeDevtoolsMatches.state.pendingMatches).toBeUndefined()
+    expect(
+      router.__storeDevtoolsMatches.state.cachedMatches.some(
+        (match) => match.routeId === '/foo',
+      ),
+    ).toBe(true)
+  })
+
+  test('tracks preload cache entries and clearCache', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader: async () => {
+        await sleep(5)
+        return { page: 'foo' }
+      },
+    })
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.preloadRoute({ to: '/foo' })
+
+    expect(
+      router.__storeDevtoolsMatches.state.cachedMatches.some(
+        (match) => match.routeId === '/foo',
+      ),
+    ).toBe(true)
+
+    router.clearCache()
+
+    expect(router.__storeDevtoolsMatches.state.cachedMatches).toEqual([])
+  })
+
+  test('invalidates cached entries via invalidate(filter)', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader: async () => {
+        await sleep(5)
+        return { page: 'foo' }
+      },
+    })
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.preloadRoute({ to: '/foo' })
+
+    await router.invalidate({
+      filter: (match) => match.routeId === '/foo',
+      forcePending: true,
+    })
+
+    expect(router.__storeDevtoolsMatches.state.cachedMatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          routeId: '/foo',
+          invalid: true,
+          status: 'pending',
+        }),
+      ]),
+    )
+  })
+})
+
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }

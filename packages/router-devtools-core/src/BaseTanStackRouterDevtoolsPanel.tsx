@@ -67,6 +67,11 @@ export interface BaseDevtoolsPanelOptions {
 
 const HISTORY_LIMIT = 15
 
+type DevtoolsMatchesState = {
+  pendingMatches?: Array<AnyRouteMatch>
+  cachedMatches: Array<AnyRouteMatch>
+}
+
 function Logo(props: any) {
   const { className, ...rest } = props
   const styles = useStyles()
@@ -102,6 +107,7 @@ function NavigateLink(props: {
 
 function RouteComp({
   routerState,
+  devtoolsMatches,
   router,
   route,
   isRoot,
@@ -133,6 +139,7 @@ function RouteComp({
       MakeRouteMatchUnion
     >
   >
+  devtoolsMatches: Accessor<DevtoolsMatchesState>
   router: Accessor<AnyRouter>
   route: AnyRoute
   isRoot?: boolean
@@ -140,12 +147,12 @@ function RouteComp({
   setActiveId: (id: string) => void
 }) {
   const styles = useStyles()
-  const matches = createMemo(() =>
-    routerState().status === 'pending'
-      ? router().matchRoutes(router().latestLocation)
-      : routerState().matches,
+  const matches = createMemo(
+    () => devtoolsMatches().pendingMatches || routerState().matches,
   )
-  const match = createMemo(() => matches().find((d) => d.routeId === route.id))
+  const match = createMemo(() =>
+    routerState().matches.find((d) => d.routeId === route.id),
+  )
 
   const param = createMemo(() => {
     try {
@@ -231,6 +238,7 @@ function RouteComp({
             .map((r) => (
               <RouteComp
                 routerState={routerState}
+                devtoolsMatches={devtoolsMatches}
                 router={router}
                 route={r}
                 activeId={activeId}
@@ -277,12 +285,38 @@ export const BaseTanStackRouterDevtoolsPanel =
       '',
     )
 
+    const [devtoolsMatches, setDevtoolsMatches] =
+      createSignal<DevtoolsMatchesState>({
+        pendingMatches: [],
+        cachedMatches: [],
+      })
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
-    const pendingMatches = createMemo(() =>
-      routerState().status === 'pending'
-        ? router().matchRoutes(router().latestLocation)
-        : [],
+    createEffect(() => {
+      const devtoolsMatchesStore = (router() as any).__storeDevtoolsMatches as {
+        state: DevtoolsMatchesState
+        subscribe: (
+          listener: (state: {
+            prevVal: DevtoolsMatchesState
+            currentVal: DevtoolsMatchesState
+          }) => void,
+        ) => () => void
+      }
+
+      invariant(
+        devtoolsMatchesStore,
+        'No internal devtools store was found on the router instance.',
+      )
+
+      setDevtoolsMatches(devtoolsMatchesStore.state)
+      const unsubscribe = devtoolsMatchesStore.subscribe((state) => {
+        setDevtoolsMatches(state.currentVal)
+      })
+      onCleanup(unsubscribe)
+    })
+
+    const pendingMatches = createMemo(
+      () => devtoolsMatches().pendingMatches ?? [],
     )
     const displayedMatches = createMemo(() =>
       pendingMatches().length ? pendingMatches() : routerState().matches,
@@ -316,7 +350,11 @@ export const BaseTanStackRouterDevtoolsPanel =
     })
 
     const activeMatch = createMemo(() => {
-      const matches = [...pendingMatches(), ...routerState().matches]
+      const matches = [
+        ...pendingMatches(),
+        ...routerState().matches,
+        ...devtoolsMatches().cachedMatches,
+      ]
       return matches.find(
         (d) => d.routeId === activeId() || d.id === activeId(),
       )
@@ -326,10 +364,14 @@ export const BaseTanStackRouterDevtoolsPanel =
       () => Object.keys(routerState().location.search).length,
     )
 
-    const explorerState = createMemo(() => {
+    const explorerState = createMemo<Record<string, unknown>>(() => {
       return {
         ...router(),
-        state: routerState(),
+        state: {
+          ...routerState(),
+          pendingMatches: devtoolsMatches().pendingMatches,
+          cachedMatches: devtoolsMatches().cachedMatches,
+        },
       }
     })
 
@@ -347,12 +389,13 @@ export const BaseTanStackRouterDevtoolsPanel =
             ] as const
           ).map((d) => (dd) => dd !== d),
         )
-          .map((key) => [key, (explorerState() as any)[key]])
+          .map((key) => [key, explorerState()[key]] as const)
           .filter(
             (d) =>
               typeof d[1] !== 'function' &&
               ![
                 '__store',
+                '__storeDevtoolsMatches',
                 'basepath',
                 'injectedHtml',
                 'subscribers',
@@ -516,6 +559,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <Match when={currentTab() === 'routes'}>
                   <RouteComp
                     routerState={routerState}
+                    devtoolsMatches={devtoolsMatches}
                     router={router}
                     route={router().routeTree}
                     isRoot
@@ -609,6 +653,49 @@ export const BaseTanStackRouterDevtoolsPanel =
               </Switch>
             </div>
           </div>
+          {devtoolsMatches().cachedMatches.length ? (
+            <div class={styles().cachedMatchesContainer}>
+              <div class={styles().detailsHeader}>
+                <div>Cached Matches</div>
+                <div class={styles().detailsHeaderInfo}>
+                  age / staleTime / gcTime
+                </div>
+              </div>
+              <div>
+                {devtoolsMatches().cachedMatches.map((match: any) => {
+                  return (
+                    <div
+                      role="button"
+                      aria-label={`Open match details for ${match.id}`}
+                      onClick={() =>
+                        setActiveId(activeId() === match.id ? '' : match.id)
+                      }
+                      class={cx(styles().matchRow(match === activeMatch()))}
+                    >
+                      <div
+                        class={cx(
+                          styles().matchIndicator(getStatusColor(match)),
+                        )}
+                      />
+                      <NavigateLink
+                        left={
+                          <NavigateButton
+                            to={match.pathname}
+                            params={match.params}
+                            search={match.search}
+                            router={router}
+                          />
+                        }
+                        right={<AgeTicker match={match} router={router} />}
+                      >
+                        <code class={styles().matchID}>{`${match.id}`}</code>
+                      </NavigateLink>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
         {activeMatch() && activeMatch()?.status ? (
           <div class={styles().thirdContainer}>
@@ -641,7 +728,11 @@ export const BaseTanStackRouterDevtoolsPanel =
                       (d: any) => d.id === activeMatch()?.id,
                     )
                       ? 'Pending'
-                      : 'Active'}
+                      : routerState().matches.find(
+                            (d: any) => d.id === activeMatch()?.id,
+                          )
+                        ? 'Active'
+                        : 'Cached'}
                   </div>
                 </div>
                 <div class={styles().matchDetailsInfoLabel}>
