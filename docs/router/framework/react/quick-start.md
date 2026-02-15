@@ -10,7 +10,7 @@ The fastest way to get started with TanStack Router is to scaffold a new project
 [//]: # 'createAppCommand'
 
 ```sh
-npx create-tsrouter-app@latest
+npx @tanstack/cli create
 ```
 
 [//]: # 'createAppCommand'
@@ -35,7 +35,7 @@ npm run dev
 ```
 
 > [!TIP]
-> For full details on available options and templates, visit the [`create-tsrouter-app` documentation](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app).
+> For full details on available options and templates, visit the [`@tanstack/cli` documentation](https://tanstack.com/cli/latest/docs/quick-start).
 
 ## Routing Options
 
@@ -48,7 +48,7 @@ The file-based approach is the recommended option for most projects. It automati
 [//]: # 'createAppCommandFileBased'
 
 ```sh
-npx create-tsrouter-app@latest my-app --template file-router
+npx @tanstack/cli create my-app
 ```
 
 [//]: # 'createAppCommandFileBased'
@@ -60,7 +60,7 @@ If you prefer to define routes programmatically, you can use the code-based rout
 [//]: # 'createAppCommandCodeBased'
 
 ```sh
-npx create-tsrouter-app@latest my-app
+npx @tanstack/cli create my-app
 ```
 
 [//]: # 'createAppCommandCodeBased'
