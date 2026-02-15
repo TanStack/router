@@ -316,11 +316,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     })
 
     const activeMatch = createMemo(() => {
-      const matches = [
-        ...pendingMatches(),
-        ...routerState().matches,
-        ...routerState().cachedMatches,
-      ]
+      const matches = [...pendingMatches(), ...routerState().matches]
       return matches.find(
         (d) => d.routeId === activeId() || d.id === activeId(),
       )
@@ -613,49 +609,6 @@ export const BaseTanStackRouterDevtoolsPanel =
               </Switch>
             </div>
           </div>
-          {routerState().cachedMatches.length ? (
-            <div class={styles().cachedMatchesContainer}>
-              <div class={styles().detailsHeader}>
-                <div>Cached Matches</div>
-                <div class={styles().detailsHeaderInfo}>
-                  age / staleTime / gcTime
-                </div>
-              </div>
-              <div>
-                {routerState().cachedMatches.map((match: any) => {
-                  return (
-                    <div
-                      role="button"
-                      aria-label={`Open match details for ${match.id}`}
-                      onClick={() =>
-                        setActiveId(activeId() === match.id ? '' : match.id)
-                      }
-                      class={cx(styles().matchRow(match === activeMatch()))}
-                    >
-                      <div
-                        class={cx(
-                          styles().matchIndicator(getStatusColor(match)),
-                        )}
-                      />
-                      <NavigateLink
-                        left={
-                          <NavigateButton
-                            to={match.pathname}
-                            params={match.params}
-                            search={match.search}
-                            router={router}
-                          />
-                        }
-                        right={<AgeTicker match={match} router={router} />}
-                      >
-                        <code class={styles().matchID}>{`${match.id}`}</code>
-                      </NavigateLink>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
         </div>
         {activeMatch() && activeMatch()?.status ? (
           <div class={styles().thirdContainer}>
@@ -688,11 +641,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                       (d: any) => d.id === activeMatch()?.id,
                     )
                       ? 'Pending'
-                      : routerState().matches.find(
-                            (d: any) => d.id === activeMatch()?.id,
-                          )
-                        ? 'Active'
-                        : 'Cached'}
+                      : 'Active'}
                   </div>
                 </div>
                 <div class={styles().matchDetailsInfoLabel}>

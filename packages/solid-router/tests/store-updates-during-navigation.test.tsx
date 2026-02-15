@@ -156,7 +156,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Solid has different update counts than React due to different reactivity
-    expect(updates).toBe(6)
+    expect(updates).toBe(2)
   })
 
   test('sync beforeLoad', async () => {
@@ -226,8 +226,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(8)
-    expect(updates).toBeLessThanOrEqual(10)
+    expect(updates).toBeGreaterThanOrEqual(3)
+    expect(updates).toBeLessThanOrEqual(5)
   })
 
   test('navigate, w/ preloaded & async loaders', async () => {
@@ -295,6 +295,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(2)
+    expect(updates).toBe(0)
   })
 })

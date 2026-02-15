@@ -28,6 +28,8 @@ If you previously used `router.state.pendingMatches`, use one of these patterns 
 - `router.state.isLoading` to detect active loading work.
 - `router.matchRoute(...)` with `{ pending: true }` when you need to match against the pending location.
 
+If you previously used `router.state.cachedMatches`, note that cached matches are now internal router state and are no longer exposed on `RouterState`.
+
 ### `status` property
 
 - Type: `'pending' | 'idle'`

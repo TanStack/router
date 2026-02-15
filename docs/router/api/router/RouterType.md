@@ -152,6 +152,7 @@ Invalidates route matches by forcing their `beforeLoad` and `load` functions to 
 Remove cached route matches.
 
 - Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean}) => void`
+- Cached matches are stored internally and are no longer exposed on `router.state`.
 - if `filter` is not supplied, all cached matches will be removed
 - if `filter` is supplied, only matches for which `filter` returns `true` will be removed.
 

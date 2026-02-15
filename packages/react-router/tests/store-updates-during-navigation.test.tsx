@@ -155,7 +155,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(4)
+    expect(updates).toBe(1)
   })
 
   test('sync beforeLoad', async () => {
@@ -225,8 +225,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(9)
-    expect(updates).toBeLessThanOrEqual(11)
+    expect(updates).toBeGreaterThanOrEqual(5)
+    expect(updates).toBeLessThanOrEqual(7)
   })
 
   test('navigate, w/ preloaded & async loaders', async () => {
@@ -293,6 +293,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(1)
+    expect(updates).toBe(0)
   })
 })
