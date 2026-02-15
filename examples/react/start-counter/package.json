@@ -10,9 +10,9 @@
     "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.159.10",
-    "@tanstack/react-router-devtools": "^1.159.10",
-    "@tanstack/react-start": "^1.159.11",
+    "@tanstack/react-router": "^1.160.0",
+    "@tanstack/react-router-devtools": "^1.160.0",
+    "@tanstack/react-start": "^1.160.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
