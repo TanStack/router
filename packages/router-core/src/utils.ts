@@ -536,14 +536,22 @@ function decodeSegment(segment: string): string {
 }
 
 /**
- * List of URL protocols that are safe for navigation.
- * Only these protocols are allowed in redirects and navigation.
+ * Default list of URL protocols to allow in links, redirects, and navigation.
+ * Any absolute URL protocol not in this list is treated as dangerous by default.
  */
-export const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+export const DEFAULT_PROTOCOL_ALLOWLIST = [
+  // Standard web navigation
+  'http:',
+  'https:',
+
+  // Common browser-safe actions
+  'mailto:',
+  'tel:',
+]
 
 /**
- * Check if a URL string uses a protocol that is not in the safe list.
- * Returns true for dangerous protocols like javascript:, data:, vbscript:, etc.
+ * Check if a URL string uses a protocol that is not in the allowlist.
+ * Returns true for blocked protocols like javascript:, blob:, data:, etc.
  *
  * The URL constructor correctly normalizes:
  * - Mixed case (JavaScript: → javascript:)
@@ -553,16 +561,20 @@ export const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
  * For relative URLs (no protocol), returns false (safe).
  *
  * @param url - The URL string to check
- * @returns true if the URL uses a dangerous (non-whitelisted) protocol
+ * @param allowlist - Set of protocols to allow
+ * @returns true if the URL uses a protocol that is not allowed
  */
-export function isDangerousProtocol(url: string): boolean {
+export function isDangerousProtocol(
+  url: string,
+  allowlist: Set<string>,
+): boolean {
   if (!url) return false
 
   try {
     // Use the URL constructor - it correctly normalizes protocols
     // per WHATWG URL spec, handling all bypass attempts automatically
     const parsed = new URL(url)
-    return !SAFE_URL_PROTOCOLS.includes(parsed.protocol)
+    return !allowlist.has(parsed.protocol)
   } catch {
     // URL constructor throws for relative URLs (no protocol)
     // These are safe - they can't execute scripts
