@@ -380,6 +380,10 @@
       "label": "API",
       "children": [
         {
+          "label": "Router",
+          "to": "api/router"
+        },
+        {
           "label": "File-Based Routing",
           "to": "api/file-based-routing"
         }
@@ -387,12 +391,7 @@
       "frameworks": [
         {
           "label": "react",
-          "children": [
-            {
-              "label": "Router",
-              "to": "framework/react/api/router"
-            }
-          ]
+          "children": []
         },
         {
           "label": "solid",

@@ -23,7 +23,7 @@ The `useChildMatches` hook accepts a single _optional_ argument, an `options` ob
 - Type: `boolean`
 - Optional
 - Configures whether structural sharing is enabled for the value returned by `select`.
-- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+- See the [Render Optimizations guide](../../framework/react/guide/render-optimizations.md) for more information.
 
 ## useChildMatches returns
 

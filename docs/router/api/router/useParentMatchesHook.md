@@ -23,7 +23,7 @@ The `useParentMatches` hook accepts an optional `options` object.
 - Type: `boolean`
 - Optional
 - Configures whether structural sharing is enabled for the value returned by `select`.
-- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+- See the [Render Optimizations guide](../../framework/react/guide/render-optimizations.md) for more information.
 
 ## useParentMatches returns
 
