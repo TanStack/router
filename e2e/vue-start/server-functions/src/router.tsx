@@ -1,5 +1,5 @@
 import { createRouter } from '@tanstack/vue-router'
-import { setupRouterSsrQueryIntegration } from '@tanstack/vue-router-ssr-query'
+import { createSsrQueryPlugin } from '@tanstack/vue-router-ssr-query'
 import { QueryClient } from '@tanstack/vue-query'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
@@ -7,7 +7,7 @@ import { NotFound } from './components/NotFound'
 
 export function getRouter() {
   const queryClient = new QueryClient()
-  const router = createRouter({
+  return createRouter({
     routeTree,
     defaultPreload: 'intent',
     defaultErrorComponent: DefaultCatchBoundary,
@@ -18,15 +18,6 @@ export function getRouter() {
         bar: 'baz',
       },
     },
+    plugins: [createSsrQueryPlugin({ queryClient })],
   })
-
-  setupRouterSsrQueryIntegration({ router, queryClient })
-
-  return router
-}
-
-declare module '@tanstack/vue-router' {
-  interface Register {
-    router: ReturnType<typeof getRouter>
-  }
 }

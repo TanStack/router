@@ -455,3 +455,10 @@ export {
   executeRewriteOutput,
 } from './rewrite'
 export type { LocationRewrite, LocationRewriteFunction } from './router'
+
+/** @private */
+export type {
+  RouterPlugin,
+  RouterPluginTypes,
+  PluginProvidedContext,
+} from './plugin'
