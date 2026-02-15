@@ -44,6 +44,7 @@ test('when creating the root with routeContext', () => {
         context: {}
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '__root__'
       }>()
     },
   })
@@ -67,6 +68,7 @@ test('when creating the root with beforeLoad', () => {
         context: {}
         search: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '__root__'
       }>()
     },
   })
@@ -114,6 +116,7 @@ test('when creating the root route with context and routeContext', () => {
         context: { userId: string }
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '__root__'
       }>()
     },
   })
@@ -155,6 +158,7 @@ test('when creating the root route with context and beforeLoad', () => {
         context: { userId: string }
         search: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '__root__'
       }>()
     },
   })
@@ -237,6 +241,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         context: { userId: string }
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '__root__'
       }>()
 
       return {
@@ -255,6 +260,7 @@ test('when creating the root route with context, routeContext, beforeLoad and a 
         context: { userId: string; env: 'env1' }
         search: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '__root__'
       }>()
       return { permission: 'view' as const }
     },
@@ -361,6 +367,7 @@ test('when creating a child route with routeContext from the root route with con
         context: { userId: string }
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices'
       }>()
 
       return {
@@ -388,6 +395,7 @@ test('when creating a child route with beforeLoad from the root route with conte
         context: { userId: string }
         search: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices'
       }>()
     },
   })
@@ -756,6 +764,7 @@ test('when creating a child route with params, search with routeContext from the
         context: { userId: string }
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices/$invoiceId'
       }>()
     },
   })
@@ -804,6 +813,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         context: { userId: string }
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices/$invoiceId'
       }>()
       return {
         env: 'env1',
@@ -821,6 +831,7 @@ test('when creating a child route with params, search with routeContext, beforeL
         context: { userId: string; env: string }
         search: { page: number }
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices/$invoiceId'
       }>()
       return { permission: 'view' } as const
     },
@@ -942,6 +953,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         context: { userId: string }
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices'
       }>()
 
       return { invoiceId: 'invoiceId1' }
@@ -963,6 +975,7 @@ test('when creating a child route with routeContext from a parent with routeCont
         context: { userId: string; invoiceId: string }
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices/details'
       }>()
 
       return { detailId: 'detailId1' }
@@ -1015,6 +1028,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
         context: { userId: string }
         search: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices'
       }>()
       return { invoiceId: 'invoiceId1' }
     },
@@ -1035,6 +1049,7 @@ test('when creating a child route with beforeLoad from a parent with beforeLoad'
         context: { userId: string; invoiceId: string }
         search: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices/details'
       }>()
       return { detailId: 'detailId1' }
     },
@@ -1087,6 +1102,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         context: { userId: string }
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices'
       }>()
       return { env: 'env1' }
     },
@@ -1102,6 +1118,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         context: { userId: string; env: string }
         search: { page: number }
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices'
       }>()
       return { invoicePermissions: ['view'] as const }
     },
@@ -1132,6 +1149,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         }
         deps: {}
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices/$invoiceId/details'
       }>()
       return { detailEnv: 'detailEnv' }
     },
@@ -1152,6 +1170,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         }
         search: { page: number; detailPage: number }
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices/$invoiceId/details'
       }>()
       return { detailsPermissions: ['view'] as const }
     },
@@ -1182,6 +1201,7 @@ test('when creating a child route with routeContext, beforeLoad, search, params,
         }
         deps: { detailPage: number; invoicePage: number }
         matches: Array<MakeRouteMatchUnion>
+        routeId: '/invoices/$invoiceId/details/$detailId'
       }>()
       return { detailEnv: 'detailEnv' }
     },

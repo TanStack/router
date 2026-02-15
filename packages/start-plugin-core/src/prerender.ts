@@ -144,6 +144,11 @@ export async function prerender({
 
     startConfig.pages.forEach((page) => addCrawlPageTask(page))
 
+    if (queue.isSettled()) {
+      logger.info('No pages matched prerender filter; skipping.')
+      return Array.from(prerendered)
+    }
+
     await queue.start()
 
     return Array.from(prerendered)

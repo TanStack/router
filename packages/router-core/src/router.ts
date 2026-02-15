@@ -1085,6 +1085,7 @@ export class RouterCore<
       let processRouteTreeResult: ProcessRouteTreeResult<TRouteTree>
       if (
         (isServer ?? this.isServer) &&
+        process.env.NODE_ENV !== 'development' &&
         globalThis.__TSR_CACHE__ &&
         globalThis.__TSR_CACHE__.routeTree === this.routeTree
       ) {
@@ -1097,6 +1098,7 @@ export class RouterCore<
         // only cache if nothing else is cached yet
         if (
           (isServer ?? this.isServer) &&
+          process.env.NODE_ENV !== 'development' &&
           globalThis.__TSR_CACHE__ === undefined
         ) {
           globalThis.__TSR_CACHE__ = {
@@ -1283,14 +1285,14 @@ export class RouterCore<
         return {
           href: pathname + searchStr + hash,
           publicHref: href,
-          pathname: decodePath(pathname),
+          pathname: decodePath(pathname).path,
           external: false,
           searchStr,
           search: replaceEqualDeep(
             previousLocation?.search,
             parsedSearch,
           ) as any,
-          hash: decodePath(hash.slice(1)),
+          hash: decodePath(hash.slice(1)).path,
           state: replaceEqualDeep(previousLocation?.state, state),
         }
       }
@@ -1312,11 +1314,11 @@ export class RouterCore<
       return {
         href: fullPath,
         publicHref: href,
-        pathname: decodePath(url.pathname),
+        pathname: decodePath(url.pathname).path,
         external: !!this.rewrite && url.origin !== this.origin,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
-        hash: decodePath(url.hash.slice(1)),
+        hash: decodePath(url.hash.slice(1)).path,
         state: replaceEqualDeep(previousLocation?.state, state),
       }
     }
@@ -1374,6 +1376,16 @@ export class RouterCore<
     return this.matchRoutesInternal(pathnameOrNext, locationSearchOrOpts)
   }
 
+  private getParentContext(parentMatch?: AnyRouteMatch) {
+    const parentMatchId = parentMatch?.id
+
+    const parentContext = !parentMatchId
+      ? ((this.options.context as any) ?? undefined)
+      : (parentMatch.context ?? this.options.context ?? undefined)
+
+    return parentContext
+  }
+
   private matchRoutesInternal(
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
@@ -1404,19 +1416,14 @@ export class RouterCore<
       ? findGlobalNotFoundRouteId(this.options.notFoundMode, matchedRoutes)
       : undefined
 
-    const matches: Array<AnyRouteMatch> = []
+    const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
 
-    const getParentContext = (parentMatch?: AnyRouteMatch) => {
-      const parentMatchId = parentMatch?.id
+    const previousMatchesByRouteId = new Map(
+      this.state.matches.map((match) => [match.routeId, match]),
+    )
 
-      const parentContext = !parentMatchId
-        ? ((this.options.context as any) ?? undefined)
-        : (parentMatch.context ?? this.options.context ?? undefined)
-
-      return parentContext
-    }
-
-    matchedRoutes.forEach((route, index) => {
+    for (let index = 0; index < matchedRoutes.length; index++) {
+      const route = matchedRoutes[index]!
       // Take each matched route and resolve + validate its search params
       // This has to happen serially because each route's search params
       // can depend on the parent route's search params
@@ -1426,11 +1433,10 @@ export class RouterCore<
 
       const parentMatch = matches[index - 1]
 
-      const [preMatchSearch, strictMatchSearch, searchError]: [
-        Record<string, any>,
-        Record<string, any>,
-        any,
-      ] = (() => {
+      let preMatchSearch: Record<string, any>
+      let strictMatchSearch: Record<string, any>
+      let searchError: any
+      {
         // Validate the search params and stabilize them
         const parentSearch = parentMatch?.search ?? next.search
         const parentStrictSearch = parentMatch?._strictSearch ?? undefined
@@ -1440,14 +1446,12 @@ export class RouterCore<
             validateSearch(route.options.validateSearch, { ...parentSearch }) ??
             undefined
 
-          return [
-            {
-              ...parentSearch,
-              ...strictSearch,
-            },
-            { ...parentStrictSearch, ...strictSearch },
-            undefined,
-          ]
+          preMatchSearch = {
+            ...parentSearch,
+            ...strictSearch,
+          }
+          strictMatchSearch = { ...parentStrictSearch, ...strictSearch }
+          searchError = undefined
         } catch (err: any) {
           let searchParamError = err
           if (!(err instanceof SearchParamError)) {
@@ -1460,9 +1464,11 @@ export class RouterCore<
             throw searchParamError
           }
 
-          return [parentSearch, {}, searchParamError]
+          preMatchSearch = parentSearch
+          strictMatchSearch = {}
+          searchError = searchParamError
         }
-      })()
+      }
 
       // This is where we need to call route.options.loaderDeps() to get any additional
       // deps that the route's loader function might need to run. We need to do this
@@ -1499,9 +1505,7 @@ export class RouterCore<
 
       const existingMatch = this.getMatch(matchId)
 
-      const previousMatch = this.state.matches.find(
-        (d) => d.routeId === route.id,
-      )
+      const previousMatch = previousMatchesByRouteId.get(route.id)
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
@@ -1535,9 +1539,7 @@ export class RouterCore<
         match = {
           ...existingMatch,
           cause,
-          params: previousMatch
-            ? replaceEqualDeep(previousMatch.params, routeParams)
-            : routeParams,
+          params: previousMatch?.params ?? routeParams,
           _strictParams: strictParams,
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
@@ -1558,9 +1560,7 @@ export class RouterCore<
           ssr: (isServer ?? this.isServer) ? undefined : route.options.ssr,
           index,
           routeId: route.id,
-          params: previousMatch
-            ? replaceEqualDeep(previousMatch.params, routeParams)
-            : routeParams,
+          params: previousMatch?.params ?? routeParams,
           _strictParams: strictParams,
           pathname: interpolatedPath,
           updatedAt: Date.now(),
@@ -1604,7 +1604,7 @@ export class RouterCore<
       // update the searchError if there is one
       match.searchError = searchError
 
-      const parentContext = getParentContext(parentMatch)
+      const parentContext = this.getParentContext(parentMatch)
 
       match.context = {
         ...parentContext,
@@ -1612,35 +1612,42 @@ export class RouterCore<
         ...match.__beforeLoadContext,
       }
 
-      matches.push(match)
-    })
+      matches[index] = match
+    }
 
-    matches.forEach((match, index) => {
+    for (let index = 0; index < matches.length; index++) {
+      const match = matches[index]!
       const route = this.looseRoutesById[match.routeId]!
       const existingMatch = this.getMatch(match.id)
 
-      // only execute `context` if we are not calling from router.buildLocation
+      // Update the match's params
+      const previousMatch = previousMatchesByRouteId.get(match.routeId)
+      match.params = previousMatch
+        ? replaceEqualDeep(previousMatch.params, routeParams)
+        : routeParams
 
       if (!existingMatch) {
         const parentMatch = matches[index - 1]
-        const parentContext = getParentContext(parentMatch)
+        const parentContext = this.getParentContext(parentMatch)
 
         // Update the match's context
 
         if (route.options.context) {
-          const contextFnContext: RouteContextOptions<any, any, any, any> = {
-            deps: match.loaderDeps,
-            params: match.params,
-            context: parentContext ?? {},
-            location: next,
-            navigate: (opts: any) =>
-              this.navigate({ ...opts, _fromLocation: next }),
-            buildLocation: this.buildLocation,
-            cause: match.cause,
-            abortController: match.abortController,
-            preload: !!match.preload,
-            matches,
-          }
+          const contextFnContext: RouteContextOptions<any, any, any, any, any> =
+            {
+              deps: match.loaderDeps,
+              params: match.params,
+              context: parentContext ?? {},
+              location: next,
+              navigate: (opts: any) =>
+                this.navigate({ ...opts, _fromLocation: next }),
+              buildLocation: this.buildLocation,
+              cause: match.cause,
+              abortController: match.abortController,
+              preload: !!match.preload,
+              matches,
+              routeId: route.id,
+            }
           // Get the route context
           match.__routeContext =
             route.options.context(contextFnContext) ?? undefined
@@ -1652,7 +1659,7 @@ export class RouterCore<
           ...match.__beforeLoadContext,
         }
       }
-    })
+    }
 
     return matches
   }
@@ -1891,7 +1898,7 @@ export class RouterCore<
                   decoder: this.pathParamsDecoder,
                   server: this.isServer,
                 }).interpolatedPath,
-          )
+          ).path
 
       // Resolve the next search
       let nextSearch = fromSearch

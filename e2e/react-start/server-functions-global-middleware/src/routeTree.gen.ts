@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SimpleRouteImport } from './routes/simple'
+import { Route as PathnameMiddlewareRouteImport } from './routes/pathname-middleware'
 import { Route as MultipleServerFunctionsRouteImport } from './routes/multiple-server-functions'
 import { Route as IndexRouteImport } from './routes/index'
 
 const SimpleRoute = SimpleRouteImport.update({
   id: '/simple',
   path: '/simple',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PathnameMiddlewareRoute = PathnameMiddlewareRouteImport.update({
+  id: '/pathname-middleware',
+  path: '/pathname-middleware',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MultipleServerFunctionsRoute = MultipleServerFunctionsRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/multiple-server-functions': typeof MultipleServerFunctionsRoute
+  '/pathname-middleware': typeof PathnameMiddlewareRoute
   '/simple': typeof SimpleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/multiple-server-functions': typeof MultipleServerFunctionsRoute
+  '/pathname-middleware': typeof PathnameMiddlewareRoute
   '/simple': typeof SimpleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/multiple-server-functions': typeof MultipleServerFunctionsRoute
+  '/pathname-middleware': typeof PathnameMiddlewareRoute
   '/simple': typeof SimpleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/multiple-server-functions' | '/simple'
+  fullPaths: '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/multiple-server-functions' | '/simple'
-  id: '__root__' | '/' | '/multiple-server-functions' | '/simple'
+  to: '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
+  id: '__root__' | '/' | '/multiple-server-functions' | '/pathname-middleware' | '/simple'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MultipleServerFunctionsRoute: typeof MultipleServerFunctionsRoute
+  PathnameMiddlewareRoute: typeof PathnameMiddlewareRoute
   SimpleRoute: typeof SimpleRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/simple'
       fullPath: '/simple'
       preLoaderRoute: typeof SimpleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pathname-middleware': {
+      id: '/pathname-middleware'
+      path: '/pathname-middleware'
+      fullPath: '/pathname-middleware'
+      preLoaderRoute: typeof PathnameMiddlewareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/multiple-server-functions': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MultipleServerFunctionsRoute: MultipleServerFunctionsRoute,
+  PathnameMiddlewareRoute: PathnameMiddlewareRoute,
   SimpleRoute: SimpleRoute,
 }
 export const routeTree = rootRouteImport

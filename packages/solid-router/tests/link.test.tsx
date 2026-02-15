@@ -775,7 +775,7 @@ describe('Link', () => {
       '/posts?page=2&filter=inactive',
     )
 
-    await fireEvent.click(updateSearchLink)
+    fireEvent.click(updateSearchLink)
 
     // Wait for navigation to complete and search params to update
     await waitFor(() => {
@@ -786,8 +786,11 @@ describe('Link', () => {
     const updatedFilter = await screen.findByTestId('current-filter')
 
     // Verify search was updated
-    expect(window.location.pathname).toBe('/posts')
-    expect(window.location.search).toBe('?page=2&filter=inactive')
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/posts')
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
 
     expect(updatedPage).toHaveTextContent('Page: 2')
     expect(updatedFilter).toHaveTextContent('Filter: inactive')
