@@ -26,22 +26,27 @@ TanStack Router is a type-safe router with built-in caching and URL state manage
 
 - This is a pnpm workspace monorepo with packages organized by functionality
 - Nx provides caching, affected testing, targeting, and parallel execution for efficiency
-- Use `npx nx show projects` to list all available packages
-- Target specific packages: `npx nx run @tanstack/react-router:test:unit`
-- Target multiple packages: `npx nx run-many --target=test:eslint --projects=@tanstack/history,@tanstack/router-core`
-- Run affected tests only: `npx nx affected --target=test:unit`
-- Exclude patterns: `npx nx run-many --target=test:unit --exclude="examples/**,e2e/**"`
+- Use `pnpm nx show projects` to list all available packages
+- Target specific packages: `pnpm nx run @tanstack/react-router:test:unit`
+- Target multiple packages: `pnpm nx run-many --target=test:eslint --projects=@tanstack/history,@tanstack/router-core`
+- Run affected tests only: `pnpm nx affected --target=test:unit`
+- Exclude patterns: `pnpm nx run-many --target=test:unit --exclude="examples/**,e2e/**"`
 - Navigate to examples and run `pnpm dev` to test changes: `cd examples/react/basic && pnpm dev`
-- **Granular Vitest testing within packages:**
-  - Navigate first: `cd packages/react-router`
-  - Specific files: `npx vitest run tests/link.test.tsx tests/Scripts.test.tsx`
-  - Test patterns: `npx vitest run tests/ClientOnly.test.tsx -t "should render fallback"`
-  - Name patterns: `npx vitest run -t "navigation"` (all tests with "navigation" in name)
-  - Exclude patterns: `npx vitest run --exclude="**/*link*" tests/`
-  - List tests: `npx vitest list tests/link.test.tsx` or `npx vitest list` (all)
-  - Through nx: `npx nx run @tanstack/react-router:test:unit -- tests/ClientOnly.test.tsx`
+- **Granular unit testing through Nx (recommended):**
+  - Specific files: `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx tests/Scripts.test.tsx`
+  - Test patterns: `pnpm nx run @tanstack/react-router:test:unit -- tests/ClientOnly.test.tsx -t "should render fallback"`
+  - Name patterns: `pnpm nx run @tanstack/react-router:test:unit -- -t "navigation"` (all tests with "navigation" in name)
+  - Exclude patterns: `pnpm nx run @tanstack/react-router:test:unit -- --exclude="**/*link*" tests/`
+  - List tests: `pnpm nx run @tanstack/react-router:test:unit -- list tests/link.test.tsx` (or `-- list` for all)
 - **Available test targets per package:** `test:unit`, `test:types`, `test:eslint`, `test:build`, `test:perf`, `build`
-- **Testing strategy:** Package level (nx) → File level (vitest) → Test level (-t flag) → Pattern level (exclude)
+- **Testing strategy:** Package level (nx) → File-level args via nx → Test-level args (`-t`) via nx → Pattern-level args (`--exclude`) via nx
+- **Agent execution guardrails (important):**
+  - Always prefer `pnpm nx ...` over `npx nx ...`.
+  - Prefer Nx targets over direct test runners so task dependencies (including required builds) remain in the graph.
+  - In sandbox, run Nx with `CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipRemoteCache`
+  - Run only one Nx command at a time.
+  - If an Nx command shows no output for ~20 seconds, stop, run `pnpm nx reset` once, and retry once.
+  - Do not loop retries indefinitely. If it still hangs or sandbox blocks graph/daemon behavior, request escalation immediately.
 
 ## Testing instructions
 
@@ -50,16 +55,16 @@ TanStack Router is a type-safe router with built-in caching and URL state manage
 - **Full CI suite:** `pnpm test:ci`
 - **Fix formatting:** `pnpm format`
 - **Efficient targeted testing workflow:**
-  1. **Affected only:** `npx nx affected --target=test:unit` (compares to main branch)
-  2. **Specific packages:** `npx nx run @tanstack/react-router:test:unit`
-  3. **Specific files:** `cd packages/react-router && npx vitest run tests/link.test.tsx`
-  4. **Specific patterns:** `npx vitest run tests/link.test.tsx -t "preloading"`
+  1. **Affected only:** `pnpm nx affected --target=test:unit` (compares to main branch)
+  2. **Specific packages:** `pnpm nx run @tanstack/react-router:test:unit`
+  3. **Specific files:** `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx`
+  4. **Specific patterns:** `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx -t "preloading"`
 - **Pro tips:**
-  - Use `npx vitest list` to explore available tests before running
+  - Use `pnpm nx run @tanstack/react-router:test:unit -- list` to explore available tests before running
   - Use `-t "pattern"` to focus on specific functionality during development
   - Use `--exclude` patterns to skip unrelated tests
-  - Combine nx package targeting with vitest file targeting for maximum precision
-- **Example workflow:** `npx nx run @tanstack/react-router:test:unit` → `cd packages/react-router && npx vitest run tests/link.test.tsx` → `npx vitest run tests/link.test.tsx -t "preloading"`
+  - Keep all test filtering arguments behind `pnpm nx run ... -- ...` for maximum precision while preserving task dependencies
+- **Example workflow:** `pnpm nx run @tanstack/react-router:test:unit` → `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx` → `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx -t "preloading"`
 
 ## PR instructions
 
