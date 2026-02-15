@@ -16,7 +16,13 @@ import type {
   RouteMatch,
 } from './Matches'
 import type { RootRouteId } from './root'
-import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
+import type {
+  ParseRoute,
+  RouteById,
+  RouteIds,
+  RoutePaths,
+  RoutesById,
+} from './routeInfo'
 import type { AnyRouter, Register, RegisteredRouter, SSROption } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
@@ -1215,20 +1221,29 @@ type BuildIdTupleFromSegments<
     ? []
     : [`${TPrefix}/${TSegments}`]
 
+type RoutesByIdFor<TRouteTree extends AnyRoute> = RoutesById<TRouteTree>
+
+type RouteIdsFor<TRouteTree extends AnyRoute> = RouteIds<TRouteTree>
+
+type RouteByIdFrom<TRoutesById, TId> = Extract<
+  TRoutesById[TId & keyof TRoutesById],
+  AnyRoute
+>
+
 /**
  * Map a tuple of route IDs to a tuple of route matches.
- * Uses RouteById for O(1) cached lookups per ID (via the RoutesById mapped type).
+ * Uses RoutesById for O(1) cached lookups per ID.
  */
 type MapIdTupleToMatches<
-  TRouteTree extends AnyRoute,
+  TRoutesById,
   TIds extends Array<string>,
 > = TIds extends [
   infer TFirst extends string,
   ...infer TRest extends Array<string>,
 ]
   ? [
-      MakeRouteMatchFromRoute<RouteById<TRouteTree, TFirst>>,
-      ...MapIdTupleToMatches<TRouteTree, TRest>,
+      MakeRouteMatchFromRoute<RouteByIdFrom<TRoutesById, TFirst>>,
+      ...MapIdTupleToMatches<TRoutesById, TRest>,
     ]
   : []
 
@@ -1239,17 +1254,14 @@ type MapIdTupleToMatches<
  * which is typically cheaper for the type checker.
  */
 type DescendantRouteIds<
-  TRouteTree extends AnyRoute,
+  TAllRouteIds,
   TRouteId extends string,
 > = TRouteId extends RootRouteId
-  ? Exclude<RouteIds<TRouteTree>, RootRouteId>
-  : Extract<RouteIds<TRouteTree>, `${TRouteId}/${string}`>
+  ? Exclude<TAllRouteIds, RootRouteId>
+  : Extract<TAllRouteIds, `${TRouteId}/${string}`>
 
-type DescendantMatchesById<
-  TRouteTree extends AnyRoute,
-  TIds,
-> = TIds extends string
-  ? MakeRouteMatchFromRoute<RouteById<TRouteTree, TIds>>
+type DescendantMatchesById<TRoutesById, TIds> = TIds extends string
+  ? MakeRouteMatchFromRoute<RouteByIdFrom<TRoutesById, TIds>>
   : never
 
 /**
@@ -1273,12 +1285,19 @@ type DescendantMatchesById<
 export type InferAssetFnMatches<TRegister, TRouteId> =
   RegisteredRouterRouteTree<TRegister> extends infer TTree extends AnyRoute
     ? TRouteId extends string
-      ? [
-          ...MapIdTupleToMatches<TTree, AncestorIdTuple<TRouteId>>,
-          ...Array<
-            DescendantMatchesById<TTree, DescendantRouteIds<TTree, TRouteId>>
-          >,
-        ]
+      ? RoutesByIdFor<TTree> extends infer TRoutesById
+        ? RouteIdsFor<TTree> extends infer TAllRouteIds
+          ? [
+              ...MapIdTupleToMatches<TRoutesById, AncestorIdTuple<TRouteId>>,
+              ...Array<
+                DescendantMatchesById<
+                  TRoutesById,
+                  DescendantRouteIds<TAllRouteIds, TRouteId>
+                >
+              >,
+            ]
+          : never
+        : never
       : never
     : never
 
