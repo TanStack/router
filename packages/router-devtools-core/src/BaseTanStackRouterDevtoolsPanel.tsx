@@ -296,7 +296,10 @@ export const BaseTanStackRouterDevtoolsPanel =
       const devtoolsMatchesStore = (router() as any).__storeDevtoolsMatches as {
         state: DevtoolsMatchesState
         subscribe: (
-          listener: (state: DevtoolsMatchesState) => void,
+          listener: (state: {
+            prevVal: DevtoolsMatchesState
+            currentVal: DevtoolsMatchesState
+          }) => void,
         ) => () => void
       }
 
@@ -307,7 +310,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
       setDevtoolsMatches(devtoolsMatchesStore.state)
       const unsubscribe = devtoolsMatchesStore.subscribe((state) => {
-        setDevtoolsMatches(state)
+        setDevtoolsMatches(state.currentVal)
       })
       onCleanup(unsubscribe)
     })
