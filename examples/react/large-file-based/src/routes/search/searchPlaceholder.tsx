@@ -32,6 +32,12 @@ export const Route = createFileRoute('/search/searchPlaceholder')({
   validateSearch: search,
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(searchQueryOptions),
+  head: ({ matches }) => {
+    if (matches[0].routeId) {
+      // ...
+    }
+    return {}
+  },
 })
 
 function SearchComponent() {
