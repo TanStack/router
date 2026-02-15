@@ -85,9 +85,13 @@ export function useMatch<
       if (match === undefined) {
         const hasPendingMatch =
           state.status === 'pending' &&
-          router.matchRoutes(router.latestLocation).some((d: any) =>
-            opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
-          )
+          router
+            .matchRoutes(router.latestLocation)
+            .some((d: any) =>
+              opts.from
+                ? opts.from === d.routeId
+                : d.id === nearestMatchId.value,
+            )
 
         // If there's a pending match or we're transitioning, return undefined without throwing
         if (hasPendingMatch || state.isTransitioning) {

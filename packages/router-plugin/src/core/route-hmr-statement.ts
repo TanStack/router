@@ -32,10 +32,7 @@ function handleRouteUpdate(
   const hasPendingRouteMatch =
     router.state.status === 'pending' &&
     router.matchRoutes(router.latestLocation).some(filter)
-  if (
-    router.state.matches.find(filter) ||
-    hasPendingRouteMatch
-  ) {
+  if (router.state.matches.find(filter) || hasPendingRouteMatch) {
     router.invalidate({ filter })
   }
   function walkReplaceSegmentTree(

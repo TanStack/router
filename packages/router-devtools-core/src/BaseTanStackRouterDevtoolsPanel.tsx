@@ -140,15 +140,12 @@ function RouteComp({
   setActiveId: (id: string) => void
 }) {
   const styles = useStyles()
-  const matches = createMemo(
-    () =>
-      routerState().status === 'pending'
-        ? router().matchRoutes(router().latestLocation)
-        : routerState().matches,
+  const matches = createMemo(() =>
+    routerState().status === 'pending'
+      ? router().matchRoutes(router().latestLocation)
+      : routerState().matches,
   )
-  const match = createMemo(() =>
-    matches().find((d) => d.routeId === route.id),
-  )
+  const match = createMemo(() => matches().find((d) => d.routeId === route.id))
 
   const param = createMemo(() => {
     try {
@@ -687,7 +684,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {pendingMatches().find((d: any) => d.id === activeMatch()?.id)
+                    {pendingMatches().find(
+                      (d: any) => d.id === activeMatch()?.id,
+                    )
                       ? 'Pending'
                       : routerState().matches.find(
                             (d: any) => d.id === activeMatch()?.id,

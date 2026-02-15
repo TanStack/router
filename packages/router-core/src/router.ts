@@ -2410,7 +2410,8 @@ export class RouterCore<
                   batch(() => {
                     this.__store.setState((s) => {
                       const previousMatches = s.matches
-                      const newMatches = this.pendingMatchesInternal || s.matches
+                      const newMatches =
+                        this.pendingMatchesInternal || s.matches
 
                       exitingMatches = previousMatches.filter(
                         (match) => !newMatches.some((d) => d.id === match.id),
@@ -2593,10 +2594,10 @@ export class RouterCore<
       }
 
       const matchesKey = this.state.matches.some((d) => d.id === id)
-          ? 'matches'
-          : this.state.cachedMatches.some((d) => d.id === id)
-            ? 'cachedMatches'
-            : ''
+        ? 'matches'
+        : this.state.cachedMatches.some((d) => d.id === id)
+          ? 'cachedMatches'
+          : ''
 
       if (matchesKey) {
         this.__store.setState((s) => ({
