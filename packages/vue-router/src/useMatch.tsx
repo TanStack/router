@@ -70,57 +70,46 @@ export function useMatch<
 > {
   const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
 
-  // Store to track pending error for deferred throwing
-  const pendingError = Vue.ref<Error | null>(null)
-
-  // Select the match from router state
-  const matchSelection = useRouterState({
+  // Select the match from router state, returning match and whether to throw
+  const matchState = useRouterState({
     select: (state: any) => {
       const match = state.matches.find((d: any) =>
         opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
       )
 
       if (match === undefined) {
-        // During navigation transitions, check if the match exists in pendingMatches
-        const pendingMatch = state.pendingMatches?.find((d: any) =>
-          opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
-        )
+        // Determine if we should throw an error
+        const shouldThrowError =
+          !state.isLoading &&
+          !state.isTransitioning &&
+          (opts.shouldThrow ?? true)
 
-        // If there's a pending match or we're transitioning, return undefined without throwing
-        if (pendingMatch || state.isTransitioning) {
-          pendingError.value = null
-          return undefined
-        }
-
-        // Store the error to throw later if shouldThrow is enabled
-        if (opts.shouldThrow ?? true) {
-          pendingError.value = new Error(
-            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-          )
-        }
-
-        return undefined
+        return { match: undefined, shouldThrowError }
       }
 
-      pendingError.value = null
-      return opts.select ? opts.select(match) : match
+      return {
+        match: opts.select ? opts.select(match) : match,
+        shouldThrowError: false,
+      }
     },
-  } as any)
-
-  // Throw the error if we have one - this happens after the selector runs
-  // Using a computed so the error is thrown when the return value is accessed
-  const result = Vue.computed(() => {
-    // Check for pending error first
-    if (pendingError.value) {
-      throw pendingError.value
-    }
-    return matchSelection.value
   })
 
-  // Also immediately throw if there's already an error from initial render
-  // This ensures errors are thrown even if the returned ref is never accessed
-  if (pendingError.value) {
-    throw pendingError.value
+  // Computed that throws when appropriate
+  const result = Vue.computed(() => {
+    const state = matchState.value
+    if (state.shouldThrowError) {
+      throw new Error(
+        `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      )
+    }
+    return state.match
+  })
+
+  // Also immediately check for initial render throw
+  if (matchState.value.shouldThrowError) {
+    throw new Error(
+      `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+    )
   }
 
   return result as any

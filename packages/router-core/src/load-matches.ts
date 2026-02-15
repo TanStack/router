@@ -54,6 +54,12 @@ const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
 /**
  * Builds the accumulated context from router options and all matches up to (and optionally including) the given index.
  * Merges __routeContext and __beforeLoadContext from each match.
+ *
+ * Note: We use inner.matches directly (which is __pendingMatches during loading)
+ * rather than looking up via router.getMatch() to ensure we always get the latest
+ * updates from updateMatch during the loading phase. This is critical because
+ * __matchesById might be rebuilt by other operations (e.g., onReady commit)
+ * which could cause timing issues in SPA mode.
  */
 const buildMatchContext = (
   inner: InnerLoadContext,
@@ -65,11 +71,9 @@ const buildMatchContext = (
   }
   const end = includeCurrentMatch ? index : index - 1
   for (let i = 0; i <= end; i++) {
-    const innerMatch = inner.matches[i]
-    if (!innerMatch) continue
-    const m = inner.router.getMatch(innerMatch.id)
-    if (!m) continue
-    Object.assign(context, m.__routeContext, m.__beforeLoadContext)
+    const match = inner.matches[i]
+    if (!match) continue
+    Object.assign(context, match.__routeContext, match.__beforeLoadContext)
   }
   return context
 }
@@ -498,16 +502,16 @@ const executeBeforeLoad = (
       handleSerialError(inner, index, beforeLoadContext, 'BEFORE_LOAD')
     }
 
-    batch(() => {
-      pending()
-      // Only store __beforeLoadContext here, don't update context yet
-      // Context will be updated in loadRouteMatch after loader completes
-      inner.updateMatch(matchId, (prev) => ({
-        ...prev,
-        __beforeLoadContext: beforeLoadContext,
-      }))
-      resolve()
-    })
+    // Execute the update synchronously to ensure the match is updated
+    // before the next beforeLoad runs. We avoid batch() here because
+    // batching reactive notifications can cause timing issues where
+    // the child route's beforeLoad runs before the parent's context is available.
+    pending()
+    inner.updateMatch(matchId, (prev) => ({
+      ...prev,
+      __beforeLoadContext: beforeLoadContext,
+    }))
+    resolve()
   }
 
   let beforeLoadContext
@@ -611,8 +615,10 @@ const getLoaderContext = (
   route: AnyRoute,
 ): LoaderFnContext => {
   const parentMatchPromise = inner.matchPromises[index - 1] as any
-  const { params, loaderDeps, abortController, cause } =
-    inner.router.getMatch(matchId)!
+  // Use inner.matches[index] directly to ensure we get the latest updates
+  // from the pending matches array during loading
+  const match = inner.matches[index]!
+  const { params, loaderDeps, abortController, cause } = match
 
   const context = buildMatchContext(inner, index)
 
@@ -906,8 +912,36 @@ export async function loadMatches(arg: {
   updateMatch: UpdateMatchFn
   sync?: boolean
 }): Promise<Array<MakeRouteMatch>> {
+  // Create a local matches index for O(1) lookup during loading
+  // This is necessary because the router's __pendingMatchesIndex may be cleared
+  // by other operations (like transitions or navigation) during async loading
+  const matchesIndex = new Map<string, number>()
+  arg.matches.forEach((match, i) => {
+    matchesIndex.set(match.id, i)
+  })
+
+  // Save the original updateMatch before wrapping
+  const originalUpdateMatch = arg.updateMatch
+
+  // Wrap updateMatch to update the local matches array directly
+  // This ensures updates are applied even if __pendingMatches is cleared
+  const localUpdateMatch: UpdateMatchFn = (id, updater) => {
+    const index = matchesIndex.get(id)
+    if (index !== undefined) {
+      const prev = arg.matches[index]!
+      const next = updater(prev)
+      if (next !== prev) {
+        arg.matches[index] = next
+      }
+    }
+    // Also call the original updateMatch to keep __matchesById in sync
+    // and handle any other side effects
+    originalUpdateMatch(id, updater)
+  }
+
   const inner: InnerLoadContext = Object.assign(arg, {
     matchPromises: [],
+    updateMatch: localUpdateMatch,
   })
 
   // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
