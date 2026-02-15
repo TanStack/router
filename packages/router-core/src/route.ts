@@ -693,7 +693,8 @@ export interface Route<
       TLoaderDeps,
       TRouterContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      TRegister
     >,
   ) => this
   lazy: RouteLazyFn<
@@ -854,7 +855,8 @@ export type RouteOptions<
     NoInfer<TLoaderDeps>,
     NoInfer<TRouterContext>,
     NoInfer<TRouteContextFn>,
-    NoInfer<TBeforeLoadFn>
+    NoInfer<TBeforeLoadFn>,
+    NoInfer<TRegister>
   >
 
 export type RouteContextFn<
@@ -1140,6 +1142,7 @@ export interface BeforeLoadContextOptions<
 }
 
 type AssetFnContextOptions<
+  in out TRegister,
   in out TRouteId,
   in out TFullPath,
   in out TParentRoute extends AnyRoute,
@@ -1154,22 +1157,7 @@ type AssetFnContextOptions<
   ssr?: {
     nonce?: string
   }
-  matches: Array<
-    RouteMatch<
-      TRouteId,
-      TFullPath,
-      ResolveAllParamsFromParent<TParentRoute, TParams>,
-      ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
-      ResolveLoaderData<TLoaderFn>,
-      ResolveAllContext<
-        TParentRoute,
-        TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn
-      >,
-      TLoaderDeps
-    >
-  >
+  matches: InferAssetFnMatches<TRegister, TRouteId>
   match: RouteMatch<
     TRouteId,
     TFullPath,
@@ -1187,6 +1175,89 @@ type AssetFnContextOptions<
   params: ResolveAllParamsFromParent<TParentRoute, TParams>
   loaderData?: ResolveLoaderData<TLoaderFn>
 }
+
+type RegisteredRouterRouteTree<TRegister> =
+  RegisteredRouter<TRegister> extends {
+    routeTree: infer TRouteTree
+  }
+    ? TRouteTree extends AnyRoute
+      ? TRouteTree
+      : AnyRoute
+    : AnyRoute
+
+/**
+ * Look up a route by ID from a union of parsed routes.
+ */
+type LookupRoute<TAllRoutes extends AnyRoute, TId extends string> = Extract<
+  TAllRoutes,
+  { types: { id: TId } }
+>
+
+/**
+ * Build a tuple of ancestor matches from a route up to the root.
+ * Walks via parentRoute['types']['id'] and resolves each ancestor
+ * from the concrete ParseRoute union (not the pre-addChildren ref).
+ *
+ * Result: [RootMatch, ..., ParentMatch, SelfMatch]
+ */
+type BuildAncestorTuple<
+  TAllRoutes extends AnyRoute,
+  TRoute extends AnyRoute,
+> = TRoute['types']['id'] extends RootRouteId
+  ? [MakeRouteMatchFromRoute<TRoute>]
+  : TRoute['types']['parentRoute'] extends infer TParent extends AnyRoute
+    ? TParent['types']['id'] extends infer TParentId extends string
+      ? LookupRoute<TAllRoutes, TParentId> extends infer TConcreteParent extends
+          AnyRoute
+        ? [
+            ...BuildAncestorTuple<TAllRoutes, TConcreteParent>,
+            MakeRouteMatchFromRoute<TRoute>,
+          ]
+        : [MakeRouteMatchFromRoute<TRoute>]
+      : [MakeRouteMatchFromRoute<TRoute>]
+    : [MakeRouteMatchFromRoute<TRoute>]
+
+/**
+ * Check if TDescendantId is a direct or indirect child of TRouteId.
+ */
+type IsDescendant<
+  TRouteId extends string,
+  TDescendantId extends string,
+> = TDescendantId extends `${TRouteId}/${string}`
+  ? true
+  : TRouteId extends RootRouteId
+    ? TDescendantId extends RootRouteId
+      ? false
+      : true
+    : false
+
+/**
+ * From a union of all routes, extract those that are descendants of TRouteId
+ * (not including the route itself), and produce a match for each.
+ */
+type DescendantMatchesUnion<
+  TAllRoutes extends AnyRoute,
+  TRouteId extends string,
+> = TAllRoutes extends any
+  ? IsDescendant<TRouteId, TAllRoutes['types']['id']> extends true
+    ? MakeRouteMatchFromRoute<TAllRoutes>
+    : never
+  : never
+
+export type InferAssetFnMatches<TRegister, TRouteId> =
+  RegisteredRouterRouteTree<TRegister> extends infer TTree extends AnyRoute
+    ? TRouteId extends string
+      ? ParseRoute<TTree> extends infer TAllRoutes extends AnyRoute
+        ? LookupRoute<TAllRoutes, TRouteId> extends infer TRoute extends
+            AnyRoute
+          ? [
+              ...BuildAncestorTuple<TAllRoutes, TRoute>,
+              ...Array<DescendantMatchesUnion<TAllRoutes, TRouteId>>,
+            ]
+          : never
+        : never
+      : never
+    : never
 
 export interface DefaultUpdatableRouteOptionsExtensions {
   component?: unknown
@@ -1208,6 +1279,7 @@ export interface UpdatableRouteOptions<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TBeforeLoadFn,
+  in out TRegister = Register,
 >
   extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
   /**
@@ -1333,6 +1405,7 @@ export interface UpdatableRouteOptions<
   ) => void
   headers?: (
     ctx: AssetFnContextOptions<
+      TRegister,
       TRouteId,
       TFullPath,
       TParentRoute,
@@ -1347,6 +1420,7 @@ export interface UpdatableRouteOptions<
   ) => Awaitable<Record<string, string> | undefined>
   head?: (
     ctx: AssetFnContextOptions<
+      TRegister,
       TRouteId,
       TFullPath,
       TParentRoute,
@@ -1366,6 +1440,7 @@ export interface UpdatableRouteOptions<
   }>
   scripts?: (
     ctx: AssetFnContextOptions<
+      TRegister,
       TRouteId,
       TFullPath,
       TParentRoute,
@@ -1894,7 +1969,8 @@ export class BaseRoute<
       TLoaderDeps,
       TRouterContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      TRegister
     >,
   ): this => {
     Object.assign(this.options, options)
