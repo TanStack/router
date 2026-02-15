@@ -1233,30 +1233,23 @@ type MapIdTupleToMatches<
   : []
 
 /**
- * Check if TDescendantId is a direct or indirect child of TRouteId.
+ * Compute descendant route IDs from the route ID union.
+ *
+ * This distributes over a string union (RouteIds) instead of a route-object union,
+ * which is typically cheaper for the type checker.
  */
-type IsDescendant<
+type DescendantRouteIds<
+  TRouteTree extends AnyRoute,
   TRouteId extends string,
-  TDescendantId extends string,
-> = TDescendantId extends `${TRouteId}/${string}`
-  ? true
-  : TRouteId extends RootRouteId
-    ? TDescendantId extends RootRouteId
-      ? false
-      : true
-    : false
+> = TRouteId extends RootRouteId
+  ? Exclude<RouteIds<TRouteTree>, RootRouteId>
+  : Extract<RouteIds<TRouteTree>, `${TRouteId}/${string}`>
 
-/**
- * From a union of all routes, extract those that are descendants of TRouteId
- * (not including the route itself), and produce a match for each.
- */
-type DescendantMatchesUnion<
-  TAllRoutes extends AnyRoute,
-  TRouteId extends string,
-> = TAllRoutes extends any
-  ? IsDescendant<TRouteId, TAllRoutes['types']['id']> extends true
-    ? MakeRouteMatchFromRoute<TAllRoutes>
-    : never
+type DescendantMatchesById<
+  TRouteTree extends AnyRoute,
+  TIds,
+> = TIds extends string
+  ? MakeRouteMatchFromRoute<RouteById<TRouteTree, TIds>>
   : never
 
 /**
@@ -1266,8 +1259,10 @@ type DescendantMatchesUnion<
  *
  * Performance: Ancestor tuple is built by string-splitting the route ID (O(D))
  * then looking up each ancestor via RouteById (O(1) cached mapped-type access).
- * Descendants use a single O(N) distributive pass over ParseRoute.
- * Total cost per route: O(D + N), where D = nesting depth, N = total routes.
+ * Descendants distribute over RouteIds (string union) and map IDs to matches via
+ * RouteById (cached mapped-type access).
+ * Total cost per route: O(D + Nd), where D = nesting depth, Nd = number of
+ * descendant IDs in the route tree.
  *
  * Note on lazy evaluation: UpdatableRouteOptions uses `in out` variance on
  * TRegister, which forces TypeScript to fully evaluate InferAssetFnMatches
@@ -1281,12 +1276,7 @@ export type InferAssetFnMatches<TRegister, TRouteId> =
       ? [
           ...MapIdTupleToMatches<TTree, AncestorIdTuple<TRouteId>>,
           ...Array<
-            DescendantMatchesUnion<
-              ParseRoute<TTree> extends infer TAllRoutes extends AnyRoute
-                ? TAllRoutes
-                : never,
-              TRouteId
-            >
+            DescendantMatchesById<TTree, DescendantRouteIds<TTree, TRouteId>>
           >,
         ]
       : never
