@@ -2601,9 +2601,7 @@ export class RouterCore<
       if (this.state.matches.some((d) => d.id === id)) {
         this.__store.setState((s) => ({
           ...s,
-          matches: s.matches.map((d) =>
-            d.id === id ? updater(d) : d,
-          ),
+          matches: s.matches.map((d) => (d.id === id ? updater(d) : d)),
         }))
         return
       }
