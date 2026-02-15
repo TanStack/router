@@ -2589,7 +2589,11 @@ export class RouterCore<
 
   updateMatch: UpdateMatchFn = (id, updater) => {
     this.startTransition(() => {
-      if (this.__storeDevtoolsMatches.state.pendingMatches?.some((d) => d.id === id)) {
+      if (
+        this.__storeDevtoolsMatches.state.pendingMatches?.some(
+          (d) => d.id === id,
+        )
+      ) {
         this.__storeDevtoolsMatches.setState((s) => ({
           ...s,
           pendingMatches: s.pendingMatches?.map((d) =>
@@ -2607,7 +2611,9 @@ export class RouterCore<
         return
       }
 
-      if (this.__storeDevtoolsMatches.state.cachedMatches.some((d) => d.id === id)) {
+      if (
+        this.__storeDevtoolsMatches.state.cachedMatches.some((d) => d.id === id)
+      ) {
         this.__storeDevtoolsMatches.setState((s) => ({
           ...s,
           cachedMatches: filterRedirectedMatches(
@@ -2726,7 +2732,9 @@ export class RouterCore<
       this.__storeDevtoolsMatches.setState((s) => ({
         ...s,
         cachedMatches: filterRedirectedMatches(
-          s.cachedMatches.filter((m) => !filter(m as MakeRouteMatchUnion<this>)),
+          s.cachedMatches.filter(
+            (m) => !filter(m as MakeRouteMatchUnion<this>),
+          ),
         ),
       }))
     } else {
@@ -2783,9 +2791,7 @@ export class RouterCore<
       [
         ...this.state.matches,
         ...(this.__storeDevtoolsMatches.state.pendingMatches ?? []),
-      ].map(
-        (d) => d.id,
-      ),
+      ].map((d) => d.id),
     )
 
     const loadedMatchIds = new Set([

@@ -285,16 +285,19 @@ export const BaseTanStackRouterDevtoolsPanel =
       '',
     )
 
-    const [devtoolsMatches, setDevtoolsMatches] = createSignal<DevtoolsMatchesState>({
-      pendingMatches: [],
-      cachedMatches: [],
-    })
+    const [devtoolsMatches, setDevtoolsMatches] =
+      createSignal<DevtoolsMatchesState>({
+        pendingMatches: [],
+        cachedMatches: [],
+      })
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
     createEffect(() => {
       const devtoolsMatchesStore = (router() as any).__storeDevtoolsMatches as {
         state: DevtoolsMatchesState
-        subscribe: (listener: (state: DevtoolsMatchesState) => void) => () => void
+        subscribe: (
+          listener: (state: DevtoolsMatchesState) => void,
+        ) => () => void
       }
 
       invariant(
