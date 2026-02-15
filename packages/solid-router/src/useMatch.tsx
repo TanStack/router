@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
+import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { dummyMatchContext, matchContext } from './matchContext'
 import type {
@@ -69,6 +70,7 @@ export function useMatch<
 ): Solid.Accessor<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
+  const router = useRouter<TRouter>()
   const nearestMatchId = Solid.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
@@ -84,14 +86,17 @@ export function useMatch<
       )
 
       if (match === undefined) {
-        // During navigation transitions, check if the match exists in pendingMatches
-        const pendingMatch = state.pendingMatches?.find((d: any) =>
-          opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
-        )
+        const hasPendingMatch =
+          state.status === 'pending' &&
+          router.matchRoutes(router.latestLocation).some((d: any) =>
+            opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
+          )
 
         // Determine if we should throw an error
         const shouldThrowError =
-          !pendingMatch && !state.isTransitioning && (opts.shouldThrow ?? true)
+          !hasPendingMatch &&
+          !state.isTransitioning &&
+          (opts.shouldThrow ?? true)
 
         return { match: undefined, shouldThrowError }
       }

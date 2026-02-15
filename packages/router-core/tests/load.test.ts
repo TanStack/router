@@ -84,8 +84,9 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     const navigation = router.navigate({ to: '/foo' })
     expect(beforeLoad).toHaveBeenCalledTimes(1)
-    expect(router.state.pendingMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
+    expect(router.state.status).toBe('pending')
+    expect(router.getMatch('/foo/foo')).toEqual(
+      expect.objectContaining({ id: '/foo/foo' }),
     )
     await navigation
     expect(router.state.location.pathname).toBe('/foo')
@@ -266,8 +267,9 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     const navigation = router.navigate({ to: '/foo' })
     expect(loader).toHaveBeenCalledTimes(1)
-    expect(router.state.pendingMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
+    expect(router.state.status).toBe('pending')
+    expect(router.getMatch('/foo/foo')).toEqual(
+      expect.objectContaining({ id: '/foo/foo' }),
     )
     await navigation
     expect(router.state.location.pathname).toBe('/foo')
@@ -566,11 +568,7 @@ describe('params.parse notFound', () => {
     })
 
     await router.load()
-
-    const match = router.state.pendingMatches?.find(
-      (m) => m.routeId === testRoute.id,
-    )
-
+    const match = router.getMatch(testRoute.id + '/test/invalid')
     expect(match?.status).toBe('notFound')
   })
 
