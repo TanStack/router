@@ -142,237 +142,128 @@
     },
     {
       "label": "Guides",
-      "children": [],
+      "children": [
+        {
+          "label": "Code Splitting",
+          "to": "guide/code-splitting"
+        },
+        {
+          "label": "Automatic Code Splitting",
+          "to": "guide/automatic-code-splitting"
+        },
+        {
+          "label": "Creating a Router",
+          "to": "guide/creating-a-router"
+        },
+        {
+          "label": "Outlets",
+          "to": "guide/outlets"
+        },
+        {
+          "label": "Navigation",
+          "to": "guide/navigation"
+        },
+        {
+          "label": "Path Params",
+          "to": "guide/path-params"
+        },
+        {
+          "label": "Search Params",
+          "to": "guide/search-params"
+        },
+        {
+          "label": "Link Options",
+          "to": "guide/link-options"
+        },
+        {
+          "label": "Custom Links",
+          "to": "guide/custom-link"
+        },
+        {
+          "label": "Data Loading",
+          "to": "guide/data-loading"
+        },
+        {
+          "label": "Deferred Data Loading",
+          "to": "guide/deferred-data-loading"
+        },
+        {
+          "label": "External Data Loading",
+          "to": "guide/external-data-loading"
+        },
+        {
+          "label": "Data Mutations",
+          "to": "guide/data-mutations"
+        },
+        {
+          "label": "Type Safety",
+          "to": "guide/type-safety"
+        },
+        {
+          "label": "Type Utilities",
+          "to": "guide/type-utilities"
+        },
+        {
+          "label": "Preloading",
+          "to": "guide/preloading"
+        },
+        {
+          "label": "Document Head Management",
+          "to": "guide/document-head-management"
+        },
+        {
+          "label": "Route Masking",
+          "to": "guide/route-masking"
+        },
+        {
+          "label": "Navigation Blocking",
+          "to": "guide/navigation-blocking"
+        },
+        {
+          "label": "Custom Search Param Serialization",
+          "to": "guide/custom-search-param-serialization"
+        },
+        {
+          "label": "History Types",
+          "to": "guide/history-types"
+        },
+        {
+          "label": "Router Context",
+          "to": "guide/router-context"
+        },
+        {
+          "label": "Not Found Errors",
+          "to": "guide/not-found-errors"
+        },
+        {
+          "label": "Authenticated Routes",
+          "to": "guide/authenticated-routes"
+        },
+        {
+          "label": "Scroll Restoration",
+          "to": "guide/scroll-restoration"
+        },
+        {
+          "label": "Static Route Data",
+          "to": "guide/static-route-data"
+        },
+        {
+          "label": "SSR",
+          "to": "guide/ssr"
+        },
+        {
+          "label": "Render Optimizations",
+          "to": "guide/render-optimizations"
+        }
+      ],
       "frameworks": [
         {
           "label": "react",
-          "children": [
-            {
-              "label": "Code Splitting",
-              "to": "framework/react/guide/code-splitting"
-            },
-            {
-              "label": "Automatic Code Splitting",
-              "to": "framework/react/guide/automatic-code-splitting"
-            },
-            {
-              "label": "Creating a Router",
-              "to": "framework/react/guide/creating-a-router"
-            },
-            {
-              "label": "Outlets",
-              "to": "framework/react/guide/outlets"
-            },
-            {
-              "label": "Navigation",
-              "to": "framework/react/guide/navigation"
-            },
-            {
-              "label": "Path Params",
-              "to": "framework/react/guide/path-params"
-            },
-            {
-              "label": "Search Params",
-              "to": "framework/react/guide/search-params"
-            },
-            {
-              "label": "Link Options",
-              "to": "framework/react/guide/link-options"
-            },
-            {
-              "label": "Custom Links",
-              "to": "framework/react/guide/custom-link"
-            },
-            {
-              "label": "Data Loading",
-              "to": "framework/react/guide/data-loading"
-            },
-            {
-              "label": "Deferred Data Loading",
-              "to": "framework/react/guide/deferred-data-loading"
-            },
-            {
-              "label": "External Data Loading",
-              "to": "framework/react/guide/external-data-loading"
-            },
-            {
-              "label": "Data Mutations",
-              "to": "framework/react/guide/data-mutations"
-            },
-            {
-              "label": "Type Safety",
-              "to": "framework/react/guide/type-safety"
-            },
-            {
-              "label": "Type Utilities",
-              "to": "framework/react/guide/type-utilities"
-            },
-            {
-              "label": "Preloading",
-              "to": "framework/react/guide/preloading"
-            },
-            {
-              "label": "Document Head Management",
-              "to": "framework/react/guide/document-head-management"
-            },
-            {
-              "label": "Route Masking",
-              "to": "framework/react/guide/route-masking"
-            },
-            {
-              "label": "Navigation Blocking",
-              "to": "framework/react/guide/navigation-blocking"
-            },
-            {
-              "label": "Custom Search Param Serialization",
-              "to": "framework/react/guide/custom-search-param-serialization"
-            },
-            {
-              "label": "History Types",
-              "to": "framework/react/guide/history-types"
-            },
-            {
-              "label": "Router Context",
-              "to": "framework/react/guide/router-context"
-            },
-            {
-              "label": "Not Found Errors",
-              "to": "framework/react/guide/not-found-errors"
-            },
-            {
-              "label": "Authenticated Routes",
-              "to": "framework/react/guide/authenticated-routes"
-            },
-            {
-              "label": "Scroll Restoration",
-              "to": "framework/react/guide/scroll-restoration"
-            },
-            {
-              "label": "Static Route Data",
-              "to": "framework/react/guide/static-route-data"
-            },
-            {
-              "label": "SSR",
-              "to": "framework/react/guide/ssr"
-            },
-            {
-              "label": "Render Optimizations",
-              "to": "framework/react/guide/render-optimizations"
-            }
-          ]
+          "children": []
         },
         {
           "label": "solid",
-          "children": [
-            {
-              "label": "Code Splitting",
-              "to": "framework/solid/guide/code-splitting"
-            },
-            {
-              "label": "Automatic Code Splitting",
-              "to": "framework/solid/guide/automatic-code-splitting"
-            },
-            {
-              "label": "Creating a Router",
-              "to": "framework/solid/guide/creating-a-router"
-            },
-            {
-              "label": "Outlets",
-              "to": "framework/solid/guide/outlets"
-            },
-            {
-              "label": "Navigation",
-              "to": "framework/solid/guide/navigation"
-            },
-            {
-              "label": "Path Params",
-              "to": "framework/solid/guide/path-params"
-            },
-            {
-              "label": "Search Params",
-              "to": "framework/solid/guide/search-params"
-            },
-            {
-              "label": "Link Options",
-              "to": "framework/solid/guide/link-options"
-            },
-            {
-              "label": "Custom Links",
-              "to": "framework/solid/guide/custom-link"
-            },
-            {
-              "label": "Data Loading",
-              "to": "framework/solid/guide/data-loading"
-            },
-            {
-              "label": "Deferred Data Loading",
-              "to": "framework/solid/guide/deferred-data-loading"
-            },
-            {
-              "label": "External Data Loading",
-              "to": "framework/solid/guide/external-data-loading"
-            },
-            {
-              "label": "Data Mutations",
-              "to": "framework/solid/guide/data-mutations"
-            },
-            {
-              "label": "Type Safety",
-              "to": "framework/solid/guide/type-safety"
-            },
-            {
-              "label": "Type Utilities",
-              "to": "framework/solid/guide/type-utilities"
-            },
-            {
-              "label": "Preloading",
-              "to": "framework/solid/guide/preloading"
-            },
-            {
-              "label": "Document Head Management",
-              "to": "framework/solid/guide/document-head-management"
-            },
-            {
-              "label": "Route Masking",
-              "to": "framework/solid/guide/route-masking"
-            },
-            {
-              "label": "Navigation Blocking",
-              "to": "framework/solid/guide/navigation-blocking"
-            },
-            {
-              "label": "Custom Search Param Serialization",
-              "to": "framework/solid/guide/custom-search-param-serialization"
-            },
-            {
-              "label": "History Types",
-              "to": "framework/solid/guide/history-types"
-            },
-            {
-              "label": "Router Context",
-              "to": "framework/solid/guide/router-context"
-            },
-            {
-              "label": "Not Found Errors",
-              "to": "framework/solid/guide/not-found-errors"
-            },
-            {
-              "label": "Authenticated Routes",
-              "to": "framework/solid/guide/authenticated-routes"
-            },
-            {
-              "label": "Scroll Restoration",
-              "to": "framework/solid/guide/scroll-restoration"
-            },
-            {
-              "label": "Static Route Data",
-              "to": "framework/solid/guide/static-route-data"
-            },
-            {
-              "label": "SSR",
-              "to": "framework/solid/guide/ssr"
-            }
-          ]
+          "children": []
         }
       ]
     },

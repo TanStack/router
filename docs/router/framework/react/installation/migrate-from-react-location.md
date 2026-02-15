@@ -249,19 +249,19 @@ You should now have successfully migrated your application from React Location t
 
 React Location also has a few more features that you might be using in your application. Here are some guides to help you migrate those features:
 
-- [Search params](../guide/search-params.md)
-- [Data loading](../guide/data-loading.md)
-- [History types](../guide/history-types.md)
-- [Wildcard / Splat / Catch-all routes](../routing/routing-concepts.md#splat--catch-all-routes)
-- [Authenticated routes](../guide/authenticated-routes.md)
+- [Search params](../../../guide/search-params.md)
+- [Data loading](../../../guide/data-loading.md)
+- [History types](../../../guide/history-types.md)
+- [Wildcard / Splat / Catch-all routes](../../../routing/routing-concepts.md#splat--catch-all-routes)
+- [Authenticated routes](../../../guide/authenticated-routes.md)
 
 TanStack Router also has a few more features that you might want to explore:
 
-- [Router Context](../guide/router-context.md)
-- [Preloading](../guide/preloading.md)
-- [Pathless Layout Routes](../routing/routing-concepts.md#pathless-layout-routes)
-- [Route masking](../guide/route-masking.md)
-- [SSR](../guide/ssr.md)
+- [Router Context](../../../guide/router-context.md)
+- [Preloading](../../../guide/preloading.md)
+- [Pathless Layout Routes](../../../routing/routing-concepts.md#pathless-layout-routes)
+- [Route masking](../../../guide/route-masking.md)
+- [SSR](../../../guide/ssr.md)
 - ... and more!
 
 If you are facing any issues or have any questions, feel free to ask for help in the TanStack Discord.
