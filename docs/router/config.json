@@ -431,16 +431,16 @@
     },
     {
       "label": "Integrations",
-      "children": [],
+      "children": [
+        {
+          "label": "TanStack Query",
+          "to": "integrations/query"
+        }
+      ],
       "frameworks": [
         {
           "label": "react",
-          "children": [
-            {
-              "label": "TanStack Query",
-              "to": "integrations/query"
-            }
-          ]
+          "children": []
         },
         {
           "label": "solid",
