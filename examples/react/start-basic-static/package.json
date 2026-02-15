@@ -10,10 +10,10 @@
     "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.159.14",
-    "@tanstack/react-router-devtools": "^1.159.14",
-    "@tanstack/react-start": "^1.159.14",
-    "@tanstack/start-static-server-functions": "^1.159.14",
+    "@tanstack/react-router": "^1.160.0",
+    "@tanstack/react-router-devtools": "^1.160.0",
+    "@tanstack/react-start": "^1.160.0",
+    "@tanstack/start-static-server-functions": "^1.160.0",
     "@vitejs/plugin-react": "^5.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
