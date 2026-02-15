@@ -124,6 +124,114 @@ describe('ssr scripts', () => {
   })
 })
 
+describe('scripts with async/defer attributes', () => {
+  test('server renders scripts with async/defer attributes in output', async () => {
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          src: 'script.js',
+          async: true,
+        },
+        {
+          src: 'script2.js',
+          defer: true,
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <div data-testid="server-root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => {
+        return <div data-testid="server-index">index</div>
+      },
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
+    })
+
+    await router.load()
+
+    // Use ReactDOMServer.renderToString to test actual server output
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+
+    expect(html).toMatch(/<script[^>]*src="script\.js"[^>]*async=""/)
+    expect(html).toMatch(/<script[^>]*src="script2\.js"[^>]*defer=""/)
+  })
+
+  test('client renders scripts without async/defer on placeholder', async () => {
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          src: 'script.js',
+          async: true,
+          crossOrigin: 'anonymous',
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <div data-testid="async-root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => {
+        return <div data-testid="async-index">index</div>
+      },
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: false, // Client-side rendering
+    })
+
+    await router.load()
+
+    const { container } = await act(() =>
+      render(<RouterProvider router={router} />),
+    )
+
+    expect(await screen.findByTestId('async-root')).toBeInTheDocument()
+
+    const script = container.querySelector('script')
+    expect(script).toBeTruthy()
+
+    // async and defer should NOT be on the client placeholder
+    expect(script?.hasAttribute('async')).toBe(false)
+    expect(script?.hasAttribute('defer')).toBe(false)
+
+    expect(script?.getAttribute('crossorigin')).toBe('anonymous')
+
+    expect(script?.hasAttribute('src')).toBe(false)
+  })
+})
+
 describe('ssr HeadContent', () => {
   test('derives title, dedupes meta, and allows non-loader HeadContent', async () => {
     const rootRoute = createRootRoute({
