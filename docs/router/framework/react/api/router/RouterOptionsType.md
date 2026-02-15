@@ -144,6 +144,41 @@ The `RouterOptions` type accepts an object with the following properties and met
 - When `true`, disables the global catch boundary that normally wraps all route matches. This allows unhandled errors to bubble up to top-level error handlers in the browser.
 - Useful for testing tools, error reporting services, and debugging scenarios.
 
+### `protocolAllowlist` property
+
+- Type: `Array<string>`
+- Optional
+- Defaults to `DEFAULT_PROTOCOL_ALLOWLIST` which includes:
+  - Web navigation: `http:`, `https:`
+  - Common browser-safe actions: `mailto:`, `tel:`
+- An array of URL protocols that are allowed in links, redirects, and navigation. Absolute URLs with protocols not in this list are rejected to prevent security vulnerabilities like XSS attacks.
+- This check is applied across router navigation APIs, including:
+  - `<Link to="...">`
+  - `navigate({ to: ... })` and `navigate({ href: ... })`
+  - `redirect({ to: ... })` and `redirect({ href: ... })`
+- Protocol entries must match `URL.protocol` format (lowercase with a trailing `:`), for example `blob:` or `data:`. If you configure `protocolAllowlist: ['blob']` (without `:`), links using `blob:` will still be blocked.
+
+**Example**
+
+```tsx
+import {
+  createRouter,
+  DEFAULT_PROTOCOL_ALLOWLIST,
+} from '@tanstack/react-router'
+
+// Use a custom allowlist (replaces the default)
+const router = createRouter({
+  routeTree,
+  protocolAllowlist: ['https:', 'mailto:'],
+})
+
+// Or extend the default allowlist
+const router = createRouter({
+  routeTree,
+  protocolAllowlist: [...DEFAULT_PROTOCOL_ALLOWLIST, 'ftp:'],
+})
+```
+
 ### `defaultViewTransition` property
 
 - Type: `boolean | ViewTransitionOptions`

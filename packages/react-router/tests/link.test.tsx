@@ -6613,3 +6613,66 @@ describe('encoded and unicode paths', () => {
     },
   )
 })
+
+describe('protocolAllowlist', () => {
+  const rootRoute = createRootRoute()
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => (
+      <>
+        <Link to="x-safari-https://example.com" />
+        <Link
+          to="intent://example.com#Intent;scheme=https;end"
+          reloadDocument
+        />
+      </>
+    ),
+  })
+
+  let consoleWarn = vi.fn()
+  beforeEach(() => {
+    consoleWarn = vi.fn()
+    vi.spyOn(console, 'warn').mockImplementation(consoleWarn)
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should work like normal links when protocolAllowlist is set', async () => {
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      protocolAllowlist: ['x-safari-https:', 'intent:'],
+    })
+    render(<RouterProvider router={router} />)
+    const links = await screen.findAllByRole('link')
+    expect(links[0]).toHaveAttribute('href', 'x-safari-https://example.com')
+    expect(links[1]).toHaveAttribute(
+      'href',
+      'intent://example.com#Intent;scheme=https;end',
+    )
+    expect(consoleWarn).not.toHaveBeenCalled()
+  })
+
+  it('should fallback to relative links when protocol is not in allowlist', async () => {
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      protocolAllowlist: [],
+    })
+    render(<RouterProvider router={router} />)
+    const links = await screen.findAllByRole('link')
+    expect(links[0]).toHaveAttribute('href', '/x-safari-https:/example.com')
+    expect(links[1]).toHaveAttribute(
+      'href',
+      '/intent:/example.com#Intent;scheme=https;end',
+    )
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Blocked Link with dangerous protocol: x-safari-https://example.com',
+    )
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Blocked Link with dangerous protocol: intent://example.com#Intent;scheme=https;end',
+    )
+  })
+})
