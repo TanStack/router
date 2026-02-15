@@ -93,17 +93,7 @@ This only gets worse as you begin to use more features of the router, such as ne
 
 What we found to be the best way to define your routes is to abstract the definition of the route configuration outside of the route-tree. Then stitch together your route configurations into a single cohesive route-tree that is then passed into the `createRouter` function.
 
-<!-- ::start:framework -->
-
-# React
-
-You can read more about [code-based routing](./framework/react/routing/code-based-routing.md) to see how to define your routes in this way.
-
-# Solid
-
-You can read more about [code-based routing](./framework/solid/routing/code-based-routing.md) to see how to define your routes in this way.
-
-<!-- ::end:framework -->
+You can read more about [code-based routing](./routing/code-based-routing.md) to see how to define your routes in this way.
 
 > [!TIP]
 > Finding Code-based routing to be a bit too cumbersome? See why [file-based routing](#why-is-file-based-routing-the-preferred-way-to-define-routes) is the preferred way to define your routes.
@@ -172,19 +162,8 @@ We went with **module declaration**, as it is what we found to be the most scala
 
 Something you'll notice (quite soon) in the TanStack Router documentation is that we push for **file-based routing** as the preferred method for defining your routes. This is because we've found that file-based routing is the most scalable and maintainable way to define your routes.
 
-<!-- ::start:framework -->
-
-# React
-
 > [!TIP]
-> Before you continue, it's important you have a good understanding of [code-based routing](./framework/react/routing/code-based-routing.md) and [file-based routing](./framework/react/routing/file-based-routing.md).
-
-# Solid
-
-> [!TIP]
-> Before you continue, it's important you have a good understanding of [code-based routing](./framework/solid/routing/code-based-routing.md) and [file-based routing](./framework/solid/routing/file-based-routing.md).
-
-<!-- ::end:framework -->
+> Before you continue, it's important you have a good understanding of [code-based routing](./routing/code-based-routing.md) and [file-based routing](./routing/file-based-routing.md).
 
 As mentioned in the beginning, TanStack Router was designed for complex applications that require a high degree of type-safety and maintainability. And to achieve this, the configuration of the router has been done in a precise way that allows TypeScript to infer the types of your routes as much as possible.
 
@@ -258,14 +237,4 @@ That's it! No need to worry about defining the `getParentRoute` function, stitch
 
 At no point does the TanStack Router Bundler Plugin take away your control over your route configurations. It's designed to be as flexible as possible, allowing you to define your routes in a way that suits your application whilst reducing the boilerplate and complexity of the route configuration.
 
-<!-- ::start:framework -->
-
-# React
-
-Check out the guides for [file-based routing](./framework/react/routing/file-based-routing.md) and [code-splitting](./framework/react/guide/code-splitting.md) for a more in-depth explanation of how they work in TanStack Router.
-
-# Solid
-
-Check out the guides for [file-based routing](./framework/solid/routing/file-based-routing.md) and [code-splitting](./framework/solid/guide/code-splitting.md) for a more in-depth explanation of how they work in TanStack Router.
-
-<!-- ::end:framework -->
+Check out the guides for [file-based routing](./routing/file-based-routing.md) and [code-splitting](./guide/code-splitting.md) for a more in-depth explanation of how they work in TanStack Router.

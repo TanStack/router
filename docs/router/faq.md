@@ -27,18 +27,7 @@ You should commit this file into git so that other developers can use it to buil
 ## Can I conditionally render the Root Route component?
 
 No, the root route is always rendered as it is the entry point of your application.
-
-<!-- ::start:framework -->
-
-# React
-
-If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](./framework/react/routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](./framework/react/routing/routing-concepts.md#pathless-layout-routes) to conditionally render the content.
-
-# Solid
-
-If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](./framework/solid/routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](./framework/solid/routing/routing-concepts.md#pathless-layout-routes) to conditionally render the content.
-
-<!-- ::end:framework -->
+If you need to conditionally render a route's component, this usually means that the page content needs to be different based on some condition (e.g. user authentication). For this use case, you should use a [Layout Route](./routing/routing-concepts.md#layout-routes) or a [Pathless Layout Route](./routing/routing-concepts.md#pathless-layout-routes) to conditionally render the content.
 
 You can restrict access to these routes using a conditional check in the `beforeLoad` function of the route.
 
