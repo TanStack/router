@@ -141,10 +141,13 @@ function RouteComp({
 }) {
   const styles = useStyles()
   const matches = createMemo(
-    () => routerState().pendingMatches || routerState().matches,
+    () =>
+      routerState().status === 'pending'
+        ? router().matchRoutes(router().latestLocation)
+        : routerState().matches,
   )
   const match = createMemo(() =>
-    routerState().matches.find((d) => d.routeId === route.id),
+    matches().find((d) => d.routeId === route.id),
   )
 
   const param = createMemo(() => {
@@ -279,6 +282,14 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
+    const pendingMatches = createMemo(() =>
+      routerState().status === 'pending'
+        ? router().matchRoutes(router().latestLocation)
+        : [],
+    )
+    const displayedMatches = createMemo(() =>
+      pendingMatches().length ? pendingMatches() : routerState().matches,
+    )
 
     createEffect(() => {
       const matches = routerState().matches
@@ -309,7 +320,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const activeMatch = createMemo(() => {
       const matches = [
-        ...(routerState().pendingMatches ?? []),
+        ...pendingMatches(),
         ...routerState().matches,
         ...routerState().cachedMatches,
       ]
@@ -521,10 +532,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </Match>
                 <Match when={currentTab() === 'matches'}>
                   <div>
-                    {(routerState().pendingMatches?.length
-                      ? routerState().pendingMatches
-                      : routerState().matches
-                    )?.map((match: any, _i: any) => {
+                    {displayedMatches().map((match: any, _i: any) => {
                       return (
                         <div
                           role="button"
@@ -679,9 +687,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {routerState().pendingMatches?.find(
-                      (d: any) => d.id === activeMatch()?.id,
-                    )
+                    {pendingMatches().find((d: any) => d.id === activeMatch()?.id)
                       ? 'Pending'
                       : routerState().matches.find(
                             (d: any) => d.id === activeMatch()?.id,
