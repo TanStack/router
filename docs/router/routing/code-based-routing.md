@@ -40,6 +40,10 @@ routes/
 
 And here is a summarized code-based version:
 
+<!-- ::start:framework -->
+
+# React
+
 ```tsx
 import { createRootRoute, createRoute } from '@tanstack/react-router'
 
@@ -110,6 +114,81 @@ const filesRoute = createRoute({
   path: 'files/$',
 })
 ```
+
+# Solid
+
+```tsx
+import { createRootRoute, createRoute } from '@tanstack/solid-router'
+
+const rootRoute = createRootRoute()
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+})
+
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'about',
+})
+
+const postsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'posts',
+})
+
+const postsIndexRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: '/',
+})
+
+const postRoute = createRoute({
+  getParentRoute: () => postsRoute,
+  path: '$postId',
+})
+
+const postEditorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'posts/$postId/edit',
+})
+
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'settings',
+})
+
+const profileRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: 'profile',
+})
+
+const notificationsRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: 'notifications',
+})
+
+const pathlessLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'pathlessLayout',
+})
+
+const pathlessLayoutARoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-a',
+})
+
+const pathlessLayoutBRoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-b',
+})
+
+const filesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'files/$',
+})
+```
+
+<!-- ::end:framework -->
 
 ## Anatomy of a Route
 
@@ -198,6 +277,10 @@ Creating a root route in code-based routing is thankfully the same as doing so i
 
 Unlike file-based routing however, you do not need to export the root route if you don't want to. It's certainly not recommended to build an entire route tree and application in a single file (although you can and we do this in the examples to demonstrate routing concepts in brevity).
 
+<!-- ::start:framework -->
+
+# React
+
 ```tsx
 // Standard root route
 import { createRootRoute } from '@tanstack/react-router'
@@ -213,6 +296,26 @@ export interface MyRouterContext {
 }
 const rootRoute = createRootRouteWithContext<MyRouterContext>()
 ```
+
+# Solid
+
+```tsx
+// Standard root route
+import { createRootRoute } from '@tanstack/solid-router'
+
+const rootRoute = createRootRoute()
+
+// Root route with Context
+import { createRootRouteWithContext } from '@tanstack/solid-router'
+import type { QueryClient } from '@tanstack/solid-query'
+
+export interface MyRouterContext {
+  queryClient: QueryClient
+}
+const rootRoute = createRootRouteWithContext<MyRouterContext>()
+```
+
+<!-- ::end:framework -->
 
 To learn more about Context in TanStack Router, see the [Router Context](../guide/router-context.md) guide.
 

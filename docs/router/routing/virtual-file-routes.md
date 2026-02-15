@@ -49,8 +49,11 @@ Virtual file routes can be configured either via:
 
 If you're using the `TanStackRouter` plugin for Vite/Rspack/Webpack, you can configure virtual file routes by passing the path of your routes file to the `virtualRoutesConfig` option when setting up the plugin:
 
-```tsx
-// vite.config.ts
+<!-- ::start:framework -->
+
+# React
+
+```tsx title="vite.config.ts"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -65,6 +68,26 @@ export default defineConfig({
   ],
 })
 ```
+
+# Solid
+
+```tsx title="vite.config.ts"
+import { defineConfig } from 'vite'
+import solid from 'vite-plugin-solid'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+
+export default defineConfig({
+  plugins: [
+    tanstackRouter({
+      target: 'solid',
+      virtualRouteConfig: './routes.ts',
+    }),
+    solid(),
+  ],
+})
+```
+
+<!-- ::end:framework -->
 
 Or, you choose to define the virtual routes directly in the configuration:
 
@@ -83,6 +106,48 @@ export default defineConfig({
   plugins: [tanstackRouter({ virtualRouteConfig: routes }), react()],
 })
 ```
+
+<!-- ::start:framework -->
+
+# React
+
+```tsx title="vite.config.ts"
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+
+const routes = rootRoute('root.tsx', [
+  // ... the rest of your virtual route tree
+])
+
+export default defineConfig({
+  plugins: [
+    tanstackRouter({ virtualRouteConfig: routes, target: 'react' }),
+    react(),
+  ],
+})
+```
+
+# Solid
+
+```tsx title="vite.config.ts"
+import { defineConfig } from 'vite'
+import solid from 'vite-plugin-solid'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+
+const routes = rootRoute('root.tsx', [
+  // ... the rest of your virtual route tree
+])
+
+export default defineConfig({
+  plugins: [
+    tanstackRouter({ virtualRouteConfig: routes, target: 'solid' }),
+    solid(),
+  ],
+})
+```
+
+<!-- ::end:framework -->
 
 ## Creating Virtual File Routes
 
