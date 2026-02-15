@@ -1,0 +1,74 @@
+{
+  "name": "@tanstack/preact-router",
+  "version": "1.160.0",
+  "description": "Modern and scalable routing for Preact applications",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/router.git",
+    "directory": "packages/preact-router"
+  },
+  "homepage": "https://tanstack.com/router",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "preact",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test": "pnpm run test:unit",
+    "test:eslint": "eslint",
+    "test:types": "tsc -p tsconfig.legacy.json",
+    "test:unit": "vitest",
+    "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
+    "build": "vite build"
+  },
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "development": "./dist/esm/index.dev.js",
+        "default": "./dist/esm/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
+  "dependencies": {
+    "@tanstack/history": "workspace:*",
+    "@tanstack/preact-store": "^0.10.2",
+    "@tanstack/router-core": "workspace:*",
+    "isbot": "^5.1.22",
+    "tiny-invariant": "^1.3.3",
+    "tiny-warning": "^1.0.3"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.4",
+    "@testing-library/preact": "^3.2.4",
+    "@testing-library/jest-dom": "^6.6.3",
+    "preact": "^10.25.0"
+  },
+  "peerDependencies": {
+    "preact": "^10.0.0"
+  }
+}
