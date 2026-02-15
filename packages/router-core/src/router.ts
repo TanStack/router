@@ -1856,11 +1856,20 @@ export class RouterCore<
       let prestringifiedParams: Record<string, unknown> | null = null
       if (targetRoute && Object.keys(nextParams).length > 0) {
         const routeBranch = buildRouteBranch<AnyRoute>(targetRoute)
-        if (
-          routeBranch.some(
-            (route) => route.options.skipRouteOnParseError?.params,
-          )
-        ) {
+        let hasParamsStringifyFn = false
+        let hasSkipRouteOnParseErrorDependantOnStringification = false
+        for (const route of routeBranch) {
+          if (route.options.params?.stringify ?? route.options.stringifyParams)
+            hasParamsStringifyFn = true
+          if (
+            hasParamsStringifyFn &&
+            route.options.skipRouteOnParseError?.params
+          ) {
+            hasSkipRouteOnParseErrorDependantOnStringification = true
+            break
+          }
+        }
+        if (hasSkipRouteOnParseErrorDependantOnStringification) {
           prestringifiedParams = { ...nextParams }
           for (const route of routeBranch) {
             const fn =
@@ -1889,7 +1898,7 @@ export class RouterCore<
       let destRoutes = destMatchResult.matchedRoutes
       if (
         !destMatchResult.foundRoute ||
-        destMatchResult.foundRoute.fullPath !== trimmedNextTo
+        !comparePaths(destMatchResult.foundRoute.fullPath, trimmedNextTo)
       ) {
         prestringifiedParams = null
       }
