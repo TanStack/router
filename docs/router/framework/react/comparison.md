@@ -1,5 +1,5 @@
 ---
-title: Comparison | TanStack Router & TanStack Start vs Next.js vs React Router / Remix
+title: Comparison | TanStack Router vs Next.js vs React Router
 toc: false
 ---
 
@@ -17,10 +17,10 @@ Feature/Capability Key:
 - 🔶 Possible, but requires custom code/implementation/casting
 - 🛑 Not officially supported
 
-|                                                | TanStack Router / Start                          | React Router DOM [_(Website)_][router]                | Next.JS [_(Website)_][nextjs]                         |
+|                                                | TanStack Router                                  | React Router [_(Website)_][react-router]              | Next.JS [_(Website)_][nextjs]                         |
 | ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
-| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-router]][gh-router]                        | [![][stars-nextjs]][gh-nextjs]                        |
-| Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | [![][bp-router]][bpl-router]                          | ❓                                                    |
+| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-react-router]][gh-react-router]            | [![][stars-nextjs]][gh-nextjs]                        |
+| Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | [![][bp-react-router]][bpl-react-router]              | ❓                                                    |
 | History, Memory & Hash Routers                 | ✅                                               | ✅                                                    | 🛑                                                    |
 | Nested / Layout Routes                         | ✅                                               | ✅                                                    | 🟡                                                    |
 | Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
@@ -77,20 +77,17 @@ Feature/Capability Key:
 | React Server Components                        | 🛑                                               | 🟡 (Experimental)                                     | ✅                                                    |
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
 
+[stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?style=flat&logo=github&color=%2310b981
+[gh-tanstack-router]: https://github.com/tanstack/router
 [bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router
 [bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router
-[gh-tanstack-router]: https://github.com/tanstack/router
-[stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
 [_]: _
-[router]: https://github.com/remix-run/react-router
-[bp-router]: https://badgen.net/bundlephobia/minzip/react-router
-[gh-router]: https://github.com/remix-run/react-router
-[stars-router]: https://img.shields.io/github/stars/remix-run/react-router?label=%F0%9F%8C%9F
-[bpl-router]: https://bundlephobia.com/result?p=react-router
-[bpl-history]: https://bundlephobia.com/result?p=history
+[react-router]: https://reactrouter.com
+[stars-react-router]: https://img.shields.io/github/stars/remix-run/react-router?style=flat&logo=github&color=%23F44250
+[gh-react-router]: https://github.com/remix-run/react-router
+[bp-react-router]: https://badgen.net/bundlephobia/minzip/react-router
+[bpl-react-router]: https://bundlephobia.com/result?p=react-router
 [_]: _
 [nextjs]: https://nextjs.org/docs/routing/introduction
-[bp-nextjs]: https://badgen.net/bundlephobia/minzip/next.js?label=All
+[stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?style=flat&logo=github&color=%23000
 [gh-nextjs]: https://github.com/vercel/next.js
-[stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?label=%F0%9F%8C%9F
-[bpl-nextjs]: https://bundlephobia.com/result?p=next
