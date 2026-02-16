@@ -5,6 +5,7 @@ import { useRouterState } from './useRouterState'
 import { dummyMatchContext, matchContext } from './matchContext'
 import type {
   AnyRouter,
+  InternalStoreState,
   MakeRouteMatch,
   MakeRouteMatchUnion,
   RegisteredRouter,
@@ -12,6 +13,9 @@ import type {
   ThrowConstraint,
   ThrowOrOptional,
 } from '@tanstack/router-core'
+import { replaceEqualDeep } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
+import { useStore } from '@tanstack/solid-store'
 
 export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,
@@ -70,43 +74,56 @@ export function useMatch<
 ): Solid.Accessor<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  const router = useRouter<TRouter>()
   const nearestMatchId = Solid.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
 
-  // Create a signal to track error state separately from the match
+  const pendingMatches = useInternalRouterState((state) => state.pendingMatches)
+
+  const routerMatchState = useRouterState({
+    select: (state) => ({
+      matches: state.matches,
+      isTransitioning: state.isTransitioning,
+      status: state.status,
+    }),
+  })
+
+  // Track error state separately from the selected match.
+  // This memo depends on both router stores and nearestMatchId.
   const matchState: Solid.Accessor<{
     match: any
     shouldThrowError: boolean
-  }> = useRouterState({
-    select: (state: any) => {
-      const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
-      )
+  }> = Solid.createMemo(() => {
+    const routerState = routerMatchState()
+    const matchId = nearestMatchId()
+    const match = routerState.matches.find((d: any) =>
+      opts.from ? opts.from === d.routeId : d.id === matchId,
+    )
+    const pendingMatchArray = pendingMatches()
 
-      if (match === undefined) {
-        // Determine if we should throw an error
-        const shouldThrowError =
-          !state.isTransitioning &&
-          (opts.shouldThrow ?? true) &&
-          // During navigation transitions, check if the match exists in pendingMatches
-          !(
-            state.status === 'pending' &&
-            router.internalStore.state.pendingMatches?.some((d) =>
-              opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
-            )
-          )
+    if (match === undefined) {
+      const hasPendingMatch =
+        routerState.status === 'pending' &&
+        pendingMatchArray?.some((d) =>
+          opts.from ? opts.from === d.routeId : d.id === matchId,
+        )
 
-        return { match: undefined, shouldThrowError }
-      }
+      const shouldThrowError =
+        !routerState.isTransitioning &&
+        (opts.shouldThrow ?? true) &&
+        !hasPendingMatch
 
       return {
-        match: opts.select ? opts.select(match) : match,
-        shouldThrowError: false,
+        match: undefined,
+        shouldThrowError,
       }
-    },
-  } as any)
+    }
+
+    return {
+      match: opts.select ? opts.select(match) : match,
+      shouldThrowError: false,
+    }
+  })
 
   // Use createEffect to throw errors outside the reactive selector context
   // This allows error boundaries to properly catch the errors
@@ -121,5 +138,22 @@ export function useMatch<
   })
 
   // Return an accessor that extracts just the match value
-  return Solid.createMemo(() => matchState().match) as any
+  return Solid.createMemo((prev) => replaceEqualDeep(prev, matchState().match))
+}
+
+function useInternalRouterState<TSelected>(
+  select: (state: InternalStoreState) => TSelected,
+): Solid.Accessor<TSelected> {
+  const router = useRouter()
+  // During SSR we render exactly once and do not need reactivity.
+  // Avoid subscribing to the store on the server since the server store
+  // implementation does not provide subscribe() semantics.
+  const _isServer = isServer ?? router.isServer
+  if (_isServer) {
+    const state = router.internalStore.state
+    const selected = select(state)
+    return () => selected
+  }
+
+  return useStore(router.internalStore, select)
 }
