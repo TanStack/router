@@ -83,15 +83,17 @@ export function useMatch<
       )
 
       if (match === undefined) {
-        // During navigation transitions, check if the match exists in pendingMatches
-        const hasPendingMatch =
-          state.status === 'pending' &&
-          router.internalStore.state.pendingMatches?.some((d) =>
-            opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
-          )
-
         // If there's a pending match or we're transitioning, return undefined without throwing
-        if (hasPendingMatch || state.isTransitioning) {
+        if (
+          state.isTransitioning ||
+          // During navigation transitions, check if the match exists in pendingMatches
+          (state.status === 'pending' &&
+            router.internalStore.state.pendingMatches?.some((d) =>
+              opts.from
+                ? opts.from === d.routeId
+                : d.id === nearestMatchId.value,
+            ))
+        ) {
           pendingError.value = null
           return undefined
         }
