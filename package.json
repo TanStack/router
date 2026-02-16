@@ -56,7 +56,7 @@
     "eslint-plugin-unused-imports": "^4.1.4",
     "jsdom": "^25.0.1",
     "markdown-link-extractor": "^4.0.3",
-    "nx": "22.3.3",
+    "nx": "22.5.1",
     "prettier": "^3.8.0",
     "publint": "^0.3.16",
     "react": "^19.2.3",
