@@ -2653,8 +2653,8 @@ export class RouterCore<
       TDehydrated
     >
   > = (opts) => {
-    const invalidate = <TMatch extends AnyRouteMatch>(d: TMatch): TMatch => {
-      if (opts?.filter?.(d as unknown as MakeRouteMatchUnion<this>) ?? true) {
+    const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
+      if (opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true) {
         return {
           ...d,
           invalid: true,
@@ -2663,7 +2663,7 @@ export class RouterCore<
           d.status === 'notFound'
             ? ({ status: 'pending', error: undefined } as const)
             : undefined),
-        } as TMatch
+        }
       }
       return d
     }
