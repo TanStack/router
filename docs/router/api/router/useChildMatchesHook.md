@@ -5,6 +5,9 @@ title: useChildMatches hook
 
 The `useChildMatches` hook returns all of the child [`RouteMatch`](./RouteMatchType.md) objects from the closest match down to the leaf-most match. **It does not include the current match, which can be obtained using the `useMatch` hook.**
 
+> [!IMPORTANT]
+> If the router has pending matches and they are showing their pending component fallbacks, an array of pending matches will be used instead of `router.state.matches`.
+
 ## useChildMatches options
 
 The `useChildMatches` hook accepts a single _optional_ argument, an `options` object.

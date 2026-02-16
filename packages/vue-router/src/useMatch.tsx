@@ -83,6 +83,7 @@ export function useMatch<
       )
 
       if (match === undefined) {
+        // During navigation transitions, check if the match exists in pendingMatches
         const hasPendingMatch =
           state.status === 'pending' &&
           router

@@ -26,9 +26,7 @@ If you previously used `router.state.pendingMatches`, use one of these patterns 
 
 - `router.state.status === 'pending'` to detect an in-flight navigation.
 - `router.state.isLoading` to detect active loading work.
-- `router.matchRoute(...)` with `{ pending: true }` when you need to match against the pending location.
-
-If you previously used `router.state.cachedMatches`, note that cached matches are now internal router state and are no longer exposed on `RouterState`.
+- `useStore(router.internalStore, (s) => s.pendingMatches)` when you need access to pending route matches.
 
 ### `status` property
 

@@ -1135,12 +1135,13 @@ export class RouterCore<
         pendingMatches: [],
         cachedMatches: [],
       }
-      this.internalStore =
-        (isServer ?? this.isServer)
-          ? (createServerStore(
-              initialDevtoolsMatchesState,
-            ) as Store<InternalStoreState>)
-          : new Store(initialDevtoolsMatchesState)
+      if (isServer ?? this.isServer) {
+        this.internalStore = createServerStore(
+          initialDevtoolsMatchesState,
+        ) as Store<InternalStoreState>
+      } else {
+        this.internalStore = new Store(initialDevtoolsMatchesState)
+      }
     }
 
     let needsLocationUpdate = false
@@ -2448,6 +2449,12 @@ export class RouterCore<
                     this.internalStore.setState((s) => ({
                       ...s,
                       pendingMatches: undefined,
+                      /**
+                       * When committing new matches, cache any exiting matches that are still usable.
+                       * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
+                       * deliberately excluded from `cachedMatches` so that subsequent invalidations
+                       * or reloads re-run their loaders instead of reusing the failed/not-found data.
+                       */
                       cachedMatches: filterRedirectedMatches([
                         ...s.cachedMatches,
                         ...exitingMatches.filter(
@@ -2671,7 +2678,7 @@ export class RouterCore<
     this.internalStore.setState((s) => ({
       ...s,
       pendingMatches: s.pendingMatches?.map(invalidate),
-      cachedMatches: filterRedirectedMatches(s.cachedMatches.map(invalidate)),
+      cachedMatches: s.cachedMatches.map(invalidate),
     }))
 
     this.__store.setState((s) => ({
@@ -2805,10 +2812,10 @@ export class RouterCore<
     // If the matches are already loaded, we need to add them to the cachedMatches
     this.internalStore.setState((s) => ({
       ...s,
-      cachedMatches: filterRedirectedMatches([
+      cachedMatches: [
         ...s.cachedMatches,
         ...matches.filter((match) => !loadedMatchIds.has(match.id)),
-      ]),
+      ],
     }))
 
     try {
