@@ -92,12 +92,16 @@ export function useMatch<
           (opts.shouldThrow ?? true) &&
           !(
             // During navigation transitions, check if the match exists in pendingMatches
-            state.status === 'pending' &&
-            router
-              .matchRoutes(router.latestLocation)
-              .some((d: any) =>
-                opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
-              )
+            (
+              state.status === 'pending' &&
+              router
+                .matchRoutes(router.latestLocation)
+                .some((d: any) =>
+                  opts.from
+                    ? opts.from === d.routeId
+                    : d.id === nearestMatchId(),
+                )
+            )
           )
 
         return { match: undefined, shouldThrowError }
