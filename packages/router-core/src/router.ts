@@ -537,6 +537,11 @@ export interface RouterState<
   redirect?: AnyRedirect
 }
 
+export interface InternalStoreState {
+  pendingMatches?: Array<AnyRouteMatch>
+  cachedMatches: Array<AnyRouteMatch>
+}
+
 export interface BuildNextOptions {
   to?: string | number | null
   params?: true | Updater<unknown>
@@ -912,11 +917,6 @@ type RouterStateStore<TState> = {
   setState: (updater: (prev: TState) => TState) => void
 }
 
-type DevtoolsMatchesState = {
-  pendingMatches?: Array<AnyRouteMatch>
-  cachedMatches: Array<AnyRouteMatch>
-}
-
 const filterRedirectedMatches = (matches: Array<AnyRouteMatch>) =>
   matches.filter((match) => match.status !== 'redirected')
 
@@ -954,10 +954,7 @@ export class RouterCore<
 
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
-  __storeDevtoolsMatches = new Store<DevtoolsMatchesState>({
-    pendingMatches: [],
-    cachedMatches: [],
-  })
+  internalStore!: Store<InternalStoreState>
   options!: PickAsRequired<
     RouterOptions<
       TRouteTree,
@@ -1131,6 +1128,19 @@ export class RouterCore<
 
         setupScrollRestoration(this)
       }
+    }
+
+    if (!this.internalStore) {
+      const initialDevtoolsMatchesState: InternalStoreState = {
+        pendingMatches: [],
+        cachedMatches: [],
+      }
+      this.internalStore =
+        (isServer ?? this.isServer)
+          ? (createServerStore(
+              initialDevtoolsMatchesState,
+            ) as Store<InternalStoreState>)
+          : new Store(initialDevtoolsMatchesState)
     }
 
     let needsLocationUpdate = false
@@ -1765,7 +1775,7 @@ export class RouterCore<
       (match) => match.isFetching === 'loader',
     )
     const matchesToCancelArray = new Set([
-      ...(this.__storeDevtoolsMatches.state.pendingMatches ?? []),
+      ...(this.internalStore.state.pendingMatches ?? []),
       ...currentPendingMatches,
       ...currentLoadingMatches,
     ])
@@ -2343,7 +2353,7 @@ export class RouterCore<
     // Match the routes
     const pendingMatches = this.matchRoutes(this.latestLocation)
     const pendingMatchIds = new Set(pendingMatches.map((match) => match.id))
-    this.__storeDevtoolsMatches.setState((s) => ({
+    this.internalStore.setState((s) => ({
       ...s,
       pendingMatches,
       cachedMatches: s.cachedMatches.filter(
@@ -2395,7 +2405,7 @@ export class RouterCore<
           await loadMatches({
             router: this,
             sync: opts?.sync,
-            matches: this.__storeDevtoolsMatches.state.pendingMatches ?? [],
+            matches: this.internalStore.state.pendingMatches ?? [],
             location: next,
             updateMatch: this.updateMatch,
             // eslint-disable-next-line @typescript-eslint/require-await
@@ -2415,8 +2425,7 @@ export class RouterCore<
                     this.__store.setState((s) => {
                       const previousMatches = s.matches
                       const newMatches =
-                        this.__storeDevtoolsMatches.state.pendingMatches ||
-                        s.matches
+                        this.internalStore.state.pendingMatches || s.matches
 
                       exitingMatches = previousMatches.filter(
                         (match) => !newMatches.some((d) => d.id === match.id),
@@ -2436,7 +2445,7 @@ export class RouterCore<
                         matches: newMatches,
                       }
                     })
-                    this.__storeDevtoolsMatches.setState((s) => ({
+                    this.internalStore.setState((s) => ({
                       ...s,
                       pendingMatches: undefined,
                       cachedMatches: filterRedirectedMatches([
@@ -2589,12 +2598,8 @@ export class RouterCore<
 
   updateMatch: UpdateMatchFn = (id, updater) => {
     this.startTransition(() => {
-      if (
-        this.__storeDevtoolsMatches.state.pendingMatches?.some(
-          (d) => d.id === id,
-        )
-      ) {
-        this.__storeDevtoolsMatches.setState((s) => ({
+      if (this.internalStore.state.pendingMatches?.some((d) => d.id === id)) {
+        this.internalStore.setState((s) => ({
           ...s,
           pendingMatches: s.pendingMatches?.map((d) =>
             d.id === id ? updater(d) : d,
@@ -2611,10 +2616,8 @@ export class RouterCore<
         return
       }
 
-      if (
-        this.__storeDevtoolsMatches.state.cachedMatches.some((d) => d.id === id)
-      ) {
-        this.__storeDevtoolsMatches.setState((s) => ({
+      if (this.internalStore.state.cachedMatches.some((d) => d.id === id)) {
+        this.internalStore.setState((s) => ({
           ...s,
           cachedMatches: filterRedirectedMatches(
             s.cachedMatches.map((d) => (d.id === id ? updater(d) : d)),
@@ -2627,8 +2630,8 @@ export class RouterCore<
   getMatch: GetMatchFn = (matchId: string): AnyRouteMatch | undefined => {
     const findFn = (d: { id: string }) => d.id === matchId
     return (
-      this.__storeDevtoolsMatches.state.cachedMatches.find(findFn) ??
-      this.__storeDevtoolsMatches.state.pendingMatches?.find(findFn) ??
+      this.internalStore.state.cachedMatches.find(findFn) ??
+      this.internalStore.state.pendingMatches?.find(findFn) ??
       this.state.matches.find(findFn)
     )
   }
@@ -2665,7 +2668,7 @@ export class RouterCore<
       return d
     }
 
-    this.__storeDevtoolsMatches.setState((s) => ({
+    this.internalStore.setState((s) => ({
       ...s,
       pendingMatches: s.pendingMatches?.map(invalidate),
       cachedMatches: filterRedirectedMatches(s.cachedMatches.map(invalidate)),
@@ -2729,7 +2732,7 @@ export class RouterCore<
   clearCache: ClearCacheFn<this> = (opts) => {
     const filter = opts?.filter
     if (filter !== undefined) {
-      this.__storeDevtoolsMatches.setState((s) => ({
+      this.internalStore.setState((s) => ({
         ...s,
         cachedMatches: filterRedirectedMatches(
           s.cachedMatches.filter(
@@ -2738,7 +2741,7 @@ export class RouterCore<
         ),
       }))
     } else {
-      this.__storeDevtoolsMatches.setState((s) => ({
+      this.internalStore.setState((s) => ({
         ...s,
         cachedMatches: [],
       }))
@@ -2790,17 +2793,17 @@ export class RouterCore<
     const activeMatchIds = new Set(
       [
         ...this.state.matches,
-        ...(this.__storeDevtoolsMatches.state.pendingMatches ?? []),
+        ...(this.internalStore.state.pendingMatches ?? []),
       ].map((d) => d.id),
     )
 
     const loadedMatchIds = new Set([
       ...activeMatchIds,
-      ...this.__storeDevtoolsMatches.state.cachedMatches.map((d) => d.id),
+      ...this.internalStore.state.cachedMatches.map((d) => d.id),
     ])
 
     // If the matches are already loaded, we need to add them to the cachedMatches
-    this.__storeDevtoolsMatches.setState((s) => ({
+    this.internalStore.setState((s) => ({
       ...s,
       cachedMatches: filterRedirectedMatches([
         ...s.cachedMatches,

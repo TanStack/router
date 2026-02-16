@@ -293,23 +293,15 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
     createEffect(() => {
-      const devtoolsMatchesStore = (router() as any).__storeDevtoolsMatches as {
-        state: DevtoolsMatchesState
-        subscribe: (
-          listener: (state: {
-            prevVal: DevtoolsMatchesState
-            currentVal: DevtoolsMatchesState
-          }) => void,
-        ) => () => void
-      }
+      const matchesStore = router().internalStore
 
       invariant(
-        devtoolsMatchesStore,
-        'No internal devtools store was found on the router instance.',
+        matchesStore,
+        'No internal store was found on the router instance.',
       )
 
-      setDevtoolsMatches(devtoolsMatchesStore.state)
-      const unsubscribe = devtoolsMatchesStore.subscribe((state) => {
+      setDevtoolsMatches(matchesStore.state)
+      const unsubscribe = matchesStore.subscribe((state) => {
         setDevtoolsMatches(state.currentVal)
       })
       onCleanup(unsubscribe)
@@ -395,7 +387,7 @@ export const BaseTanStackRouterDevtoolsPanel =
               typeof d[1] !== 'function' &&
               ![
                 '__store',
-                '__storeDevtoolsMatches',
+                'internalStore',
                 'basepath',
                 'injectedHtml',
                 'subscribers',

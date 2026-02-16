@@ -829,16 +829,16 @@ describe('internal devtools matches store', () => {
     await Promise.resolve()
 
     expect(
-      router.__storeDevtoolsMatches.state.pendingMatches?.some(
+      router.internalStore.state.pendingMatches?.some(
         (match) => match.routeId === '/bar',
       ),
     ).toBe(true)
 
     await navigation
 
-    expect(router.__storeDevtoolsMatches.state.pendingMatches).toBeUndefined()
+    expect(router.internalStore.state.pendingMatches).toBeUndefined()
     expect(
-      router.__storeDevtoolsMatches.state.cachedMatches.some(
+      router.internalStore.state.cachedMatches.some(
         (match) => match.routeId === '/foo',
       ),
     ).toBe(true)
@@ -863,14 +863,14 @@ describe('internal devtools matches store', () => {
     await router.preloadRoute({ to: '/foo' })
 
     expect(
-      router.__storeDevtoolsMatches.state.cachedMatches.some(
+      router.internalStore.state.cachedMatches.some(
         (match) => match.routeId === '/foo',
       ),
     ).toBe(true)
 
     router.clearCache()
 
-    expect(router.__storeDevtoolsMatches.state.cachedMatches).toEqual([])
+    expect(router.internalStore.state.cachedMatches).toEqual([])
   })
 
   test('invalidates cached entries via invalidate(filter)', async () => {
@@ -896,7 +896,7 @@ describe('internal devtools matches store', () => {
       forcePending: true,
     })
 
-    expect(router.__storeDevtoolsMatches.state.cachedMatches).toEqual(
+    expect(router.internalStore.state.cachedMatches).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           routeId: '/foo',
