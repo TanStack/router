@@ -1,4 +1,7 @@
 import * as Solid from 'solid-js'
+import { replaceEqualDeep } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
+import { useStore } from '@tanstack/solid-store'
 import invariant from 'tiny-invariant'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -13,9 +16,6 @@ import type {
   ThrowConstraint,
   ThrowOrOptional,
 } from '@tanstack/router-core'
-import { replaceEqualDeep } from '@tanstack/router-core'
-import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from '@tanstack/solid-store'
 
 export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,
@@ -102,12 +102,14 @@ export function useMatch<
     const pendingMatchArray = pendingMatches()
 
     if (match === undefined) {
+      // During navigation transitions, check if the match exists in pendingMatches
       const hasPendingMatch =
         routerState.status === 'pending' &&
         pendingMatchArray?.some((d) =>
           opts.from ? opts.from === d.routeId : d.id === matchId,
         )
 
+      // Determine if we should throw an error
       const shouldThrowError =
         !routerState.isTransitioning &&
         (opts.shouldThrow ?? true) &&
