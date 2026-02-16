@@ -136,8 +136,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(8)
-    expect(updates).toBeLessThanOrEqual(10)
+    expect(updates).toBe(8)
   })
 
   test('redirection in preload', async () => {
@@ -184,8 +183,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(3)
-    expect(updates).toBeLessThanOrEqual(5)
+    expect(updates).toBe(3)
   })
 
   test('not found in beforeLoad', async () => {
@@ -226,8 +224,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(3)
-    expect(updates).toBeLessThanOrEqual(5)
+    expect(updates).toBe(3)
   })
 
   test('navigate, w/ preloaded & async loaders', async () => {
@@ -243,8 +240,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(3)
-    expect(updates).toBeLessThanOrEqual(4)
+    expect(updates).toBe(3)
   })
 
   test('navigate, w/ preloaded & sync loaders', async () => {
