@@ -40,7 +40,7 @@ test.describe('Script Duplication Prevention', () => {
     // The script element should exist either as a React 19 hoisted resource
     // or as an imperatively-created element from useEffect.
     const scriptCount = await page.evaluate(() => {
-      return document.querySelectorAll('script[src*="script.js"]').length
+      return document.querySelectorAll('script[src$="/script.js"]').length
     })
     expect(scriptCount).toBeGreaterThanOrEqual(1)
 
