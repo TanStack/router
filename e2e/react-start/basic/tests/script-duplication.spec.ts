@@ -37,12 +37,10 @@ test.describe('Script Duplication Prevention', () => {
     // a queryable form.  Execution is the reliable check.
     await page.waitForFunction(() => (window as any).SCRIPT_1 === true)
 
-    // The script element should exist either as a React 19 hoisted resource
-    // or as an imperatively-created element from useEffect.
     const scriptCount = await page.evaluate(() => {
-      return document.querySelectorAll('script[src$="/script.js"]').length
+      return document.querySelectorAll('script[src="/script.js"]').length
     })
-    expect(scriptCount).toBeGreaterThanOrEqual(1)
+    expect(scriptCount).toBeLessThanOrEqual(1)
 
     expect(await page.evaluate('window.SCRIPT_1')).toBe(true)
   })
