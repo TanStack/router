@@ -90,17 +90,11 @@ export function useMatch<
         const shouldThrowError =
           !state.isTransitioning &&
           (opts.shouldThrow ?? true) &&
+          // During navigation transitions, check if the match exists in pendingMatches
           !(
-            // During navigation transitions, check if the match exists in pendingMatches
-            (
-              state.status === 'pending' &&
-              router
-                .matchRoutes(router.latestLocation)
-                .some((d) =>
-                  opts.from
-                    ? opts.from === d.routeId
-                    : d.id === nearestMatchId(),
-                )
+            state.status === 'pending' &&
+            router.internalStore.state.pendingMatches?.some((d) =>
+              opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
             )
           )
 
