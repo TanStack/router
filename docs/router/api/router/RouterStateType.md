@@ -3,7 +3,7 @@ id: RouterStateType
 title: RouterState type
 ---
 
-The `RouterState` type represents shape of the internal state of the router. The Router's internal state is useful if you need to access certain internals of the router, such as whether it is currently loading.
+The `RouterState` type represents the shape of the internal state of the router. The Router's internal state is useful if you need to access certain internals of the router, such as whether it is currently loading.
 
 ```tsx
 type RouterState = {

@@ -27,6 +27,7 @@ import type {
   AnyRouteMatch,
   AnyRouter,
   FileRouteTypes,
+  InternalStoreState,
   MakeRouteMatchUnion,
   Route,
   RouterState,
@@ -66,11 +67,6 @@ export interface BaseDevtoolsPanelOptions {
 }
 
 const HISTORY_LIMIT = 15
-
-type DevtoolsMatchesState = {
-  pendingMatches?: Array<AnyRouteMatch>
-  cachedMatches: Array<AnyRouteMatch>
-}
 
 function Logo(props: any) {
   const { className, ...rest } = props
@@ -139,7 +135,7 @@ function RouteComp({
       MakeRouteMatchUnion
     >
   >
-  devtoolsMatches: Accessor<DevtoolsMatchesState>
+  devtoolsMatches: Accessor<InternalStoreState>
   router: Accessor<AnyRouter>
   route: AnyRoute
   isRoot?: boolean
@@ -285,34 +281,20 @@ export const BaseTanStackRouterDevtoolsPanel =
       '',
     )
 
-    const [devtoolsMatches, setDevtoolsMatches] =
-      createSignal<DevtoolsMatchesState>({
-        pendingMatches: [],
-        cachedMatches: [],
-      })
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
+
+    const [devtoolsMatches, setDevtoolsMatches] = createSignal(
+      router().internalStore.state,
+    )
     createEffect(() => {
       const matchesStore = router().internalStore
-
-      invariant(
-        matchesStore,
-        'No internal store was found on the router instance.',
-      )
-
       setDevtoolsMatches(matchesStore.state)
-      const unsubscribe = matchesStore.subscribe((state) => {
-        setDevtoolsMatches(state.currentVal)
-      })
+      const unsubscribe = matchesStore.subscribe((state) =>
+        setDevtoolsMatches(state.currentVal),
+      )
       onCleanup(unsubscribe)
     })
-
-    const pendingMatches = createMemo(
-      () => devtoolsMatches().pendingMatches ?? [],
-    )
-    const displayedMatches = createMemo(() =>
-      pendingMatches().length ? pendingMatches() : routerState().matches,
-    )
 
     createEffect(() => {
       const matches = routerState().matches
@@ -343,7 +325,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const activeMatch = createMemo(() => {
       const matches = [
-        ...pendingMatches(),
+        ...(devtoolsMatches().pendingMatches ?? []),
         ...routerState().matches,
         ...devtoolsMatches().cachedMatches,
       ]
@@ -356,13 +338,12 @@ export const BaseTanStackRouterDevtoolsPanel =
       () => Object.keys(routerState().location.search).length,
     )
 
-    const explorerState = createMemo<Record<string, unknown>>(() => {
+    const explorerState = createMemo(() => {
       return {
         ...router(),
         state: {
           ...routerState(),
-          pendingMatches: devtoolsMatches().pendingMatches,
-          cachedMatches: devtoolsMatches().cachedMatches,
+          ...devtoolsMatches(),
         },
       }
     })
@@ -381,7 +362,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             ] as const
           ).map((d) => (dd) => dd !== d),
         )
-          .map((key) => [key, explorerState()[key]] as const)
+          .map((key) => [key, (explorerState() as any)[key]])
           .filter(
             (d) =>
               typeof d[1] !== 'function' &&
@@ -561,7 +542,10 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </Match>
                 <Match when={currentTab() === 'matches'}>
                   <div>
-                    {displayedMatches().map((match: any, _i: any) => {
+                    {(devtoolsMatches().pendingMatches?.length
+                      ? devtoolsMatches().pendingMatches
+                      : routerState().matches
+                    )?.map((match: any, _i: any) => {
                       return (
                         <div
                           role="button"
@@ -716,7 +700,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {pendingMatches().find(
+                    {devtoolsMatches().pendingMatches?.find(
                       (d: any) => d.id === activeMatch()?.id,
                     )
                       ? 'Pending'

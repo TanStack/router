@@ -96,7 +96,7 @@ export function useMatch<
               state.status === 'pending' &&
               router
                 .matchRoutes(router.latestLocation)
-                .some((d: any) =>
+                .some((d) =>
                   opts.from
                     ? opts.from === d.routeId
                     : d.id === nearestMatchId(),
