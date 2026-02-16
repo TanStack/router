@@ -115,7 +115,7 @@
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/virtual-file-routes": "workspace:*",
     "chokidar": "^3.6.0",
-    "unplugin": "^2.1.2",
+    "unplugin": "^2.3.11",
     "zod": "^3.24.2"
   },
   "devDependencies": {
