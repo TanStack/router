@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import { useHydrated } from './ClientOnly'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 interface ScriptAttrs {
@@ -49,11 +50,23 @@ function Script({
   children?: string
 }) {
   const router = useRouter()
+  const hydrated = useHydrated()
   const dataScript =
     typeof attrs?.type === 'string' &&
     attrs.type !== '' &&
     attrs.type !== 'text/javascript' &&
     attrs.type !== 'module'
+
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    attrs?.src &&
+    typeof children === 'string' &&
+    children.trim().length
+  ) {
+    console.warn(
+      '[TanStack Router] <Script> received both `src` and `children`. The `children` content will be ignored. Remove `children` or remove `src`.',
+    )
+  }
 
   React.useEffect(() => {
     if (dataScript) return
@@ -151,40 +164,55 @@ function Script({
     return undefined
   }, [attrs, children, dataScript])
 
-  if (!(isServer ?? router.isServer)) {
-    if (dataScript && typeof children === 'string') {
+  // --- Server rendering ---
+  if (isServer ?? router.isServer) {
+    if (attrs?.src) {
+      return <script {...attrs} suppressHydrationWarning />
+    }
+
+    if (typeof children === 'string') {
       return (
         <script
           {...attrs}
-          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: children }}
+          suppressHydrationWarning
         />
       )
     }
 
-    const { src: _src, async: _async, defer: _defer, ...rest } = attrs || {}
-    // render an empty script on the client just to avoid hydration errors
-    return (
-      <script
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: '' }}
-        {...rest}
-      ></script>
-    )
+    return null
   }
 
-  if (attrs?.src && typeof attrs.src === 'string') {
-    return <script {...attrs} suppressHydrationWarning />
-  }
+  // --- Client rendering ---
 
-  if (typeof children === 'string') {
+  // Data scripts (e.g. application/ld+json) are rendered in the tree;
+  // the useEffect intentionally skips them.
+  if (dataScript && typeof children === 'string') {
     return (
       <script
         {...attrs}
-        dangerouslySetInnerHTML={{ __html: children }}
         suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: children }}
       />
     )
+  }
+
+  // During hydration (before useEffect has fired), render the script element
+  // to match the server-rendered HTML and avoid structural hydration mismatches.
+  // After hydration, return null — the useEffect handles imperative injection.
+  if (!hydrated) {
+    if (attrs?.src) {
+      return <script {...attrs} suppressHydrationWarning />
+    }
+    if (typeof children === 'string') {
+      return (
+        <script
+          {...attrs}
+          dangerouslySetInnerHTML={{ __html: children }}
+          suppressHydrationWarning
+        />
+      )
+    }
   }
 
   return null
