@@ -19,6 +19,7 @@ import { Route as LinksRouteImport } from './routes/links'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as ClientOnlyRouteImport } from './routes/client-only'
+import { Route as AsyncScriptsRouteImport } from './routes/async-scripts'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SpecialCharsRouteRouteImport } from './routes/specialChars/route'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
@@ -116,6 +117,11 @@ const DeferredRoute = DeferredRouteImport.update({
 const ClientOnlyRoute = ClientOnlyRouteImport.update({
   id: '/client-only',
   path: '/client-only',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AsyncScriptsRoute = AsyncScriptsRouteImport.update({
+  id: '/async-scripts',
+  path: '/async-scripts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LayoutRoute = LayoutRouteImport.update({
@@ -374,6 +380,7 @@ export interface FileRoutesByFullPath {
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
+  '/async-scripts': typeof AsyncScriptsRoute
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
@@ -430,6 +437,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
+  '/async-scripts': typeof AsyncScriptsRoute
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
@@ -485,6 +493,7 @@ export interface FileRoutesById {
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
+  '/async-scripts': typeof AsyncScriptsRoute
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
@@ -546,6 +555,7 @@ export interface FileRouteTypes {
     | '/not-found'
     | '/search-params'
     | '/specialChars'
+    | '/async-scripts'
     | '/client-only'
     | '/deferred'
     | '/inline-scripts'
@@ -602,6 +612,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/specialChars'
+    | '/async-scripts'
     | '/client-only'
     | '/deferred'
     | '/inline-scripts'
@@ -656,6 +667,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/specialChars'
     | '/_layout'
+    | '/async-scripts'
     | '/client-only'
     | '/deferred'
     | '/inline-scripts'
@@ -717,6 +729,7 @@ export interface RootRouteChildren {
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   SpecialCharsRouteRoute: typeof SpecialCharsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
+  AsyncScriptsRoute: typeof AsyncScriptsRoute
   ClientOnlyRoute: typeof ClientOnlyRoute
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
@@ -806,6 +819,13 @@ declare module '@tanstack/react-router' {
       path: '/client-only'
       fullPath: '/client-only'
       preLoaderRoute: typeof ClientOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/async-scripts': {
+      id: '/async-scripts'
+      path: '/async-scripts'
+      fullPath: '/async-scripts'
+      preLoaderRoute: typeof AsyncScriptsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -1343,6 +1363,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   SpecialCharsRouteRoute: SpecialCharsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
+  AsyncScriptsRoute: AsyncScriptsRoute,
   ClientOnlyRoute: ClientOnlyRoute,
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,

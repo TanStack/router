@@ -9,27 +9,12 @@ TanStack Router comes with its own ESLint plugin. This plugin is used to enforce
 
 The plugin is a separate package that you need to install:
 
-```sh
-npm install -D @tanstack/eslint-plugin-router
-```
+<!-- ::start:tabs variant="package-manager" mode="dev-install" -->
 
-or
+react: @tanstack/eslint-plugin-router
+solid: @tanstack/eslint-plugin-router
 
-```sh
-pnpm add -D @tanstack/eslint-plugin-router
-```
-
-or
-
-```sh
-yarn add -D @tanstack/eslint-plugin-router
-```
-
-or
-
-```sh
-bun add -D @tanstack/eslint-plugin-router
-```
+<!-- ::end:tabs -->
 
 ## Flat Config (`eslint.config.js`)
 
@@ -40,8 +25,9 @@ The release of ESLint 9.0 introduced a new way to configure ESLint using a flat 
 
 To enable all of the recommended rules for our plugin, add the following config:
 
-```js
-// eslint.config.js
+<!-- ::start:tabs variant="files" -->
+
+```js title="eslint.config.js"
 import pluginRouter from '@tanstack/eslint-plugin-router'
 
 export default [
@@ -50,12 +36,15 @@ export default [
 ]
 ```
 
+<!-- ::end:tabs -->
+
 ### Custom Flat Config setup
 
 Alternatively, you can load the plugin and configure only the rules you want to use:
 
-```js
-// eslint.config.js
+<!-- ::start:tabs variant="files" -->
+
+```js title="eslint.config.js"
 import pluginRouter from '@tanstack/eslint-plugin-router'
 
 export default [
@@ -70,6 +59,8 @@ export default [
   // Any other config...
 ]
 ```
+
+<!-- ::end:tabs -->
 
 ## Legacy Config (`.eslintrc`)
 

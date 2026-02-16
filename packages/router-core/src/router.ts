@@ -3,6 +3,7 @@ import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import { batch } from './utils/batch'
 import {
+  DEFAULT_PROTOCOL_ALLOWLIST,
   createControlledPromise,
   decodePath,
   deepEqual,
@@ -469,6 +470,15 @@ export interface RouterOptions<
    * @default false
    */
   disableGlobalCatchBoundary?: boolean
+
+  /**
+   * An array of URL protocols to allow in links, redirects, and navigation.
+   * Absolute URLs with protocols not in this list will be rejected.
+   *
+   * @default DEFAULT_PROTOCOL_ALLOWLIST (http:, https:, mailto:, tel:)
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#protocolallowlist-property)
+   */
+  protocolAllowlist?: Array<string>
 
   serializationAdapters?: ReadonlyArray<AnySerializationAdapter>
   /**
@@ -961,6 +971,7 @@ export class RouterCore<
   resolvePathCache!: LRUCache<string, string>
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
+  protocolAllowlist!: Set<string>
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -984,6 +995,8 @@ export class RouterCore<
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
+      protocolAllowlist:
+        options.protocolAllowlist ?? DEFAULT_PROTOCOL_ALLOWLIST,
     })
 
     if (typeof document !== 'undefined') {
@@ -1029,6 +1042,8 @@ export class RouterCore<
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
+    this.protocolAllowlist = new Set(this.options.protocolAllowlist)
+
     if (this.options.pathParamsAllowedCharacters)
       this.pathParamsDecoder = compileDecodeCharMap(
         this.options.pathParamsAllowedCharacters,
@@ -1070,6 +1085,7 @@ export class RouterCore<
       let processRouteTreeResult: ProcessRouteTreeResult<TRouteTree>
       if (
         (isServer ?? this.isServer) &&
+        process.env.NODE_ENV !== 'development' &&
         globalThis.__TSR_CACHE__ &&
         globalThis.__TSR_CACHE__.routeTree === this.routeTree
       ) {
@@ -1082,6 +1098,7 @@ export class RouterCore<
         // only cache if nothing else is cached yet
         if (
           (isServer ?? this.isServer) &&
+          process.env.NODE_ENV !== 'development' &&
           globalThis.__TSR_CACHE__ === undefined
         ) {
           globalThis.__TSR_CACHE__ = {
@@ -2246,9 +2263,9 @@ export class RouterCore<
       // otherwise use href directly (which may already include basepath)
       const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
 
-      // Block dangerous protocols like javascript:, data:, vbscript:
+      // Block dangerous protocols like javascript:, blob:, data:
       // These could execute arbitrary code if passed to window.location
-      if (isDangerousProtocol(reloadHref)) {
+      if (isDangerousProtocol(reloadHref, this.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(
             `Blocked navigation to dangerous protocol: ${reloadHref}`,
@@ -2665,6 +2682,17 @@ export class RouterCore<
       } catch {
         // ignore invalid URLs
       }
+    }
+
+    if (
+      redirect.options.href &&
+      !redirect.options._builtLocation &&
+      // Check for dangerous protocols before processing the redirect
+      isDangerousProtocol(redirect.options.href, this.protocolAllowlist)
+    ) {
+      throw new Error(
+        `Redirect blocked: unsafe protocol in href "${redirect.options.href}". Allowed protocols: ${Array.from(this.protocolAllowlist).join(', ')}.`,
+      )
     }
 
     if (!redirect.headers.get('Location')) {
