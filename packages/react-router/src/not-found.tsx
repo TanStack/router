@@ -1,7 +1,8 @@
 import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import { isNotFound } from '@tanstack/router-core'
 import { CatchBoundary } from './CatchBoundary'
-import { useRouterState } from './useRouterState'
+import { useRouter } from './useRouter'
 import type { ErrorInfo } from 'react'
 import type { NotFoundError } from '@tanstack/router-core'
 
@@ -10,10 +11,12 @@ export function CatchNotFound(props: {
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
   children: React.ReactNode
 }) {
+  const router = useRouter()
   // TODO: Some way for the user to programmatically reset the not-found boundary?
-  const resetKey = useRouterState({
-    select: (s) => `not-found-${s.location.pathname}-${s.status}`,
-  })
+  const resetKey = useStore(
+    router.stateStore,
+    (s) => `not-found-${s.location.pathname}-${s.status}`,
+  )
 
   return (
     <CatchBoundary

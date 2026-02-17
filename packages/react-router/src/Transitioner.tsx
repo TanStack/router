@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import {
   getLocationChangeInfo,
   handleHashScroll,
@@ -6,21 +7,16 @@ import {
 } from '@tanstack/router-core'
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 
 export function Transitioner() {
   const router = useRouter()
   const mountLoadForRouter = React.useRef({ router, mounted: false })
 
   const [isTransitioning, setIsTransitioning] = React.useState(false)
-  // Track pending state changes
-  const { hasPendingMatches, isLoading } = useRouterState({
-    select: (s) => ({
-      isLoading: s.isLoading,
-      hasPendingMatches: s.matches.some((d) => d.status === 'pending'),
-    }),
-    structuralSharing: true,
-  })
+  const isLoading = useStore(router.stateStore, (s) => s.isLoading)
+  const hasPendingMatches = useStore(router.activeMatchesStore, (matches) =>
+    matches.some((match) => match.status === 'pending'),
+  )
 
   const previousIsLoading = usePrevious(isLoading)
 
@@ -118,7 +114,7 @@ export function Transitioner() {
         ...changeInfo,
       })
 
-      router.__store.setState((s: typeof router.state) => ({
+      router.updateNonMatchState((s) => ({
         ...s,
         status: 'idle',
         resolvedLocation: s.location,

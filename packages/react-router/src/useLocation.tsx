@@ -1,4 +1,7 @@
-import { useRouterState } from './useRouterState'
+import { useStore } from '@tanstack/react-store'
+import { useRef } from 'react'
+import { replaceEqualDeep } from '@tanstack/router-core'
+import { useRouter } from './useRouter'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -45,8 +48,26 @@ export function useLocation<
   opts?: UseLocationBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseLocationResult<TRouter, TSelected> {
-  return useRouterState({
-    select: (state: any) =>
-      opts?.select ? opts.select(state.location) : state.location,
-  } as any) as UseLocationResult<TRouter, TSelected>
+  const router = useRouter<TRouter>()
+  const previousResult = useRef<
+    ValidateSelected<TRouter, TSelected, TStructuralSharing>
+  >(undefined)
+
+  return useStore(router.stateStore, (state) => {
+    const location = state.location as RouterState<TRouter['routeTree']>['location']
+
+    if (opts?.select) {
+      if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
+        const newSlice = replaceEqualDeep(
+          previousResult.current,
+          opts.select(location),
+        )
+        previousResult.current = newSlice
+        return newSlice
+      }
+      return opts.select(location)
+    }
+
+    return location
+  }) as UseLocationResult<TRouter, TSelected>
 }

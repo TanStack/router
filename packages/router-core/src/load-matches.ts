@@ -46,9 +46,7 @@ const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
 }
 
 const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
-  return !!(
-    inner.preload && !inner.router.state.matches.some((d) => d.id === matchId)
-  )
+  return !!(inner.preload && !inner.router.currentMatchById.has(matchId))
 }
 
 /**
@@ -860,7 +858,7 @@ const loadRouteMatch = async (
       }
     } else {
       const nextPreload =
-        preload && !inner.router.state.matches.some((d) => d.id === matchId)
+        preload && !inner.router.currentMatchById.has(matchId)
       const match = inner.router.getMatch(matchId)!
       match._nonReactive.loaderPromise = createControlledPromise<void>()
       if (nextPreload !== match.preload) {
@@ -912,11 +910,17 @@ export async function loadMatches(arg: {
 
   // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
   // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
-  if (
-    !(isServer ?? inner.router.isServer) &&
-    inner.router.state.matches.some((d) => d._forcePending)
-  ) {
-    triggerOnReady(inner)
+  if (!(isServer ?? inner.router.isServer)) {
+    let hasForcePendingMatch = false
+    for (const match of inner.router.currentMatchById.values()) {
+      if (match._forcePending) {
+        hasForcePendingMatch = true
+        break
+      }
+    }
+    if (hasForcePendingMatch) {
+      triggerOnReady(inner)
+    }
   }
 
   try {

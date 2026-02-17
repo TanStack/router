@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/react-store'
+import { shallow, useStore } from '@tanstack/react-store'
 import { useRef } from 'react'
 import { replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -69,18 +69,22 @@ export function useRouterState<
     useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  return useStore(router.__store, (state) => {
-    if (opts?.select) {
-      if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
-        const newSlice = replaceEqualDeep(
-          previousResult.current,
-          opts.select(state),
-        )
-        previousResult.current = newSlice
-        return newSlice
+  return useStore(
+    router.__store,
+    (state) => {
+      if (opts?.select) {
+        if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
+          const newSlice = replaceEqualDeep(
+            previousResult.current,
+            opts.select(state),
+          )
+          previousResult.current = newSlice
+          return newSlice
+        }
+        return opts.select(state)
       }
-      return opts.select(state)
-    }
-    return state
-  }) as UseRouterStateResult<TRouter, TSelected>
+      return state
+    },
+    shallow,
+  ) as UseRouterStateResult<TRouter, TSelected>
 }

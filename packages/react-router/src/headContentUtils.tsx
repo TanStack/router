@@ -1,7 +1,7 @@
 import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import { escapeHtml } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 /**
@@ -11,11 +11,11 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const useTags = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const routeMeta = useRouterState({
-    select: (state) => {
-      return state.matches.map((match) => match.meta!).filter(Boolean)
-    },
-  })
+  const activeMatches = useStore(router.activeMatchesStore, (matches) => matches)
+  const routeMeta = React.useMemo(
+    () => activeMatches.map((match) => match.meta!).filter(Boolean),
+    [activeMatches],
+  )
 
   const meta: Array<RouterManagedTag> = React.useMemo(() => {
     const resultMeta: Array<RouterManagedTag> = []
@@ -88,76 +88,70 @@ export const useTags = () => {
     return resultMeta
   }, [routeMeta, nonce])
 
-  const links = useRouterState({
-    select: (state) => {
-      const constructed = state.matches
-        .map((match) => match.links!)
-        .filter(Boolean)
-        .flat(1)
-        .map((link) => ({
-          tag: 'link',
-          attrs: {
-            ...link,
-            nonce,
-          },
-        })) satisfies Array<RouterManagedTag>
+  const links = React.useMemo(() => {
+    const constructed = activeMatches
+      .map((match) => match.links!)
+      .filter(Boolean)
+      .flat(1)
+      .map((link) => ({
+        tag: 'link',
+        attrs: {
+          ...link,
+          nonce,
+        },
+      })) satisfies Array<RouterManagedTag>
 
-      const manifest = router.ssr?.manifest
+    const manifest = router.ssr?.manifest
 
-      // These are the assets extracted from the ViteManifest
-      // using the `startManifestPlugin`
-      const assets = state.matches
-        .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
-        .filter(Boolean)
-        .flat(1)
-        .filter((asset) => asset.tag === 'link')
-        .map(
-          (asset) =>
-            ({
+    // These are the assets extracted from the ViteManifest
+    // using the `startManifestPlugin`
+    const assets = activeMatches
+      .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
+      .filter(Boolean)
+      .flat(1)
+      .filter((asset) => asset.tag === 'link')
+      .map(
+        (asset) =>
+          ({
+            tag: 'link',
+            attrs: {
+              ...asset.attrs,
+              suppressHydrationWarning: true,
+              nonce,
+            },
+          }) satisfies RouterManagedTag,
+      )
+
+    return [...constructed, ...assets]
+  }, [activeMatches, nonce, router])
+
+  const preloadLinks = React.useMemo(() => {
+    const result: Array<RouterManagedTag> = []
+
+    activeMatches
+      .map((match) => router.looseRoutesById[match.routeId]!)
+      .forEach((route) =>
+        router.ssr?.manifest?.routes[route.id]?.preloads
+          ?.filter(Boolean)
+          .forEach((preload) => {
+            result.push({
               tag: 'link',
               attrs: {
-                ...asset.attrs,
-                suppressHydrationWarning: true,
+                rel: 'modulepreload',
+                href: preload,
                 nonce,
               },
-            }) satisfies RouterManagedTag,
-        )
+            })
+          }),
+      )
 
-      return [...constructed, ...assets]
-    },
-    structuralSharing: true as any,
-  })
+    return result
+  }, [activeMatches, nonce, router])
 
-  const preloadLinks = useRouterState({
-    select: (state) => {
-      const preloadLinks: Array<RouterManagedTag> = []
-
-      state.matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) =>
-          router.ssr?.manifest?.routes[route.id]?.preloads
-            ?.filter(Boolean)
-            .forEach((preload) => {
-              preloadLinks.push({
-                tag: 'link',
-                attrs: {
-                  rel: 'modulepreload',
-                  href: preload,
-                  nonce,
-                },
-              })
-            }),
-        )
-
-      return preloadLinks
-    },
-    structuralSharing: true as any,
-  })
-
-  const styles = useRouterState({
-    select: (state) =>
+  const styles = React.useMemo(
+    () =>
       (
-        state.matches
+        activeMatches
           .map((match) => match.styles!)
           .flat(1)
           .filter(Boolean) as Array<RouterManagedTag>
@@ -169,13 +163,13 @@ export const useTags = () => {
         },
         children,
       })),
-    structuralSharing: true as any,
-  })
+    [activeMatches, nonce],
+  )
 
-  const headScripts: Array<RouterManagedTag> = useRouterState({
-    select: (state) =>
+  const headScripts: Array<RouterManagedTag> = React.useMemo(
+    () =>
       (
-        state.matches
+        activeMatches
           .map((match) => match.headScripts!)
           .flat(1)
           .filter(Boolean) as Array<RouterManagedTag>
@@ -187,8 +181,8 @@ export const useTags = () => {
         },
         children,
       })),
-    structuralSharing: true as any,
-  })
+    [activeMatches, nonce],
+  )
 
   return uniqBy(
     [

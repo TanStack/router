@@ -1,4 +1,5 @@
 import * as Solid from 'solid-js'
+import { useStore } from '@tanstack/solid-store'
 import {
   getLocationChangeInfo,
   handleHashScroll,
@@ -6,15 +7,12 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
 
 export function Transitioner() {
   const router = useRouter()
   let mountLoadForRouter = { router, mounted: false }
-  const isLoading = useRouterState({
-    select: ({ isLoading }) => isLoading,
-  })
+  const isLoading = useStore(router.stateStore, ({ isLoading }) => isLoading)
 
   if (isServer ?? router.isServer) {
     return null
@@ -23,9 +21,9 @@ export function Transitioner() {
   const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
 
   // Track pending state changes
-  const hasPendingMatches = useRouterState({
-    select: (s) => s.matches.some((d) => d.status === 'pending'),
-  })
+  const hasPendingMatches = useStore(router.activeMatchesStore, (matches) =>
+    matches.some((match) => match.status === 'pending'),
+  )
 
   const previousIsLoading = usePrevious(isLoading)
 
@@ -133,7 +131,7 @@ export function Transitioner() {
             ...changeInfo,
           })
 
-          router.__store.setState((s) => ({
+          router.updateNonMatchState((s) => ({
             ...s,
             status: 'idle',
             resolvedLocation: s.location,

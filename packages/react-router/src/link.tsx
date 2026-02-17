@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
 import {
   deepEqual,
@@ -9,7 +10,6 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import { useForwardedRef, useIntersectionObserver } from './utils'
@@ -378,10 +378,7 @@ export function useLinkProps<
 
   // subscribe to search params to re-build location if it changes
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentSearch = useRouterState({
-    select: (s) => s.location.search,
-    structuralSharing: true as any,
-  })
+  const currentSearch = useStore(router.stateStore, (s) => s.location.search)
 
   const from = options.from
 
@@ -466,53 +463,48 @@ export function useLinkProps<
   }, [to, hrefOption, router.protocolAllowlist])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isActive = useRouterState({
-    select: (s) => {
-      if (externalLink) return false
-      if (activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        )
-        const nextPathSplit = removeTrailingSlash(
-          next.pathname,
-          router.basepath,
-        )
-
-        const pathIsFuzzyEqual =
-          currentPathSplit.startsWith(nextPathSplit) &&
-          (currentPathSplit.length === nextPathSplit.length ||
-            currentPathSplit[nextPathSplit.length] === '/')
-
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+  const isActive = useStore(router.stateStore, (s) => {
+    if (externalLink) return false
+    if (activeOptions?.exact) {
+      const testExact = exactPathTest(
+        s.location.pathname,
+        next.pathname,
+        router.basepath,
+      )
+      if (!testExact) {
+        return false
       }
+    } else {
+      const currentPathSplit = removeTrailingSlash(
+        s.location.pathname,
+        router.basepath,
+      )
+      const nextPathSplit = removeTrailingSlash(next.pathname, router.basepath)
 
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
-      }
+      const pathIsFuzzyEqual =
+        currentPathSplit.startsWith(nextPathSplit) &&
+        (currentPathSplit.length === nextPathSplit.length ||
+          currentPathSplit[nextPathSplit.length] === '/')
 
-      if (activeOptions?.includeHash) {
-        return isHydrated && s.location.hash === next.hash
+      if (!pathIsFuzzyEqual) {
+        return false
       }
-      return true
-    },
+    }
+
+    if (activeOptions?.includeSearch ?? true) {
+      const searchTest = deepEqual(s.location.search, next.search, {
+        partial: !activeOptions?.exact,
+        ignoreUndefined: !activeOptions?.explicitUndefined,
+      })
+      if (!searchTest) {
+        return false
+      }
+    }
+
+    if (activeOptions?.includeHash) {
+      return isHydrated && s.location.hash === next.hash
+    }
+    return true
   })
 
   // Get the active props

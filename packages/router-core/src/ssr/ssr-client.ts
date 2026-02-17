@@ -136,12 +136,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }
   })
 
-  router.__store.setState((s) => {
-    return {
-      ...s,
-      matches,
-    }
-  })
+  router.setActiveMatches(matches)
 
   // Allow the user to handle custom hydration data
   await router.options.hydrate?.(dehydratedData)
@@ -259,8 +254,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         // ensure router is not in status 'pending' anymore
         // this usually happens in Transitioner but if loading synchronously resolves,
         // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
-        if (router.__store.state.status === 'pending') {
-          router.__store.setState((s) => ({
+        if (router.state.status === 'pending') {
+          router.updateNonMatchState((s) => ({
             ...s,
             status: 'idle',
             resolvedLocation: s.location,

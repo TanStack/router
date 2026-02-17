@@ -1,5 +1,6 @@
+import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import { Asset } from './Asset'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -10,38 +11,35 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const assetScripts = useRouterState({
-    select: (state) => {
-      const assetScripts: Array<RouterManagedTag> = []
-      const manifest = router.ssr?.manifest
+  const activeMatches = useStore(router.activeMatchesStore, (matches) => matches)
+  const assetScripts = React.useMemo(() => {
+    const manifest = router.ssr?.manifest
+    if (!manifest) {
+      return []
+    }
 
-      if (!manifest) {
-        return []
-      }
+    const nextAssetScripts: Array<RouterManagedTag> = []
+    activeMatches
+      .map((match) => router.looseRoutesById[match.routeId]!)
+      .forEach((route) =>
+        manifest.routes[route.id]?.assets
+          ?.filter((d) => d.tag === 'script')
+          .forEach((asset) => {
+            nextAssetScripts.push({
+              tag: 'script',
+              attrs: { ...asset.attrs, nonce },
+              children: asset.children,
+            } as any)
+          }),
+      )
 
-      state.matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) =>
-          manifest.routes[route.id]?.assets
-            ?.filter((d) => d.tag === 'script')
-            .forEach((asset) => {
-              assetScripts.push({
-                tag: 'script',
-                attrs: { ...asset.attrs, nonce },
-                children: asset.children,
-              } as any)
-            }),
-        )
+    return nextAssetScripts
+  }, [activeMatches, nonce, router])
 
-      return assetScripts
-    },
-    structuralSharing: true as any,
-  })
-
-  const { scripts } = useRouterState({
-    select: (state) => ({
-      scripts: (
-        state.matches
+  const scripts = React.useMemo(
+    () =>
+      (
+        activeMatches
           .map((match) => match.scripts!)
           .flat(1)
           .filter(Boolean) as Array<RouterManagedTag>
@@ -54,9 +52,8 @@ export const Scripts = () => {
         },
         children,
       })),
-    }),
-    structuralSharing: true as any,
-  })
+    [activeMatches, nonce],
+  )
 
   let serverBufferedScript: RouterManagedTag | undefined = undefined
 

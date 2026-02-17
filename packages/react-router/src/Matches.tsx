@@ -1,9 +1,9 @@
 import * as React from 'react'
+import { shallow, useStore } from '@tanstack/react-store'
 import warning from 'tiny-warning'
-import { rootRouteId } from '@tanstack/router-core'
+import { replaceEqualDeep, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
@@ -28,7 +28,6 @@ import type {
   ResolveRelativePath,
   ResolveRoute,
   RouteByPath,
-  RouterState,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
@@ -78,15 +77,8 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = useRouterState({
-    select: (s) => {
-      return s.matches[0]?.id
-    },
-  })
-
-  const resetKey = useRouterState({
-    select: (s) => s.loadedAt,
-  })
+  const matchId = useStore(router.activeMatchesStore, (matches) => matches[0]?.id)
+  const resetKey = useStore(router.stateStore, (s) => s.loadedAt)
 
   const matchComponent = matchId ? <Match matchId={matchId} /> : null
 
@@ -140,10 +132,11 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  useRouterState({
-    select: (s) => [s.location.href, s.resolvedLocation?.href, s.status],
-    structuralSharing: true as any,
-  })
+  useStore(router.stateStore, (s) => [
+    s.location.href,
+    s.resolvedLocation?.href,
+    s.status,
+  ], shallow)
 
   return React.useCallback(
     <
@@ -234,15 +227,29 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
-  return useRouterState({
-    select: (state: RouterState<TRouter['routeTree']>) => {
-      const matches = state.matches
-      return opts?.select
-        ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
-        : matches
+  const router = useRouter<TRouter>()
+  const previousResult = React.useRef<
+    ValidateSelected<TRouter, TSelected, TStructuralSharing>
+  >(undefined)
+
+  return useStore(
+    router.activeMatchesStore,
+    (matches) => {
+      if (opts?.select) {
+        const selected = opts.select(
+          matches as Array<MakeRouteMatchUnion<TRouter>>,
+        )
+        if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
+          const newSlice = replaceEqualDeep(previousResult.current, selected)
+          previousResult.current = newSlice
+          return newSlice
+        }
+        return selected
+      }
+      return matches as any
     },
-    structuralSharing: opts?.structuralSharing,
-  } as any) as UseMatchesResult<TRouter, TSelected>
+    shallow,
+  ) as UseMatchesResult<TRouter, TSelected>
 }
 
 /**
@@ -269,13 +276,16 @@ export function useParentMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
+  const router = useRouter<TRouter>()
   const contextMatchId = React.useContext(matchContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
+      const contextMatchIndex =
+        router.currentMatchIndexById.get(contextMatchId ?? '') ?? -1
       matches = matches.slice(
         0,
-        matches.findIndex((d) => d.id === contextMatchId),
+        contextMatchIndex,
       )
       return opts?.select ? opts.select(matches) : matches
     },
@@ -295,12 +305,15 @@ export function useChildMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
+  const router = useRouter<TRouter>()
   const contextMatchId = React.useContext(matchContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
+      const contextMatchIndex =
+        router.currentMatchIndexById.get(contextMatchId ?? '') ?? -1
       matches = matches.slice(
-        matches.findIndex((d) => d.id === contextMatchId) + 1,
+        contextMatchIndex + 1,
       )
       return opts?.select ? opts.select(matches) : matches
     },
