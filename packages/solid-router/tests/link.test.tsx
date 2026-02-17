@@ -263,6 +263,88 @@ describe('Link', () => {
     expect(postsLink).not.toHaveAttribute('data-status', 'active')
   })
 
+  test('when exact is true and includeSearch is false, search params are ignored', async () => {
+    const RootComponent = () => {
+      return (
+        <>
+          <Link
+            to="/a"
+            activeOptions={{ exact: true, includeSearch: false }}
+            activeProps={{ class: 'active' }}
+            inactiveProps={{ class: 'inactive' }}
+          >
+            A exact includeSearch false
+          </Link>
+          <Link
+            to="/a/b"
+            activeOptions={{ exact: true, includeSearch: false }}
+            activeProps={{ class: 'active' }}
+            inactiveProps={{ class: 'inactive' }}
+          >
+            AB exact includeSearch false
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <h1>Index</h1>,
+    })
+    const aRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/a',
+      validateSearch: (search: Record<string, unknown>) => ({
+        foo: search.foo as string | undefined,
+      }),
+      component: () => <h1>A</h1>,
+    })
+    const abRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/a/b',
+      component: () => <h1>AB</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aRoute, abRoute]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const aLink = await screen.findByRole('link', {
+      name: 'A exact includeSearch false',
+    })
+    const abLink = await screen.findByRole('link', {
+      name: 'AB exact includeSearch false',
+    })
+
+    history.push('/a?foo=bar')
+
+    await waitFor(() => {
+      expect(aLink).toHaveClass('active')
+    })
+
+    expect(aLink).toHaveClass('active')
+    expect(aLink).not.toHaveClass('inactive')
+    expect(abLink).toHaveClass('inactive')
+    expect(abLink).not.toHaveClass('active')
+
+    fireEvent.click(abLink)
+
+    await waitFor(() => {
+      expect(abLink).toHaveClass('active')
+    })
+
+    expect(aLink).toHaveClass('inactive')
+    expect(aLink).not.toHaveClass('active')
+  })
+
   describe('when the current route has a search fields with undefined values', () => {
     async function runTest(opts: { explicitUndefined: boolean | undefined }) {
       const rootRoute = createRootRoute()

@@ -647,6 +647,7 @@ export interface ActiveOptions {
   includeHash?: boolean
   /**
    * If true, the link will only be active if the current URL search params inclusively match the `search` prop
+   * When `exact` is `true`, this still defaults to `true`. Set this to `false` to ignore search params for exact path matching.
    * @default true
    */
   includeSearch?: boolean

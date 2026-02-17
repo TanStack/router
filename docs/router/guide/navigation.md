@@ -611,6 +611,8 @@ export interface ActiveOptions {
   // Defaults to `false`
   includeHash?: boolean // Defaults to false
   // If true, the link will only be active if the current URL search params inclusively match the `search` prop
+  // When `exact` is `true`, this still defaults to `true`.
+  // Set this to `false` to ignore search params for exact path matching.
   // Defaults to `true`
   includeSearch?: boolean
   // This modifies the `includeSearch` behavior.
@@ -659,7 +661,7 @@ This will ensure that the link is not active when you are a child route.
 A few more options to be aware of:
 
 - If you want to include the hash in your matching, you can pass the `includeHash: true` option
-- If you do **not** want to include the search params in your matching, you can pass the `includeSearch: false` option
+- If you do **not** want to include the search params in your matching, you can pass the `includeSearch: false` option, including when `exact: true` is set
 
 ### Passing `isActive` to children
 
