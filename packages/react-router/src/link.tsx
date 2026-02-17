@@ -376,10 +376,14 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
 
-  // subscribe to search params to re-build location if it changes
+  // subscribe to href and leaf params to re-build location when
+  // path/search/hash or inherited params change
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentSearch = useRouterState({
-    select: (s) => s.location.search,
+  const currentLocationState = useRouterState({
+    select: (s) => ({
+      href: s.location.href,
+      leafParams: s.matches[s.matches.length - 1]?.params,
+    }),
     structuralSharing: true as any,
   })
 
@@ -393,7 +397,7 @@ export function useLinkProps<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      currentSearch,
+      currentLocationState,
       from,
       options._fromLocation,
       options.hash,

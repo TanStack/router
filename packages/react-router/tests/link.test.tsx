@@ -1521,7 +1521,7 @@ describe('Link', () => {
     expect(paramText).toBeInTheDocument()
   })
 
-  test.fails(
+  test(
     'keeps a relative link active when changing inherited params (issue #5655)',
     async () => {
       const rootRoute = createRootRoute()
