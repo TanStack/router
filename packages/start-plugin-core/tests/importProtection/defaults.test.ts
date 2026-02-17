@@ -17,7 +17,7 @@ describe('getDefaultImportProtectionRules', () => {
     )
 
     expect(rules.client.files).toEqual(
-      expect.arrayContaining(['**/*.server.*', '**/.server/**']),
+      expect.arrayContaining(['**/*.server.*', '**/server/**']),
     )
   })
 
@@ -27,7 +27,7 @@ describe('getDefaultImportProtectionRules', () => {
     expect(rules.server.specifiers).toEqual([])
 
     expect(rules.server.files).toEqual(
-      expect.arrayContaining(['**/*.client.*', '**/.client/**']),
+      expect.arrayContaining(['**/*.client.*', '**/client/**']),
     )
   })
 
