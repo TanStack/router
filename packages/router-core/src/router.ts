@@ -1117,15 +1117,21 @@ export class RouterCore<
           getInitialRouterState(this.latestLocation),
         ) as unknown as Store<any>
       } else {
-        this.__store = new Store(getInitialRouterState(this.latestLocation), {
-          onUpdate: () => {
-            this.__store.state = {
-              ...this.state,
-              cachedMatches: this.state.cachedMatches.filter(
-                (d) => !['redirected'].includes(d.status),
-              ),
-            }
-          },
+        this.__store = new Store(getInitialRouterState(this.latestLocation))
+
+        this.__store.subscribe((state) => {
+          const cachedMatches = state.cachedMatches.filter(
+            (d) => d.status !== 'redirected',
+          )
+
+          if (cachedMatches.length === state.cachedMatches.length) {
+            return
+          }
+
+          this.__store.setState((prev) => ({
+            ...prev,
+            cachedMatches,
+          }))
         })
 
         setupScrollRestoration(this)
@@ -1169,10 +1175,10 @@ export class RouterCore<
     }
 
     if (needsLocationUpdate && this.__store) {
-      this.__store.state = {
-        ...this.state,
+      this.__store.setState((s) => ({
+        ...s,
         location: this.latestLocation,
-      }
+      }))
     }
 
     if (
