@@ -31,18 +31,18 @@ import {
 import {
   addTraceImportLocations,
   buildCodeSnippet,
+  buildLineIndex,
   findImportStatementLocationFromTransformed,
   findPostCompileUsageLocation,
-  buildLineIndex,
   pickOriginalCodeFromSourcesContent,
 } from './sourceLocation'
 import type { PluginOption } from 'vite'
 import type { CompiledMatcher } from './matchers'
 import type { ViolationInfo } from './trace'
 import type {
+  SourceMapLike,
   TransformResult,
   TransformResultProvider,
-  SourceMapLike,
 } from './sourceLocation'
 import type {
   ImportProtectionBehavior,
@@ -323,9 +323,7 @@ export function importProtectionPlugin(
       }
     }
 
-    const snippet = loc
-      ? await buildCodeSnippet(provider, importer, loc)
-      : undefined
+    const snippet = loc ? buildCodeSnippet(provider, importer, loc) : undefined
 
     return {
       env: envName,

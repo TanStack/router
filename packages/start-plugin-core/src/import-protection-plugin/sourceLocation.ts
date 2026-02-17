@@ -1,8 +1,9 @@
-import { SourceMapConsumer, type RawSourceMap } from 'source-map'
+import { SourceMapConsumer } from 'source-map'
 import * as path from 'pathe'
 
 import { normalizeFilePath } from './utils'
 import type { Loc } from './trace'
+import type { RawSourceMap } from 'source-map'
 
 // ---------------------------------------------------------------------------
 // Source-map type compatible with both Rollup's SourceMap and source-map's
@@ -102,14 +103,6 @@ function upperBound(values: Array<number>, x: number): number {
   return lo
 }
 
-function indexToLineCol(
-  code: string,
-  idx: number,
-): { line: number; column0: number } {
-  const lineIndex = buildLineIndex(code)
-  return indexToLineColWithIndex(lineIndex, idx)
-}
-
 function indexToLineColWithIndex(
   lineIndex: LineIndex,
   idx: number,
@@ -167,7 +160,7 @@ export function pickOriginalCodeFromSourcesContent(
   importerFile: string,
   root: string,
 ): string | undefined {
-  if (!map?.sourcesContent || !map.sources || map.sources.length === 0) {
+  if (!map?.sourcesContent || map.sources.length === 0) {
     return undefined
   }
 
@@ -265,7 +258,7 @@ async function getSourceMapConsumer(
 ): Promise<SourceMapConsumer | null> {
   // WeakMap requires an object key; SourceMapLike should be an object in all
   // real cases, but guard anyway.
-  if (typeof map !== 'object' || map === null) return null
+  // (TypeScript already guarantees `map` is an object here.)
 
   const cached = consumerCache.get(map)
   if (cached) return cached
@@ -473,12 +466,12 @@ export interface CodeSnippet {
  *
  * @param contextLines Number of lines to show above/below the target line (default 2).
  */
-export async function buildCodeSnippet(
+export function buildCodeSnippet(
   provider: TransformResultProvider,
   moduleId: string,
   loc: Loc,
   contextLines: number = 2,
-): Promise<CodeSnippet | undefined> {
+): CodeSnippet | undefined {
   try {
     const importerFile = normalizeFilePath(moduleId)
     // Pass the raw moduleId so the provider can look up the exact virtual

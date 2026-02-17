@@ -197,13 +197,13 @@ export function loadMockRuntimeModule(encodedPayload: string): {
   }
 
   const mode: 'error' | 'warn' | 'off' =
-    payload?.mode === 'warn' || payload?.mode === 'off' ? payload.mode : 'error'
+    payload.mode === 'warn' || payload.mode === 'off' ? payload.mode : 'error'
 
   const meta = {
-    env: String(payload?.env ?? ''),
-    importer: String(payload?.importer ?? ''),
-    specifier: String(payload?.specifier ?? ''),
-    trace: Array.isArray(payload?.trace) ? payload.trace : [],
+    env: String(payload.env ?? ''),
+    importer: String(payload.importer ?? ''),
+    specifier: String(payload.specifier ?? ''),
+    trace: Array.isArray(payload.trace) ? payload.trace : [],
   }
 
   return {
