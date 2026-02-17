@@ -82,6 +82,16 @@ function isScopeNode(node: t.Node): boolean {
   )
 }
 
+/** `var` hoists to the nearest function or program scope, not block scopes. */
+function isFunctionScopeNode(node: t.Node): boolean {
+  return (
+    t.isProgram(node) ||
+    t.isFunctionDeclaration(node) ||
+    t.isFunctionExpression(node) ||
+    t.isArrowFunctionExpression(node)
+  )
+}
+
 function collectScopeBindings(node: t.Node, out: Set<string>): void {
   if (
     t.isFunctionDeclaration(node) ||
@@ -128,13 +138,21 @@ export function findPostCompileUsagePos(
   let preferred: UsagePos | undefined
   let anyUsage: UsagePos | undefined
 
-  // Scope stack (module scope at index 0)
-  const scopes: Array<Set<string>> = [new Set()]
+  // Scope stack (module scope at index 0).
+  // Each entry tracks bindings and whether it is a function/program scope
+  // (needed for `var` hoisting).
+  interface ScopeEntry {
+    bindings: Set<string>
+    isFnScope: boolean
+  }
+  const scopes: Array<ScopeEntry> = [
+    { bindings: new Set(), isFnScope: true },
+  ]
 
   function isShadowed(name: string): boolean {
     // Check inner scopes only
     for (let i = scopes.length - 1; i >= 1; i--) {
-      if (scopes[i]!.has(name)) return true
+      if (scopes[i]!.bindings.has(name)) return true
     }
     return false
   }
@@ -151,13 +169,22 @@ export function findPostCompileUsagePos(
   }
 
   function pushScope(node: t.Node): void {
-    const set = new Set<string>()
-    collectScopeBindings(node, set)
-    scopes.push(set)
+    const bindings = new Set<string>()
+    collectScopeBindings(node, bindings)
+    scopes.push({ bindings, isFnScope: isFunctionScopeNode(node) })
   }
 
   function popScope(): void {
     scopes.pop()
+  }
+
+  /** Find the nearest function/program scope entry in the stack. */
+  function nearestFnScope(): ScopeEntry {
+    for (let i = scopes.length - 1; i >= 0; i--) {
+      if (scopes[i]!.isFnScope) return scopes[i]!
+    }
+    // Should never happen (index 0 is always a function scope).
+    return scopes[0]!
   }
 
   // The walker accepts AST nodes, arrays (from node children like
@@ -193,13 +220,19 @@ export function findPostCompileUsagePos(
     // Note: function/class *declaration* identifiers bind in the parent scope,
     // so we register them before walking children.
     if (t.isFunctionDeclaration(astNode) && astNode.id) {
-      scopes[scopes.length - 2]?.add(astNode.id.name)
+      scopes[scopes.length - 2]?.bindings.add(astNode.id.name)
     }
     if (t.isClassDeclaration(astNode) && astNode.id) {
-      scopes[scopes.length - 2]?.add(astNode.id.name)
+      scopes[scopes.length - 2]?.bindings.add(astNode.id.name)
     }
     if (t.isVariableDeclarator(astNode)) {
-      collectPatternBindings(astNode.id, scopes[scopes.length - 1]!)
+      // `var` hoists to the nearest function/program scope, not block scope.
+      const isVar =
+        t.isVariableDeclaration(parent) && parent.kind === 'var'
+      const target = isVar
+        ? nearestFnScope().bindings
+        : scopes[scopes.length - 1]!.bindings
+      collectPatternBindings(astNode.id, target)
     }
 
     if (t.isIdentifier(astNode) && imported.has(astNode.name)) {

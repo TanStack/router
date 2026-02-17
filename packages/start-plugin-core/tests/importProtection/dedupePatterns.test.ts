@@ -4,6 +4,7 @@ import {
   dedupePatterns,
   stripViteQuery,
 } from '../../src/import-protection-plugin/utils'
+import type { SourceMapLike } from '../../src/import-protection-plugin/sourceLocation'
 import { pickOriginalCodeFromSourcesContent } from '../../src/import-protection-plugin/sourceLocation'
 
 describe('dedupePatterns', () => {
@@ -49,10 +50,10 @@ describe('pickOriginalCodeFromSourcesContent', () => {
       names: [],
       mappings: '',
       sourcesContent: ['A', 'B'],
-    }
+    } satisfies SourceMapLike
 
     const picked = pickOriginalCodeFromSourcesContent(
-      map as any,
+      map,
       '/project/src/b.ts',
       '/project',
     )
@@ -67,10 +68,10 @@ describe('pickOriginalCodeFromSourcesContent', () => {
       names: [],
       mappings: '',
       sourcesContent: ['A'],
-    }
+    } satisfies SourceMapLike
 
     const picked = pickOriginalCodeFromSourcesContent(
-      map as any,
+      map,
       '/project/src/does-not-exist.ts',
       '/project',
     )

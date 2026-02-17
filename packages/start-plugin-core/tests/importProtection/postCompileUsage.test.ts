@@ -97,4 +97,99 @@ describe('findPostCompileUsagePos', () => {
     expect(p).toBeDefined()
     expect(p!.line).toBe(2)
   })
+
+  // --- var hoisting tests ---
+
+  test('var in block scope shadows import at function level', () => {
+    // `var x` hoists to the function scope, so the `x` usage inside the block
+    // references the var, not the import.
+    const p = pos(
+      [
+        `import { x } from 'denied';`,
+        `function f() {`,
+        `  if (true) {`,
+        `    var x = 1;`,
+        `  }`,
+        `  return x;`, // line 6 — shadows the import because var hoists to f()
+        `}`,
+      ].join('\n'),
+      'denied',
+    )
+    // No surviving usage of the imported `x` — var hoists and shadows it
+    // inside the function body.
+    expect(p).toBeUndefined()
+  })
+
+  test('var in block scope does NOT shadow import in outer scope', () => {
+    // `var x` inside `f` hoists only to f, not to module scope.
+    // The module-level `x` on line 8 still refers to the import.
+    const p = pos(
+      [
+        `import { x } from 'denied';`,
+        `function f() {`,
+        `  if (true) {`,
+        `    var x = 1;`,
+        `  }`,
+        `  return x;`, // line 6 — shadowed by hoisted var
+        `}`,
+        `console.log(x);`, // line 8 — this is the imported x
+      ].join('\n'),
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(8)
+  })
+
+  test('let in block scope does NOT shadow import in enclosing function', () => {
+    // `let x` is block-scoped, so `x` on line 6 still refers to the import
+    // (which is in the function's outer scope).
+    const p = pos(
+      [
+        `import { x } from 'denied';`,
+        `function f() {`,
+        `  if (true) {`,
+        `    let x = 1;`,
+        `  }`,
+        `  return x;`, // line 6 — not shadowed (let doesn't hoist)
+        `}`,
+      ].join('\n'),
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(6)
+  })
+
+  test('const in block scope does NOT shadow import in enclosing function', () => {
+    const p = pos(
+      [
+        `import { x } from 'denied';`,
+        `function f() {`,
+        `  {`,
+        `    const x = 1;`,
+        `  }`,
+        `  return x;`, // line 6 — not shadowed
+        `}`,
+      ].join('\n'),
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(6)
+  })
+
+  test('var in nested arrow function does not shadow outer scope', () => {
+    const p = pos(
+      [
+        `import { x } from 'denied';`,
+        `const outer = () => {`,
+        `  const inner = () => {`,
+        `    var x = 1;`, // hoists to inner arrow, not outer
+        `  };`,
+        `  return x;`, // line 6 — refers to imported x
+        `};`,
+      ].join('\n'),
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(6)
+  })
 })

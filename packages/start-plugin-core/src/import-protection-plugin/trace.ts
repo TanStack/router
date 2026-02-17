@@ -120,10 +120,11 @@ export function buildTrace(
   while (queueIndex < queue.length) {
     const node = queue[queueIndex++]!
     const depth = depthByNode.get(node) ?? 0
+    const importers = graph.reverseEdges.get(node)
 
     if (node !== startNode) {
-      const importers = graph.reverseEdges.get(node)
-      const isEntry = graph.entries.has(node) || importers?.size === 0
+      const isEntry =
+        graph.entries.has(node) || !importers || importers.size === 0
       if (isEntry) {
         root = node
         break
@@ -134,7 +135,6 @@ export function buildTrace(
       continue
     }
 
-    const importers = graph.reverseEdges.get(node)
     if (!importers || importers.size === 0) {
       continue
     }

@@ -118,6 +118,51 @@ describe('buildTrace', () => {
     expect(trace.length).toBe(1)
     expect(trace[0]!.file).toBe('/orphan')
   })
+
+  test('treats node with no reverse-edge map entry as entry (root)', () => {
+    // Regression: previously `importers?.size === 0` returned `undefined`
+    // (not `true`) when importers was undefined, so the node wasn't
+    // recognized as an entry.
+    const graph = new ImportGraph()
+    // /a imports /b, but /a has no entry in reverseEdges (no one imports /a)
+    // and /a is NOT in graph.entries.
+    graph.addEdge('/b', '/a', './b')
+
+    const trace = buildTrace(graph, '/b')
+    // /a should be recognized as an entry even though it was never added
+    // via addEntry — it has no importers.
+    expect(trace[0]!.file).toBe('/a')
+    expect(trace[trace.length - 1]!.file).toBe('/b')
+  })
+
+  test('treats node with empty importers map as entry', () => {
+    const graph = new ImportGraph()
+    // Create a reverse-edge entry for /a that is empty (e.g. after invalidation)
+    graph.addEdge('/a', '/b', './a')
+    graph.addEdge('/b', '/a', './b')
+    // Invalidate /a so its outgoing edges (as importer) are removed,
+    // leaving /a's reverse-edge map empty.
+    graph.invalidate('/a')
+
+    // Re-add only the edge from /a -> /b (not /b -> /a)
+    graph.addEdge('/b', '/a', './b')
+
+    const trace = buildTrace(graph, '/b')
+    expect(trace[0]!.file).toBe('/a')
+    expect(trace[trace.length - 1]!.file).toBe('/b')
+  })
+
+  test('prefers explicit entry over implicit no-importers entry', () => {
+    const graph = new ImportGraph()
+    graph.addEntry('/entry')
+    // /entry -> /mid -> /leaf
+    graph.addEdge('/mid', '/entry', './mid')
+    graph.addEdge('/leaf', '/mid', './leaf')
+
+    const trace = buildTrace(graph, '/leaf')
+    expect(trace[0]!.file).toBe('/entry')
+    expect(trace[trace.length - 1]!.file).toBe('/leaf')
+  })
 })
 
 describe('formatViolation', () => {
