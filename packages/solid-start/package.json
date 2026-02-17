@@ -80,6 +80,18 @@
         "default": "./dist/default-entry/esm/server.js"
       }
     },
+    "./server-only": {
+      "import": {
+        "types": "./dist/esm/server-only.d.ts",
+        "default": "./dist/esm/server-only.js"
+      }
+    },
+    "./client-only": {
+      "import": {
+        "types": "./dist/esm/client-only.d.ts",
+        "default": "./dist/esm/client-only.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

@@ -1,0 +1,98 @@
+import { describe, expect, test } from 'vitest'
+import { findPostCompileUsagePos } from '../../src/import-protection-plugin/postCompileUsage'
+
+function pos(code: string, source: string) {
+  return findPostCompileUsagePos(code, source)
+}
+
+describe('findPostCompileUsagePos', () => {
+  test('returns undefined when there is no import from the source', () => {
+    expect(pos(`const x = 1`, 'denied')).toBeUndefined()
+  })
+
+  test('returns undefined when import is type-only', () => {
+    expect(pos(`import type { Foo } from 'denied';\nconst x = 1`, 'denied')).toBeUndefined()
+  })
+
+  test('finds preferred call usage for named import', () => {
+    const p = pos(
+      `import { getRequest } from 'denied';\nexport function x(){ return getRequest() }`,
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(2)
+  })
+
+  test('prefers call usage over earlier non-preferred identifier usage', () => {
+    const p = pos(
+      `import { getRequest } from 'denied';\nconst a = getRequest;\ngetRequest()`,
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(3)
+  })
+
+  test('falls back to non-binding identifier usage if no preferred usage exists', () => {
+    const p = pos(`import { x } from 'denied';\nconst y = x;`, 'denied')
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(2)
+  })
+
+  test('ignores binding positions (variable declarator id)', () => {
+    // Binding the same name shadows the import, so there is no surviving usage
+    // of the imported binding.
+    const p = pos(`import { x } from 'denied';\nconst x = 1;\nconst y = x;`, 'denied')
+    expect(p).toBeUndefined()
+  })
+
+  test('ignores object property key (non-shorthand) but still finds later usage', () => {
+    const p = pos(
+      `import { x } from 'denied';\nconst obj = { x: 1 };\nx()`,
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(3)
+  })
+
+  test('ignores shadowed identifiers in nested function scope', () => {
+    const p = pos(
+      `import { x } from 'denied';\nfunction inner(x: any){ return x }\nconst y = x;`,
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(3)
+  })
+
+  test('ignores shadowing via catch clause param', () => {
+    const p = pos(
+      `import { err } from 'denied';\ntry { throw 1 } catch (err) { console.log(err) }\nconsole.log(err)`,
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(3)
+  })
+
+  test('handles namespace member preferred usage (ns.foo)', () => {
+    const p = pos(
+      `import * as ns from 'denied';\nns.getRequest()`,
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(2)
+  })
+
+  test('handles default import preferred usage (call)', () => {
+    const p = pos(`import req from 'denied';\nreq()`, 'denied')
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(2)
+  })
+
+  test('counts object pattern shorthand as usage (not a binding position)', () => {
+    const p = pos(
+      `import { foo } from 'denied';\nconst obj = { foo };`,
+      'denied',
+    )
+    expect(p).toBeDefined()
+    expect(p!.line).toBe(2)
+  })
+})

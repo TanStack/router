@@ -1779,6 +1779,46 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
+  e2e/react-start/import-protection:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.2.3
+        version: 19.2.3(react@19.2.3)
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.8
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.8)
+      srvx:
+        specifier: ^0.11.2
+        version: 0.11.2
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   e2e/react-start/query-integration:
     dependencies:
       '@tanstack/react-query':
@@ -12255,6 +12295,12 @@ importers:
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
+      picomatch:
+        specifier: ^4.0.3
+        version: 4.0.3
+      source-map:
+        specifier: ^0.7.6
+        version: 0.7.6
       srvx:
         specifier: ^0.11.2
         version: 0.11.2
@@ -12280,6 +12326,9 @@ importers:
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
+      '@types/picomatch':
+        specifier: ^4.0.2
+        version: 4.0.2
       vite:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -17786,6 +17835,9 @@ packages:
   '@types/phoenix@1.6.6':
     resolution: {integrity: sha512-PIzZZlEppgrpoT2QgbnDU+MMzuR6BbCjllj0bM70lWoejMeNJAxCchxnv7J3XFkI8MpygtRpzXrIlmWUBclP5A==}
 
+  '@types/picomatch@4.0.2':
+    resolution: {integrity: sha512-qHHxQ+P9PysNEGbALT8f8YOSHW0KJu6l2xU8DYY0fu/EmGxXdVnuTLvFUvBgPJMSqXq29SYHveejeAha+4AYgA==}
+
   '@types/prop-types@15.7.14':
     resolution: {integrity: sha512-gNMvNH49DJ7OJYv+KAKn0Xp45p8PLl6zo2YnvDIbTd4J6MER2BmWN49TG7n9LvkyihINxeKW8+3bfS2yDC9dzQ==}
 
@@ -22339,10 +22391,6 @@ packages:
   picomatch@2.3.1:
     resolution: {integrity: sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==}
     engines: {node: '>=8.6'}
-
-  picomatch@4.0.2:
-    resolution: {integrity: sha512-M7BAV6Rlcy5u+m6oPhAPFgJTzAioX/6B0DxyvDlo9l8+T3nLKbrczg2WLUyzd45L8RqfUMyGPzekbMvX2Ldkwg==}
-    engines: {node: '>=12'}
 
   picomatch@4.0.3:
     resolution: {integrity: sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==}
@@ -30362,6 +30410,8 @@ snapshots:
 
   '@types/phoenix@1.6.6': {}
 
+  '@types/picomatch@4.0.2': {}
+
   '@types/prop-types@15.7.14': {}
 
   '@types/qs@6.9.18': {}
@@ -36027,8 +36077,6 @@ snapshots:
 
   picomatch@2.3.1: {}
 
-  picomatch@4.0.2: {}
-
   picomatch@4.0.3: {}
 
   picoquery@2.5.0: {}
@@ -37941,7 +37989,7 @@ snapshots:
   unplugin@2.3.4:
     dependencies:
       acorn: 8.14.1
-      picomatch: 4.0.2
+      picomatch: 4.0.3
       webpack-virtual-modules: 0.6.2
 
   unrs-resolver@1.11.1:
@@ -38303,7 +38351,7 @@ snapshots:
       expect-type: 1.2.2
       magic-string: 0.30.17
       pathe: 2.0.3
-      picomatch: 4.0.2
+      picomatch: 4.0.3
       std-env: 3.9.0
       tinybench: 2.9.0
       tinyexec: 0.3.2
