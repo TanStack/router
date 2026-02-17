@@ -2437,7 +2437,9 @@ export class RouterCore<
                           ...s.cachedMatches,
                           ...exitingMatches.filter(
                             (d) =>
-                              d.status !== 'error' && d.status !== 'notFound' && d.status !== 'redirected',
+                              d.status !== 'error' &&
+                              d.status !== 'notFound' &&
+                              d.status !== 'redirected',
                           ),
                         ],
                       }
