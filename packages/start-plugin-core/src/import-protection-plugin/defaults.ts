@@ -27,11 +27,11 @@ export function getDefaultImportProtectionRules(
   return {
     client: {
       specifiers: clientSpecifiers,
-      files: ['**/*.server.*', '**/.server/**'],
+      files: ['**/*.server.*', '**/server/**'],
     },
     server: {
       specifiers: [],
-      files: ['**/*.client.*', '**/.client/**'],
+      files: ['**/*.client.*', '**/client/**'],
     },
   }
 }

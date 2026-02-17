@@ -29,12 +29,12 @@ Import protection is enabled out of the box with these defaults:
 
 **Client environment denials:**
 
-- Files matching `**/*.server.*` or `**/.server/**`
+- Files matching `**/*.server.*` or `**/server/**`
 - The specifier `@tanstack/react-start/server`
 
 **Server environment denials:**
 
-- Files matching `**/*.client.*` or `**/.client/**`
+- Files matching `**/*.client.*` or `**/client/**`
 
 These defaults mean you can use the `.server.ts` / `.client.ts` naming convention to restrict files to a single environment without any configuration.
 
