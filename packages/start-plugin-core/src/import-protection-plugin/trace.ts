@@ -222,7 +222,7 @@ export function formatViolation(info: ViolationInfo, root: string): string {
   }
 
   lines.push(`  Importer: ${relLoc(info.importer, info.importerLoc)}`)
-  lines.push(`  Import: "${info.specifier}"`)
+  lines.push(`  Import: "${rel(info.specifier)}"`)
   if (info.resolved) {
     lines.push(`  Resolved: ${rel(info.resolved)}`)
   }
@@ -234,7 +234,7 @@ export function formatViolation(info: ViolationInfo, root: string): string {
       const step = info.trace[i]!
       const isEntry = i === 0
       const tag = isEntry ? ' (entry)' : ''
-      const spec = step.specifier ? ` (import "${step.specifier}")` : ''
+      const spec = step.specifier ? ` (import "${rel(step.specifier)}")` : ''
       lines.push(`    ${i + 1}. ${relTraceStep(step)}${tag}${spec}`)
     }
   }

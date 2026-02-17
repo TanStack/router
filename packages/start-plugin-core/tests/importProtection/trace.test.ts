@@ -354,4 +354,64 @@ describe('formatViolation', () => {
     expect(formatted).toContain('createClientOnlyFn')
     expect(formatted).toContain('createIsomorphicFn')
   })
+
+  test('relativizes absolute-path specifiers in Import line and trace steps', () => {
+    // When an alias (e.g. ~/) is resolved by a transform plugin before
+    // resolveId, the specifier stored in the graph can be an absolute path.
+    // formatViolation should display it as a root-relative path.
+    const info: ViolationInfo = {
+      env: 'client',
+      envType: 'client',
+      type: 'file',
+      behavior: 'error',
+      pattern: '**/client/**',
+      specifier: '/project/src/utils/prisma',
+      importer: '/project/src/routes/signup.tsx',
+      resolved: '/project/src/utils/prisma.ts',
+      trace: [
+        { file: '/project/src/routes/signup.tsx' },
+        {
+          file: '/project/src/routes/signup.tsx',
+          specifier: '/project/src/utils/prisma',
+        },
+      ],
+      message: 'Import denied',
+    }
+
+    const formatted = formatViolation(info, '/project')
+
+    // The top-level Import line should show the relative path, not absolute.
+    expect(formatted).toContain('Import: "src/utils/prisma"')
+    expect(formatted).not.toContain('Import: "/project/src/utils/prisma"')
+
+    // The trace step specifier should also be relative.
+    expect(formatted).toContain('(import "src/utils/prisma")')
+    expect(formatted).not.toContain('(import "/project/src/utils/prisma")')
+  })
+
+  test('leaves non-absolute specifiers unchanged', () => {
+    const info: ViolationInfo = {
+      env: 'client',
+      envType: 'client',
+      type: 'specifier',
+      behavior: 'error',
+      pattern: '@tanstack/react-start/server',
+      specifier: '@tanstack/react-start/server',
+      importer: '/project/src/routes/index.tsx',
+      trace: [
+        {
+          file: '/project/src/routes/index.tsx',
+          specifier: './secret.server',
+        },
+      ],
+      message: 'Import denied',
+    }
+
+    const formatted = formatViolation(info, '/project')
+
+    // Bare specifier should be preserved as-is.
+    expect(formatted).toContain('Import: "@tanstack/react-start/server"')
+    // Relative specifier in trace should also be preserved as-is.
+    expect(formatted).toContain('(import "./secret.server")')
+  })
 })
