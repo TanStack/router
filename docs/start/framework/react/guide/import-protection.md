@@ -153,7 +153,7 @@ When a violation is detected, the plugin shows a diagnostic message with the ful
 
 This example shows a `*.server.*` file being imported transitively in the client environment:
 
-```
+```text
 [import-protection] Import denied in client environment
 
   Denied by file pattern: **/*.server.*
@@ -186,7 +186,7 @@ This example shows a `*.server.*` file being imported transitively in the client
 
 This example shows a `*.client.*` file imported in the SSR environment. Because the code snippet contains JSX, the `<ClientOnly>` suggestion is shown first:
 
-```
+```text
 [import-protection] Import denied in server environment
 
   Denied by file pattern: **/*.client.*
