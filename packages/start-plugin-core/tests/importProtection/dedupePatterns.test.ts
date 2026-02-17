@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
-import { dedupePatterns, stripViteQuery } from '../../src/import-protection-plugin/utils'
+import {
+  dedupePatterns,
+  stripViteQuery,
+} from '../../src/import-protection-plugin/utils'
 import { pickOriginalCodeFromSourcesContent } from '../../src/import-protection-plugin/sourceLocation'
 
 describe('dedupePatterns', () => {

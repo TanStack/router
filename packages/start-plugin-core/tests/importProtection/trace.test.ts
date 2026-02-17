@@ -10,7 +10,11 @@ describe('ImportGraph', () => {
   test('addEdge and reverse lookup', () => {
     const graph = new ImportGraph()
     graph.addEdge('/src/secret.server.ts', '/src/edge-a.ts', './secret.server')
-    graph.addEdge('/src/edge-a.ts', '/src/routes/index.tsx', './violations/edge-a')
+    graph.addEdge(
+      '/src/edge-a.ts',
+      '/src/routes/index.tsx',
+      './violations/edge-a',
+    )
 
     const edges = graph.getEdges('/src/secret.server.ts')
     expect(edges).toBeDefined()
@@ -68,11 +72,7 @@ describe('buildTrace', () => {
     graph.addEntry('/src/main.tsx')
 
     // main.tsx -> routes/index.tsx -> violations/edge-a.ts -> violations/secret.server.ts
-    graph.addEdge(
-      '/src/routes/index.tsx',
-      '/src/main.tsx',
-      './routes/index',
-    )
+    graph.addEdge('/src/routes/index.tsx', '/src/main.tsx', './routes/index')
     graph.addEdge(
       '/src/violations/edge-a.ts',
       '/src/routes/index.tsx',
@@ -263,7 +263,9 @@ describe('formatViolation', () => {
     const formatted = formatViolation(info, '/project')
 
     expect(formatted).toContain('Suggestions:')
-    expect(formatted).toContain('<ClientOnly fallback={<Loading />}>...</ClientOnly>')
+    expect(formatted).toContain(
+      '<ClientOnly fallback={<Loading />}>...</ClientOnly>',
+    )
     expect(formatted).toContain('createClientOnlyFn')
     expect(formatted).toContain('createIsomorphicFn')
   })

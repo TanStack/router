@@ -24,7 +24,9 @@ interface Violation {
   envType?: string
 }
 
-async function readViolations(type: 'build' | 'dev'): Promise<Array<Violation>> {
+async function readViolations(
+  type: 'build' | 'dev',
+): Promise<Array<Violation>> {
   const filename = `violations.${type}.json`
   const violationsPath = path.resolve(import.meta.dirname, '..', filename)
   const mod = await import(violationsPath, {
@@ -126,7 +128,9 @@ test('violations contain trace information', async () => {
 test('deep trace includes full chain', async () => {
   const violations = await readViolations('build')
 
-  const v = violations.find((x) => x.type === 'file' && x.importer.includes('edge-3'))
+  const v = violations.find(
+    (x) => x.type === 'file' && x.importer.includes('edge-3'),
+  )
 
   expect(v).toBeDefined()
   const traceText = v!.trace.map((s) => s.file).join(' -> ')
@@ -140,7 +144,9 @@ test('all trace steps include line numbers', async () => {
   const violations = await readViolations('build')
 
   // Find a violation with a multi-step trace (the deep chain)
-  const v = violations.find((x) => x.type === 'file' && x.importer.includes('edge-3'))
+  const v = violations.find(
+    (x) => x.type === 'file' && x.importer.includes('edge-3'),
+  )
   expect(v).toBeDefined()
   expect(v!.trace.length).toBeGreaterThanOrEqual(3)
 
@@ -149,7 +155,10 @@ test('all trace steps include line numbers', async () => {
   // All non-entry steps should have line numbers since they import something.
   for (let i = 1; i < v!.trace.length; i++) {
     const step = v!.trace[i]!
-    expect(step.line, `trace step ${i} (${step.file}) should have a line number`).toBeDefined()
+    expect(
+      step.line,
+      `trace step ${i} (${step.file}) should have a line number`,
+    ).toBeDefined()
     expect(step.line).toBeGreaterThan(0)
   }
 })
@@ -265,9 +274,7 @@ test('compiler-processed module has code snippet in dev', async () => {
   // which shortens the output.  The snippet must still show the original
   // source lines (mapped via sourcesContent in the compiler's sourcemap).
   const compilerViolation = violations.find(
-    (v) =>
-      v.envType === 'client' &&
-      v.importer.includes('compiler-leak'),
+    (v) => v.envType === 'client' && v.importer.includes('compiler-leak'),
   )
 
   expect(compilerViolation).toBeDefined()

@@ -24,10 +24,9 @@ describe('rewriteDeniedImports', () => {
   // --- Import declarations ---
 
   test('rewrites named imports', () => {
-    const out = rewrite(
-      `import { foo, bar } from './secret.server';`,
-      ['./secret.server'],
-    )
+    const out = rewrite(`import { foo, bar } from './secret.server';`, [
+      './secret.server',
+    ])
     expectMockImport(out, '__tss_deny_0')
     expect(out).toContain('const foo = __tss_deny_0.foo')
     expect(out).toContain('const bar = __tss_deny_0.bar')
@@ -35,38 +34,34 @@ describe('rewriteDeniedImports', () => {
   })
 
   test('rewrites default import', () => {
-    const out = rewrite(
-      `import secret from './secret.server';`,
-      ['./secret.server'],
-    )
+    const out = rewrite(`import secret from './secret.server';`, [
+      './secret.server',
+    ])
     expectMockImport(out, '__tss_deny_0')
     expect(out).toContain('const secret = __tss_deny_0')
     expect(out).not.toContain('./secret.server')
   })
 
   test('rewrites namespace import', () => {
-    const out = rewrite(
-      `import * as ns from './secret.server';`,
-      ['./secret.server'],
-    )
+    const out = rewrite(`import * as ns from './secret.server';`, [
+      './secret.server',
+    ])
     expectMockImport(out, '__tss_deny_0')
     expect(out).toContain('const ns = __tss_deny_0')
     expect(out).not.toContain('./secret.server')
   })
 
   test('rewrites aliased named import', () => {
-    const out = rewrite(
-      `import { foo as myFoo } from './secret.server';`,
-      ['./secret.server'],
-    )
+    const out = rewrite(`import { foo as myFoo } from './secret.server';`, [
+      './secret.server',
+    ])
     expect(out).toContain('const myFoo = __tss_deny_0.foo')
   })
 
   test('rewrites mixed default + named imports', () => {
-    const out = rewrite(
-      `import def, { a, b } from './secret.server';`,
-      ['./secret.server'],
-    )
+    const out = rewrite(`import def, { a, b } from './secret.server';`, [
+      './secret.server',
+    ])
     expect(out).toContain('const def = __tss_deny_0')
     expect(out).toContain('const a = __tss_deny_0.a')
     expect(out).toContain('const b = __tss_deny_0.b')
@@ -84,10 +79,9 @@ describe('rewriteDeniedImports', () => {
   })
 
   test('skips type-only specifiers but rewrites value specifiers', () => {
-    const out = rewrite(
-      `import { type Foo, bar } from './secret.server';`,
-      ['./secret.server'],
-    )
+    const out = rewrite(`import { type Foo, bar } from './secret.server';`, [
+      './secret.server',
+    ])
     // bar should be rewritten, Foo should not produce a const
     expect(out).toContain('const bar = __tss_deny_0.bar')
     expect(out).not.toContain('const Foo')
@@ -96,10 +90,9 @@ describe('rewriteDeniedImports', () => {
   // --- Export named re-exports ---
 
   test('rewrites export { x } from "denied"', () => {
-    const out = rewrite(
-      `export { foo, bar } from './secret.server';`,
-      ['./secret.server'],
-    )
+    const out = rewrite(`export { foo, bar } from './secret.server';`, [
+      './secret.server',
+    ])
     expectMockImport(out, '__tss_deny_0')
     expect(out).toContain('const __tss_reexport_foo = __tss_deny_0.foo')
     expect(out).toContain('const __tss_reexport_bar = __tss_deny_0.bar')
@@ -110,10 +103,9 @@ describe('rewriteDeniedImports', () => {
   })
 
   test('rewrites aliased re-export', () => {
-    const out = rewrite(
-      `export { foo as myFoo } from './secret.server';`,
-      ['./secret.server'],
-    )
+    const out = rewrite(`export { foo as myFoo } from './secret.server';`, [
+      './secret.server',
+    ])
     expect(out).toContain('const __tss_reexport_foo = __tss_deny_0.foo')
     expect(out).toContain('__tss_reexport_foo as myFoo')
   })

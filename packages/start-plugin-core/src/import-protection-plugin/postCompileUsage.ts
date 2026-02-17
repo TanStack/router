@@ -3,7 +3,10 @@ import { parseAst } from '@tanstack/router-utils'
 
 export type UsagePos = { line: number; column0: number }
 
-function collectPatternBindings(node: t.Node | null | undefined, out: Set<string>): void {
+function collectPatternBindings(
+  node: t.Node | null | undefined,
+  out: Set<string>,
+): void {
   if (!node) return
   if (t.isIdentifier(node)) {
     out.add(node.name)
@@ -54,7 +57,8 @@ function isBindingPosition(node: t.Node, parent: t.Node | null): boolean {
     !parent.shorthand
   )
     return true
-  if (t.isObjectMethod(parent) && parent.key === node && !parent.computed) return true
+  if (t.isObjectMethod(parent) && parent.key === node && !parent.computed)
+    return true
   if (t.isExportSpecifier(parent) && parent.exported === node) return true
   return false
 }
@@ -79,7 +83,11 @@ function isScopeNode(node: t.Node): boolean {
 }
 
 function collectScopeBindings(node: t.Node, out: Set<string>): void {
-  if (t.isFunctionDeclaration(node) || t.isFunctionExpression(node) || t.isArrowFunctionExpression(node)) {
+  if (
+    t.isFunctionDeclaration(node) ||
+    t.isFunctionExpression(node) ||
+    t.isArrowFunctionExpression(node)
+  ) {
     for (const p of node.params) {
       collectPatternBindings(p, out)
     }
@@ -154,7 +162,11 @@ export function findPostCompileUsagePos(
 
   // The walker accepts AST nodes, arrays (from node children like
   // `body`, `params`, etc.), or null/undefined for optional children.
-  type Walkable = t.Node | ReadonlyArray<t.Node | null | undefined> | null | undefined
+  type Walkable =
+    | t.Node
+    | ReadonlyArray<t.Node | null | undefined>
+    | null
+    | undefined
 
   function walk(node: Walkable, parent: t.Node | null) {
     if (!node) return

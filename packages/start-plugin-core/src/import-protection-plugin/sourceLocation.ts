@@ -329,7 +329,10 @@ export async function findImportStatementLocationFromTransformed(
   provider: TransformResultProvider,
   importerId: string,
   source: string,
-  importLocCache: Map<string, { file?: string; line: number; column: number } | null>,
+  importLocCache: Map<
+    string,
+    { file?: string; line: number; column: number } | null
+  >,
 ): Promise<Loc | undefined> {
   const importerFile = normalizeFilePath(importerId)
   const cacheKey = `${importerFile}::${source}`
@@ -425,7 +428,10 @@ export async function addTraceImportLocations(
     line?: number
     column?: number
   }>,
-  importLocCache: Map<string, { file?: string; line: number; column: number } | null>,
+  importLocCache: Map<
+    string,
+    { file?: string; line: number; column: number } | null
+  >,
 ): Promise<void> {
   for (const step of trace) {
     if (!step.specifier) continue

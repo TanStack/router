@@ -39,9 +39,10 @@ export function getDefaultImportProtectionRules(
 /**
  * Marker module specifiers that restrict a file to a specific environment.
  */
-export function getMarkerSpecifiers(
-  _framework: CompileStartFrameworkOptions,
-): { serverOnly: Array<string>; clientOnly: Array<string> } {
+export function getMarkerSpecifiers(_framework: CompileStartFrameworkOptions): {
+  serverOnly: Array<string>
+  clientOnly: Array<string>
+} {
   const frameworks: Array<CompileStartFrameworkOptions> = [
     'react',
     'solid',

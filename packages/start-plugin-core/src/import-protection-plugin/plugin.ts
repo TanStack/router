@@ -3,20 +3,13 @@ import { normalizePath } from 'vite'
 
 import { resolveViteId } from '../utils'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
-import {
-  ImportGraph,
-  buildTrace,
-  formatViolation,
-} from './trace'
+import { ImportGraph, buildTrace, formatViolation } from './trace'
 import {
   getDefaultImportProtectionRules,
   getMarkerSpecifiers,
 } from './defaults'
 import { findPostCompileUsagePos } from './postCompileUsage'
-import {
-  compileMatchers,
-  matchesAny,
-} from './matchers'
+import { compileMatchers, matchesAny } from './matchers'
 import { dedupePatterns, normalizeFilePath } from './utils'
 import { collectMockExportNamesBySource } from './rewriteDeniedImports'
 import {
@@ -46,7 +39,11 @@ import {
 import type { PluginOption } from 'vite'
 import type { CompiledMatcher } from './matchers'
 import type { ViolationInfo } from './trace'
-import type { TransformResult, TransformResultProvider, SourceMapLike } from './sourceLocation'
+import type {
+  TransformResult,
+  TransformResultProvider,
+  SourceMapLike,
+} from './sourceLocation'
 import type {
   ImportProtectionBehavior,
   ImportProtectionOptions,
@@ -76,8 +73,14 @@ interface PluginConfig {
   maxTraceDepth: number
 
   compiledRules: {
-    client: { specifiers: Array<CompiledMatcher>; files: Array<CompiledMatcher> }
-    server: { specifiers: Array<CompiledMatcher>; files: Array<CompiledMatcher> }
+    client: {
+      specifiers: Array<CompiledMatcher>
+      files: Array<CompiledMatcher>
+    }
+    server: {
+      specifiers: Array<CompiledMatcher>
+      files: Array<CompiledMatcher>
+    }
   }
   includeMatchers: Array<CompiledMatcher>
   excludeMatchers: Array<CompiledMatcher>
@@ -115,7 +118,10 @@ interface EnvState {
   resolveCacheByFile: Map<string, Set<string>>
 
   /** Import location cache.  Key: `${importerFile}::${source}`. */
-  importLocCache: Map<string, { file?: string; line: number; column: number } | null>
+  importLocCache: Map<
+    string,
+    { file?: string; line: number; column: number } | null
+  >
   /** Reverse index: file path → Set of importLocCache keys for that file. */
   importLocByFile: Map<string, Set<string>>
 
@@ -184,8 +190,13 @@ export function importProtectionPlugin(
    *
    * Cache keys have the format `${importerFile}::${source}`.
    */
-  function createImportLocCache(env: EnvState): Map<string, { file?: string; line: number; column: number } | null> {
-    const cache = new Map<string, { file?: string; line: number; column: number } | null>()
+  function createImportLocCache(
+    env: EnvState,
+  ): Map<string, { file?: string; line: number; column: number } | null> {
+    const cache = new Map<
+      string,
+      { file?: string; line: number; column: number } | null
+    >()
     const originalSet = cache.set.bind(cache)
     cache.set = function (key, value) {
       originalSet(key, value)
@@ -213,7 +224,9 @@ export function importProtectionPlugin(
     return env.mockExportsByImporter.get(importerFile)?.get(source) ?? []
   }
 
-  function getMarkerKindForFile(fileId: string): 'server' | 'client' | undefined {
+  function getMarkerKindForFile(
+    fileId: string,
+  ): 'server' | 'client' | undefined {
     const file = normalizeFilePath(fileId)
     return shared.fileMarkerKind.get(file)
   }
@@ -238,7 +251,9 @@ export function importProtectionPlugin(
         // their physical file path (e.g. trace steps, modules without
         // query params).
         const strippedKey = normalizeFilePath(id)
-        return strippedKey !== fullKey ? env.transformResultCache.get(strippedKey) : undefined
+        return strippedKey !== fullKey
+          ? env.transformResultCache.get(strippedKey)
+          : undefined
       },
     }
   }
@@ -345,7 +360,13 @@ export function importProtectionPlugin(
     const normalizedImporter = normalizeFilePath(importer)
 
     const info = await buildViolationInfo(
-      provider, env, envName, envType, importer, normalizedImporter, source,
+      provider,
+      env,
+      envName,
+      envType,
+      importer,
+      normalizedImporter,
+      source,
       {
         type: 'marker',
         resolved: normalizeFilePath(resolvedId),
@@ -378,7 +399,9 @@ export function importProtectionPlugin(
     files: Array<CompiledMatcher>
   } {
     const type = getEnvType(envName)
-    return type === 'client' ? config.compiledRules.client : config.compiledRules.server
+    return type === 'client'
+      ? config.compiledRules.client
+      : config.compiledRules.server
   }
 
   const environmentNames = new Set<string>([
@@ -673,7 +696,8 @@ export function importProtectionPlugin(
               envState.mockExportsByImporter.delete(importerFile)
 
               // Invalidate transform result cache for this file.
-              const transformKeys = envState.transformResultKeysByFile.get(importerFile)
+              const transformKeys =
+                envState.transformResultKeysByFile.get(importerFile)
               if (transformKeys) {
                 for (const key of transformKeys) {
                   envState.transformResultCache.delete(key)
@@ -735,9 +759,15 @@ export function importProtectionPlugin(
           shared.fileMarkerKind.set(resolvedImporter, 'server')
 
           // If we're in the client environment, this is a violation
-        if (envType === 'client') {
-          const info = await buildViolationInfo(
-              provider, env, envName, envType, importer, resolvedImporter, source,
+          if (envType === 'client') {
+            const info = await buildViolationInfo(
+              provider,
+              env,
+              envName,
+              envType,
+              importer,
+              resolvedImporter,
+              source,
               {
                 type: 'marker',
                 message: `Module "${getRelativePath(resolvedImporter)}" is marked server-only but is imported in the client environment`,
@@ -762,7 +792,13 @@ export function importProtectionPlugin(
 
           if (envType === 'server') {
             const info = await buildViolationInfo(
-              provider, env, envName, envType, importer, resolvedImporter, source,
+              provider,
+              env,
+              envName,
+              envType,
+              importer,
+              resolvedImporter,
+              source,
               {
                 type: 'marker',
                 message: `Module "${getRelativePath(resolvedImporter)}" is marked client-only but is imported in the server environment`,
@@ -787,7 +823,13 @@ export function importProtectionPlugin(
         if (specifierMatch) {
           env.graph.addEdge(source, normalizedImporter, source)
           const info = await buildViolationInfo(
-            provider, env, envName, envType, importer, normalizedImporter, source,
+            provider,
+            env,
+            envName,
+            envType,
+            importer,
+            normalizedImporter,
+            source,
             {
               type: 'specifier',
               pattern: specifierMatch.pattern,
@@ -836,7 +878,13 @@ export function importProtectionPlugin(
 
           if (fileMatch) {
             const info = await buildViolationInfo(
-              provider, env, envName, envType, importer, normalizedImporter, source,
+              provider,
+              env,
+              envName,
+              envType,
+              importer,
+              normalizedImporter,
+              source,
               {
                 type: 'file',
                 pattern: fileMatch.pattern,
@@ -880,7 +928,9 @@ export function importProtectionPlugin(
           }
 
           if (id.startsWith(RESOLVED_MOCK_EDGE_PREFIX)) {
-            return loadMockEdgeModule(id.slice(RESOLVED_MOCK_EDGE_PREFIX.length))
+            return loadMockEdgeModule(
+              id.slice(RESOLVED_MOCK_EDGE_PREFIX.length),
+            )
           }
 
           if (id.startsWith(RESOLVED_MOCK_RUNTIME_PREFIX)) {
@@ -959,7 +1009,11 @@ export function importProtectionPlugin(
           // entry that best matches this importer.
           let originalCode: string | undefined
           if (map?.sourcesContent) {
-            originalCode = pickOriginalCodeFromSourcesContent(map, file, config.root)
+            originalCode = pickOriginalCodeFromSourcesContent(
+              map,
+              file,
+              config.root,
+            )
           }
 
           // Precompute a line index for fast index->line/col conversions.
@@ -971,7 +1025,12 @@ export function importProtectionPlugin(
           // their own cache entry.
           const cacheKey = normalizePath(id)
           const envState = getEnv(envName)
-          envState.transformResultCache.set(cacheKey, { code, map, originalCode, lineIndex })
+          envState.transformResultCache.set(cacheKey, {
+            code,
+            map,
+            originalCode,
+            lineIndex,
+          })
 
           // Maintain reverse index so hotUpdate invalidation is O(keys for file).
           let keySet = envState.transformResultKeysByFile.get(file)
@@ -987,7 +1046,12 @@ export function importProtectionPlugin(
           // The last variant transformed wins, which is acceptable — trace
           // lookups are best-effort for line numbers.
           if (cacheKey !== file) {
-            envState.transformResultCache.set(file, { code, map, originalCode, lineIndex })
+            envState.transformResultCache.set(file, {
+              code,
+              map,
+              originalCode,
+              lineIndex,
+            })
             keySet.add(file)
           }
 
@@ -1101,12 +1165,7 @@ export function importProtectionPlugin(
         config.root,
       )
       return resolveViteId(
-        buildMockEdgeModuleId(
-          env,
-          info.importer,
-          info.specifier,
-          runtimeId,
-        ),
+        buildMockEdgeModuleId(env, info.importer, info.specifier, runtimeId),
       )
     }
 

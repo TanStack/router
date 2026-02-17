@@ -206,7 +206,7 @@
               "label": "Code Execution Patterns",
               "to": "framework/solid/guide/code-execution-patterns"
             },
-             {
+            {
               "label": "Import Protection",
               "to": "framework/solid/guide/import-protection"
             },

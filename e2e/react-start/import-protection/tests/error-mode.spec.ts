@@ -12,7 +12,11 @@ interface ErrorBuildResult {
 }
 
 async function readBuildResult(): Promise<ErrorBuildResult> {
-  const resultPath = path.resolve(import.meta.dirname, '..', 'error-build-result.json')
+  const resultPath = path.resolve(
+    import.meta.dirname,
+    '..',
+    'error-build-result.json',
+  )
   const mod = await import(resultPath, {
     with: { type: 'json' },
   } as any)

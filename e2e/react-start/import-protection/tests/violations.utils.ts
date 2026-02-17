@@ -34,7 +34,9 @@ export function extractViolationsFromLog(text: string): Array<Violation> {
     const line = lines[i] ?? ''
     if (!line.includes('[import-protection] Import denied in')) continue
 
-    const envTypeMatch = line.match(/Import denied in\s+(client|server)\s+environment/)
+    const envTypeMatch = line.match(
+      /Import denied in\s+(client|server)\s+environment/,
+    )
     const envType = envTypeMatch?.[1]
 
     const block: Array<string> = [line]
@@ -46,9 +48,13 @@ export function extractViolationsFromLog(text: string): Array<Violation> {
       block.push(l)
     }
 
-    const importerLine = block.find((b) => b.trimStart().startsWith('Importer:'))
+    const importerLine = block.find((b) =>
+      b.trimStart().startsWith('Importer:'),
+    )
     const specLine = block.find((b) => b.trimStart().startsWith('Import:'))
-    const resolvedLine = block.find((b) => b.trimStart().startsWith('Resolved:'))
+    const resolvedLine = block.find((b) =>
+      b.trimStart().startsWith('Resolved:'),
+    )
 
     const importer = importerLine
       ? importerLine.split('Importer:')[1]!.trim()
@@ -74,7 +80,9 @@ export function extractViolationsFromLog(text: string): Array<Violation> {
     if (traceStart !== -1) {
       for (let k = traceStart + 1; k < block.length; k++) {
         const l = block[k] ?? ''
-        const m = l.match(/^\s*\d+\.\s+(.*?)(?:\s+\(entry\))?\s*(?:\(import "(.*)"\))?\s*$/)
+        const m = l.match(
+          /^\s*\d+\.\s+(.*?)(?:\s+\(entry\))?\s*(?:\(import "(.*)"\))?\s*$/,
+        )
         if (m) {
           const rawFile = m[1]!.trim()
           const spec = m[2]?.trim()
@@ -113,7 +121,11 @@ export function extractViolationsFromLog(text: string): Array<Violation> {
         }
         // The clickable location line follows the snippet (after an empty line)
         const locLine = l.trim()
-        if (locLine && !locLine.startsWith('Suggestion') && snippetLines.length > 0) {
+        if (
+          locLine &&
+          !locLine.startsWith('Suggestion') &&
+          snippetLines.length > 0
+        ) {
           // Check if it looks like a file:line:col reference
           if (/:\d+:\d+/.test(locLine)) {
             location = locLine

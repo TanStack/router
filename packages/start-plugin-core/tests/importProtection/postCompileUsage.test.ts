@@ -11,7 +11,9 @@ describe('findPostCompileUsagePos', () => {
   })
 
   test('returns undefined when import is type-only', () => {
-    expect(pos(`import type { Foo } from 'denied';\nconst x = 1`, 'denied')).toBeUndefined()
+    expect(
+      pos(`import type { Foo } from 'denied';\nconst x = 1`, 'denied'),
+    ).toBeUndefined()
   })
 
   test('finds preferred call usage for named import', () => {
@@ -41,7 +43,10 @@ describe('findPostCompileUsagePos', () => {
   test('ignores binding positions (variable declarator id)', () => {
     // Binding the same name shadows the import, so there is no surviving usage
     // of the imported binding.
-    const p = pos(`import { x } from 'denied';\nconst x = 1;\nconst y = x;`, 'denied')
+    const p = pos(
+      `import { x } from 'denied';\nconst x = 1;\nconst y = x;`,
+      'denied',
+    )
     expect(p).toBeUndefined()
   })
 
@@ -73,10 +78,7 @@ describe('findPostCompileUsagePos', () => {
   })
 
   test('handles namespace member preferred usage (ns.foo)', () => {
-    const p = pos(
-      `import * as ns from 'denied';\nns.getRequest()`,
-      'denied',
-    )
+    const p = pos(`import * as ns from 'denied';\nns.getRequest()`, 'denied')
     expect(p).toBeDefined()
     expect(p!.line).toBe(2)
   })

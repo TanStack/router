@@ -12,5 +12,9 @@
 export function WindowSize() {
   const w = typeof window !== 'undefined' ? window.innerWidth : 0
   const h = typeof window !== 'undefined' ? window.innerHeight : 0
-  return <span>{w}x{h}</span>
+  return (
+    <span>
+      {w}x{h}
+    </span>
+  )
 }

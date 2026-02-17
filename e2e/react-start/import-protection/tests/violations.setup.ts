@@ -53,7 +53,12 @@ async function captureDevViolations(cwd: string): Promise<void> {
     await waitForHttpOk(baseURL, 30_000)
 
     const htmlPages: Array<string> = []
-    for (const route of ['/', '/leaky-server-import', '/client-only-violations', '/client-only-jsx']) {
+    for (const route of [
+      '/',
+      '/leaky-server-import',
+      '/client-only-violations',
+      '/client-only-jsx',
+    ]) {
       try {
         const htmlRes = await fetch(`${baseURL}${route}`, {
           signal: AbortSignal.timeout(5000),

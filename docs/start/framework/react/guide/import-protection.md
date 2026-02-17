@@ -5,7 +5,6 @@ title: Import Protection
 
 > **Experimental:** Import protection is experimental and subject to change.
 
-
 Import protection prevents server-only code from leaking into client bundles and client-only code from leaking into server bundles. It runs as a Vite plugin and is enabled by default in TanStack Start.
 
 ## How It Works
@@ -21,12 +20,12 @@ There are two ways an import can be denied:
 
 Import protection is enabled out of the box with these defaults:
 
-| Setting | Default |
-| --- | --- |
-| `behavior` (dev) | `'mock'` -- warn and replace with a mock module |
-| `behavior` (build) | `'error'` -- fail the build |
-| `log` | `'once'` -- deduplicate repeated violations |
-| Scope | Files inside Start's `srcDirectory` |
+| Setting            | Default                                         |
+| ------------------ | ----------------------------------------------- |
+| `behavior` (dev)   | `'mock'` -- warn and replace with a mock module |
+| `behavior` (build) | `'error'` -- fail the build                     |
+| `log`              | `'once'` -- deduplicate repeated violations     |
+| Scope              | Files inside Start's `srcDirectory`             |
 
 **Client environment denials:**
 
@@ -131,7 +130,6 @@ export default defineConfig({
 })
 ```
 
-
 ## Scoping and Exclusions
 
 By default, import protection only checks files inside Start's `srcDirectory`. You can change the scope with `include`, `exclude`, and `ignoreImporters`:
@@ -220,14 +218,14 @@ This example shows a `*.client.*` file imported in the SSR environment. Because 
 
 Each violation message has these sections:
 
-| Section | Description |
-| --- | --- |
-| **Header** | Environment type where the violation occurred (`"client"` or `"server"`) |
-| **Denied by** | The rule that matched: file pattern, specifier pattern, or marker |
-| **Importer / Import / Resolved** | The importing file (with `file:line:col`), the raw import string, and the resolved target path |
-| **Trace** | The full import chain from the entry point to the denied import. Each step shows `file:line:col` and the import specifier used. Step 1 is always the entry point |
-| **Code** | A source code snippet with a `>` marker on the offending line and a `^` caret pointing to the exact column |
-| **Suggestions** | Actionable steps to fix the violation, tailored to the direction (server-in-client vs client-in-server) |
+| Section                          | Description                                                                                                                                                      |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Header**                       | Environment type where the violation occurred (`"client"` or `"server"`)                                                                                         |
+| **Denied by**                    | The rule that matched: file pattern, specifier pattern, or marker                                                                                                |
+| **Importer / Import / Resolved** | The importing file (with `file:line:col`), the raw import string, and the resolved target path                                                                   |
+| **Trace**                        | The full import chain from the entry point to the denied import. Each step shows `file:line:col` and the import specifier used. Step 1 is always the entry point |
+| **Code**                         | A source code snippet with a `>` marker on the offending line and a `^` caret pointing to the exact column                                                       |
+| **Suggestions**                  | Actionable steps to fix the violation, tailored to the direction (server-in-client vs client-in-server)                                                          |
 
 The trace reads top-to-bottom, from the entry point to the denied module. This helps you find where the chain starts so you can restructure your code.
 
@@ -235,8 +233,8 @@ The trace reads top-to-bottom, from the entry point to the denied module. This h
 
 It can look like Start "should have removed that server-only import". The important detail is that this is handled by the Start compiler:
 
-1) The compiler rewrites environment-specific *implementations* for the current target (client or server).
-2) As part of that compilation, it prunes code and removes imports that become unused after the rewrite.
+1. The compiler rewrites environment-specific _implementations_ for the current target (client or server).
+2. As part of that compilation, it prunes code and removes imports that become unused after the rewrite.
 
 In practice, when the compiler replaces a `createServerFn()` handler with a client RPC stub, it can also remove server-only imports that were only used by the removed implementation.
 
@@ -261,7 +259,7 @@ import { createServerFn } from '@tanstack/react-start'
 // (The id is generated by the compiler; treat it as an opaque identifier.)
 export const fetchUsers = TanStackStart.createServerFn({
   method: 'GET',
-}).handler(createClientRpc("sha256:deadbeef..."))
+}).handler(createClientRpc('sha256:deadbeef...'))
 
 // The server-only import is removed by the compiler.
 ```
@@ -326,7 +324,7 @@ On the client, the compiler output is effectively:
 ```ts
 export const leakyHelper = () => {
   throw new Error(
-    "createServerOnlyFn() functions can only be called on the server!",
+    'createServerOnlyFn() functions can only be called on the server!',
   )
 }
 ```
@@ -398,15 +396,15 @@ interface ImportProtectionOptions {
 }
 ```
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `enabled` | `boolean` | `true` | Set to `false` to disable the plugin |
-| `behavior` | `string \| object` | `{ dev: 'mock', build: 'error' }` | What to do on violation |
-| `log` | `'once' \| 'always'` | `'once'` | Whether to deduplicate repeated violations |
-| `include` | `Pattern[]` | Start's `srcDirectory` | Only check importers matching these patterns |
-| `exclude` | `Pattern[]` | `[]` | Skip importers matching these patterns |
-| `ignoreImporters` | `Pattern[]` | `[]` | Ignore violations from these importers |
-| `maxTraceDepth` | `number` | `20` | Maximum depth for import traces |
-| `client` | `object` | See defaults above | Additional deny rules for the client environment |
-| `server` | `object` | See defaults above | Additional deny rules for the server environment |
-| `onViolation` | `function` | `undefined` | Callback invoked on every violation |
+| Option            | Type                 | Default                           | Description                                      |
+| ----------------- | -------------------- | --------------------------------- | ------------------------------------------------ |
+| `enabled`         | `boolean`            | `true`                            | Set to `false` to disable the plugin             |
+| `behavior`        | `string \| object`   | `{ dev: 'mock', build: 'error' }` | What to do on violation                          |
+| `log`             | `'once' \| 'always'` | `'once'`                          | Whether to deduplicate repeated violations       |
+| `include`         | `Pattern[]`          | Start's `srcDirectory`            | Only check importers matching these patterns     |
+| `exclude`         | `Pattern[]`          | `[]`                              | Skip importers matching these patterns           |
+| `ignoreImporters` | `Pattern[]`          | `[]`                              | Ignore violations from these importers           |
+| `maxTraceDepth`   | `number`             | `20`                              | Maximum depth for import traces                  |
+| `client`          | `object`             | See defaults above                | Additional deny rules for the client environment |
+| `server`          | `object`             | See defaults above                | Additional deny rules for the server environment |
+| `onViolation`     | `function`           | `undefined`                       | Callback invoked on every violation              |

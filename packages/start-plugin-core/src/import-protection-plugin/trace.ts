@@ -15,7 +15,8 @@ export class ImportGraph {
    *
    * We use a Map instead of a Set of objects so edges dedupe correctly.
    */
-  readonly reverseEdges: Map<string, Map<string, string | undefined>> = new Map()
+  readonly reverseEdges: Map<string, Map<string, string | undefined>> =
+    new Map()
 
   /**
    * Forward-edge index: importer -> Set<resolvedId>.
@@ -184,10 +185,7 @@ export interface ViolationInfo {
   }
 }
 
-export function formatViolation(
-  info: ViolationInfo,
-  root: string,
-): string {
+export function formatViolation(info: ViolationInfo, root: string): string {
   const rel = (p: string) => {
     if (p.startsWith(root)) {
       return path.relative(root, p)
@@ -195,10 +193,7 @@ export function formatViolation(
     return p
   }
 
-  const relLoc = (
-    p: string,
-    loc?: Loc,
-  ) => {
+  const relLoc = (p: string, loc?: Loc) => {
     const r = rel(p)
     const file = loc?.file ? rel(loc.file) : r
     return loc ? `${file}:${loc.line}:${loc.column}` : r
@@ -213,9 +208,7 @@ export function formatViolation(
 
   const lines: Array<string> = []
   lines.push(``)
-  lines.push(
-    `[import-protection] Import denied in ${info.envType} environment`,
-  )
+  lines.push(`[import-protection] Import denied in ${info.envType} environment`)
   lines.push(``)
 
   if (info.type === 'specifier') {

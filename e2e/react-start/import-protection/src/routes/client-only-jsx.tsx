@@ -14,7 +14,10 @@ function ClientOnlyJsx() {
     <div>
       <h1 data-testid="client-only-jsx-heading">Client-Only JSX</h1>
       <p data-testid="window-size">
-        Window: <strong><WindowSize /></strong>
+        Window:{' '}
+        <strong>
+          <WindowSize />
+        </strong>
       </p>
     </div>
   )

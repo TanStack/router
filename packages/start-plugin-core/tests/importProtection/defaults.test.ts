@@ -45,12 +45,8 @@ describe('getMarkerSpecifiers', () => {
   test('returns server-only and client-only markers for react', () => {
     const markers = getMarkerSpecifiers('react')
 
-    expect(markers.serverOnly).toContain(
-      '@tanstack/react-start/server-only',
-    )
-    expect(markers.clientOnly).toContain(
-      '@tanstack/react-start/client-only',
-    )
+    expect(markers.serverOnly).toContain('@tanstack/react-start/server-only')
+    expect(markers.clientOnly).toContain('@tanstack/react-start/client-only')
   })
 
   test('includes all frameworks', () => {
@@ -59,11 +55,7 @@ describe('getMarkerSpecifiers', () => {
     expect(markers.serverOnly.length).toBe(3)
     expect(markers.clientOnly.length).toBe(3)
 
-    expect(markers.serverOnly).toContain(
-      '@tanstack/solid-start/server-only',
-    )
-    expect(markers.clientOnly).toContain(
-      '@tanstack/vue-start/client-only',
-    )
+    expect(markers.serverOnly).toContain('@tanstack/solid-start/server-only')
+    expect(markers.clientOnly).toContain('@tanstack/vue-start/client-only')
   })
 })

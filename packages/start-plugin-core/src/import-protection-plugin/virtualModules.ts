@@ -107,7 +107,10 @@ export function makeMockEdgeModuleId(
 // Load handler helpers — virtual module source code generators
 // ---------------------------------------------------------------------------
 
-export function loadSilentMockModule(): { syntheticNamedExports: boolean; code: string } {
+export function loadSilentMockModule(): {
+  syntheticNamedExports: boolean
+  code: string
+} {
   return {
     // syntheticNamedExports tells Rollup to derive named exports
     // from the default export. Combined with the Proxy-based mock,
@@ -177,7 +180,9 @@ export function loadMockEdgeModule(encodedPayload: string): { code: string } {
   }
 }
 
-export function loadMockRuntimeModule(encodedPayload: string): { code: string } {
+export function loadMockRuntimeModule(encodedPayload: string): {
+  code: string
+} {
   let payload: {
     mode?: string
     env?: string
@@ -192,9 +197,7 @@ export function loadMockRuntimeModule(encodedPayload: string): { code: string } 
   }
 
   const mode: 'error' | 'warn' | 'off' =
-    payload?.mode === 'warn' || payload?.mode === 'off'
-      ? payload.mode
-      : 'error'
+    payload?.mode === 'warn' || payload?.mode === 'off' ? payload.mode : 'error'
 
   const meta = {
     env: String(payload?.env ?? ''),
