@@ -145,9 +145,7 @@ export function findPostCompileUsagePos(
     bindings: Set<string>
     isFnScope: boolean
   }
-  const scopes: Array<ScopeEntry> = [
-    { bindings: new Set(), isFnScope: true },
-  ]
+  const scopes: Array<ScopeEntry> = [{ bindings: new Set(), isFnScope: true }]
 
   function isShadowed(name: string): boolean {
     // Check inner scopes only
@@ -227,8 +225,7 @@ export function findPostCompileUsagePos(
     }
     if (t.isVariableDeclarator(astNode)) {
       // `var` hoists to the nearest function/program scope, not block scope.
-      const isVar =
-        t.isVariableDeclaration(parent) && parent.kind === 'var'
+      const isVar = t.isVariableDeclaration(parent) && parent.kind === 'var'
       const target = isVar
         ? nearestFnScope().bindings
         : scopes[scopes.length - 1]!.bindings
