@@ -31,7 +31,7 @@ export const renderRouterToStream = async ({
             return
           }
 
-          console.error('Error in renderToReadableStream:', error)
+          console.error('onError in renderToReadableStream:', error)
         },
       })
 
