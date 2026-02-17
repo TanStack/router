@@ -278,26 +278,31 @@ Use Zod for runtime validation of environment variables:
 
 ```typescript
 // src/config/env.ts
+import { createIsomorphicFn } from '@tanstack/react-start'
 import { z } from 'zod'
-
-const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  JWT_SECRET: z.string().min(32),
-  NODE_ENV: z.enum(['development', 'production', 'test']),
-})
 
 const clientEnvSchema = z.object({
   VITE_APP_NAME: z.string(),
-  VITE_API_URL: z.string().url(),
+  VITE_API_URL: z.url(),
   VITE_AUTH0_DOMAIN: z.string(),
   VITE_AUTH0_CLIENT_ID: z.string(),
 })
 
-// Validate server environment
-export const serverEnv = envSchema.parse(process.env)
+const serverEnvSchema = z
+  .object({
+    DATABASE_URL: z.url(),
+    JWT_SECRET: z.string().min(32),
+    NODE_ENV: z.enum(['development', 'production', 'test']),
+  })
+  .and(clientEnvSchema)
 
-// Validate client environment
-export const clientEnv = clientEnvSchema.parse(import.meta.env)
+const getEnv = createIsomorphicFn()
+  .server(() => serverEnvSchema.parse(process.env))
+  .client(() => clientEnvSchema.parse(import.meta.env))
+
+type Env = z.infer<typeof serverEnvSchema>
+
+export const env = getEnv() as Env
 ```
 
 ## Security Best Practices
