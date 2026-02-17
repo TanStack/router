@@ -140,7 +140,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: async (opts: any, signal: AbortSignal) => {
+          __executeServer: async (opts: any) => {
             const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
               startContext.contextAfterGlobalMiddlewares
@@ -157,7 +157,6 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
                 serverContextAfterGlobalMiddlewares,
                 opts.context,
               ),
-              signal,
               request: startContext.request,
             }
 
@@ -350,7 +349,6 @@ export interface FetcherBase {
     data: unknown
     headers?: HeadersInit
     context?: any
-    signal: AbortSignal
   }) => Promise<unknown>
 }
 
@@ -429,7 +427,6 @@ export interface ServerFnCtx<
   serverFnMeta: ServerFnMeta
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
   method: TMethod
-  signal: AbortSignal
 }
 
 export type CompiledFetcherFn<TRegister, TResponse> = {

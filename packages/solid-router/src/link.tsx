@@ -10,12 +10,15 @@ import {
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
+
+import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
+import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
@@ -40,6 +43,9 @@ export function useLinkProps<
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+  const shouldHydrateHash = !isServer && !!router.options.ssr
+  const hasHydrated = useHydrated()
+
   let hasRenderFetched = false
 
   const [local, rest] = Solid.splitProps(
@@ -115,6 +121,10 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
+  const currentLocation = useRouterState({
+    select: (s) => s.location,
+  })
+
   const currentSearch = useRouterState({
     select: (s) => s.location.searchStr,
   })
@@ -157,7 +167,7 @@ export function useLinkProps<
     const _href = hrefOption()
     if (_href?.external) {
       // Block dangerous protocols for external links
-      if (isDangerousProtocol(_href.href)) {
+      if (isDangerousProtocol(_href.href, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
         }
@@ -173,8 +183,8 @@ export function useLinkProps<
     if (isSafeInternal) return undefined
     try {
       new URL(to as any)
-      // Block dangerous protocols like javascript:, data:, vbscript:
-      if (isDangerousProtocol(to as string)) {
+      // Block dangerous protocols like javascript:, blob:, data:
+      if (isDangerousProtocol(to as string, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
@@ -194,51 +204,51 @@ export function useLinkProps<
   const preloadDelay = () =>
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  const isActive = useRouterState({
-    select: (s) => {
-      if (externalLink()) return false
-      if (local.activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next().pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        ).split('/')
-        const nextPathSplit = removeTrailingSlash(
-          next()?.pathname,
-          router.basepath,
-        )?.split('/')
-
-        const pathIsFuzzyEqual = nextPathSplit?.every(
-          (d, i) => d === currentPathSplit[i],
-        )
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+  const isActive = Solid.createMemo(() => {
+    if (externalLink()) return false
+    if (local.activeOptions?.exact) {
+      const testExact = exactPathTest(
+        currentLocation().pathname,
+        next().pathname,
+        router.basepath,
+      )
+      if (!testExact) {
+        return false
       }
+    } else {
+      const currentPathSplit = removeTrailingSlash(
+        currentLocation().pathname,
+        router.basepath,
+      ).split('/')
+      const nextPathSplit = removeTrailingSlash(
+        next()?.pathname,
+        router.basepath,
+      )?.split('/')
 
-      if (local.activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next().search, {
-          partial: !local.activeOptions?.exact,
-          ignoreUndefined: !local.activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
+      const pathIsFuzzyEqual = nextPathSplit?.every(
+        (d, i) => d === currentPathSplit[i],
+      )
+      if (!pathIsFuzzyEqual) {
+        return false
       }
+    }
 
-      if (local.activeOptions?.includeHash) {
-        return s.location.hash === next().hash
+    if (local.activeOptions?.includeSearch ?? true) {
+      const searchTest = deepEqual(currentLocation().search, next().search, {
+        partial: !local.activeOptions?.exact,
+        ignoreUndefined: !local.activeOptions?.explicitUndefined,
+      })
+      if (!searchTest) {
+        return false
       }
-      return true
-    },
+    }
+
+    if (local.activeOptions?.includeHash) {
+      const currentHash =
+        shouldHydrateHash && !hasHydrated() ? '' : currentLocation().hash
+      return currentHash === next().hash
+    }
+    return true
   })
 
   const doPreload = () =>

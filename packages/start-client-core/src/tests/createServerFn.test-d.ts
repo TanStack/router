@@ -26,7 +26,6 @@ test('createServerFn without middleware', () => {
       context: undefined
       data: undefined
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -50,7 +49,6 @@ test('createServerFn with validator function', () => {
         a: string
       }
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -79,7 +77,6 @@ test('createServerFn with async validator function', () => {
       context: undefined
       data: string
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -110,7 +107,6 @@ test('createServerFn with validator with parse method', () => {
       context: undefined
       data: string
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -141,7 +137,6 @@ test('createServerFn with async validator with parse method', () => {
       context: undefined
       data: string
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -189,7 +184,6 @@ test('createServerFn with standard validator', () => {
       context: undefined
       data: string
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -238,7 +232,6 @@ test('createServerFn with async standard validator', () => {
       context: undefined
       data: string
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -303,7 +296,6 @@ test('createServerFn with middleware and context', () => {
       }
       data: undefined
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -347,7 +339,6 @@ describe('createServerFn with middleware and validator', () => {
             readonly outputC: 'outputC'
           }
           method: 'GET'
-          signal: AbortSignal
           serverFnMeta: ServerFnMeta
         }>()
 
@@ -446,7 +437,6 @@ test('createServerFn where validator is a primitive', () => {
         context: undefined
         data: 'c'
         method: 'GET'
-        signal: AbortSignal
         serverFnMeta: ServerFnMeta
       }>()
     })
@@ -460,7 +450,6 @@ test('createServerFn where validator is optional if object is optional', () => {
         context: undefined
         data: 'c' | undefined
         method: 'GET'
-        signal: AbortSignal
         serverFnMeta: ServerFnMeta
       }>()
     })
@@ -484,7 +473,6 @@ test('createServerFn where data is optional if there is no validator', () => {
       context: undefined
       data: undefined
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -679,7 +667,6 @@ test('incrementally building createServerFn with multiple middleware calls', () 
       }
       data: undefined
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -701,7 +688,6 @@ test('incrementally building createServerFn with multiple middleware calls', () 
       }
       data: undefined
       method: 'POST'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -724,7 +710,7 @@ test('incrementally building createServerFn with multiple middleware calls', () 
       }
       data: undefined
       method: 'GET'
-      signal: AbortSignal
+
       serverFnMeta: ServerFnMeta
     }>()
   })
@@ -758,7 +744,6 @@ test('compose middlewares and server function factories', () => {
       }
       data: undefined
       method: 'GET'
-      signal: AbortSignal
       serverFnMeta: ServerFnMeta
     }>()
   })

@@ -122,10 +122,9 @@ test.describe('Unicode route rendering', () => {
 
       await expect(page.getByTestId('special-hash-heading')).toBeInViewport()
 
-      // TODO: this should work but seems to be a bug in reactivity on Solid Dynamic component. Still investigating.
-      // await expect(page.getByTestId('special-hash-link-1')).toContainClass(
-      //   'font-bold',
-      // )
+      await expect(page.getByTestId('special-hash-link-1')).toContainClass(
+        'font-bold',
+      )
 
       await expect(page.getByTestId('special-hash-link-2')).not.toContainClass(
         'font-bold',

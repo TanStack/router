@@ -29,7 +29,10 @@
     "set-ts-version": "node scripts/set-ts-version.js",
     "labeler-generate": "node scripts/generate-labeler-config.ts",
     "cleanup-empty-packages": "node scripts/cleanup-empty-packages.mjs",
-    "test:docs": "node scripts/verify-links.ts"
+    "test:docs": "node scripts/verify-links.ts",
+    "vite-ecosystem-ci:build": "nx run-many --targets=build --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start,@tanstack/react-start-client,@tanstack/react-start-server",
+    "vite-ecosystem-ci:before-test": "pnpm exec playwright install chromium",
+    "vite-ecosystem-ci:test": "nx run-many --targets=test:unit --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start-client && nx run-many --target=test:e2e --projects=tanstack-router-e2e-react-basic-file-based,tanstack-router-e2e-react-basic-file-based-code-splitting,tanstack-react-start-e2e-basic"
   },
   "nx": {
     "includedScripts": [

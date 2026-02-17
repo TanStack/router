@@ -5,7 +5,7 @@ const withUseServer_createServerFn_handler = createServerRpc({
   id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
   name: "withUseServer",
   filename: "src/test.ts"
-}, (opts, signal) => withUseServer.__executeServer(opts, signal));
+}, opts => withUseServer.__executeServer(opts));
 const withUseServer = createServerFn({
   method: 'GET'
 }).inputValidator(z.number()).handler(withUseServer_createServerFn_handler, ({

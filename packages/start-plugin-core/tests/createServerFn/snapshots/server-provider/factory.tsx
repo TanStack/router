@@ -28,7 +28,7 @@ const myAuthedFn_createServerFn_handler = createServerRpc({
   id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJteUF1dGhlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
   name: "myAuthedFn",
   filename: "src/test.ts"
-}, (opts, signal) => myAuthedFn.__executeServer(opts, signal));
+}, opts => myAuthedFn.__executeServer(opts));
 const myAuthedFn = createAuthServerFn().handler(myAuthedFn_createServerFn_handler, () => {
   return 'myAuthedFn';
 });
@@ -36,7 +36,7 @@ const deleteUserFn_createServerFn_handler = createServerRpc({
   id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJkZWxldGVVc2VyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9",
   name: "deleteUserFn",
   filename: "src/test.ts"
-}, (opts, signal) => deleteUserFn.__executeServer(opts, signal));
+}, opts => deleteUserFn.__executeServer(opts));
 const deleteUserFn = createAdminServerFn().handler(deleteUserFn_createServerFn_handler, () => {
   return 'deleteUserFn';
 });

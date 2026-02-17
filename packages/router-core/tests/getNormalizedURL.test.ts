@@ -9,12 +9,12 @@ describe('getNormalizedURL', () => {
     const normalizedUrl1 = getNormalizedURL(url1)
     const normalizedUrl2 = getNormalizedURL(url2)
 
-    expect(normalizedUrl1.pathname).toBe('/%EB%8C%80|/path')
-    expect(normalizedUrl1.pathname).toBe(normalizedUrl2.pathname)
+    expect(normalizedUrl1.url.pathname).toBe('/%EB%8C%80|/path')
+    expect(normalizedUrl1.url.pathname).toBe(normalizedUrl2.url.pathname)
     expect(new URL(url1).pathname).not.toBe(new URL(url2).pathname)
 
-    expect(normalizedUrl1.search).toBe(`?query=%EB%8C%80%7C`)
-    expect(normalizedUrl1.search).toBe(normalizedUrl2.search)
+    expect(normalizedUrl1.url.search).toBe(`?query=%EB%8C%80%7C`)
+    expect(normalizedUrl1.url.search).toBe(normalizedUrl2.url.search)
     expect(new URL(url1).search).not.toBe(new URL(url2).search)
   })
 
@@ -120,9 +120,9 @@ describe('getNormalizedURL', () => {
     'should treat encoded URL specific characters correctly',
     ({ url, expectedPathName, expectedHash, expectedSearchParams }) => {
       const normalizedUrl = getNormalizedURL(url)
-      expect(normalizedUrl.pathname).toBe(expectedPathName)
-      expect(normalizedUrl.search).toBe(expectedSearchParams)
-      expect(normalizedUrl.hash).toBe(expectedHash)
+      expect(normalizedUrl.url.pathname).toBe(expectedPathName)
+      expect(normalizedUrl.url.search).toBe(expectedSearchParams)
+      expect(normalizedUrl.url.hash).toBe(expectedHash)
     },
   )
 })

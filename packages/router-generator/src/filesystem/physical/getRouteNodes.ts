@@ -446,7 +446,19 @@ export function getRouteMeta(
     fsRouteType = 'notFoundComponent'
   }
 
-  const variableName = routePathToVariable(routePath)
+  // Use originalRoutePath for variable name when any segment is fully
+  // bracket-wrapped (e.g. [index], [route], [_]auth) to avoid collisions
+  // with their non-escaped counterparts that get special token treatment
+  const hasFullyEscapedSegment = originalSegments.some(
+    (seg) =>
+      seg.startsWith('[') &&
+      seg.endsWith(']') &&
+      !seg.slice(1, -1).includes('[') &&
+      !seg.slice(1, -1).includes(']'),
+  )
+  const variableName = routePathToVariable(
+    hasFullyEscapedSegment ? originalRoutePath : routePath,
+  )
 
   return { fsRouteType, variableName }
 }

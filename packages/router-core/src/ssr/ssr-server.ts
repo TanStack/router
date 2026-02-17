@@ -398,7 +398,9 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
   if (typeof url === 'string') url = url.replace('\\', '%5C')
 
   const rawUrl = new URL(url, base)
-  const decodedPathname = decodePath(rawUrl.pathname)
+  const { path: decodedPathname, handledProtocolRelativeURL } = decodePath(
+    rawUrl.pathname,
+  )
   const searchParams = new URLSearchParams(rawUrl.search)
   const normalizedHref =
     decodedPathname +
@@ -406,5 +408,8 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
     searchParams.toString() +
     rawUrl.hash
 
-  return new URL(normalizedHref, rawUrl.origin)
+  return {
+    url: new URL(normalizedHref, rawUrl.origin),
+    handledProtocolRelativeURL,
+  }
 }
