@@ -50,6 +50,12 @@
         "default": "./dist/esm/index.js"
       }
     },
+    "./rsbuild": {
+      "import": {
+        "types": "./dist/esm/rsbuild/index.d.ts",
+        "default": "./dist/esm/rsbuild/index.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -77,6 +83,7 @@
     "srvx": "^0.11.2",
     "tinyglobby": "^0.2.15",
     "ufo": "^1.5.4",
+    "unplugin": "^2.3.11",
     "vitefu": "^1.1.1",
     "xmlbuilder2": "^4.0.3",
     "zod": "^3.24.2"
@@ -87,6 +94,15 @@
     "vite": "^7.3.1"
   },
   "peerDependencies": {
+    "@rsbuild/core": ">=1.0.0",
     "vite": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@rsbuild/core": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   }
 }

@@ -1,5 +1,5 @@
 import * as t from '@babel/types'
-import babel from '@babel/core'
+import * as babel from '@babel/core'
 import path from 'pathe'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
@@ -218,8 +218,11 @@ export function handleCreateServerFn(
 
   const exportNames = new Set<string>()
   const serverFnsById: Record<string, ServerFn> = {}
+  let providerImportPath: string | null = null
+  const providerImportNames = new Set<string>()
 
   const [baseFilename] = context.id.split('?') as [string]
+  const baseDir = path.dirname(baseFilename)
   const extractedFilename = `${baseFilename}?${TSS_SERVERFN_SPLIT_PARAM}`
   const relativeFilename = path.relative(context.root, baseFilename)
   const knownFns = context.getKnownServerFns()
@@ -309,6 +312,20 @@ export function handleCreateServerFn(
     // to avoid duplicates - provider files process the same functions
 
     if (!isProviderFile) {
+      if (!envConfig.isClientEnvironment && envConfig.ssrIsProvider) {
+        const [canonicalBase] = canonicalExtractedFilename.split('?') as [
+          string,
+        ]
+        let relativeImportPath = path.relative(baseDir, canonicalBase)
+        if (!relativeImportPath.startsWith('.')) {
+          relativeImportPath = `./${relativeImportPath}`
+        }
+        relativeImportPath = relativeImportPath.split(path.sep).join('/')
+        providerImportPath = `${relativeImportPath}?${TSS_SERVERFN_SPLIT_PARAM}`
+      }
+      if (providerImportPath) {
+        providerImportNames.add(functionName)
+      }
       serverFnsById[functionId] = {
         functionName,
         functionId,
@@ -452,12 +469,65 @@ export function handleCreateServerFn(
     context.onServerFnsById(serverFnsById)
   }
 
-  // Add runtime import using cached AST node
   const runtimeCode = getCachedRuntimeCode(
     context.framework,
     envConfig.runtimeCodeType,
   )
-  context.ast.program.body.unshift(t.cloneNode(runtimeCode))
+
+  const importStatements: Array<t.Statement> = [t.cloneNode(runtimeCode)]
+  if (providerImportPath && providerImportNames.size > 0) {
+    importStatements.push(
+      t.importDeclaration(
+        Array.from(providerImportNames).map((name) =>
+          t.importSpecifier(t.identifier(name), t.identifier(name)),
+        ),
+        t.stringLiteral(providerImportPath),
+      ),
+    )
+  }
+
+  context.ast.program.body.unshift(...importStatements)
+
+  if (providerImportPath && providerImportNames.size > 0) {
+    const globalHandlers = t.memberExpression(
+      t.identifier('globalThis'),
+      t.identifier('__tssServerFnHandlers'),
+    )
+    const initHandlers = t.expressionStatement(
+      t.assignmentExpression(
+        '=',
+        t.memberExpression(
+          t.identifier('globalThis'),
+          t.identifier('__tssServerFnHandlers'),
+        ),
+        t.logicalExpression(
+          '||',
+          t.memberExpression(
+            t.identifier('globalThis'),
+            t.identifier('__tssServerFnHandlers'),
+          ),
+          t.arrayExpression([]),
+        ),
+      ),
+    )
+    const pushHandlers = t.expressionStatement(
+      t.callExpression(
+        t.memberExpression(globalHandlers, t.identifier('push')),
+        Array.from(providerImportNames).map((name) => t.identifier(name)),
+      ),
+    )
+    const lastImportIndex = context.ast.program.body.reduce(
+      (lastIndex, node, index) =>
+        t.isImportDeclaration(node) ? index : lastIndex,
+      -1,
+    )
+    context.ast.program.body.splice(
+      lastImportIndex + 1,
+      0,
+      initHandlers,
+      pushHandlers,
+    )
+  }
 }
 
 /**

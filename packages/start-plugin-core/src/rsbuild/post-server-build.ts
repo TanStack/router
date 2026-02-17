@@ -1,20 +1,18 @@
 import { HEADERS } from '@tanstack/start-server-core'
-import { buildSitemap } from './build-sitemap'
-import { VITE_ENVIRONMENT_NAMES } from './constants'
+import path from 'pathe'
+import { buildSitemap } from '../build-sitemap'
 import { prerender } from './prerender'
-import type { TanStackStartOutputConfig } from './schema'
-import type { ViteBuilder } from 'vite'
+import type { TanStackStartOutputConfig } from '../schema'
 
-export async function postServerBuild({
-  builder,
+export async function postServerBuildRsbuild({
   startConfig,
+  clientOutputDir,
+  serverOutputDir,
 }: {
-  builder: ViteBuilder
   startConfig: TanStackStartOutputConfig
+  clientOutputDir: string
+  serverOutputDir: string
 }) {
-  // If the user has not set a prerender option, we need to set it to true
-  // if the pages array is not empty and has sub options requiring for prerendering
-  // If the user has explicitly set prerender.enabled, this should be respected
   if (startConfig.prerender?.enabled !== false) {
     startConfig.prerender = {
       ...startConfig.prerender,
@@ -26,7 +24,6 @@ export async function postServerBuild({
     }
   }
 
-  // Setup the options for prerendering the SPA shell (i.e `src/routes/__root.tsx`)
   if (startConfig.spa?.enabled) {
     startConfig.prerender = {
       ...startConfig.prerender,
@@ -53,21 +50,19 @@ export async function postServerBuild({
     })
   }
 
-  // Run the prerendering process
   if (startConfig.prerender.enabled) {
+    const serverEntryPath = path.join(serverOutputDir, 'server.js')
     await prerender({
       startConfig,
-      builder,
+      clientOutputDir,
+      serverEntryPath,
     })
   }
 
-  // Run the sitemap build process
   if (startConfig.sitemap?.enabled) {
     buildSitemap({
       startConfig,
-      publicDir:
-        builder.environments[VITE_ENVIRONMENT_NAMES.client]?.config.build
-          .outDir ?? builder.config.build.outDir,
+      publicDir: clientOutputDir,
     })
   }
 }

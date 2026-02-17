@@ -128,7 +128,10 @@ describe('createServerFn compiles correctly', async () => {
     // Server caller: no second argument (implementation from extracted chunk)
     expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
+      import { myServerFn_createServerFn_handler } from "./test.ts?tss-serverfn-split";
       import { createServerFn } from '@tanstack/react-start';
+      globalThis.__tssServerFnHandlers = globalThis.__tssServerFnHandlers || [];
+      globalThis.__tssServerFnHandlers.push(myServerFn_createServerFn_handler);
       const myServerFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJteVNlcnZlckZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["myServerFn_createServerFn_handler"])));"
     `)
 
@@ -184,7 +187,10 @@ describe('createServerFn compiles correctly', async () => {
 
     expect(compiledResultServerCaller!.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from '@tanstack/react-start/ssr-rpc';
+      import { exportedFn_createServerFn_handler, nonExportedFn_createServerFn_handler } from "./test.ts?tss-serverfn-split";
       import { createServerFn } from '@tanstack/react-start';
+      globalThis.__tssServerFnHandlers = globalThis.__tssServerFnHandlers || [];
+      globalThis.__tssServerFnHandlers.push(exportedFn_createServerFn_handler, nonExportedFn_createServerFn_handler);
       export const exportedFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJleHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["exportedFn_createServerFn_handler"])));
       const nonExportedFn = createServerFn().handler(createSsrRpc("eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJub25FeHBvcnRlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ", () => import("/test/src/test.ts?tss-serverfn-split").then(m => m["nonExportedFn_createServerFn_handler"])));"
     `)

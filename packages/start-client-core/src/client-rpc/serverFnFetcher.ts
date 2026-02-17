@@ -3,6 +3,7 @@ import {
   encode,
   isNotFound,
   parseRedirect,
+  redirect,
 } from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
@@ -17,6 +18,7 @@ import {
 import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
+import type { RedirectOptions } from '@tanstack/router-core'
 
 let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
 
@@ -32,6 +34,51 @@ function hasOwnProperties(obj: object): boolean {
     }
   }
   return false
+}
+
+function isResponseLike(value: unknown): value is Response {
+  if (value instanceof Response) {
+    return true
+  }
+  if (value === null || typeof value !== 'object') {
+    return false
+  }
+  if (!('status' in value) || !('headers' in value)) {
+    return false
+  }
+  const candidate = value as {
+    headers?: { get?: unknown; set?: unknown }
+    json?: unknown
+    text?: unknown
+    body?: unknown
+    ok?: unknown
+  }
+  const headers = candidate.headers
+  return (
+    !!headers &&
+    typeof headers.get === 'function' &&
+    typeof headers.set === 'function' &&
+    typeof candidate.json === 'function' &&
+    typeof candidate.text === 'function' &&
+    'body' in candidate &&
+    typeof candidate.ok === 'boolean'
+  )
+}
+
+function parseRedirectFallback(payload: unknown) {
+  if (!payload || typeof payload !== 'object') {
+    return undefined
+  }
+  if (!('isSerializedRedirect' in payload)) {
+    return undefined
+  }
+  if (
+    (payload as { isSerializedRedirect?: boolean }).isSerializedRedirect !==
+    true
+  ) {
+    return undefined
+  }
+  return redirect(payload as unknown as RedirectOptions)
 }
 // caller =>
 //   serverFnFetcher =>
@@ -172,7 +219,7 @@ async function getResponse(fn: () => Promise<Response>) {
   try {
     response = await fn() // client => server => fn => server => client
   } catch (error) {
-    if (error instanceof Response) {
+    if (isResponseLike(error)) {
       response = error
     } else {
       console.log(error)
@@ -240,6 +287,14 @@ async function getResponse(fn: () => Promise<Response>) {
     }
 
     invariant(result, 'expected result to be resolved')
+    const serializedRedirect =
+      parseRedirect(result) ?? parseRedirectFallback(result)
+    if (serializedRedirect) {
+      throw serializedRedirect
+    }
+    if (isNotFound(result)) {
+      throw result
+    }
     if (result instanceof Error) {
       throw result
     }
@@ -251,9 +306,10 @@ async function getResponse(fn: () => Promise<Response>) {
   // if it's JSON
   if (contentType.includes('application/json')) {
     const jsonPayload = await response.json()
-    const redirect = parseRedirect(jsonPayload)
-    if (redirect) {
-      throw redirect
+    const redirectResult =
+      parseRedirect(jsonPayload) ?? parseRedirectFallback(jsonPayload)
+    if (redirectResult) {
+      throw redirectResult
     }
     if (isNotFound(jsonPayload)) {
       throw jsonPayload

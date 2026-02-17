@@ -85,6 +85,12 @@ export interface ServerFn {
   extractedFilename: string
   /** The original source filename */
   filename: string
+  /** The emitted chunk IDs for this function (rspack build) */
+  importerChunkIds?: Array<string | number>
+  /** The emitted module ID for this function (rspack build) */
+  importerModuleId?: string | number
+  /** The emitted importer path for this function (rspack build fallback) */
+  importerPath?: string
   /**
    * True when this function was discovered by the client build.
    * Used to restrict HTTP access to only client-referenced functions.

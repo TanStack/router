@@ -7,7 +7,7 @@ import {
   generateFromAst,
   parseAst,
 } from '@tanstack/router-utils'
-import babel from '@babel/core'
+import * as babel from '@babel/core'
 import { handleCreateServerFn } from './handleCreateServerFn'
 import { handleCreateMiddleware } from './handleCreateMiddleware'
 import { handleCreateIsomorphicFn } from './handleCreateIsomorphicFn'

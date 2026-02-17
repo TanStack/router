@@ -20,7 +20,7 @@ const ROUTER_BASEPATH = process.env.TSS_ROUTER_BASEPATH || '/'
 export async function getStartManifest(
   matchedRoutes?: ReadonlyArray<AnyRoute>,
 ): Promise<StartManifestWithClientEntry> {
-  const { tsrStartManifest } = await import('tanstack-start-manifest:v')
+  const { tsrStartManifest } = await import('tanstack-start-manifest')
   const startManifest = tsrStartManifest()
 
   const rootRoute = (startManifest.routes[rootRouteId] =
@@ -45,7 +45,7 @@ export async function getStartManifest(
   // build the client entry script tag after URL transforms are applied)
   let injectedHeadScripts: string | undefined
   if (process.env.TSS_DEV_SERVER === 'true') {
-    const mod = await import('tanstack-start-injected-head-scripts:v')
+    const mod = await import('tanstack-start-injected-head-scripts')
     if (mod.injectedHeadScripts) {
       injectedHeadScripts = mod.injectedHeadScripts
     }

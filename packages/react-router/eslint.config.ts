@@ -9,6 +9,12 @@ export default [
     files: ['src/**/*.{ts,tsx}', 'tests/**/*.{ts,tsx}'],
   },
   {
+    files: ['llms/rules/**/*.ts'],
+    rules: {
+      'no-useless-escape': 'off',
+    },
+  },
+  {
     plugins: {
       'react-hooks': pluginReactHooks,
       '@eslint-react': pluginReact,
