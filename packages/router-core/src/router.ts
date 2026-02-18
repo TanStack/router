@@ -661,7 +661,13 @@ export type PreloadRouteFn<
     TTo,
     TMaskFrom,
     TMaskTo
-  >,
+  > & {
+    /**
+     * @internal
+     * A **trusted** built location that can be used to redirect to.
+     */
+    _builtLocation?: ParsedLocation
+  },
 ) => Promise<Array<AnyRouteMatch> | undefined>
 
 export type MatchRouteFn<
@@ -2757,7 +2763,7 @@ export class RouterCore<
     TDefaultStructuralSharingOption,
     TRouterHistory
   > = async (opts) => {
-    const next = this.buildLocation(opts as any)
+    const next = opts._builtLocation ?? this.buildLocation(opts as any)
 
     let matches = this.matchRoutes(next, {
       throwOnError: true,
