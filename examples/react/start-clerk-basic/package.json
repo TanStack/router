@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@clerk/tanstack-react-start": "^0.27.14",
-    "@tanstack/react-router": "^1.160.2",
-    "@tanstack/react-router-devtools": "^1.160.2",
-    "@tanstack/react-start": "^1.160.2",
+    "@tanstack/react-router": "^1.161.1",
+    "@tanstack/react-router-devtools": "^1.161.1",
+    "@tanstack/react-start": "^1.161.1",
     "@vitejs/plugin-react": "^4.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
