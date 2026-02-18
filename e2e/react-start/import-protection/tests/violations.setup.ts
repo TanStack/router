@@ -28,10 +28,7 @@ async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   }
 }
 
-function startDevServer(
-  cwd: string,
-  port: number,
-): ReturnType<typeof spawn> {
+function startDevServer(cwd: string, port: number): ReturnType<typeof spawn> {
   return spawn('pnpm', ['exec', 'vite', 'dev', '--port', String(port)], {
     cwd,
     env: {
