@@ -1934,19 +1934,24 @@ export class RouterCore<
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
-
-      const currentHashValue = currentLocation.hash.substring(1)
-
+        
+      
+      const normalizeHash = (value?: string) =>
+       value?.startsWith('#') ? value.slice(1) : value ?? ''
+      
+      const currentHashValue = normalizeHash(currentLocation.hash)
+      
       // Resolve the next hash
-      const hash =
+      const hashValue =
         dest.hash === true
           ? currentHashValue
           : dest.hash
-            ? functionalUpdate(dest.hash, currentLocation.hash)
+            ? normalizeHash(functionalUpdate(dest.hash, currentLocation.hash))
             : undefined
 
       // Resolve the next hash string
-      const hashStr = hash ? `#${hash}` : ''
+      const hashStr = hashValue ? `#${hashValue}` : ''
+
 
       // Resolve the next state
       let nextState =
@@ -1997,7 +2002,7 @@ export class RouterCore<
         search: nextSearch,
         searchStr,
         state: nextState as any,
-        hash: hash ?? '',
+        hash: hashStr,
         external,
         unmaskOnReload: dest.unmaskOnReload,
       }
