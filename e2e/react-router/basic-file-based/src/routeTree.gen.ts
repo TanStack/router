@@ -16,6 +16,7 @@ import { Route as MasksRouteImport } from './routes/masks'
 import { Route as HoverPreloadHashRouteImport } from './routes/hover-preload-hash'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
+import { Route as EchohashRouteImport } from './routes/echohash'
 import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as LayoutRouteImport } from './routes/_layout'
@@ -162,6 +163,11 @@ const EditingBRoute = EditingBRouteImport.update({
 const EditingARoute = EditingARouteImport.update({
   id: '/editing-a',
   path: '/editing-a',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EchohashRoute = EchohashRouteImport.update({
+  id: '/echohash',
+  path: '/echohash',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentTypesTestRoute = ComponentTypesTestRouteImport.update({
@@ -781,6 +787,7 @@ export interface FileRoutesByFullPath {
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
+  '/echohash': typeof EchohashRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
@@ -896,6 +903,7 @@ export interface FileRoutesByTo {
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
+  '/echohash': typeof EchohashRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
@@ -1003,6 +1011,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
+  '/echohash': typeof EchohashRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
@@ -1125,6 +1134,7 @@ export interface FileRouteTypes {
     | '/대한민국'
     | '/anchor'
     | '/component-types-test'
+    | '/echohash'
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
@@ -1240,6 +1250,7 @@ export interface FileRouteTypes {
     | '/대한민국'
     | '/anchor'
     | '/component-types-test'
+    | '/echohash'
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
@@ -1346,6 +1357,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/anchor'
     | '/component-types-test'
+    | '/echohash'
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
@@ -1468,6 +1480,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
   ComponentTypesTestRoute: typeof ComponentTypesTestRoute
+  EchohashRoute: typeof EchohashRoute
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
   HoverPreloadHashRoute: typeof HoverPreloadHashRoute
@@ -1555,6 +1568,13 @@ declare module '@tanstack/react-router' {
       path: '/editing-a'
       fullPath: '/editing-a'
       preLoaderRoute: typeof EditingARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/echohash': {
+      id: '/echohash'
+      path: '/echohash'
+      fullPath: '/echohash'
+      preLoaderRoute: typeof EchohashRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/component-types-test': {
@@ -2858,6 +2878,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
   ComponentTypesTestRoute: ComponentTypesTestRoute,
+  EchohashRoute: EchohashRoute,
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
   HoverPreloadHashRoute: HoverPreloadHashRoute,

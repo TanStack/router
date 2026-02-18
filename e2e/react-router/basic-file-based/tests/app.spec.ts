@@ -394,3 +394,9 @@ test.describe('Pathless layout routes', () => {
     await expect(page.locator('body')).toContainText('Not Found')
   })
 })
+
+test('useLocation().hash should include leading #', async ({ page }) => {
+  await page.goto('/echohash#123')
+  const hashDisplay = page.getByTestId('hash-display')
+  await expect(hashDisplay).toHaveText('#123')
+})
