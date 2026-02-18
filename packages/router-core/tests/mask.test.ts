@@ -304,8 +304,8 @@ describe('buildLocation - route masks', () => {
     expect(location.maskedLocation).toBeDefined()
     expect(location.maskedLocation!.pathname).toBe('/photos/123')
     expect(location.maskedLocation!.search).toEqual({ filter: 'recent' })
-    // Hash property stores the value without #, but href includes it
-    expect(location.maskedLocation!.hash).toBe('section1')
+    // Hash property stores the value with leading #, matching WHATWG URL behavior
+    expect(location.maskedLocation!.hash).toBe('#section1')
     expect(location.maskedLocation!.href).toContain('#section1')
     expect(location.maskedLocation!.state).toEqual({ modal: true })
   })

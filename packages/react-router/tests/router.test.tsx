@@ -2810,7 +2810,7 @@ describe('Router rewrite functionality', () => {
     // Router should have interpreted the rewritten URL
     expect(router.state.location.pathname).toBe('/users')
     expect(router.state.location.search).toEqual({ page: 1 })
-    expect(router.state.location.hash).toBe('top')
+    expect(router.state.location.hash).toBe('#top')
   })
 
   it('should handle multiple input rewrite conditions', async () => {
@@ -2900,7 +2900,7 @@ describe('Router rewrite functionality', () => {
       version: 'v2',
       lang: 'en',
     })
-    expect(router.state.location.hash).toBe('installation')
+    expect(router.state.location.hash).toBe('#installation')
   })
 
   it('should handle subdomain to path rewriting with input', async () => {
@@ -3179,7 +3179,7 @@ describe('Router rewrite functionality', () => {
       year: 2024,
       source: 'migration',
     })
-    expect(router.state.location.hash).toBe('top')
+    expect(router.state.location.hash).toBe('#top')
   })
 
   it('should handle returning new URL instance vs mutating existing one', async () => {
@@ -3835,7 +3835,7 @@ describe('basepath', () => {
       q: 'test',
       filter: 'all',
     })
-    expect(router.state.location.hash).toBe('results')
+    expect(router.state.location.hash).toBe('#results')
   })
 
   it('should handle nested basepath with multiple rewrite layers', async () => {

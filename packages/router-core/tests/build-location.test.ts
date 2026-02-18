@@ -429,7 +429,7 @@ describe('buildLocation - hash', () => {
       hash: 'section1',
     })
 
-    expect(location.hash).toBe('section1')
+    expect(location.hash).toBe('#section1')
     expect(location.href).toContain('#section1')
   })
 
@@ -457,8 +457,8 @@ describe('buildLocation - hash', () => {
     })
 
     expect(hashUpdater).toHaveBeenCalledOnce()
-    expect(hashUpdater).toHaveBeenCalledWith('current')
-    expect(location.hash).toBe('current-updated')
+    expect(hashUpdater).toHaveBeenCalledWith('#current')
+    expect(location.hash).toBe('#current-updated')
   })
 
   test('hash: true should preserve current hash', async () => {
@@ -482,7 +482,7 @@ describe('buildLocation - hash', () => {
       hash: true,
     })
 
-    expect(location.hash).toBe('existing')
+    expect(location.hash).toBe('#existing')
     expect(location.href).toContain('#existing')
   })
 
@@ -1206,7 +1206,7 @@ describe('buildLocation - location output structure', () => {
     // Verify all expected properties exist
     expect(location).toEqual({
       external: false,
-      hash: 'section',
+      hash: '#section',
       href: '/posts?page=1#section',
       pathname: '/posts',
       publicHref: '/posts?page=1#section',
@@ -1538,7 +1538,7 @@ describe('buildLocation - _fromLocation override', () => {
       },
     } as any)
 
-    expect(location.hash).toBe('overridden')
+    expect(location.hash).toBe('#overridden')
   })
 
   test('_fromLocation should override current location for state resolution', async () => {

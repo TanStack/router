@@ -2168,7 +2168,7 @@ describe('basepath', () => {
       q: 'test',
       filter: 'all',
     })
-    expect(router.state.location.hash).toBe('results')
+    expect(router.state.location.hash).toBe('#results')
   })
 
   it('should handle nested basepath with multiple rewrite layers', async () => {

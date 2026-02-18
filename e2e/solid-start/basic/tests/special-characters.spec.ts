@@ -134,7 +134,7 @@ test.describe('Unicode route rendering', () => {
 
       const hashValue = await page.getByTestId('special-hash').textContent()
 
-      expect(hashValue).toBe('대|')
+      expect(hashValue).toBe('#대|')
     })
 
     test('should render route correctly on router navigation', async ({
@@ -170,7 +170,7 @@ test.describe('Unicode route rendering', () => {
 
       const hashValue = await page.getByTestId('special-hash').textContent()
 
-      expect(hashValue).toBe('대|')
+      expect(hashValue).toBe('#대|')
     })
   })
 
