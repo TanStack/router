@@ -1292,7 +1292,7 @@ export class RouterCore<
             previousLocation?.search,
             parsedSearch,
           ) as any,
-          hash: decodePath(hash.slice(1)).path,
+          hash: decodePath(hash).path,
           state: replaceEqualDeep(previousLocation?.state, state),
         }
       }
@@ -1318,7 +1318,7 @@ export class RouterCore<
         external: !!this.rewrite && url.origin !== this.origin,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
-        hash: decodePath(url.hash.slice(1)).path,
+        hash: decodePath(url.hash).path,
         state: replaceEqualDeep(previousLocation?.state, state),
       }
     }
@@ -1934,11 +1934,14 @@ export class RouterCore<
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
-
+        
+      
+      const currentHashValue = currentLocation.hash.substring(1)
+      
       // Resolve the next hash
       const hash =
         dest.hash === true
-          ? currentLocation.hash
+          ? currentHashValue
           : dest.hash
             ? functionalUpdate(dest.hash, currentLocation.hash)
             : undefined
