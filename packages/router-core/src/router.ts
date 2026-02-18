@@ -1934,13 +1934,12 @@ export class RouterCore<
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
-        
-      
+
       const normalizeHash = (value?: string) =>
-       value?.startsWith('#') ? value.slice(1) : value ?? ''
-      
+        value?.startsWith('#') ? value.slice(1) : (value ?? '')
+
       const currentHashValue = normalizeHash(currentLocation.hash)
-      
+
       // Resolve the next hash
       const hashValue =
         dest.hash === true
@@ -1951,7 +1950,6 @@ export class RouterCore<
 
       // Resolve the next hash string
       const hashStr = hashValue ? `#${hashValue}` : ''
-
 
       // Resolve the next state
       let nextState =
