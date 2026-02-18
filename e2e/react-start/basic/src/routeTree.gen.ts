@@ -17,6 +17,8 @@ import { Route as RawStreamRouteImport } from './routes/raw-stream'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
+import { Route as HydrateTrueRouteImport } from './routes/hydrate-true'
+import { Route as HydrateFalseRouteImport } from './routes/hydrate-false'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as ClientOnlyRouteImport } from './routes/client-only'
 import { Route as AsyncScriptsRouteImport } from './routes/async-scripts'
@@ -107,6 +109,16 @@ const LinksRoute = LinksRouteImport.update({
 const InlineScriptsRoute = InlineScriptsRouteImport.update({
   id: '/inline-scripts',
   path: '/inline-scripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HydrateTrueRoute = HydrateTrueRouteImport.update({
+  id: '/hydrate-true',
+  path: '/hydrate-true',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HydrateFalseRoute = HydrateFalseRouteImport.update({
+  id: '/hydrate-false',
+  path: '/hydrate-false',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeferredRoute = DeferredRouteImport.update({
@@ -383,6 +395,8 @@ export interface FileRoutesByFullPath {
   '/async-scripts': typeof AsyncScriptsRoute
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
+  '/hydrate-false': typeof HydrateFalseRoute
+  '/hydrate-true': typeof HydrateTrueRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
@@ -440,6 +454,8 @@ export interface FileRoutesByTo {
   '/async-scripts': typeof AsyncScriptsRoute
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
+  '/hydrate-false': typeof HydrateFalseRoute
+  '/hydrate-true': typeof HydrateTrueRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
@@ -496,6 +512,8 @@ export interface FileRoutesById {
   '/async-scripts': typeof AsyncScriptsRoute
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
+  '/hydrate-false': typeof HydrateFalseRoute
+  '/hydrate-true': typeof HydrateTrueRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
@@ -558,6 +576,8 @@ export interface FileRouteTypes {
     | '/async-scripts'
     | '/client-only'
     | '/deferred'
+    | '/hydrate-false'
+    | '/hydrate-true'
     | '/inline-scripts'
     | '/links'
     | '/posts'
@@ -615,6 +635,8 @@ export interface FileRouteTypes {
     | '/async-scripts'
     | '/client-only'
     | '/deferred'
+    | '/hydrate-false'
+    | '/hydrate-true'
     | '/inline-scripts'
     | '/links'
     | '/scripts'
@@ -670,6 +692,8 @@ export interface FileRouteTypes {
     | '/async-scripts'
     | '/client-only'
     | '/deferred'
+    | '/hydrate-false'
+    | '/hydrate-true'
     | '/inline-scripts'
     | '/links'
     | '/posts'
@@ -732,6 +756,8 @@ export interface RootRouteChildren {
   AsyncScriptsRoute: typeof AsyncScriptsRoute
   ClientOnlyRoute: typeof ClientOnlyRoute
   DeferredRoute: typeof DeferredRoute
+  HydrateFalseRoute: typeof HydrateFalseRoute
+  HydrateTrueRoute: typeof HydrateTrueRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
@@ -805,6 +831,20 @@ declare module '@tanstack/react-router' {
       path: '/inline-scripts'
       fullPath: '/inline-scripts'
       preLoaderRoute: typeof InlineScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hydrate-true': {
+      id: '/hydrate-true'
+      path: '/hydrate-true'
+      fullPath: '/hydrate-true'
+      preLoaderRoute: typeof HydrateTrueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hydrate-false': {
+      id: '/hydrate-false'
+      path: '/hydrate-false'
+      fullPath: '/hydrate-false'
+      preLoaderRoute: typeof HydrateFalseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/deferred': {
@@ -1366,6 +1406,8 @@ const rootRouteChildren: RootRouteChildren = {
   AsyncScriptsRoute: AsyncScriptsRoute,
   ClientOnlyRoute: ClientOnlyRoute,
   DeferredRoute: DeferredRoute,
+  HydrateFalseRoute: HydrateFalseRoute,
+  HydrateTrueRoute: HydrateTrueRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
