@@ -24,10 +24,10 @@ When you set `hydrate: false` on a route:
 
 The `ssr` and `hydrate` options serve different purposes:
 
-| Option | Controls | Use Case |
-|--------|----------|----------|
-| **`ssr`** | Server-side rendering and data loading | Control when `beforeLoad`/`loader` run and when components render on the server |
-| **`hydrate`** | Client-side React hydration | Control whether the page becomes interactive after being server-rendered |
+| Option        | Controls                               | Use Case                                                                        |
+| ------------- | -------------------------------------- | ------------------------------------------------------------------------------- |
+| **`ssr`**     | Server-side rendering and data loading | Control when `beforeLoad`/`loader` run and when components render on the server |
+| **`hydrate`** | Client-side React hydration            | Control whether the page becomes interactive after being server-rendered        |
 
 **Common Patterns:**
 
@@ -50,12 +50,14 @@ ssr: false, hydrate: false
 ```
 
 **When to use `hydrate: false`:**
+
 - Truly static sites where you want zero React on the client
 - Pages where you're willing to give up client-side navigation and all interactivity
 - Print-only views or embedded content
 - **Note:** This is a very rare use case - most sites should use `hydrate: true` (default)
 
 **When to use `ssr: false`:**
+
 - Pages using browser-only APIs (localStorage, canvas)
 - Client-only routes (user dashboards, admin panels)
 - Pages with heavy client-side state
@@ -102,15 +104,14 @@ function PostPage() {
     <div>
       <h1>{post.title}</h1>
       <p>{post.content}</p>
-      <button onClick={() => setLikes(likes + 1)}>
-        Like ({likes})
-      </button>
+      <button onClick={() => setLikes(likes + 1)}>Like ({likes})</button>
     </div>
   )
 }
 ```
 
 **Result:**
+
 - ✅ Server renders the HTML
 - ✅ Loader data is sent to the client
 - ✅ React hydrates and attaches event handlers
@@ -135,11 +136,13 @@ export const Route = createFileRoute('/blog/interactive')({
 ```
 
 **When this creates a conflict:**
+
 - If a route has `hydrate: false` and a child has explicit `hydrate: true`, this creates a conflict
 - TanStack Router will **not hydrate** the page (safer default) and log a warning
 - You should resolve the conflict by making the hydration settings consistent
 
 **When to explicitly use `hydrate: true`:**
+
 - To document intent that a route must be hydrated
 - To override a parent's `hydrate: false` (though this creates a conflict that needs resolution)
 - To ensure hydration when `defaultHydrate: false` is set globally
@@ -161,9 +164,7 @@ export const Route = createFileRoute('/legal/privacy')({
       { name: 'description', content: 'Our privacy policy' },
     ],
     // External scripts still work
-    scripts: [
-      { src: 'https://analytics.example.com/script.js' },
-    ],
+    scripts: [{ src: 'https://analytics.example.com/script.js' }],
   }),
   component: PrivacyPage,
 })
@@ -186,6 +187,7 @@ function PrivacyPage() {
 ```
 
 **Result:**
+
 - ✅ Server renders the HTML with all content
 - ✅ Loader data is used during SSR
 - ✅ Meta tags and external scripts are included
@@ -195,6 +197,7 @@ function PrivacyPage() {
 - ❌ `useState`, `useEffect`, etc. don't run
 
 **What gets excluded when `hydrate: false`:**
+
 - React runtime bundle
 - React DOM bundle
 - TanStack Router client bundle
@@ -203,6 +206,7 @@ function PrivacyPage() {
 - Modulepreload links for JavaScript
 
 **What still works:**
+
 - Server-side rendering
 - Loader data (during SSR only)
 - Meta tags from `head()`
@@ -221,6 +225,7 @@ root { hydrate: true }
 ```
 
 **Result:**
+
 - The `blog` route sets `hydrate: false`
 - Even though `$postId` sets `hydrate: true`, it inherits `false` from its parent
 - The entire page will NOT be hydrated
@@ -245,8 +250,8 @@ Perfect for SEO-focused content that doesn't need interactivity:
 
 ```tsx
 export const Route = createFileRoute('/blog/$slug')({
-  ssr: true,        // Render on server
-  hydrate: false,   // Don't load React on client
+  ssr: true, // Render on server
+  hydrate: false, // Don't load React on client
   loader: async ({ params }) => {
     return { post: await fetchPost(params.slug) }
   },
@@ -261,6 +266,7 @@ export const Route = createFileRoute('/blog/$slug')({
 ```
 
 **Benefits:**
+
 - ⚡ Fastest possible page load (no JavaScript)
 - 🔍 Perfect SEO (fully rendered HTML)
 - 📦 Smallest possible bundle size
@@ -271,8 +277,8 @@ For pages that need browser APIs:
 
 ```tsx
 export const Route = createFileRoute('/dashboard')({
-  ssr: false,      // Don't render on server (needs browser APIs)
-  hydrate: true,   // Load React and make interactive
+  ssr: false, // Don't render on server (needs browser APIs)
+  hydrate: true, // Load React and make interactive
   loader: () => {
     // Runs only on client
     return { user: getUserFromLocalStorage() }
@@ -287,8 +293,8 @@ Load data on server but render on client (useful for heavy visualizations):
 
 ```tsx
 export const Route = createFileRoute('/reports/$id')({
-  ssr: 'data-only',  // Load data on server, but don't render
-  hydrate: true,     // Hydrate and render on client
+  ssr: 'data-only', // Load data on server, but don't render
+  hydrate: true, // Hydrate and render on client
   loader: async ({ params }) => {
     // Runs on server during SSR
     return { report: await fetchReport(params.id) }
@@ -300,6 +306,7 @@ export const Route = createFileRoute('/reports/$id')({
 ## Conflict Detection
 
 The `hydrate` option is an **opt-in/opt-out mechanism**. Conflicts occur when:
+
 - Some routes explicitly set `hydrate: false` (opt-out)
 - Other routes explicitly set `hydrate: true` (opt-in to ensure hydration)
 
@@ -318,6 +325,7 @@ Please ensure all routes in the match have consistent hydrate settings.
 ```
 
 **How to resolve conflicts:**
+
 - **Option 1:** Remove explicit `hydrate: true` from child routes (let them use default behavior or inherit from parent)
 - **Option 2:** Remove `hydrate: false` from parent routes if child routes need hydration
 - **Option 3:** Restructure your routes so interactive and static pages are in separate branches
@@ -329,6 +337,7 @@ Please ensure all routes in the match have consistent hydrate settings.
 **Important:** This is a very rare use case. Most applications should keep the default hydration behavior.
 
 Use `hydrate: false` only when:
+
 - You want a **truly static site** with zero React on the client
 - You're willing to give up **all client-side navigation** and interactivity
 - You want to avoid the overhead of loading React entirely
@@ -337,6 +346,7 @@ Use `hydrate: false` only when:
 ### ⚡ When to explicitly use `hydrate: true`:
 
 You typically don't need to explicitly set `hydrate: true` since it's the default behavior. However, explicitly setting it is useful when:
+
 - **Documenting intent**: Making it clear that a route requires hydration
 - **Overriding `defaultHydrate: false`**: When you've set a global default of `false` but need specific routes to hydrate
 - **Attempting to override a parent**: Though this creates a conflict (see Conflict Detection above), you might use `hydrate: true` to signal that a child route needs hydration even if a parent has `hydrate: false`
@@ -348,6 +358,7 @@ For general interactive features (forms, dashboards, real-time updates, user int
 When you use `hydrate: false`:
 
 **Bundle Size Savings:**
+
 - React Runtime: ~130KB (gzipped: ~45KB)
 - React DOM: ~130KB (gzipped: ~45KB)
 - TanStack Router Client: ~40KB (gzipped: ~12KB)
@@ -356,6 +367,7 @@ When you use `hydrate: false`:
 **Total Savings:** ~300KB+ (gzipped: ~100KB+) per page
 
 **Load Time Improvements:**
+
 - No JavaScript parsing/execution
 - No hydration time
 - Instant interactivity (no loading state)
@@ -423,6 +435,7 @@ pnpm preview
 ### My page has `hydrate: false` but JavaScript is still loading
 
 **Check:**
+
 1. Are any parent routes setting `hydrate: true`?
 2. Are you in development mode? (React Refresh is kept for HMR)
 3. Did you rebuild after changing the option?
@@ -434,6 +447,7 @@ pnpm build
 ### My interactive features stopped working
 
 If you set `hydrate: false`, all React features will stop working:
+
 - Event handlers (`onClick`, `onChange`)
 - Hooks (`useState`, `useEffect`, `useQuery`)
 - Context providers
@@ -463,12 +477,14 @@ The `hydrate` option gives you precise **page-level** control over client-side R
 **Note:** This is **page-level** selective hydration. For **component-level** selective hydration (Server Components), stay tuned for upcoming releases from TanStack Router.
 
 Use `hydrate: false` for truly static pages to:
+
 - ⚡ Reduce bundle size
 - 🚀 Improve load times
 - 📉 Minimize JavaScript overhead
 - 🔍 Maintain perfect SEO
 
 For interactive pages, simply omit the `hydrate` option to use the default behavior:
+
 - 🎯 User interactions
 - 💾 Client-side state
 - 🔄 Real-time updates
