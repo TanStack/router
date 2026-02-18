@@ -656,6 +656,47 @@ Notes:
 - Atomicity is non-negotiable: per-match writes and index publication/deletion must happen in one transaction.
 - `routerStateCompat$` should be kept as a fallback path; hot consumers should subscribe to granular stores directly.
 
+## useMatch demo implementation: double store read
+
+assumes
+- `byIdStore` is a store of `{ [id]: matchStore }` containing all active match stores
+- `byRouteIdStore` is a store of `{ [routeId]: matchStore }` containing all active match stores
+
+Importantly, those are not *derived* stores, they are just "stores of stores". This means changes in one match store won't cause the `byIdStore` or `byRouteIdStore` to update, so other matches won't re-render.
+
+```tsx
+const router = useRouter()
+const nearestId = useContext(opts.from ? dummyMatchContext : matchContext)
+
+const store = useStore(
+	opts.from ? router.byRouteIdStore : router.byIdStore,
+	(activeStores) => {
+		const key = opts.from ?? nearestId
+		const store = key ? activeStores[key] : undefined
+		invariant(
+			!(!store && (opts.shouldThrow ?? true)),
+			`Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+		)
+		return store
+	}
+) ?? dummyStore
+
+const prev = useRef()
+
+return useStore(
+	store,
+	(match) => {
+		if (!match) return undefined
+		const value = opts.select ? opts.select(match) : match
+		if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
+			const result = replaceEqualDeep(prev.current, value)
+			return prev.current = result
+		}
+		return value
+	}
+)
+```
+
 ## Draft `useMatch` (React) Using Granular Stores
 
 Rethink applied for this draft:
