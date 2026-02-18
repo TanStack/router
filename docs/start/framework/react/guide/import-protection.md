@@ -29,14 +29,14 @@ Import protection is enabled out of the box with these defaults:
 
 **Client environment denials:**
 
-- Files matching `**/*.server.*` or `**/server/**`
+- Files matching `**/*.server.*`
 - The specifier `@tanstack/react-start/server`
 
 **Server environment denials:**
 
-- Files matching `**/*.client.*` or `**/client/**`
+- Files matching `**/*.client.*`
 
-These defaults mean you can use the `.server.ts` / `.client.ts` naming convention to restrict files to a single environment without any configuration.
+These defaults mean you can use the `.server.ts` / `.client.ts` naming convention to restrict files to a single environment without any configuration. To also deny entire directories (e.g. `server/` or `client/`), add them via `files` in your [deny rules configuration](#configuring-deny-rules) — for example `files: ['**/*.server.*', '**/server/**']` for the client environment.
 
 ## File Markers
 
