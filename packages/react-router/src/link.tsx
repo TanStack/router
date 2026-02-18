@@ -376,14 +376,17 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
 
-  // subscribe to href and leaf params to re-build location when
-  // path/search/hash or inherited params change
+  // subscribe to path/search/hash/params to re-build location when they change
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const currentLocationState = useRouterState({
-    select: (s) => ({
-      href: s.location.href,
-      leafParams: s.matches[s.matches.length - 1]?.params,
-    }),
+    select: (s) => {
+      const leaf = s.matches[s.matches.length - 1]
+      return {
+        search: leaf?.search,
+        hash: s.location.hash,
+        path: leaf?.pathname, // path + params
+      }
+    },
     structuralSharing: true as any,
   })
 
@@ -560,11 +563,13 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const doPreload = React.useCallback(() => {
-    router.preloadRoute({ ..._options } as any).catch((err) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
-  }, [router, _options])
+    router
+      .preloadRoute({ ..._options, _builtLocation: next } as any)
+      .catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+  }, [router, _options, next])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const preloadViewportIoCallback = React.useCallback(
