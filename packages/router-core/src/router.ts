@@ -1934,10 +1934,9 @@ export class RouterCore<
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
-        
-      
+
       const currentHashValue = currentLocation.hash.substring(1)
-      
+
       // Resolve the next hash
       const hash =
         dest.hash === true
