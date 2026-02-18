@@ -345,6 +345,7 @@ export function buildClientEntryScriptTag(
     attrs: {
       type: 'module',
       async: true,
+      'data-tsr-client-entry': 'true',
     },
     children: script,
   }
