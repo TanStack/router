@@ -103,7 +103,7 @@ If you have other ESLint plugins installed, they may rules that conflict with th
 
 The [`@typescript-eslint/only-throw-error`](https://typescript-eslint.io/rules/only-throw-error/) rule, enabled by default in the `recommended-type-checked` and `strict-type-checked` rulesets, disallows the throwing of non-Error values as exceptions, which is considered a good practice.
 
-To make sure that it does not conflict with TanStack Router, you should add `redirect` and `notFound` to be allowed as a throwable object.
+To ensure it does not conflict with TanStack Router, you should allow `redirect` and `notFound` as throwable objects.
 
 ```json
 {
