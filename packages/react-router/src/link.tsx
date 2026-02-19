@@ -376,7 +376,7 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
 
-  // Subscribe to current location for active-state checks.
+  // Subscribe to current location for active-state checks and relative-link resolution.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const currentLocation = useStore(router.locationStore, (location) => ({
     pathname: location.pathname,
@@ -387,21 +387,16 @@ export function useLinkProps<
   // This mirrors the previous `useRouterState` selection and keeps
   // inherited param updates in sync without recomputing on unrelated rerenders.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLeafPathname = useStore(
+  const currentLeaf = useStore(
     router.activeMatchesSnapshotStore,
-    (matches) => matches[matches.length - 1]?.pathname,
+    (matches) => {
+      const leaf = matches[matches.length - 1]
+      return {
+        pathname: leaf?.pathname,
+        search: leaf?.search,
+      }
+    },
   )
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLeafSearch = useStore(
-    router.activeMatchesSnapshotStore,
-    (matches) => matches[matches.length - 1]?.search,
-  )
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocationHash = useStore(
-    router.locationStore,
-    (location) => location.hash,
-  )
-
   const from = options.from
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -412,9 +407,8 @@ export function useLinkProps<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      currentLeafPathname,
-      currentLeafSearch,
-      currentLocationHash,
+      currentLeaf,
+      currentLocation.hash,
       from,
       options._fromLocation,
       options.hash,

@@ -979,9 +979,12 @@ export class RouterCore<
     status: RouterState<TRouteTree>['status']
   }>
   private compatStateStore!: ReadableStore<RouterState<any>>
-  private activeMatchStoresById = new Map<string, MatchStore>()
-  private pendingMatchStoresById = new Map<string, MatchStore>()
-  private cachedMatchStoresById = new Map<string, MatchStore>()
+  /** @internal */
+  activeMatchStoresById = new Map<string, MatchStore>()
+  /** @internal */
+  pendingMatchStoresById = new Map<string, MatchStore>()
+  /** @internal */
+  cachedMatchStoresById = new Map<string, MatchStore>()
   options!: PickAsRequired<
     RouterOptions<
       TRouteTree,
@@ -1962,7 +1965,9 @@ export class RouterCore<
 
     // Determine params: reuse from state if possible, otherwise parse
     const lastStateMatchId = last(this.matchesIdStore.state)
-    const lastStateMatch = lastStateMatchId && this.activeMatchStoresById.get(lastStateMatchId)?.state
+    const lastStateMatch =
+      lastStateMatchId &&
+      this.activeMatchStoresById.get(lastStateMatchId)?.state
     const canReuseParams =
       lastStateMatch &&
       lastStateMatch.routeId === lastRoute.id &&
@@ -2662,28 +2667,33 @@ export class RouterCore<
                   let stayingMatches: Array<AnyRouteMatch> = []
 
                   batch(() => {
-                    const previousMatches =
-                      this.activeMatchesSnapshotStore.state
                     const pendingMatches =
                       this.pendingMatchesSnapshotStore.state
-                    const newMatches = pendingMatches.length
-                      ? pendingMatches
-                      : previousMatches
+                    const mountPending = pendingMatches.length
+                    const previousMatches =
+                      this.activeMatchesSnapshotStore.state
 
-                    exitingMatches = previousMatches.filter(
-                      (match) => !newMatches.some((d) => d.id === match.id),
-                    )
-                    enteringMatches = newMatches.filter(
-                      (match) =>
-                        !previousMatches.some((d) => d.id === match.id),
-                    )
-                    stayingMatches = newMatches.filter((match) =>
-                      previousMatches.some((d) => d.id === match.id),
-                    )
+                    exitingMatches = mountPending
+                      ? previousMatches.filter(
+                          (match) => !this.pendingMatchStoresById.has(match.id),
+                        )
+                      : []
+                    enteringMatches = mountPending
+                      ? pendingMatches.filter(
+                          (match) => !this.activeMatchStoresById.has(match.id),
+                        )
+                      : []
+                    stayingMatches = mountPending
+                      ? pendingMatches.filter((match) =>
+                          this.activeMatchStoresById.has(match.id),
+                        )
+                      : previousMatches
 
                     this.isLoadingStore.setState(() => false)
                     this.loadedAtStore.setState(() => Date.now())
-                    this.reconcileActivePool(newMatches)
+                    this.reconcileActivePool(
+                      mountPending ? pendingMatches : previousMatches,
+                    )
                     this.reconcilePendingPool([])
                     /**
                      * When committing new matches, cache any exiting matches that are still usable.
@@ -2691,17 +2701,18 @@ export class RouterCore<
                      * deliberately excluded from `cachedMatches` so that subsequent invalidations
                      * or reloads re-run their loaders instead of reusing the failed/not-found data.
                      */
-                    this.reconcileCachedPool([
-                      ...this.cachedMatchesSnapshotStore.state,
-                      ...exitingMatches.filter(
-                        (d) =>
-                          d.status !== 'error' &&
-                          d.status !== 'notFound' &&
-                          d.status !== 'redirected',
-                      ),
-                    ])
-
-                    this.clearExpiredCache()
+                    if (mountPending) {
+                      this.reconcileCachedPool([
+                        ...this.cachedMatchesSnapshotStore.state,
+                        ...exitingMatches.filter(
+                          (d) =>
+                            d.status !== 'error' &&
+                            d.status !== 'notFound' &&
+                            d.status !== 'redirected',
+                        ),
+                      ])
+                      this.clearExpiredCache()
+                    }
                   })
 
                   //
@@ -2844,24 +2855,21 @@ export class RouterCore<
 
   updateMatch: UpdateMatchFn = (id, updater) => {
     this.startTransition(() => {
-      if (this.pendingMatchesIdStore.state.includes(id)) {
-        const matchStore = this.pendingMatchStoresById.get(id)
-        if (!matchStore) return
-        matchStore.setState(updater)
+      const pendingMatch = this.pendingMatchStoresById.get(id)
+      if (pendingMatch) {
+        pendingMatch.setState(updater)
         return
       }
 
-      if (this.matchesIdStore.state.includes(id)) {
-        const matchStore = this.activeMatchStoresById.get(id)
-        if (!matchStore) return
-        matchStore.setState(updater)
+      const activeMatch = this.activeMatchStoresById.get(id)
+      if (activeMatch) {
+        activeMatch.setState(updater)
         return
       }
 
-      if (this.cachedMatchesIdStore.state.includes(id)) {
-        const matchStore = this.cachedMatchStoresById.get(id)
-        if (!matchStore) return
-        const next = updater(matchStore.state)
+      const cachedMatch = this.cachedMatchStoresById.get(id)
+      if (cachedMatch) {
+        const next = updater(cachedMatch.state)
         if (next.status === 'redirected') {
           this.cachedMatchStoresById.delete(id)
           const nextCachedIds = this.cachedMatchesIdStore.state.filter(
@@ -2871,7 +2879,7 @@ export class RouterCore<
             this.cachedMatchesIdStore.setState(() => nextCachedIds)
           }
         } else {
-          matchStore.setState(updater)
+          cachedMatch.setState(() => next)
         }
       }
     })
@@ -2993,6 +3001,7 @@ export class RouterCore<
   }
 
   clearExpiredCache = () => {
+    const now = Date.now()
     // This is where all of the garbage collection magic happens
     const filter = (d: MakeRouteMatch<TRouteTree>) => {
       const route = this.looseRoutesById[d.routeId]!
@@ -3012,7 +3021,7 @@ export class RouterCore<
       const isError = d.status === 'error'
       if (isError) return true
 
-      const gcEligible = Date.now() - d.updatedAt >= gcTime
+      const gcEligible = now - d.updatedAt >= gcTime
       return gcEligible
     }
     this.clearCache({ filter })

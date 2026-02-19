@@ -46,7 +46,7 @@ const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
 }
 
 const isActiveMatchId = (router: AnyRouter, matchId: string): boolean => {
-  return router.matchesIdStore.state.includes(matchId)
+  return router.activeMatchStoresById.has(matchId)
 }
 
 const hasForcePendingActiveMatch = (router: AnyRouter): boolean => {
