@@ -68,7 +68,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   }
 
   // Hydrate the router state
-  const matches = router.matchRoutes(router.state.location)
+  const matches = router.matchRoutes(router.locationStore.state)
 
   // kick off loading the route chunks
   const routeChunkPromise = Promise.all(
@@ -136,12 +136,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }
   })
 
-  router.__store.setState((s) => {
-    return {
-      ...s,
-      matches,
-    }
-  })
+  router.setActiveMatches(matches)
 
   // Allow the user to handle custom hydration data
   await router.options.hydrate?.(dehydratedData)
@@ -149,12 +144,14 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // now that all necessary data is hydrated:
   // 1) fully reconstruct the route context
   // 2) execute `head()` and `scripts()` for each match
+  const activeMatches = router.activeMatchesSnapshotStore.state
+  const location = router.locationStore.state
   await Promise.all(
-    router.state.matches.map(async (match) => {
+    activeMatches.map(async (match) => {
       try {
         const route = router.looseRoutesById[match.routeId]!
 
-        const parentMatch = router.state.matches[match.index - 1]
+        const parentMatch = activeMatches[match.index - 1]
         const parentContext = parentMatch?.context ?? router.options.context
 
         // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
@@ -165,11 +162,11 @@ export async function hydrate(router: AnyRouter): Promise<any> {
               deps: match.loaderDeps,
               params: match.params,
               context: parentContext ?? {},
-              location: router.state.location,
+              location,
               navigate: (opts: any) =>
                 router.navigate({
                   ...opts,
-                  _fromLocation: router.state.location,
+                  _fromLocation: location,
                 }),
               buildLocation: router.buildLocation,
               cause: match.cause,
@@ -190,7 +187,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
 
         const assetContext = {
           ssr: router.options.ssr,
-          matches: router.state.matches,
+          matches: activeMatches,
           match,
           params: match.params,
           loaderData: match.loaderData,
@@ -259,12 +256,11 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         // ensure router is not in status 'pending' anymore
         // this usually happens in Transitioner but if loading synchronously resolves,
         // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
-        if (router.__store.state.status === 'pending') {
-          router.__store.setState((s) => ({
-            ...s,
-            status: 'idle',
-            resolvedLocation: s.location,
-          }))
+        if (router.statusStore.state === 'pending') {
+          batch(() => {
+            router.statusStore.setState(() => 'idle')
+            router.resolvedLocationStore.setState(() => router.locationStore.state)
+          })
         }
         // hide the pending component once the load is finished
         router.updateMatch(match.id, (prev) => {

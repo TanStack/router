@@ -1,6 +1,8 @@
 import * as Vue from 'vue'
-import { useRouterState } from './useRouterState'
+import { useStore } from '@tanstack/vue-store'
 import { injectDummyMatch, injectMatch } from './matchContext'
+import { useStoreOfStoresValue } from './storeOfStores'
+import { useRouter } from './useRouter'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -68,60 +70,69 @@ export function useMatch<
 ): Vue.Ref<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
+  const router = useRouter<TRouter>()
   const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
-
-  // Store to track pending error for deferred throwing
   const pendingError = Vue.ref<Error | null>(null)
+  const activeStores = useStore(
+    opts.from ? router.byRouteIdStore : router.byIdStore,
+    (stores) => stores,
+  )
+  const pendingMatches = useStore(
+    router.pendingMatchesSnapshotStore,
+    (matches) => matches,
+  )
+  const isTransitioning = useStore(
+    router.isTransitioningStore,
+    (value) => value,
+  )
 
-  // Select the match from router state
-  const matchSelection = useRouterState({
-    select: (state: any) => {
-      const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
-      )
-
-      if (match === undefined) {
-        // During navigation transitions, check if the match exists in pendingMatches
-        const pendingMatch = state.pendingMatches?.find((d: any) =>
-          opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
+  const selectedStore = Vue.computed(() => {
+    const key = opts.from ?? nearestMatchId.value
+    const store = key ? activeStores.value[key] : undefined
+    const hasPendingMatch = key
+      ? pendingMatches.value.some((match) =>
+          opts.from ? match.routeId === opts.from : match.id === key,
         )
+      : false
 
-        // If there's a pending match or we're transitioning, return undefined without throwing
-        if (pendingMatch || state.isTransitioning) {
-          pendingError.value = null
-          return undefined
-        }
+    const shouldThrowError =
+      !store && !hasPendingMatch && !isTransitioning.value && (opts.shouldThrow ?? true)
 
-        // Store the error to throw later if shouldThrow is enabled
-        if (opts.shouldThrow ?? true) {
-          pendingError.value = new Error(
-            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-          )
-        }
-
-        return undefined
-      }
-
+    if (shouldThrowError) {
+      pendingError.value = new Error(
+        `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      )
+    } else {
       pendingError.value = null
-      return opts.select ? opts.select(match) : match
-    },
-  } as any)
+    }
 
-  // Throw the error if we have one - this happens after the selector runs
-  // Using a computed so the error is thrown when the return value is accessed
+    return store
+  })
+
+  const match = useStoreOfStoresValue(
+    selectedStore,
+    (value) => value,
+  )
+
+  // Ensure missing-match errors are initialized even if callers never read
+  // from the returned ref (e.g. tests that only call useMatch for side effects).
+  selectedStore.value
+
   const result = Vue.computed(() => {
-    // Check for pending error first
     if (pendingError.value) {
       throw pendingError.value
     }
-    return matchSelection.value
-  })
 
-  // Also immediately throw if there's already an error from initial render
-  // This ensures errors are thrown even if the returned ref is never accessed
+    if (match.value === undefined) {
+      return undefined
+    }
+
+    return opts.select ? opts.select(match.value as any) : match.value
+  }) as any
+
   if (pendingError.value) {
     throw pendingError.value
   }
 
-  return result as any
+  return result
 }

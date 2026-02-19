@@ -1,4 +1,5 @@
 import * as Solid from 'solid-js'
+import { useStore } from '@tanstack/solid-store'
 
 import { mergeRefs } from '@solid-primitives/refs'
 
@@ -13,7 +14,6 @@ import {
 
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
@@ -121,13 +121,11 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  const currentLocation = useRouterState({
-    select: (s) => s.location,
-  })
-
-  const currentSearch = useRouterState({
-    select: (s) => s.location.searchStr,
-  })
+  const currentLocation = useStore(router.locationStore, (location) => location)
+  const currentSearch = useStore(
+    router.locationStore,
+    (location) => location.searchStr,
+  )
 
   const from = options.from
 

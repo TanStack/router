@@ -1,4 +1,5 @@
-import { useRouterState } from './useRouterState'
+import { useStore } from '@tanstack/react-store'
+import { useRouter } from './useRouter'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -45,8 +46,9 @@ export function useLocation<
   opts?: UseLocationBaseOptions<TRouter, TSelected, TStructuralSharing> &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseLocationResult<TRouter, TSelected> {
-  return useRouterState({
-    select: (state: any) =>
-      opts?.select ? opts.select(state.location) : state.location,
-  } as any) as UseLocationResult<TRouter, TSelected>
+  const router = useRouter<TRouter>()
+
+  return useStore(router.locationStore, (location) =>
+    opts?.select ? opts.select(location as any) : location,
+  ) as UseLocationResult<TRouter, TSelected>
 }

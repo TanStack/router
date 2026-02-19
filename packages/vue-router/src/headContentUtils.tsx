@@ -1,24 +1,19 @@
 import * as Vue from 'vue'
+import { useStore } from '@tanstack/vue-store'
 
 import { escapeHtml } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 export const useTags = () => {
   const router = useRouter()
+  const matches = useStore(router.activeMatchesSnapshotStore, (value) => value)
 
-  const routeMeta = useRouterState({
-    select: (state) => {
-      return state.matches.map((match) => match.meta!).filter(Boolean)
-    },
-  })
-
-  const meta: Vue.Ref<Array<RouterManagedTag>> = Vue.computed(() => {
+  const meta = Vue.computed<Array<RouterManagedTag>>(() => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
-    ;[...routeMeta.value].reverse().forEach((metas) => {
+    ;[...matches.value.map((match) => match.meta!).filter(Boolean)].reverse().forEach((metas) => {
       ;[...metas].reverse().forEach((m) => {
         if (!m) return
 
@@ -73,9 +68,8 @@ export const useTags = () => {
     return resultMeta
   })
 
-  const links = useRouterState({
-    select: (state) =>
-      state.matches
+  const links = Vue.computed<Array<RouterManagedTag>>(() =>
+      matches.value
         .map((match) => match.links!)
         .filter(Boolean)
         .flat(1)
@@ -85,13 +79,12 @@ export const useTags = () => {
             ...link,
           },
         })) as Array<RouterManagedTag>,
-  })
+  )
 
-  const preloadMeta = useRouterState({
-    select: (state) => {
+  const preloadMeta = Vue.computed<Array<RouterManagedTag>>(() => {
       const preloadMeta: Array<RouterManagedTag> = []
 
-      state.matches
+      matches.value
         .map((match) => router.looseRoutesById[match.routeId]!)
         .forEach((route) =>
           router.ssr?.manifest?.routes[route.id]?.preloads
@@ -108,13 +101,11 @@ export const useTags = () => {
         )
 
       return preloadMeta
-    },
   })
 
-  const headScripts = useRouterState({
-    select: (state) =>
+  const headScripts = Vue.computed<Array<RouterManagedTag>>(() =>
       (
-        state.matches
+        matches.value
           .map((match) => match.headScripts!)
           .flat(1)
           .filter(Boolean) as Array<RouterManagedTag>
@@ -125,13 +116,12 @@ export const useTags = () => {
         },
         children,
       })),
-  })
+  )
 
-  const manifestAssets = useRouterState({
-    select: (state) => {
+  const manifestAssets = Vue.computed<Array<RouterManagedTag>>(() => {
       const manifest = router.ssr?.manifest
 
-      const assets = state.matches
+      const assets = matches.value
         .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
         .filter(Boolean)
         .flat(1)
@@ -145,7 +135,6 @@ export const useTags = () => {
         )
 
       return assets
-    },
   })
 
   return () =>

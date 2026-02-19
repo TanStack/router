@@ -45,10 +45,19 @@ const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
   }
 }
 
+const isActiveMatchId = (router: AnyRouter, matchId: string): boolean => {
+  return router.matchesIdStore.state.includes(matchId)
+}
+
+const hasForcePendingActiveMatch = (router: AnyRouter): boolean => {
+  const byId = router.byIdStore.state
+  return router.matchesIdStore.state.some((matchId) => {
+    return byId[matchId]?.state._forcePending
+  })
+}
+
 const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
-  return !!(
-    inner.preload && !inner.router.state.matches.some((d) => d.id === matchId)
-  )
+  return !!(inner.preload && !isActiveMatchId(inner.router, matchId))
 }
 
 /**
@@ -859,8 +868,7 @@ const loadRouteMatch = async (
         await handleLoader(preload, prevMatch, match, route)
       }
     } else {
-      const nextPreload =
-        preload && !inner.router.state.matches.some((d) => d.id === matchId)
+      const nextPreload = preload && !isActiveMatchId(inner.router, matchId)
       const match = inner.router.getMatch(matchId)!
       match._nonReactive.loaderPromise = createControlledPromise<void>()
       if (nextPreload !== match.preload) {
@@ -914,7 +922,7 @@ export async function loadMatches(arg: {
   // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
   if (
     !(isServer ?? inner.router.isServer) &&
-    inner.router.state.matches.some((d) => d._forcePending)
+    hasForcePendingActiveMatch(inner.router)
   ) {
     triggerOnReady(inner)
   }

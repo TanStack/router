@@ -1,5 +1,5 @@
+import { useStore } from '@tanstack/react-store'
 import { Asset } from './Asset'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -10,8 +10,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const assetScripts = useRouterState({
-    select: (state) => {
+  const assetScripts = useStore(router.activeMatchesSnapshotStore, (matches) => {
       const assetScripts: Array<RouterManagedTag> = []
       const manifest = router.ssr?.manifest
 
@@ -19,7 +18,7 @@ export const Scripts = () => {
         return []
       }
 
-      state.matches
+      matches
         .map((match) => router.looseRoutesById[match.routeId]!)
         .forEach((route) =>
           manifest.routes[route.id]?.assets
@@ -34,29 +33,24 @@ export const Scripts = () => {
         )
 
       return assetScripts
-    },
-    structuralSharing: true as any,
   })
 
-  const { scripts } = useRouterState({
-    select: (state) => ({
-      scripts: (
-        state.matches
+  const scripts = useStore(router.activeMatchesSnapshotStore, (matches) =>
+    (
+      matches
           .map((match) => match.scripts!)
           .flat(1)
           .filter(Boolean) as Array<RouterManagedTag>
-      ).map(({ children, ...script }) => ({
-        tag: 'script',
-        attrs: {
-          ...script,
-          suppressHydrationWarning: true,
-          nonce,
-        },
-        children,
-      })),
-    }),
-    structuralSharing: true as any,
-  })
+    ).map(({ children, ...script }) => ({
+      tag: 'script',
+      attrs: {
+        ...script,
+        suppressHydrationWarning: true,
+        nonce,
+      },
+      children,
+    })),
+  )
 
   let serverBufferedScript: RouterManagedTag | undefined = undefined
 

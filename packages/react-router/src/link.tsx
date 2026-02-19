@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
 import {
   deepEqual,
@@ -9,7 +10,6 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import { useForwardedRef, useIntersectionObserver } from './utils'
@@ -376,19 +376,31 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
 
-  // subscribe to path/search/hash/params to re-build location when they change
+  // Subscribe to current location for active-state checks.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocationState = useRouterState({
-    select: (s) => {
-      const leaf = s.matches[s.matches.length - 1]
-      return {
-        search: leaf?.search,
-        hash: s.location.hash,
-        path: leaf?.pathname, // path + params
-      }
-    },
-    structuralSharing: true as any,
-  })
+  const currentLocation = useStore(router.locationStore, (location) => ({
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+  }))
+  // Subscribe to the current leaf match for relative-link resolution.
+  // This mirrors the previous `useRouterState` selection and keeps
+  // inherited param updates in sync without recomputing on unrelated rerenders.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const currentLeafPathname = useStore(
+    router.activeMatchesSnapshotStore,
+    (matches) => matches[matches.length - 1]?.pathname,
+  )
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const currentLeafSearch = useStore(
+    router.activeMatchesSnapshotStore,
+    (matches) => matches[matches.length - 1]?.search,
+  )
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const currentLocationHash = useStore(
+    router.locationStore,
+    (location) => location.hash,
+  )
 
   const from = options.from
 
@@ -400,7 +412,9 @@ export function useLinkProps<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      currentLocationState,
+      currentLeafPathname,
+      currentLeafSearch,
+      currentLocationHash,
       from,
       options._fromLocation,
       options.hash,
@@ -473,54 +487,61 @@ export function useLinkProps<
   }, [to, hrefOption, router.protocolAllowlist])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isActive = useRouterState({
-    select: (s) => {
-      if (externalLink) return false
-      if (activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        )
-        const nextPathSplit = removeTrailingSlash(
-          next.pathname,
-          router.basepath,
-        )
-
-        const pathIsFuzzyEqual =
-          currentPathSplit.startsWith(nextPathSplit) &&
-          (currentPathSplit.length === nextPathSplit.length ||
-            currentPathSplit[nextPathSplit.length] === '/')
-
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+  const isActive = React.useMemo(() => {
+    if (externalLink) return false
+    if (activeOptions?.exact) {
+      const testExact = exactPathTest(
+        currentLocation.pathname,
+        next.pathname,
+        router.basepath,
+      )
+      if (!testExact) {
+        return false
       }
+    } else {
+      const currentPathSplit = removeTrailingSlash(
+        currentLocation.pathname,
+        router.basepath,
+      )
+      const nextPathSplit = removeTrailingSlash(next.pathname, router.basepath)
 
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.search, {
-          partial: !activeOptions?.exact,
-          ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
-      }
+      const pathIsFuzzyEqual =
+        currentPathSplit.startsWith(nextPathSplit) &&
+        (currentPathSplit.length === nextPathSplit.length ||
+          currentPathSplit[nextPathSplit.length] === '/')
 
-      if (activeOptions?.includeHash) {
-        return isHydrated && s.location.hash === next.hash
+      if (!pathIsFuzzyEqual) {
+        return false
       }
-      return true
-    },
-  })
+    }
+
+    if (activeOptions?.includeSearch ?? true) {
+      const searchTest = deepEqual(currentLocation.search, next.search, {
+        partial: !activeOptions?.exact,
+        ignoreUndefined: !activeOptions?.explicitUndefined,
+      })
+      if (!searchTest) {
+        return false
+      }
+    }
+
+    if (activeOptions?.includeHash) {
+      return isHydrated && currentLocation.hash === next.hash
+    }
+    return true
+  }, [
+    activeOptions?.exact,
+    activeOptions?.explicitUndefined,
+    activeOptions?.includeHash,
+    activeOptions?.includeSearch,
+    currentLocation,
+    externalLink,
+    isHydrated,
+    next.hash,
+    next.pathname,
+    next.search,
+    router.basepath,
+  ])
 
   // Get the active props
   const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
