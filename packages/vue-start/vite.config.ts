@@ -34,6 +34,8 @@ export default mergeConfig(
       './src/server-rpc.ts',
       './src/server.tsx',
       './src/plugin/vite.ts',
+      './src/server-only.ts',
+      './src/client-only.ts',
     ],
     externalDeps: ['@tanstack/vue-start-client', '@tanstack/vue-start-server'],
     cjs: false,

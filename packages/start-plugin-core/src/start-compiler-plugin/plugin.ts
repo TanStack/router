@@ -195,7 +195,7 @@ export function startCompilerPlugin(
   }
 
   let root = process.cwd()
-  let command: 'build' | 'serve' = 'build'
+  let _command: 'build' | 'serve' = 'build'
 
   const resolvedResolverVirtualImportId = resolveViteId(
     VIRTUAL_MODULES.serverFnResolver,
@@ -229,7 +229,7 @@ export function startCompilerPlugin(
       },
       configResolved(config) {
         root = config.root
-        command = config.command
+        _command = config.command
       },
       transform: {
         filter: {
@@ -423,7 +423,7 @@ export function startCompilerPlugin(
       },
       configResolved(config) {
         root = config.root
-        command = config.command
+        _command = config.command
       },
       resolveId: {
         filter: { id: new RegExp(VIRTUAL_MODULES.serverFnResolver) },
