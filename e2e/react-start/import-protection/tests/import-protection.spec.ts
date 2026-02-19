@@ -154,7 +154,7 @@ test('all trace steps include line numbers', async () => {
   // The entry (step 0) may not have one if it has no specifier pointing into it.
   // All non-entry steps should have line numbers since they import something.
   for (let i = 1; i < v!.trace.length; i++) {
-    const step = v!.trace[i]!
+    const step = v!.trace[i]
     expect(
       step.line,
       `trace step ${i} (${step.file}) should have a line number`,
@@ -172,7 +172,7 @@ test('leaf trace step includes the denied import specifier', async () => {
   expect(v).toBeDefined()
 
   // The last trace step should be the leaf (edge-a) and include the specifier
-  const last = v!.trace[v!.trace.length - 1]!
+  const last = v!.trace[v!.trace.length - 1]
   expect(last.file).toContain('edge-a')
   expect(last.specifier).toContain('secret.server')
   expect(last.line).toBeDefined()
@@ -265,6 +265,22 @@ test('dev violations include code snippets', async () => {
   if (fileViolation!.snippet!.location) {
     expect(fileViolation!.snippet!.location).toMatch(/:\d+:\d+/)
   }
+})
+
+test('no violation for .server import used only inside compiler boundaries', async () => {
+  const violations = await readViolations('build')
+
+  // boundary-safe.ts imports secret.server.ts, but the import should be pruned
+  // from the client build because it is only referenced inside compiler
+  // boundaries (createServerFn/createServerOnlyFn/createIsomorphicFn).
+  const safeHits = violations.filter(
+    (v) =>
+      v.envType === 'client' &&
+      (v.importer.includes('boundary-safe') ||
+        v.trace.some((s) => s.file.includes('boundary-safe'))),
+  )
+
+  expect(safeHits).toEqual([])
 })
 
 test('compiler-processed module has code snippet in dev', async () => {
@@ -364,4 +380,40 @@ test('build has violations in both client and SSR environments', async () => {
 
   expect(clientViolations.length).toBeGreaterThanOrEqual(2)
   expect(ssrViolations.length).toBeGreaterThanOrEqual(2)
+})
+
+test('no false positive for factory-safe middleware pattern in dev', async () => {
+  const violations = await readViolations('dev')
+
+  // createSecretFactory.ts uses @tanstack/react-start/server and ../secret.server
+  // ONLY inside createMiddleware().server() callbacks.  The compiler strips these
+  // on the client, so import-protection must not fire for them.
+  const factoryHits = violations.filter(
+    (v) =>
+      v.envType === 'client' &&
+      (v.importer.includes('createSecretFactory') ||
+        v.importer.includes('factory-safe') ||
+        v.trace.some(
+          (s) =>
+            s.file.includes('createSecretFactory') ||
+            s.file.includes('factory-safe'),
+        )),
+  )
+
+  expect(factoryHits).toEqual([])
+})
+
+test('no false positive for boundary-safe pattern in dev', async () => {
+  const violations = await readViolations('dev')
+
+  // boundary-safe.ts imports secret.server.ts but only uses it inside
+  // compiler boundaries (createServerFn/createServerOnlyFn/createIsomorphicFn).
+  const safeHits = violations.filter(
+    (v) =>
+      v.envType === 'client' &&
+      (v.importer.includes('boundary-safe') ||
+        v.trace.some((s) => s.file.includes('boundary-safe'))),
+  )
+
+  expect(safeHits).toEqual([])
 })

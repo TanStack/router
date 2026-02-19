@@ -3,6 +3,7 @@ import { normalizePath } from 'vite'
 
 import { resolveViteId } from '../utils'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import { SERVER_FN_LOOKUP } from '../start-compiler-plugin/plugin'
 import { ImportGraph, buildTrace, formatViolation } from './trace'
 import {
   getDefaultImportProtectionRules,
@@ -348,6 +349,7 @@ export function importProtectionPlugin(
     source: string,
     resolvedId: string,
     relativePath: string,
+    opts?: { silent?: boolean },
   ): Promise<ReturnType<typeof handleViolation> | undefined> {
     const markerKind = getMarkerKindForFile(resolvedId)
     const violates =
@@ -375,7 +377,7 @@ export function importProtectionPlugin(
       },
     )
 
-    return handleViolation.call(ctx, env, info)
+    return handleViolation.call(ctx, env, info, opts)
   }
 
   function buildMockEdgeModuleId(
@@ -744,6 +746,25 @@ export function importProtectionPlugin(
           return undefined
         }
 
+        // Two code paths resolve imports from raw (pre-compiler-transform)
+        // source in dev mode:
+        //
+        // 1. The Start compiler calls `fetchModule(id + '?' + SERVER_FN_LOOKUP)`
+        //    to inspect a child module's exports.  The compiler's own transform
+        //    is excluded for these requests, so Vite sees the original imports.
+        //
+        // 2. Vite's dep-optimizer scanner (`options.scan === true`) uses esbuild
+        //    to discover bare imports for pre-bundling.  esbuild reads raw source
+        //    without running Vite transform hooks, so it also sees imports that
+        //    the compiler would normally strip.
+        //
+        // In both cases the imports are NOT real client-side imports.  We must
+        // suppress violation *reporting* (no warnings / errors) but still return
+        // mock module IDs so that transitive resolution doesn't blow up.
+        const isPreTransformResolve =
+          importer.includes('?' + SERVER_FN_LOOKUP) ||
+          !!(_options as Record<string, unknown>).scan
+
         // Check if this is a marker import
         if (config.markerSpecifiers.serverOnly.has(source)) {
           // Record importer as server-only
@@ -771,7 +792,9 @@ export function importProtectionPlugin(
                 message: `Module "${getRelativePath(resolvedImporter)}" is marked server-only but is imported in the client environment`,
               },
             )
-            handleViolation.call(this, env, info)
+            handleViolation.call(this, env, info, {
+              silent: isPreTransformResolve,
+            })
           }
 
           // Return virtual empty module
@@ -802,7 +825,9 @@ export function importProtectionPlugin(
                 message: `Module "${getRelativePath(resolvedImporter)}" is marked client-only but is imported in the server environment`,
               },
             )
-            handleViolation.call(this, env, info)
+            handleViolation.call(this, env, info, {
+              silent: isPreTransformResolve,
+            })
           }
 
           return resolveViteId(`${MARKER_PREFIX}client-only`)
@@ -834,7 +859,9 @@ export function importProtectionPlugin(
               message: `Import "${source}" is denied in the "${envName}" environment`,
             },
           )
-          return handleViolation.call(this, env, info)
+          return handleViolation.call(this, env, info, {
+            silent: isPreTransformResolve,
+          })
         }
 
         // 2. Resolve the import (cached) — needed for file-based denial,
@@ -890,7 +917,9 @@ export function importProtectionPlugin(
                 message: `Import "${source}" (resolved to "${relativePath}") is denied in the "${envName}" environment`,
               },
             )
-            return handleViolation.call(this, env, info)
+            return handleViolation.call(this, env, info, {
+              silent: isPreTransformResolve,
+            })
           }
 
           // Marker restrictions apply regardless of explicit deny rules.
@@ -904,6 +933,7 @@ export function importProtectionPlugin(
             source,
             resolved,
             relativePath,
+            { silent: isPreTransformResolve },
           )
           if (markerRes !== undefined) {
             return markerRes
@@ -1120,6 +1150,7 @@ export function importProtectionPlugin(
     this: { warn: (msg: string) => void; error: (msg: string) => never },
     env: EnvState,
     info: ViolationInfo,
+    opts?: { silent?: boolean },
   ): { id: string; syntheticNamedExports: boolean } | string | undefined {
     const key = dedupeKey(
       info.type,
@@ -1128,24 +1159,33 @@ export function importProtectionPlugin(
       info.resolved,
     )
 
-    // Call user callback
-    if (config.onViolation) {
-      const result = config.onViolation(info)
-      if (result === false) {
+    if (!opts?.silent) {
+      // Call user callback
+      if (config.onViolation) {
+        const result = config.onViolation(info)
+        if (result === false) {
+          return undefined
+        }
+      }
+
+      const seen = hasSeen(env, key)
+
+      if (config.effectiveBehavior === 'error') {
+        if (!seen) this.error(formatViolation(info, config.root))
         return undefined
       }
-    }
 
-    const seen = hasSeen(env, key)
-
-    if (config.effectiveBehavior === 'error') {
-      if (!seen) this.error(formatViolation(info, config.root))
-      return undefined
-    }
-
-    // Mock mode: log once, but always return the mock module.
-    if (!seen) {
-      this.warn(formatViolation(info, config.root))
+      // Mock mode: log once, but always return the mock module.
+      if (!seen) {
+        this.warn(formatViolation(info, config.root))
+      }
+    } else {
+      // Silent mode: in error behavior, skip entirely (no mock needed
+      // for compiler-internal lookups); in mock mode, fall through to
+      // return the mock module ID without logging.
+      if (config.effectiveBehavior === 'error') {
+        return undefined
+      }
     }
 
     env.deniedSources.add(info.specifier)
