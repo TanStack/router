@@ -105,6 +105,7 @@
   "dependencies": {
     "@tanstack/react-start-client": "workspace:*",
     "@tanstack/react-start-server": "workspace:*",
+    "@tanstack/llm-docs": "workspace:*",
     "@tanstack/router-utils": "workspace:^",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/react-router": "workspace:*",

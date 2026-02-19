@@ -1,0 +1,15 @@
+{
+  "name": "@tanstack/llm-docs",
+  "targets": {
+    "build": {
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/scripts/**/*",
+        "{projectRoot}/package.json",
+        "{workspaceRoot}/docs/router/framework/react/**/*",
+        "{workspaceRoot}/docs/start/framework/react/**/*"
+      ],
+      "outputs": ["{projectRoot}/dist"]
+    }
+  }
+}

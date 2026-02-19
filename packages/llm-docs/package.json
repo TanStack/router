@@ -1,0 +1,46 @@
+{
+  "name": "@tanstack/llm-docs",
+  "version": "1.157.16",
+  "description": "LLM-optimized documentation for TanStack Router and Start",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/router.git",
+    "directory": "packages/llm-docs"
+  },
+  "homepage": "https://tanstack.com/router",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "tanstack",
+    "router",
+    "start",
+    "documentation",
+    "llm",
+    "ai",
+    "agent",
+    "docs"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "build": "node ./scripts/generate.mjs"
+  },
+  "type": "module",
+  "main": "dist/AGENT.md",
+  "exports": {
+    ".": "./dist/AGENT.md",
+    "./agent": "./dist/AGENT.md",
+    "./router/*": "./dist/router/*",
+    "./start/*": "./dist/start/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

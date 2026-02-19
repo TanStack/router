@@ -105,6 +105,7 @@
   "dependencies": {
     "@tanstack/solid-start-client": "workspace:*",
     "@tanstack/solid-start-server": "workspace:*",
+    "@tanstack/llm-docs": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
