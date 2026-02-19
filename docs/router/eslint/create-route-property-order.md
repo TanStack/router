@@ -80,7 +80,7 @@ import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/path')({
   beforeLoad: () => ({hello: 'world'}),
   loader: async ({context}) => {
-    await context.queryClient.ensureQueryData(getQueryOptions(context.hello)),
+    await context.queryClient.ensureQueryData(getQueryOptions(context.hello));
   }
 })
 ```
@@ -98,7 +98,7 @@ import { createFileRoute } from '@tanstack/solid-router'
 export const Route = createFileRoute('/path')({
   beforeLoad: () => ({hello: 'world'}),
   loader: async ({context}) => {
-    await context.queryClient.ensureQueryData(getQueryOptions(context.hello)),
+    await context.queryClient.ensureQueryData(getQueryOptions(context.hello));
   }
 })
 ```
