@@ -1147,12 +1147,13 @@ export class RouterCore<
     pool: Map<string, MatchStore>,
     ids: Array<string>,
   ): Array<AnyRouteMatch> => {
-    const matches: Array<AnyRouteMatch> = new Array(ids.length)
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i]!
-      const matchStore = pool.get(id)!
-      matches[i] = matchStore.state
-    }
+    const matches: Array<AnyRouteMatch> = []
+    ids.forEach((id) => {
+      const matchStore = pool.get(id)
+      if (matchStore) {
+        matches.push(matchStore.state)
+      }
+    })
     return matches
   }
 
