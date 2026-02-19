@@ -3,6 +3,7 @@ import {
   isNotFound,
   isRedirect,
 } from '@tanstack/router-core'
+import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 import invariant from 'tiny-invariant'
 import {
   TSS_FORMDATA_CONTEXT,
@@ -171,6 +172,8 @@ export const handleServerAction = async ({
         let nonStreamingBody: any = undefined
 
         const alsResponse = getResponse()
+        // Normalize any headers from the server function result
+        const serverFnHeaders = mergeHeaders((res as any)?.headers)
         if (res !== undefined) {
           // Collect raw streams encountered during serialization
           const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
@@ -221,10 +224,13 @@ export const handleServerAction = async ({
               {
                 status: alsResponse.status,
                 statusText: alsResponse.statusText,
-                headers: {
-                  'Content-Type': 'application/json',
-                  [X_TSS_SERIALIZED]: 'true',
-                },
+                headers: mergeHeaders(
+                  {
+                    'Content-Type': 'application/json',
+                    [X_TSS_SERIALIZED]: 'true',
+                  },
+                  serverFnHeaders,
+                ),
               },
             )
           }
@@ -261,10 +267,13 @@ export const handleServerAction = async ({
             return new Response(multiplexedStream, {
               status: alsResponse.status,
               statusText: alsResponse.statusText,
-              headers: {
-                'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
-                [X_TSS_SERIALIZED]: 'true',
-              },
+              headers: mergeHeaders(
+                {
+                  'Content-Type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+                  [X_TSS_SERIALIZED]: 'true',
+                },
+                serverFnHeaders,
+              ),
             })
           }
 
@@ -292,10 +301,13 @@ export const handleServerAction = async ({
           return new Response(stream, {
             status: alsResponse.status,
             statusText: alsResponse.statusText,
-            headers: {
-              'Content-Type': 'application/x-ndjson',
-              [X_TSS_SERIALIZED]: 'true',
-            },
+            headers: mergeHeaders(
+              {
+                'Content-Type': 'application/x-ndjson',
+                [X_TSS_SERIALIZED]: 'true',
+              },
+              serverFnHeaders,
+            ),
           })
         }
 
