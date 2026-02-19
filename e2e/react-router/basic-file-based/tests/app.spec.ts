@@ -257,6 +257,8 @@ async function structuralSharingTest(page: Page, enabled: boolean) {
 
 test('structural sharing disabled', async ({ page }) => {
   await structuralSharingTest(page, false)
+  expect(await getRenderCount(page)).toBe(2)
+  await page.getByTestId('link').click()
   expect(await getRenderCount(page)).toBeGreaterThan(2)
 })
 
