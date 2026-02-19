@@ -2,6 +2,148 @@ import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, RouterCore } from '../src'
 
+describe('buildLocation - #6490 skipRouteOnParseError respects params.stringify', () => {
+  test('skipRouteOnParseError.params=true should match using stringified params', () => {
+    const rootRoute = new BaseRootRoute({})
+    const langRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/$lang',
+      skipRouteOnParseError: {
+        params: true,
+      },
+      params: {
+        parse: (rawParams) => {
+          if (rawParams.lang === 'en') {
+            return { lang: 'en-US' }
+          }
+
+          if (rawParams.lang === 'pl') {
+            return { lang: 'pl-PL' }
+          }
+
+          throw new Error('Invalid language')
+        },
+        stringify: (params) => {
+          if (params.lang === 'en-US') {
+            return { lang: 'en' }
+          }
+
+          if (params.lang === 'pl-PL') {
+            return { lang: 'pl' }
+          }
+
+          return params
+        },
+      },
+    })
+    const routeTree = rootRoute.addChildren([langRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    const location = router.buildLocation({
+      to: '/$lang',
+      params: { lang: 'en-US' },
+    })
+
+    expect(location.pathname).toBe('/en')
+  })
+
+  test('skipRouteOnParseError.params=false should still stringify params', () => {
+    const rootRoute = new BaseRootRoute({})
+    const langRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/$lang',
+      skipRouteOnParseError: {
+        params: false,
+      },
+      params: {
+        parse: (rawParams) => {
+          if (rawParams.lang === 'en') {
+            return { lang: 'en-US' }
+          }
+
+          if (rawParams.lang === 'pl') {
+            return { lang: 'pl-PL' }
+          }
+
+          throw new Error('Invalid language')
+        },
+        stringify: (params) => {
+          if (params.lang === 'en-US') {
+            return { lang: 'en' }
+          }
+
+          if (params.lang === 'pl-PL') {
+            return { lang: 'pl' }
+          }
+
+          return params
+        },
+      },
+    })
+    const routeTree = rootRoute.addChildren([langRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    const location = router.buildLocation({
+      to: '/$lang',
+      params: { lang: 'en-US' },
+    })
+
+    expect(location.pathname).toBe('/en')
+  })
+
+  test('falls back when prestringified params match a different route', () => {
+    const rootRoute = new BaseRootRoute({})
+    const englishRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/en',
+    })
+    const langRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/$lang',
+      skipRouteOnParseError: {
+        params: true,
+      },
+      params: {
+        parse: (rawParams) => {
+          if (rawParams.lang === 'en') {
+            return { lang: 'en-US' }
+          }
+
+          throw new Error('Invalid language')
+        },
+        stringify: (params) => {
+          if (params.lang === 'en-US') {
+            return { lang: 'en' }
+          }
+
+          return params
+        },
+      },
+    })
+    const routeTree = rootRoute.addChildren([englishRoute, langRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    const location = router.buildLocation({
+      to: '/$lang',
+      params: { lang: 'en-US' },
+    })
+
+    expect(location.pathname).toBe('/en-US')
+  })
+})
+
 describe('buildLocation - params function receives parsed params', () => {
   test('prev params should contain parsed params from route params.parse', async () => {
     const rootRoute = new BaseRootRoute({})
