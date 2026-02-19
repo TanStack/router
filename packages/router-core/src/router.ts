@@ -871,6 +871,13 @@ export function getLocationChangeInfo(routerState: {
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
 
+function filterRedirectedCachedMatches<T extends { status: string }>(
+  matches: Array<T>,
+): Array<T> {
+  const filtered = matches.filter((d) => d.status !== 'redirected')
+  return filtered.length === matches.length ? matches : filtered
+}
+
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
@@ -1123,16 +1130,7 @@ export class RouterCore<
           getInitialRouterState(this.latestLocation),
         ) as unknown as Store<any>
       } else {
-        this.__store = new Store(getInitialRouterState(this.latestLocation), {
-          onUpdate: () => {
-            this.__store.state = {
-              ...this.state,
-              cachedMatches: this.state.cachedMatches.filter(
-                (d) => !['redirected'].includes(d.status),
-              ),
-            }
-          },
-        })
+        this.__store = new Store(getInitialRouterState(this.latestLocation))
 
         setupScrollRestoration(this)
       }
@@ -1175,10 +1173,10 @@ export class RouterCore<
     }
 
     if (needsLocationUpdate && this.__store) {
-      this.__store.state = {
-        ...this.state,
+      this.__store.setState((s) => ({
+        ...s,
         location: this.latestLocation,
-      }
+      }))
     }
 
     if (
@@ -2445,7 +2443,9 @@ export class RouterCore<
                           ...s.cachedMatches,
                           ...exitingMatches.filter(
                             (d) =>
-                              d.status !== 'error' && d.status !== 'notFound',
+                              d.status !== 'error' &&
+                              d.status !== 'notFound' &&
+                              d.status !== 'redirected',
                           ),
                         ],
                       }
@@ -2600,12 +2600,21 @@ export class RouterCore<
             : ''
 
       if (matchesKey) {
-        this.__store.setState((s) => ({
-          ...s,
-          [matchesKey]: s[matchesKey]?.map((d) =>
-            d.id === id ? updater(d) : d,
-          ),
-        }))
+        if (matchesKey === 'cachedMatches') {
+          this.__store.setState((s) => ({
+            ...s,
+            cachedMatches: filterRedirectedCachedMatches(
+              s.cachedMatches.map((d) => (d.id === id ? updater(d) : d)),
+            ),
+          }))
+        } else {
+          this.__store.setState((s) => ({
+            ...s,
+            [matchesKey]: s[matchesKey]?.map((d) =>
+              d.id === id ? updater(d) : d,
+            ),
+          }))
+        }
       }
     })
   }

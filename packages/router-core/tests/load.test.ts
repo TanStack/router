@@ -167,10 +167,16 @@ describe('beforeLoad skip or exec', () => {
       beforeLoad,
     })
     await router.preloadRoute({ to: '/foo' })
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -184,9 +190,15 @@ describe('beforeLoad skip or exec', () => {
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -362,10 +374,16 @@ describe('loader skip or exec', () => {
       loader,
     })
     await router.preloadRoute({ to: '/foo' })
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
@@ -379,10 +397,38 @@ describe('loader skip or exec', () => {
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/bar')
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     expect(loader).toHaveBeenCalledTimes(1)
+  })
+
+  test('updateMatch removes redirected matches from cachedMatches', async () => {
+    const loader = vi.fn()
+    const router = setup({ loader })
+
+    await router.preloadRoute({ to: '/foo' })
+    expect(router.state.cachedMatches).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
+    )
+
+    router.updateMatch('/foo/foo', (prev) => ({
+      ...prev,
+      status: 'redirected',
+    }))
+
+    expect(router.state.cachedMatches.some((d) => d.id === '/foo/foo')).toBe(
+      false,
+    )
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
   })
 
   test('exec if rejected preload (error)', async () => {
