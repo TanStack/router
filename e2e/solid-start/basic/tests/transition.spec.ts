@@ -3,6 +3,14 @@ import { expect, test } from '@playwright/test'
 test('transitions/count/create-resource should keep old values visible during navigation', async ({
   page,
 }) => {
+  const burstClicks = async (count: number) => {
+    await page.getByTestId('increase-button').evaluate((element, clickCount) => {
+      for (let index = 0; index < clickCount; index++) {
+        ;(element as HTMLAnchorElement).click()
+      }
+    }, count)
+  }
+
   await page.goto('/transition/count/create-resource')
 
   await expect(page.getByTestId('n-value')).toContainText('n: 1')
@@ -20,7 +28,7 @@ test('transitions/count/create-resource should keep old values visible during na
 
   // 1 click
 
-  page.getByTestId('increase-button').click()
+  await burstClicks(1)
 
   await expect(page.getByTestId('n-value')).toContainText('n: 1', {
     timeout: 2_000,
@@ -40,8 +48,7 @@ test('transitions/count/create-resource should keep old values visible during na
 
   // 2 clicks
 
-  page.getByTestId('increase-button').click()
-  page.getByTestId('increase-button').click()
+  await burstClicks(2)
 
   await expect(page.getByTestId('n-value')).toContainText('n: 2', {
     timeout: 2000,
@@ -61,9 +68,7 @@ test('transitions/count/create-resource should keep old values visible during na
 
   // 3 clicks
 
-  page.getByTestId('increase-button').click()
-  page.getByTestId('increase-button').click()
-  page.getByTestId('increase-button').click()
+  await burstClicks(3)
 
   await expect(page.getByTestId('n-value')).toContainText('n: 4', {
     timeout: 2000,
