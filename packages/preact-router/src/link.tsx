@@ -43,7 +43,8 @@ export function useLinkProps<
   forwardedRef?: RefObject<Element>,
 ): any {
   const router = useRouter()
-  const innerRef = forwardedRef ?? useRef<Element>(null) as RefObject<any>
+  const innerRef = useRef<Element>(null) as RefObject<any>
+  const resolvedRef = forwardedRef ?? innerRef
 
   const _isServer = isServer ?? router.isServer
 
@@ -102,7 +103,7 @@ export function useLinkProps<
           }
           return {
             ...propsSafeToSpread,
-            ref: innerRef,
+            ref: resolvedRef,
             href: undefined,
             ...(children && { children }),
             ...(target && { target }),
@@ -114,7 +115,7 @@ export function useLinkProps<
 
         return {
           ...propsSafeToSpread,
-          ref: innerRef,
+          ref: resolvedRef,
           href: to,
           ...(children && { children }),
           ...(target && { target }),
@@ -225,7 +226,7 @@ export function useLinkProps<
     if (externalLink) {
       return {
         ...propsSafeToSpread,
-        ref: innerRef,
+        ref: resolvedRef,
         href: externalLink,
         ...(children && { children }),
         ...(target && { target }),
@@ -281,7 +282,7 @@ export function useLinkProps<
       ...resolvedActiveProps,
       ...resolvedInactiveProps,
       href: hrefOption?.href,
-      ref: innerRef,
+      ref: resolvedRef,
       disabled: !!disabled,
       target,
       ...(resolvedStyle && { style: resolvedStyle }),
@@ -457,7 +458,7 @@ export function useLinkProps<
   )
 
   useIntersectionObserver(
-    innerRef as RefObject<Element>,
+    resolvedRef as RefObject<Element>,
     preloadViewportIoCallback,
     intersectionObserverOptions,
     { disabled: !!disabled || !(preload === 'viewport') },
@@ -511,7 +512,7 @@ export function useLinkProps<
   if (externalLink) {
     return {
       ...propsSafeToSpread,
-      ref: innerRef,
+      ref: resolvedRef,
       href: externalLink,
       ...(children && { children }),
       ...(target && { target }),
@@ -568,7 +569,7 @@ export function useLinkProps<
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
     href: hrefOption?.href,
-    ref: innerRef,
+    ref: resolvedRef,
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),

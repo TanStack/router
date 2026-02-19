@@ -66,7 +66,7 @@ export type ValidateUseParamsOptions<
     InferStrict<TOptions>,
     InferShouldThrow<TOptions>,
     InferSelected<TOptions>,
-    InferSelected<TOptions>
+    InferStructuralSharing<TOptions>
   >
 >
 export type ValidateLinkOptionsArray<
