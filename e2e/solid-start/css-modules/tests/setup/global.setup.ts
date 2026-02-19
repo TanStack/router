@@ -8,11 +8,18 @@ import packageJson from '../../package.json' with { type: 'json' }
 async function waitForServer(url: string) {
   const start = Date.now()
   while (Date.now() - start < 30_000) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 5_000)
     try {
-      const res = await fetch(url, { redirect: 'manual' })
+      const res = await fetch(url, {
+        redirect: 'manual',
+        signal: controller.signal,
+      })
       if (res.ok) return
     } catch {
-      // ignore
+      // ignore aborted/network errors
+    } finally {
+      clearTimeout(timer)
     }
     await new Promise((r) => setTimeout(r, 250))
   }
