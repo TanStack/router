@@ -1,43 +1,16 @@
-# TanStack Start - Counter Example
+# Deprecated: TanStack Start React Example (`start-counter`)
 
-This site is built with TanStack Router!
+This example is retained for compatibility and historical reference.
 
-- [TanStack Router Docs](https://tanstack.com/router)
+For new projects, use:
 
-## Start a new project based on this example
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create`
 
-To start a new project based on this example, run:
+If you want a line-by-line starter walkthrough, use:
 
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-counter start-counter
-```
+- [Build a Project from Scratch](https://tanstack.com/router/latest/docs/framework/react/start/build-from-scratch)
 
-## Deployment
+Canonical issue reproduction baseline:
 
-It's deployed automagically with Netlify!
-
-- [Netlify](https://netlify.com/)
-
-## Getting Started
-
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-## Build
-
-Build for production:
-
-```sh
-pnpm build
-```
-
-## About This Example
-
-This example demonstrates:
-
-- Basic state management
-- Interactive UI components
+- [React `start-basic`](https://github.com/TanStack/router/tree/main/examples/react/start-basic)

@@ -1,51 +1,17 @@
-# TanStack Start - Auth.js Example
+# Deprecated: TanStack Start React Example (`start-basic-authjs`)
 
-A TanStack Start example demonstrating authentication with Auth.js (NextAuth.js).
+This example is retained for compatibility and historical reference.
 
-- [TanStack Router Docs](https://tanstack.com/router)
-- [Auth.js Documentation](https://authjs.dev/)
+For new projects, use:
 
-## Start a new project based on this example
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create`
 
-To start a new project based on this example, run:
+For topic-specific setup, use the Start guides:
 
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-basic-authjs start-basic-authjs
-```
+- [Start React Quick Start](https://tanstack.com/router/latest/docs/framework/react/start/quick-start)
+- [Start React Guides](https://tanstack.com/router/latest/docs/framework/react/start/guide/routing)
 
-## Setup
+Canonical issue reproduction baseline:
 
-This example requires environment variables for Auth.js configuration. Copy the `.env.example` file to `.env` and fill in your authentication provider credentials:
-
-```sh
-cp .env.example .env
-```
-
-Edit `.env` and add your authentication provider credentials.
-
-## Getting Started
-
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-This starts your app in development mode, rebuilding assets on file changes.
-
-## Build
-
-To build the app for production:
-
-```sh
-pnpm build
-```
-
-## Authentication Configuration
-
-This example demonstrates how to integrate Auth.js with TanStack Start. Check the source code for examples of:
-
-- Configuring authentication providers
-- Protecting routes with authentication
-- Accessing session data in server functions
+- [React `start-basic`](https://github.com/TanStack/router/tree/main/examples/react/start-basic)

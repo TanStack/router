@@ -1,44 +1,17 @@
-# TanStack Start - Static Example
+# Deprecated: TanStack Start React Example (`start-basic-static`)
 
-This site is built with TanStack Router!
+This example is retained for compatibility and historical reference.
 
-- [TanStack Router Docs](https://tanstack.com/router)
+For new projects, use:
 
-## Start a new project based on this example
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create`
 
-To start a new project based on this example, run:
+For topic-specific setup, use the Start guides:
 
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-basic-static start-basic-static
-```
+- [Start React Quick Start](https://tanstack.com/router/latest/docs/framework/react/start/quick-start)
+- [Static Prerendering](https://tanstack.com/router/latest/docs/framework/react/start/guide/static-prerendering)
 
-## Deployment
+Canonical issue reproduction baseline:
 
-It's deployed automagically with Vercel!
-
-- [Vercel](https://vercel.com/)
-
-## Getting Started
-
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-## Build
-
-Build for production:
-
-```sh
-pnpm build
-```
-
-## About This Example
-
-This example demonstrates:
-
-- Static Site Generation (SSG) with TanStack Start
-- Prerendering routes
-- Static export
+- [React `start-basic`](https://github.com/TanStack/router/tree/main/examples/react/start-basic)

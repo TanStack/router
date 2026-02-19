@@ -488,9 +488,9 @@ const composedRewrite = composeRewrites([
 
 ## Examples
 
-Complete working examples are available in the TanStack Router repository:
+Reference implementations and guides:
 
 - [React + Paraglide (Client-side i18n)](https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide)
-- [React + TanStack Start + Paraglide (SSR i18n)](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide)
+- [React + TanStack Start + Paraglide (SSR i18n)](https://tanstack.com/router/latest/docs/framework/react/start/guide/middleware)
 - [Solid + Paraglide (Client-side i18n)](https://github.com/TanStack/router/tree/main/examples/solid/i18n-paraglide)
-- [Solid + TanStack Start + Paraglide (SSR i18n)](https://github.com/TanStack/router/tree/main/examples/solid/start-i18n-paraglide)
+- [Solid + TanStack Start + Paraglide (SSR i18n)](https://tanstack.com/router/latest/docs/framework/solid/start/guide/middleware)

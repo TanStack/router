@@ -6,7 +6,7 @@ Streaming data from the server has become very popular thanks to the rise of AI 
 
 The two most popular ways of streaming data from server functions are using `ReadableStream`-s or async generators.
 
-You can see how to implement both in the [Streaming Data From Server Functions example](https://github.com/TanStack/router/tree/main/examples/react/start-streaming-data-from-server-functions).
+The examples below show both patterns directly, so you can copy them into any Start project generated from [TanStack Builder](https://tanstack.com/builder) or the CLI.
 
 ## Typed Readable Streams
 

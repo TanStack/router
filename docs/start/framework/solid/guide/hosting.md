@@ -310,7 +310,7 @@ We provide a reference implementation that demonstrates one approach to building
 
 **Quick Setup:**
 
-1. Copy the [`server.ts`](https://github.com/tanstack/router/blob/main/examples/react/start-bun/server.ts) file from the example repository to your project root (or use it as inspiration for your own implementation)
+1. Create a `server.ts` file in your project root and adapt the Bun server strategy shown in this section.
 
 2. Build your application:
 
@@ -393,7 +393,7 @@ bun run server.ts
 🚀 Server running at http://localhost:3000
 ```
 
-For a complete working example, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
+To start from a Bun-ready base quickly, generate a new project in [TanStack Builder](https://tanstack.com/builder) and select Bun-compatible deployment settings.
 
 ### Appwrite Sites
 
@@ -402,7 +402,7 @@ When deploying to [Appwrite Sites](https://appwrite.io/products/sites), you'll n
 1. **Create a TanStack Start app** (or use an existing one)
 
 ```bash
-npm create @tanstack/start@latest
+npx @tanstack/cli create --framework solid
 ```
 
 2. **Push your project to a GitHub repository**

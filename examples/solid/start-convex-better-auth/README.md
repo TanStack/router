@@ -1,15 +1,17 @@
-### Guide
+# Deprecated: TanStack Start Solid Example (`start-convex-better-auth`)
 
-Rename .env.example to .env.local
+This example is retained for compatibility and historical reference.
 
-Run
+For new projects, use:
 
-- `pnpm i`
-- `pnpx convex dev`
-- `pnpx convex env set SITE_URL http://localhost:3000/`
-- `pnpx convex env set BETTER_AUTH_SECRET=$(openssl rand -base64 32)`
-- `pnpx convex dev` - takes up one terminal
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create --framework solid`
 
-In a separate terminal run
+Related docs:
 
-- `pnpm run dev`
+- [Authentication Overview](https://tanstack.com/router/latest/docs/framework/solid/start/guide/authentication-overview)
+- [Databases](https://tanstack.com/router/latest/docs/framework/solid/start/guide/databases)
+
+Canonical issue reproduction baseline:
+
+- [Solid `start-basic`](https://github.com/TanStack/router/tree/main/examples/solid/start-basic)

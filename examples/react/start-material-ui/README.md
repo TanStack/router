@@ -1,41 +1,16 @@
-# TanStack Start - Material UI Example
+# Deprecated: TanStack Start React Example (`start-material-ui`)
 
-A TanStack Start example demonstrating integration with Material UI (MUI).
+This example is retained for compatibility and historical reference.
 
-- [TanStack Router Docs](https://tanstack.com/router)
-- [Material UI Documentation](https://mui.com/)
+For new projects, use:
 
-## Start a new project based on this example
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create`
 
-To start a new project based on this example, run:
+Related docs:
 
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-material-ui start-material-ui
-```
+- [Custom Link Guide](https://tanstack.com/router/latest/docs/framework/react/guide/custom-link)
 
-## Getting Started
+Canonical issue reproduction baseline:
 
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-This starts your app in development mode, rebuilding assets on file changes.
-
-## Build
-
-To build the app for production:
-
-```sh
-pnpm build
-```
-
-## Material UI Integration
-
-This example demonstrates how to integrate Material UI components with TanStack Start, including:
-
-- Theme configuration
-- Server-side rendering with MUI
-- Using MUI components in your routes
+- [React `start-basic`](https://github.com/TanStack/router/tree/main/examples/react/start-basic)

@@ -157,7 +157,7 @@ If your authentication flow relies on interactions with React context and/or hoo
 
 We'll cover the `router.context` options in-detail in the [Router Context](./router-context.md) section.
 
-Here's an example that uses React context and hooks for protecting authenticated routes in TanStack Router. See the entire working setup in the [Authenticated Routes example](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes).
+Here's an example that uses React context and hooks for protecting authenticated routes in TanStack Router. See a reference implementation in the [Authenticated Routes example](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes).
 
 <!-- ::start:framework -->
 
@@ -335,4 +335,4 @@ Working authentication examples are available in the repository:
 
 - [Basic Authentication Example](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes) - Simple authentication with context
 - [Firebase Authentication](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes-firebase) - Firebase Auth integration
-- [TanStack Start Auth Examples](https://github.com/TanStack/router/tree/main/examples/react) - Various auth implementations with TanStack Start
+- [TanStack Start Authentication Overview](/router/latest/docs/framework/react/start/guide/authentication-overview) - Compare hosted, OSS, and DIY auth approaches for Start

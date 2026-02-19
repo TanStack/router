@@ -482,4 +482,4 @@ After setting up basic authentication, you might want to:
 
 - [Authenticated Routes Guide](../guide/authenticated-routes.md) - Detailed conceptual guide
 - [Router Context Guide](../guide/router-context.md) - Understanding context in TanStack Router
-- [Authentication Examples](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes) - Complete working examples
+- [Authenticated Routes Guide](../guide/authenticated-routes.md) - End-to-end route protection patterns

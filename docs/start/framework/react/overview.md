@@ -34,7 +34,7 @@ That said, if you **know with certainty** that you will not need any of the abov
 
 ## Are there limitations?
 
-The only relevant limitation is that TanStack Start does not currently support React Server Components, **but we are actively working on integration and expect to support them in the near future.**
+TanStack Start supports React Server Components.
 
 Otherwise, TanStack Start provides the same capability as other full-stack frameworks like Next.js, Remix, etc, with even more features and a more powerful developer experience.
 

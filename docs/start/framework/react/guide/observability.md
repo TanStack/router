@@ -774,4 +774,4 @@ Direct OpenTelemetry support is coming to TanStack Start, which will provide aut
 
 - **[Sentry Documentation](https://docs.sentry.io/)**
 - **[OpenTelemetry Documentation](https://opentelemetry.io/docs/)** - Industry standard observability
-- **[Working Example](https://github.com/TanStack/router/tree/main/examples/react/start-basic)** - See observability patterns in action
+- **[TanStack Builder](https://tanstack.com/builder)** - Generate projects with Sentry and deployment options preconfigured

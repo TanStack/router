@@ -1,40 +1,16 @@
-# TanStack Start - Streaming Data Example
+# Deprecated: TanStack Start React Example (`start-streaming-data-from-server-functions`)
 
-A TanStack Start example demonstrating streaming data from server functions.
+This example is retained for compatibility and historical reference.
 
-- [TanStack Router Docs](https://tanstack.com/router)
+For new projects, use:
 
-## Start a new project based on this example
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create`
 
-To start a new project based on this example, run:
+Related docs:
 
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-streaming-data-from-server-functions start-streaming-data-from-server-functions
-```
+- [Streaming Data from Server Functions](https://tanstack.com/router/latest/docs/framework/react/start/guide/streaming-data-from-server-functions)
 
-## Getting Started
+Canonical issue reproduction baseline:
 
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-This starts your app in development mode, rebuilding assets on file changes.
-
-## Build
-
-To build the app for production:
-
-```sh
-pnpm build
-```
-
-## Streaming Data
-
-This example demonstrates how to stream data from server functions to the client, enabling:
-
-- Progressive data loading
-- Real-time updates
-- Improved perceived performance
+- [React `start-basic`](https://github.com/TanStack/router/tree/main/examples/react/start-basic)

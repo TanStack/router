@@ -35,7 +35,7 @@ The complete code for this tutorial is available on [GitHub](https://github.com/
 First, let's create a new TanStack Start project:
 
 ```bash
-pnpm create @tanstack/start@latest devjokes
+npx @tanstack/cli create devjokes
 cd devjokes
 ```
 
