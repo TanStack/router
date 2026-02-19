@@ -122,7 +122,7 @@ This pattern combines TanStack Router with a client-side i18n library. It is sui
 
 Paraglide provides type-safe translations, locale detection, and URL localization that pair naturally with TanStack Router.
 
-**GitHub example:**
+**Reference implementation:**
 [https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide)
 
 ### Project Setup
@@ -168,8 +168,10 @@ This pattern integrates i18n at the routing and server layers. It is suitable wh
 
 ### TanStack Start + Paraglide
 
-**GitHub example:**
-[https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide)
+**Start guides:**
+
+- [React Start Middleware](https://tanstack.com/router/latest/docs/framework/react/start/guide/middleware)
+- [Solid Start Middleware](https://tanstack.com/router/latest/docs/framework/solid/start/guide/middleware)
 
 ### Server Middleware (SSR)
 

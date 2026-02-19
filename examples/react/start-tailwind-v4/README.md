@@ -1,45 +1,16 @@
-# TanStack Start - Tailwind CSS v4 Example
+# Deprecated: TanStack Start React Example (`start-tailwind-v4`)
 
-This site is built with TanStack Router and Tailwind CSS v4!
+This example is retained for compatibility and historical reference.
 
-- [TanStack Router Docs](https://tanstack.com/router)
-- [Tailwind CSS Docs](https://tailwindcss.com/docs)
+For new projects, use:
 
-## Start a new project based on this example
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create`
 
-To start a new project based on this example, run:
+Related docs:
 
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-tailwind-v4 start-tailwind-v4
-```
+- [Tailwind CSS Integration](https://tanstack.com/router/latest/docs/framework/react/start/guide/tailwind-integration)
 
-## Deployment
+Canonical issue reproduction baseline:
 
-It's deployed automagically with Netlify!
-
-- [Netlify](https://netlify.com/)
-
-## Getting Started
-
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-## Build
-
-Build for production:
-
-```sh
-pnpm build
-```
-
-## About This Example
-
-This example demonstrates:
-
-- Tailwind CSS v4 integration
-- Styling with TanStack Start
-- CSS configuration
+- [React `start-basic`](https://github.com/TanStack/router/tree/main/examples/react/start-basic)

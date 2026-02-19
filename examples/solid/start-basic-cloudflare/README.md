@@ -1,43 +1,16 @@
-# Start Basic Cloudflare
+# Deprecated: TanStack Start Solid Example (`start-basic-cloudflare`)
 
-## Getting Started
+This example is retained for compatibility and historical reference.
 
-### Install the dependencies
+For new projects, use:
 
-```bash
-pnpm i
-```
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create --framework solid`
 
-### Start the development server
+Related docs:
 
-```bash
-pnpm dev
-```
+- [Hosting](https://tanstack.com/router/latest/docs/framework/solid/start/guide/hosting)
 
-### Build for Production
+Canonical issue reproduction baseline:
 
-```bash
-pnpm build
-```
-
-### Preview the production build
-
-```bash
-pnpm preview
-```
-
-### Deploy to Cloudflare
-
-```sh
-pnpm run deploy
-```
-
-## Accessing bindings
-
-You can access Cloudflare bindings in server functions by using importable `env`:
-
-```ts
-import { env } from 'cloudflare:workers'
-```
-
-See `src/routes/index.tsx` for an example.
+- [Solid `start-basic`](https://github.com/TanStack/router/tree/main/examples/solid/start-basic)

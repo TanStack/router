@@ -1,36 +1,12 @@
-# TanStack Start - Large Example
+# Deprecated: TanStack Start React Example (`start-large`)
 
-A large-scale TanStack Start example demonstrating performance with many routes.
+This example is retained for compatibility and historical reference.
 
-- [TanStack Router Docs](https://tanstack.com/router)
+For new projects, use:
 
-## Start a new project based on this example
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create`
 
-To start a new project based on this example, run:
+Canonical issue reproduction baseline:
 
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-large start-large
-```
-
-## Getting Started
-
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-This starts your app in development mode, rebuilding assets on file changes.
-
-## Build
-
-To build the app for production:
-
-```sh
-pnpm build
-```
-
-## About This Example
-
-This example contains a large number of routes to demonstrate TanStack Router's performance and scalability with large applications.
+- [React `start-basic`](https://github.com/TanStack/router/tree/main/examples/react/start-basic)

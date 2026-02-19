@@ -14,9 +14,9 @@ title: Getting Started
 
 Choose one of the following options to start building a _new_ TanStack Start project:
 
-- [TanStack Start CLI](./quick-start) - Just run `npm create @tanstack/start@latest`. Local, fast, and optionally customizable
+- [TanStack Start CLI](./quick-start) - Just run `npx @tanstack/cli create`. Local, fast, and optionally customizable
 - [TanStack Builder](https://tanstack.com/builder) - A visual interface to configure new TanStack projects with a few clicks
-- [Quick Start Examples](./quick-start) Download or clone one of our official examples
+- [Issue repro baseline](https://github.com/TanStack/router/tree/main/examples/react/start-basic) - A minimal starter we keep stable for bug reports and reproductions
 - [Build a project from scratch](./build-from-scratch) - A guide to building a TanStack Start project line-by-line, file-by-file.
 
 ## Next Steps

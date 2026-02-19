@@ -1,37 +1,16 @@
-# Start Basic Netlify
+# Deprecated: TanStack Start Solid Example (`start-basic-nitro`)
 
-## Getting Started
+This example is retained for compatibility and historical reference.
 
-### Install the dependencies
+For new projects, use:
 
-```bash
-pnpm i
-```
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create --framework solid`
 
-### Start the development server
+Related docs:
 
-```bash
-pnpm dev
-```
+- [Hosting](https://tanstack.com/router/latest/docs/framework/solid/start/guide/hosting)
 
-### Build for Production
+Canonical issue reproduction baseline:
 
-```bash
-pnpm build
-```
-
-### Deploy to Netlify
-
-```sh
-netlify deploy
-```
-
-## Accessing bindings
-
-You can access Cloudflare bindings in server functions by using importable `env`:
-
-```ts
-import { env } from 'cloudflare:workers'
-```
-
-See `src/routes/index.tsx` for an example.
+- [Solid `start-basic`](https://github.com/TanStack/router/tree/main/examples/solid/start-basic)

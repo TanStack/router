@@ -174,7 +174,7 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
 
 ### MUI example
 
-There is an [example](https://github.com/TanStack/router/tree/main/examples/react/start-material-ui) available which uses these patterns.
+These patterns are designed to work directly with MUI's `Link`/`Button` components in your app.
 
 #### `Link`
 

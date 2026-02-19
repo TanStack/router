@@ -1,43 +1,17 @@
-# TanStack Start - RSC Example
+# Deprecated: TanStack Start React Example (`start-basic-rsc`)
 
-This site is built with TanStack Router and React Server Components!
+This example is retained for compatibility and historical reference.
 
-- [TanStack Router Docs](https://tanstack.com/router)
+For new projects, use:
 
-## Start a new project based on this example
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create`
 
-To start a new project based on this example, run:
+For topic-specific setup, use the Start guides:
 
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-basic-rsc start-basic-rsc
-```
+- [Start React Quick Start](https://tanstack.com/router/latest/docs/framework/react/start/quick-start)
+- [Start React Guides](https://tanstack.com/router/latest/docs/framework/react/start/guide/routing)
 
-## Deployment
+Canonical issue reproduction baseline:
 
-It's deployed automagically with Netlify!
-
-- [Netlify](https://netlify.com/)
-
-## Getting Started
-
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-## Build
-
-Build for production:
-
-```sh
-pnpm build
-```
-
-## About This Example
-
-This example demonstrates:
-
-- React Server Components (RSC) with TanStack Start
-- Server-side rendering
+- [React `start-basic`](https://github.com/TanStack/router/tree/main/examples/react/start-basic)

@@ -146,7 +146,7 @@ Build your own authentication system using TanStack Start's server functions and
 - **Multi-factor Authentication** - Enterprise-grade security options
 - **Compliance Ready** - SOC 2, GDPR, and CCPA compliant
 
-[Visit WorkOS →](https://workos.com/) | [View example →](https://github.com/TanStack/router/tree/main/examples/react/start-workos)
+[Visit WorkOS →](https://workos.com/) | [Get started in Builder →](https://tanstack.com/builder)
 
 ### Clerk - Complete Authentication Platform
 
@@ -163,21 +163,21 @@ Build your own authentication system using TanStack Start's server functions and
 - **Multi-factor Authentication** - SMS, TOTP, and backup codes
 - **Organizations & Teams** - Built-in support for team-based applications
 
-[Visit Clerk →](https://go.clerk.com/wOwHtuJ) | [Sign up free →](https://go.clerk.com/PrSDXti) | [View example →](https://github.com/TanStack/router/tree/main/examples/react/start-clerk-basic)
+[Visit Clerk →](https://go.clerk.com/wOwHtuJ) | [Sign up free →](https://go.clerk.com/PrSDXti) | [Get started in Builder →](https://tanstack.com/builder)
 
-## Examples
+## Starter Paths
 
 **Partner Solutions:**
 
-- [Clerk Integration](https://github.com/TanStack/router/tree/main/examples/react/start-clerk-basic)
-- [WorkOS Integration](https://github.com/TanStack/router/tree/main/examples/react/start-workos)
+- [Clerk Integration](https://tanstack.com/builder)
+- [WorkOS Integration](https://tanstack.com/builder)
 
 **DIY Implementations:**
 
-- [Basic Auth with Prisma](https://github.com/TanStack/router/tree/main/examples/react/start-basic-auth)
-- [Supabase Auth](https://github.com/TanStack/router/tree/main/examples/react/start-supabase-basic)
+- [Build with server sessions and middleware](./authentication)
+- [Database setup patterns](./databases)
 
-**Client-Side Examples:**
+**Client-Side Patterns:**
 
 - [Basic Authentication](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes)
 - [Firebase Auth](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes-firebase)
@@ -220,7 +220,7 @@ Build your own authentication system using TanStack Start's server functions and
 
 - **Partner solutions** → [Clerk](https://go.clerk.com/wOwHtuJ) or [WorkOS](https://workos.com/)
 - **DIY implementation** → [Authentication Guide](./authentication.md)
-- **Examples** → [Working implementations](https://github.com/TanStack/router/tree/main/examples/react)
+- **Templates & integrations** → [TanStack Builder](https://tanstack.com/builder)
 
 ## Resources
 

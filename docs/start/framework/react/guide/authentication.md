@@ -540,13 +540,13 @@ export const loginFn = createServerFn({ method: 'POST' })
   })
 ```
 
-## Working Examples
+## Starter Paths
 
-Study these implementations to understand different authentication patterns:
+Use these paths depending on what you need:
 
-- **[Basic Auth with Prisma](https://github.com/TanStack/router/tree/main/examples/react/start-basic-auth)** - Complete DIY implementation with database and sessions
-- **[Supabase Integration](https://github.com/TanStack/router/tree/main/examples/react/start-supabase-basic)** - Third-party service integration example
-- **[Client-side Context Auth](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes)** - Client-only authentication patterns
+- **[TanStack Builder](https://tanstack.com/builder)** - Generate projects with hosted auth providers and deployment options
+- **[Authentication Overview](./authentication-overview)** - Compare hosted, OSS, and DIY approaches
+- **[Client-side Context Auth](/router/latest/docs/framework/react/guide/authenticated-routes)** - Client-only authentication patterns
 
 ## Migration from Other Solutions
 
@@ -607,4 +607,4 @@ When implementing authentication, consider:
 - **Monitoring**: Add logging and monitoring for authentication events
 - **Compliance**: Ensure compliance with relevant regulations if storing personal data
 
-For other authentication approaches, check the [Authentication Overview](./authentication-overview.md). For specific integration help, explore our [working examples](https://github.com/TanStack/router/tree/main/examples/react).
+For other authentication approaches, check the [Authentication Overview](./authentication-overview.md). For specific integration help, use [TanStack Builder](https://tanstack.com/builder) and the auth guides linked above.

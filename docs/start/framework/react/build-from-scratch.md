@@ -14,7 +14,7 @@ This guide will help you build a **very** basic TanStack Start web application. 
 - Display a counter
 - Increment the counter on the server and client
 
-[Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-counter)
+[If you want a generated starting point instead, use TanStack Builder](https://tanstack.com/builder)
 
 Let's create a new project directory and initialize it.
 

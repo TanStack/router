@@ -1,41 +1,12 @@
-# TanStack Start - Trellaux Example
+# Deprecated: TanStack Start React Example (`start-trellaux`)
 
-A TanStack Start example demonstrating a Trello-like kanban board application.
+This example is retained for compatibility and historical reference.
 
-- [TanStack Router Docs](https://tanstack.com/router)
+For new projects and templates, use:
 
-## Start a new project based on this example
+- [TanStack Builder](https://tanstack.com/builder)
+- `npx @tanstack/cli create`
 
-To start a new project based on this example, run:
+Canonical issue reproduction baseline:
 
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-trellaux start-trellaux
-```
-
-## Getting Started
-
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-This starts your app in development mode, rebuilding assets on file changes.
-
-## Build
-
-To build the app for production:
-
-```sh
-pnpm build
-```
-
-## About This Example
-
-A full-featured Trello-like application demonstrating:
-
-- Drag-and-drop functionality
-- Complex state management
-- Real-time updates
-- Board, list, and card management
+- [React `start-basic`](https://github.com/TanStack/router/tree/main/examples/react/start-basic)

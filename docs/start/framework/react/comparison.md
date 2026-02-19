@@ -264,10 +264,10 @@ const authMiddleware = createMiddleware({ type: 'function' })
 **Current Status**:
 
 - **Next.js**: Full production support with extensive ecosystem
-- **TanStack Start**: In active development, expected soon
+- **TanStack Start**: Supported
 - **React Router**: Experimental support available
 
-RSC is still evolving, and TanStack Start is taking time to ensure the best possible implementation that aligns with its type-safety-first philosophy.
+RSC is still evolving across the ecosystem. TanStack Start treats RSC as a composable primitive alongside Router and server functions.
 
 ## Performance Considerations
 
