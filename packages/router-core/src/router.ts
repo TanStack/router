@@ -920,10 +920,7 @@ function arraysEqual<T>(a: Array<T>, b: Array<T>) {
   return true
 }
 
-function lookupEqual(
-  a: MatchStoreLookup,
-  b: MatchStoreLookup,
-): boolean {
+function lookupEqual(a: MatchStoreLookup, b: MatchStoreLookup): boolean {
   if (a === b) return true
   const aKeys = Object.keys(a)
   if (aKeys.length !== Object.keys(b).length) return false
@@ -1046,16 +1043,15 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
-  private createMatchStore = (match: AnyRouteMatch) =>
-    createStore(match) as MatchStore
-
   private reconcileMatchPool = (
     nextMatches: Array<AnyRouteMatch>,
     pool: Map<string, MatchStore>,
     idStore: Store<Array<string>>,
-  ) => {
+  ): boolean => {
     const nextIds = nextMatches.map((d) => d.id)
     const nextIdSet = new Set(nextIds)
+    let routeIdChanged = false
+    let idsChanged = false
 
     for (const id of pool.keys()) {
       if (!nextIdSet.has(id)) {
@@ -1064,73 +1060,76 @@ export class RouterCore<
     }
 
     batch(() => {
-      nextMatches.forEach((nextMatch) => {
+      for (const nextMatch of nextMatches) {
         const existing = pool.get(nextMatch.id)
         if (!existing) {
-          pool.set(nextMatch.id, this.createMatchStore(nextMatch))
-          return
+          pool.set(nextMatch.id, createStore(nextMatch))
+          continue
         }
-  
+
         if (existing.state !== nextMatch) {
+          routeIdChanged ||= existing.state.routeId !== nextMatch.routeId
           existing.setState(() => nextMatch)
         }
-      })
-  
+      }
+
       if (!arraysEqual(idStore.state, nextIds)) {
+        idsChanged = true
         idStore.setState(() => nextIds)
+      }
+    })
+
+    return idsChanged || routeIdChanged
+  }
+
+  private reconcileActivePool = (nextMatches: Array<AnyRouteMatch>) => {
+    batch(() => {
+      const lookupsDirty = this.reconcileMatchPool(
+        nextMatches,
+        this.activeMatchStoresById,
+        this.matchesIdStore,
+      )
+      if (lookupsDirty) {
+        const byId: MatchStoreLookup = {}
+        const byRouteId: MatchStoreLookup = {}
+
+        this.matchesIdStore.state.forEach((matchId) => {
+          const store = this.activeMatchStoresById.get(matchId)
+          if (!store) return
+          byId[matchId] = store
+          byRouteId[store.state.routeId] = store
+        })
+        if (!lookupEqual(this.byIdStore.state, byId)) {
+          this.byIdStore.setState(() => byId)
+        }
+        if (!lookupEqual(this.byRouteIdStore.state, byRouteId)) {
+          this.byRouteIdStore.setState(() => byRouteId)
+        }
       }
     })
   }
 
-  private rebuildActiveLookups = () => {
-    const byId: MatchStoreLookup = {}
-    const byRouteId: MatchStoreLookup = {}
-
-    this.matchesIdStore.state.forEach((matchId) => {
-      const store = this.activeMatchStoresById.get(matchId)
-      if (!store) return
-      byId[matchId] = store
-      byRouteId[store.state.routeId] = store
-    })
-
-    if (!lookupEqual(this.byIdStore.state, byId)) {
-      this.byIdStore.setState(() => byId)
-    }
-    if (!lookupEqual(this.byRouteIdStore.state, byRouteId)) {
-      this.byRouteIdStore.setState(() => byRouteId)
-    }
-  }
-
-  private rebuildPendingLookups = () => {
-    const byRouteId: MatchStoreLookup = {}
-
-    this.pendingMatchesIdStore.state.forEach((matchId) => {
-      const store = this.pendingMatchStoresById.get(matchId)
-      if (!store) return
-      byRouteId[store.state.routeId] = store
-    })
-
-    if (!lookupEqual(this.pendingByRouteIdStore.state, byRouteId)) {
-      this.pendingByRouteIdStore.setState(() => byRouteId)
-    }
-  }
-
-  private reconcileActivePool = (nextMatches: Array<AnyRouteMatch>) => {
-    this.reconcileMatchPool(
-      nextMatches,
-      this.activeMatchStoresById,
-      this.matchesIdStore,
-    )
-    this.rebuildActiveLookups()
-  }
-
   private reconcilePendingPool = (nextMatches: Array<AnyRouteMatch>) => {
-    this.reconcileMatchPool(
-      nextMatches,
-      this.pendingMatchStoresById,
-      this.pendingMatchesIdStore,
-    )
-    this.rebuildPendingLookups()
+    batch(() => {
+      const lookupsDirty = this.reconcileMatchPool(
+        nextMatches,
+        this.pendingMatchStoresById,
+        this.pendingMatchesIdStore,
+      )
+      if (lookupsDirty) {
+        const byRouteId: MatchStoreLookup = {}
+
+        this.pendingMatchesIdStore.state.forEach((matchId) => {
+          const store = this.pendingMatchStoresById.get(matchId)
+          if (!store) return
+          byRouteId[store.state.routeId] = store
+        })
+
+        if (!lookupEqual(this.pendingByRouteIdStore.state, byRouteId)) {
+          this.pendingByRouteIdStore.setState(() => byRouteId)
+        }
+      }
+    })
   }
 
   private reconcileCachedPool = (nextMatches: Array<AnyRouteMatch>) => {
@@ -1145,46 +1144,19 @@ export class RouterCore<
     pool: Map<string, MatchStore>,
     ids: Array<string>,
   ): Array<AnyRouteMatch> => {
-    const matches: Array<AnyRouteMatch> = []
-    ids.forEach((id) => {
-      const matchStore = pool.get(id)
-      if (matchStore) {
-        matches.push(matchStore.state)
-      }
-    })
+    const matches: Array<AnyRouteMatch> = new Array(ids.length)
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i]!
+      const matchStore = pool.get(id)!
+      matches[i] = matchStore.state
+    }
     return matches
   }
 
-  private readActiveMatchesSnapshot = (): Array<AnyRouteMatch> =>
-    this.activeMatchesSnapshotStore.state
-
-  private readPendingMatchesSnapshot = (): Array<AnyRouteMatch> =>
-    this.pendingMatchesSnapshotStore.state
-
-  private readCachedMatchesSnapshot = (): Array<AnyRouteMatch> =>
-    this.cachedMatchesSnapshotStore.state
-
-  private readRouterStateSnapshot = (): RouterState<TRouteTree> => {
-    const pendingMatches = this.readPendingMatchesSnapshot()
-
-    return {
-      status: this.statusStore.state,
-      loadedAt: this.loadedAtStore.state,
-      isLoading: this.isLoadingStore.state,
-      isTransitioning: this.isTransitioningStore.state,
-      matches: this.readActiveMatchesSnapshot() as Array<any>,
-      pendingMatches: pendingMatches.length
-        ? (pendingMatches as Array<any>)
-        : undefined,
-      cachedMatches: this.readCachedMatchesSnapshot() as Array<any>,
-      location: this.locationStore.state,
-      resolvedLocation: this.resolvedLocationStore.state,
-      statusCode: this.statusCodeStore.state,
-      redirect: this.redirectStore.state,
-    }
-  }
-
-  private applyRouterState = (nextState: RouterState<TRouteTree>) => {
+  setState = (
+    updater: (prev: RouterState<TRouteTree>) => RouterState<TRouteTree>,
+  ) => {
+    const nextState = updater(this.compatStateStore.state)
     batch(() => {
       this.statusStore.setState(() => nextState.status)
       this.loadedAtStore.setState(() => nextState.loadedAt)
@@ -1203,20 +1175,12 @@ export class RouterCore<
     })
   }
 
-  setState = (
-    updater: (prev: RouterState<TRouteTree>) => RouterState<TRouteTree>,
-  ) => {
-    this.applyRouterState(updater(this.readRouterStateSnapshot()))
-  }
-
   // @internal Used by SSR/client runtime bridges to update active/pending/cached pools
   setActiveMatches = (nextMatches: Array<AnyRouteMatch>) => {
     this.reconcileActivePool(nextMatches)
   }
 
   private setupRouterStores = (initialState: RouterState<TRouteTree>) => {
-    const router = this
-
     this.statusStore = createStore(initialState.status)
     this.loadedAtStore = createStore(initialState.loadedAt)
     this.isLoadingStore = createStore(initialState.isLoading)
@@ -1232,7 +1196,10 @@ export class RouterCore<
     this.byRouteIdStore = createStore<MatchStoreLookup>({})
     this.pendingByRouteIdStore = createStore<MatchStoreLookup>({})
     this.activeMatchesSnapshotStore = createStore(() =>
-      this.readPoolMatches(this.activeMatchStoresById, this.matchesIdStore.state),
+      this.readPoolMatches(
+        this.activeMatchStoresById,
+        this.matchesIdStore.state,
+      ),
     )
     this.pendingMatchesSnapshotStore = createStore(() =>
       this.readPoolMatches(
@@ -1259,14 +1226,35 @@ export class RouterCore<
       status: this.statusStore.state,
     }))
 
-    this.reconcileActivePool(initialState.matches as Array<AnyRouteMatch>)
-    this.reconcilePendingPool(
-      (initialState.pendingMatches ?? []) as Array<AnyRouteMatch>,
-    )
-    this.reconcileCachedPool(initialState.cachedMatches as Array<AnyRouteMatch>)
+    batch(() => {
+      this.reconcileActivePool(initialState.matches as Array<AnyRouteMatch>)
+      this.reconcilePendingPool(
+        (initialState.pendingMatches ?? []) as Array<AnyRouteMatch>,
+      )
+      this.reconcileCachedPool(
+        initialState.cachedMatches as Array<AnyRouteMatch>,
+      )
+    })
 
-    this.compatStateStore = createStore(() => this.readRouterStateSnapshot())
+    this.compatStateStore = createStore(() => {
+      const pendingMatches = this.pendingMatchesSnapshotStore.state
 
+      return {
+        status: this.statusStore.state,
+        loadedAt: this.loadedAtStore.state,
+        isLoading: this.isLoadingStore.state,
+        isTransitioning: this.isTransitioningStore.state,
+        matches: this.activeMatchesSnapshotStore.state,
+        pendingMatches: pendingMatches.length ? pendingMatches : undefined,
+        cachedMatches: this.cachedMatchesSnapshotStore.state,
+        location: this.locationStore.state,
+        resolvedLocation: this.resolvedLocationStore.state,
+        statusCode: this.statusCodeStore.state,
+        redirect: this.redirectStore.state,
+      }
+    })
+
+    const router = this
     this.__store = {
       get state() {
         return router.compatStateStore.state
@@ -1678,7 +1666,10 @@ export class RouterCore<
     const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
 
     const previousMatchesByRouteId = new Map(
-      this.readActiveMatchesSnapshot().map((match) => [match.routeId, match]),
+      this.activeMatchesSnapshotStore.state.map((match) => [
+        match.routeId,
+        match,
+      ]),
     )
 
     for (let index = 0; index < matchedRoutes.length; index++) {
@@ -1970,7 +1961,8 @@ export class RouterCore<
     }
 
     // Determine params: reuse from state if possible, otherwise parse
-    const lastStateMatch = last(this.readActiveMatchesSnapshot())
+    const lastStateMatchId = last(this.matchesIdStore.state)
+    const lastStateMatch = lastStateMatchId && this.activeMatchStoresById.get(lastStateMatchId)?.state
     const canReuseParams =
       lastStateMatch &&
       lastStateMatch.routeId === lastRoute.id &&
@@ -2016,8 +2008,8 @@ export class RouterCore<
   }
 
   cancelMatches = () => {
-    const activeMatches = this.readActiveMatchesSnapshot()
-    const pendingMatches = this.readPendingMatchesSnapshot()
+    const activeMatches = this.activeMatchesSnapshotStore.state
+    const pendingMatches = this.pendingMatchesSnapshotStore.state
     const currentPendingMatches = activeMatches.filter(
       (match) => match.status === 'pending',
     )
@@ -2603,7 +2595,7 @@ export class RouterCore<
     // Match the routes
     const pendingMatches = this.matchRoutes(this.latestLocation)
 
-    const nextCachedMatches = this.readCachedMatchesSnapshot().filter(
+    const nextCachedMatches = this.cachedMatchesSnapshotStore.state.filter(
       (d) => !pendingMatches.some((e) => e.id === d.id),
     )
 
@@ -2653,7 +2645,7 @@ export class RouterCore<
           await loadMatches({
             router: this,
             sync: opts?.sync,
-            matches: this.readPendingMatchesSnapshot(),
+            matches: this.pendingMatchesSnapshotStore.state,
             location: next,
             updateMatch: this.updateMatch,
             // eslint-disable-next-line @typescript-eslint/require-await
@@ -2670,8 +2662,10 @@ export class RouterCore<
                   let stayingMatches: Array<AnyRouteMatch> = []
 
                   batch(() => {
-                    const previousMatches = this.readActiveMatchesSnapshot()
-                    const pendingMatches = this.readPendingMatchesSnapshot()
+                    const previousMatches =
+                      this.activeMatchesSnapshotStore.state
+                    const pendingMatches =
+                      this.pendingMatchesSnapshotStore.state
                     const newMatches = pendingMatches.length
                       ? pendingMatches
                       : previousMatches
@@ -2680,7 +2674,8 @@ export class RouterCore<
                       (match) => !newMatches.some((d) => d.id === match.id),
                     )
                     enteringMatches = newMatches.filter(
-                      (match) => !previousMatches.some((d) => d.id === match.id),
+                      (match) =>
+                        !previousMatches.some((d) => d.id === match.id),
                     )
                     stayingMatches = newMatches.filter((match) =>
                       previousMatches.some((d) => d.id === match.id),
@@ -2697,7 +2692,7 @@ export class RouterCore<
                      * or reloads re-run their loaders instead of reusing the failed/not-found data.
                      */
                     this.reconcileCachedPool([
-                      ...this.readCachedMatchesSnapshot(),
+                      ...this.cachedMatchesSnapshotStore.state,
                       ...exitingMatches.filter(
                         (d) =>
                           d.status !== 'error' &&
@@ -2745,9 +2740,9 @@ export class RouterCore<
             ? redirect.status
             : notFound
               ? 404
-              : this.readActiveMatchesSnapshot().some(
-                  (d) => d.status === 'error',
-                )
+              : this.activeMatchesSnapshotStore.state.some(
+                    (d) => d.status === 'error',
+                  )
                 ? 500
                 : 200
 
@@ -2781,7 +2776,9 @@ export class RouterCore<
     let newStatusCode: number | undefined = undefined
     if (this.hasNotFoundMatch()) {
       newStatusCode = 404
-    } else if (this.readActiveMatchesSnapshot().some((d) => d.status === 'error')) {
+    } else if (
+      this.activeMatchesSnapshotStore.state.some((d) => d.status === 'error')
+    ) {
       newStatusCode = 500
     }
     if (newStatusCode !== undefined) {
@@ -2921,9 +2918,15 @@ export class RouterCore<
     }
 
     batch(() => {
-      this.reconcileActivePool(this.readActiveMatchesSnapshot().map(invalidate))
-      this.reconcileCachedPool(this.readCachedMatchesSnapshot().map(invalidate))
-      this.reconcilePendingPool(this.readPendingMatchesSnapshot().map(invalidate))
+      this.reconcileActivePool(
+        this.activeMatchesSnapshotStore.state.map(invalidate),
+      )
+      this.reconcileCachedPool(
+        this.cachedMatchesSnapshotStore.state.map(invalidate),
+      )
+      this.reconcilePendingPool(
+        this.pendingMatchesSnapshotStore.state.map(invalidate),
+      )
     })
 
     this.shouldViewTransition = false
@@ -2980,7 +2983,7 @@ export class RouterCore<
     const filter = opts?.filter
     if (filter !== undefined) {
       this.reconcileCachedPool(
-        this.readCachedMatchesSnapshot().filter(
+        this.cachedMatchesSnapshotStore.state.filter(
           (m) => !filter(m as MakeRouteMatchUnion<this>),
         ),
       )
@@ -3031,9 +3034,10 @@ export class RouterCore<
       dest: opts,
     })
 
-    const activeMatchIds = new Set(
-      [...this.matchesIdStore.state, ...this.pendingMatchesIdStore.state],
-    )
+    const activeMatchIds = new Set([
+      ...this.matchesIdStore.state,
+      ...this.pendingMatchesIdStore.state,
+    ])
 
     const loadedMatchIds = new Set([
       ...activeMatchIds,
@@ -3041,9 +3045,11 @@ export class RouterCore<
     ])
 
     // If the matches are already loaded, we need to add them to the cached matches.
-    const matchesToCache = matches.filter((match) => !loadedMatchIds.has(match.id))
+    const matchesToCache = matches.filter(
+      (match) => !loadedMatchIds.has(match.id),
+    )
     if (matchesToCache.length) {
-      const cachedMatches = this.readCachedMatchesSnapshot()
+      const cachedMatches = this.cachedMatchesSnapshotStore.state
       this.reconcileCachedPool([...cachedMatches, ...matchesToCache])
     }
 
@@ -3147,7 +3153,7 @@ export class RouterCore<
   serverSsr?: ServerSsr
 
   hasNotFoundMatch = () => {
-    return this.readActiveMatchesSnapshot().some(
+    return this.activeMatchesSnapshotStore.state.some(
       (d) => d.status === 'notFound' || d.globalNotFound,
     )
   }
