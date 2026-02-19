@@ -119,7 +119,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     if (fromCode.groupings) {
       const res = splitGroupingsSchema.safeParse(fromCode.groupings)
       if (!res.success) {
-        const message = res.error.errors.map((e) => e.message).join('. ')
+        const message = res.error.issues.map((e) => e.message).join('. ')
         throw new Error(
           `The groupings for the route "${id}" are invalid.\n${message}`,
         )
@@ -135,7 +135,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     if (pluginSplitBehavior) {
       const res = splitGroupingsSchema.safeParse(pluginSplitBehavior)
       if (!res.success) {
-        const message = res.error.errors.map((e) => e.message).join('. ')
+        const message = res.error.issues.map((e) => e.message).join('. ')
         throw new Error(
           `The groupings returned when using \`splitBehavior\` for the route "${id}" are invalid.\n${message}`,
         )

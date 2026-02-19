@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
 
@@ -55,7 +55,7 @@ export const configSchema = baseConfigSchema.extend({
   routeTreeFileFooter: z
     .union([
       z.array(z.string()).optional().default([]),
-      z.function().returns(z.array(z.string())),
+      z.function({ output: z.array(z.string()) }),
     ])
     .optional(),
   autoCodeSplitting: z.boolean().optional(),

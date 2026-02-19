@@ -9,7 +9,7 @@ import {
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { useEffect } from 'react'
 import {
   Link,

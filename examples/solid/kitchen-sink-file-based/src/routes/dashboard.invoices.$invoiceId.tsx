@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 import { Link, useNavigate, useRouter } from '@tanstack/solid-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { InvoiceFields } from '../components/InvoiceFields'
 import { useMutation } from '../hooks/useMutation'
 import { fetchInvoiceById, patchInvoice } from '../utils/mockTodos'

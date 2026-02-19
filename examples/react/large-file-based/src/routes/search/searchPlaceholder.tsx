@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { Link } from '@tanstack/react-router'
 
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { queryOptions } from '@tanstack/react-query'
 
 const search = z.object({

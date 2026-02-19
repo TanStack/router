@@ -19,7 +19,7 @@
     "redaxios": "^0.5.1",
     "tailwindcss": "^4.1.18",
     "vue": "^3.5.16",
-    "zod": "^3.24.2"
+    "zod": "^3.25.0 || ^4.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

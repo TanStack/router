@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Stack, Typography } from '@mui/material'
-import z from 'zod'
+import z from 'zod/v4'
 import { Counter } from '~/components/Counter'
 
 export const Route = createFileRoute('/')({

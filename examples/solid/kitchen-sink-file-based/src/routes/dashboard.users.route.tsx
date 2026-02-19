@@ -8,7 +8,7 @@ import {
   useNavigate,
   useRouterState,
 } from '@tanstack/solid-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { createMemo } from 'solid-js'
 import { Spinner } from '../components/Spinner'
 import { fetchUsers } from '../utils/mockTodos'

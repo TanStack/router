@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
 import { Link, createFileRoute, useNavigate } from '@tanstack/solid-router'
 import { useQuery } from '@tanstack/solid-query'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { InvoiceFields } from '../components/InvoiceFields'
 import {
   invoiceQueryOptions,

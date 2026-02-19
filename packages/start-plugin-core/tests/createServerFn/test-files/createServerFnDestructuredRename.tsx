@@ -1,5 +1,5 @@
 import { createServerFn as serverFn } from '@tanstack/react-start'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const withUseServer = serverFn({
   method: 'GET',

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 export const Route = createFileRoute('/search-params/default')({
   validateSearch: z.object({

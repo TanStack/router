@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 import { createEffect, onMount } from 'solid-js'
 import {

@@ -27,7 +27,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import {
   fetchInvoiceById,
   fetchInvoices,

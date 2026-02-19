@@ -10,7 +10,7 @@ import {
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import axios from 'redaxios'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import type {
   ErrorComponentProps,
   SearchSchemaInput,

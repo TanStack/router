@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn, createServerOnlyFn } from '@tanstack/solid-start'
 import { getRequest } from '@tanstack/solid-start/server'
 import * as Solid from 'solid-js'
-import z from 'zod'
+import z from 'zod/v4'
 
 export const Route = createFileRoute('/abort-signal/$method')({
   params: z.object({

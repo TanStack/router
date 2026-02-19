@@ -188,7 +188,7 @@ export class C {}`
 
   describe('complex scenarios', () => {
     test('handles file with mixed type and value exports', () => {
-      const code = `import { z } from 'zod';
+      const code = `import { z } from 'zod/v4';
 import type { SomeType } from './types';
 import { helper, type HelperType } from './helpers';
 
@@ -216,7 +216,7 @@ export { helper, type HelperType };`
       expect(result).not.toContain('interface ExportedInterface')
 
       // Should preserve value imports and exports
-      expect(result).toContain("import { z } from 'zod'")
+      expect(result).toContain("import { z } from 'zod/v4'")
       expect(result).toContain("import { helper } from './helpers'")
       expect(result).toContain('export const myValue = 1')
       expect(result).toContain('export { helper }')
@@ -226,7 +226,7 @@ export { helper, type HelperType };`
       // This simulates the problematic case from the issue:
       // export type CreatePostInput = z.infer<typeof postSchema>;
       // where postSchema uses an imported enum
-      const code = `import { z } from 'zod';
+      const code = `import { z } from 'zod/v4';
 import { PostCategory } from './PostService';
 
 const postSchema = z.object({
@@ -243,7 +243,7 @@ export const serverFn = () => {};`
       expect(result).not.toContain('export type CreatePostInput')
 
       // The value exports and imports should remain
-      expect(result).toContain("import { z } from 'zod'")
+      expect(result).toContain("import { z } from 'zod/v4'")
       expect(result).toContain("import { PostCategory } from './PostService'")
       expect(result).toContain('export const serverFn')
     })

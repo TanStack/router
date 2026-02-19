@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import { InvoiceFields } from '../components/InvoiceFields'
 import {
   invoiceQueryOptions,

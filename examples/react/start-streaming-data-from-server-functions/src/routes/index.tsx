@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useCallback, useState } from 'react'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 /**
   This schema will be used to define the type

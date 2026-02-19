@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import { setCookie } from '@tanstack/solid-start/server'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 import Cookies from 'js-cookie'
 import * as Solid from 'solid-js'
 

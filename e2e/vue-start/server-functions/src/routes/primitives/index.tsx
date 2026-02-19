@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/vue-query'
 import { createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
 import { defineComponent } from 'vue'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 function stringify(data: any) {
   return JSON.stringify(data === undefined ? '$undefined' : data)

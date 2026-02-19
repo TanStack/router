@@ -5,7 +5,7 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/solid-router'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 import { useAuth } from '../auth'
 import { sleep } from '../utils'

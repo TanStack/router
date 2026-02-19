@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/vue-router'
 import { queryOptions, useQuery } from '@tanstack/vue-query'
-import { z } from 'zod'
+import { z } from 'zod/v4'
 
 const searchSchema = z.object({
   n: z.number().default(1),
