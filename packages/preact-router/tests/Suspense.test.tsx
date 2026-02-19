@@ -1,13 +1,18 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, render, screen, act } from '@testing-library/preact'
-import { h, Component } from 'preact'
-import { Suspense } from '../src/Suspense'
+import { act, cleanup, render, screen } from '@testing-library/preact'
+import { Component } from 'preact'
+import { Suspense as PreactSuspense } from 'preact-suspense'
+import { Suspense } from '../src'
 
 afterEach(() => {
   cleanup()
 })
 
 describe('Suspense', () => {
+  test('re-exports Suspense from preact-suspense', () => {
+    expect(Suspense).toBe(PreactSuspense)
+  })
+
   test('renders children when no promise is thrown', () => {
     render(
       <Suspense fallback={<div>Loading...</div>}>
@@ -46,7 +51,7 @@ describe('Suspense', () => {
     // but for this test the promise is resolved so componentDidCatch won't be triggered again
   })
 
-  test('renders fallback as null when no fallback prop is provided', async () => {
+  test('renders fallback as null when no fallback prop is provided', () => {
     let resolve!: () => void
     const promise = new Promise<void>((r) => {
       resolve = r

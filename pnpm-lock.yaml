@@ -168,6 +168,34 @@ importers:
         specifier: 4.0.3
         version: 4.0.3(@types/node@25.0.9)(rollup@4.55.3)(typescript@5.9.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
+  e2e/preact-router/basic:
+    dependencies:
+      '@tanstack/preact-router':
+        specifier: workspace:*
+        version: link:../../../packages/preact-router
+      preact:
+        specifier: ^10.25.0
+        version: 10.28.3
+      preact-render-to-string:
+        specifier: ^6.6.5
+        version: 6.6.5(preact@10.28.3)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.57.0
+      '@preact/preset-vite':
+        specifier: ^2.9.4
+        version: 2.10.3(@babel/core@7.28.5)(preact@10.28.3)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+
   e2e/react-router/basepath-file-based:
     dependencies:
       '@tanstack/react-router':
@@ -6000,6 +6028,37 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
+  examples/preact/basic:
+    dependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.1.18
+        version: 4.1.18(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@tanstack/preact-router':
+        specifier: workspace:*
+        version: link:../../../packages/preact-router
+      preact:
+        specifier: ^10.25.0
+        version: 10.28.3
+      preact-render-to-string:
+        specifier: ^6.6.5
+        version: 6.6.5(preact@10.28.3)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      tailwindcss:
+        specifier: ^4.1.18
+        version: 4.1.18
+    devDependencies:
+      '@preact/preset-vite':
+        specifier: ^2.10.3
+        version: 2.10.3(@babel/core@7.28.5)(preact@10.28.3)(rollup@4.55.3)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+
   examples/react/authenticated-routes:
     dependencies:
       '@tailwindcss/vite':
@@ -11561,6 +11620,12 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
+      preact-render-to-string:
+        specifier: ^6.6.5
+        version: 6.6.5(preact@10.28.3)
+      preact-suspense:
+        specifier: ^0.2.0
+        version: 0.2.0(preact@10.28.3)
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -22601,6 +22666,16 @@ packages:
     resolution: {integrity: sha512-ubnauqoGczeGISiOh6RjX0/cdaF8v/oDXIjO85XALCQjwQP+SB4RDXXtvZ6yTYSjG+PC1QRP2AhPgCEsM2EvUw==}
     peerDependencies:
       preact: '>=10'
+
+  preact-render-to-string@6.6.5:
+    resolution: {integrity: sha512-O6MHzYNIKYaiSX3bOw0gGZfEbOmlIDtDfWwN1JJdc/T3ihzRT6tGGSEWE088dWrEDGa1u7101q+6fzQnO9XCPA==}
+    peerDependencies:
+      preact: '>=10 || >= 11.0.0-0'
+
+  preact-suspense@0.2.0:
+    resolution: {integrity: sha512-AyBb6lJa1+JbbDaGyBDxxJx+P/MG0nw3X/z2rZaF5h5qU6MX8TBGWxWOG/h50ob7fMkKX9+or2Qp8Mvlda3G9w==}
+    peerDependencies:
+      preact: ^10.0.0
 
   preact@10.24.3:
     resolution: {integrity: sha512-Z2dPnBnMUfyQfSQ+GBdsGa16hz35YmLmtTLhM169uW944hYL6xzTYkJjC07j+Wosz733pMWx0fgON3JNw1jJQA==}
@@ -36447,6 +36522,14 @@ snapshots:
   preact-render-to-string@6.5.11(preact@10.24.3):
     dependencies:
       preact: 10.24.3
+
+  preact-render-to-string@6.6.5(preact@10.28.3):
+    dependencies:
+      preact: 10.28.3
+
+  preact-suspense@0.2.0(preact@10.28.3):
+    dependencies:
+      preact: 10.28.3
 
   preact@10.24.3: {}
 

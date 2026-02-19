@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "target": "ESNext",
+    "moduleResolution": "Bundler",
+    "module": "ESNext",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "types": ["vite/client"],
+    "paths": {
+      "@tanstack/router-e2e-utils": ["../../e2e-utils/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

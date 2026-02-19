@@ -28,6 +28,8 @@ export default mergeConfig(
     entry: [
       './src/index.tsx',
       './src/index.dev.tsx',
+      './src/ssr/client.ts',
+      './src/ssr/server.ts',
     ],
     srcDir: './src',
     cjs: false,

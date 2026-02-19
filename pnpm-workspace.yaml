@@ -4,6 +4,7 @@ preferWorkspacePackages: true
 
 packages:
   - 'packages/*'
+  - 'examples/preact/*'
   - 'examples/react/*'
   - 'examples/solid/*'
   - 'examples/vue/*'
@@ -12,6 +13,7 @@ packages:
   - 'examples/react/router-monorepo-simple-lazy/packages/*'
   - 'e2e/e2e-utils'
   - 'e2e/react-router/*'
+  - 'e2e/preact-router/*'
   - 'e2e/solid-router/*'
   - 'e2e/vue-router/*'
   - 'e2e/react-start/*'
