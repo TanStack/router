@@ -1,26 +1,49 @@
 import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
-import { useMutation } from '../hooks/useMutation'
+import { useMutation } from '@tanstack/react-query'
 import { loginFn } from '../routes/_authed'
 import { signupFn } from '../routes/signup'
 import { Auth } from './Auth'
 
+type AuthResponse =
+  | {
+      error?: boolean
+      status?: number
+      message?: string
+    }
+  | undefined
+
+type AuthVariables = {
+  data: {
+    email: string
+    password: string
+  }
+}
+
 export function Login() {
   const router = useRouter()
 
-  const loginMutation = useMutation({
-    fn: loginFn,
-    onSuccess: async (ctx) => {
-      if (!ctx.data?.error) {
+  const loginServerFn = useServerFn(loginFn)
+  const signupServerFn = useServerFn(signupFn)
+
+  const loginMutation = useMutation<AuthResponse, Error, AuthVariables>({
+    mutationFn: loginServerFn,
+    onSuccess: async (data) => {
+      if (!data?.error) {
         await router.invalidate()
         router.navigate({ to: '/' })
-        return
       }
     },
   })
 
-  const signupMutation = useMutation({
-    fn: useServerFn(signupFn),
+  const signupMutation = useMutation<AuthResponse, Error, AuthVariables>({
+    mutationFn: signupServerFn,
+    onSuccess: async (data) => {
+      if (!data?.error) {
+        await router.invalidate()
+        router.navigate({ to: '/' })
+      }
+    },
   })
 
   return (
@@ -28,42 +51,50 @@ export function Login() {
       actionText="Login"
       status={loginMutation.status}
       onSubmit={(e) => {
-        const formData = new FormData(e.target as HTMLFormElement)
+        const form = e.target as HTMLFormElement
+        const formData = new FormData(form)
 
         loginMutation.mutate({
           data: {
-            email: formData.get('email') as string,
-            password: formData.get('password') as string,
+            email: String(formData.get('email') ?? ''),
+            password: String(formData.get('password') ?? ''),
           },
         })
       }}
       afterSubmit={
         loginMutation.data ? (
           <>
-            <div className="text-red-400">{loginMutation.data.message}</div>
-            {loginMutation.data.error &&
-            loginMutation.data.message === 'Invalid login credentials' ? (
+            {loginMutation.data.error && loginMutation.data.message ? (
+              <div className="text-red-400">{loginMutation.data.message}</div>
+            ) : null}
+
+            {signupMutation.data?.error && signupMutation.data.message ? (
+              <div className="text-red-400">{signupMutation.data.message}</div>
+            ) : null}
+
+            {loginMutation.data.error && loginMutation.data.status === 400 && (
               <div>
                 <button
-                  className="text-blue-500"
+                  type="button"
+                  className="text-blue-500 cursor-pointer"
                   onClick={(e) => {
-                    const formData = new FormData(
-                      (e.target as HTMLButtonElement).form!,
-                    )
+                    const form = (e.currentTarget as HTMLButtonElement).form
+                    if (!form) return
+
+                    const formData = new FormData(form)
 
                     signupMutation.mutate({
                       data: {
-                        email: formData.get('email') as string,
-                        password: formData.get('password') as string,
+                        email: String(formData.get('email') ?? ''),
+                        password: String(formData.get('password') ?? ''),
                       },
                     })
                   }}
-                  type="button"
                 >
                   Sign up instead?
                 </button>
               </div>
-            ) : null}
+            )}
           </>
         ) : null
       }
