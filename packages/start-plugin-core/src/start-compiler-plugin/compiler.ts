@@ -948,11 +948,22 @@ export class StartCompiler {
 
     deadCodeElimination(ast, refIdents)
 
-    return generateFromAst(ast, {
+    const result = generateFromAst(ast, {
       sourceMaps: true,
       sourceFileName: id,
       filename: id,
     })
+
+    // @babel/generator does not populate sourcesContent because it only has
+    // the AST, not the original text.  Without this, Vite's composed
+    // sourcemap omits the original source, causing downstream consumers
+    // (e.g. import-protection snippet display) to fall back to the shorter
+    // compiled output and fail to resolve original line numbers.
+    if (result.map) {
+      result.map.sourcesContent = [code]
+    }
+
+    return result
   }
 
   private async resolveIdentifierKind(

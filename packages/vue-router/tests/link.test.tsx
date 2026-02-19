@@ -1547,6 +1547,122 @@ describe('Link', () => {
     expect(paramText).toBeInTheDocument()
   })
 
+  test('keeps a relative link active when changing inherited params (issue #5655)', async () => {
+    const rootRoute = createRootRoute()
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/post/$postId',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = Vue.computed(() => params.value.postId)
+
+        return (
+          <>
+            <Link
+              data-testid="step1-link"
+              from="/post/$postId"
+              to="step1"
+              activeProps={{ class: 'active' }}
+            >
+              Step 1
+            </Link>
+            <Link
+              data-testid="step2-link"
+              from="/post/$postId"
+              to="step2"
+              params={{ postId: postId.value }}
+              activeProps={{ class: 'active' }}
+            >
+              Step 2
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const step1Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step1',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = Vue.computed(() => params.value.postId)
+        const otherPostId = Vue.computed(() =>
+          postId.value === '1' ? '2' : '1',
+        )
+
+        return (
+          <>
+            <span>{`Post ${postId.value} step1`}</span>
+            <Link
+              data-testid="switch-post-link"
+              from="/post/$postId/step1"
+              to="."
+              params={{ postId: otherPostId.value }}
+            >{`Go to post ${otherPostId.value}`}</Link>
+          </>
+        )
+      },
+    })
+
+    const step2Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step2',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = Vue.computed(() => params.value.postId)
+        const otherPostId = Vue.computed(() =>
+          postId.value === '1' ? '2' : '1',
+        )
+
+        return (
+          <>
+            <span>{`Post ${postId.value} step2`}</span>
+            <Link
+              data-testid="switch-post-link"
+              from="/post/$postId/step2"
+              to="."
+              params={{ postId: otherPostId.value }}
+            >{`Go to post ${otherPostId.value}`}</Link>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        postRoute.addChildren([step1Route, step2Route]),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/post/1/step1'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Post 1 step1')).toBeInTheDocument()
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('switch-post-link'))
+
+    expect(await screen.findByText('Post 2 step1')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step1')
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('step2-link'))
+
+    expect(await screen.findByText('Post 2 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('switch-post-link'))
+
+    expect(await screen.findByText('Post 1 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/1/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+  })
+
   test('when navigating from /posts to ./$postId', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({

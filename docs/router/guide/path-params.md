@@ -247,7 +247,7 @@ Suffixes are defined by placing the suffix text outside the curly braces after t
 
 # React
 
-```tsx title="src/routes/files/{$fileName}.txt"
+```tsx title="src/routes/files/{$fileName}[.]txt.tsx"
 export const Route = createFileRoute('/files/{$fileName}.txt')({
   component: FileComponent,
 })
@@ -261,7 +261,7 @@ function FileComponent() {
 
 # Solid
 
-```tsx title="src/routes/files/{$fileName}.txt"
+```tsx title="src/routes/files/{$fileName}[.]txt.tsx"
 export const Route = createFileRoute('/files/{$fileName}.txt')({
   component: FileComponent,
 })
@@ -281,7 +281,7 @@ You can also combine suffixes with wildcards for more complex routing patterns:
 
 # React
 
-```tsx title="src/routes/files/{$}[.]txt"
+```tsx title="src/routes/files/{$}[.]txt.tsx"
 export const Route = createFileRoute('/files/{$fileName}[.]txt')({
   component: FileComponent,
 })
@@ -295,7 +295,7 @@ function FileComponent() {
 
 # Solid
 
-```tsx title="src/routes/files/{$}[.]txt"
+```tsx title="src/routes/files/{$}[.]txt.tsx"
 export const Route = createFileRoute('/files/{$fileName}[.]txt')({
   component: FileComponent,
 })
