@@ -14,7 +14,7 @@ import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
-import { matchContext } from './matchContext'
+import { matchContext, pendingMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
@@ -38,6 +38,11 @@ export const Match = (props: { matchId: string }) => {
   const matchStore = useActiveMatchStore(() => props.matchId)
   const match = useStoreOfStoresValue(matchStore, (value) => value)
   const activeMatchIds = useStore(router.matchesIdStore, (ids) => ids)
+  const isPendingMatch = useStore(
+    router.pendingMatchesIdStore,
+    (ids) => ids.includes(props.matchId),
+    { equal: Object.is },
+  )
   const resetKey = useStore(router.loadedAtStore, (loadedAt) => loadedAt)
 
   const matchState = Solid.createMemo(() => {
@@ -100,59 +105,61 @@ export const Match = (props: { matchId: string }) => {
   return (
     <ShellComponent>
       <matchContext.Provider value={() => props.matchId}>
-        <Dynamic
-          component={ResolvedSuspenseBoundary()}
-          fallback={
-            // Don't show fallback on server when using no-ssr mode to avoid hydration mismatch
-            (isServer ?? router.isServer) || resolvedNoSsr ? undefined : (
-              <Dynamic component={resolvePendingComponent()} />
-            )
-          }
-        >
+        <pendingMatchContext.Provider value={isPendingMatch}>
           <Dynamic
-            component={ResolvedCatchBoundary()}
-            getResetKey={() => resetKey()}
-            errorComponent={routeErrorComponent() || ErrorComponent}
-            onCatch={(error: Error) => {
-              // Forward not found errors (we don't want to show the error component for these)
-              if (isNotFound(error)) throw error
-              warning(false, `Error in route match: ${matchState()!.routeId}`)
-              routeOnCatch()?.(error)
-            }}
+            component={ResolvedSuspenseBoundary()}
+            fallback={
+              // Don't show fallback on server when using no-ssr mode to avoid hydration mismatch
+              (isServer ?? router.isServer) || resolvedNoSsr ? undefined : (
+                <Dynamic component={resolvePendingComponent()} />
+              )
+            }
           >
             <Dynamic
-              component={ResolvedNotFoundBoundary()}
-              fallback={(error: any) => {
-                // If the current not found handler doesn't exist or it has a
-                // route ID which doesn't match the current route, rethrow the error
-                if (
-                  !routeNotFoundComponent() ||
-                  (error.routeId && error.routeId !== matchState()!.routeId) ||
-                  (!error.routeId && !route().isRoot)
-                )
-                  throw error
-
-                return (
-                  <Dynamic component={routeNotFoundComponent()} {...error} />
-                )
+              component={ResolvedCatchBoundary()}
+              getResetKey={() => resetKey()}
+              errorComponent={routeErrorComponent() || ErrorComponent}
+              onCatch={(error: Error) => {
+                // Forward not found errors (we don't want to show the error component for these)
+                if (isNotFound(error)) throw error
+                warning(false, `Error in route match: ${matchState()!.routeId}`)
+                routeOnCatch()?.(error)
               }}
             >
-              <Solid.Switch>
-                <Solid.Match when={resolvedNoSsr}>
-                  <Solid.Show
-                    when={!(isServer ?? router.isServer)}
-                    fallback={<Dynamic component={resolvePendingComponent()} />}
-                  >
+              <Dynamic
+                component={ResolvedNotFoundBoundary()}
+                fallback={(error: any) => {
+                  // If the current not found handler doesn't exist or it has a
+                  // route ID which doesn't match the current route, rethrow the error
+                  if (
+                    !routeNotFoundComponent() ||
+                    (error.routeId && error.routeId !== matchState()!.routeId) ||
+                    (!error.routeId && !route().isRoot)
+                  )
+                    throw error
+
+                  return (
+                    <Dynamic component={routeNotFoundComponent()} {...error} />
+                  )
+                }}
+              >
+                <Solid.Switch>
+                  <Solid.Match when={resolvedNoSsr}>
+                    <Solid.Show
+                      when={!(isServer ?? router.isServer)}
+                      fallback={<Dynamic component={resolvePendingComponent()} />}
+                    >
+                      <MatchInner matchId={props.matchId} />
+                    </Solid.Show>
+                  </Solid.Match>
+                  <Solid.Match when={!resolvedNoSsr}>
                     <MatchInner matchId={props.matchId} />
-                  </Solid.Show>
-                </Solid.Match>
-                <Solid.Match when={!resolvedNoSsr}>
-                  <MatchInner matchId={props.matchId} />
-                </Solid.Match>
-              </Solid.Switch>
+                  </Solid.Match>
+                </Solid.Switch>
+              </Dynamic>
             </Dynamic>
           </Dynamic>
-        </Dynamic>
+        </pendingMatchContext.Provider>
       </matchContext.Provider>
 
       {matchState()?.parentRouteId === rootRouteId ? (

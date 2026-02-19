@@ -14,7 +14,7 @@ import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
-import { matchContext } from './matchContext'
+import { matchContext, pendingMatchContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { useStoreOfStoresValue } from './storeOfStores'
@@ -37,6 +37,10 @@ export const Match = Vue.defineComponent({
     const activeMatches = useStore(
       router.activeMatchesSnapshotStore,
       (matches) => matches,
+    )
+    const pendingMatchIds = useStore(
+      router.pendingMatchesIdStore,
+      (ids) => ids,
     )
     const loadedAt = useStore(router.loadedAtStore, (value) => value)
 
@@ -143,8 +147,13 @@ export const Match = Vue.defineComponent({
       { immediate: true },
     )
 
+    const isPendingMatchRef = Vue.computed(() =>
+      pendingMatchIds.value.includes(matchIdRef.value),
+    )
+
     // Provide the matchId to child components
     Vue.provide(matchContext, matchIdRef)
+    Vue.provide(pendingMatchContext, isPendingMatchRef)
 
     return (): VNode => {
       // Use the actual matchId from matchData, not props (which may be stale)

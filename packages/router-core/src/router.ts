@@ -970,6 +970,7 @@ export class RouterCore<
   cachedMatchesIdStore!: Store<Array<string>>
   byIdStore!: Store<MatchStoreLookup>
   byRouteIdStore!: Store<MatchStoreLookup>
+  pendingByRouteIdStore!: Store<MatchStoreLookup>
   activeMatchesSnapshotStore!: ReadableStore<Array<AnyRouteMatch>>
   pendingMatchesSnapshotStore!: ReadableStore<Array<AnyRouteMatch>>
   cachedMatchesSnapshotStore!: ReadableStore<Array<AnyRouteMatch>>
@@ -1100,6 +1101,20 @@ export class RouterCore<
     }
   }
 
+  private rebuildPendingLookups = () => {
+    const byRouteId: MatchStoreLookup = {}
+
+    this.pendingMatchesIdStore.state.forEach((matchId) => {
+      const store = this.pendingMatchStoresById.get(matchId)
+      if (!store) return
+      byRouteId[store.state.routeId] = store
+    })
+
+    if (!lookupEqual(this.pendingByRouteIdStore.state, byRouteId)) {
+      this.pendingByRouteIdStore.setState(() => byRouteId)
+    }
+  }
+
   private reconcileActivePool = (nextMatches: Array<AnyRouteMatch>) => {
     this.reconcileMatchPool(
       nextMatches,
@@ -1115,6 +1130,7 @@ export class RouterCore<
       this.pendingMatchStoresById,
       this.pendingMatchesIdStore,
     )
+    this.rebuildPendingLookups()
   }
 
   private reconcileCachedPool = (nextMatches: Array<AnyRouteMatch>) => {
@@ -1214,6 +1230,7 @@ export class RouterCore<
     this.cachedMatchesIdStore = createStore<Array<string>>([])
     this.byIdStore = createStore<MatchStoreLookup>({})
     this.byRouteIdStore = createStore<MatchStoreLookup>({})
+    this.pendingByRouteIdStore = createStore<MatchStoreLookup>({})
     this.activeMatchesSnapshotStore = createStore(() =>
       this.readPoolMatches(this.activeMatchStoresById, this.matchesIdStore.state),
     )

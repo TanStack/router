@@ -1,7 +1,12 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import { useStore } from '@tanstack/solid-store'
-import { dummyMatchContext, matchContext } from './matchContext'
+import {
+  dummyMatchContext,
+  dummyPendingMatchContext,
+  matchContext,
+  pendingMatchContext,
+} from './matchContext'
 import { useStoreOfStoresValue } from './storeOfStores'
 import { useRouter } from './useRouter'
 import type {
@@ -75,32 +80,43 @@ export function useMatch<
   const nearestMatchId = Solid.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
+  const hasPendingNearestMatch = Solid.useContext(
+    opts.from ? dummyPendingMatchContext : pendingMatchContext,
+  )
 
   const activeStores = useStore(
     opts.from ? router.byRouteIdStore : router.byIdStore,
     (stores) => stores,
+    { equal: Object.is },
   )
-  const pendingMatches = useStore(
-    router.pendingMatchesSnapshotStore,
-    (matches) => matches,
-  )
+  const pendingRouteStores = opts.from
+    ? useStore(
+        router.pendingByRouteIdStore,
+        (stores) => stores,
+        { equal: Object.is },
+      )
+    : undefined
   const isTransitioning = useStore(
     router.isTransitioningStore,
     (value) => value,
+    { equal: Object.is },
   )
 
   const selectionState = Solid.createMemo(() => {
     const key = opts.from ?? nearestMatchId()
     const stores = activeStores()
     const store = key ? stores[key] : undefined
-    const hasPendingMatch = key
-      ? pendingMatches().some((match) =>
-          opts.from ? match.routeId === opts.from : match.id === key,
-        )
-      : false
+    const shouldThrowError = (() => {
+      if (store) {
+        return false
+      }
 
-    const shouldThrowError =
-      !store && !hasPendingMatch && !isTransitioning() && (opts.shouldThrow ?? true)
+      const hasPendingMatch = opts.from
+        ? Boolean(pendingRouteStores?.()[opts.from])
+        : hasPendingNearestMatch()
+
+      return !hasPendingMatch && !isTransitioning() && (opts.shouldThrow ?? true)
+    })()
 
     return { store, shouldThrowError }
   })
