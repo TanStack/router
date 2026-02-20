@@ -383,20 +383,11 @@ export function useLinkProps<
     search: location.search,
     hash: location.hash,
   }))
-  // Subscribe to the current leaf match for relative-link resolution.
-  // This mirrors the previous `useRouterState` selection and keeps
-  // inherited param updates in sync without recomputing on unrelated rerenders.
+  // Subscribe to current leaf match identity for relative-link resolution.
+  // This avoids broad match-array subscriptions while still invalidating href
+  // computation when the leaf route/params context changes.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLeaf = useStore(
-    router.activeMatchesSnapshotStore,
-    (matches) => {
-      const leaf = matches[matches.length - 1]
-      return {
-        pathname: leaf?.pathname,
-        search: leaf?.search,
-      }
-    },
-  )
+  const currentLeafMatchId = useStore(router.lastMatchIdStore, (id) => id)
   const from = options.from
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -407,7 +398,7 @@ export function useLinkProps<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      currentLeaf,
+      currentLeafMatchId,
       currentLocation.hash,
       from,
       options._fromLocation,

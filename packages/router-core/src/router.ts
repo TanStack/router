@@ -931,6 +931,15 @@ function lookupEqual(a: MatchStoreLookup, b: MatchStoreLookup): boolean {
   return true
 }
 
+/**
+ * Core, framework-agnostic router engine that powers TanStack Router.
+ *
+ * Provides navigation, matching, loading, preloading, caching and event APIs
+ * used by framework adapters (React/Solid). Prefer framework helpers like
+ * `createRouter` in app code.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType
+ */
 export class RouterCore<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
@@ -972,6 +981,8 @@ export class RouterCore<
   pendingMatchesSnapshotStore!: ReadableStore<Array<AnyRouteMatch>>
   cachedMatchesSnapshotStore!: ReadableStore<Array<AnyRouteMatch>>
   firstMatchIdStore!: ReadableStore<string | undefined>
+  lastMatchIdStore!: ReadableStore<string | undefined>
+  lastMatchRouteFullPathStore!: ReadableStore<string | undefined>
   hasPendingMatchesStore!: ReadableStore<boolean>
   matchRouteReactivityStore!: ReadableStore<{
     locationHref: string
@@ -1053,7 +1064,6 @@ export class RouterCore<
   ): boolean => {
     const nextIds = nextMatches.map((d) => d.id)
     const nextIdSet = new Set(nextIds)
-    let routeIdChanged = false
     let idsChanged = false
 
     for (const id of pool.keys()) {
@@ -1071,7 +1081,6 @@ export class RouterCore<
         }
 
         if (existing.state !== nextMatch) {
-          routeIdChanged ||= existing.state.routeId !== nextMatch.routeId
           existing.setState(() => nextMatch)
         }
       }
@@ -1082,17 +1091,17 @@ export class RouterCore<
       }
     })
 
-    return idsChanged || routeIdChanged
+    return idsChanged
   }
 
   private reconcileActivePool = (nextMatches: Array<AnyRouteMatch>) => {
     batch(() => {
-      const lookupsDirty = this.reconcileMatchPool(
+      const idsChanged = this.reconcileMatchPool(
         nextMatches,
         this.activeMatchStoresById,
         this.matchesIdStore,
       )
-      if (lookupsDirty) {
+      if (idsChanged) {
         const byId: MatchStoreLookup = {}
         const byRouteId: MatchStoreLookup = {}
 
@@ -1102,9 +1111,8 @@ export class RouterCore<
           byId[matchId] = store
           byRouteId[store.state.routeId] = store
         })
-        if (!lookupEqual(this.byIdStore.state, byId)) {
-          this.byIdStore.setState(() => byId)
-        }
+        this.byIdStore.setState(() => byId)
+
         if (!lookupEqual(this.byRouteIdStore.state, byRouteId)) {
           this.byRouteIdStore.setState(() => byRouteId)
         }
@@ -1114,12 +1122,12 @@ export class RouterCore<
 
   private reconcilePendingPool = (nextMatches: Array<AnyRouteMatch>) => {
     batch(() => {
-      const lookupsDirty = this.reconcileMatchPool(
+      const idsChanged = this.reconcileMatchPool(
         nextMatches,
         this.pendingMatchStoresById,
         this.pendingMatchesIdStore,
       )
-      if (lookupsDirty) {
+      if (idsChanged) {
         const byRouteId: MatchStoreLookup = {}
 
         this.pendingMatchesIdStore.state.forEach((matchId) => {
@@ -1171,11 +1179,9 @@ export class RouterCore<
       this.statusCodeStore.setState(() => nextState.statusCode)
       this.redirectStore.setState(() => nextState.redirect)
 
-      this.reconcileActivePool(nextState.matches as Array<AnyRouteMatch>)
-      this.reconcilePendingPool(
-        (nextState.pendingMatches ?? []) as Array<AnyRouteMatch>,
-      )
-      this.reconcileCachedPool(nextState.cachedMatches as Array<AnyRouteMatch>)
+      this.reconcileActivePool(nextState.matches)
+      this.reconcilePendingPool(nextState.pendingMatches ?? [])
+      this.reconcileCachedPool(nextState.cachedMatches)
     })
   }
 
@@ -1218,6 +1224,14 @@ export class RouterCore<
       ),
     )
     this.firstMatchIdStore = createStore(() => this.matchesIdStore.state[0])
+    this.lastMatchIdStore = createStore(() => last(this.matchesIdStore.state))
+    this.lastMatchRouteFullPathStore = createStore(() => {
+      const lastMatchId = this.lastMatchIdStore.state
+      if (!lastMatchId) {
+        return undefined
+      }
+      return this.activeMatchStoresById.get(lastMatchId)?.state.fullPath
+    })
     this.hasPendingMatchesStore = createStore(() =>
       this.matchesIdStore.state.some((matchId) => {
         const store = this.activeMatchStoresById.get(matchId)
@@ -1668,13 +1682,7 @@ export class RouterCore<
       : undefined
 
     const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
-
-    const previousMatchesByRouteId = new Map(
-      this.activeMatchesSnapshotStore.state.map((match) => [
-        match.routeId,
-        match,
-      ]),
-    )
+    const previousActiveMatchesByRouteId = this.byRouteIdStore.state
 
     for (let index = 0; index < matchedRoutes.length; index++) {
       const route = matchedRoutes[index]!
@@ -1759,7 +1767,7 @@ export class RouterCore<
 
       const existingMatch = this.getMatch(matchId)
 
-      const previousMatch = previousMatchesByRouteId.get(route.id)
+      const previousMatch = previousActiveMatchesByRouteId[route.id]?.state
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
@@ -1875,7 +1883,7 @@ export class RouterCore<
       const existingMatch = this.getMatch(match.id)
 
       // Update the match's params
-      const previousMatch = previousMatchesByRouteId.get(match.routeId)
+      const previousMatch = previousActiveMatchesByRouteId[match.routeId]?.state
       match.params = previousMatch
         ? replaceEqualDeep(previousMatch.params, routeParams)
         : routeParams
@@ -1965,7 +1973,7 @@ export class RouterCore<
     }
 
     // Determine params: reuse from state if possible, otherwise parse
-    const lastStateMatchId = last(this.matchesIdStore.state)
+    const lastStateMatchId = this.lastMatchIdStore.state
     const lastStateMatch =
       lastStateMatchId &&
       this.activeMatchStoresById.get(lastStateMatchId)?.state
@@ -2014,21 +2022,23 @@ export class RouterCore<
   }
 
   cancelMatches = () => {
-    const activeMatches = this.activeMatchesSnapshotStore.state
-    const pendingMatches = this.pendingMatchesSnapshotStore.state
-    const currentPendingMatches = activeMatches.filter(
-      (match) => match.status === 'pending',
-    )
-    const currentLoadingMatches = activeMatches.filter(
-      (match) => match.isFetching === 'loader',
-    )
-    const matchesToCancelArray = new Set([
-      ...pendingMatches,
-      ...currentPendingMatches,
-      ...currentLoadingMatches,
-    ])
-    matchesToCancelArray.forEach((match) => {
-      this.cancelMatch(match.id)
+    this.pendingMatchesIdStore.state.forEach((matchId) => {
+      this.cancelMatch(matchId)
+    })
+
+    this.matchesIdStore.state.forEach((matchId) => {
+      if (this.pendingMatchStoresById.has(matchId)) {
+        return
+      }
+
+      const match = this.activeMatchStoresById.get(matchId)?.state
+      if (!match) {
+        return
+      }
+
+      if (match.status === 'pending' || match.isFetching === 'loader') {
+        this.cancelMatch(matchId)
+      }
     })
   }
 

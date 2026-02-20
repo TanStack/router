@@ -26,11 +26,14 @@ import type {
 
 function useActiveMatchStore(matchId: Solid.Accessor<string | undefined>) {
   const router = useRouter()
-  const activeStores = useStore(router.byIdStore, (stores) => stores)
-  return Solid.createMemo(() => {
-    const id = matchId()
-    return id ? activeStores()[id] : undefined
-  })
+  return useStore(
+    router.byIdStore,
+    (stores) => {
+      const id = matchId()
+      return id ? stores[id] : undefined
+    },
+    { equal: Object.is },
+  )
 }
 
 export const Match = (props: { matchId: string }) => {

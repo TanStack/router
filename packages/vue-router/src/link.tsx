@@ -10,7 +10,6 @@ import {
 
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
-import { useMatches } from './Matches'
 
 import type {
   AnyRouter,
@@ -91,16 +90,15 @@ export function useLinkProps<
     }
   })
 
-  const currentLocation = useStore(router.locationStore, (location) => location)
-  const currentSearch = useStore(
-    router.locationStore,
-    (location) => location.searchStr,
-  )
-
-  // when `from` is not supplied, use the leaf route of the current matches as the `from` location
-  const from = useMatches({
-    select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
-  })
+  const currentLocation = useStore(router.locationStore, (location) => ({
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+    searchStr: location.searchStr,
+  }))
+  const from = options.from
+    ? Vue.computed(() => options.from)
+    : useStore(router.lastMatchRouteFullPathStore, (fullPath) => fullPath)
 
   const _options = Vue.computed(() => ({
     ...options,
@@ -109,7 +107,7 @@ export function useLinkProps<
 
   const next = Vue.computed(() => {
     // Depend on search to rebuild when search changes
-    currentSearch.value
+    currentLocation.value.searchStr
     return router.buildLocation(_options.value as any)
   })
 

@@ -121,11 +121,12 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  const currentLocation = useStore(router.locationStore, (location) => location)
-  const currentSearch = useStore(
-    router.locationStore,
-    (location) => location.searchStr,
-  )
+  const currentLocation = useStore(router.locationStore, (location) => ({
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+    searchStr: location.searchStr,
+  }))
 
   const from = options.from
 
@@ -137,7 +138,7 @@ export function useLinkProps<
   }
 
   const next = Solid.createMemo(() => {
-    currentSearch()
+    currentLocation().searchStr
     return router.buildLocation(_options() as any)
   })
 

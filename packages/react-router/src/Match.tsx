@@ -46,12 +46,10 @@ export const Match = React.memo(function MatchImpl({
 }) {
   const router = useRouter()
   const matchStore = useActiveMatchStore(matchId)
-  const activeMatchIds = useStore(router.matchesIdStore, (ids) => ids)
   const resetKey = useStore(router.loadedAtStore, (loadedAt) => loadedAt)
   const match = useStore(matchStore, (value) => value!)
+  const parentMatchId = useStore(router.matchesIdStore, (ids) => ids[ids.findIndex((id) => id === matchId) - 1])
   const matchState = React.useMemo(() => {
-    const matchIndex = activeMatchIds.findIndex((id) => id === match.id)
-    const parentMatchId = activeMatchIds[matchIndex - 1]
     const parentRouteId = parentMatchId
       ? router.byIdStore.state[parentMatchId]?.state.routeId
       : undefined
@@ -62,7 +60,7 @@ export const Match = React.memo(function MatchImpl({
       _displayPending: match._displayPending,
       parentRouteId: parentRouteId as string | undefined,
     }
-  }, [activeMatchIds, match, router.byIdStore.state])
+  }, [parentMatchId, match, router.byIdStore.state])
 
   const route: AnyRoute = router.routesById[matchState.routeId]
 
