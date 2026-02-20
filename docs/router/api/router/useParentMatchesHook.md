@@ -6,7 +6,7 @@ title: useParentMatches hook
 The `useParentMatches` hook returns all of the parent [`RouteMatch`](./RouteMatchType.md) objects from the root down to the immediate parent of the current match in context. **It does not include the current match, which can be obtained using the `useMatch` hook.**
 
 > [!IMPORTANT]
-> If the router has pending matches and they are showing their pending component fallbacks, `router.state.pendingMatches` will used instead of `router.state.matches`.
+> If the router has pending matches and they are showing their pending component fallbacks, pending matches are used instead of active matches.
 
 ## useParentMatches options
 
