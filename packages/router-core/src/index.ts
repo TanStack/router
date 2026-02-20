@@ -110,6 +110,7 @@ export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
 export type {
   AnyPathParams,
   SearchSchemaInput,
+  StateSchemaInput,
   AnyContext,
   RouteContext,
   PreloadableObj,
@@ -338,6 +339,8 @@ export type {
   DefaultValidator,
   ResolveSearchValidatorInputFn,
   ResolveSearchValidatorInput,
+  ResolveStateValidatorInputFn,
+  ResolveStateValidatorInput,
   ResolveValidatorInputFn,
   ResolveValidatorInput,
   ResolveValidatorOutputFn,
@@ -351,6 +354,11 @@ export type {
 } from './useRouteContext'
 
 export type { UseSearchResult, ResolveUseSearch } from './useSearch'
+
+export type {
+  UseHistoryStateResult,
+  ResolveUseHistoryState,
+} from './useHistoryState'
 
 export type { UseParamsResult, ResolveUseParams } from './useParams'
 
@@ -399,6 +407,7 @@ export type {
   ValidateToPath,
   ValidateSearch,
   ValidateParams,
+  ValidateHistoryState,
   InferFrom,
   InferTo,
   InferMaskTo,
@@ -413,6 +422,7 @@ export type {
   InferSelected,
   ValidateUseSearchResult,
   ValidateUseParamsResult,
+  ValidateUseHistoryStateResult,
 } from './typePrimitives'
 
 export type {

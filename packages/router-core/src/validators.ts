@@ -1,4 +1,4 @@
-import type { SearchSchemaInput } from './route'
+import type { SearchSchemaInput, StateSchemaInput } from './route'
 
 export interface StandardSchemaValidatorProps<TInput, TOutput> {
   readonly types?: StandardSchemaValidatorTypes<TInput, TOutput> | undefined
@@ -72,22 +72,33 @@ export type AnySchema = {}
 
 export type DefaultValidator = Validator<Record<string, unknown>, AnySchema>
 
-export type ResolveSearchValidatorInputFn<TValidator> = TValidator extends (
-  input: infer TSchemaInput,
-) => any
-  ? TSchemaInput extends SearchSchemaInput
-    ? Omit<TSchemaInput, keyof SearchSchemaInput>
-    : ResolveValidatorOutputFn<TValidator>
-  : AnySchema
+export type ResolveSchemaValidatorInputFn<TValidator, TSchemaInput> =
+  TValidator extends (input: infer TInferredInput) => any
+    ? TInferredInput extends TSchemaInput
+      ? Omit<TInferredInput, keyof TSchemaInput>
+      : ResolveValidatorOutputFn<TValidator>
+    : AnySchema
 
-export type ResolveSearchValidatorInput<TValidator> =
+export type ResolveSearchValidatorInputFn<TValidator> =
+  ResolveSchemaValidatorInputFn<TValidator, SearchSchemaInput>
+
+export type ResolveStateValidatorInputFn<TValidator> =
+  ResolveSchemaValidatorInputFn<TValidator, StateSchemaInput>
+
+export type ResolveSchemaValidatorInput<TValidator, TSchemaInput> =
   TValidator extends AnyStandardSchemaValidator
     ? NonNullable<TValidator['~standard']['types']>['input']
     : TValidator extends AnyValidatorAdapter
       ? TValidator['types']['input']
       : TValidator extends AnyValidatorObj
-        ? ResolveSearchValidatorInputFn<TValidator['parse']>
-        : ResolveSearchValidatorInputFn<TValidator>
+        ? ResolveSchemaValidatorInputFn<TValidator['parse'], TSchemaInput>
+        : ResolveSchemaValidatorInputFn<TValidator, TSchemaInput>
+
+export type ResolveSearchValidatorInput<TValidator> =
+  ResolveSchemaValidatorInput<TValidator, SearchSchemaInput>
+
+export type ResolveStateValidatorInput<TValidator> =
+  ResolveSchemaValidatorInput<TValidator, StateSchemaInput>
 
 export type ResolveValidatorInputFn<TValidator> = TValidator extends (
   input: infer TInput,
