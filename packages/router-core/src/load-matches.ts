@@ -45,10 +45,6 @@ const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
   }
 }
 
-const isActiveMatchId = (router: AnyRouter, matchId: string): boolean => {
-  return router.activeMatchStoresById.has(matchId)
-}
-
 const hasForcePendingActiveMatch = (router: AnyRouter): boolean => {
   const byId = router.byIdStore.state
   return router.matchesIdStore.state.some((matchId) => {
@@ -57,7 +53,7 @@ const hasForcePendingActiveMatch = (router: AnyRouter): boolean => {
 }
 
 const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
-  return !!(inner.preload && !isActiveMatchId(inner.router, matchId))
+  return !!(inner.preload && !inner.router.activeMatchStoresById.has(matchId))
 }
 
 /**
@@ -868,7 +864,7 @@ const loadRouteMatch = async (
         await handleLoader(preload, prevMatch, match, route)
       }
     } else {
-      const nextPreload = preload && !isActiveMatchId(inner.router, matchId)
+      const nextPreload = preload && !inner.router.activeMatchStoresById.has(matchId)
       const match = inner.router.getMatch(matchId)!
       match._nonReactive.loaderPromise = createControlledPromise<void>()
       if (nextPreload !== match.preload) {
