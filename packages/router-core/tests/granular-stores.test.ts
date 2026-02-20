@@ -57,7 +57,7 @@ describe('granular stores', () => {
       id: `${match.id}__cached_${index}`,
     }))
 
-    router.setState((s) => ({
+    router.__store.setState((s) => ({
       ...s,
       pendingMatches,
       cachedMatches,
@@ -135,13 +135,13 @@ describe('granular stores', () => {
       status: 'success' as const,
     }
 
-    router.setState((s) => ({
+    router.__store.setState((s) => ({
       ...s,
       pendingMatches: [pendingDuplicate],
       cachedMatches: [cachedDuplicate],
     }))
 
-    router.setState((s) => ({
+    router.__store.setState((s) => ({
       ...s,
       matches: s.matches.map((match) =>
         match.id === duplicatedId
