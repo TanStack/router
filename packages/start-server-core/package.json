@@ -87,6 +87,6 @@
     "@standard-schema/spec": "^1.0.0",
     "cookie-es": "^2.0.0",
     "fetchdts": "^0.1.6",
-    "vite": "^7.3.1"
+    "vite": "*"
   }
 }

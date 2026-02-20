@@ -65,7 +65,7 @@
     "@tanstack/vue-query": "^5.92.0",
     "@tanstack/vue-router": "workspace:*",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
-    "vite": "^7.3.1",
+    "vite": "*",
     "vue": "^3.5.25"
   },
   "peerDependencies": {

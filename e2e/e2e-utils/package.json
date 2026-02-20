@@ -35,7 +35,7 @@
   "dependencies": {},
   "devDependencies": {
     "get-port-please": "^3.2.0",
-    "vite": "^7.3.1",
+    "vite": "*",
     "vite-plugin-dts": "^4.5.4"
   }
 }
