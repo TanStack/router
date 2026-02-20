@@ -1170,6 +1170,12 @@ export class RouterCore<
     this.reconcileActivePool(nextMatches)
   }
 
+  /**
+   * TODO:
+   * 1. remove reactivity during SSR using isServer gate. This includes `createStore` and all setState calls, `batch`, `useStore`.
+   * 2. externalize the store setup to a separate function so most it is isolated, attach to router on a `_stores` key.
+   * 3. investigate whether we could use a ≠ signal graph for each adapter: that externalized function (see 2) could be called by the `createRouter` of each adapter (thus could be different in each), and then Solid could actually use its native signals.
+   */
   private setupRouterStores = (initialState: RouterState<TRouteTree>) => {
     this.statusStore = createStore(initialState.status)
     this.loadedAtStore = createStore(initialState.loadedAt)
