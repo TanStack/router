@@ -41,7 +41,7 @@
     "@vitejs/plugin-vue": "^5.2.4",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "combinate": "^1.1.11",
-    "srvx": "^0.11.2",
+    "srvx": "^0.11.7",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"

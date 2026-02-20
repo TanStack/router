@@ -30,11 +30,12 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {},
   "devDependencies": {
     "get-port-please": "^3.2.0",
+    "vite": "*",
     "vite-plugin-dts": "^4.5.4"
   }
 }

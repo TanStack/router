@@ -1521,6 +1521,120 @@ describe('Link', () => {
     expect(paramText).toBeInTheDocument()
   })
 
+  test('keeps a relative link active when changing inherited params (issue #5655)', async () => {
+    const rootRoute = createRootRoute()
+
+    const PostRouteComponent = () => {
+      const { postId } = useParams({ strict: false })
+
+      return (
+        <>
+          <Link
+            data-testid="step1-link"
+            from="/post/$postId"
+            to="step1"
+            activeProps={{ className: 'active' }}
+          >
+            Step 1
+          </Link>
+          <Link
+            data-testid="step2-link"
+            from="/post/$postId"
+            to="step2"
+            params={{ postId }}
+            activeProps={{ className: 'active' }}
+          >
+            Step 2
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/post/$postId',
+      component: PostRouteComponent,
+    })
+
+    const Step1RouteComponent = () => {
+      const { postId } = useParams({ strict: false })
+      const otherPostId = postId === '1' ? '2' : '1'
+
+      return (
+        <>
+          <span>{`Post ${postId} step1`}</span>
+          <Link
+            data-testid="switch-post-link"
+            from="/post/$postId/step1"
+            to="."
+            params={{ postId: otherPostId }}
+          >{`Go to post ${otherPostId}`}</Link>
+        </>
+      )
+    }
+    const step1Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step1',
+      component: Step1RouteComponent,
+    })
+
+    const Step2RouteComponent = () => {
+      const { postId } = useParams({ strict: false })
+      const otherPostId = postId === '1' ? '2' : '1'
+
+      return (
+        <>
+          <span>{`Post ${postId} step2`}</span>
+          <Link
+            data-testid="switch-post-link"
+            from="/post/$postId/step2"
+            to="."
+            params={{ postId: otherPostId }}
+          >{`Go to post ${otherPostId}`}</Link>
+        </>
+      )
+    }
+    const step2Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step2',
+      component: Step2RouteComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        postRoute.addChildren([step1Route, step2Route]),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/post/1/step1'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Post 1 step1')).toBeInTheDocument()
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    await act(() => fireEvent.click(screen.getByTestId('switch-post-link')))
+
+    expect(await screen.findByText('Post 2 step1')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step1')
+    // This is the bug from #5655: step1 should stay active but is not.
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    await act(() => fireEvent.click(screen.getByTestId('step2-link')))
+
+    expect(await screen.findByText('Post 2 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+
+    await act(() => fireEvent.click(screen.getByTestId('switch-post-link')))
+
+    expect(await screen.findByText('Post 1 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/1/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+  })
+
   test('when navigating from /posts to ./$postId', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({

@@ -86,6 +86,10 @@
               "to": "framework/react/guide/code-execution-patterns"
             },
             {
+              "label": "Import Protection",
+              "to": "framework/react/guide/import-protection"
+            },
+            {
               "label": "Environment Variables",
               "to": "framework/react/guide/environment-variables"
             },
@@ -201,6 +205,10 @@
             {
               "label": "Code Execution Patterns",
               "to": "framework/solid/guide/code-execution-patterns"
+            },
+            {
+              "label": "Import Protection",
+              "to": "framework/solid/guide/import-protection"
             },
             {
               "label": "Environment Variables",

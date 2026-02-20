@@ -1035,11 +1035,22 @@ export function compileCodeSplitReferenceRoute(
     }
   }
 
-  return generateFromAst(ast, {
+  const result = generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
     filename: opts.filename,
   })
+
+  // @babel/generator does not populate sourcesContent because it only has
+  // the AST, not the original text.  Without this, Vite's composed
+  // sourcemap omits the original source, causing downstream consumers
+  // (e.g. import-protection snippet display) to fall back to the shorter
+  // compiled output and fail to resolve original line numbers.
+  if (result.map) {
+    result.map.sourcesContent = [opts.code]
+  }
+
+  return result
 }
 
 export function compileCodeSplitVirtualRoute(
@@ -1459,11 +1470,18 @@ export function compileCodeSplitVirtualRoute(
     ast.program.directives = []
   }
 
-  return generateFromAst(ast, {
+  const result = generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
     filename: opts.filename,
   })
+
+  // @babel/generator does not populate sourcesContent — see compileCodeSplitReferenceRoute.
+  if (result.map) {
+    result.map.sourcesContent = [opts.code]
+  }
+
+  return result
 }
 
 /**
@@ -1584,11 +1602,18 @@ export function compileCodeSplitSharedRoute(
     ast.program.directives = []
   }
 
-  return generateFromAst(ast, {
+  const result = generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
     filename: opts.filename,
   })
+
+  // @babel/generator does not populate sourcesContent — see compileCodeSplitReferenceRoute.
+  if (result.map) {
+    result.map.sourcesContent = [opts.code]
+  }
+
+  return result
 }
 
 /**
