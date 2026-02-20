@@ -3,6 +3,7 @@ import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import { batch } from './utils/batch'
 import {
+  DEFAULT_PROTOCOL_ALLOWLIST,
   createControlledPromise,
   decodePath,
   deepEqual,
@@ -470,6 +471,15 @@ export interface RouterOptions<
    */
   disableGlobalCatchBoundary?: boolean
 
+  /**
+   * An array of URL protocols to allow in links, redirects, and navigation.
+   * Absolute URLs with protocols not in this list will be rejected.
+   *
+   * @default DEFAULT_PROTOCOL_ALLOWLIST (http:, https:, mailto:, tel:)
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#protocolallowlist-property)
+   */
+  protocolAllowlist?: Array<string>
+
   serializationAdapters?: ReadonlyArray<AnySerializationAdapter>
   /**
    * Configures how the router will rewrite the location between the actual href and the internal href of the router.
@@ -651,7 +661,13 @@ export type PreloadRouteFn<
     TTo,
     TMaskFrom,
     TMaskTo
-  >,
+  > & {
+    /**
+     * @internal
+     * A **trusted** built location that can be used to redirect to.
+     */
+    _builtLocation?: ParsedLocation
+  },
 ) => Promise<Array<AnyRouteMatch> | undefined>
 
 export type MatchRouteFn<
@@ -855,6 +871,13 @@ export function getLocationChangeInfo(routerState: {
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
 
+function filterRedirectedCachedMatches<T extends { status: string }>(
+  matches: Array<T>,
+): Array<T> {
+  const filtered = matches.filter((d) => d.status !== 'redirected')
+  return filtered.length === matches.length ? matches : filtered
+}
+
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
@@ -961,6 +984,7 @@ export class RouterCore<
   resolvePathCache!: LRUCache<string, string>
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
+  protocolAllowlist!: Set<string>
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -984,6 +1008,8 @@ export class RouterCore<
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
+      protocolAllowlist:
+        options.protocolAllowlist ?? DEFAULT_PROTOCOL_ALLOWLIST,
     })
 
     if (typeof document !== 'undefined') {
@@ -1029,6 +1055,8 @@ export class RouterCore<
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
+    this.protocolAllowlist = new Set(this.options.protocolAllowlist)
+
     if (this.options.pathParamsAllowedCharacters)
       this.pathParamsDecoder = compileDecodeCharMap(
         this.options.pathParamsAllowedCharacters,
@@ -1070,6 +1098,7 @@ export class RouterCore<
       let processRouteTreeResult: ProcessRouteTreeResult<TRouteTree>
       if (
         (isServer ?? this.isServer) &&
+        process.env.NODE_ENV !== 'development' &&
         globalThis.__TSR_CACHE__ &&
         globalThis.__TSR_CACHE__.routeTree === this.routeTree
       ) {
@@ -1082,6 +1111,7 @@ export class RouterCore<
         // only cache if nothing else is cached yet
         if (
           (isServer ?? this.isServer) &&
+          process.env.NODE_ENV !== 'development' &&
           globalThis.__TSR_CACHE__ === undefined
         ) {
           globalThis.__TSR_CACHE__ = {
@@ -1100,16 +1130,7 @@ export class RouterCore<
           getInitialRouterState(this.latestLocation),
         ) as unknown as Store<any>
       } else {
-        this.__store = new Store(getInitialRouterState(this.latestLocation), {
-          onUpdate: () => {
-            this.__store.state = {
-              ...this.state,
-              cachedMatches: this.state.cachedMatches.filter(
-                (d) => !['redirected'].includes(d.status),
-              ),
-            }
-          },
-        })
+        this.__store = new Store(getInitialRouterState(this.latestLocation))
 
         setupScrollRestoration(this)
       }
@@ -1152,10 +1173,10 @@ export class RouterCore<
     }
 
     if (needsLocationUpdate && this.__store) {
-      this.__store.state = {
-        ...this.state,
+      this.__store.setState((s) => ({
+        ...s,
         location: this.latestLocation,
-      }
+      }))
     }
 
     if (
@@ -2246,9 +2267,9 @@ export class RouterCore<
       // otherwise use href directly (which may already include basepath)
       const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
 
-      // Block dangerous protocols like javascript:, data:, vbscript:
+      // Block dangerous protocols like javascript:, blob:, data:
       // These could execute arbitrary code if passed to window.location
-      if (isDangerousProtocol(reloadHref)) {
+      if (isDangerousProtocol(reloadHref, this.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(
             `Blocked navigation to dangerous protocol: ${reloadHref}`,
@@ -2422,7 +2443,9 @@ export class RouterCore<
                           ...s.cachedMatches,
                           ...exitingMatches.filter(
                             (d) =>
-                              d.status !== 'error' && d.status !== 'notFound',
+                              d.status !== 'error' &&
+                              d.status !== 'notFound' &&
+                              d.status !== 'redirected',
                           ),
                         ],
                       }
@@ -2577,12 +2600,21 @@ export class RouterCore<
             : ''
 
       if (matchesKey) {
-        this.__store.setState((s) => ({
-          ...s,
-          [matchesKey]: s[matchesKey]?.map((d) =>
-            d.id === id ? updater(d) : d,
-          ),
-        }))
+        if (matchesKey === 'cachedMatches') {
+          this.__store.setState((s) => ({
+            ...s,
+            cachedMatches: filterRedirectedCachedMatches(
+              s.cachedMatches.map((d) => (d.id === id ? updater(d) : d)),
+            ),
+          }))
+        } else {
+          this.__store.setState((s) => ({
+            ...s,
+            [matchesKey]: s[matchesKey]?.map((d) =>
+              d.id === id ? updater(d) : d,
+            ),
+          }))
+        }
       }
     })
   }
@@ -2667,6 +2699,17 @@ export class RouterCore<
       }
     }
 
+    if (
+      redirect.options.href &&
+      !redirect.options._builtLocation &&
+      // Check for dangerous protocols before processing the redirect
+      isDangerousProtocol(redirect.options.href, this.protocolAllowlist)
+    ) {
+      throw new Error(
+        `Redirect blocked: unsafe protocol in href "${redirect.options.href}". Allowed protocols: ${Array.from(this.protocolAllowlist).join(', ')}.`,
+      )
+    }
+
     if (!redirect.headers.get('Location')) {
       redirect.headers.set('Location', redirect.options.href)
     }
@@ -2729,7 +2772,7 @@ export class RouterCore<
     TDefaultStructuralSharingOption,
     TRouterHistory
   > = async (opts) => {
-    const next = this.buildLocation(opts as any)
+    const next = opts._builtLocation ?? this.buildLocation(opts as any)
 
     let matches = this.matchRoutes(next, {
       throwOnError: true,

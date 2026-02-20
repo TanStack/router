@@ -65,7 +65,11 @@ function resetFetch() {
 
 function makeStartConfig(pagePath: string) {
   return {
-    prerender: { enabled: true, autoStaticPathsDiscovery: false },
+    prerender: {
+      enabled: true,
+      autoStaticPathsDiscovery: false,
+      concurrency: 1,
+    },
     pages: [{ path: pagePath }],
     router: { basepath: '' },
     spa: {
@@ -96,5 +100,14 @@ describe('prerender pages validation', () => {
     const startConfig = makeStartConfig('/about')
 
     await expect(prerender({ startConfig, builder })).resolves.not.toThrow()
+  })
+
+  it('resolves when prerender filter matches no pages', async () => {
+    resetFetch()
+    const startConfig = makeStartConfig('/about')
+    startConfig.prerender.filter = () => false
+
+    await expect(prerender({ startConfig, builder })).resolves.not.toThrow()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

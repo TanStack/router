@@ -181,7 +181,7 @@ export function devServerPlugin({
               console.error(e)
               try {
                 viteDevServer.ssrFixStacktrace(e as Error)
-              } catch (_e) {}
+              } catch {}
 
               if (
                 webReq.headers.get('content-type')?.includes('application/json')

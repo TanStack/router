@@ -14,7 +14,7 @@
     "@tanstack/react-start": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "srvx": "^0.10.0"
+    "srvx": "^0.11.7"
   },
   "devDependencies": {
     "@platformatic/flame": "latest",

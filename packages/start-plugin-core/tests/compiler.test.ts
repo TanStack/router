@@ -455,6 +455,114 @@ test('ingestModule handles empty code gracefully', () => {
   }).not.toThrow()
 })
 
+describe('calling result of createServerOnlyFn/createClientOnlyFn', () => {
+  // This tests the fix for https://github.com/TanStack/router/issues/6643
+  // When a file has both createServerFn and createServerOnlyFn, and the result
+  // of createServerOnlyFn is invoked (e.g., `const result = myServerOnlyFn()`),
+  // the compiler should NOT treat that invocation as a ServerOnlyFn candidate.
+  // The var binding holds the RESULT of the factory, not the factory itself.
+
+  test('invocation of createServerOnlyFn result is not treated as a candidate', async () => {
+    const compiler = createFullCompiler('server')
+
+    const code = `
+      import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+
+      const createRandomNumber = createServerOnlyFn(() => Math.floor(Math.random() * 100))
+      const randomNumber = createRandomNumber()
+
+      export const personServerFn = createServerFn({ method: 'GET' })
+        .handler(({ data: name }) => {
+          return { name, randomNumber }
+        })
+    `
+
+    // Should NOT throw "createServerOnlyFn() must be called with a function!"
+    // The main file output is the split-file version (createServerFn splits the handler),
+    // so we just verify it compiles without error and produces valid output.
+    const result = await compiler.compile({ code, id: 'test-6643.ts' })
+    expect(result).not.toBeNull()
+    // The output should contain the personServerFn export (with SSR RPC reference)
+    expect(result!.code).toContain('personServerFn')
+  })
+
+  test('invocation of createClientOnlyFn result is not treated as a candidate', async () => {
+    const compiler = createFullCompiler('client')
+
+    const code = `
+      import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
+
+      const getWindowWidth = createClientOnlyFn(() => window.innerWidth)
+      const width = getWindowWidth()
+
+       export const personServerFn = createServerFn({ method: 'GET' })
+        .handler(({ data: name }) => {
+          return { name }
+        })
+    `
+
+    const result = await compiler.compile({ code, id: 'test-6643-client.ts' })
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('window.innerWidth')
+    expect(result!.code).toContain('getWindowWidth()')
+  })
+
+  test('re-exported createServerOnlyFn still resolves correctly', async () => {
+    // Ensure the fix doesn't break re-export chain resolution (issue #6583)
+    const virtualModules: Record<string, string> = {
+      '@tanstack/start-client-core': `
+        export { createServerOnlyFn } from '@tanstack/start-fn-stubs'
+      `,
+    }
+
+    const compiler: StartCompiler = new StartCompiler({
+      env: 'server',
+      envName: 'ssr',
+      root: '/test',
+      framework: 'react' as const,
+      providerEnvName: 'ssr',
+      lookupKinds: new Set(['ServerOnlyFn', 'ClientOnlyFn']),
+      lookupConfigurations: [],
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      resolveId: async (id) => {
+        return virtualModules[id] ? id : null
+      },
+    })
+
+    const code = `
+      import { createServerOnlyFn } from '@tanstack/start-client-core'
+      const myFn = createServerOnlyFn(() => 'server-only-value')
+    `
+
+    const result = await compiler.compile({ code, id: 'reexport-test.ts' })
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('server-only-value')
+  })
+
+  test('aliased factory is still detected as a candidate', async () => {
+    // `const createSO = createServerOnlyFn` is an alias, not an invocation.
+    // `createSO(() => ...)` should still be treated as ServerOnlyFn.
+    const compiler = createFullCompiler('server')
+
+    const code = `
+      import { createServerOnlyFn } from '@tanstack/react-start'
+
+      const createSO = createServerOnlyFn
+      const myFn = createSO(() => 'aliased-server-only')
+    `
+
+    const result = await compiler.compile({ code, id: 'alias-test.ts' })
+    expect(result).not.toBeNull()
+    // The factory should be unwrapped on server env
+    expect(result!.code).toContain('aliased-server-only')
+  })
+})
+
 describe('re-export chain resolution', () => {
   // This tests the fix for https://github.com/TanStack/router/issues/6583
   // Third-party packages may import from @tanstack/start-client-core (which re-exports
