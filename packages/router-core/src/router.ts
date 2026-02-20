@@ -664,7 +664,13 @@ export type PreloadRouteFn<
     TTo,
     TMaskFrom,
     TMaskTo
-  >,
+  > & {
+    /**
+     * @internal
+     * A **trusted** built location that can be used to redirect to.
+     */
+    _builtLocation?: ParsedLocation
+  },
 ) => Promise<Array<AnyRouteMatch> | undefined>
 
 export type MatchRouteFn<
@@ -866,6 +872,13 @@ export function getLocationChangeInfo(routerState: {
   const hrefChanged = fromLocation?.href !== toLocation.href
   const hashChanged = fromLocation?.hash !== toLocation.hash
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
+}
+
+function filterRedirectedCachedMatches<T extends { status: string }>(
+  matches: Array<T>,
+): Array<T> {
+  const filtered = matches.filter((d) => d.status !== 'redirected')
+  return filtered.length === matches.length ? matches : filtered
 }
 
 export type CreateRouterFn = <
@@ -1181,10 +1194,10 @@ export class RouterCore<
     }
 
     if (needsLocationUpdate && this.__store) {
-      this.__store.state = {
-        ...this.state,
+      this.__store.setState((s) => ({
+        ...s,
         location: this.latestLocation,
-      }
+      }))
     }
 
     if (
@@ -2460,7 +2473,8 @@ export class RouterCore<
                         ...exitingMatches.filter(
                           (match) =>
                             match.status !== 'error' &&
-                            match.status !== 'notFound',
+                            match.status !== 'notFound' &&
+                            match.status !== 'redirected',
                         ),
                       ]),
                     }))
@@ -2789,7 +2803,7 @@ export class RouterCore<
     TDefaultStructuralSharingOption,
     TRouterHistory
   > = async (opts) => {
-    const next = this.buildLocation(opts as any)
+    const next = opts._builtLocation ?? this.buildLocation(opts as any)
 
     let matches = this.matchRoutes(next, {
       throwOnError: true,
