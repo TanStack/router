@@ -61,7 +61,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20"
   },
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",

@@ -52,7 +52,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20"
   },
   "devDependencies": {
     "vite": "^7.3.1"

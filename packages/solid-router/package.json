@@ -98,7 +98,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20"
   },
   "dependencies": {
     "@solid-devtools/logger": "^0.9.4",

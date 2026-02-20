@@ -61,7 +61,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
