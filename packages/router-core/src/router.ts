@@ -532,8 +532,6 @@ export interface RouterState<
   isLoading: boolean
   isTransitioning: boolean
   matches: Array<TRouteMatch>
-  pendingMatches?: Array<TRouteMatch>
-  cachedMatches: Array<TRouteMatch>
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   statusCode: number
@@ -1165,26 +1163,6 @@ export class RouterCore<
     return matches
   }
 
-  setState = (
-    updater: (prev: RouterState<TRouteTree>) => RouterState<TRouteTree>,
-  ) => {
-    const nextState = updater(this.compatStateStore.state)
-    batch(() => {
-      this.statusStore.setState(() => nextState.status)
-      this.loadedAtStore.setState(() => nextState.loadedAt)
-      this.isLoadingStore.setState(() => nextState.isLoading)
-      this.isTransitioningStore.setState(() => nextState.isTransitioning)
-      this.locationStore.setState(() => nextState.location)
-      this.resolvedLocationStore.setState(() => nextState.resolvedLocation)
-      this.statusCodeStore.setState(() => nextState.statusCode)
-      this.redirectStore.setState(() => nextState.redirect)
-
-      this.reconcileActivePool(nextState.matches)
-      this.reconcilePendingPool(nextState.pendingMatches ?? [])
-      this.reconcileCachedPool(nextState.cachedMatches)
-    })
-  }
-
   // @internal Used by SSR/client runtime bridges to update active/pending/cached pools
   setActiveMatches = (nextMatches: Array<AnyRouteMatch>) => {
     this.reconcileActivePool(nextMatches)
@@ -1244,34 +1222,19 @@ export class RouterCore<
       status: this.statusStore.state,
     }))
 
-    batch(() => {
-      this.reconcileActivePool(initialState.matches as Array<AnyRouteMatch>)
-      this.reconcilePendingPool(
-        (initialState.pendingMatches ?? []) as Array<AnyRouteMatch>,
-      )
-      this.reconcileCachedPool(
-        initialState.cachedMatches as Array<AnyRouteMatch>,
-      )
-    })
+    this.reconcileActivePool(initialState.matches as Array<AnyRouteMatch>)
 
-    this.compatStateStore = createStore(() => {
-      const pendingMatches = this.pendingMatchesSnapshotStore.state
-
-      return {
-        status: this.statusStore.state,
-        loadedAt: this.loadedAtStore.state,
-        isLoading: this.isLoadingStore.state,
-        isTransitioning: this.isTransitioningStore.state,
-        matches: this.activeMatchesSnapshotStore.state,
-        pendingMatches: pendingMatches.length ? pendingMatches : undefined,
-        cachedMatches: this.cachedMatchesSnapshotStore.state,
-        location: this.locationStore.state,
-        resolvedLocation: this.resolvedLocationStore.state,
-        statusCode: this.statusCodeStore.state,
-        redirect: this.redirectStore.state,
-      }
-    })
-
+    this.compatStateStore = createStore(() => ({
+      status: this.statusStore.state,
+      loadedAt: this.loadedAtStore.state,
+      isLoading: this.isLoadingStore.state,
+      isTransitioning: this.isTransitioningStore.state,
+      matches: this.activeMatchesSnapshotStore.state,
+      location: this.locationStore.state,
+      resolvedLocation: this.resolvedLocationStore.state,
+      statusCode: this.statusCodeStore.state,
+      redirect: this.redirectStore.state,
+    }))
     const router = this
     this.__store = {
       get state() {
@@ -1281,9 +1244,20 @@ export class RouterCore<
         return router.compatStateStore.state
       },
       setState: (updater) => {
-        router.setState(updater as any)
+        const nextState = updater(router.compatStateStore.state)
+        batch(() => {
+          router.statusStore.setState(() => nextState.status)
+          router.loadedAtStore.setState(() => nextState.loadedAt)
+          router.isLoadingStore.setState(() => nextState.isLoading)
+          router.isTransitioningStore.setState(() => nextState.isTransitioning)
+          router.locationStore.setState(() => nextState.location)
+          router.resolvedLocationStore.setState(() => nextState.resolvedLocation)
+          router.statusCodeStore.setState(() => nextState.statusCode)
+          router.redirectStore.setState(() => nextState.redirect)
+          router.reconcileActivePool(nextState.matches)
+        })
       },
-      subscribe: (observerOrFn: any) =>
+      subscribe: (observerOrFn) =>
         router.compatStateStore.subscribe(observerOrFn),
     } as Store<RouterState<TRouteTree>>
   }
@@ -3219,8 +3193,6 @@ export function getInitialRouterState(
     resolvedLocation: undefined,
     location,
     matches: [],
-    pendingMatches: [],
-    cachedMatches: [],
     statusCode: 200,
   }
 }
