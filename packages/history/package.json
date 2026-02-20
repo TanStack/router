@@ -57,5 +57,8 @@
   ],
   "engines": {
     "node": ">=12"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
   }
 }

@@ -75,6 +75,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/react-router": "workspace:*"
+    "@tanstack/react-router": "workspace:*",
+    "vite": "^7.3.1"
   }
 }

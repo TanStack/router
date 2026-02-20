@@ -76,6 +76,7 @@
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.27.0",
-    "@types/diff": "^7.0.2"
+    "@types/diff": "^7.0.2",
+    "vite": "^7.3.1"
   }
 }
