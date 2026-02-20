@@ -27,6 +27,11 @@ async function fetchComments(postId: string): Promise<Comment[]> {
 export const Route = createRoute({
   getParentRoute: () => RootRoute,
   path: 'posts/$postId/deep',
+  nativeOptions: {
+    presentation: 'push',
+    gestureEnabled: true,
+    animation: 'slide_from_right',
+  },
   component: CommentsScreen,
   loader: async ({ params }) => {
     const comments = await fetchComments(params.postId)

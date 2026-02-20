@@ -9,6 +9,7 @@
     "web": "EXPO_NO_METRO_WORKSPACE_ROOT=1 expo start --web"
   },
   "dependencies": {
+    "@tanstack/router-core": "workspace:*",
     "@tanstack/react-native-router": "workspace:*",
     "expo": "~54.0.0",
     "expo-status-bar": "~3.0.9",

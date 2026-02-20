@@ -30,6 +30,9 @@ function AboutScreen() {
             • Native stack navigation with react-native-screens
           </Text>
           <Text style={styles.featureText}>
+            • iOS edge-swipe gesture to go back
+          </Text>
+          <Text style={styles.featureText}>
             • Full TypeScript support with type-safe routes
           </Text>
           <Text style={styles.featureText}>

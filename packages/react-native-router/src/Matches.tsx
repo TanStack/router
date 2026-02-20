@@ -14,12 +14,17 @@ let _Screen: any = null
 let _ScreenStack: any = null
 let _ScreenStackHeaderConfig: any = null
 let _screensChecked = false
+let _screensEnabled = false
 
 function getScreenComponents() {
   if (!_screensChecked) {
     _screensChecked = true
     try {
       const screens = require('react-native-screens')
+      if (!_screensEnabled && typeof screens.enableScreens === 'function') {
+        screens.enableScreens(true)
+        _screensEnabled = true
+      }
       _Screen = screens.Screen
       _ScreenStack = screens.ScreenStack
       _ScreenStackHeaderConfig = screens.ScreenStackHeaderConfig
@@ -105,8 +110,18 @@ function getStackAnimation(
   return animation
 }
 
+function getGestureEnabled(screen: ScreenEntry): boolean {
+  if (typeof screen.gestureEnabled === 'boolean') {
+    return screen.gestureEnabled
+  }
+
+  return (screen.presentation ?? 'push') === 'push'
+}
+
 interface ScreenEntry {
   pathname: string
+  presentation?: NativeScreenOptions['presentation']
+  gestureEnabled?: boolean
   animation?: NativeScreenOptions['animation']
 }
 
@@ -117,11 +132,6 @@ interface ScreenEntry {
  * Maintains a minimal screen stack to enable proper animation direction:
  * - Forward navigation: new screen slides in from right
  * - Back navigation: current screen slides out to right
- *
- * NOTE: Swipe-to-go-back gesture is disabled. This feature requires parallel
- * route/location support in TanStack Router, which is not yet available.
- * Back navigation works via header back button, Android hardware back button,
- * or programmatically via router.history.back().
  */
 export function NativeScreenMatches() {
   const router = useRouter()
@@ -145,15 +155,21 @@ export function NativeScreenMatches() {
         if (nativeOptions?.presentation === 'none') continue
         return {
           pathname: s.location.pathname,
+          presentation: nativeOptions?.presentation,
+          gestureEnabled: nativeOptions?.gestureEnabled,
           animation: nativeOptions?.animation,
         }
       }
       return {
         pathname: s.location.pathname,
+        presentation: undefined,
+        gestureEnabled: undefined,
         animation: undefined,
       }
     },
   })
+
+  const currentPathRef = React.useRef(currentScreen.pathname)
 
   // Track screen stack for proper animation direction
   const [screenStack, setScreenStack] = React.useState<Array<ScreenEntry>>(
@@ -176,12 +192,25 @@ export function NativeScreenMatches() {
       // Check if same screen (no navigation)
       const top = prev[prev.length - 1]
       if (top?.pathname === currentScreen.pathname) {
+        if (
+          top.animation !== currentScreen.animation ||
+          top.presentation !== currentScreen.presentation ||
+          top.gestureEnabled !== currentScreen.gestureEnabled
+        ) {
+          const next = prev.slice()
+          next[next.length - 1] = currentScreen
+          return next
+        }
         return prev
       }
 
       // Forward navigation - push new screen
       return [...prev, currentScreen]
     })
+  }, [currentScreen.pathname])
+
+  React.useEffect(() => {
+    currentPathRef.current = currentScreen.pathname
   }, [currentScreen.pathname])
 
   const rootRoute: AnyRoute = router.routesById[rootRouteId]
@@ -204,10 +233,17 @@ export function NativeScreenMatches() {
           <Screen
             key={screen.pathname}
             style={styles.screen}
-            stackPresentation="push"
+            stackPresentation={screen.presentation ?? 'push'}
             stackAnimation={stackAnimation}
-            gestureEnabled={false}
-            activityState={isTop ? 2 : 0} // 2 = active, 0 = inactive
+            gestureEnabled={getGestureEnabled(screen)}
+            onDismissed={() => {
+              if (screen.pathname !== currentPathRef.current) {
+                return
+              }
+              if (router.history.canGoBack()) {
+                router.history.back()
+              }
+            }}
           >
             <ScreenStackHeaderConfig hidden />
             {isTop ? (
