@@ -4,6 +4,8 @@ import {
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
+import * as Vue from 'vue'
+import { Link } from './link'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
@@ -42,8 +44,8 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
-import type * as Vue from 'vue'
 import type { UseRouteContextRoute } from './useRouteContext'
+import type { LinkComponentRoute } from './link'
 
 // Structural type for Vue SFC components (.vue files)
 // Uses structural matching to accept Vue components without breaking
@@ -73,6 +75,7 @@ declare module '@tanstack/router-core' {
     useLoaderDeps: UseLoaderDepsRoute<TId>
     useLoaderData: UseLoaderDataRoute<TId>
     useNavigate: () => UseNavigateResult<TFullPath>
+    Link: LinkComponentRoute<TFullPath>
   }
 }
 
@@ -140,35 +143,48 @@ export class RouteApi<
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
   }
+
+  Link: LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']> = ((
+    props,
+    ctx?: Vue.SetupContext,
+  ) => {
+    const router = useRouter()
+    const fullPath = router.routesById[this.id as string].fullPath
+    return Vue.h(
+      Link as any,
+      { from: fullPath as never, ...(props as any) },
+      ctx?.slots,
+    )
+  }) as LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']>
 }
 
 export class Route<
-    in out TRegister = unknown,
-    in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
-    in out TPath extends RouteConstraints['TPath'] = '/',
-    in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-      TParentRoute,
-      TPath
-    >,
-    in out TCustomId extends RouteConstraints['TCustomId'] = string,
-    in out TId extends RouteConstraints['TId'] = ResolveId<
-      TParentRoute,
-      TCustomId,
-      TPath
-    >,
-    in out TSearchValidator = undefined,
-    in out TParams = ResolveParams<TPath>,
-    in out TRouterContext = AnyContext,
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out TMiddlewares = unknown,
-    in out THandlers = undefined,
-  >
+  in out TRegister = unknown,
+  in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+  in out TPath extends RouteConstraints['TPath'] = '/',
+  in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+    TParentRoute,
+    TPath
+  >,
+  in out TCustomId extends RouteConstraints['TCustomId'] = string,
+  in out TId extends RouteConstraints['TId'] = ResolveId<
+    TParentRoute,
+    TCustomId,
+    TPath
+  >,
+  in out TSearchValidator = undefined,
+  in out TParams = ResolveParams<TPath>,
+  in out TRouterContext = AnyContext,
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out TMiddlewares = unknown,
+  in out THandlers = undefined,
+>
   extends BaseRoute<
     TRegister,
     TParentRoute,
@@ -277,6 +293,14 @@ export class Route<
   useNavigate = (): UseNavigateResult<TFullPath> => {
     return useNavigate({ from: this.fullPath })
   }
+
+  Link: LinkComponentRoute<TFullPath> = ((props, ctx?: Vue.SetupContext) => {
+    return Vue.h(
+      Link as any,
+      { from: this.fullPath as never, ...(props as any) },
+      ctx?.slots,
+    )
+  }) as LinkComponentRoute<TFullPath>
 }
 
 export function createRoute<
@@ -416,18 +440,18 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-    in out TRegister = Register,
-    in out TSearchValidator = undefined,
-    in out TRouterContext = {},
-    in out TRouteContextFn = AnyContext,
-    in out TBeforeLoadFn = AnyContext,
-    in out TLoaderDeps extends Record<string, any> = {},
-    in out TLoaderFn = undefined,
-    in out TChildren = unknown,
-    in out TFileRouteTypes = unknown,
-    in out TSSR = unknown,
-    in out THandlers = undefined,
-  >
+  in out TRegister = Register,
+  in out TSearchValidator = undefined,
+  in out TRouterContext = {},
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+  in out TSSR = unknown,
+  in out THandlers = undefined,
+>
   extends BaseRootRoute<
     TRegister,
     TSearchValidator,
@@ -515,6 +539,14 @@ export class RootRoute<
   useNavigate = (): UseNavigateResult<'/'> => {
     return useNavigate({ from: this.fullPath })
   }
+
+  Link: LinkComponentRoute<'/'> = ((props, ctx?: Vue.SetupContext) => {
+    return Vue.h(
+      Link as any,
+      { from: this.fullPath as never, ...(props as any) },
+      ctx?.slots,
+    )
+  }) as LinkComponentRoute<'/'>
 }
 
 export function createRouteMask<

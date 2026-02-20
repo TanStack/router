@@ -273,6 +273,10 @@ export {
   createControlledPromise,
   isModuleNotFoundError,
   decodePath,
+  DEFAULT_PROTOCOL_ALLOWLIST,
+  escapeHtml,
+  isDangerousProtocol,
+  buildDevStylesUrl,
 } from './utils'
 export type {
   NoInfer,
@@ -359,6 +363,8 @@ export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 export type {
   Redirect,
   RedirectOptions,
+  RedirectOptionsRoute,
+  RedirectFnRoute,
   ResolvedRedirect,
   AnyRedirect,
 } from './redirect'
@@ -431,6 +437,18 @@ export {
 } from './ssr/serializer/transformer'
 
 export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
+
+export {
+  RawStream,
+  RawStreamSSRPlugin,
+  createRawStreamRPCPlugin,
+  createRawStreamDeserializePlugin,
+} from './ssr/serializer/RawStream'
+export type {
+  OnRawStreamCallback,
+  RawStreamHint,
+  RawStreamOptions,
+} from './ssr/serializer/RawStream'
 
 export {
   composeRewrites,

@@ -4,6 +4,7 @@ import { tanstackStart } from '@tanstack/vue-start/plugin/vite'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { isSpaMode } from './tests/utils/isSpaMode'
 import { isPrerender } from './tests/utils/isPrerender'
+import tailwindcss from '@tailwindcss/vite'
 
 const spaModeConfiguration = {
   enabled: true,
@@ -20,8 +21,10 @@ const prerenderConfiguration = {
       '/redirect',
       '/i-do-not-exist',
       '/not-found/via-beforeLoad',
-      '/not-found/via-head',
       '/not-found/via-loader',
+      '/specialChars/search',
+      '/specialChars/hash',
+      '/specialChars/malformed',
       '/search-params', // search-param routes have dynamic content based on query params
       '/transition',
       '/users',
@@ -33,7 +36,11 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  define: {
+    __TSR_PRERENDER__: JSON.stringify(isPrerender),
+  },
   plugins: [
+    tailwindcss(),
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),

@@ -1547,6 +1547,122 @@ describe('Link', () => {
     expect(paramText).toBeInTheDocument()
   })
 
+  test('keeps a relative link active when changing inherited params (issue #5655)', async () => {
+    const rootRoute = createRootRoute()
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/post/$postId',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = Vue.computed(() => params.value.postId)
+
+        return (
+          <>
+            <Link
+              data-testid="step1-link"
+              from="/post/$postId"
+              to="step1"
+              activeProps={{ class: 'active' }}
+            >
+              Step 1
+            </Link>
+            <Link
+              data-testid="step2-link"
+              from="/post/$postId"
+              to="step2"
+              params={{ postId: postId.value }}
+              activeProps={{ class: 'active' }}
+            >
+              Step 2
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const step1Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step1',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = Vue.computed(() => params.value.postId)
+        const otherPostId = Vue.computed(() =>
+          postId.value === '1' ? '2' : '1',
+        )
+
+        return (
+          <>
+            <span>{`Post ${postId.value} step1`}</span>
+            <Link
+              data-testid="switch-post-link"
+              from="/post/$postId/step1"
+              to="."
+              params={{ postId: otherPostId.value }}
+            >{`Go to post ${otherPostId.value}`}</Link>
+          </>
+        )
+      },
+    })
+
+    const step2Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step2',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = Vue.computed(() => params.value.postId)
+        const otherPostId = Vue.computed(() =>
+          postId.value === '1' ? '2' : '1',
+        )
+
+        return (
+          <>
+            <span>{`Post ${postId.value} step2`}</span>
+            <Link
+              data-testid="switch-post-link"
+              from="/post/$postId/step2"
+              to="."
+              params={{ postId: otherPostId.value }}
+            >{`Go to post ${otherPostId.value}`}</Link>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        postRoute.addChildren([step1Route, step2Route]),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/post/1/step1'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Post 1 step1')).toBeInTheDocument()
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('switch-post-link'))
+
+    expect(await screen.findByText('Post 2 step1')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step1')
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('step2-link'))
+
+    expect(await screen.findByText('Post 2 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('switch-post-link'))
+
+    expect(await screen.findByText('Post 1 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/1/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+  })
+
   test('when navigating from /posts to ./$postId', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -2068,8 +2184,14 @@ describe('Link', () => {
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
-      path: '$postId/',
+      path: '$postId',
       component: PostComponent,
+    })
+
+    const postIndexRoute = createRoute({
+      getParentRoute: () => postRoute,
+      path: '/',
+      component: () => <div>Post Index</div>,
     })
 
     const DetailsComponent = () => {
@@ -2104,7 +2226,11 @@ describe('Link', () => {
         indexRoute,
         layoutRoute.addChildren([
           postsRoute.addChildren([
-            postRoute.addChildren([detailsRoute, informationRoute]),
+            postRoute.addChildren([
+              postIndexRoute,
+              detailsRoute,
+              informationRoute,
+            ]),
           ]),
         ]),
       ]),
@@ -5715,20 +5841,20 @@ describe('relative links to current route', () => {
       const searchButton = await screen.findByTestId('search-link')
       const searchButton2 = await screen.findByTestId('search2-link')
 
-      fireEvent.click(postButton)
+      await fireEvent.click(postButton)
 
       await waitFor(() => {
         expect(window.location.pathname).toBe(`/post${tail}`)
       })
 
-      fireEvent.click(searchButton)
+      await fireEvent.click(searchButton)
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
         expect(router.state.location.search).toEqual({ param1: 'value1' })
       })
 
-      fireEvent.click(searchButton2)
+      await fireEvent.click(searchButton2)
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
@@ -5993,7 +6119,7 @@ describe('relative links to from route', () => {
 
       const postButton = await screen.findByTestId('posts-link')
 
-      fireEvent.click(postButton)
+      await fireEvent.click(postButton)
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
@@ -6001,7 +6127,7 @@ describe('relative links to from route', () => {
 
       const searchButton = await screen.findByTestId('search-link')
 
-      fireEvent.click(searchButton)
+      await fireEvent.click(searchButton)
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/post${tail}`)
@@ -6010,7 +6136,7 @@ describe('relative links to from route', () => {
 
       const homeBtn = await screen.findByTestId('home-link')
 
-      fireEvent.click(homeBtn)
+      await fireEvent.click(homeBtn)
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(`/`)
@@ -6532,8 +6658,8 @@ describe('encoded and unicode paths', () => {
       name: 'with prefix',
       path: '/foo/prefix@대{$}',
       expectedPath:
-        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]',
-      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀@]',
+        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]',
+      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀%40]',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',
@@ -6543,8 +6669,8 @@ describe('encoded and unicode paths', () => {
       name: 'with suffix',
       path: '/foo/{$}대suffix@',
       expectedPath:
-        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]%EB%8C%80suffix@',
-      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀@]대suffix@',
+        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]%EB%8C%80suffix@',
+      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀%40]대suffix@',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',

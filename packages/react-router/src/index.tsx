@@ -105,6 +105,7 @@ export type {
   CreateFileRoute,
   SerializationAdapter,
   AnySerializationAdapter,
+  SerializableExtensions,
 } from '@tanstack/router-core'
 
 export {
@@ -242,7 +243,12 @@ export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
 
-export { redirect, isRedirect, createRouterConfig } from '@tanstack/router-core'
+export {
+  redirect,
+  isRedirect,
+  createRouterConfig,
+  DEFAULT_PROTOCOL_ALLOWLIST,
+} from '@tanstack/router-core'
 
 export {
   RouteApi,
@@ -343,6 +349,7 @@ export type {
 export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
+export { useTags } from './headContentUtils'
 export { Scripts } from './Scripts'
 export type * from './ssr/serializer'
 export { composeRewrites } from '@tanstack/router-core'

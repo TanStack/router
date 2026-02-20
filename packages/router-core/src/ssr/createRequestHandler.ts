@@ -1,7 +1,12 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { mergeHeaders } from './headers'
-import { attachRouterServerSsrUtils, getOrigin } from './ssr-server'
+import {
+  attachRouterServerSsrUtils,
+  getNormalizedURL,
+  getOrigin,
+} from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'
+import type { AnyHeaders } from './headers'
 import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 
@@ -29,7 +34,8 @@ export function createRequestHandler<TRouter extends AnyRouter>({
         manifest: await getRouterManifest?.(),
       })
 
-      const url = new URL(request.url, 'http://localhost')
+      // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
+      const { url } = getNormalizedURL(request.url, 'http://localhost')
       const origin = getOrigin(request)
       const href = url.href.replace(url.origin, '')
 
@@ -72,21 +78,20 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }
 
 function getRequestHeaders(opts: { router: AnyRouter }): Headers {
-  let headers = mergeHeaders(
-    {
-      'Content-Type': 'text/html; charset=UTF-8',
-    },
-    ...opts.router.state.matches.map((match) => {
-      return match.headers
-    }),
+  const matchHeaders = opts.router.state.matches.map<AnyHeaders>(
+    (match) => match.headers,
   )
 
   // Handle Redirects
   const { redirect } = opts.router.state
-
   if (redirect) {
-    headers = mergeHeaders(headers, redirect.headers)
+    matchHeaders.push(redirect.headers)
   }
 
-  return headers
+  return mergeHeaders(
+    {
+      'Content-Type': 'text/html; charset=UTF-8',
+    },
+    ...matchHeaders,
+  )
 }

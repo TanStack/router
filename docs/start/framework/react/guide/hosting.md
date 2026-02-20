@@ -9,21 +9,18 @@ Hosting is the process of deploying your application to the internet so that use
 
 TanStack Start is **designed to work with any hosting provider**, so if you already have a hosting provider in mind, you can deploy your application there using the full-stack APIs provided by TanStack Start.
 
-However, since hosting is one of the most crucial aspects of your application's performance, reliability, and scalability, we recommend using one of our **Official Hosting Partners**: [Cloudflare](https://www.cloudflare.com?utm_source=tanstack) or [Netlify](https://www.netlify.com?utm_source=tanstack).
+However, since hosting is one of the most crucial aspects of your application's performance, reliability, and scalability, we recommend using one of our **Official Hosting Partners**: [Cloudflare](https://www.cloudflare.com?utm_source=tanstack), [Netlify](https://www.netlify.com?utm_source=tanstack), or [Railway](https://railway.com?utm_source=tanstack).
 
 ## Deployment
-
-> [!WARNING]
-> The page is still a work in progress. We'll keep updating this page with guides on deployment to different hosting providers soon!
 
 Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice:
 
 - [`cloudflare-workers`](#cloudflare-workers--official-partner): Deploy to Cloudflare Workers
-- [`netlify`](#netlify): Deploy to Netlify
+- [`netlify`](#netlify--official-partner): Deploy to Netlify
+- [`railway`](#railway--official-partner): Deploy to Railway
 - [`nitro`](#nitro): Deploy using Nitro
 - [`vercel`](#vercel): Deploy to Vercel
-- [`railway`](#nodejs--railway--docker): Deploy to Railway
-- [`node-server`](#nodejs--railway--docker): Deploy to a Node.js server
+- [`node-server`](#nodejs--docker): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - [`appwrite-sites`](#appwrite-sites): Deploy to Appwrite Sites
 - ... and more to come!
@@ -127,8 +124,6 @@ A full TanStack Start example for Cloudflare Workers is available [here](https:/
   </picture>
 </a>
 
-### Netlify
-
 Install and add the [`@netlify/vite-plugin-tanstack-start`](https://www.npmjs.com/package/@netlify/vite-plugin-tanstack-start) plugin, which configures your build for Netlify deployment and provides full Netlify production platform emulation in local dev:
 
 ```bash
@@ -191,11 +186,44 @@ importing from an AI code generation
 tool](https://docs.netlify.com/start/quickstarts/deploy-from-ai-code-generation-tool/), and
 [more](https://docs.netlify.com/deploy/create-deploys/).
 
+### Railway ⭐ _Official Partner_
+
+<a href="https://railway.com?utm_source=tanstack" alt="Railway Logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-dark.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg" width="280">
+    <img alt="Railway logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/railway-light.svg" width="280">
+  </picture>
+</a>
+
+Railway provides instant deployments with zero configuration. Follow the [`Nitro`](#nitro) deployment instructions, then deploy to Railway:
+
+1. Push your code to a GitHub repository
+
+2. Connect your repository to Railway at [railway.com](https://railway.com?utm_source=tanstack)
+
+3. Railway will automatically detect your build settings and deploy your application
+
+Railway automatically provides:
+
+- **Automatic deployments** on every push to your repository
+- **Built-in databases** (Postgres, MySQL, Redis, MongoDB)
+- **Preview environments** for pull requests
+- **Automatic HTTPS** and custom domains
+
+For more details, see [Railway's documentation](https://docs.railway.com).
+
 ### Nitro
 
 [Nitro](https://v3.nitro.build/) is an agnostic layer that allows you to deploy TanStack Start applications to [a wide range of hostings](https://v3.nitro.build/deploy).
 
 **⚠️ The [`nitro/vite`](https://v3.nitro.build/) plugin natively integrates with Vite Environments API as the underlying build tool for TanStack Start. It is still under active development and receives regular updates. Please report any issues you encounter with reproduction so they can be investigated.**
+
+install the nightly version of nitro by specifying the following in your package.json
+
+```json
+"nitro": "npm:nitro-nightly@latest"
+```
 
 ```tsx
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -205,16 +233,34 @@ import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [tanstackStart(), nitro(), viteReact()],
-  nitro: {},
 })
 ```
+
+#### Performance Tip: FastResponse
+
+If you're deploying to Node.js with Nitro (which uses [srvx](https://srvx.h3.dev/) under the hood), you can get a ~5% throughput improvement by replacing the global `Response` constructor with srvx's optimized `FastResponse`.
+
+First, install srvx:
+
+```bash
+npm install srvx
+```
+
+Then add this to your server entry point (`src/server.ts`):
+
+```ts
+import { FastResponse } from 'srvx'
+globalThis.Response = FastResponse
+```
+
+This works because srvx's `FastResponse` includes an optimized `_toNodeResponse()` path that avoids the overhead of the standard Web `Response` to Node.js conversion. This optimization only applies to Node.js deployments using Nitro/h3/srvx.
 
 ### Vercel
 
 Follow the [`Nitro`](#nitro) deployment instructions.
 Deploy your application to Vercel using their one-click deployment process, and you're ready to go!
 
-### Node.js / Railway / Docker
+### Node.js / Docker
 
 Follow the [`Nitro`](#nitro) deployment instructions. Use the `node` command to start your application from the server from the build output files.
 

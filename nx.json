@@ -45,6 +45,16 @@
       "dependsOn": ["^build"],
       "inputs": ["default", "^production"]
     },
+    "test:e2e:nitro": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"]
+    },
+    "test:e2e:basepath": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production"]
+    },
     "test:types": {
       "cache": true,
       "dependsOn": ["^build"],

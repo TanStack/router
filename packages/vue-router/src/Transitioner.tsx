@@ -4,6 +4,7 @@ import {
   handleHashScroll,
   trimPathRight,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
@@ -25,7 +26,7 @@ export function useTransitionerSetup() {
   const router = useRouter()
 
   // Skip on server - no transitions needed
-  if (router.isServer) {
+  if (isServer ?? router.isServer) {
     return
   }
 
@@ -123,9 +124,12 @@ export function useTransitionerSetup() {
       _includeValidateSearch: true,
     })
 
+    // Check if the current URL matches the canonical form.
+    // Compare publicHref (browser-facing URL) for consistency with
+    // the server-side redirect check in router.beforeLoad.
     if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
+      trimPathRight(router.latestLocation.publicHref) !==
+      trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
@@ -136,6 +140,13 @@ export function useTransitionerSetup() {
 
   Vue.onMounted(() => {
     isMounted.value = true
+    if (!isAnyPending.value) {
+      router.__store.setState((s) =>
+        s.status === 'pending'
+          ? { ...s, status: 'idle', resolvedLocation: s.location }
+          : s,
+      )
+    }
   })
 
   Vue.onUnmounted(() => {
@@ -201,6 +212,14 @@ export function useTransitionerSetup() {
   Vue.watch(isAnyPending, (newValue) => {
     if (!isMounted.value) return
     try {
+      if (!newValue && router.__store.state.status === 'pending') {
+        router.__store.setState((s) => ({
+          ...s,
+          status: 'idle',
+          resolvedLocation: s.location,
+        }))
+      }
+
       // The router was pending and now it's not
       if (previousIsAnyPending.value.previous && !newValue) {
         const changeInfo = getLocationChangeInfo(router.state)
@@ -208,12 +227,6 @@ export function useTransitionerSetup() {
           type: 'onResolved',
           ...changeInfo,
         })
-
-        router.__store.setState((s) => ({
-          ...s,
-          status: 'idle',
-          resolvedLocation: s.location,
-        }))
 
         if (changeInfo.hrefChanged) {
           handleHashScroll(router)

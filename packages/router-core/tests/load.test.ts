@@ -6,12 +6,46 @@ import {
   RouterCore,
   notFound,
   redirect,
+  rootRouteId,
 } from '../src'
 import type { RootRouteOptions } from '../src'
 
 type AnyRouteOptions = RootRouteOptions<any>
 type BeforeLoad = NonNullable<AnyRouteOptions['beforeLoad']>
 type Loader = NonNullable<AnyRouteOptions['loader']>
+
+describe('redirect resolution', () => {
+  test('resolveRedirect normalizes same-origin Location to path-only', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['https://example.com/foo'],
+      }),
+      origin: 'https://example.com',
+    })
+
+    // This redirect already includes an absolute Location header (external-ish),
+    // but still represents an internal navigation.
+    const unresolved = redirect({
+      to: '/foo',
+      headers: { Location: 'https://example.com/foo' },
+    })
+
+    const resolved = router.resolveRedirect(unresolved)
+
+    // Expect Location and stored href to be path-only (no origin).
+    expect(resolved.headers.get('Location')).toBe('/foo')
+    expect(resolved.options.href).toBe('/foo')
+  })
+})
 
 describe('beforeLoad skip or exec', () => {
   const setup = ({ beforeLoad }: { beforeLoad?: BeforeLoad }) => {
@@ -133,10 +167,16 @@ describe('beforeLoad skip or exec', () => {
       beforeLoad,
     })
     await router.preloadRoute({ to: '/foo' })
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -150,9 +190,15 @@ describe('beforeLoad skip or exec', () => {
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -328,10 +374,16 @@ describe('loader skip or exec', () => {
       loader,
     })
     await router.preloadRoute({ to: '/foo' })
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
@@ -345,10 +397,38 @@ describe('loader skip or exec', () => {
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/bar')
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
     expect(loader).toHaveBeenCalledTimes(1)
+  })
+
+  test('updateMatch removes redirected matches from cachedMatches', async () => {
+    const loader = vi.fn()
+    const router = setup({ loader })
+
+    await router.preloadRoute({ to: '/foo' })
+    expect(router.state.cachedMatches).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
+    )
+
+    router.updateMatch('/foo/foo', (prev) => ({
+      ...prev,
+      status: 'redirected',
+    }))
+
+    expect(router.state.cachedMatches.some((d) => d.id === '/foo/foo')).toBe(
+      false,
+    )
+    expect(
+      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+    ).toBe(false)
   })
 
   test('exec if rejected preload (error)', async () => {
@@ -566,6 +646,203 @@ describe('params.parse notFound', () => {
     const match = router.state.matches.find((m) => m.routeId === testRoute.id)
     expect(match?.status).toBe('success')
     expect(router.state.statusCode).toBe(200)
+  })
+})
+
+describe('routeId in context options', () => {
+  test('beforeLoad and context receive correct routeId for root route', async () => {
+    const beforeLoad = vi.fn()
+    const context = vi.fn()
+    const rootRoute = new BaseRootRoute({
+      beforeLoad,
+      context,
+    })
+
+    const routeTree = rootRoute.addChildren([])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.load()
+
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(beforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: rootRouteId,
+      }),
+    )
+
+    expect(context).toHaveBeenCalledTimes(1)
+    expect(context).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: rootRouteId,
+      }),
+    )
+  })
+
+  test('beforeLoad and context receive correct routeId for child route', async () => {
+    const beforeLoad = vi.fn()
+    const context = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      beforeLoad,
+      context,
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo' })
+
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(beforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/foo',
+      }),
+    )
+
+    expect(context).toHaveBeenCalledTimes(1)
+    expect(context).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/foo',
+      }),
+    )
+  })
+
+  test('beforeLoad and context receive correct routeId for nested route', async () => {
+    const parentBeforeLoad = vi.fn()
+    const parentContext = vi.fn()
+    const childBeforeLoad = vi.fn()
+    const childContext = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      beforeLoad: parentBeforeLoad,
+      context: parentContext,
+    })
+
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: childBeforeLoad,
+      context: childContext,
+    })
+
+    const routeTree = rootRoute.addChildren([
+      parentRoute.addChildren([childRoute]),
+    ])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/parent/child' })
+
+    expect(parentBeforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/parent',
+      }),
+    )
+    expect(parentContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/parent',
+      }),
+    )
+    expect(childBeforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/parent/child',
+      }),
+    )
+    expect(childContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/parent/child',
+      }),
+    )
+  })
+
+  test('beforeLoad and context receive correct routeId for route with dynamic params', async () => {
+    const beforeLoad = vi.fn()
+    const context = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+
+    const postRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/$postId',
+      beforeLoad,
+      context,
+    })
+
+    const routeTree = rootRoute.addChildren([postRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/posts/$postId', params: { postId: '123' } })
+
+    expect(beforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/posts/$postId',
+      }),
+    )
+    expect(context).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/posts/$postId',
+      }),
+    )
+  })
+
+  test('beforeLoad and context receive correct routeId for layout route', async () => {
+    const beforeLoad = vi.fn()
+    const context = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+
+    const layoutRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      id: '/_layout',
+      beforeLoad,
+      context,
+    })
+
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/',
+    })
+
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([indexRoute]),
+    ])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.load()
+
+    expect(beforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/_layout',
+      }),
+    )
+    expect(context).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeId: '/_layout',
+      }),
+    )
   })
 })
 

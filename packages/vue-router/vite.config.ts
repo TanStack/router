@@ -1,8 +1,12 @@
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, mergeConfig } from 'vitest/config'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import { tanstackViteConfig } from '@tanstack/config/vite'
 import packageJson from './package.json'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const config = defineConfig({
   plugins: [vueJsx()],
@@ -10,6 +14,9 @@ const config = defineConfig({
     alias: {
       '@tanstack/vue-router': resolve(__dirname, 'src'),
     },
+    // Add 'development' condition for tests to resolve @tanstack/router-core/isServer
+    // to the development export (isServer = undefined) instead of node (isServer = true)
+    ...(process.env.VITEST && { conditions: ['development'] }),
   },
   test: {
     name: packageJson.name,
@@ -24,7 +31,12 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
-    entry: ['./src/index.tsx', './src/ssr/client.ts', './src/ssr/server.ts'],
+    entry: [
+      './src/index.tsx',
+      './src/index.dev.tsx',
+      './src/ssr/client.ts',
+      './src/ssr/server.ts',
+    ],
     srcDir: './src',
     cjs: false,
   }),

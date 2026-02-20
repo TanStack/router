@@ -178,7 +178,7 @@ function RouteComp({
     const interpolated = interpolatePath({
       path: route.fullPath,
       params: allParams,
-      decodeCharMap: router().pathParamsDecodeCharMap,
+      decoder: router().pathParamsDecoder,
     })
 
     // only if `interpolated` is not missing params, return the path since this

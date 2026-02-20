@@ -4,29 +4,23 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
-    "dev:nonnested": "MODE=nonnested VITE_MODE=nonnested vite --port 3000",
     "dev:e2e": "vite",
     "build": "vite build && tsc --noEmit",
-    "build:nonnested": "MODE=nonnested VITE_MODE=nonnested vite build && tsc --noEmit",
     "preview": "vite preview",
-    "preview:nonnested": "MODE=nonnested VITE_MODE=nonnested vite preview",
     "start": "vite",
-    "start:nonnested": "MODE=nonnested VITE_MODE=nonnested vite",
-    "test:e2e": "pnpm run test:e2e:nonnested && pnpm run test:e2e:default",
-    "test:e2e:default": "rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e:nonnested": "rm -rf port*.txt; MODE=nonnested playwright test --project=chromium"
+    "test:e2e": "pnpm run test:e2e:default",
+    "test:e2e:default": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.15",
+    "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/zod-adapter": "workspace:^",
-    "postcss": "^8.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwindcss": "^4.1.17",
+    "tailwindcss": "^4.1.18",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -36,6 +30,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "combinate": "^1.1.11",
-    "vite": "^7.1.7"
+    "vite": "^7.3.1"
   }
 }

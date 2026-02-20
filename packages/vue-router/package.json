@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-router",
-  "version": "1.141.4",
+  "version": "1.161.3",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -43,6 +43,7 @@
     ".": {
       "import": {
         "types": "./dist/esm/index.d.ts",
+        "development": "./dist/esm/index.dev.js",
         "default": "./dist/esm/index.js"
       }
     },
@@ -66,12 +67,13 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
-    "@tanstack/vue-store": "^0.8.0",
+    "@tanstack/vue-store": "^0.9.1",
+    "@vue/runtime-dom": "^3.5.25",
     "isbot": "^5.1.22",
     "jsesc": "^3.0.2",
     "tiny-invariant": "^1.3.3",
@@ -84,6 +86,7 @@
     "@vitejs/plugin-vue": "^5.2.3",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "combinate": "^1.1.11",
+    "vite": "*",
     "vue": "^3.5.25",
     "zod": "^3.23.8"
   },

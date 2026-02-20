@@ -34,6 +34,10 @@
               "to": "framework/react/comparison"
             },
             {
+              "label": "Start vs Next.js",
+              "to": "framework/react/start-vs-nextjs"
+            },
+            {
               "label": "Migrate from Next.js",
               "to": "framework/react/migrate-from-next-js"
             }
@@ -80,6 +84,10 @@
             {
               "label": "Code Execution Patterns",
               "to": "framework/react/guide/code-execution-patterns"
+            },
+            {
+              "label": "Import Protection",
+              "to": "framework/react/guide/import-protection"
             },
             {
               "label": "Environment Variables",
@@ -134,6 +142,10 @@
               "to": "framework/react/guide/server-entry-point"
             },
             {
+              "label": "CDN Asset URLs",
+              "to": "framework/react/guide/cdn-asset-urls"
+            },
+            {
               "label": "Client Entry Point",
               "to": "framework/react/guide/client-entry-point"
             },
@@ -164,6 +176,18 @@
             {
               "label": "Tailwind CSS Integration",
               "to": "framework/react/guide/tailwind-integration"
+            },
+            {
+              "label": "Rendering Markdown",
+              "to": "framework/react/guide/rendering-markdown"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/react/guide/seo"
+            },
+            {
+              "label": "LLM Optimization (LLMO)",
+              "to": "framework/react/guide/llmo"
             }
           ]
         },
@@ -181,6 +205,10 @@
             {
               "label": "Code Execution Patterns",
               "to": "framework/solid/guide/code-execution-patterns"
+            },
+            {
+              "label": "Import Protection",
+              "to": "framework/solid/guide/import-protection"
             },
             {
               "label": "Environment Variables",
@@ -261,6 +289,14 @@
             {
               "label": "Tailwind CSS Integration",
               "to": "framework/solid/guide/tailwind-integration"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/solid/guide/seo"
+            },
+            {
+              "label": "LLM Optimization (LLMO)",
+              "to": "framework/solid/guide/llmo"
             }
           ]
         }

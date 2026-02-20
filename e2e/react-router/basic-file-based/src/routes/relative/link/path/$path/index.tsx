@@ -17,7 +17,7 @@ function RouteComponent() {
       </div>
       <div>
         <Link
-          from="/relative/link/path"
+          from="/relative/link/path/"
           to="./$path"
           params={{ path: path === 'a' ? 'b' : 'a' }}
           className="mr-2"

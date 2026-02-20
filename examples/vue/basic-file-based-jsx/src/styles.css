@@ -1,6 +1,6 @@
-@import 'tailwindcss';
+@import 'tailwindcss' source('../');
 
-@source "./**/*.tsx";
+@source './**/*.{ts,tsx,vue}';
 
 @layer base {
   *,

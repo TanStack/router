@@ -1,9 +1,11 @@
 import * as Vue from 'vue'
 import {
   defaultGetScrollRestorationKey,
+  escapeHtml,
   restoreScroll,
   storageKey,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { ScriptOnce } from './ScriptOnce'
 
@@ -62,10 +64,10 @@ export const ScrollRestoration = Vue.defineComponent({
       }
 
       // Server-side: render the actual scroll restoration script
-      if (router.isServer) {
+      if (isServer ?? router.isServer) {
         return (
           <ScriptOnce
-            children={`(${restoreScroll.toString()})(${JSON.stringify(restoreScrollOptions)})`}
+            children={`(${restoreScroll.toString()})(${escapeHtml(JSON.stringify(restoreScrollOptions))})`}
           />
         )
       }

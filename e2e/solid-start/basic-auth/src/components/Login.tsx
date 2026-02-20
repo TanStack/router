@@ -7,9 +7,10 @@ import { signupFn } from '~/routes/signup'
 
 export function Login() {
   const router = useRouter()
+  const login = useServerFn(loginFn)
 
   const loginMutation = useMutation({
-    fn: loginFn,
+    fn: login,
     onSuccess: async (ctx) => {
       if (!ctx.data?.error) {
         await router.invalidate()
@@ -37,7 +38,7 @@ export function Login() {
           },
         })
       }}
-      afterSubmit={
+      afterSubmit={() =>
         loginMutation.data() ? (
           <>
             <div class="text-red-400">{loginMutation.data()?.message}</div>

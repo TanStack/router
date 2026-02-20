@@ -1,10 +1,15 @@
-import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
+import { isRedirect, parseRedirect } from '@tanstack/router-core'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
-import type { TSS_SERVER_FUNCTION } from './constants'
+import { createNullProtoObject, safeObjectMerge } from './safeObjectMerge'
+import type {
+  ClientFnMeta,
+  ServerFnMeta,
+  TSS_SERVER_FUNCTION,
+} from './constants'
 import type {
   AnyValidator,
   Constrain,
@@ -112,46 +117,61 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       return Object.assign(
         async (opts?: CompiledFetcherFnOptions) => {
           // Start by executing the client-side middleware chain
-          return executeMiddleware(resolvedMiddleware, 'client', {
+          const result = await executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             ...newOptions,
             data: opts?.data as any,
             headers: opts?.headers,
             signal: opts?.signal,
-            context: {},
-          }).then((d) => {
-            if (d.error) throw d.error
-            return d.result
+            fetch: opts?.fetch,
+            context: createNullProtoObject(),
           })
+
+          const redirect = parseRedirect(result.error)
+          if (redirect) {
+            throw redirect
+          }
+
+          if (result.error) throw result.error
+          return result.result
         },
         {
           // This copies over the URL, function ID
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: async (opts: any, signal: AbortSignal) => {
+          __executeServer: async (opts: any) => {
             const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
               startContext.contextAfterGlobalMiddlewares
+            // Use safeObjectMerge for opts.context which comes from client
             const ctx = {
               ...extractedFn,
               ...opts,
-              context: {
-                ...serverContextAfterGlobalMiddlewares,
-                ...opts.context,
-              },
-              signal,
+              // Ensure we use the full serverFnMeta from the provider file's extractedFn
+              // (which has id, name, filename) rather than the partial one from SSR/client
+              // callers (which only has id)
+              serverFnMeta: extractedFn.serverFnMeta,
+              // Use safeObjectMerge for opts.context which comes from client
+              context: safeObjectMerge(
+                serverContextAfterGlobalMiddlewares,
+                opts.context,
+              ),
               request: startContext.request,
             }
 
-            return executeMiddleware(resolvedMiddleware, 'server', ctx).then(
-              (d) => ({
-                // Only send the result and sendContext back to the client
-                result: d.result,
-                error: d.error,
-                context: d.sendContext,
-              }),
-            )
+            const result = await executeMiddleware(
+              resolvedMiddleware,
+              'server',
+              ctx,
+            ).then((d) => ({
+              // Only send the result and sendContext back to the client
+              result: d.result,
+              error: d.error,
+              context: d.sendContext,
+            }))
+
+            return result
           },
         },
       ) as any
@@ -173,12 +193,23 @@ export async function executeMiddleware(
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
   const globalMiddlewares = getStartOptions()?.functionMiddleware || []
-  const flattenedMiddlewares = flattenMiddlewares([
+  let flattenedMiddlewares = flattenMiddlewares([
     ...globalMiddlewares,
     ...middlewares,
   ])
 
-  const next: NextFn = async (ctx) => {
+  // On server, filter out middlewares that already executed in the request phase
+  // to prevent duplicate execution (issue #5239)
+  if (env === 'server') {
+    const startContext = getStartContextServerOnly({ throwIfNotFound: false })
+    if (startContext?.executedRequestMiddlewares) {
+      flattenedMiddlewares = flattenedMiddlewares.filter(
+        (m) => !startContext.executedRequestMiddlewares.has(m),
+      )
+    }
+  }
+
+  const callNextMiddleware: NextFn = async (ctx) => {
     // Get the next middleware
     const nextMiddleware = flattenedMiddlewares.shift()
 
@@ -187,54 +218,112 @@ export async function executeMiddleware(
       return ctx
     }
 
-    if (
-      'inputValidator' in nextMiddleware.options &&
-      nextMiddleware.options.inputValidator &&
-      env === 'server'
-    ) {
-      // Execute the middleware's input function
-      ctx.data = await execValidator(
-        nextMiddleware.options.inputValidator,
-        ctx.data,
-      )
-    }
-
-    let middlewareFn: MiddlewareFn | undefined = undefined
-    if (env === 'client') {
-      if ('client' in nextMiddleware.options) {
-        middlewareFn = nextMiddleware.options.client as MiddlewareFn | undefined
+    // Execute the middleware
+    try {
+      if (
+        'inputValidator' in nextMiddleware.options &&
+        nextMiddleware.options.inputValidator &&
+        env === 'server'
+      ) {
+        // Execute the middleware's input function
+        ctx.data = await execValidator(
+          nextMiddleware.options.inputValidator,
+          ctx.data,
+        )
       }
-    }
-    // env === 'server'
-    else if ('server' in nextMiddleware.options) {
-      middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
-    }
 
-    if (middlewareFn) {
-      // Execute the middleware
-      return applyMiddleware(middlewareFn, ctx, async (newCtx) => {
-        return next(newCtx).catch((error: any) => {
-          if (isRedirect(error) || isNotFound(error)) {
-            return {
-              ...newCtx,
-              error,
-            }
+      let middlewareFn: MiddlewareFn | undefined = undefined
+      if (env === 'client') {
+        if ('client' in nextMiddleware.options) {
+          middlewareFn = nextMiddleware.options.client as
+            | MiddlewareFn
+            | undefined
+        }
+      }
+      // env === 'server'
+      else if ('server' in nextMiddleware.options) {
+        middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
+      }
+
+      if (middlewareFn) {
+        const userNext = async (
+          userCtx: ServerFnMiddlewareResult | undefined = {} as any,
+        ) => {
+          // Return the next middleware
+          // Use safeObjectMerge for context objects to prevent prototype pollution
+          const nextCtx = {
+            ...ctx,
+            ...userCtx,
+            context: safeObjectMerge(ctx.context, userCtx.context),
+            sendContext: safeObjectMerge(ctx.sendContext, userCtx.sendContext),
+            headers: mergeHeaders(ctx.headers, userCtx.headers),
+            _callSiteFetch: ctx._callSiteFetch,
+            fetch: ctx._callSiteFetch ?? userCtx.fetch ?? ctx.fetch,
+            result:
+              userCtx.result !== undefined
+                ? userCtx.result
+                : userCtx instanceof Response
+                  ? userCtx
+                  : (ctx as any).result,
+            error: userCtx.error ?? (ctx as any).error,
           }
 
-          throw error
-        })
-      })
-    }
+          const result = await callNextMiddleware(nextCtx)
 
-    return next(ctx)
+          if (result.error) {
+            throw result.error
+          }
+
+          return result
+        }
+
+        // Execute the middleware
+        const result = await middlewareFn({
+          ...ctx,
+          next: userNext as any,
+        } as any)
+
+        // If result is NOT a ctx object, we need to return it as
+        // the { result }
+        if (isRedirect(result)) {
+          return {
+            ...ctx,
+            error: result,
+          }
+        }
+
+        if (result instanceof Response) {
+          return {
+            ...ctx,
+            result,
+          }
+        }
+
+        if (!(result as any)) {
+          throw new Error(
+            'User middleware returned undefined. You must call next() or return a result in your middlewares.',
+          )
+        }
+
+        return result
+      }
+
+      return callNextMiddleware(ctx)
+    } catch (error: any) {
+      return {
+        ...ctx,
+        error,
+      }
+    }
   }
 
   // Start the middleware chain
-  return next({
+  return callNextMiddleware({
     ...opts,
     headers: opts.headers || {},
     sendContext: opts.sendContext || {},
-    context: opts.context || {},
+    context: opts.context || createNullProtoObject(),
+    _callSiteFetch: opts.fetch,
   })
 }
 
@@ -243,6 +332,7 @@ export type CompiledFetcherFnOptions = {
   data: unknown
   headers?: HeadersInit
   signal?: AbortSignal
+  fetch?: CustomFetch
   context?: any
 }
 
@@ -259,36 +349,48 @@ export interface FetcherBase {
     data: unknown
     headers?: HeadersInit
     context?: any
-    signal: AbortSignal
   }) => Promise<unknown>
 }
 
-export interface OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
-  extends FetcherBase {
+export interface OptionalFetcher<
+  TMiddlewares,
+  TInputValidator,
+  TResponse,
+> extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
   ): Promise<Awaited<TResponse>>
 }
 
-export interface RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
-  extends FetcherBase {
+export interface RequiredFetcher<
+  TMiddlewares,
+  TInputValidator,
+  TResponse,
+> extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
   ): Promise<Awaited<TResponse>>
 }
 
+export type CustomFetch = typeof globalThis.fetch
+
 export type FetcherBaseOptions = {
   headers?: HeadersInit
   signal?: AbortSignal
+  fetch?: CustomFetch
 }
 
-export interface OptionalFetcherDataOptions<TMiddlewares, TInputValidator>
-  extends FetcherBaseOptions {
+export interface OptionalFetcherDataOptions<
+  TMiddlewares,
+  TInputValidator,
+> extends FetcherBaseOptions {
   data?: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
-export interface RequiredFetcherDataOptions<TMiddlewares, TInputValidator>
-  extends FetcherBaseOptions {
+export interface RequiredFetcherDataOptions<
+  TMiddlewares,
+  TInputValidator,
+> extends FetcherBaseOptions {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
@@ -312,13 +414,19 @@ export type ServerFn<
   TInputValidator,
   TResponse,
 > = (
-  ctx: ServerFnCtx<TRegister, TMiddlewares, TInputValidator>,
+  ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TInputValidator>,
 ) => ServerFnReturnType<TRegister, TResponse>
 
-export interface ServerFnCtx<TRegister, TMiddlewares, TInputValidator> {
+export interface ServerFnCtx<
+  TRegister,
+  TMethod,
+  TMiddlewares,
+  TInputValidator,
+> {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
+  serverFnMeta: ServerFnMeta
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
-  signal: AbortSignal
+  method: TMethod
 }
 
 export type CompiledFetcherFn<TRegister, TResponse> = {
@@ -326,6 +434,7 @@ export type CompiledFetcherFn<TRegister, TResponse> = {
     opts: CompiledFetcherFnOptions & ServerFnBaseOptions<TRegister, Method>,
   ): Promise<TResponse>
   url: string
+  serverFnMeta: ServerFnMeta
 }
 
 export type ServerFnBaseOptions<
@@ -349,7 +458,6 @@ export type ServerFnBaseOptions<
     TInputValidator,
     TResponse
   >
-  functionId: string
 }
 
 export type ValidateValidatorInput<
@@ -428,7 +536,9 @@ export interface ServerFnAfterMiddleware<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
@@ -467,7 +577,9 @@ export interface ServerFnAfterValidator<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
@@ -482,7 +594,9 @@ export interface ServerFnAfterTyper<
   TMethod extends Method,
   TMiddlewares,
   TInputValidator,
-> extends ServerFnWithTypes<
+>
+  extends
+    ServerFnWithTypes<
       TRegister,
       TMethod,
       TMiddlewares,
@@ -510,13 +624,8 @@ export interface ServerFnHandler<
 }
 
 export interface ServerFnBuilder<TRegister, TMethod extends Method = 'GET'>
-  extends ServerFnWithTypes<
-      TRegister,
-      TMethod,
-      undefined,
-      undefined,
-      undefined
-    >,
+  extends
+    ServerFnWithTypes<TRegister, TMethod, undefined, undefined, undefined>,
     ServerFnMiddleware<TRegister, TMethod, undefined, undefined>,
     ServerFnValidator<TRegister, TMethod, undefined>,
     ServerFnHandler<TRegister, TMethod, undefined, undefined> {
@@ -536,7 +645,7 @@ export interface ServerFnWithTypes<
   in out TInputValidator,
   in out TResponse,
 > {
-  _types: ServerFnTypes<
+  '~types': ServerFnTypes<
     TRegister,
     TMethod,
     TMiddlewares,
@@ -571,18 +680,21 @@ export interface ServerFnTypes<
   allOutput: IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>
 }
 
-export function flattenMiddlewares(
-  middlewares: Array<AnyFunctionMiddleware | AnyRequestMiddleware>,
-): Array<AnyFunctionMiddleware | AnyRequestMiddleware> {
-  const seen = new Set<AnyFunctionMiddleware | AnyRequestMiddleware>()
-  const flattened: Array<AnyFunctionMiddleware | AnyRequestMiddleware> = []
+export function flattenMiddlewares<
+  T extends AnyFunctionMiddleware | AnyRequestMiddleware,
+>(middlewares: Array<T>, maxDepth: number = 100): Array<T> {
+  const seen = new Set<T>()
+  const flattened: Array<T> = []
 
-  const recurse = (
-    middleware: Array<AnyFunctionMiddleware | AnyRequestMiddleware>,
-  ) => {
+  const recurse = (middleware: Array<T>, depth: number) => {
+    if (depth > maxDepth) {
+      throw new Error(
+        `Middleware nesting depth exceeded maximum of ${maxDepth}. Check for circular references.`,
+      )
+    }
     middleware.forEach((m) => {
       if (m.options.middleware) {
-        recurse(m.options.middleware)
+        recurse(m.options.middleware as Array<T>, depth + 1)
       }
 
       if (!seen.has(m)) {
@@ -592,7 +704,7 @@ export function flattenMiddlewares(
     })
   }
 
-  recurse(middlewares)
+  recurse(middlewares, 0)
 
   return flattened
 }
@@ -604,7 +716,10 @@ export type ServerFnMiddlewareOptions = {
   signal?: AbortSignal
   sendContext?: any
   context?: any
-  functionId: string
+  serverFnMeta: ClientFnMeta
+  fetch?: CustomFetch
+  /** @internal - Preserves the call-site fetch to ensure it has highest priority over middleware */
+  _callSiteFetch?: CustomFetch
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
@@ -622,52 +737,14 @@ export type MiddlewareFn = (
   },
 ) => Promise<ServerFnMiddlewareResult>
 
-export const applyMiddleware = async (
-  middlewareFn: MiddlewareFn,
-  ctx: ServerFnMiddlewareOptions,
-  nextFn: NextFn,
-) => {
-  return middlewareFn({
-    ...ctx,
-    next: (async (
-      userCtx: ServerFnMiddlewareResult | undefined = {} as any,
-    ) => {
-      // Return the next middleware
-      return nextFn({
-        ...ctx,
-        ...userCtx,
-        context: {
-          ...ctx.context,
-          ...userCtx.context,
-        },
-        sendContext: {
-          ...ctx.sendContext,
-          ...(userCtx.sendContext ?? {}),
-        },
-        headers: mergeHeaders(ctx.headers, userCtx.headers),
-        result:
-          userCtx.result !== undefined
-            ? userCtx.result
-            : userCtx instanceof Response
-              ? userCtx
-              : (ctx as any).result,
-        error: userCtx.error ?? (ctx as any).error,
-      })
-    }) as any,
-  } as any)
-}
-
-export function execValidator(
+export async function execValidator(
   validator: AnyValidator,
   input: unknown,
-): unknown {
+): Promise<unknown> {
   if (validator == null) return {}
 
   if ('~standard' in validator) {
-    const result = validator['~standard'].validate(input)
-
-    if (result instanceof Promise)
-      throw new Error('Async validation not supported')
+    const result = await validator['~standard'].validate(input)
 
     if (result.issues)
       throw new Error(JSON.stringify(result.issues, undefined, 2))
@@ -690,14 +767,15 @@ function serverFnBaseToMiddleware(
   options: ServerFnBaseOptions<any, any, any, any, any>,
 ): AnyFunctionMiddleware {
   return {
-    _types: undefined!,
+    '~types': undefined!,
     options: {
       inputValidator: options.inputValidator,
-      client: async ({ next, sendContext, ...ctx }) => {
+      client: async ({ next, sendContext, fetch, ...ctx }) => {
         const payload = {
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
+          fetch,
         } as any
 
         // Execute the extracted function

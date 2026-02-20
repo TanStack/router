@@ -81,7 +81,6 @@ Server functions can also set cache headers for dynamic data endpoints:
 ```tsx
 // routes/api/products/$productId.ts
 import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
 
 export const Route = createFileRoute('/api/products/$productId')({
   server: {
@@ -89,7 +88,7 @@ export const Route = createFileRoute('/api/products/$productId')({
       GET: async ({ params, request }) => {
         const product = await db.products.findById(params.productId)
 
-        return json(
+        return Response.json(
           { product },
           {
             headers: {
@@ -113,7 +112,6 @@ For API routes, you can use middleware to set cache headers:
 // routes/api/products/$productId.ts
 import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware } from '@tanstack/react-start'
-import { json } from '@tanstack/react-start'
 
 const cacheMiddleware = createMiddleware().server(async ({ next }) => {
   const result = await next()
@@ -133,7 +131,7 @@ export const Route = createFileRoute('/api/products/$productId')({
     handlers: {
       GET: async ({ params }) => {
         const product = await db.products.findById(params.productId)
-        return json({ product })
+        return Response.json({ product })
       },
     },
   },
@@ -164,7 +162,6 @@ While time-based revalidation works well for most cases, you may need to invalid
 ```tsx
 // routes/api/revalidate.ts
 import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
 
 export const Route = createFileRoute('/api/revalidate')({
   server: {
@@ -174,7 +171,7 @@ export const Route = createFileRoute('/api/revalidate')({
 
         // Verify secret token
         if (secret !== process.env.REVALIDATE_SECRET) {
-          return json({ error: 'Invalid token' }, { status: 401 })
+          return Response.json({ error: 'Invalid token' }, { status: 401 })
         }
 
         // Trigger CDN purge via your CDN's API
@@ -192,7 +189,7 @@ export const Route = createFileRoute('/api/revalidate')({
           },
         )
 
-        return json({ revalidated: true })
+        return Response.json({ revalidated: true })
       },
     },
   },
@@ -445,5 +442,5 @@ Track key metrics:
 - [Static Prerendering](./static-prerendering.md) - Build-time page generation
 - [Hosting](./hosting.md) - CDN deployment configurations
 - [Server Functions](./server-functions.md) - Creating dynamic data endpoints
-- [Data Loading](../../router/framework/react/guide/data-loading.md) - Client-side cache control
+- [Data Loading](../../../../router/guide/data-loading.md) - Client-side cache control
 - [Middleware](./middleware.md) - Request/response customization

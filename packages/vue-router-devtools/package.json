@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-router-devtools",
-  "version": "1.141.4",
+  "version": "1.161.3",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -54,11 +54,11 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/router-devtools-core": "workspace:*",
-    "vite": "^7.1.7"
+    "vite": "*"
   },
   "devDependencies": {
     "@vitejs/plugin-vue-jsx": "^4.1.2",

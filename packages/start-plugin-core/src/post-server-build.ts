@@ -34,6 +34,9 @@ export async function postServerBuild({
     }
 
     const maskUrl = new URL(startConfig.spa.maskPath, 'http://localhost')
+    if (maskUrl.origin !== 'http://localhost') {
+      throw new Error('spa.maskPath must be a path (no protocol/host)')
+    }
 
     startConfig.pages.push({
       path: maskUrl.toString().replace('http://localhost', ''),
@@ -59,7 +62,7 @@ export async function postServerBuild({
   }
 
   // Run the sitemap build process
-  if (startConfig.pages.length) {
+  if (startConfig.sitemap?.enabled) {
     buildSitemap({
       startConfig,
       publicDir:

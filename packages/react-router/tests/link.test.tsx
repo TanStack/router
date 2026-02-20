@@ -1521,6 +1521,120 @@ describe('Link', () => {
     expect(paramText).toBeInTheDocument()
   })
 
+  test('keeps a relative link active when changing inherited params (issue #5655)', async () => {
+    const rootRoute = createRootRoute()
+
+    const PostRouteComponent = () => {
+      const { postId } = useParams({ strict: false })
+
+      return (
+        <>
+          <Link
+            data-testid="step1-link"
+            from="/post/$postId"
+            to="step1"
+            activeProps={{ className: 'active' }}
+          >
+            Step 1
+          </Link>
+          <Link
+            data-testid="step2-link"
+            from="/post/$postId"
+            to="step2"
+            params={{ postId }}
+            activeProps={{ className: 'active' }}
+          >
+            Step 2
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/post/$postId',
+      component: PostRouteComponent,
+    })
+
+    const Step1RouteComponent = () => {
+      const { postId } = useParams({ strict: false })
+      const otherPostId = postId === '1' ? '2' : '1'
+
+      return (
+        <>
+          <span>{`Post ${postId} step1`}</span>
+          <Link
+            data-testid="switch-post-link"
+            from="/post/$postId/step1"
+            to="."
+            params={{ postId: otherPostId }}
+          >{`Go to post ${otherPostId}`}</Link>
+        </>
+      )
+    }
+    const step1Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step1',
+      component: Step1RouteComponent,
+    })
+
+    const Step2RouteComponent = () => {
+      const { postId } = useParams({ strict: false })
+      const otherPostId = postId === '1' ? '2' : '1'
+
+      return (
+        <>
+          <span>{`Post ${postId} step2`}</span>
+          <Link
+            data-testid="switch-post-link"
+            from="/post/$postId/step2"
+            to="."
+            params={{ postId: otherPostId }}
+          >{`Go to post ${otherPostId}`}</Link>
+        </>
+      )
+    }
+    const step2Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step2',
+      component: Step2RouteComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        postRoute.addChildren([step1Route, step2Route]),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/post/1/step1'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Post 1 step1')).toBeInTheDocument()
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    await act(() => fireEvent.click(screen.getByTestId('switch-post-link')))
+
+    expect(await screen.findByText('Post 2 step1')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step1')
+    // This is the bug from #5655: step1 should stay active but is not.
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    await act(() => fireEvent.click(screen.getByTestId('step2-link')))
+
+    expect(await screen.findByText('Post 2 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+
+    await act(() => fireEvent.click(screen.getByTestId('switch-post-link')))
+
+    expect(await screen.findByText('Post 1 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/1/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+  })
+
   test('when navigating from /posts to ./$postId', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -2044,8 +2158,14 @@ describe('Link', () => {
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
-      path: '$postId/',
+      path: '$postId',
       component: PostComponent,
+    })
+
+    const postIndexRoute = createRoute({
+      getParentRoute: () => postRoute,
+      path: '/',
+      component: () => <div>Post Index</div>,
     })
 
     const DetailsComponent = () => {
@@ -2080,7 +2200,11 @@ describe('Link', () => {
         indexRoute,
         layoutRoute.addChildren([
           postsRoute.addChildren([
-            postRoute.addChildren([detailsRoute, informationRoute]),
+            postRoute.addChildren([
+              postIndexRoute,
+              detailsRoute,
+              informationRoute,
+            ]),
           ]),
         ]),
       ]),
@@ -6500,8 +6624,8 @@ describe('encoded and unicode paths', () => {
       name: 'with prefix',
       path: '/foo/prefix@대{$}',
       expectedPath:
-        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]',
-      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀@]',
+        '/foo/prefix@%EB%8C%80test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]',
+      expectedLocation: '/foo/prefix@대test[s%5C/.%5C/parameter%25!🚀%40]',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',
@@ -6511,8 +6635,8 @@ describe('encoded and unicode paths', () => {
       name: 'with suffix',
       path: '/foo/{$}대suffix@',
       expectedPath:
-        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80@]%EB%8C%80suffix@',
-      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀@]대suffix@',
+        '/foo/test[s%5C/.%5C/parameter%25!%F0%9F%9A%80%40]%EB%8C%80suffix@',
+      expectedLocation: '/foo/test[s%5C/.%5C/parameter%25!🚀%40]대suffix@',
       params: {
         _splat: 'test[s\\/.\\/parameter%!🚀@]',
         '*': 'test[s\\/.\\/parameter%!🚀@]',
@@ -6602,4 +6726,67 @@ describe('encoded and unicode paths', () => {
       expect(paramsToValidate.textContent).toEqual(JSON.stringify(params))
     },
   )
+})
+
+describe('protocolAllowlist', () => {
+  const rootRoute = createRootRoute()
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => (
+      <>
+        <Link to="x-safari-https://example.com" />
+        <Link
+          to="intent://example.com#Intent;scheme=https;end"
+          reloadDocument
+        />
+      </>
+    ),
+  })
+
+  let consoleWarn = vi.fn()
+  beforeEach(() => {
+    consoleWarn = vi.fn()
+    vi.spyOn(console, 'warn').mockImplementation(consoleWarn)
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should work like normal links when protocolAllowlist is set', async () => {
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      protocolAllowlist: ['x-safari-https:', 'intent:'],
+    })
+    render(<RouterProvider router={router} />)
+    const links = await screen.findAllByRole('link')
+    expect(links[0]).toHaveAttribute('href', 'x-safari-https://example.com')
+    expect(links[1]).toHaveAttribute(
+      'href',
+      'intent://example.com#Intent;scheme=https;end',
+    )
+    expect(consoleWarn).not.toHaveBeenCalled()
+  })
+
+  it('should fallback to relative links when protocol is not in allowlist', async () => {
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      protocolAllowlist: [],
+    })
+    render(<RouterProvider router={router} />)
+    const links = await screen.findAllByRole('link')
+    expect(links[0]).toHaveAttribute('href', '/x-safari-https:/example.com')
+    expect(links[1]).toHaveAttribute(
+      'href',
+      '/intent:/example.com#Intent;scheme=https;end',
+    )
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Blocked Link with dangerous protocol: x-safari-https://example.com',
+    )
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Blocked Link with dangerous protocol: intent://example.com#Intent;scheme=https;end',
+    )
+  })
 })

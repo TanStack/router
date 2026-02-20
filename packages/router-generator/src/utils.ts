@@ -1,38 +1,136 @@
+/* eslint-disable @typescript-eslint/prefer-for-of */
 import * as fsp from 'node:fs/promises'
 import path from 'node:path'
 import * as prettier from 'prettier'
 import { rootPathId } from './filesystem/physical/rootPathId'
-import type { Config } from './config'
+import type { Config, TokenMatcher } from './config'
 import type { ImportDeclaration, RouteNode } from './types'
+
+/**
+ * Prefix map for O(1) parent route lookups.
+ * Maps each route path prefix to the route node that owns that prefix.
+ * Enables finding longest matching parent without linear search.
+ */
+export class RoutePrefixMap {
+  private prefixToRoute: Map<string, RouteNode> = new Map()
+  private layoutRoutes: Array<RouteNode> = []
+
+  constructor(routes: Array<RouteNode>) {
+    for (const route of routes) {
+      if (!route.routePath || route.routePath === `/${rootPathId}`) continue
+
+      // Skip route pieces (lazy, loader, component, etc.) - they are merged with main routes
+      // and should not be valid parent candidates
+      if (
+        route._fsRouteType === 'lazy' ||
+        route._fsRouteType === 'loader' ||
+        route._fsRouteType === 'component' ||
+        route._fsRouteType === 'pendingComponent' ||
+        route._fsRouteType === 'errorComponent' ||
+        route._fsRouteType === 'notFoundComponent'
+      ) {
+        continue
+      }
+
+      // Index by exact path for direct lookups
+      this.prefixToRoute.set(route.routePath, route)
+
+      if (
+        route._fsRouteType === 'pathless_layout' ||
+        route._fsRouteType === 'layout' ||
+        route._fsRouteType === '__root'
+      ) {
+        this.layoutRoutes.push(route)
+      }
+    }
+
+    // Sort by path length descending for longest-match-first
+    this.layoutRoutes.sort(
+      (a, b) => (b.routePath?.length ?? 0) - (a.routePath?.length ?? 0),
+    )
+  }
+
+  /**
+   * Find the longest matching parent route for a given path.
+   * O(k) where k is the number of path segments, not O(n) routes.
+   */
+  findParent(routePath: string): RouteNode | null {
+    if (!routePath || routePath === '/') return null
+
+    // Walk up the path segments
+    let searchPath = routePath
+    while (searchPath.length > 0) {
+      const lastSlash = searchPath.lastIndexOf('/')
+      if (lastSlash <= 0) break
+
+      searchPath = searchPath.substring(0, lastSlash)
+      const parent = this.prefixToRoute.get(searchPath)
+      if (parent && parent.routePath !== routePath) {
+        return parent
+      }
+    }
+    return null
+  }
+
+  /**
+   * Check if a route exists at the given path.
+   */
+  has(routePath: string): boolean {
+    return this.prefixToRoute.has(routePath)
+  }
+
+  /**
+   * Get a route by exact path.
+   */
+  get(routePath: string): RouteNode | undefined {
+    return this.prefixToRoute.get(routePath)
+  }
+}
 
 export function multiSortBy<T>(
   arr: Array<T>,
   accessors: Array<(item: T) => any> = [(d) => d],
 ): Array<T> {
-  return arr
-    .map((d, i) => [d, i] as const)
-    .sort(([a, ai], [b, bi]) => {
-      for (const accessor of accessors) {
-        const ao = accessor(a)
-        const bo = accessor(b)
+  const len = arr.length
+  // Pre-compute all accessor values to avoid repeated function calls during sort
+  const indexed: Array<{ item: T; index: number; keys: Array<any> }> =
+    new Array(len)
+  for (let i = 0; i < len; i++) {
+    const item = arr[i]!
+    const keys = new Array(accessors.length)
+    for (let j = 0; j < accessors.length; j++) {
+      keys[j] = accessors[j]!(item)
+    }
+    indexed[i] = { item, index: i, keys }
+  }
 
-        if (typeof ao === 'undefined') {
-          if (typeof bo === 'undefined') {
-            continue
-          }
-          return 1
-        }
+  indexed.sort((a, b) => {
+    for (let j = 0; j < accessors.length; j++) {
+      const ao = a.keys[j]
+      const bo = b.keys[j]
 
-        if (ao === bo) {
+      if (typeof ao === 'undefined') {
+        if (typeof bo === 'undefined') {
           continue
         }
-
-        return ao > bo ? 1 : -1
+        return 1
       }
 
-      return ai - bi
-    })
-    .map(([d]) => d)
+      if (ao === bo) {
+        continue
+      }
+
+      return ao > bo ? 1 : -1
+    }
+
+    return a.index - b.index
+  })
+
+  const result: Array<T> = new Array(len)
+  for (let i = 0; i < len; i++) {
+    result[i] = indexed[i]!.item
+  }
+  return result
 }
 
 export function cleanPath(path: string) {
@@ -55,55 +153,32 @@ export function removeTrailingSlash(s: string) {
 const BRACKET_CONTENT_RE = /\[(.*?)\]/g
 const SPLIT_REGEX = /(?<!\[)\.(?!\])/g
 
-export function determineInitialRoutePath(
-  routePath: string,
-  config?: Pick<Config, 'experimental' | 'routeToken' | 'indexToken'>,
-) {
-  const DISALLOWED_ESCAPE_CHARS = new Set([
-    '/',
-    '\\',
-    '?',
-    '#',
-    ':',
-    '*',
-    '<',
-    '>',
-    '|',
-    '!',
-    '$',
-    '%',
-  ])
+/**
+ * Characters that cannot be escaped in square brackets.
+ * These are characters that would cause issues in URLs or file systems.
+ */
+const DISALLOWED_ESCAPE_CHARS = new Set([
+  '/',
+  '\\',
+  '?',
+  '#',
+  ':',
+  '*',
+  '<',
+  '>',
+  '|',
+  '!',
+  '$',
+  '%',
+])
 
+export function determineInitialRoutePath(routePath: string) {
   const originalRoutePath =
     cleanPath(
       `/${(cleanPath(routePath) || '').split(SPLIT_REGEX).join('/')}`,
     ) || ''
 
-  // check if the route path is a valid non-nested path,
-  // TODO with new major rename to reflect not experimental anymore
-  const isExperimentalNonNestedRoute = isValidNonNestedRoute(
-    originalRoutePath,
-    config,
-  )
-
-  let cleanedRoutePath = routePath
-
-  // we already identified the path as non-nested and can now remove the trailing underscores
-  // we need to do this now before we encounter any escaped trailing underscores
-  // this way we can be sure any remaining trailing underscores should remain
-  // TODO with new major we can remove check and always remove leading underscores
-  if (config?.experimental?.nonNestedRoutes) {
-    // we should leave trailing underscores if the route path is the root path
-    if (originalRoutePath !== `/${rootPathId}`) {
-      // remove trailing underscores on various path segments
-      cleanedRoutePath = removeTrailingUnderscores(
-        originalRoutePath,
-        config.routeToken,
-      )
-    }
-  }
-
-  const parts = cleanedRoutePath.split(SPLIT_REGEX)
+  const parts = routePath.split(SPLIT_REGEX)
 
   // Escape any characters that in square brackets
   // we keep the original path untouched
@@ -138,63 +213,281 @@ export function determineInitialRoutePath(
 
   return {
     routePath: final,
-    isExperimentalNonNestedRoute,
     originalRoutePath,
   }
 }
 
-export function replaceBackslash(s: string) {
-  return s.replaceAll(/\\/gi, '/')
-}
-
-export function routePathToVariable(routePath: string): string {
-  const toVariableSafeChar = (char: string): string => {
-    if (/[a-zA-Z0-9_]/.test(char)) {
-      return char // Keep alphanumeric characters and underscores as is
-    }
-
-    // Replace special characters with meaningful text equivalents
-    switch (char) {
-      case '.':
-        return 'Dot'
-      case '-':
-        return 'Dash'
-      case '@':
-        return 'At'
-      case '(':
-        return '' // Removed since route groups use parentheses
-      case ')':
-        return '' // Removed since route groups use parentheses
-      case ' ':
-        return '' // Remove spaces
-      default:
-        return `Char${char.charCodeAt(0)}` // For any other characters
-    }
-  }
-
+/**
+ * Checks if a segment is fully escaped (entirely wrapped in brackets with no nested brackets).
+ * E.g., "[index]" -> true, "[_layout]" -> true, "foo[.]bar" -> false, "index" -> false
+ */
+function isFullyEscapedSegment(originalSegment: string): boolean {
   return (
-    removeUnderscores(routePath)
-      ?.replace(/\/\$\//g, '/splat/')
-      .replace(/\$$/g, 'splat')
-      .replace(/\$\{\$\}/g, 'splat')
-      .replace(/\$/g, '')
-      .split(/[/-]/g)
-      .map((d, i) => (i > 0 ? capitalize(d) : d))
-      .join('')
-      .split('')
-      .map(toVariableSafeChar)
-      .join('')
-      // .replace(/([^a-zA-Z0-9]|[.])/gm, '')
-      .replace(/^(\d)/g, 'R$1') ?? ''
+    originalSegment.startsWith('[') &&
+    originalSegment.endsWith(']') &&
+    !originalSegment.slice(1, -1).includes('[') &&
+    !originalSegment.slice(1, -1).includes(']')
   )
 }
 
+/**
+ * Checks if the leading underscore in a segment is escaped.
+ * Returns true if:
+ * - Segment starts with [_] pattern: "[_]layout" -> "_layout"
+ * - Segment is fully escaped and content starts with _: "[_1nd3x]" -> "_1nd3x"
+ */
+export function hasEscapedLeadingUnderscore(originalSegment: string): boolean {
+  // Pattern: [_]something or [_something]
+  return (
+    originalSegment.startsWith('[_]') ||
+    (originalSegment.startsWith('[_') && isFullyEscapedSegment(originalSegment))
+  )
+}
+
+/**
+ * Checks if the trailing underscore in a segment is escaped.
+ * Returns true if:
+ * - Segment ends with [_] pattern: "blog[_]" -> "blog_"
+ * - Segment is fully escaped and content ends with _: "[_r0ut3_]" -> "_r0ut3_"
+ */
+export function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
+  // Pattern: something[_] or [something_]
+  return (
+    originalSegment.endsWith('[_]') ||
+    (originalSegment.endsWith('_]') && isFullyEscapedSegment(originalSegment))
+  )
+}
+
+const backslashRegex = /\\/g
+
+export function replaceBackslash(s: string) {
+  return s.replace(backslashRegex, '/')
+}
+
+const alphanumericRegex = /[a-zA-Z0-9_]/
+const splatSlashRegex = /\/\$\//g
+const trailingSplatRegex = /\$$/g
+const bracketSplatRegex = /\$\{\$\}/g
+const dollarSignRegex = /\$/g
+const splitPathRegex = /[/-]/g
+const leadingDigitRegex = /^(\d)/g
+
+const toVariableSafeChar = (char: string): string => {
+  if (alphanumericRegex.test(char)) {
+    return char // Keep alphanumeric characters and underscores as is
+  }
+
+  // Replace special characters with meaningful text equivalents
+  switch (char) {
+    case '.':
+      return 'Dot'
+    case '-':
+      return 'Dash'
+    case '@':
+      return 'At'
+    case '(':
+      return '' // Removed since route groups use parentheses
+    case ')':
+      return '' // Removed since route groups use parentheses
+    case ' ':
+      return '' // Remove spaces
+    default:
+      return `Char${char.charCodeAt(0)}` // For any other characters
+  }
+}
+
+export function routePathToVariable(routePath: string): string {
+  const cleaned = removeUnderscores(routePath)
+  if (!cleaned) return ''
+
+  const parts = cleaned
+    .replace(splatSlashRegex, '/splat/')
+    .replace(trailingSplatRegex, 'splat')
+    .replace(bracketSplatRegex, 'splat')
+    .replace(dollarSignRegex, '')
+    .split(splitPathRegex)
+
+  let result = ''
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i]!
+    const segment = i > 0 ? capitalize(part) : part
+    for (let j = 0; j < segment.length; j++) {
+      result += toVariableSafeChar(segment[j]!)
+    }
+  }
+
+  return result.replace(leadingDigitRegex, 'R$1')
+}
+
+const underscoreStartEndRegex = /(^_|_$)/gi
+const underscoreSlashRegex = /(\/_|_\/)/gi
+
 export function removeUnderscores(s?: string) {
-  return s?.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
+  return s
+    ?.replace(underscoreStartEndRegex, '')
+    .replace(underscoreSlashRegex, '/')
+}
+
+/**
+ * Removes underscores from a path, but preserves underscores that were escaped
+ * in the original path (indicated by [_] syntax).
+ *
+ * @param routePath - The path with brackets removed
+ * @param originalPath - The original path that may contain [_] escape sequences
+ * @returns The path with non-escaped underscores removed
+ */
+export function removeUnderscoresWithEscape(
+  routePath?: string,
+  originalPath?: string,
+): string {
+  if (!routePath) return ''
+  if (!originalPath) return removeUnderscores(routePath) ?? ''
+
+  const routeSegments = routePath.split('/')
+  const originalSegments = originalPath.split('/')
+
+  const newSegments = routeSegments.map((segment, i) => {
+    const originalSegment = originalSegments[i] || ''
+
+    // Check if leading underscore is escaped
+    const leadingEscaped = hasEscapedLeadingUnderscore(originalSegment)
+    // Check if trailing underscore is escaped
+    const trailingEscaped = hasEscapedTrailingUnderscore(originalSegment)
+
+    let result = segment
+
+    // Remove leading underscore only if not escaped
+    if (result.startsWith('_') && !leadingEscaped) {
+      result = result.slice(1)
+    }
+
+    // Remove trailing underscore only if not escaped
+    if (result.endsWith('_') && !trailingEscaped) {
+      result = result.slice(0, -1)
+    }
+
+    return result
+  })
+
+  return newSegments.join('/')
+}
+
+/**
+ * Removes layout segments (segments starting with underscore) from a path,
+ * but preserves segments where the underscore was escaped.
+ *
+ * @param routePath - The path with brackets removed
+ * @param originalPath - The original path that may contain [_] escape sequences
+ * @returns The path with non-escaped layout segments removed
+ */
+export function removeLayoutSegmentsWithEscape(
+  routePath: string = '/',
+  originalPath?: string,
+): string {
+  if (!originalPath) return removeLayoutSegments(routePath)
+
+  const routeSegments = routePath.split('/')
+  const originalSegments = originalPath.split('/')
+
+  // Keep segments that are NOT pathless (i.e., don't start with unescaped underscore)
+  const newSegments = routeSegments.filter((segment, i) => {
+    const originalSegment = originalSegments[i] || ''
+    return !isSegmentPathless(segment, originalSegment)
+  })
+
+  return newSegments.join('/')
+}
+
+/**
+ * Checks if a segment should be treated as a pathless/layout segment.
+ * A segment is pathless if it starts with underscore and the underscore is not escaped.
+ *
+ * @param segment - The segment from routePath (brackets removed)
+ * @param originalSegment - The segment from originalRoutePath (may contain brackets)
+ * @returns true if the segment is pathless (has non-escaped leading underscore)
+ */
+export function isSegmentPathless(
+  segment: string,
+  originalSegment: string,
+): boolean {
+  if (!segment.startsWith('_')) return false
+  return !hasEscapedLeadingUnderscore(originalSegment)
 }
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function sanitizeTokenFlags(flags?: string): string | undefined {
+  if (!flags) return flags
+
+  // Prevent stateful behavior with RegExp.prototype.test/exec
+  // g = global, y = sticky
+  return flags.replace(/[gy]/g, '')
+}
+
+export function createTokenRegex(
+  token: TokenMatcher,
+  opts: {
+    type: 'segment' | 'filename'
+  },
+): RegExp {
+  // Defensive check: if token is undefined/null, throw a clear error
+  // (runtime safety for config loading edge cases)
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (token === undefined || token === null) {
+    throw new Error(
+      `createTokenRegex: token is ${token}. This usually means the config was not properly parsed with defaults.`,
+    )
+  }
+
+  try {
+    if (typeof token === 'string') {
+      return opts.type === 'segment'
+        ? new RegExp(`^${escapeRegExp(token)}$`)
+        : new RegExp(`[./]${escapeRegExp(token)}[.]`)
+    }
+
+    if (token instanceof RegExp) {
+      const flags = sanitizeTokenFlags(token.flags)
+      return opts.type === 'segment'
+        ? new RegExp(`^(?:${token.source})$`, flags)
+        : new RegExp(`[./](?:${token.source})[.]`, flags)
+    }
+
+    // Handle JSON regex object form: { regex: string, flags?: string }
+    if (typeof token === 'object' && 'regex' in token) {
+      const flags = sanitizeTokenFlags(token.flags)
+      return opts.type === 'segment'
+        ? new RegExp(`^(?:${token.regex})$`, flags)
+        : new RegExp(`[./](?:${token.regex})[.]`, flags)
+    }
+
+    throw new Error(
+      `createTokenRegex: invalid token type. Expected string, RegExp, or { regex, flags } object, got: ${typeof token}`,
+    )
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      const pattern =
+        typeof token === 'string'
+          ? token
+          : token instanceof RegExp
+            ? token.source
+            : token.regex
+      throw new Error(
+        `Invalid regex pattern in token config: "${pattern}". ${e.message}`,
+      )
+    }
+    throw e
+  }
+}
+
+export function isBracketWrappedSegment(segment: string): boolean {
+  return segment.startsWith('[') && segment.endsWith(']')
+}
+
+export function unwrapBracketWrappedSegment(segment: string): string {
+  return isBracketWrappedSegment(segment) ? segment.slice(1, -1) : segment
 }
 
 export function removeLeadingUnderscores(s: string, routeToken: string) {
@@ -361,86 +654,19 @@ export function removeLastSegmentFromPath(routePath: string = '/'): string {
   return segments.join('/')
 }
 
+/**
+ * Find parent route using RoutePrefixMap for O(k) lookups instead of O(n).
+ */
 export function hasParentRoute(
-  routes: Array<RouteNode>,
+  prefixMap: RoutePrefixMap,
   node: RouteNode,
   routePathToCheck: string | undefined,
-  originalRoutePathToCheck: string | undefined,
 ): RouteNode | null {
-  const getNonNestedSegments = (routePath: string) => {
-    const regex = /_(?=\/|$)/g
-
-    return [...routePath.matchAll(regex)]
-      .filter((match) => {
-        const beforeStr = routePath.substring(0, match.index)
-        const openBrackets = (beforeStr.match(/\[/g) || []).length
-        const closeBrackets = (beforeStr.match(/\]/g) || []).length
-        return openBrackets === closeBrackets
-      })
-      .map((match) => routePath.substring(0, match.index + 1))
-      .reverse()
-  }
-
   if (!routePathToCheck || routePathToCheck === '/') {
     return null
   }
 
-  const sortedNodes = multiSortBy(routes, [
-    (d) => d.routePath!.length * -1,
-    (d) => d.variableName,
-  ]).filter((d) => d.routePath !== `/${rootPathId}`)
-
-  const filteredNodes = node._isExperimentalNonNestedRoute
-    ? []
-    : [...sortedNodes]
-
-  if (node._isExperimentalNonNestedRoute && originalRoutePathToCheck) {
-    const nonNestedSegments = getNonNestedSegments(originalRoutePathToCheck)
-
-    for (const route of sortedNodes) {
-      if (route.routePath === '/') continue
-
-      if (
-        route._isExperimentalNonNestedRoute &&
-        route.routePath !== routePathToCheck &&
-        originalRoutePathToCheck.startsWith(`${route.originalRoutePath}/`)
-      ) {
-        return route
-      }
-
-      if (
-        nonNestedSegments.find(
-          (seg) => seg === `${route.originalRoutePath}_`,
-        ) ||
-        !(
-          route._fsRouteType === 'pathless_layout' ||
-          route._fsRouteType === 'layout' ||
-          route._fsRouteType === '__root'
-        )
-      ) {
-        continue
-      }
-
-      filteredNodes.push(route)
-    }
-  }
-
-  for (const route of filteredNodes) {
-    if (route.routePath === '/') continue
-
-    if (
-      routePathToCheck.startsWith(`${route.routePath}/`) &&
-      route.routePath !== routePathToCheck
-    ) {
-      return route
-    }
-  }
-
-  const segments = routePathToCheck.split('/')
-  segments.pop() // Remove the last segment
-  const parentRoutePath = segments.join('/')
-
-  return hasParentRoute(routes, node, parentRoutePath, originalRoutePathToCheck)
+  return prefixMap.findParent(routePathToCheck)
 }
 
 /**
@@ -474,27 +700,45 @@ export function isRouteNodeValidForAugmentation(
  * Infers the path for use by TS
  */
 export const inferPath = (routeNode: RouteNode): string => {
-  return routeNode.cleanedPath === '/'
-    ? routeNode.cleanedPath
-    : (routeNode.cleanedPath?.replace(/\/$/, '') ?? '')
+  if (routeNode.cleanedPath === '/') {
+    return routeNode.cleanedPath ?? ''
+  }
+  return routeNode.cleanedPath?.replace(/\/$/, '') ?? ''
 }
 
 /**
  * Infers the full path for use by TS
  */
-export const inferFullPath = (
-  routeNode: RouteNode,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
-): string => {
-  // with new nonNestedPaths feature we can be sure any remaining trailing underscores are escaped and should remain
-  // TODO with new major we can remove check and only remove leading underscores
+export const inferFullPath = (routeNode: RouteNode): string => {
   const fullPath = removeGroups(
-    (config?.experimental?.nonNestedRoutes
-      ? removeLayoutSegments(routeNode.routePath)
-      : removeUnderscores(removeLayoutSegments(routeNode.routePath))) ?? '',
+    removeUnderscoresWithEscape(
+      removeLayoutSegmentsWithEscape(
+        routeNode.routePath,
+        routeNode.originalRoutePath,
+      ),
+      routeNode.originalRoutePath,
+    ),
   )
 
-  return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')
+  if (fullPath === '') {
+    return '/'
+  }
+
+  // Preserve trailing slash for index routes (routePath ends with '/')
+  // This ensures types match runtime behavior
+  const isIndexRoute = routeNode.routePath?.endsWith('/')
+  if (isIndexRoute) {
+    return fullPath
+  }
+
+  return fullPath.replace(/\/$/, '')
+}
+
+const shouldPreferIndexRoute = (
+  current: RouteNode,
+  existing: RouteNode,
+): boolean => {
+  return existing.cleanedPath === '/' && current.cleanedPath !== '/'
 }
 
 /**
@@ -502,14 +746,23 @@ export const inferFullPath = (
  */
 export const createRouteNodesByFullPath = (
   routeNodes: Array<RouteNode>,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
 ): Map<string, RouteNode> => {
-  return new Map(
-    routeNodes.map((routeNode) => [
-      inferFullPath(routeNode, config),
-      routeNode,
-    ]),
-  )
+  const map = new Map<string, RouteNode>()
+
+  for (const routeNode of routeNodes) {
+    const fullPath = inferFullPath(routeNode)
+
+    if (fullPath === '/' && map.has('/')) {
+      const existing = map.get('/')!
+      if (shouldPreferIndexRoute(routeNode, existing)) {
+        continue
+      }
+    }
+
+    map.set(fullPath, routeNode)
+  }
+
+  return map
 }
 
 /**
@@ -517,14 +770,23 @@ export const createRouteNodesByFullPath = (
  */
 export const createRouteNodesByTo = (
   routeNodes: Array<RouteNode>,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
 ): Map<string, RouteNode> => {
-  return new Map(
-    dedupeBranchesAndIndexRoutes(routeNodes).map((routeNode) => [
-      inferTo(routeNode, config),
-      routeNode,
-    ]),
-  )
+  const map = new Map<string, RouteNode>()
+
+  for (const routeNode of dedupeBranchesAndIndexRoutes(routeNodes)) {
+    const to = inferTo(routeNode)
+
+    if (to === '/' && map.has('/')) {
+      const existing = map.get('/')!
+      if (shouldPreferIndexRoute(routeNode, existing)) {
+        continue
+      }
+    }
+
+    map.set(to, routeNode)
+  }
+
+  return map
 }
 
 /**
@@ -544,11 +806,8 @@ export const createRouteNodesById = (
 /**
  * Infers to path
  */
-export const inferTo = (
-  routeNode: RouteNode,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
-): string => {
-  const fullPath = inferFullPath(routeNode, config)
+export const inferTo = (routeNode: RouteNode): string => {
+  const fullPath = inferFullPath(routeNode)
 
   if (fullPath === '/') return fullPath
 
@@ -586,8 +845,17 @@ export function checkRouteFullPathUniqueness(
   _routes: Array<RouteNode>,
   config: Config,
 ) {
+  const emptyPathRoutes = _routes.filter((d) => d.routePath === '')
+  if (emptyPathRoutes.length) {
+    const errorMessage = `Invalid route path "" was found. Root routes must be defined via __root.tsx (createRootRoute), not createFileRoute('') or a route file that resolves to an empty path.
+Conflicting files: \n ${emptyPathRoutes
+      .map((d) => path.resolve(config.routesDirectory, d.filePath))
+      .join('\n ')}\n`
+    throw new Error(errorMessage)
+  }
+
   const routes = _routes.map((d) => {
-    const inferredFullPath = inferFullPath(d, config)
+    const inferredFullPath = inferFullPath(d)
     return { ...d, inferredFullPath }
   })
 
@@ -682,28 +950,33 @@ export function lowerCaseFirstChar(value: string) {
 export function mergeImportDeclarations(
   imports: Array<ImportDeclaration>,
 ): Array<ImportDeclaration> {
-  const merged: Record<string, ImportDeclaration> = {}
+  const merged = new Map<string, ImportDeclaration>()
 
   for (const imp of imports) {
-    const key = `${imp.source}-${imp.importKind}`
-    if (!merged[key]) {
-      merged[key] = { ...imp, specifiers: [] }
+    const key = `${imp.source}-${imp.importKind ?? ''}`
+    let existing = merged.get(key)
+    if (!existing) {
+      existing = { ...imp, specifiers: [] }
+      merged.set(key, existing)
     }
+
+    const existingSpecs = existing.specifiers
     for (const specifier of imp.specifiers) {
-      // check if the specifier already exists in the merged import
-      if (
-        !merged[key].specifiers.some(
-          (existing) =>
-            existing.imported === specifier.imported &&
-            existing.local === specifier.local,
-        )
-      ) {
-        merged[key].specifiers.push(specifier)
+      let found = false
+      for (let i = 0; i < existingSpecs.length; i++) {
+        const e = existingSpecs[i]!
+        if (e.imported === specifier.imported && e.local === specifier.local) {
+          found = true
+          break
+        }
+      }
+      if (!found) {
+        existingSpecs.push(specifier)
       }
     }
   }
 
-  return Object.values(merged)
+  return [...merged.values()]
 }
 
 export const findParent = (node: RouteNode | undefined): string => {
@@ -720,7 +993,7 @@ export function buildFileRoutesByPathInterface(opts: {
   routeNodes: Array<RouteNode>
   module: string
   interfaceName: string
-  config?: Pick<Config, 'experimental' | 'routeToken'>
+  config?: Pick<Config, 'routeToken'>
 }): string {
   return `declare module '${opts.module}' {
   interface ${opts.interfaceName} {
@@ -734,7 +1007,7 @@ export function buildFileRoutesByPathInterface(opts: {
         return `'${filePathId}': {
           id: '${filePathId}'
           path: '${inferPath(routeNode)}'
-          fullPath: '${inferFullPath(routeNode, opts.config)}'
+          fullPath: '${inferFullPath(routeNode)}'
           preLoaderRoute: ${preloaderRoute}
           parentRoute: typeof ${parent}
         }`
@@ -786,52 +1059,4 @@ export function getImportForRouteNode(
       },
     ],
   } satisfies ImportDeclaration
-}
-
-/**
- * Used to validate if a route is a pathless layout route
- * @param normalizedRoutePath Normalized route path, i.e `/foo/_layout/route.tsx` and `/foo._layout.route.tsx` to `/foo/_layout/route`
- * @param config The `router-generator` configuration object
- * @returns Boolean indicating if the route is a pathless layout route
- */
-export function isValidNonNestedRoute(
-  normalizedRoutePath: string,
-  config?: Pick<Config, 'experimental' | 'routeToken' | 'indexToken'>,
-): boolean {
-  if (!config?.experimental?.nonNestedRoutes) {
-    return false
-  }
-
-  const segments = normalizedRoutePath.split('/').filter(Boolean)
-
-  if (segments.length === 0) {
-    return false
-  }
-
-  const lastRouteSegment = segments[segments.length - 1]!
-
-  // If segment === __root, then exit as false
-  if (lastRouteSegment === rootPathId) {
-    return false
-  }
-
-  if (
-    lastRouteSegment !== config.indexToken &&
-    lastRouteSegment !== config.routeToken &&
-    lastRouteSegment.endsWith('_')
-  ) {
-    return true
-  }
-
-  for (const segment of segments.slice(0, -1).reverse()) {
-    if (segment === config.routeToken) {
-      return false
-    }
-
-    if (segment.endsWith('_')) {
-      return true
-    }
-  }
-
-  return false
 }

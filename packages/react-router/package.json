@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router",
-  "version": "1.141.4",
+  "version": "1.161.3",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -50,10 +50,12 @@
     ".": {
       "import": {
         "types": "./dist/esm/index.d.ts",
+        "development": "./dist/esm/index.dev.js",
         "default": "./dist/esm/index.js"
       },
       "require": {
         "types": "./dist/cjs/index.d.cts",
+        "development": "./dist/cjs/index.dev.cjs",
         "default": "./dist/cjs/index.cjs"
       }
     },
@@ -91,11 +93,11 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
-    "@tanstack/react-store": "^0.8.0",
+    "@tanstack/react-store": "^0.9.1",
     "@tanstack/router-core": "workspace:*",
     "isbot": "^5.1.22",
     "tiny-invariant": "^1.3.3",
@@ -109,6 +111,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vibe-rules": "^0.2.57",
+    "vite": "*",
     "zod": "^3.24.2"
   },
   "peerDependencies": {

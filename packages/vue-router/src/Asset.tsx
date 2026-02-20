@@ -1,4 +1,5 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -18,7 +19,7 @@ const Title = Vue.defineComponent({
   setup(props) {
     const router = useRouter()
 
-    if (!router.isServer) {
+    if (!(isServer ?? router.isServer)) {
       Vue.onMounted(() => {
         if (props.children) {
           document.title = props.children
@@ -53,9 +54,16 @@ const Script = Vue.defineComponent({
   },
   setup(props) {
     const router = useRouter()
+    const dataScript =
+      typeof props.attrs?.type === 'string' &&
+      props.attrs.type !== '' &&
+      props.attrs.type !== 'text/javascript' &&
+      props.attrs.type !== 'module'
 
-    if (!router.isServer) {
+    if (!(isServer ?? router.isServer)) {
       Vue.onMounted(() => {
+        if (dataScript) return
+
         const attrs = props.attrs
         const children = props.children
 
@@ -130,7 +138,15 @@ const Script = Vue.defineComponent({
     }
 
     return () => {
-      if (!router.isServer) {
+      if (!(isServer ?? router.isServer)) {
+        if (dataScript && typeof props.children === 'string') {
+          return Vue.h('script', {
+            ...props.attrs,
+            'data-allow-mismatch': true,
+            innerHTML: props.children,
+          })
+        }
+
         const { src: _src, ...rest } = props.attrs || {}
         return Vue.h('script', {
           ...rest,

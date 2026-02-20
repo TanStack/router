@@ -1,6 +1,6 @@
 # TanStack Start example
 
-This example shows how to use Paraglide with TanStack Start. The source code can be found [here](https://github.com/opral/monorepo/tree/main/inlang/packages/paraglide/paraglide-js/examples/tanstack-start).
+This example shows how to use Paraglide with TanStack Start.
 
 ## Getting started
 
@@ -71,7 +71,7 @@ import handler from '@tanstack/solid-start/server-entry'
 
 export default {
   fetch(req: Request): Promise<Response> {
-    return paraglideMiddleware(req, ({ request }) => handler.fetch(request))
+    return paraglideMiddleware(req, () => handler.fetch(req))
   },
 }
 ```

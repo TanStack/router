@@ -188,7 +188,7 @@ export default function VersionIndex() {
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-center">
           <a
-            href={`https://github.com/tanstack/tanstack.com`}
+            href={`https://github.com/TanStack/tanstack.com`}
             className={`flex items-center gap-2 py-2 px-4 bg-cyan-700 rounded text-white uppercase font-extrabold`}
           >
             <FaGithub /> View TanStack.com Source

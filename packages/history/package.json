@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/history",
-  "version": "1.141.0",
+  "version": "1.154.14",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -56,6 +56,9 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
+  },
+  "devDependencies": {
+    "vite": "*"
   }
 }

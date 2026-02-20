@@ -1,5 +1,6 @@
+import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
-import { dirname, join, relative } from 'node:path'
+import path, { dirname, join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -9,7 +10,7 @@ import {
   rootRoute,
   route,
 } from '@tanstack/virtual-file-routes'
-import { Generator, getConfig } from '../src'
+import { Generator, getConfig, virtualGetRouteNodes } from '../src'
 import type { Config } from '../src'
 
 function makeFolderDir(folder: string) {
@@ -42,24 +43,23 @@ async function traverseDirectory(
 
 function setupConfig(
   folder: string,
-  nonNested: boolean,
   inlineConfig: Partial<Omit<Config, 'routesDirectory'>> = {},
 ) {
-  const {
-    generatedRouteTree = `/routeTree.${nonNested ? 'nonnested.' : ''}gen.ts`,
-    ...rest
-  } = inlineConfig
+  const { generatedRouteTree = `/routeTree.gen.ts`, ...rest } = inlineConfig
   const dir = makeFolderDir(folder)
 
-  const config = getConfig({
-    disableLogging: true,
-    routesDirectory: dir + '/routes',
-    generatedRouteTree: dir + generatedRouteTree,
-    experimental: {
-      nonNestedRoutes: nonNested,
+  const configFilePath = join(dir, 'tsr.config.json')
+  const configDirectory = existsSync(configFilePath) ? dir : undefined
+
+  const config = getConfig(
+    {
+      disableLogging: true,
+      routesDirectory: dir + '/routes',
+      generatedRouteTree: dir + generatedRouteTree,
+      ...rest,
     },
-    ...rest,
-  })
+    configDirectory,
+  )
   return config
 }
 
@@ -69,11 +69,7 @@ async function getRouteTreeFileText(config: Config) {
   return text
 }
 
-function rewriteConfigByFolderName(
-  folderName: string,
-  config: Config,
-  nonNested: boolean,
-) {
+function rewriteConfigByFolderName(folderName: string, config: Config) {
   switch (folderName) {
     case 'append-and-prepend':
       config.routeTreeFileHeader = ['// prepend1', '// prepend2']
@@ -83,6 +79,10 @@ function rewriteConfigByFolderName(
       config.enableRouteTreeFormatting = false
       break
     case 'custom-tokens':
+      config.indexToken = '_1nd3x'
+      config.routeToken = '_r0ut3_'
+      break
+    case 'escaped-custom-tokens':
       config.indexToken = '_1nd3x'
       config.routeToken = '_r0ut3_'
       break
@@ -105,17 +105,21 @@ function rewriteConfigByFolderName(
         config.virtualRouteConfig = virtualRouteConfig
       }
       break
-    case 'virtual-config-file-named-export':
-      config.virtualRouteConfig = './routes.ts'
-      break
-    case 'virtual-config-file-default-export':
-      config.virtualRouteConfig = './routes.ts'
+    case 'virtual-with-escaped-underscore':
+      {
+        // Test case for escaped underscores in physical routes mounted via virtual config
+        // This ensures originalRoutePath is correctly prefixed when paths are updated
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          index('index.tsx'),
+          physical('/api', 'physical-routes'),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
       break
     case 'types-disabled':
       config.disableTypes = true
       config.generatedRouteTree =
-        makeFolderDir(folderName) +
-        `/routeTree.${nonNested ? 'nonnested.' : ''}gen.js`
+        makeFolderDir(folderName) + `/routeTree.gen.js`
       break
     case 'custom-scaffolding':
       config.customScaffolding = {
@@ -153,6 +157,44 @@ function rewriteConfigByFolderName(
     case 'routeFilePrefix':
       config.routeFileIgnorePattern = 'ignoredPattern'
       config.routeFilePrefix = 'r&'
+      break
+    case 'regex-tokens-inline':
+      // Test inline config with RegExp tokens
+      // indexToken matches patterns like "index-page", "home-page"
+      // routeToken matches patterns like "main-layout", "protected-layout"
+      config.indexToken = /[a-z]+-page/
+      config.routeToken = /[a-z]+-layout/
+      break
+    case 'virtual-sibling-routes':
+      {
+        // Test case for issue #5822: Virtual routes should respect explicit sibling relationships
+        // Routes /posts and /posts/$id should remain siblings under the layout,
+        // NOT auto-nested based on path matching
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          layout('_main', 'layout.tsx', [
+            route('/posts', 'posts.tsx'),
+            route('/posts/$id', 'post-detail.tsx'),
+          ]),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
+    case 'virtual-nested-layouts-with-virtual-route':
+      {
+        // Test case for nested layouts with a virtual file-less route in between.
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          index('home.tsx'),
+          layout('first', 'layout/first-layout.tsx', [
+            layout('layout/second-layout.tsx', [
+              route('route-without-file', [
+                route('/layout-a', 'a.tsx'),
+                route('/layout-b', 'b.tsx'),
+              ]),
+            ]),
+          ]),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
       break
     default:
       break
@@ -240,25 +282,26 @@ function shouldThrow(folderName: string) {
   if (folderName === 'duplicate-fullPath') {
     return `Conflicting configuration paths were found for the following routes: "/", "/".`
   }
+  if (folderName === 'virtual-physical-empty-path-conflict-root') {
+    return 'Invalid route path "" was found.'
+  }
+  if (folderName === 'virtual-physical-empty-path-conflict-virtual') {
+    return `Conflicting configuration paths were found for the following routes: "/about", "/about".`
+  }
   return undefined
 }
 
 describe('generator works', async () => {
   const folderNames = await readDir()
 
-  const testCases = folderNames.flatMap((folderName) => [
-    { folderName, nonNested: true },
-    { folderName, nonNested: false },
-  ])
-
-  it.each(testCases)(
+  it.each(folderNames)(
     'should wire-up the routes for a "%s" tree',
-    async ({ folderName, nonNested }) => {
+    async (folderName) => {
       const folderRoot = makeFolderDir(folderName)
 
-      const config = await setupConfig(folderName, nonNested)
+      const config = await setupConfig(folderName)
 
-      rewriteConfigByFolderName(folderName, config, nonNested)
+      rewriteConfigByFolderName(folderName, config)
 
       await preprocess(folderName)
       const generator = new Generator({ config, root: folderRoot })
@@ -275,7 +318,7 @@ describe('generator works', async () => {
 
         const generatedRouteTree = await getRouteTreeFileText(config)
 
-        const snapshotPath = `routeTree.${nonNested ? 'nonnested.' : ''}snapshot.${config.disableTypes ? 'js' : 'ts'}`
+        const snapshotPath = `routeTree.snapshot.${config.disableTypes ? 'js' : 'ts'}`
 
         await expect(generatedRouteTree).toMatchFileSnapshot(
           join('generator', folderName, snapshotPath),
@@ -286,22 +329,38 @@ describe('generator works', async () => {
     },
   )
 
-  it.each(testCases)(
+  it('physical() mount returns absolute physicalDirectories', async () => {
+    const folderName = 'virtual-physical-no-prefix'
+    const dir = makeFolderDir(folderName)
+    const config = await setupConfig(folderName)
+
+    const { physicalDirectories } = await virtualGetRouteNodes(config, dir, {
+      indexTokenSegmentRegex: /^(?:index)$/,
+      routeTokenSegmentRegex: /^(?:route)$/,
+    })
+
+    expect(physicalDirectories.length).toBeGreaterThan(0)
+    physicalDirectories.forEach((physicalDir) => {
+      expect(path.isAbsolute(physicalDir)).toBe(true)
+    })
+  })
+
+  it.each(folderNames)(
     'should create directory for routeTree if it does not exist',
-    async ({ nonNested }) => {
+    async () => {
       const folderName = 'only-root'
       const folderRoot = makeFolderDir(folderName)
       let pathCreated = false
 
-      const config = await setupConfig(folderName, nonNested)
+      const config = await setupConfig(folderName)
 
-      rewriteConfigByFolderName(folderName, config, nonNested)
+      rewriteConfigByFolderName(folderName, config)
 
       await preprocess(folderName)
       config.generatedRouteTree = join(
         folderRoot,
         'generated',
-        `/routeTree.${nonNested ? 'nonnested.' : ''}gen.ts`,
+        `/routeTree.gen.ts`,
       )
       const generator = new Generator({ config, root: folderRoot })
 
@@ -322,7 +381,7 @@ describe('generator works', async () => {
           join(
             'generator',
             folderName,
-            `routeTree.${nonNested ? 'nonnested.' : ''}generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
+            `routeTree.generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
           ),
         )
 

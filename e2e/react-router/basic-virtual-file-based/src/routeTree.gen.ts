@@ -178,7 +178,7 @@ declare module '@tanstack/react-router' {
     '/_first': {
       id: '/_first'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof layoutFirstLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -199,7 +199,7 @@ declare module '@tanstack/react-router' {
     '/_first/_second': {
       id: '/_first/_second'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof layoutSecondLayoutRouteImport
       parentRoute: typeof layoutFirstLayoutRoute
     }

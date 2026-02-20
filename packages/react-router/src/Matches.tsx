@@ -1,6 +1,7 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
 import { rootRouteId } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -45,10 +46,6 @@ declare module '@tanstack/router-core' {
  * Internal component that renders the router's active match tree with
  * suspense, error, and not-found boundaries. Rendered by `RouterProvider`.
  */
-/**
- * Internal component that renders the router's active match tree with
- * suspense, error, and not-found boundaries. Rendered by `RouterProvider`.
- */
 export function Matches() {
   const router = useRouter()
   const rootRoute: AnyRoute = router.routesById[rootRouteId]
@@ -60,13 +57,14 @@ export function Matches() {
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.ssr)
+    (isServer ?? router.isServer) ||
+    (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : React.Suspense
 
   const inner = (
     <ResolvedSuspense fallback={pendingElement}>
-      {!router.isServer && <Transitioner />}
+      {!(isServer ?? router.isServer) && <Transitioner />}
       <MatchesInner />
     </ResolvedSuspense>
   )
@@ -263,10 +261,6 @@ export function useMatches<
  *
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchesHook
  */
-/**
- * Read the full array of active route matches or select a derived subset
- * from the parent boundary up to (but not including) the current match.
- */
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
@@ -289,10 +283,6 @@ export function useParentMatches<
   } as any)
 }
 
-/**
- * Read the array of active route matches that are children of the current
- * match (or selected parent) in the match tree.
- */
 /**
  * Read the array of active route matches that are children of the current
  * match (or selected parent) in the match tree.
