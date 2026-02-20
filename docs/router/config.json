@@ -83,11 +83,11 @@
           "children": [
             {
               "label": "Migrate from React Router",
-              "to": "installation/react-migrate-from-react-router"
+              "to": "installation/migrate-from-react-router"
             },
             {
               "label": "Migrate from React Location",
-              "to": "installation/react-migrate-from-react-location"
+              "to": "installation/migrate-from-react-location"
             }
           ]
         },
