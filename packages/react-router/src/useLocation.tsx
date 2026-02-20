@@ -48,7 +48,7 @@ export function useLocation<
 ): UseLocationResult<TRouter, TSelected> {
   const router = useRouter<TRouter>()
 
-  return useStore(router.locationStore, (location) =>
+  return useStore(router.stores.location, (location) =>
     opts?.select ? opts.select(location as any) : location,
   ) as UseLocationResult<TRouter, TSelected>
 }

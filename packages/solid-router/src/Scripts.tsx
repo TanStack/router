@@ -6,7 +6,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const assetScripts = useStore(router.activeMatchesSnapshotStore, (matches) => {
+  const assetScripts = useStore(router.stores.activeMatchesSnapshot, (matches) => {
     const assetScripts: Array<RouterManagedTag> = []
     const manifest = router.ssr?.manifest
 
@@ -31,7 +31,7 @@ export const Scripts = () => {
     return assetScripts
   })
 
-  const scripts = useStore(router.activeMatchesSnapshotStore, (matches) => ({
+  const scripts = useStore(router.stores.activeMatchesSnapshot, (matches) => ({
     scripts: (
       matches
         .map((match) => match.scripts!)

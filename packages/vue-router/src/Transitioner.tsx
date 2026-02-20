@@ -30,14 +30,14 @@ export function useTransitionerSetup() {
     return
   }
 
-  const isLoading = useStore(router.isLoadingStore, (value) => value)
+  const isLoading = useStore(router.stores.isLoading, (value) => value)
 
   // Track if we're in a transition - using a ref to track async transitions
   const isTransitioning = Vue.ref(false)
 
   // Track pending state changes
   const hasPendingMatches = useStore(
-    router.hasPendingMatchesStore,
+    router.stores.hasPendingMatches,
     (value) => value,
   )
 
@@ -60,7 +60,7 @@ export function useTransitionerSetup() {
     isTransitioning.value = true
     // Also update the router state so useMatch knows we're transitioning
     try {
-      router.isTransitioningStore.setState(() => true)
+      router.stores.isTransitioning.setState(() => true)
     } catch {
       // Ignore errors if component is unmounted
     }
@@ -71,7 +71,7 @@ export function useTransitionerSetup() {
       Vue.nextTick(() => {
         try {
           isTransitioning.value = false
-          router.isTransitioningStore.setState(() => false)
+          router.stores.isTransitioning.setState(() => false)
         } catch {
           // Ignore errors if component is unmounted
         }
@@ -140,10 +140,10 @@ export function useTransitionerSetup() {
   Vue.onMounted(() => {
     isMounted.value = true
     if (!isAnyPending.value) {
-      if (router.statusStore.state === 'pending') {
+      if (router.stores.status.state === 'pending') {
         batch(() => {
-          router.statusStore.setState(() => 'idle')
-          router.resolvedLocationStore.setState(() => router.locationStore.state)
+          router.stores.status.setState(() => 'idle')
+          router.stores.resolvedLocation.setState(() => router.stores.location.state)
         })
       }
     }
@@ -214,8 +214,8 @@ export function useTransitionerSetup() {
     try {
       if (!newValue && router.state.status === 'pending') {
         batch(() => {
-          router.statusStore.setState(() => 'idle')
-          router.resolvedLocationStore.setState(() => router.locationStore.state)
+          router.stores.status.setState(() => 'idle')
+          router.stores.resolvedLocation.setState(() => router.stores.location.state)
         })
       }
 

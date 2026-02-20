@@ -25,7 +25,7 @@ if (import.meta.hot) {
         router.resolvePathCache.clear();
         walkReplaceSegmentTree(newRoute, router.processedTree.segmentTree);
         const filter = m => m.routeId === oldRoute.id;
-        if (router.activeMatchesSnapshotStore.state.find(filter) || router.pendingMatchesSnapshotStore.state.find(filter)) {
+        if (router.stores.activeMatchesSnapshot.state.find(filter) || router.stores.pendingMatchesSnapshot.state.find(filter)) {
           router.invalidate({
             filter
           });

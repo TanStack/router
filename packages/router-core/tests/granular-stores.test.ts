@@ -57,16 +57,16 @@ describe('granular stores', () => {
       id: `${match.id}__cached_${index}`,
     }))
 
-    router.reconcilePendingPool(pendingMatches)
-    router.reconcileCachedPool(cachedMatches)
+    router.stores.setPendingMatches(pendingMatches)
+    router.stores.setCachedMatches(cachedMatches)
 
-    expect(router.matchesIdStore.state).toEqual(
+    expect(router.stores.matchesId.state).toEqual(
       activeMatches.map((match) => match.id),
     )
-    expect(router.pendingMatchesIdStore.state).toEqual(
+    expect(router.stores.pendingMatchesId.state).toEqual(
       pendingMatches.map((match) => match.id),
     )
-    expect(router.cachedMatchesIdStore.state).toEqual(
+    expect(router.stores.cachedMatchesId.state).toEqual(
       cachedMatches.map((match) => match.id),
     )
   })
@@ -85,8 +85,8 @@ describe('granular stores', () => {
       throw new Error('Expected root and leaf matches to exist')
     }
 
-    const rootStore = router.byIdStore.state[rootMatch.id]
-    const leafStore = router.byIdStore.state[leafMatch.id]
+    const rootStore = router.stores.byId.state[rootMatch.id]
+    const leafStore = router.stores.byId.state[leafMatch.id]
 
     expect(rootStore).toBeDefined()
     expect(leafStore).toBeDefined()
@@ -132,10 +132,10 @@ describe('granular stores', () => {
       status: 'success' as const,
     }
 
-    router.reconcilePendingPool([pendingDuplicate])
-    router.reconcileCachedPool([cachedDuplicate])
+    router.stores.setPendingMatches([pendingDuplicate])
+    router.stores.setCachedMatches([cachedDuplicate])
 
-    router.setActiveMatches(
+    router.stores.setActiveMatches(
       router.state.matches.map((match) =>
         match.id === duplicatedId
           ? {
@@ -147,9 +147,9 @@ describe('granular stores', () => {
       ),
     )
 
-    expect(router.byIdStore.state[duplicatedId]?.state.status).toBe('error')
-    expect(router.pendingMatchesSnapshotStore.state[0]?.status).toBe('pending')
-    expect(router.cachedMatchesSnapshotStore.state[0]?.status).toBe('success')
+    expect(router.stores.byId.state[duplicatedId]?.state.status).toBe('error')
+    expect(router.stores.pendingMatchesSnapshot.state[0]?.status).toBe('pending')
+    expect(router.stores.cachedMatchesSnapshot.state[0]?.status).toBe('success')
     expect(router.getMatch(duplicatedId)?.status).toBe('success')
   })
 
@@ -172,14 +172,14 @@ describe('granular stores', () => {
       status: 'pending',
       isLoading: true,
     }))
-    router.reconcilePendingPool([pendingMatch])
+    router.stores.setPendingMatches([pendingMatch])
 
     cleanupSubscription(unsubscribeCompat)
 
-    expect(router.statusStore.state).toBe('pending')
-    expect(router.isLoadingStore.state).toBe(true)
-    expect(router.pendingMatchesIdStore.state).toEqual([pendingMatch.id])
-    expect(router.pendingMatchesSnapshotStore.state[0]?.status).toBe('pending')
+    expect(router.stores.status.state).toBe('pending')
+    expect(router.stores.isLoading.state).toBe(true)
+    expect(router.stores.pendingMatchesId.state).toEqual([pendingMatch.id])
+    expect(router.stores.pendingMatchesSnapshot.state[0]?.status).toBe('pending')
     expect(router.__store.state.status).toBe('pending')
     expect(compatNotifications).toBeGreaterThan(0)
   })

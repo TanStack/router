@@ -90,19 +90,19 @@ export function useLinkProps<
     }
   })
 
-  const currentLocation = useStore(router.locationStore, (location) => ({
+  const currentLocation = useStore(router.stores.location, (location) => ({
     pathname: location.pathname,
     search: location.search,
     hash: location.hash,
   }))
   const currentSearch = useStore(
-    router.locationStore,
+    router.stores.location,
     (location) => location.searchStr,
     { equal: Object.is },
   )
   const from = options.from
     ? Vue.computed(() => options.from)
-    : useStore(router.lastMatchRouteFullPathStore, (fullPath) => fullPath)
+    : useStore(router.stores.lastMatchRouteFullPath, (fullPath) => fullPath)
 
   const _options = Vue.computed(() => ({
     ...options,

@@ -14,9 +14,9 @@ export function Transitioner() {
 
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
-  const isLoading = useStore(router.isLoadingStore, (value) => value)
+  const isLoading = useStore(router.stores.isLoading, (value) => value)
   const hasPendingMatches = useStore(
-    router.hasPendingMatchesStore,
+    router.stores.hasPendingMatches,
     (value) => value,
   )
 
@@ -117,8 +117,8 @@ export function Transitioner() {
       })
 
       batch(() => {
-        router.statusStore.setState(() => 'idle')
-        router.resolvedLocationStore.setState(() => router.locationStore.state)
+        router.stores.status.setState(() => 'idle')
+        router.stores.resolvedLocation.setState(() => router.stores.location.state)
       })
 
       if (changeInfo.hrefChanged) {

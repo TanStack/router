@@ -7,7 +7,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 
 export const useTags = () => {
   const router = useRouter()
-  const matches = useStore(router.activeMatchesSnapshotStore, (value) => value)
+  const matches = useStore(router.stores.activeMatchesSnapshot, (value) => value)
 
   const meta = Vue.computed<Array<RouterManagedTag>>(() => {
     const resultMeta: Array<RouterManagedTag> = []

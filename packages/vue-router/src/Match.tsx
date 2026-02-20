@@ -35,12 +35,12 @@ export const Match = Vue.defineComponent({
     // Track the last known routeId to handle stale props during same-route transitions.
     const lastKnownRouteId = Vue.shallowRef<string | undefined>(undefined)
     const activeMatchStore = useStore(
-      router.byIdStore,
+      router.stores.byId,
       (stores) => stores[props.matchId],
       { equal: Object.is },
     )
     const fallbackMatchStore = useStore(
-      router.byRouteIdStore,
+      router.stores.byRouteId,
       (stores) => {
         const routeId = lastKnownRouteId.value
         return routeId ? stores[routeId] : undefined
@@ -54,12 +54,12 @@ export const Match = Vue.defineComponent({
       selectedMatchStore,
       (value) => value,
     )
-    const activeMatchIds = useStore(router.matchesIdStore, (ids) => ids)
+    const activeMatchIds = useStore(router.stores.matchesId, (ids) => ids)
     const pendingMatchIds = useStore(
-      router.pendingMatchesIdStore,
+      router.stores.pendingMatchesId,
       (ids) => ids,
     )
-    const loadedAt = useStore(router.loadedAtStore, (value) => value)
+    const loadedAt = useStore(router.stores.loadedAt, (value) => value)
 
     Vue.watchEffect(() => {
       const match = activeMatch.value
@@ -82,7 +82,7 @@ export const Match = Vue.defineComponent({
         matchIndex > 0 ? activeMatchIds.value[matchIndex - 1] : undefined
       const parentRouteId =
         parentMatchId
-          ? ((router.byIdStore.state[parentMatchId]?.state.routeId as string) ??
+          ? ((router.stores.byId.state[parentMatchId]?.state.routeId as string) ??
             null)
           : null
 
@@ -272,7 +272,7 @@ const OnRendered = Vue.defineComponent({
     const router = useRouter()
 
     const location = useStore(
-      router.resolvedLocationStore,
+      router.stores.resolvedLocation,
       (resolvedLocation) => resolvedLocation?.state.key,
     )
 
@@ -301,12 +301,12 @@ export const MatchInner = Vue.defineComponent({
     const router = useRouter()
     const lastKnownRouteId = Vue.shallowRef<string | undefined>(undefined)
     const activeMatchStore = useStore(
-      router.byIdStore,
+      router.stores.byId,
       (stores) => stores[props.matchId],
       { equal: Object.is },
     )
     const fallbackMatchStore = useStore(
-      router.byRouteIdStore,
+      router.stores.byRouteId,
       (stores) => {
         const routeId = lastKnownRouteId.value
         return routeId ? stores[routeId] : undefined
@@ -492,9 +492,9 @@ export const Outlet = Vue.defineComponent({
     const router = useRouter()
     const matchId = Vue.inject(matchContext)
     const safeMatchId = Vue.computed(() => matchId?.value || '')
-    const activeMatchIds = useStore(router.matchesIdStore, (ids) => ids)
+    const activeMatchIds = useStore(router.stores.matchesId, (ids) => ids)
     const parentMatchStore = useStore(
-      router.byIdStore,
+      router.stores.byId,
       (stores) => {
         const id = safeMatchId.value
         return id ? stores[id] : undefined
@@ -522,7 +522,7 @@ export const Outlet = Vue.defineComponent({
     })
 
     const childMatchStore = useStore(
-      router.byIdStore,
+      router.stores.byId,
       (stores) => {
         const id = childMatchId.value
         return id ? stores[id] : undefined

@@ -11,7 +11,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const useTags = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const routeMeta = useStore(router.activeMatchesSnapshotStore, (matches) => {
+  const routeMeta = useStore(router.stores.activeMatchesSnapshot, (matches) => {
     return matches.map((match) => match.meta!).filter(Boolean)
   })
 
@@ -86,7 +86,7 @@ export const useTags = () => {
     return resultMeta
   }, [routeMeta, nonce])
 
-  const links = useStore(router.activeMatchesSnapshotStore, (matches) => {
+  const links = useStore(router.stores.activeMatchesSnapshot, (matches) => {
       const constructed = matches
         .map((match) => match.links!)
         .filter(Boolean)
@@ -123,7 +123,7 @@ export const useTags = () => {
       return [...constructed, ...assets]
   })
 
-  const preloadLinks = useStore(router.activeMatchesSnapshotStore, (matches) => {
+  const preloadLinks = useStore(router.stores.activeMatchesSnapshot, (matches) => {
       const preloadLinks: Array<RouterManagedTag> = []
 
       matches
@@ -147,7 +147,7 @@ export const useTags = () => {
   })
 
   const styles = useStore(
-    router.activeMatchesSnapshotStore,
+    router.stores.activeMatchesSnapshot,
     (matches) =>
       (
         matches
@@ -165,7 +165,7 @@ export const useTags = () => {
   )
 
   const headScripts: Array<RouterManagedTag> = useStore(
-    router.activeMatchesSnapshotStore,
+    router.stores.activeMatchesSnapshot,
     (matches) =>
       (
         matches

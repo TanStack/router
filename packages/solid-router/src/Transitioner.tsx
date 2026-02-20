@@ -12,7 +12,7 @@ import { usePrevious } from './utils'
 export function Transitioner() {
   const router = useRouter()
   let mountLoadForRouter = { router, mounted: false }
-  const isLoading = useStore(router.isLoadingStore, (value) => value)
+  const isLoading = useStore(router.stores.isLoading, (value) => value)
 
   if (isServer ?? router.isServer) {
     return null
@@ -22,7 +22,7 @@ export function Transitioner() {
 
   // Track pending state changes
   const hasPendingMatches = useStore(
-    router.hasPendingMatchesStore,
+    router.stores.hasPendingMatches,
     (value) => value,
   )
 
@@ -133,8 +133,8 @@ export function Transitioner() {
           })
 
           batch(() => {
-            router.statusStore.setState(() => 'idle')
-            router.resolvedLocationStore.setState(() => router.locationStore.state)
+            router.stores.status.setState(() => 'idle')
+            router.stores.resolvedLocation.setState(() => router.stores.location.state)
           })
 
           if (changeInfo.hrefChanged) {

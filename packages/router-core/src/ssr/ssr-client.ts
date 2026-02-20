@@ -68,7 +68,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   }
 
   // Hydrate the router state
-  const matches = router.matchRoutes(router.locationStore.state)
+  const matches = router.matchRoutes(router.stores.location.state)
 
   // kick off loading the route chunks
   const routeChunkPromise = Promise.all(
@@ -136,7 +136,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }
   })
 
-  router.setActiveMatches(matches)
+  router.stores.setActiveMatches(matches)
 
   // Allow the user to handle custom hydration data
   await router.options.hydrate?.(dehydratedData)
@@ -144,8 +144,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // now that all necessary data is hydrated:
   // 1) fully reconstruct the route context
   // 2) execute `head()` and `scripts()` for each match
-  const activeMatches = router.activeMatchesSnapshotStore.state
-  const location = router.locationStore.state
+  const activeMatches = router.stores.activeMatchesSnapshot.state
+  const location = router.stores.location.state
   await Promise.all(
     activeMatches.map(async (match) => {
       try {
@@ -256,10 +256,10 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         // ensure router is not in status 'pending' anymore
         // this usually happens in Transitioner but if loading synchronously resolves,
         // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
-        if (router.statusStore.state === 'pending') {
+        if (router.stores.status.state === 'pending') {
           batch(() => {
-            router.statusStore.setState(() => 'idle')
-            router.resolvedLocationStore.setState(() => router.locationStore.state)
+            router.stores.status.setState(() => 'idle')
+            router.stores.resolvedLocation.setState(() => router.stores.location.state)
           })
         }
         // hide the pending component once the load is finished

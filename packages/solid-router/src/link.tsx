@@ -121,13 +121,13 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  const currentLocation = useStore(router.locationStore, (location) => ({
+  const currentLocation = useStore(router.stores.location, (location) => ({
     pathname: location.pathname,
     search: location.search,
     hash: location.hash,
   }))
   const currentSearch = useStore(
-    router.locationStore,
+    router.stores.location,
     (location) => location.searchStr,
     { equal: Object.is },
   )

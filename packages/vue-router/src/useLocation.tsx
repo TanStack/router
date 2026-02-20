@@ -26,7 +26,7 @@ export function useLocation<
 ): Vue.Ref<UseLocationResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
   return useStore(
-    router.locationStore,
+    router.stores.location,
     (location) => (opts?.select ? opts.select(location as any) : location) as any,
   ) as Vue.Ref<UseLocationResult<TRouter, TSelected>>
 }

@@ -77,8 +77,8 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = useStore(router.firstMatchIdStore, (id) => id)
-  const resetKey = useStore(router.loadedAtStore, (loadedAt) => loadedAt)
+  const matchId = useStore(router.stores.firstMatchId, (id) => id)
+  const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
 
   const matchComponent = matchId ? <Match matchId={matchId} /> : null
 
@@ -132,7 +132,7 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  useStore(router.matchRouteReactivityStore, (d) => d)
+  useStore(router.stores.matchRouteReactivity, (d) => d)
 
   return React.useCallback(
     <
@@ -229,7 +229,7 @@ export function useMatches<
       undefined,
     )
 
-  return useStore(router.activeMatchesSnapshotStore, (matches) => {
+  return useStore(router.stores.activeMatchesSnapshot, (matches) => {
     const selected = opts?.select
       ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
       : (matches as any)

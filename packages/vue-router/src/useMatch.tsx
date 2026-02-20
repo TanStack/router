@@ -81,7 +81,7 @@ export function useMatch<
     ? injectDummyPendingMatch()
     : injectPendingMatch()
   const activeMatchStore = useStore(
-    opts.from ? router.byRouteIdStore : router.byIdStore,
+    opts.from ? router.stores.byRouteId : router.stores.byId,
     (stores) => {
       const key = opts.from ?? nearestMatchId.value
       return key ? stores[key] : undefined
@@ -90,13 +90,13 @@ export function useMatch<
   )
   const hasPendingRouteMatch = opts.from
     ? useStore(
-        router.pendingByRouteIdStore,
+        router.stores.pendingByRouteId,
         (stores) => Boolean(stores[opts.from as string]),
         { equal: Object.is },
       )
     : undefined
   const isTransitioning = useStore(
-    router.isTransitioningStore,
+    router.stores.isTransitioning,
     (value) => value,
     { equal: Object.is },
   )

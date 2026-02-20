@@ -27,7 +27,7 @@ import type {
 function useActiveMatchStore(matchId: string, shouldThrow: boolean = true) {
   const router = useRouter()
 
-  return useStore(router.byIdStore, (activeStores) => {
+  return useStore(router.stores.byId, (activeStores) => {
     const store = activeStores[matchId]
     if (shouldThrow) {
       invariant(
@@ -46,12 +46,12 @@ export const Match = React.memo(function MatchImpl({
 }) {
   const router = useRouter()
   const matchStore = useActiveMatchStore(matchId)
-  const resetKey = useStore(router.loadedAtStore, (loadedAt) => loadedAt)
+  const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
   const match = useStore(matchStore, (value) => value!)
-  const parentMatchId = useStore(router.matchesIdStore, (ids) => ids[ids.findIndex((id) => id === matchId) - 1])
+  const parentMatchId = useStore(router.stores.matchesId, (ids) => ids[ids.findIndex((id) => id === matchId) - 1])
   const matchState = React.useMemo(() => {
     const parentRouteId = parentMatchId
-      ? router.byIdStore.state[parentMatchId]?.state.routeId
+      ? router.stores.byId.state[parentMatchId]?.state.routeId
       : undefined
 
     return {
@@ -60,7 +60,7 @@ export const Match = React.memo(function MatchImpl({
       _displayPending: match._displayPending,
       parentRouteId: parentRouteId as string | undefined,
     }
-  }, [parentMatchId, match, router.byIdStore.state])
+  }, [parentMatchId, match, router.stores.byId.state])
 
   const route: AnyRoute = router.routesById[matchState.routeId]
 
@@ -312,7 +312,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()
   const matchId = React.useContext(matchContext)
-  const parentMatchStore = useStore(router.byIdStore, (stores) =>
+  const parentMatchStore = useStore(router.stores.byId, (stores) =>
     matchId ? stores[matchId] : undefined,
   )
   const routeId = useStore(
@@ -327,7 +327,7 @@ export const Outlet = React.memo(function OutletImpl() {
     (match) => match?.globalNotFound ?? false,
   )
 
-  const childMatchId = useStore(router.matchesIdStore, (ids) => {
+  const childMatchId = useStore(router.stores.matchesId, (ids) => {
     const index = ids.findIndex((id) => id === matchId)
     return ids[index + 1]
   })

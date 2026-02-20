@@ -26,7 +26,7 @@ export function useLocation<
 ): Accessor<UseLocationResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
   return useStore(
-    router.locationStore,
+    router.stores.location,
     (location) => (opts?.select ? opts.select(location as any) : location) as any,
   ) as Accessor<UseLocationResult<TRouter, TSelected>>
 }

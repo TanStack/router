@@ -288,7 +288,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
 
     createEffect(() => {
-      const pendingMatchesStore = router().pendingMatchesSnapshotStore
+      const pendingMatchesStore = router().stores.pendingMatchesSnapshot
       setPendingMatches(pendingMatchesStore.state)
       const subscription = pendingMatchesStore.subscribe(() => {
         setPendingMatches(pendingMatchesStore.state)
@@ -297,7 +297,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     })
 
     createEffect(() => {
-      const cachedMatchesStore = router().cachedMatchesSnapshotStore
+      const cachedMatchesStore = router().stores.cachedMatchesSnapshot
       setCachedMatches(cachedMatchesStore.state)
       const subscription = cachedMatchesStore.subscribe(() => {
         setCachedMatches(cachedMatchesStore.state)

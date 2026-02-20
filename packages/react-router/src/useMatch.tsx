@@ -114,7 +114,7 @@ export function useMatch<
     )
 
   const matchStore = useStore(
-    opts.from ? router.byRouteIdStore : router.byIdStore,
+    opts.from ? router.stores.byRouteId : router.stores.byId,
     (activeMatchStores) => {
       const key = opts.from ?? nearestMatchId
       const store = key ? activeMatchStores[key] : undefined

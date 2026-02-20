@@ -78,12 +78,12 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 }
 
 function getRequestHeaders(opts: { router: AnyRouter }): Headers {
-  const matchHeaders = opts.router.activeMatchesSnapshotStore.state.map<AnyHeaders>(
+  const matchHeaders = opts.router.stores.activeMatchesSnapshot.state.map<AnyHeaders>(
     (match) => match.headers,
   )
 
   // Handle Redirects
-  const redirect = opts.router.redirectStore.state
+  const redirect = opts.router.stores.redirect.state
   if (redirect) {
     matchHeaders.push(redirect.headers)
   }

@@ -378,7 +378,7 @@ export function useLinkProps<
 
   // Subscribe to current location for active-state checks and relative-link resolution.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocation = useStore(router.locationStore, (location) => ({
+  const currentLocation = useStore(router.stores.location, (location) => ({
     pathname: location.pathname,
     search: location.search,
     hash: location.hash,
@@ -387,7 +387,7 @@ export function useLinkProps<
   // This avoids broad match-array subscriptions while still invalidating href
   // computation when the leaf route/params context changes.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLeafMatchId = useStore(router.lastMatchIdStore, (id) => id)
+  const currentLeafMatchId = useStore(router.stores.lastMatchId, (id) => id)
   const from = options.from
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
