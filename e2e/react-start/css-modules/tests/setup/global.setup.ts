@@ -49,6 +49,22 @@ async function preOptimizeDevServer(baseURL: string) {
     await page.getByTestId('after-quote-styled').waitFor({ state: 'visible' })
     await page.waitForLoadState('networkidle')
 
+    // Exercise client-side navigation so Vite discovers any remaining deps
+    // that only load via the client router (not full-page navigations).
+    await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' })
+    await page.getByTestId('global-styled').waitFor({ state: 'visible' })
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('nav-modules').click()
+    await page.waitForURL('**/modules')
+    await page.getByTestId('module-card').waitFor({ state: 'visible' })
+    await page.waitForLoadState('networkidle')
+
+    await page.getByTestId('nav-home').click()
+    await page.waitForURL(/\/([^/]*)(\/)?($|\?)/)
+    await page.getByTestId('global-styled').waitFor({ state: 'visible' })
+    await page.waitForLoadState('networkidle')
+
     // Ensure we end in a stable state. Vite's optimize step triggers a reload;
     // this waits until no further navigations happen for a short window.
     for (let i = 0; i < 40; i++) {
