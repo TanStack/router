@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { useStore } from '@tanstack/solid-store'
+import { useStore } from './useStore'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
@@ -33,7 +33,12 @@ function useActiveMatchStore(matchId: Solid.Accessor<string | undefined>) {
 function useResolvedActiveMatch(matchId: Solid.Accessor<string | undefined>) {
   const router = useRouter()
   const activeMatchStore = useActiveMatchStore(matchId)
-  const activeMatch = useStoreOfStoresValue(activeMatchStore, (value) => value)
+  const activeMatch = useStoreOfStoresValue(
+    activeMatchStore,
+    (value) => value,
+    Object.is,
+    router,
+  )
 
   // Keep the last seen routeId to recover from transient stale matchId values
   // during same-route transitions (e.g. loaderDepsHash changes).
@@ -49,6 +54,8 @@ function useResolvedActiveMatch(matchId: Solid.Accessor<string | undefined>) {
   const fallbackMatch = useStoreOfStoresValue(
     fallbackMatchStore,
     (value) => value,
+    Object.is,
+    router,
   )
 
   return Solid.createMemo(() => activeMatch() ?? fallbackMatch())
@@ -404,6 +411,8 @@ export const Outlet = () => {
   const routeId = useStoreOfStoresValue(
     parentMatchStore,
     (parentMatch) => parentMatch?.routeId as string | undefined,
+    Object.is,
+    router,
   )
   const route = Solid.createMemo(() =>
     routeId() ? router.routesById[routeId()!] : undefined,
@@ -412,6 +421,8 @@ export const Outlet = () => {
   const parentGlobalNotFound = useStoreOfStoresValue(
     parentMatchStore,
     (parentMatch) => parentMatch?.globalNotFound ?? false,
+    Object.is,
+    router,
   )
 
   const matchIds = useStore(router.matchesIdStore, (ids) => ids)
@@ -425,6 +436,8 @@ export const Outlet = () => {
   const childMatchStatus = useStoreOfStoresValue(
     childMatchStore,
     (childMatch) => childMatch?.status,
+    Object.is,
+    router,
   )
 
   // Only show not-found if we're not in a redirected state

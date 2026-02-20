@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from '@tanstack/vue-store'
+import { useStore } from './useStore'
 import warning from 'tiny-warning'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary } from './CatchBoundary'

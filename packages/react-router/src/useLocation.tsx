@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/react-store'
+import { useStore } from './useStore'
 import { useRouter } from './useRouter'
 import type {
   StructuralSharingOption,

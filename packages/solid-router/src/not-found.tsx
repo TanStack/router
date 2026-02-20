@@ -1,5 +1,5 @@
 import { isNotFound } from '@tanstack/router-core'
-import { useStore } from '@tanstack/solid-store'
+import { useStore } from './useStore'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import type * as Solid from 'solid-js'

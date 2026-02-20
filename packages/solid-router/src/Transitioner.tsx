@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { batch, useStore } from '@tanstack/solid-store'
+import { batch, useStore } from './useStore'
 import {
   getLocationChangeInfo,
   handleHashScroll,

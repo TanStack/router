@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/solid-store'
+import { useStore } from './useStore'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,

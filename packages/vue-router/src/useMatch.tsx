@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from '@tanstack/vue-store'
+import { useStore } from './useStore'
 import {
   injectDummyMatch,
   injectDummyPendingMatch,
@@ -104,6 +104,8 @@ export function useMatch<
   const match = useStoreOfStoresValue(
     Vue.computed(() => activeMatchStore.value),
     (value) => value,
+    Object.is,
+    router,
   )
 
   const result = Vue.computed(() => {

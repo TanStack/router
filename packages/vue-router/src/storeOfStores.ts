@@ -1,4 +1,6 @@
 import * as Vue from 'vue'
+import { isServer } from '@tanstack/router-core/isServer'
+import type { AnyRouter } from '@tanstack/router-core'
 
 type UnsubscribeResult = (() => void) | { unsubscribe: () => void }
 
@@ -19,7 +21,14 @@ export function useStoreOfStoresValue<TValue, TSelected>(
   storeRef: Vue.Ref<SubscribableStore<TValue> | undefined>,
   selector: (value: TValue | undefined) => TSelected,
   equal: (a: TSelected, b: TSelected) => boolean = Object.is,
+  router?: Pick<AnyRouter, 'isServer'>,
 ): Readonly<Vue.Ref<TSelected>> {
+  const _isServer = isServer ?? router?.isServer ?? false
+  if (_isServer) {
+    const selected = Vue.shallowRef(selector(storeRef.value?.state)) as Vue.ShallowRef<TSelected>
+    return Vue.readonly(selected) as Readonly<Vue.Ref<TSelected>>
+  }
+
   const selected = Vue.shallowRef(selector(storeRef.value?.state)) as Vue.ShallowRef<TSelected>
 
   Vue.watch(

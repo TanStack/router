@@ -1,4 +1,6 @@
 import * as Solid from 'solid-js'
+import { isServer } from '@tanstack/router-core/isServer'
+import type { AnyRouter } from '@tanstack/router-core'
 
 type UnsubscribeResult = (() => void) | { unsubscribe: () => void }
 
@@ -19,7 +21,14 @@ export function useStoreOfStoresValue<TValue, TSelected>(
   storeAccessor: Solid.Accessor<SubscribableStore<TValue> | undefined>,
   selector: (value: TValue | undefined) => TSelected,
   equal: (a: TSelected, b: TSelected) => boolean = Object.is,
+  router?: Pick<AnyRouter, 'isServer'>,
 ): Solid.Accessor<TSelected> {
+  const _isServer = isServer ?? router?.isServer ?? false
+  if (_isServer) {
+    const selected = selector(storeAccessor()?.state)
+    return (() => selected) as Solid.Accessor<TSelected>
+  }
+
   const [selected, setSelected] = Solid.createSignal(
     selector(storeAccessor()?.state),
   )

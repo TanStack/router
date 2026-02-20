@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useStore } from './useStore'
 import { replaceEqualDeep } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import { dummyMatchContext, matchContext } from './matchContext'

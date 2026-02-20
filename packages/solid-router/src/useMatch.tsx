@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import { useStore } from '@tanstack/solid-store'
+import { useStore } from './useStore'
 import {
   dummyMatchContext,
   dummyPendingMatchContext,
@@ -108,6 +108,8 @@ export function useMatch<
   const match = useStoreOfStoresValue(
     () => activeMatchStore(),
     (value) => value,
+    Object.is,
+    router,
   )
 
   return Solid.createMemo(() => {

@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/solid-store'
+import { useStore } from './useStore'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type {

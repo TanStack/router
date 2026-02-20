@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from '@tanstack/vue-store'
+import { useStore } from './useStore'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
@@ -53,6 +53,8 @@ export const Match = Vue.defineComponent({
     const activeMatch = useStoreOfStoresValue(
       selectedMatchStore,
       (value) => value,
+      Object.is,
+      router,
     )
     const activeMatchIds = useStore(router.matchesIdStore, (ids) => ids)
     const pendingMatchIds = useStore(
@@ -319,6 +321,8 @@ export const MatchInner = Vue.defineComponent({
     const activeMatch = useStoreOfStoresValue(
       selectedMatchStore,
       (value) => value,
+      Object.is,
+      router,
     )
 
     Vue.watchEffect(() => {
@@ -505,6 +509,8 @@ export const Outlet = Vue.defineComponent({
     const routeId = useStoreOfStoresValue(
       parentMatchStore,
       (parentMatch) => parentMatch?.routeId as string | undefined,
+      Object.is,
+      router,
     )
 
     const route = Vue.computed(() =>
@@ -514,6 +520,8 @@ export const Outlet = Vue.defineComponent({
     const parentGlobalNotFound = useStoreOfStoresValue(
       parentMatchStore,
       (parentMatch) => parentMatch?.globalNotFound ?? false,
+      Object.is,
+      router,
     )
 
     const childMatchId = Vue.computed(() => {
@@ -533,6 +541,8 @@ export const Outlet = Vue.defineComponent({
     const childMatch = useStoreOfStoresValue(
       childMatchStore,
       (value) => value,
+      Object.is,
+      router,
     )
 
     const childMatchData = Vue.computed(() => {

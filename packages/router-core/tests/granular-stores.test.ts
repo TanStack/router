@@ -12,7 +12,7 @@ function cleanupSubscription(subscription: UnsubscribeResult) {
   subscription.unsubscribe()
 }
 
-function createRouter() {
+function createRouter(opts?: { isServer?: boolean }) {
   const rootRoute = new BaseRootRoute({})
 
   const indexRoute = new BaseRoute({
@@ -37,6 +37,7 @@ function createRouter() {
     history: createMemoryHistory({
       initialEntries: ['/'],
     }),
+    isServer: opts?.isServer,
   })
 }
 
@@ -182,5 +183,57 @@ describe('granular stores', () => {
     expect(router.pendingMatchesSnapshotStore.state[0]?.status).toBe('pending')
     expect(router.__store.state.status).toBe('pending')
     expect(compatNotifications).toBeGreaterThan(0)
+  })
+
+  test('uses non-reactive stores on the server', async () => {
+    const router = createRouter({ isServer: true })
+    await router.navigate({ to: '/posts/123' })
+
+    const leafMatch = router.state.matches[1]
+    expect(leafMatch).toBeDefined()
+    if (!leafMatch) {
+      throw new Error('Expected leaf match to exist')
+    }
+
+    const leafStore = router.byIdStore.state[leafMatch.id]
+    expect(leafStore).toBeDefined()
+    if (!leafStore) {
+      throw new Error('Expected leaf match store to exist')
+    }
+
+    let compatNotifications = 0
+    let statusNotifications = 0
+    let leafNotifications = 0
+
+    const unsubscribeCompat = router.__store.subscribe(() => {
+      compatNotifications++
+    })
+    const unsubscribeStatus = router.statusStore.subscribe(() => {
+      statusNotifications++
+    })
+    const unsubscribeLeaf = leafStore.subscribe(() => {
+      leafNotifications++
+    })
+
+    router.__store.setState((s) => ({
+      ...s,
+      status: 'pending',
+      isLoading: true,
+    }))
+    router.updateMatch(leafMatch.id, (prev) => ({
+      ...prev,
+      status: 'pending',
+    }))
+
+    cleanupSubscription(unsubscribeCompat)
+    cleanupSubscription(unsubscribeStatus)
+    cleanupSubscription(unsubscribeLeaf)
+
+    expect(router.__store.state.status).toBe('pending')
+    expect(router.isLoadingStore.state).toBe(true)
+    expect(router.getMatch(leafMatch.id)?.status).toBe('pending')
+    expect(compatNotifications).toBe(0)
+    expect(statusNotifications).toBe(0)
+    expect(leafNotifications).toBe(0)
   })
 })

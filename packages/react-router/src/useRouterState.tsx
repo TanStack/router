@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/react-store'
+import { useStore } from './useStore'
 import { useRef } from 'react'
 import { replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'

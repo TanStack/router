@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useStore } from './useStore'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { isNotFound } from '@tanstack/router-core'
-import { useStore } from '@tanstack/react-store'
+import { useStore } from './useStore'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import type { ErrorInfo } from 'react'

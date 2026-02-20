@@ -908,6 +908,53 @@ declare global {
 type MatchStore = Store<AnyRouteMatch>
 type MatchStoreLookup = Record<string, MatchStore>
 type ReadableStore<TValue> = Pick<Store<TValue>, 'state' | 'get' | 'subscribe'>
+type WritableStore<TValue> = Pick<
+  Store<TValue>,
+  'state' | 'get' | 'setState' | 'subscribe'
+>
+type StoreObserverOrFn<TValue> = Parameters<Store<TValue>['subscribe']>[0]
+type StoreSubscription = ReturnType<Store<unknown>['subscribe']>
+
+const noopSubscription: StoreSubscription = {
+  unsubscribe: () => {},
+}
+
+function createServerStore<TValue>(initialValue: TValue): WritableStore<TValue> {
+  let state = initialValue
+
+  const store = {
+    get state() {
+      return state
+    },
+    get() {
+      return state
+    },
+    setState(updater: (prev: TValue) => TValue) {
+      state = updater(state)
+    },
+    subscribe(_observerOrFn: StoreObserverOrFn<TValue>) {
+      return noopSubscription
+    },
+  } as WritableStore<TValue>
+
+  return store
+}
+
+function createServerDerivedStore<TValue>(
+  getValue: () => TValue,
+): ReadableStore<TValue> {
+  return {
+    get state() {
+      return getValue()
+    },
+    get() {
+      return getValue()
+    },
+    subscribe(_observerOrFn: StoreObserverOrFn<TValue>) {
+      return noopSubscription
+    },
+  }
+}
 
 function arraysEqual<T>(a: Array<T>, b: Array<T>) {
   if (a === b) return true
@@ -987,6 +1034,7 @@ export class RouterCore<
     resolvedLocationHref: string | undefined
     status: RouterState<TRouteTree>['status']
   }>
+  private usingServerStoreGraph = false
   private compatStateStore!: ReadableStore<RouterState<any>>
   /** @internal */
   activeMatchStoresById = new Map<string, MatchStore>()
@@ -1070,6 +1118,27 @@ export class RouterCore<
       }
     }
 
+    if (this.usingServerStoreGraph) {
+      for (const nextMatch of nextMatches) {
+        const existing = pool.get(nextMatch.id)
+        if (!existing) {
+          pool.set(nextMatch.id, createServerStore(nextMatch) as MatchStore)
+          continue
+        }
+
+        if (existing.state !== nextMatch) {
+          existing.setState(() => nextMatch)
+        }
+      }
+
+      if (!arraysEqual(idStore.state, nextIds)) {
+        idsChanged = true
+        idStore.setState(() => nextIds)
+      }
+
+      return idsChanged
+    }
+
     batch(() => {
       for (const nextMatch of nextMatches) {
         const existing = pool.get(nextMatch.id)
@@ -1093,6 +1162,31 @@ export class RouterCore<
   }
 
   private reconcileActivePool = (nextMatches: Array<AnyRouteMatch>) => {
+    if (this.usingServerStoreGraph) {
+      const idsChanged = this.reconcileMatchPool(
+        nextMatches,
+        this.activeMatchStoresById,
+        this.matchesIdStore,
+      )
+      if (idsChanged) {
+        const byId: MatchStoreLookup = {}
+        const byRouteId: MatchStoreLookup = {}
+
+        this.matchesIdStore.state.forEach((matchId) => {
+          const store = this.activeMatchStoresById.get(matchId)
+          if (!store) return
+          byId[matchId] = store
+          byRouteId[store.state.routeId] = store
+        })
+        this.byIdStore.setState(() => byId)
+
+        if (!lookupEqual(this.byRouteIdStore.state, byRouteId)) {
+          this.byRouteIdStore.setState(() => byRouteId)
+        }
+      }
+      return
+    }
+
     batch(() => {
       const idsChanged = this.reconcileMatchPool(
         nextMatches,
@@ -1120,6 +1214,28 @@ export class RouterCore<
 
   /** @internal */
   reconcilePendingPool = (nextMatches: Array<AnyRouteMatch>) => {
+    if (this.usingServerStoreGraph) {
+      const idsChanged = this.reconcileMatchPool(
+        nextMatches,
+        this.pendingMatchStoresById,
+        this.pendingMatchesIdStore,
+      )
+      if (idsChanged) {
+        const byRouteId: MatchStoreLookup = {}
+
+        this.pendingMatchesIdStore.state.forEach((matchId) => {
+          const store = this.pendingMatchStoresById.get(matchId)
+          if (!store) return
+          byRouteId[store.state.routeId] = store
+        })
+
+        if (!lookupEqual(this.pendingByRouteIdStore.state, byRouteId)) {
+          this.pendingByRouteIdStore.setState(() => byRouteId)
+        }
+      }
+      return
+    }
+
     batch(() => {
       const idsChanged = this.reconcileMatchPool(
         nextMatches,
@@ -1170,13 +1286,130 @@ export class RouterCore<
     this.reconcileActivePool(nextMatches)
   }
 
-  /**
-   * TODO:
-   * 1. remove reactivity during SSR using isServer gate. This includes `createStore` and all setState calls, `batch`, `useStore`.
-   * 2. externalize the store setup to a separate function so most it is isolated, attach to router on a `_stores` key.
-   * 3. investigate whether we could use a ≠ signal graph for each adapter: that externalized function (see 2) could be called by the `createRouter` of each adapter (thus could be different in each), and then Solid could actually use its native signals.
-   */
   private setupRouterStores = (initialState: RouterState<TRouteTree>) => {
+    const _isServer = isServer ?? this.isServer
+
+    if (_isServer) {
+      this.usingServerStoreGraph = true
+      this.statusStore = createServerStore(initialState.status) as Store<
+        RouterState<TRouteTree>['status']
+      >
+      this.loadedAtStore = createServerStore(initialState.loadedAt) as Store<number>
+      this.isLoadingStore = createServerStore(initialState.isLoading) as Store<boolean>
+      this.isTransitioningStore = createServerStore(
+        initialState.isTransitioning,
+      ) as Store<boolean>
+      this.locationStore = createServerStore(initialState.location) as Store<
+        ParsedLocation<FullSearchSchema<TRouteTree>>
+      >
+      this.resolvedLocationStore = createServerStore(
+        initialState.resolvedLocation,
+      ) as Store<ParsedLocation<FullSearchSchema<TRouteTree>> | undefined>
+      this.statusCodeStore = createServerStore(initialState.statusCode) as Store<number>
+      this.redirectStore = createServerStore(initialState.redirect) as Store<
+        AnyRedirect | undefined
+      >
+      this.matchesIdStore = createServerStore<Array<string>>([]) as Store<
+        Array<string>
+      >
+      this.pendingMatchesIdStore = createServerStore<Array<string>>([]) as Store<
+        Array<string>
+      >
+      this.cachedMatchesIdStore = createServerStore<Array<string>>([]) as Store<
+        Array<string>
+      >
+      this.byIdStore = createServerStore<MatchStoreLookup>({}) as Store<
+        MatchStoreLookup
+      >
+      this.byRouteIdStore = createServerStore<MatchStoreLookup>({}) as Store<
+        MatchStoreLookup
+      >
+      this.pendingByRouteIdStore = createServerStore<MatchStoreLookup>({}) as Store<
+        MatchStoreLookup
+      >
+      this.activeMatchesSnapshotStore = createServerDerivedStore(() =>
+        this.readPoolMatches(
+          this.activeMatchStoresById,
+          this.matchesIdStore.state,
+        ),
+      )
+      this.pendingMatchesSnapshotStore = createServerDerivedStore(() =>
+        this.readPoolMatches(
+          this.pendingMatchStoresById,
+          this.pendingMatchesIdStore.state,
+        ),
+      )
+      this.cachedMatchesSnapshotStore = createServerDerivedStore(() =>
+        this.readPoolMatches(
+          this.cachedMatchStoresById,
+          this.cachedMatchesIdStore.state,
+        ),
+      )
+      this.firstMatchIdStore = createServerDerivedStore(
+        () => this.matchesIdStore.state[0],
+      )
+      this.lastMatchIdStore = createServerDerivedStore(() =>
+        last(this.matchesIdStore.state),
+      )
+      this.lastMatchRouteFullPathStore = createServerDerivedStore(() => {
+        const lastMatchId = this.lastMatchIdStore.state
+        if (!lastMatchId) {
+          return undefined
+        }
+        return this.activeMatchStoresById.get(lastMatchId)?.state.fullPath
+      })
+      this.hasPendingMatchesStore = createServerDerivedStore(() =>
+        this.matchesIdStore.state.some((matchId) => {
+          const store = this.activeMatchStoresById.get(matchId)
+          return store?.state.status === 'pending'
+        }),
+      )
+      this.matchRouteReactivityStore = createServerDerivedStore(() => ({
+        locationHref: this.locationStore.state.href,
+        resolvedLocationHref: this.resolvedLocationStore.state?.href,
+        status: this.statusStore.state,
+      }))
+
+      this.reconcileActivePool(initialState.matches as Array<AnyRouteMatch>)
+
+      this.compatStateStore = createServerDerivedStore(() => ({
+        status: this.statusStore.state,
+        loadedAt: this.loadedAtStore.state,
+        isLoading: this.isLoadingStore.state,
+        isTransitioning: this.isTransitioningStore.state,
+        matches: this.activeMatchesSnapshotStore.state,
+        location: this.locationStore.state,
+        resolvedLocation: this.resolvedLocationStore.state,
+        statusCode: this.statusCodeStore.state,
+        redirect: this.redirectStore.state,
+      }))
+
+      const router = this
+      this.__store = {
+        get state() {
+          return router.compatStateStore.state
+        },
+        get() {
+          return router.compatStateStore.state
+        },
+        setState: (updater) => {
+          const nextState = updater(router.compatStateStore.state)
+          router.statusStore.setState(() => nextState.status)
+          router.loadedAtStore.setState(() => nextState.loadedAt)
+          router.isLoadingStore.setState(() => nextState.isLoading)
+          router.isTransitioningStore.setState(() => nextState.isTransitioning)
+          router.locationStore.setState(() => nextState.location)
+          router.resolvedLocationStore.setState(() => nextState.resolvedLocation)
+          router.statusCodeStore.setState(() => nextState.statusCode)
+          router.redirectStore.setState(() => nextState.redirect)
+          router.reconcileActivePool(nextState.matches)
+        },
+        subscribe: (_observerOrFn) => noopSubscription,
+      } as Store<RouterState<TRouteTree>>
+      return
+    }
+
+    this.usingServerStoreGraph = false
     this.statusStore = createStore(initialState.status)
     this.loadedAtStore = createStore(initialState.loadedAt)
     this.isLoadingStore = createStore(initialState.isLoading)

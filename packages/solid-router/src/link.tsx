@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { useStore } from '@tanstack/solid-store'
+import { useStore } from './useStore'
 
 import { mergeRefs } from '@solid-primitives/refs'
 
