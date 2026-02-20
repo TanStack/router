@@ -59,7 +59,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
   },
   "dependencies": {
     "clsx": "^2.1.1",

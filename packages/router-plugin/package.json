@@ -101,7 +101,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@babel/core": "^7.28.5",

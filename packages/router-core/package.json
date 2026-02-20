@@ -156,7 +156,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
