@@ -80,73 +80,55 @@ export function useMatch<
   const hasPendingNearestMatch = opts.from
     ? injectDummyPendingMatch()
     : injectPendingMatch()
-  const pendingError = Vue.ref<Error | null>(null)
-  const activeStores = useStore(
+  const activeMatchStore = useStore(
     opts.from ? router.byRouteIdStore : router.byIdStore,
-    (stores) => stores,
+    (stores) => {
+      const key = opts.from ?? nearestMatchId.value
+      return key ? stores[key] : undefined
+    },
+    { equal: Object.is },
   )
-  const pendingRouteStores = opts.from
-    ? useStore(router.pendingByRouteIdStore, (stores) => stores)
+  const hasPendingRouteMatch = opts.from
+    ? useStore(
+        router.pendingByRouteIdStore,
+        (stores) => Boolean(stores[opts.from as string]),
+        { equal: Object.is },
+      )
     : undefined
   const isTransitioning = useStore(
     router.isTransitioningStore,
     (value) => value,
+    { equal: Object.is },
   )
 
-  const selectionState = Vue.computed(() => {
-    const key = opts.from ?? nearestMatchId.value
-    const store = key ? activeStores.value[key] : undefined
-
-    const shouldThrowError = (() => {
-      if (store) {
-        return false
-      }
-
-      const hasPendingMatch = opts.from
-        ? Boolean(pendingRouteStores?.value[opts.from])
-        : hasPendingNearestMatch.value
-
-      return !hasPendingMatch && !isTransitioning.value && (opts.shouldThrow ?? true)
-    })()
-
-    return { store, shouldThrowError }
-  })
-
-  Vue.watchEffect(() => {
-    if (selectionState.value.shouldThrowError) {
-      pendingError.value = new Error(
-        `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-      )
-      return
-    }
-
-    pendingError.value = null
-  })
-
   const match = useStoreOfStoresValue(
-    Vue.computed(() => selectionState.value.store),
+    Vue.computed(() => activeMatchStore.value),
     (value) => value,
   )
 
-  // Ensure missing-match errors are initialized even if callers never read
-  // from the returned ref (e.g. tests that only call useMatch for side effects).
-  selectionState.value
-
   const result = Vue.computed(() => {
-    if (pendingError.value) {
-      throw pendingError.value
-    }
-
-    if (match.value === undefined) {
+    const selectedMatch = match.value
+    if (selectedMatch === undefined) {
+      const hasPendingMatch = opts.from
+        ? Boolean(hasPendingRouteMatch?.value)
+        : hasPendingNearestMatch.value
+      const shouldThrowError =
+        !hasPendingMatch &&
+        !isTransitioning.value &&
+        (opts.shouldThrow ?? true)
+      if (shouldThrowError) {
+        throw new Error(
+          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
+      }
       return undefined
     }
 
-    return opts.select ? opts.select(match.value as any) : match.value
+    return opts.select ? opts.select(selectedMatch as any) : selectedMatch
   }) as any
 
-  if (pendingError.value) {
-    throw pendingError.value
-  }
+  // Keep eager throw behavior for setups that call useMatch for side effects only.
+  result.value
 
   return result
 }

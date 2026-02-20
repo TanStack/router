@@ -84,15 +84,18 @@ export function useMatch<
     opts.from ? dummyPendingMatchContext : pendingMatchContext,
   )
 
-  const activeStores = useStore(
+  const activeMatchStore = useStore(
     opts.from ? router.byRouteIdStore : router.byIdStore,
-    (stores) => stores,
+    (stores) => {
+      const key = opts.from ?? nearestMatchId()
+      return key ? stores[key] : undefined
+    },
     { equal: Object.is },
   )
-  const pendingRouteStores = opts.from
+  const hasPendingRouteMatch = opts.from
     ? useStore(
         router.pendingByRouteIdStore,
-        (stores) => stores,
+        (stores) => Boolean(stores[opts.from as string]),
         { equal: Object.is },
       )
     : undefined
@@ -102,41 +105,24 @@ export function useMatch<
     { equal: Object.is },
   )
 
-  const selectionState = Solid.createMemo(() => {
-    const key = opts.from ?? nearestMatchId()
-    const stores = activeStores()
-    const store = key ? stores[key] : undefined
-    const shouldThrowError = (() => {
-      if (store) {
-        return false
-      }
-
-      const hasPendingMatch = opts.from
-        ? Boolean(pendingRouteStores?.()[opts.from])
-        : hasPendingNearestMatch()
-
-      return !hasPendingMatch && !isTransitioning() && (opts.shouldThrow ?? true)
-    })()
-
-    return { store, shouldThrowError }
-  })
-
-  Solid.createEffect(() => {
-    const selected = selectionState()
-    invariant(
-      !selected.shouldThrowError,
-      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-    )
-  })
-
   const match = useStoreOfStoresValue(
-    () => selectionState().store,
+    () => activeMatchStore(),
     (value) => value,
   )
 
   return Solid.createMemo(() => {
     const selectedMatch = match()
     if (selectedMatch === undefined) {
+      const hasPendingMatch = opts.from
+        ? Boolean(hasPendingRouteMatch?.())
+        : hasPendingNearestMatch()
+      const shouldThrowError =
+        !hasPendingMatch && !isTransitioning() && (opts.shouldThrow ?? true)
+
+      invariant(
+        !shouldThrowError,
+        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      )
       return undefined
     }
 
