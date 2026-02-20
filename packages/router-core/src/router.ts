@@ -923,7 +923,7 @@ type RouterStateStore<TState> = {
   setState: (updater: (prev: TState) => TState) => void
 }
 
-const filterRedirectedMatches = (matches: Array<AnyRouteMatch>) =>{
+const filterRedirectedMatches = (matches: Array<AnyRouteMatch>) => {
   const filtered = matches.filter((d) => d.status !== 'redirected')
   return filtered.length === matches.length ? matches : filtered
 }
