@@ -874,13 +874,6 @@ export function getLocationChangeInfo(routerState: {
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
 }
 
-function filterRedirectedCachedMatches<T extends { status: string }>(
-  matches: Array<T>,
-): Array<T> {
-  const filtered = matches.filter((d) => d.status !== 'redirected')
-  return filtered.length === matches.length ? matches : filtered
-}
-
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
@@ -930,8 +923,10 @@ type RouterStateStore<TState> = {
   setState: (updater: (prev: TState) => TState) => void
 }
 
-const filterRedirectedMatches = (matches: Array<AnyRouteMatch>) =>
-  matches.filter((match) => match.status !== 'redirected')
+const filterRedirectedMatches = (matches: Array<AnyRouteMatch>) =>{
+  const filtered = matches.filter((d) => d.status !== 'redirected')
+  return filtered.length === matches.length ? matches : filtered
+}
 
 function createServerStore<TState>(
   initialState: TState,
