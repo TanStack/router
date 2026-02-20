@@ -57,11 +57,8 @@ describe('granular stores', () => {
       id: `${match.id}__cached_${index}`,
     }))
 
-    router.__store.setState((s) => ({
-      ...s,
-      pendingMatches,
-      cachedMatches,
-    }))
+    router.reconcilePendingPool(pendingMatches)
+    router.reconcileCachedPool(cachedMatches)
 
     expect(router.matchesIdStore.state).toEqual(
       activeMatches.map((match) => match.id),
@@ -135,15 +132,11 @@ describe('granular stores', () => {
       status: 'success' as const,
     }
 
-    router.__store.setState((s) => ({
-      ...s,
-      pendingMatches: [pendingDuplicate],
-      cachedMatches: [cachedDuplicate],
-    }))
+    router.reconcilePendingPool([pendingDuplicate])
+    router.reconcileCachedPool([cachedDuplicate])
 
-    router.__store.setState((s) => ({
-      ...s,
-      matches: s.matches.map((match) =>
+    router.setActiveMatches(
+      router.state.matches.map((match) =>
         match.id === duplicatedId
           ? {
               ...match,
@@ -152,7 +145,7 @@ describe('granular stores', () => {
             }
           : match,
       ),
-    }))
+    )
 
     expect(router.byIdStore.state[duplicatedId]?.state.status).toBe('error')
     expect(router.pendingMatchesSnapshotStore.state[0]?.status).toBe('pending')
@@ -178,8 +171,8 @@ describe('granular stores', () => {
       ...s,
       status: 'pending',
       isLoading: true,
-      pendingMatches: [pendingMatch],
     }))
+    router.reconcilePendingPool([pendingMatch])
 
     cleanupSubscription(unsubscribeCompat)
 

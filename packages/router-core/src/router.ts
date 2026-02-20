@@ -1118,7 +1118,8 @@ export class RouterCore<
     })
   }
 
-  private reconcilePendingPool = (nextMatches: Array<AnyRouteMatch>) => {
+  /** @internal */
+  reconcilePendingPool = (nextMatches: Array<AnyRouteMatch>) => {
     batch(() => {
       const idsChanged = this.reconcileMatchPool(
         nextMatches,
@@ -1141,7 +1142,8 @@ export class RouterCore<
     })
   }
 
-  private reconcileCachedPool = (nextMatches: Array<AnyRouteMatch>) => {
+  /** @internal */
+  reconcileCachedPool = (nextMatches: Array<AnyRouteMatch>) => {
     this.reconcileMatchPool(
       nextMatches,
       this.cachedMatchStoresById,
