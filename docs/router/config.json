@@ -87,7 +87,7 @@
             },
             {
               "label": "Migrate from React Location",
-              "to": "framework/react/installation/migrate-from-react-location"
+              "to": "installation/react-migrate-from-react-location"
             }
           ]
         },
