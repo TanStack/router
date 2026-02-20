@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-start-client",
-  "version": "1.161.1",
+  "version": "1.161.3",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -69,6 +69,7 @@
     "@testing-library/vue": "^8.1.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
+    "vite": "*",
     "vue": "^3.5.25"
   },
   "peerDependencies": {
