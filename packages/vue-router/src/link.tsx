@@ -94,8 +94,12 @@ export function useLinkProps<
     pathname: location.pathname,
     search: location.search,
     hash: location.hash,
-    searchStr: location.searchStr,
   }))
+  const currentSearch = useStore(
+    router.locationStore,
+    (location) => location.searchStr,
+    { equal: Object.is },
+  )
   const from = options.from
     ? Vue.computed(() => options.from)
     : useStore(router.lastMatchRouteFullPathStore, (fullPath) => fullPath)
@@ -107,7 +111,7 @@ export function useLinkProps<
 
   const next = Vue.computed(() => {
     // Depend on search to rebuild when search changes
-    currentLocation.value.searchStr
+    currentSearch.value
     return router.buildLocation(_options.value as any)
   })
 
