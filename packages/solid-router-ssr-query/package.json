@@ -61,7 +61,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/router-ssr-query-core": "workspace:*"
@@ -71,6 +71,7 @@
     "@tanstack/solid-router": "workspace:*",
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "^1.9.10",
+    "vite": "*",
     "vite-plugin-solid": "^2.11.10"
   },
   "peerDependencies": {

@@ -59,7 +59,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/router-devtools-core": "workspace:*"
@@ -68,7 +68,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "react": ">=19",
     "react-dom": ">=19",
-    "vite": "^7.3.1"
+    "vite": "*"
   },
   "peerDependencies": {
     "@tanstack/react-router": "workspace:^",

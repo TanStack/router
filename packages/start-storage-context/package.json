@@ -60,5 +60,8 @@
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "*"
   }
 }

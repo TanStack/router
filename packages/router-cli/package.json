@@ -63,7 +63,7 @@
     "bin/**"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",
@@ -71,6 +71,7 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@types/yargs": "^17.0.33"
+    "@types/yargs": "^17.0.33",
+    "vite": "*"
   }
 }

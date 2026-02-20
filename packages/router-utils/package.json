@@ -60,7 +60,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@babel/core": "^7.28.5",
@@ -76,6 +76,7 @@
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
     "@types/babel__generator": "^7.27.0",
-    "@types/diff": "^7.0.2"
+    "@types/diff": "^7.0.2",
+    "vite": "*"
   }
 }

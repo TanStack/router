@@ -67,7 +67,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
@@ -86,6 +86,7 @@
     "@vitejs/plugin-vue": "^5.2.3",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "combinate": "^1.1.11",
+    "vite": "*",
     "vue": "^3.5.25",
     "zod": "^3.23.8"
   },

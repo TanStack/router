@@ -93,7 +93,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
@@ -111,6 +111,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vibe-rules": "^0.2.57",
+    "vite": "*",
     "zod": "^3.24.2"
   },
   "peerDependencies": {

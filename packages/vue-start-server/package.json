@@ -67,6 +67,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "typescript": "^5.7.2",
+    "vite": "*",
     "vue": "^3.5.25"
   },
   "peerDependencies": {

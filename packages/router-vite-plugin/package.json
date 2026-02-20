@@ -61,9 +61,12 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/router-plugin": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "*"
   }
 }

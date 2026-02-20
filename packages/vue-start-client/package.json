@@ -69,6 +69,7 @@
     "@testing-library/vue": "^8.1.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@vitejs/plugin-vue-jsx": "^4.1.2",
+    "vite": "*",
     "vue": "^3.5.25"
   },
   "peerDependencies": {

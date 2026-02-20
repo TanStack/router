@@ -62,7 +62,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:*",
@@ -75,6 +75,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/react-router": "workspace:*"
+    "@tanstack/react-router": "workspace:*",
+    "vite": "*"
   }
 }
