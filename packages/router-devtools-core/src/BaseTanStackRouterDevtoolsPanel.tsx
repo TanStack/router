@@ -290,10 +290,10 @@ export const BaseTanStackRouterDevtoolsPanel =
     createEffect(() => {
       const matchesStore = router().internalStore
       setDevtoolsMatches(matchesStore.state)
-      const unsubscribe = matchesStore.subscribe((state) =>
-        setDevtoolsMatches(state.currentVal),
+      const subscription = matchesStore.subscribe((state) =>
+        setDevtoolsMatches(state),
       )
-      onCleanup(unsubscribe)
+      onCleanup(() => subscription.unsubscribe())
     })
 
     createEffect(() => {

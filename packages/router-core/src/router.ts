@@ -1,4 +1,4 @@
-import { Store } from '@tanstack/store'
+import { createStore } from '@tanstack/store'
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import { batch } from './utils/batch'
@@ -55,6 +55,7 @@ import type {
   ParsedHistoryState,
   RouterHistory,
 } from '@tanstack/history'
+import type { Store } from '@tanstack/store'
 
 import type {
   Awaitable,
@@ -1132,7 +1133,7 @@ export class RouterCore<
           getInitialRouterState(this.latestLocation),
         ) as unknown as Store<any>
       } else {
-        this.__store = new Store(getInitialRouterState(this.latestLocation))
+        this.__store = createStore(getInitialRouterState(this.latestLocation))
 
         setupScrollRestoration(this)
       }
@@ -1148,7 +1149,7 @@ export class RouterCore<
           initialDevtoolsMatchesState,
         ) as Store<InternalStoreState>
       } else {
-        this.internalStore = new Store(initialDevtoolsMatchesState)
+        this.internalStore = createStore(initialDevtoolsMatchesState)
       }
     }
 
