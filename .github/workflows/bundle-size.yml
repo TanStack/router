@@ -1,0 +1,93 @@
+name: Bundle Size
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  benchmark-pr:
+    name: Benchmark PR
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+
+      - name: Measure Bundle Size
+        run: pnpm nx run tanstack-router-e2e-bundle-size:build --outputStyle=stream --skipRemoteCache
+
+      - name: Read Historical Data (if available)
+        run: |
+          mkdir -p e2e/bundle-size/results
+          if git fetch --depth=1 origin gh-pages; then
+            if git show origin/gh-pages:benchmarks/bundle-size/data.js > e2e/bundle-size/results/history-data.js 2>/dev/null; then
+              echo "Loaded bundle-size history from gh-pages."
+            else
+              rm -f e2e/bundle-size/results/history-data.js
+              echo "No bundle-size history found on gh-pages yet."
+            fi
+          fi
+
+      - name: Build PR Report
+        run: |
+          node scripts/benchmarks/bundle-size/pr-report.mjs \
+            --current e2e/bundle-size/results/current.json \
+            --history e2e/bundle-size/results/history-data.js \
+            --output e2e/bundle-size/results/pr-comment.md \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --dashboard-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/benchmarks/bundle-size/"
+
+      - name: Upsert Sticky PR Comment
+        if: github.event.pull_request.head.repo.fork == false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/benchmarks/common/upsert-pr-comment.mjs \
+            --pr "${{ github.event.pull_request.number }}" \
+            --body-file e2e/bundle-size/results/pr-comment.md
+
+  benchmark-main:
+    name: Publish Bundle Size History
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository_owner == 'TanStack'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+
+      - name: Measure Bundle Size
+        run: pnpm nx run tanstack-router-e2e-bundle-size:build --outputStyle=stream --skipRemoteCache
+
+      - name: Publish Benchmark Dashboard
+        uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b # v1.20.7
+        with:
+          tool: customSmallerIsBetter
+          name: Bundle Size (gzip)
+          output-file-path: e2e/bundle-size/results/benchmark-action.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: benchmarks/bundle-size
+          max-items-in-chart: 200
+          summary-always: true
+          comment-on-alert: false
+          fail-on-alert: false
