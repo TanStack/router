@@ -105,7 +105,7 @@ export class TanStackRouterDevtoolsCore {
       }
 
       return (
-        <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
+        <ShadowDomTargetContext value={shadowDOMTarget}>
           <Devtools
             position={position}
             initialIsOpen={initialIsOpen}
@@ -117,7 +117,7 @@ export class TanStackRouterDevtoolsCore {
             toggleButtonProps={toggleButtonProps}
             containerElement={containerElement}
           />
-        </ShadowDomTargetContext.Provider>
+        </ShadowDomTargetContext>
       )
     }, el)
 

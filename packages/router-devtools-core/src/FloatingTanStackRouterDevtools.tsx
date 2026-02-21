@@ -126,62 +126,70 @@ export function FloatingTanStackRouterDevtools({
 
   const isButtonClosed = isOpen() ?? false
 
-  createEffect(() => {
-    setIsResolvedOpen(isOpen() ?? false)
-  })
+  createEffect(
+    () => isOpen() ?? false,
+    (isOpenValue) => {
+      setIsResolvedOpen(isOpenValue)
+    },
+  )
 
-  createEffect(() => {
-    if (isResolvedOpen()) {
-      const previousValue = rootEl()?.parentElement?.style.paddingBottom
+  createEffect(
+    () => ({ isOpen: isResolvedOpen(), el: rootEl() }),
+    ({ isOpen: isOpenValue, el }) => {
+      if (isOpenValue) {
+        const previousValue = el?.parentElement?.style.paddingBottom
 
-      const run = () => {
-        const containerHeight = panelRef!.getBoundingClientRect().height
-        if (rootEl()?.parentElement) {
+        const run = () => {
+          const containerHeight = panelRef!.getBoundingClientRect().height
+          if (el?.parentElement) {
+            setRootEl((prev) => {
+              if (prev?.parentElement) {
+                prev.parentElement.style.paddingBottom = `${containerHeight}px`
+              }
+              return prev
+            })
+          }
+        }
+
+        run()
+
+        if (typeof window !== 'undefined') {
+          window.addEventListener('resize', run)
+
+          return () => {
+            window.removeEventListener('resize', run)
+            if (el?.parentElement && typeof previousValue === 'string') {
+              setRootEl((prev) => {
+                prev!.parentElement!.style.paddingBottom = previousValue
+                return prev
+              })
+            }
+          }
+        }
+      } else {
+        // Reset padding when devtools are closed
+        if (el?.parentElement) {
           setRootEl((prev) => {
             if (prev?.parentElement) {
-              prev.parentElement.style.paddingBottom = `${containerHeight}px`
+              prev.parentElement.removeAttribute('style')
             }
             return prev
           })
         }
       }
+      return
+    },
+  )
 
-      run()
-
-      if (typeof window !== 'undefined') {
-        window.addEventListener('resize', run)
-
-        return () => {
-          window.removeEventListener('resize', run)
-          if (rootEl()?.parentElement && typeof previousValue === 'string') {
-            setRootEl((prev) => {
-              prev!.parentElement!.style.paddingBottom = previousValue
-              return prev
-            })
-          }
-        }
+  createEffect(
+    () => rootEl(),
+    (el) => {
+      if (el) {
+        const fontSize = getComputedStyle(el).fontSize
+        el.style.setProperty('--tsrd-font-size', fontSize)
       }
-    } else {
-      // Reset padding when devtools are closed
-      if (rootEl()?.parentElement) {
-        setRootEl((prev) => {
-          if (prev?.parentElement) {
-            prev.parentElement.removeAttribute('style')
-          }
-          return prev
-        })
-      }
-    }
-    return
-  })
-
-  createEffect(() => {
-    if (rootEl()) {
-      const el = rootEl()
-      const fontSize = getComputedStyle(el!).fontSize
-      el?.style.setProperty('--tsrd-font-size', fontSize)
-    }
-  })
+    },
+  )
 
   const { style: panelStyle = {}, ...otherPanelProps } = panelProps as {
     style?: Record<string, any>
@@ -239,7 +247,7 @@ export function FloatingTanStackRouterDevtools({
       ref={setRootEl}
       class="TanStackRouterDevtools"
     >
-      <DevtoolsOnCloseContext.Provider
+      <DevtoolsOnCloseContext
         value={{
           onCloseClick: onCloseClick ?? (() => {}),
         }}
@@ -260,7 +268,7 @@ export function FloatingTanStackRouterDevtools({
         {/* ) : (
           <p>No router</p>
         )} */}
-      </DevtoolsOnCloseContext.Provider>
+      </DevtoolsOnCloseContext>
 
       <button
         type="button"
