@@ -37,7 +37,7 @@ The `useParams` hook accepts an optional `options` object.
 
 ## useParams returns
 
-- An object of of the match's and parent match path params or `TSelected` if a `select` function is provided.
+- An object of the match's and parent match path params or `TSelected` if a `select` function is provided.
 
 ## Examples
 
