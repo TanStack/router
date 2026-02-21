@@ -59,7 +59,11 @@ export function escapeRegExp(s: string): string {
 }
 
 /** Get a value from a Map, creating it with `factory` if absent. */
-export function getOrCreate<K, V>(map: Map<K, V>, key: K, factory: () => V): V {
+export function getOrCreate<TKey, TValue>(
+  map: Map<TKey, TValue>,
+  key: TKey,
+  factory: () => TValue,
+): TValue {
   let value = map.get(key)
   if (value === undefined) {
     value = factory()

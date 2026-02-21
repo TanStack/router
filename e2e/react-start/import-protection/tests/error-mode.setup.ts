@@ -1,10 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { execSync, spawn } from 'node:child_process'
-import {  chromium } from '@playwright/test'
+import { chromium } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
-import type {FullConfig} from '@playwright/test';
+import type { FullConfig } from '@playwright/test'
 
 /**
  * Global setup for error-mode E2E tests.

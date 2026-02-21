@@ -78,7 +78,7 @@ function debugLog(...args: Array<unknown>) {
 /** Check if a value matches the debug filter (when set). */
 function matchesDebugFilter(...values: Array<string>): boolean {
   if (!IMPORT_PROTECTION_DEBUG_FILTER) return true
-  return values.some((v) => v.includes(IMPORT_PROTECTION_DEBUG_FILTER!))
+  return values.some((v) => v.includes(IMPORT_PROTECTION_DEBUG_FILTER))
 }
 
 export { RESOLVED_MOCK_MODULE_ID } from './virtualModules'
