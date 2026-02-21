@@ -15,7 +15,7 @@ import {
   useQuery,
 } from '@tanstack/solid-query'
 import './styles.css'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import { createEffect, createMemo } from 'solid-js'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'

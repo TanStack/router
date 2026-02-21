@@ -2,7 +2,7 @@ import { TanStackDevtools } from '@tanstack/solid-devtools'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/solid-router-devtools'
 
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import Header from '../components/Header'
 
 import appCss from '../styles.css?url'

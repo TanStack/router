@@ -7,7 +7,7 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import type { QueryClient } from '@tanstack/solid-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'

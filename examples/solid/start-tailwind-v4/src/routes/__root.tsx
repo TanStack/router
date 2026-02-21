@@ -8,7 +8,7 @@ import {
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import * as React from 'react'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import type { JSX } from 'solid-js'
 import appCss from '~/styles/app.css?url'
 

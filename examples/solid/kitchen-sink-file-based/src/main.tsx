@@ -9,7 +9,7 @@ import { Spinner } from './components/Spinner'
 import { routeTree } from './routeTree.gen'
 import { useSessionStorage } from './hooks/useSessionStorage'
 import './styles.css'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 
 //
 

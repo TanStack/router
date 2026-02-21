@@ -1,4 +1,4 @@
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
 import './styles.css'
 // Import the generated route tree

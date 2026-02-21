@@ -5,7 +5,7 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/solid-router'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import type * as Solid from 'solid-js'
 import appCss from '~/styles/app.css?url'

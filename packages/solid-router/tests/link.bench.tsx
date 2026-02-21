@@ -38,7 +38,7 @@ const InterpolatePathLink = ({
   to,
   params,
   children,
-}: Solid.PropsWithChildren<LinkProps>) => {
+}: Solid.ParentProps<LinkProps>) => {
   const href = interpolatePath({ path: to, params }).interpolatedPath
   return <a href={href}>{children}</a>
 }
@@ -46,7 +46,7 @@ const InterpolatePathLink = ({
 const BuildLocationLink = ({
   children,
   ...props
-}: Solid.PropsWithChildren<LinkProps>) => {
+}: Solid.ParentProps<LinkProps>) => {
   const router = useRouter()
   const { href } = router.buildLocation(props)
   return <a href={href}>{children}</a>

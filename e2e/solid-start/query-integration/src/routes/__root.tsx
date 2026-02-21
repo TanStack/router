@@ -6,7 +6,7 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import type { QueryClient } from '@tanstack/solid-query'
 import appCss from '~/styles/app.css?url'
 

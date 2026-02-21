@@ -8,7 +8,7 @@ import {
 } from '@tanstack/solid-router'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import type * as Solid from 'solid-js'
 import type { QueryClient } from '@tanstack/solid-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'

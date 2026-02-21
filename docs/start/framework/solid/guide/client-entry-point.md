@@ -12,7 +12,7 @@ Getting our html to the client is only half the battle. Once there, we need to h
 
 ```tsx
 // src/client.tsx
-import { hydrate } from 'solid-js/web'
+import { hydrate } from '@solidjs/web'
 import { StartClient, hydrateStart } from '@tanstack/solid-start/client'
 
 hydrateStart().then((router) => {
@@ -29,7 +29,7 @@ You can wrap your client entry point with error boundaries to handle client-side
 ```tsx
 // src/client.tsx
 import { StartClient } from '@tanstack/solid-start/client'
-import { hydrate } from 'solid-js/web'
+import { hydrate } from '@solidjs/web'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 hydrate(
@@ -49,7 +49,7 @@ You may want different behavior in development vs production:
 ```tsx
 // src/client.tsx
 import { StartClient } from '@tanstack/solid-start/client'
-import { hydrate } from 'solid-js/web'
+import { hydrate } from '@solidjs/web'
 
 const App = (
   <>

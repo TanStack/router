@@ -10,7 +10,7 @@ import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { createServerFn } from '@tanstack/solid-start'
 
 import type * as Solid from 'solid-js'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'

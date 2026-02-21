@@ -9,7 +9,7 @@ import {
   useRouterState,
 } from '@tanstack/solid-router'
 import { z } from 'zod'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import type * as Solid from 'solid-js'
 import { ssrSchema } from '~/search'
 import appCss from '~/styles/app.css?url'

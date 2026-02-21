@@ -10,7 +10,7 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { createServerFn } from '@tanstack/solid-start'
 import { getRequest } from '@tanstack/solid-start/server'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import { Show } from 'solid-js'
 import { getSession } from 'start-authjs'
 import type { JSX } from 'solid-js'

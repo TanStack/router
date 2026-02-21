@@ -31,7 +31,7 @@ export default defineConfig({
     },
     rollupOptions: {
       // External packages that should not be bundled into your library.
-      external: ['solid-js', 'solid-js/web', '@tanstack/solid-router'],
+      external: ['solid-js', '@solidjs/web', '@tanstack/solid-router'],
     },
   },
 })

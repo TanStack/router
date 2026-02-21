@@ -6,7 +6,7 @@ import {
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/solid-router-devtools'
 import { TanStackDevtools } from '@tanstack/solid-devtools'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import styles from '../styles.css?url'
 import type { JSX } from 'solid-js/jsx-runtime'
 import { getLocale, locales, setLocale } from '@/paraglide/runtime'

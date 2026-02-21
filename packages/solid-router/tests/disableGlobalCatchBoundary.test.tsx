@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@solidjs/testing-library'
-import { ErrorBoundary } from 'solid-js'
+import { Errored as ErrorBoundary } from 'solid-js'
 import {
   RouterProvider,
   createRootRoute,

@@ -5,7 +5,7 @@ import {
   createRootRoute,
   linkOptions,
 } from '@tanstack/solid-router'
-import { Dynamic } from 'solid-js/web'
+import { Dynamic } from '@solidjs/web'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({

@@ -135,7 +135,7 @@ export function useLinkProps<
     'mask',
     'reloadDocument',
     'unsafeRelative',
-  ])
+  ] as any)
 
   const currentLocation = useRouterState({
     select: (s) => s.location,

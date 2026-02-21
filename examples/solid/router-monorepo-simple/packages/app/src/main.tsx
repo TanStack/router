@@ -1,4 +1,4 @@
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { RouterProvider } from '@tanstack/solid-router'
 import { Outlet, router } from '@router-solid-mono-simple/router'
 import {

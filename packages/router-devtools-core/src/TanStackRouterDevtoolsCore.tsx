@@ -1,5 +1,5 @@
 import { createSignal, lazy } from 'solid-js'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { ShadowDomTargetContext } from './context'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Signal } from 'solid-js'

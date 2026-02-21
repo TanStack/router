@@ -1,4 +1,4 @@
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import { RouterProvider } from '@tanstack/solid-router'
 import { QueryClientProvider } from '@tanstack/solid-query'
 import { queryClient, router } from '@router-solid-mono-solid-query/router'

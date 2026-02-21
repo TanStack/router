@@ -33,7 +33,7 @@ export default defineConfig({
       // External packages that should not be bundled into your library.
       external: [
         'solid-js',
-        'solid-js/web',
+        '@solidjs/web',
         '@tanstack/solid-router',
         '@router-solid-mono-simple/post-feature',
         '@router-solid-mono-simple/router',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderToStringAsync } from 'solid-js/web'
+import { renderToStringAsync } from '@solidjs/web'
 import {
   RouterProvider,
   createMemoryHistory,

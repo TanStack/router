@@ -6,7 +6,7 @@ import {
 } from '@tanstack/solid-router'
 
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import { HydrationScript } from 'solid-js/web'
+import { HydrationScript } from '@solidjs/web'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 

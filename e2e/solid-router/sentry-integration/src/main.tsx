@@ -1,4 +1,4 @@
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 
 import { tanstackRouterBrowserTracingIntegration } from '@sentry/solid/tanstackrouter'
 import * as Sentry from '@sentry/solid'

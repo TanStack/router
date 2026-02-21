@@ -1,7 +1,7 @@
 import { clsx as cx } from 'clsx'
 
 import { createEffect, createMemo, createSignal } from 'solid-js'
-import { Dynamic } from 'solid-js/web'
+import { Dynamic } from '@solidjs/web'
 
 import { DevtoolsOnCloseContext } from './context'
 import { useIsMounted } from './utils'

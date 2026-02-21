@@ -1,4 +1,4 @@
-import { Dynamic } from 'solid-js/web'
+import { Dynamic } from '@solidjs/web'
 import { createEffect, createRenderEffect, createSignal } from 'solid-js'
 import { useTheme } from './theme'
 import useMediaQuery from './useMediaQuery'

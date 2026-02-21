@@ -1,5 +1,5 @@
 import { RouterClient } from '@tanstack/solid-router/ssr/client'
-import { hydrate } from 'solid-js/web'
+import { hydrate } from '@solidjs/web'
 import { createRouter } from './router'
 
 const router = createRouter()

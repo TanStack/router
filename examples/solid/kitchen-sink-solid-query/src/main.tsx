@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import * as Solid from 'solid-js'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/web'
 import {
   ErrorComponent,
   Link,

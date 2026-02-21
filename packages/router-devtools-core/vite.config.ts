@@ -11,7 +11,7 @@ const merged = mergeConfig(
   tanstackViteConfig({
     entry: './src/index.tsx',
     srcDir: './src',
-    bundledDeps: ['solid-js', 'solid-js/web'],
+    bundledDeps: ['solid-js', '@solidjs/web'],
   }),
 )
 

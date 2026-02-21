@@ -234,7 +234,7 @@ hydrateRoot(document, <RouterClient router={router} />)
 # Solid
 
 ```tsx title="src/entry-client.tsx"
-import { hydrate } from 'solid-js/web'
+import { hydrate } from '@solidjs/web'
 import { RouterClient } from '@tanstack/solid-router/ssr/client'
 import { createRouter } from './router'
 
