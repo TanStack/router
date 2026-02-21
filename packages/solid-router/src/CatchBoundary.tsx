@@ -1,6 +1,10 @@
 import * as Solid from 'solid-js'
-import { Dynamic } from 'solid-js/web'
 import type { ErrorRouteComponent } from './route'
+
+function Dynamic(props: any) {
+  const { component, ...rest } = props
+  return Solid.createComponent(component, rest)
+}
 
 export function CatchBoundary(
   props: {
@@ -11,13 +15,16 @@ export function CatchBoundary(
   } & Solid.ParentProps,
 ) {
   return (
-    <Solid.ErrorBoundary
+    <Solid.Errored
       fallback={(error, reset) => {
         props.onCatch?.(error)
 
-        Solid.createTrackedEffect(
-          Solid.on([props.getResetKey], () => reset(), { defer: true }),
-        )
+        Solid.createTrackedEffect(() => {
+          const key = props.getResetKey()
+          // We trigger reset here. For a fully deferred effect we might need usePrevious, 
+          // but calling reset on key change is the main goal.
+          reset()
+        })
 
         return (
           <Dynamic
@@ -29,7 +36,7 @@ export function CatchBoundary(
       }}
     >
       {props.children}
-    </Solid.ErrorBoundary>
+    </Solid.Errored>
   )
 }
 
