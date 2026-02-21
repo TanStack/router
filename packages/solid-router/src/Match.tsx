@@ -170,7 +170,7 @@ function OnRendered() {
       return s.resolvedLocation?.state.__TSR_key
     },
   })
-  Solid.createEffect(
+  Solid.createTrackedEffect(
     Solid.on([location], () => {
       router.emit({
         type: 'onRendered',

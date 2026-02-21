@@ -160,7 +160,7 @@ export function useBlocker(
   opts?: UseBlockerOpts | LegacyBlockerOpts | LegacyBlockerFn,
   condition?: boolean | any,
 ): Solid.Accessor<BlockerResolver> | void {
-  const props = Solid.mergeProps(
+  const props = Solid.merge(
     {
       enableBeforeUnload: true,
       disabled: false,
@@ -180,7 +180,7 @@ export function useBlocker(
     reset: undefined,
   })
 
-  Solid.createEffect(() => {
+  Solid.createTrackedEffect(() => {
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
       function getLocation(
         location: HistoryLocation,
@@ -303,7 +303,8 @@ export function Block<
 export function Block(opts: LegacyPromptProps): SolidNode
 
 export function Block(opts: PromptProps | LegacyPromptProps): SolidNode {
-  const [propsWithChildren, rest] = Solid.splitProps(opts, ['children'])
+  const { children: _, ...rest } = opts
+  const propsWithChildren = { get children() { return opts.children } }
   const args = _resolvePromptBlockerArgs(rest)
 
   const resolver = useBlocker(args)

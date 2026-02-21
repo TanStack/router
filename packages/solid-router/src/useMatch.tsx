@@ -105,7 +105,7 @@ export function useMatch<
 
   // Use createEffect to throw errors outside the reactive selector context
   // This allows error boundaries to properly catch the errors
-  Solid.createEffect(() => {
+  Solid.createTrackedEffect(() => {
     const state = matchState()
     if (state.shouldThrowError) {
       invariant(

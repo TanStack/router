@@ -15,7 +15,7 @@ export function CatchBoundary(
       fallback={(error, reset) => {
         props.onCatch?.(error)
 
-        Solid.createEffect(
+        Solid.createTrackedEffect(
           Solid.on([props.getResetKey], () => reset(), { defer: true }),
         )
 
