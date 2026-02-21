@@ -1883,8 +1883,15 @@ export class RouterCore<
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
-            changedParams = true
-            Object.assign(nextParams, fn(nextParams))
+            try {
+              Object.assign(nextParams, fn(nextParams))
+              changedParams = true
+            } catch {
+              // ignore errors here because they will be properly handled
+              // during route matching via parseParams/extractStrictParams,
+              // which stores the error on the match and renders the
+              // route's errorComponent
+            }
           }
         }
       }
