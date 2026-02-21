@@ -19,7 +19,7 @@ export const RouterContextProvider = Vue.defineComponent({
   },
   setup(props, { attrs, slots }) {
     const router = props.router as AnyRouter
-    const restAttrs = attrs as Record<string, any>
+    const restAttrs = attrs
 
     // Allow the router to update options on the router instance
     router.update({
@@ -67,7 +67,7 @@ export const RouterProvider = Vue.defineComponent({
     // Rest of router options will be passed as attrs
   },
   setup(props, { attrs }) {
-    const restAttrs = attrs as Record<string, any>
+    const restAttrs = attrs
 
     return () => {
       return Vue.h(

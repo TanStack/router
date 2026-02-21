@@ -15,13 +15,13 @@ The `useLoaderData` hook accepts an `options` object.
 - The route id of the closest parent match
 - Optional, but recommended for full type safety.
 - If `opts.strict` is `true`, TypeScript will warn for this option if it is not provided.
-- If `opts.strict` is `false`, TypeScript will provided loosened types for the returned loader data.
+- If `opts.strict` is `false`, TypeScript will provide loosened types for the returned loader data.
 
 ### `opts.strict` option
 
 - Type: `boolean`
 - Optional - `default: true`
-- If `false`, the `opts.from` option will be ignored and types will be loosened to to reflect the shared types of all possible loader data.
+- If `false`, the `opts.from` option will be ignored and types will be loosened to reflect the shared types of all possible loader data.
 
 ### `opts.select` option
 
