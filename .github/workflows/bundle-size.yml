@@ -81,7 +81,7 @@ jobs:
         uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b # v1.20.7
         with:
           tool: customSmallerIsBetter
-          benchmark-name: Bundle Size (gzip)
+          name: Bundle Size (gzip)
           output-file-path: e2e/bundle-size/results/benchmark-action.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
