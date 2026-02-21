@@ -12,11 +12,7 @@ import {
 } from '@tanstack/router-core'
 
 import { isServer } from '@tanstack/router-core/isServer'
-function Dynamic(props: any) {
-  const { component, ...rest } = props
-  if (!component) return null;
-  return Solid.createComponent(component, rest)
-}
+import { Dynamic } from '@solidjs/web'
 
 function splitProps<T extends Record<string, any>, K extends keyof T>(
   props: T,

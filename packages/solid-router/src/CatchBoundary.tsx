@@ -1,11 +1,7 @@
 import * as Solid from 'solid-js'
+import { Dynamic } from '@solidjs/web'
 import type { ErrorRouteComponent } from './route'
 
-function Dynamic(props: any) {
-  const { component, ...rest } = props
-  if (!component) return null;
-  return Solid.createComponent(component, rest)
-}
 
 export function CatchBoundary(
   props: {

@@ -1,12 +1,8 @@
 import * as Solid from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
+import { Dynamic } from '@solidjs/web'
 import type { AsyncRouteComponent } from './route'
 
-function Dynamic(props: any) {
-  const { component, ...rest } = props
-  if (!component) return null;
-  return Solid.createComponent(component, rest)
-}
 
 function createResource<T>(fn: () => Promise<T> | undefined, options?: any): [() => T | undefined] {
   let p: Promise<T> | undefined;

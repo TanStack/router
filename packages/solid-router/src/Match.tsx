@@ -9,6 +9,7 @@ import {
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { Dynamic } from '@solidjs/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -19,11 +20,6 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
-function Dynamic(props: any) {
-  const { component, ...rest } = props
-  if (!component) return null;
-  return Solid.createComponent(component, rest)
-}
 
 function createResource<T>(fn: () => Promise<T> | undefined): [() => T | undefined] {
   let p: Promise<T> | undefined;
