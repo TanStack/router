@@ -8,7 +8,7 @@ import type { FullSearchSchema } from "./routeInfo"
 import type { ParsedLocation } from "./location"
 import type { AnyRedirect } from "./redirect"
 import type { AnyRouteMatch } from "./Matches"
-import type { Store } from "@tanstack/store"
+import type { ReadonlyStore, Store } from "@tanstack/store"
 
 type MatchStore = Store<AnyRouteMatch>
 type MatchStoreLookup = Record<string, MatchStore>
@@ -50,7 +50,7 @@ export interface RouterStores<
     resolvedLocationHref: string | undefined
     status: RouterState<TRouteTree>['status']
   }>
-  __store: Store<RouterState<TRouteTree>>
+  __store: ReadonlyStore<RouterState<TRouteTree>>
 
   /** @internal */
   activeMatchStoresById: Map<string, MatchStore>
@@ -139,9 +139,7 @@ export function createRouterStores<
   })
 
   // compatibility "big" state store
-  // behaves like a regular subscribable, reactive store
-  // but is 2nd order derived, and updates the atoms in its setState
-  const compatState = createStore(() => ({
+  const __store = createStore(() => ({
     status: status.state,
     loadedAt: loadedAt.state,
     isLoading: isLoading.state,
@@ -152,29 +150,6 @@ export function createRouterStores<
     statusCode: statusCode.state,
     redirect: redirect.state,
   }))
-  const __store = {
-    get state() {
-      return compatState.state
-    },
-    get() {
-      return compatState.state
-    },
-    setState: (updater) => {
-      const nextState = updater(compatState.state)
-      batch(() => {
-        status.setState(() => nextState.status)
-        loadedAt.setState(() => nextState.loadedAt)
-        isLoading.setState(() => nextState.isLoading)
-        isTransitioning.setState(() => nextState.isTransitioning)
-        location.setState(() => nextState.location)
-        resolvedLocation.setState(() => nextState.resolvedLocation)
-        statusCode.setState(() => nextState.statusCode)
-        redirect.setState(() => nextState.redirect)
-        setActiveMatches(nextState.matches)
-      })
-    },
-    subscribe: (observerOrFn) => compatState.subscribe(observerOrFn),
-  } as Store<RouterState<TRouteTree>>
 
   // initialize the active matches
   setActiveMatches(initialState.matches as Array<AnyRouteMatch>)

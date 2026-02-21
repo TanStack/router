@@ -50,7 +50,7 @@ import type {
 } from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
-import type { Store } from '@tanstack/store'
+import type { ReadonlyStore, Store } from '@tanstack/store'
 import type {
   HistoryLocation,
   HistoryState,
@@ -941,7 +941,7 @@ export class RouterCore<
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
-  __store!: Store<RouterState<TRouteTree>>
+  __store!: ReadonlyStore<RouterState<TRouteTree>>
   
   options!: PickAsRequired<
     RouterOptions<

@@ -152,35 +152,4 @@ describe('granular stores', () => {
     expect(router.stores.cachedMatchesSnapshot.state[0]?.status).toBe('success')
     expect(router.getMatch(duplicatedId)?.status).toBe('success')
   })
-
-  test('__store.setState bridges into granular stores', async () => {
-    const router = createRouter()
-    await router.navigate({ to: '/posts/123' })
-
-    const pendingMatch = {
-      ...router.state.matches[1]!,
-      status: 'pending' as const,
-    }
-
-    let compatNotifications = 0
-    const unsubscribeCompat = router.__store.subscribe(() => {
-      compatNotifications++
-    })
-
-    router.__store.setState((s) => ({
-      ...s,
-      status: 'pending',
-      isLoading: true,
-    }))
-    router.stores.setPendingMatches([pendingMatch])
-
-    cleanupSubscription(unsubscribeCompat)
-
-    expect(router.stores.status.state).toBe('pending')
-    expect(router.stores.isLoading.state).toBe(true)
-    expect(router.stores.pendingMatchesId.state).toEqual([pendingMatch.id])
-    expect(router.stores.pendingMatchesSnapshot.state[0]?.status).toBe('pending')
-    expect(router.__store.state.status).toBe('pending')
-    expect(compatNotifications).toBeGreaterThan(0)
-  })
 })
