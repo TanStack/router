@@ -53,7 +53,6 @@ jobs:
             --dashboard-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/benchmarks/bundle-size/"
 
       - name: Upsert Sticky PR Comment
-        if: github.event.pull_request.head.repo.fork == false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
