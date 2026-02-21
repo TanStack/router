@@ -35,7 +35,12 @@ jobs:
         run: |
           mkdir -p e2e/bundle-size/results
           if git fetch --depth=1 origin gh-pages; then
-            git show origin/gh-pages:benchmarks/bundle-size/data.js > e2e/bundle-size/results/history-data.js || true
+            if git show origin/gh-pages:benchmarks/bundle-size/data.js > e2e/bundle-size/results/history-data.js 2>/dev/null; then
+              echo "Loaded bundle-size history from gh-pages."
+            else
+              rm -f e2e/bundle-size/results/history-data.js
+              echo "No bundle-size history found on gh-pages yet."
+            fi
           fi
 
       - name: Build PR Report

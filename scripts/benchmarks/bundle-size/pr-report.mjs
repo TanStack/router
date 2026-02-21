@@ -82,6 +82,19 @@ function readJsonMaybeData(filePath) {
   return parseMaybeDataJs(fs.readFileSync(filePath, 'utf8'))
 }
 
+function readOptionalJsonMaybeData(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) {
+    return undefined
+  }
+
+  const raw = fs.readFileSync(filePath, 'utf8')
+  if (!raw.trim()) {
+    return undefined
+  }
+
+  return parseMaybeDataJs(raw)
+}
+
 function formatBytes(bytes, opts = {}) {
   const signed = opts.signed === true
 
@@ -245,14 +258,8 @@ async function main() {
   const historyPath = args.history ? path.resolve(args.history) : undefined
 
   const current = readJsonMaybeData(currentPath)
-  const history =
-    historyPath && fs.existsSync(historyPath)
-      ? readJsonMaybeData(historyPath)
-      : undefined
-  const baselineCurrent =
-    baselinePath && fs.existsSync(baselinePath)
-      ? readJsonMaybeData(baselinePath)
-      : undefined
+  const history = readOptionalJsonMaybeData(historyPath)
+  const baselineCurrent = readOptionalJsonMaybeData(baselinePath)
 
   const historyEntries = normalizeHistoryEntries(history, current.benchmarkName)
   const seriesByScenario = buildSeriesByScenario(historyEntries)
