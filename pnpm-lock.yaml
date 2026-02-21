@@ -158,6 +158,64 @@ importers:
         specifier: ^4.0.17
         version: 4.0.17(@types/node@25.0.9)(@vitest/ui@4.0.17)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
 
+  e2e/bundle-size:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../packages/react-start
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../packages/solid-start
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../../packages/vue-router
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.2.3
+        version: 19.2.3(react@19.2.3)
+      solid-js:
+        specifier: 1.9.10
+        version: 1.9.10
+      vue:
+        specifier: ^3.5.25
+        version: 3.5.25(typescript@5.9.3)
+    devDependencies:
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../../packages/router-plugin
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.8
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.1
+        version: 6.0.3(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.3))
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^4.1.2
+        version: 4.2.0(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.3))
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vite-plugin-solid:
+        specifier: ^2.11.10
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
   e2e/e2e-utils:
     devDependencies:
       get-port-please:
@@ -25830,7 +25888,7 @@ snapshots:
       '@emotion/memoize': 0.9.0
       '@emotion/unitless': 0.10.0
       '@emotion/utils': 1.4.2
-      csstype: 3.1.3
+      csstype: 3.2.3
 
   '@emotion/sheet@1.4.0': {}
 
@@ -27382,7 +27440,7 @@ snapshots:
       '@emotion/cache': 11.14.0
       '@emotion/serialize': 1.3.3
       '@emotion/sheet': 1.4.0
-      csstype: 3.1.3
+      csstype: 3.2.3
       prop-types: 15.8.1
       react: 19.2.3
     optionalDependencies:
@@ -27397,7 +27455,7 @@ snapshots:
       '@mui/types': 7.2.21(@types/react@19.2.8)
       '@mui/utils': 6.4.6(@types/react@19.2.8)(react@19.2.3)
       clsx: 2.1.1
-      csstype: 3.1.3
+      csstype: 3.2.3
       prop-types: 15.8.1
       react: 19.2.3
     optionalDependencies:
@@ -31111,6 +31169,12 @@ snapshots:
       vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vue: 3.5.25(typescript@5.9.2)
 
+  '@vitejs/plugin-vue@6.0.3(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vue@3.5.25(typescript@5.9.3))':
+    dependencies:
+      '@rolldown/pluginutils': 1.0.0-beta.53
+      vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vue: 3.5.25(typescript@5.9.3)
+
   '@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17)':
     dependencies:
       '@vitest/mocker': 4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -32911,7 +32975,7 @@ snapshots:
   dom-helpers@5.2.1:
     dependencies:
       '@babel/runtime': 7.26.7
-      csstype: 3.1.3
+      csstype: 3.2.3
 
   dom-serializer@1.4.1:
     dependencies:
@@ -37385,7 +37449,7 @@ snapshots:
 
   solid-js@1.9.10:
     dependencies:
-      csstype: 3.1.3
+      csstype: 3.2.3
       seroval: 1.3.2
       seroval-plugins: 1.3.2(seroval@1.3.2)
 
