@@ -9,7 +9,6 @@ import {
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -19,6 +18,38 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+
+function Dynamic(props: any) {
+  const { component, ...rest } = props
+  return Solid.createComponent(component, rest)
+}
+
+function createResource<T>(fn: () => Promise<T> | undefined): [() => T | undefined] {
+  let p: Promise<T> | undefined;
+  const [signal, setSignal] = Solid.createSignal<T | undefined>(undefined);
+  const [error, setError] = Solid.createSignal<any>(undefined);
+  const [pending, setPending] = Solid.createSignal(false);
+  
+  return [
+    () => {
+      const currentP = fn();
+      if (currentP && currentP !== p) {
+        p = currentP;
+        setPending(true);
+        currentP.then(
+          (res: any) => { setSignal(() => res); setPending(false); },
+          (err: any) => { setError(err); setPending(false); }
+        );
+      }
+      if (pending() && p) throw p;
+      const e = error();
+      if (e) throw e;
+      return signal();
+    }
+  ]
+}
+
+const MatchContext = matchContext as unknown as Solid.Component<{ value: any, children?: any }>;
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
@@ -64,7 +95,7 @@ export const Match = (props: { matchId: string }) => {
   const resolvedNoSsr =
     matchState()!.ssr === false || matchState()!.ssr === 'data-only'
 
-  const ResolvedSuspenseBoundary = () => Solid.Suspense
+  const ResolvedSuspenseBoundary = () => Solid.Loading
 
   const ResolvedCatchBoundary = () =>
     routeErrorComponent() ? CatchBoundary : SafeFragment
@@ -89,7 +120,7 @@ export const Match = (props: { matchId: string }) => {
 
   return (
     <ShellComponent>
-      <matchContext.Provider value={() => props.matchId}>
+      <MatchContext value={() => props.matchId}>
         <Dynamic
           component={ResolvedSuspenseBoundary()}
           fallback={
@@ -143,7 +174,7 @@ export const Match = (props: { matchId: string }) => {
             </Dynamic>
           </Dynamic>
         </Dynamic>
-      </matchContext.Provider>
+      </MatchContext>
 
       {parentRouteId() === rootRouteId ? (
         <>
@@ -170,14 +201,14 @@ function OnRendered() {
       return s.resolvedLocation?.state.__TSR_key
     },
   })
-  Solid.createTrackedEffect(
-    Solid.on([location], () => {
+  Solid.createEffect(
+    () => [location()] as const,
+    ([location]) => {
       router.emit({
         type: 'onRendered',
         ...getLocationChangeInfo(router.state),
       })
-    }),
-  )
+    })
   return null
 }
 
@@ -246,7 +277,7 @@ export const MatchInner = (props: { matchId: string }): any => {
     <Solid.Switch>
       <Solid.Match when={match()._displayPending}>
         {(_) => {
-          const [displayPendingResult] = Solid.createResource(
+          const [displayPendingResult] = createResource(
             () =>
               router.getMatch(match().id)?._nonReactive.displayPendingPromise,
           )
@@ -256,7 +287,7 @@ export const MatchInner = (props: { matchId: string }): any => {
       </Solid.Match>
       <Solid.Match when={match()._forcePending}>
         {(_) => {
-          const [minPendingResult] = Solid.createResource(
+          const [minPendingResult] = createResource(
             () => router.getMatch(match().id)?._nonReactive.minPendingPromise,
           )
 
@@ -286,7 +317,7 @@ export const MatchInner = (props: { matchId: string }): any => {
             }
           }
 
-          const [loaderResult] = Solid.createResource(async () => {
+          const [loaderResult] = createResource(async () => {
             await new Promise((r) => setTimeout(r, 0))
             return router.getMatch(match().id)?._nonReactive.loadPromise
           })
@@ -323,7 +354,7 @@ export const MatchInner = (props: { matchId: string }): any => {
         {(_) => {
           invariant(isRedirect(match().error), 'Expected a redirect error')
 
-          const [loaderResult] = Solid.createResource(async () => {
+          const [loaderResult] = createResource(async () => {
             await new Promise((r) => setTimeout(r, 0))
             return router.getMatch(match().id)?._nonReactive.loadPromise
           })
@@ -422,13 +453,13 @@ export const Outlet = () => {
             when={routeId() === rootRouteId}
             fallback={<Match matchId={currentMatchId()} />}
           >
-            <Solid.Suspense
+            <Solid.Loading
               fallback={
                 <Dynamic component={router.options.defaultPendingComponent} />
               }
             >
               <Match matchId={currentMatchId()} />
-            </Solid.Suspense>
+            </Solid.Loading>
           </Solid.Show>
         )
       }}
