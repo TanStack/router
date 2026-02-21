@@ -55,8 +55,8 @@ function SSRTextHintTest() {
   const [isLoading, setIsLoading] = createSignal(true)
   const [error, setError] = createSignal<string | null>(null)
 
-  createEffect(() => {
-    const { pureText, mixedContent, pureBinary } = loaderData()
+  createEffect(loaderData, (loaderDataValue) => {
+    const { pureText, mixedContent, pureBinary } = loaderDataValue
     if (!pureText || !mixedContent || !pureBinary) {
       return
     }

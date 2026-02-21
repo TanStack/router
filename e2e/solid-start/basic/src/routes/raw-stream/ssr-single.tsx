@@ -13,8 +13,8 @@ function SSRSingleTest() {
   const [isConsuming, setIsConsuming] = createSignal(true)
   const [error, setError] = createSignal<string | null>(null)
 
-  createEffect(() => {
-    const rawData = loaderData().rawData
+  createEffect(loaderData, (loaderDataValue) => {
+    const rawData = loaderDataValue.rawData
     if (!rawData) {
       return
     }

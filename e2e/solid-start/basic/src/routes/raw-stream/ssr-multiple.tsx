@@ -14,9 +14,9 @@ function SSRMultipleTest() {
   const [isConsuming, setIsConsuming] = createSignal(true)
   const [error, setError] = createSignal<string | null>(null)
 
-  createEffect(() => {
-    const first = loaderData().first
-    const second = loaderData().second
+  createEffect(loaderData, (loaderDataValue) => {
+    const first = loaderDataValue.first
+    const second = loaderDataValue.second
     if (!first || !second) {
       return
     }

@@ -1,6 +1,6 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
-import { Suspense, createSignal } from 'solid-js'
+import { Loading, createSignal } from 'solid-js'
 
 const personServerFn = createServerFn({ method: 'GET' })
   .inputValidator((data: { name: string }) => data)
@@ -38,7 +38,7 @@ function Deferred() {
       <div data-testid="regular-person">
         {loaderData().person.name} - {loaderData().person.randomNumber}
       </div>
-      <Suspense fallback={<div>Loading person...</div>}>
+      <Loading fallback={<div>Loading person...</div>}>
         <Await
           promise={loaderData().deferredPerson}
           children={(data) => (
@@ -47,13 +47,13 @@ function Deferred() {
             </div>
           )}
         />
-      </Suspense>
-      <Suspense fallback={<div>Loading stuff...</div>}>
+      </Loading>
+      <Loading fallback={<div>Loading stuff...</div>}>
         <Await
           promise={loaderData().deferredStuff}
           children={(data) => <h3 data-testid="deferred-stuff">{data}</h3>}
         />
-      </Suspense>
+      </Loading>
       <div>Count: {count()}</div>
       <div>
         <button onClick={() => setCount((count) => count + 1)}>

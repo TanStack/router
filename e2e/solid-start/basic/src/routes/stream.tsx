@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import { createEffect, createSignal, Suspense } from 'solid-js'
+import { createEffect, createSignal, Loading } from 'solid-js'
 
 export const Route = createFileRoute('/stream')({
   component: Home,
@@ -27,9 +27,9 @@ function Home() {
   const loaderData = Route.useLoaderData()
   const [streamData, setStreamData] = createSignal<Array<string>>([])
 
-  createEffect(() => {
+  createEffect(loaderData, (loaderDataValue) => {
     async function fetchStream() {
-      const reader = loaderData().stream.getReader()
+      const reader = loaderDataValue.stream.getReader()
       let chunk
 
       while (!(chunk = await reader.read()).done) {
@@ -45,7 +45,7 @@ function Home() {
   })
 
   return (
-    <Suspense>
+    <Loading>
       <Await
         promise={loaderData().promise}
         children={(promiseData) => (
@@ -59,6 +59,6 @@ function Home() {
           </div>
         )}
       />
-    </Suspense>
+    </Loading>
   )
 }

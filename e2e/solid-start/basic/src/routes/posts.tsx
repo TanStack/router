@@ -28,12 +28,12 @@ function PostsComponent() {
                 <Link
                   to="/posts/$postId"
                   params={{
-                    postId: post.id,
+                    postId: post().id,
                   }}
                   class="block py-1 text-blue-800 hover:text-blue-600"
                   activeProps={{ class: 'text-black font-bold' }}
                 >
-                  <div>{post.title.substring(0, 20)}</div>
+                  <div>{post().title.substring(0, 20)}</div>
                 </Link>
               </li>
             )
