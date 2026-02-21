@@ -1,7 +1,5 @@
 import * as Solid from 'solid-js'
 
-// import { mergeRefs } from '@solid-primitives/refs'
-
 import {
   deepEqual,
   exactPathTest,
@@ -31,6 +29,18 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
+
+function mergeRefs<T>(
+  ...refs: Array<((el: T) => void) | undefined>
+): (el: T) => void {
+  return (el: T) => {
+    for (const ref of refs) {
+      if (typeof ref === 'function') {
+        ref(el)
+      }
+    }
+  }
+}
 
 function splitProps<T extends Record<string, any>, K extends keyof T>(
   props: T,
@@ -452,7 +462,7 @@ export function useLinkProps<
     () => {
       return {
         href: hrefOption()?.href,
-        // ref: mergeRefs(setRef, _options().ref),
+        ref: mergeRefs(setRef, (_options() as any).ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
         onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
@@ -475,7 +485,7 @@ export function useLinkProps<
         })(),
         ...(local.disabled && {
           role: 'link',
-          'aria-disabled': true,
+          'aria-disabled': 'true',
         }),
         ...(isActive() && { 'data-status': 'active', 'aria-current': 'page' }),
         ...(isTransitioning() && { 'data-transitioning': 'transitioning' }),
@@ -614,7 +624,14 @@ export const Link: LinkComponent<'a'> = (props) => {
     'type',
   ])
 
-  const children = Solid.createMemo(() => {
+  // Use Solid.children to resolve non-function children stably,
+  // so they are not re-evaluated on each linkProps change.
+  const resolvedStaticChildren = Solid.children(() => {
+    const ch = local.children
+    return typeof ch === 'function' ? null : (ch as Solid.JSX.Element)
+  })
+
+  const children = () => {
     const ch = local.children
     if (typeof ch === 'function') {
       return ch({
@@ -627,8 +644,8 @@ export const Link: LinkComponent<'a'> = (props) => {
       })
     }
 
-    return ch satisfies Solid.JSX.Element
-  })
+    return resolvedStaticChildren()
+  }
 
   if (local._asChild === 'svg') {
     const [_, svgLinkProps] = splitProps(linkProps as any, ['class'])

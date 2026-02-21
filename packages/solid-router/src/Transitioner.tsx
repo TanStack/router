@@ -45,6 +45,12 @@ export function Transitioner() {
   Solid.onSettled(() => {
     const unsub = router.history.subscribe(router.load)
 
+    // Refresh latestLocation from the current browser URL before comparing.
+    // The URL may have been changed synchronously (e.g. via replaceState) after
+    // render() but before this effect ran, so we must not use the stale
+    // render-time location here.
+    router.updateLatestLocation()
+
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,
       search: true,

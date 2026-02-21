@@ -58,8 +58,7 @@ export function useIntersectionObserver<T extends Element>(
     typeof IntersectionObserver === 'function'
   let observerRef: IntersectionObserver | null = null
 
-  Solid.createTrackedEffect(() => {
-    const r = ref()
+  Solid.createEffect(ref, (r) => {
     if (!r || !isIntersectionObserverAvailable || options.disabled) {
       return
     }

@@ -28,7 +28,10 @@ import type {
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
-const MatchContext = matchContext as unknown as Solid.Component<{ value: any, children: any }>;
+const MatchContext = matchContext as unknown as Solid.Component<{
+  value: any
+  children: any
+}>
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
@@ -43,7 +46,11 @@ declare module '@tanstack/router-core' {
 export function Matches() {
   const router = useRouter()
 
+  // When disableGlobalCatchBoundary is true, we must NOT wrap with Solid.Loading
+  // because Solid.Loading transforms STATUS_ERROR into STATUS_PENDING, which
+  // prevents errors from propagating to an external Errored boundary.
   const ResolvedSuspense =
+    router.options.disableGlobalCatchBoundary ||
     (isServer ?? router.isServer) ||
     (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
@@ -80,34 +87,33 @@ function MatchesInner() {
     select: (s) => s.loadedAt,
   })
 
-  const matchComponent = () => {
-    return (
-      <Solid.Show when={matchId()}>
-        <Match matchId={matchId()!} />
-      </Solid.Show>
-    )
+  const matchContent = () => (
+    <Solid.Show when={matchId()}>
+      <Match matchId={matchId()!} />
+    </Solid.Show>
+  )
+
+  if (router.options.disableGlobalCatchBoundary) {
+    // When disableGlobalCatchBoundary is true, render without any internal
+    // error boundary so errors bubble up freely to an external Errored boundary.
+    return <MatchContext value={matchId}>{matchContent()}</MatchContext>
   }
 
   return (
     <MatchContext value={matchId}>
-      {router.options.disableGlobalCatchBoundary ? (
-        matchComponent()
-      ) : (
-        <CatchBoundary
-          getResetKey={() => resetKey()}
-          errorComponent={ErrorComponent}
-          onCatch={(error) => {
-            warning(
-              false,
-              `The following error wasn't caught by any route! At the very leas
-    t, consider setting an 'errorComponent' in your RootRoute!`,
-            )
-            warning(false, error.message || error.toString())
-          }}
-        >
-          {matchComponent()}
-        </CatchBoundary>
-      )}
+      <CatchBoundary
+        getResetKey={() => resetKey()}
+        errorComponent={ErrorComponent}
+        onCatch={(error) => {
+          warning(
+            false,
+            `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+          )
+          warning(false, error.message || error.toString())
+        }}
+      >
+        {matchContent()}
+      </CatchBoundary>
     </MatchContext>
   )
 }
