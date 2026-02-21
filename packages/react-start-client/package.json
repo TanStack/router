@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start-client",
-  "version": "1.160.0",
+  "version": "1.161.4",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -67,7 +67,8 @@
   },
   "devDependencies": {
     "@testing-library/react": "^16.2.0",
-    "@vitejs/plugin-react": "^4.3.4"
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "*"
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",

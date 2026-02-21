@@ -661,7 +661,13 @@ export type PreloadRouteFn<
     TTo,
     TMaskFrom,
     TMaskTo
-  >,
+  > & {
+    /**
+     * @internal
+     * A **trusted** built location that can be used to redirect to.
+     */
+    _builtLocation?: ParsedLocation
+  },
 ) => Promise<Array<AnyRouteMatch> | undefined>
 
 export type MatchRouteFn<
@@ -863,6 +869,13 @@ export function getLocationChangeInfo(routerState: {
   const hrefChanged = fromLocation?.href !== toLocation.href
   const hashChanged = fromLocation?.hash !== toLocation.hash
   return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
+}
+
+function filterRedirectedCachedMatches<T extends { status: string }>(
+  matches: Array<T>,
+): Array<T> {
+  const filtered = matches.filter((d) => d.status !== 'redirected')
+  return filtered.length === matches.length ? matches : filtered
 }
 
 export type CreateRouterFn = <
@@ -1117,16 +1130,7 @@ export class RouterCore<
           getInitialRouterState(this.latestLocation),
         ) as unknown as Store<any>
       } else {
-        this.__store = new Store(getInitialRouterState(this.latestLocation), {
-          onUpdate: () => {
-            this.__store.state = {
-              ...this.state,
-              cachedMatches: this.state.cachedMatches.filter(
-                (d) => !['redirected'].includes(d.status),
-              ),
-            }
-          },
-        })
+        this.__store = new Store(getInitialRouterState(this.latestLocation))
 
         setupScrollRestoration(this)
       }
@@ -1169,10 +1173,10 @@ export class RouterCore<
     }
 
     if (needsLocationUpdate && this.__store) {
-      this.__store.state = {
-        ...this.state,
+      this.__store.setState((s) => ({
+        ...s,
         location: this.latestLocation,
-      }
+      }))
     }
 
     if (
@@ -1879,8 +1883,16 @@ export class RouterCore<
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
-            changedParams = true
-            Object.assign(nextParams, fn(nextParams))
+            try {
+              Object.assign(nextParams, fn(nextParams))
+              changedParams = true
+            } catch {
+              // Ignore errors here. When a paired parseParams is defined,
+              // extractStrictParams will re-throw during route matching,
+              // storing the error on the match and allowing the route's
+              // errorComponent to render. If no parseParams is defined,
+              // the stringify error is silently dropped.
+            }
           }
         }
       }
@@ -2439,7 +2451,9 @@ export class RouterCore<
                           ...s.cachedMatches,
                           ...exitingMatches.filter(
                             (d) =>
-                              d.status !== 'error' && d.status !== 'notFound',
+                              d.status !== 'error' &&
+                              d.status !== 'notFound' &&
+                              d.status !== 'redirected',
                           ),
                         ],
                       }
@@ -2594,12 +2608,21 @@ export class RouterCore<
             : ''
 
       if (matchesKey) {
-        this.__store.setState((s) => ({
-          ...s,
-          [matchesKey]: s[matchesKey]?.map((d) =>
-            d.id === id ? updater(d) : d,
-          ),
-        }))
+        if (matchesKey === 'cachedMatches') {
+          this.__store.setState((s) => ({
+            ...s,
+            cachedMatches: filterRedirectedCachedMatches(
+              s.cachedMatches.map((d) => (d.id === id ? updater(d) : d)),
+            ),
+          }))
+        } else {
+          this.__store.setState((s) => ({
+            ...s,
+            [matchesKey]: s[matchesKey]?.map((d) =>
+              d.id === id ? updater(d) : d,
+            ),
+          }))
+        }
       }
     })
   }
@@ -2757,7 +2780,7 @@ export class RouterCore<
     TDefaultStructuralSharingOption,
     TRouterHistory
   > = async (opts) => {
-    const next = this.buildLocation(opts as any)
+    const next = opts._builtLocation ?? this.buildLocation(opts as any)
 
     let matches = this.matchRoutes(next, {
       throwOnError: true,
@@ -2833,10 +2856,7 @@ export class RouterCore<
     const matchLocation = {
       ...location,
       to: location.to
-        ? this.resolvePathWithBase(
-            (location.from || '') as string,
-            location.to as string,
-          )
+        ? this.resolvePathWithBase(location.from || '', location.to as string)
         : undefined,
       params: location.params || {},
       leaveParams: true,

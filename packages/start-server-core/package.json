@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-server-core",
-  "version": "1.160.0",
+  "version": "1.161.4",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -86,6 +86,7 @@
   "devDependencies": {
     "@standard-schema/spec": "^1.0.0",
     "cookie-es": "^2.0.0",
-    "fetchdts": "^0.1.6"
+    "fetchdts": "^0.1.6",
+    "vite": "*"
   }
 }

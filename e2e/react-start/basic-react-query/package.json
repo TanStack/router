@@ -33,7 +33,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
-    "srvx": "^0.11.2",
+    "srvx": "^0.11.7",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"

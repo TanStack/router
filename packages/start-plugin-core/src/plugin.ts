@@ -17,6 +17,7 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
+import { importProtectionPlugin } from './import-protection-plugin/plugin'
 import type {
   GetConfigFn,
   ResolvedStartConfig,
@@ -374,6 +375,12 @@ export function TanStackStartVitePluginCore(
       framework: corePluginOpts.framework,
       environments,
       generateFunctionId: startPluginOpts?.serverFns?.generateFunctionId,
+      providerEnvName: serverFnProviderEnv,
+    }),
+    importProtectionPlugin({
+      getConfig,
+      framework: corePluginOpts.framework,
+      environments,
       providerEnvName: serverFnProviderEnv,
     }),
     tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
