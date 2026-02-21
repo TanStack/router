@@ -1,6 +1,6 @@
 import { useRouter, useRouterState } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
-import { createEffect, createSignal, onCleanup, onMount } from 'solid-js'
+import { createEffect, createSignal, onCleanup } from 'solid-js'
 import type { AnyRouter } from '@tanstack/solid-router'
 import type { Component, JSX } from 'solid-js'
 
@@ -58,16 +58,16 @@ export const TanStackRouterDevtools: Component<
   const [devtools] = createSignal(new TanStackRouterDevtoolsCore(usedProps))
 
   // Update devtools when props change
-  createEffect(() => {
-    devtools().setRouter(usedProps.router)
+  createEffect(devtools, (d) => {
+    d.setRouter(usedProps.router)
   })
 
-  createEffect(() => {
-    devtools().setRouterState(usedProps.routerState)
+  createEffect(devtools, (d) => {
+    d.setRouterState(usedProps.routerState)
   })
 
-  createEffect(() => {
-    devtools().setOptions({
+  createEffect(devtools, (d) => {
+    d.setOptions({
       initialIsOpen: usedProps.initialIsOpen,
       panelProps: usedProps.panelProps,
       closeButtonProps: usedProps.closeButtonProps,
@@ -78,12 +78,12 @@ export const TanStackRouterDevtools: Component<
     })
   })
 
-  onMount(() => {
+  createEffect(devtools, (d) => {
     if (devToolRef) {
-      devtools().mount(devToolRef)
+      d.mount(devToolRef)
 
       onCleanup(() => {
-        devtools().unmount()
+        d.unmount()
       })
     }
   })
