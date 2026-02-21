@@ -20,33 +20,10 @@ import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
-
-function createResource<T>(fn: () => Promise<T> | undefined): [() => T | undefined] {
-  let p: Promise<T> | undefined;
-  const [signal, setSignal] = Solid.createSignal<T | undefined>(undefined);
-  const [error, setError] = Solid.createSignal<any>(undefined);
-  const [pending, setPending] = Solid.createSignal(false);
-  
-  return [
-    () => {
-      const currentP = fn();
-      if (currentP && currentP !== p) {
-        p = currentP;
-        setPending(true);
-        currentP.then(
-          (res: any) => { setSignal(() => res); setPending(false); },
-          (err: any) => { setError(err); setPending(false); }
-        );
-      }
-      if (pending() && p) throw p;
-      const e = error();
-      if (e) throw e;
-      return signal();
-    }
-  ]
-}
-
-const MatchContext = matchContext as unknown as Solid.Component<{ value: any, children?: any }>;
+const MatchContext = matchContext as unknown as Solid.Component<{
+  value: any
+  children?: any
+}>
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
@@ -205,7 +182,8 @@ function OnRendered() {
         type: 'onRendered',
         ...getLocationChangeInfo(router.state),
       })
-    })
+    },
+  )
   return null
 }
 
@@ -274,7 +252,7 @@ export const MatchInner = (props: { matchId: string }): any => {
     <Solid.Switch>
       <Solid.Match when={match()._displayPending}>
         {(_) => {
-          const [displayPendingResult] = createResource(
+          const displayPendingResult = Solid.createMemo(
             () =>
               router.getMatch(match().id)?._nonReactive.displayPendingPromise,
           )
@@ -284,7 +262,7 @@ export const MatchInner = (props: { matchId: string }): any => {
       </Solid.Match>
       <Solid.Match when={match()._forcePending}>
         {(_) => {
-          const [minPendingResult] = createResource(
+          const minPendingResult = Solid.createMemo(
             () => router.getMatch(match().id)?._nonReactive.minPendingPromise,
           )
 
@@ -314,7 +292,7 @@ export const MatchInner = (props: { matchId: string }): any => {
             }
           }
 
-          const [loaderResult] = createResource(async () => {
+          const loaderResult = Solid.createMemo(async () => {
             await new Promise((r) => setTimeout(r, 0))
             return router.getMatch(match().id)?._nonReactive.loadPromise
           })
@@ -351,7 +329,7 @@ export const MatchInner = (props: { matchId: string }): any => {
         {(_) => {
           invariant(isRedirect(match().error), 'Expected a redirect error')
 
-          const [loaderResult] = createResource(async () => {
+          const loaderResult = Solid.createMemo(async () => {
             await new Promise((r) => setTimeout(r, 0))
             return router.getMatch(match().id)?._nonReactive.loadPromise
           })

@@ -1,4 +1,4 @@
-import { Link, Meta, Style, Title } from '@solidjs/meta'
+// import { Link, meta, Style, Title } from '@solidjs/meta'
 import { onCleanup, onSettled as onMount } from 'solid-js'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -12,15 +12,15 @@ export function Asset({
 }: RouterManagedTag): JSX.Element | null {
   switch (tag) {
     case 'title':
-      return <Title {...attrs}>{children}</Title>
+      return <title {...attrs}>{children}</title>
     case 'meta':
-      return <Meta {...attrs} />
+      return <meta {...attrs} />
     case 'link':
-      return <Link {...attrs} />
+      return <link {...attrs} />
     case 'style':
-      return <Style {...attrs}>{children}</Style>
+      return <style {...attrs}>{children}</style>
     case 'script':
-      return <Script attrs={attrs}>{children}</Script>
+      return <script {...attrs}>{children}</script>
     default:
       return null
   }

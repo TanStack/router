@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
-import { createTrackedEffect as createEffect, onSettled as onMount } from 'solid-js'
+import { createEffect, onSettled as onMount } from 'solid-js'
 import {
   Link,
   Outlet,
@@ -2407,8 +2407,8 @@ describe('useRouteContext in the component', () => {
         const context = rootRoute.useRouteContext()
 
         // Track context value at render time
-        createEffect(() => {
-          const contextValue: { data: string } = context()
+        createEffect(context, (c) => {
+          const contextValue: { data: string } = c()
           contextValues.push(contextValue)
         })
 

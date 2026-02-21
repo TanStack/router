@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 
-import { mergeRefs } from '@solid-primitives/refs'
+// import { mergeRefs } from '@solid-primitives/refs'
 
 import {
   deepEqual,
@@ -13,19 +13,6 @@ import {
 
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from '@solidjs/web'
-
-function splitProps<T extends Record<string, any>, K extends keyof T>(
-  props: T,
-  keys: readonly K[]
-): [Pick<T, K>, Omit<T, K>] {
-  const local = {} as Pick<T, K>;
-  const rest = {} as Omit<T, K>;
-  
-  // A safe way to polyfill splitProps if native getter copy is too complex
-  // is just to return [props, Solid.omit(props, keys)] but it modifies typing.
-  // Actually, Solid.omit exists!
-  return [props as any, Solid.omit(props, keys as any) as any];
-}
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
@@ -44,6 +31,19 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
+
+function splitProps<T extends Record<string, any>, K extends keyof T>(
+  props: T,
+  keys: ReadonlyArray<K>,
+): [Pick<T, K>, Omit<T, K>] {
+  const local = {} as Pick<T, K>
+  const rest = {} as Omit<T, K>
+
+  // A safe way to polyfill splitProps if native getter copy is too complex
+  // is just to return [props, Solid.omit(props, keys)] but it modifies typing.
+  // Actually, Solid.omit exists!
+  return [props as any, Solid.omit(props, keys as any) as any]
+}
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -287,11 +287,11 @@ export function useLinkProps<
     { disabled: !!local.disabled || !(preload() === 'viewport') },
   )
 
-  Solid.createTrackedEffect(() => {
+  Solid.createEffect(preload, (preloadValue) => {
     if (hasRenderFetched) {
       return
     }
-    if (!local.disabled && preload() === 'render') {
+    if (!local.disabled && preloadValue === 'render') {
       doPreload()
       hasRenderFetched = true
     }
@@ -301,7 +301,7 @@ export function useLinkProps<
     return Solid.merge(
       propsSafeToSpread,
       {
-        ref: mergeRefs(setRef, _options().ref),
+        // ref: mergeRefs(setRef, _options().ref),
         href: externalLink(),
       },
       splitProps(local, [
@@ -452,7 +452,7 @@ export function useLinkProps<
     () => {
       return {
         href: hrefOption()?.href,
-        ref: mergeRefs(setRef, _options().ref),
+        // ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
         onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
@@ -605,15 +605,14 @@ export function createLink<const TComp>(
 }
 
 export const Link: LinkComponent<'a'> = (props) => {
-  const [local, rest] = splitProps(
-    props as typeof props & { _asChild: any },
-    ['_asChild', 'children'],
-  )
+  const [local, rest] = splitProps(props as typeof props & { _asChild: any }, [
+    '_asChild',
+    'children',
+  ])
 
-  const [_, linkProps] = splitProps(
-    useLinkProps(rest as unknown as any),
-    ['type'],
-  )
+  const [_, linkProps] = splitProps(useLinkProps(rest as unknown as any), [
+    'type',
+  ])
 
   const children = Solid.createMemo(() => {
     const ch = local.children

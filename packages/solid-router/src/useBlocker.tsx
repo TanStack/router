@@ -304,7 +304,11 @@ export function Block(opts: LegacyPromptProps): SolidNode
 
 export function Block(opts: PromptProps | LegacyPromptProps): SolidNode {
   const { children: _, ...rest } = opts
-  const propsWithChildren = { get children() { return opts.children } }
+  const propsWithChildren = {
+    get children() {
+      return opts.children
+    },
+  }
   const args = _resolvePromptBlockerArgs(rest)
 
   const resolver = useBlocker(args)

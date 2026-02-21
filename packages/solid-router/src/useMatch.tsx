@@ -103,17 +103,12 @@ export function useMatch<
     },
   } as any)
 
-  // Use createEffect to throw errors outside the reactive selector context
-  // This allows error boundaries to properly catch the errors
-  Solid.createTrackedEffect(() => {
-    const state = matchState()
-    if (state.shouldThrowError) {
-      invariant(
-        false,
-        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-      )
-    }
-  })
+  if (matchState().shouldThrowError) {
+    invariant(
+      false,
+      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+    )
+  }
 
   // Return an accessor that extracts just the match value
   return Solid.createMemo(() => matchState().match) as any

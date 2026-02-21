@@ -20,7 +20,7 @@ export function Transitioner() {
     return null
   }
 
-  const [isSolidTransitioning, startSolidTransition] = [() => false, (fn: any) => fn()]
+  const [isSolidTransitioning] = [() => false]
 
   // Track pending state changes
   const hasPendingMatches = useRouterState({
@@ -37,7 +37,7 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   router.startTransition = (fn: () => void | Promise<void>) => {
-    startSolidTransition(fn)
+    fn()
   }
 
   // Subscribe to location changes
@@ -94,49 +94,49 @@ export function Transitioner() {
   Solid.createEffect(
     () => [previousIsLoading(), isLoading()] as const,
     ([previousIsLoading, isLoading]) => {
-        if (previousIsLoading.previous && !isLoading) {
-          router.emit({
-            type: 'onLoad',
-            ...getLocationChangeInfo(router.state),
-          })
-        }
-    }
+      if (previousIsLoading.previous && !isLoading) {
+        router.emit({
+          type: 'onLoad',
+          ...getLocationChangeInfo(router.state),
+        })
+      }
+    },
   )
 
   Solid.createEffect(
     () => [isPagePending(), previousIsPagePending()] as const,
     ([isPagePending, previousIsPagePending]) => {
-        // emit onBeforeRouteMount
-        if (previousIsPagePending.previous && !isPagePending) {
-          router.emit({
-            type: 'onBeforeRouteMount',
-            ...getLocationChangeInfo(router.state),
-          })
-        }
-    }
+      // emit onBeforeRouteMount
+      if (previousIsPagePending.previous && !isPagePending) {
+        router.emit({
+          type: 'onBeforeRouteMount',
+          ...getLocationChangeInfo(router.state),
+        })
+      }
+    },
   )
 
   Solid.createEffect(
     () => [isAnyPending(), previousIsAnyPending()] as const,
     ([isAnyPending, previousIsAnyPending]) => {
-        if (previousIsAnyPending.previous && !isAnyPending) {
-          const changeInfo = getLocationChangeInfo(router.state)
-          router.emit({
-            type: 'onResolved',
-            ...changeInfo,
-          })
+      if (previousIsAnyPending.previous && !isAnyPending) {
+        const changeInfo = getLocationChangeInfo(router.state)
+        router.emit({
+          type: 'onResolved',
+          ...changeInfo,
+        })
 
-          router.__store.setState((s) => ({
-            ...s,
-            status: 'idle',
-            resolvedLocation: s.location,
-          }))
+        router.__store.setState((s) => ({
+          ...s,
+          status: 'idle',
+          resolvedLocation: s.location,
+        }))
 
-          if (changeInfo.hrefChanged) {
-            handleHashScroll(router)
-          }
+        if (changeInfo.hrefChanged) {
+          handleHashScroll(router)
         }
-    }
+      }
+    },
   )
 
   return null

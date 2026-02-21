@@ -2,7 +2,6 @@ import * as Solid from 'solid-js'
 import { Dynamic } from '@solidjs/web'
 import type { ErrorRouteComponent } from './route'
 
-
 export function CatchBoundary(
   props: {
     getResetKey: () => number | string
@@ -16,9 +15,8 @@ export function CatchBoundary(
       fallback={(error, reset) => {
         props.onCatch?.(error)
 
-        Solid.createTrackedEffect(() => {
-          const key = props.getResetKey()
-          // We trigger reset here. For a fully deferred effect we might need usePrevious, 
+        Solid.createEffect(props.getResetKey, () => {
+          // We trigger reset here. For a fully deferred effect we might need usePrevious,
           // but calling reset on key change is the main goal.
           reset()
         })
@@ -45,7 +43,7 @@ export function ErrorComponent({ error }: { error: any }) {
   return (
     <div style={{ padding: '.5rem', 'max-width': '100%' }}>
       <div style={{ display: 'flex', 'align-items': 'center', gap: '.5rem' }}>
-        <strong style={{ 'font-size': '1rem' }}>Something went wrong!</strong>
+        ∂<strong style={{ 'font-size': '1rem' }}>Something went wrong!</strong>
         <button
           style={{
             appearance: 'none',

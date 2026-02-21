@@ -1,9 +1,7 @@
 import * as Solid from 'solid-js'
 
 export const useLayoutEffect =
-  typeof window !== 'undefined'
-    ? Solid.createTrackedEffect
-    : Solid.createTrackedEffect
+  typeof window !== 'undefined' ? Solid.createEffect : Solid.createEffect
 
 export const usePrevious = (fn: () => boolean) => {
   return Solid.createMemo(
