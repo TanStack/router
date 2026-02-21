@@ -8,6 +8,8 @@ import type {
 } from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
 
+const RouterContext = getRouterContext() as unknown as Solid.Component<{ value: any, children: any }>;
+
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
   TDehydrated extends Record<string, any> = Record<string, any>,
@@ -34,9 +36,9 @@ export function RouterContextProvider<
 
   return (
     <OptionalWrapper>
-      <routerContext.Provider value={router as AnyRouter}>
+      <RouterContext value={router as AnyRouter}>
         {children()}
-      </routerContext.Provider>
+      </RouterContext>
     </OptionalWrapper>
   )
 }

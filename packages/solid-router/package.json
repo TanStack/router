@@ -104,6 +104,7 @@
     "@solid-devtools/logger": "^0.9.4",
     "@solid-primitives/refs": "^1.0.8",
     "@solidjs/meta": "^0.29.4",
+    "@solidjs/web": "*",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/solid-store": "^0.9.1",

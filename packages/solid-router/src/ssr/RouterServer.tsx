@@ -4,7 +4,7 @@ import {
   NoHydration,
   ssr,
   useAssets,
-} from 'solid-js/web'
+} from '@solidjs/web'
 import { MetaProvider } from '@solidjs/meta'
 import { Asset } from '../Asset'
 import { useTags } from '../headContentUtils'
@@ -18,7 +18,7 @@ export function ServerHeadContent() {
     return (
       <MetaProvider>
         {tags().map((tag) => (
-          <Asset {...tag} />
+          <Asset {...tag as any} />
         ))}
       </MetaProvider>
     )

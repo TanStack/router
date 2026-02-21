@@ -1,4 +1,4 @@
-import * as Solid from 'solid-js/web'
+import * as Solid from '@solidjs/web'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'

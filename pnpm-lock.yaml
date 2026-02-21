@@ -8,6 +8,7 @@ overrides:
   '@types/babel__traverse': ^7.28.0
   vite-plugin-dts: 4.0.3
   solid-js: 2.0.0-experimental.14
+  '@solidjs/web': 2.0.0-experimental.14
   react: ^19.2.3
   react-dom: ^19.2.3
   '@types/react': ^19.2.8
@@ -12092,6 +12093,9 @@ importers:
       '@solidjs/meta':
         specifier: ^0.29.4
         version: 0.29.4(solid-js@2.0.0-experimental.14)
+      '@solidjs/web':
+        specifier: 2.0.0-experimental.14
+        version: 2.0.0-experimental.14(solid-js@2.0.0-experimental.14)
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
@@ -17325,6 +17329,11 @@ packages:
     peerDependenciesMeta:
       '@solidjs/router':
         optional: true
+
+  '@solidjs/web@2.0.0-experimental.14':
+    resolution: {integrity: sha512-cushQl8Dkh2WKwgidWzQ1ECPWGohMyIGTrPZYINKa0bbulFAI4F05ijTmrUq/knSnQ4nwYUQbiDVWYiEQ11+Pw==}
+    peerDependencies:
+      solid-js: 2.0.0-experimental.14
 
   '@speed-highlight/core@1.2.14':
     resolution: {integrity: sha512-G4ewlBNhUtlLvrJTb88d2mdy2KRijzs4UhnlrOSRT4bmjh/IqNElZa3zkrZ+TC47TwtlDWzVLFADljF1Ijp5hA==}
@@ -24547,7 +24556,7 @@ packages:
       vite: ^7.3.1
 
   vite-plugin-solid@https://pkg.pr.new/vite-plugin-solid@215:
-    resolution: {integrity: sha512-mOpdDyKl5tScq9PR1SVLL1qa60jTh3gDKTL5Vj4ndGAaAm+HuWByJsGF5/33lTh3CLVTKD0IX/SeCx26YslZ5g==, tarball: https://pkg.pr.new/vite-plugin-solid@215}
+    resolution: {tarball: https://pkg.pr.new/vite-plugin-solid@215}
     version: 2.11.10
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
@@ -29797,6 +29806,12 @@ snapshots:
   '@solidjs/testing-library@0.8.10(solid-js@2.0.0-experimental.14)':
     dependencies:
       '@testing-library/dom': 10.4.1
+      solid-js: 2.0.0-experimental.14
+
+  '@solidjs/web@2.0.0-experimental.14(solid-js@2.0.0-experimental.14)':
+    dependencies:
+      seroval: 1.5.0
+      seroval-plugins: 1.5.0(seroval@1.5.0)
       solid-js: 2.0.0-experimental.14
 
   '@speed-highlight/core@1.2.14': {}

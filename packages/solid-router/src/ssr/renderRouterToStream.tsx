@@ -1,4 +1,4 @@
-import * as Solid from 'solid-js/web'
+import * as Solid from '@solidjs/web'
 import { isbot } from 'isbot'
 import { transformReadableStreamWithRouter } from '@tanstack/router-core/ssr/server'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'

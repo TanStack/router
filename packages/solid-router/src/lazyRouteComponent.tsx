@@ -1,7 +1,36 @@
-import { Dynamic } from 'solid-js/web'
-import { createResource } from 'solid-js'
+import * as Solid from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import type { AsyncRouteComponent } from './route'
+
+function Dynamic(props: any) {
+  const { component, ...rest } = props
+  return Solid.createComponent(component, rest)
+}
+
+function createResource<T>(fn: () => Promise<T> | undefined, options?: any): [() => T | undefined] {
+  let p: Promise<T> | undefined;
+  const [signal, setSignal] = Solid.createSignal<T | undefined>(options?.initialValue);
+  const [error, setError] = Solid.createSignal<any>(undefined);
+  const [pending, setPending] = Solid.createSignal(false);
+  
+  return [
+    () => {
+      const currentP = fn();
+      if (currentP && currentP !== p) {
+        p = currentP;
+        setPending(true);
+        currentP.then(
+          (res: any) => { setSignal(() => res); setPending(false); },
+          (err: any) => { setError(err); setPending(false); }
+        );
+      }
+      if (pending() && p) throw p;
+      const e = error();
+      if (e) throw e;
+      return signal();
+    }
+  ]
+}
 
 export function lazyRouteComponent<
   T extends Record<string, any>,

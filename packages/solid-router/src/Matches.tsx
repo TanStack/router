@@ -28,6 +28,8 @@ import type {
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
+const MatchContext = matchContext as unknown as Solid.Component<{ value: any, children: any }>;
+
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
     meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
@@ -45,7 +47,7 @@ export function Matches() {
     (isServer ?? router.isServer) ||
     (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
-      : Solid.Suspense
+      : Solid.Loading
 
   const rootRoute: () => AnyRoute = () => router.routesById[rootRouteId]
   const PendingComponent =
@@ -87,7 +89,7 @@ function MatchesInner() {
   }
 
   return (
-    <matchContext.Provider value={matchId}>
+    <MatchContext value={matchId}>
       {router.options.disableGlobalCatchBoundary ? (
         matchComponent()
       ) : (
@@ -106,7 +108,7 @@ function MatchesInner() {
           {matchComponent()}
         </CatchBoundary>
       )}
-    </matchContext.Provider>
+    </MatchContext>
   )
 }
 

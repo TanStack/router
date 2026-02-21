@@ -21,13 +21,16 @@ export function HeadContent() {
 
   // Fallback cleanup for hydration mismatch cases
   // Runs when hydration completes to remove any orphaned dev styles links from DOM
-  createEffect(() => {
-    if (hydrated()) {
-      document
-        .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
-        .forEach((el) => el.remove())
-    }
-  })
+  createEffect(
+    () => [hydrated()] as const,
+    ([hydrated]) => {
+      if (hydrated) {
+        document
+          .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
+          .forEach((el) => el.remove())
+      }
+    },
+  )
 
   // Filter out dev styles after hydration
   const filteredTags = createMemo(() => {
@@ -39,7 +42,7 @@ export function HeadContent() {
 
   return (
     <MetaProvider>
-      <For each={filteredTags()}>{(tag) => <Asset {...tag} />}</For>
+      <For each={filteredTags()}>{(tag) => <Asset {...tag as any} />}</For>
     </MetaProvider>
   )
 }

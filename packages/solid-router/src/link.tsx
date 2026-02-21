@@ -12,7 +12,23 @@ import {
 } from '@tanstack/router-core'
 
 import { isServer } from '@tanstack/router-core/isServer'
-import { Dynamic } from 'solid-js/web'
+function Dynamic(props: any) {
+  const { component, ...rest } = props
+  return Solid.createComponent(component, rest)
+}
+
+function splitProps<T extends Record<string, any>, K extends keyof T>(
+  props: T,
+  keys: readonly K[]
+): [Pick<T, K>, Omit<T, K>] {
+  const local = {} as Pick<T, K>;
+  const rest = {} as Omit<T, K>;
+  
+  // A safe way to polyfill splitProps if native getter copy is too complex
+  // is just to return [props, Solid.omit(props, keys)] but it modifies typing.
+  // Actually, Solid.omit exists!
+  return [props as any, Solid.omit(props, keys as any) as any];
+}
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
@@ -48,8 +64,8 @@ export function useLinkProps<
 
   let hasRenderFetched = false
 
-  const [local, rest] = Solid.splitProps(
-    Solid.mergeProps(
+  const [local, rest] = splitProps(
+    Solid.merge(
       {
         activeProps: () => ({ class: 'active' }),
         inactiveProps: () => ({}),
@@ -111,7 +127,7 @@ export function useLinkProps<
   //   ...rest
   // } = options
 
-  const [_, propsSafeToSpread] = Solid.splitProps(rest, [
+  const [_, propsSafeToSpread] = splitProps(rest, [
     'params',
     'search',
     'hash',
@@ -274,7 +290,7 @@ export function useLinkProps<
     { disabled: !!local.disabled || !(preload() === 'viewport') },
   )
 
-  Solid.createEffect(() => {
+  Solid.createTrackedEffect(() => {
     if (hasRenderFetched) {
       return
     }
@@ -285,13 +301,13 @@ export function useLinkProps<
   })
 
   if (externalLink()) {
-    return Solid.mergeProps(
+    return Solid.merge(
       propsSafeToSpread,
       {
         ref: mergeRefs(setRef, _options().ref),
         href: externalLink(),
       },
-      Solid.splitProps(local, [
+      splitProps(local, [
         'target',
         'disabled',
         'style',
@@ -432,7 +448,7 @@ export function useLinkProps<
     ...resolvedInactiveProps().style,
   })
 
-  return Solid.mergeProps(
+  return Solid.merge(
     propsSafeToSpread,
     resolvedActiveProps,
     resolvedInactiveProps,
@@ -592,12 +608,12 @@ export function createLink<const TComp>(
 }
 
 export const Link: LinkComponent<'a'> = (props) => {
-  const [local, rest] = Solid.splitProps(
+  const [local, rest] = splitProps(
     props as typeof props & { _asChild: any },
     ['_asChild', 'children'],
   )
 
-  const [_, linkProps] = Solid.splitProps(
+  const [_, linkProps] = splitProps(
     useLinkProps(rest as unknown as any),
     ['type'],
   )
@@ -619,7 +635,7 @@ export const Link: LinkComponent<'a'> = (props) => {
   })
 
   if (local._asChild === 'svg') {
-    const [_, svgLinkProps] = Solid.splitProps(linkProps, ['class'])
+    const [_, svgLinkProps] = splitProps(linkProps as any, ['class'])
     return (
       <svg>
         <a {...svgLinkProps}>{children()}</a>
