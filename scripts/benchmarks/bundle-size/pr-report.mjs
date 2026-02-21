@@ -5,6 +5,18 @@ import { promises as fsp } from 'node:fs'
 import path from 'node:path'
 
 const DEFAULT_MARKER = '<!-- bundle-size-benchmark -->'
+const INT_FORMAT = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 0,
+})
+const FIXED_2_FORMAT = new Intl.NumberFormat('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+const PERCENT_FORMAT = new Intl.NumberFormat('en-US', {
+  style: 'percent',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
 
 function parseArgs(argv) {
   const args = {
@@ -95,22 +107,30 @@ function readJsonMaybeData(filePath) {
   return parseMaybeDataJs(fs.readFileSync(filePath, 'utf8'))
 }
 
-function formatBytes(bytes) {
+function formatBytes(bytes, opts = {}) {
+  const signed = opts.signed === true
+
   if (!Number.isFinite(bytes)) {
     return 'n/a'
   }
 
-  if (bytes < 1024) {
-    return `${bytes} B`
+  const sign = signed && bytes !== 0 ? (bytes > 0 ? '+' : '-') : ''
+  const absBytes = Math.abs(bytes)
+
+  let value
+  if (absBytes < 1024) {
+    value = `${INT_FORMAT.format(absBytes)} B`
+  } else {
+    const kib = absBytes / 1024
+    if (kib < 1024) {
+      value = `${FIXED_2_FORMAT.format(kib)} KiB`
+    } else {
+      const mib = kib / 1024
+      value = `${FIXED_2_FORMAT.format(mib)} MiB`
+    }
   }
 
-  const kib = bytes / 1024
-  if (kib < 1024) {
-    return `${kib.toFixed(2)} KiB`
-  }
-
-  const mib = kib / 1024
-  return `${mib.toFixed(2)} MiB`
+  return `${sign}${value}`
 }
 
 function formatDelta(current, baseline) {
@@ -119,9 +139,9 @@ function formatDelta(current, baseline) {
   }
 
   const delta = current - baseline
-  const absPct = baseline === 0 ? 0 : (Math.abs(delta) / baseline) * 100
+  const ratio = baseline === 0 ? 0 : Math.abs(delta / baseline)
   const sign = delta > 0 ? '+' : delta < 0 ? '-' : ''
-  return `${sign}${formatBytes(Math.abs(delta))} (${sign}${absPct.toFixed(2)}%)`
+  return `${formatBytes(delta, { signed: true })} (${sign}${PERCENT_FORMAT.format(ratio)})`
 }
 
 function sparkline(values) {
