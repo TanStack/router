@@ -72,7 +72,11 @@ function RootComponent() {
   const tags = useTags()
 
   useLayoutEffect(() => {})
-  useBlocker({ shouldBlockFn: () => false, disabled: true, withResolver: false })
+  useBlocker({
+    shouldBlockFn: () => false,
+    disabled: true,
+    withResolver: false,
+  })
 
   const linkFactoryResult = linkOptions({ to: '/' } as any)
   const routeMatchResult = matchRoute({ to: '/' } as any)
@@ -149,7 +153,10 @@ function RootComponent() {
     <>
       <HeadContent />
       <ScriptOnce>{'window.__tsr_bundle_size = true'}</ScriptOnce>
-      <Asset tag="meta" attrs={{ name: 'bundle-size', content: 'solid-router-full' }} />
+      <Asset
+        tag="meta"
+        attrs={{ name: 'bundle-size', content: 'solid-router-full' }}
+      />
       <Link {...(linkProps as any)}>home</Link>
       <SvgLink to="/" aria-label="svg-home">
         <circle cx="8" cy="8" r="7" />
@@ -158,7 +165,9 @@ function RootComponent() {
       <ClientOnly fallback={<span data-test="client-only-fallback" />}>
         <span data-test="client-only" />
       </ClientOnly>
-      <Await promise={Promise.resolve('done')}>{() => <span data-test="await" />}</Await>
+      <Await promise={Promise.resolve('done')}>
+        {() => <span data-test="await" />}
+      </Await>
       <Block shouldBlockFn={() => false} disabled withResolver={false}>
         {() => <span data-test="block" />}
       </Block>

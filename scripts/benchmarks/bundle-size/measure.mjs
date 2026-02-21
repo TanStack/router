@@ -280,7 +280,10 @@ function pickManifestEntryKey(manifest) {
   }
 
   const jsEntries = entries.filter(
-    ([, value]) => value?.isEntry && typeof value.file === 'string' && value.file.endsWith('.js'),
+    ([, value]) =>
+      value?.isEntry &&
+      typeof value.file === 'string' &&
+      value.file.endsWith('.js'),
   )
 
   const preferredPatterns = [
@@ -346,7 +349,9 @@ async function resolveManifestAndEntry(outDir, scenarioId) {
     }
   }
 
-  throw new Error(`Could not determine manifest entry for scenario: ${scenarioId}`)
+  throw new Error(
+    `Could not determine manifest entry for scenario: ${scenarioId}`,
+  )
 }
 
 function getCurrentSha(providedSha) {
@@ -467,7 +472,10 @@ async function main() {
 
     const manifestInfo = await resolveManifestAndEntry(outDir, scenario.id)
 
-    const jsFiles = collectInitialJsFiles(manifestInfo.manifest, manifestInfo.entryKey)
+    const jsFiles = collectInitialJsFiles(
+      manifestInfo.manifest,
+      manifestInfo.entryKey,
+    )
     const sizes = bytesForFiles(manifestInfo.manifestOutDir, jsFiles)
 
     metrics.push({
@@ -502,7 +510,11 @@ async function main() {
   const currentPath = path.join(resultsDir, 'current.json')
   const benchmarkActionPath = path.join(resultsDir, 'benchmark-action.json')
 
-  await fsp.writeFile(currentPath, JSON.stringify(current, null, 2) + '\n', 'utf8')
+  await fsp.writeFile(
+    currentPath,
+    JSON.stringify(current, null, 2) + '\n',
+    'utf8',
+  )
   await fsp.writeFile(
     benchmarkActionPath,
     JSON.stringify(benchmarkActionRows, null, 2) + '\n',

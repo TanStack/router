@@ -72,7 +72,11 @@ function RootComponent() {
   const tags = useTags()
   const layoutEffectRunner = useLayoutEffect(() => {})
 
-  useBlocker({ shouldBlockFn: () => false, disabled: true, withResolver: false })
+  useBlocker({
+    shouldBlockFn: () => false,
+    disabled: true,
+    withResolver: false,
+  })
 
   const linkFactoryResult = linkOptions({ to: '/' } as any)
   const routeMatchResult = matchRoute({ to: '/' } as any)
@@ -151,7 +155,10 @@ function RootComponent() {
     <>
       <HeadContent />
       <ScriptOnce>{'window.__tsr_bundle_size = true'}</ScriptOnce>
-      <Asset tag="meta" attrs={{ name: 'bundle-size', content: 'vue-router-full' }} />
+      <Asset
+        tag="meta"
+        attrs={{ name: 'bundle-size', content: 'vue-router-full' }}
+      />
       <Link {...(linkProps as any)}>home</Link>
       <SvgLink to="/" aria-label="svg-home">
         <circle cx="8" cy="8" r="7" />

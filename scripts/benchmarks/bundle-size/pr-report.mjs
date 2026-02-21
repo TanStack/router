@@ -82,7 +82,9 @@ function parseMaybeDataJs(raw) {
 
   if (trimmed.startsWith('window.BENCHMARK_DATA')) {
     return JSON.parse(
-      trimmed.replace(/^window\.BENCHMARK_DATA\s*=\s*/, '').replace(/;\s*$/, ''),
+      trimmed
+        .replace(/^window\.BENCHMARK_DATA\s*=\s*/, '')
+        .replace(/;\s*$/, ''),
     )
   }
 
@@ -194,7 +196,9 @@ function resolveBaselineFromHistory(historyEntries, baseSha) {
   const baseEntry =
     (baseSha &&
       historyEntries.find(
-        (entry) => entry?.commit?.id === baseSha || entry?.commit?.id?.startsWith(baseSha),
+        (entry) =>
+          entry?.commit?.id === baseSha ||
+          entry?.commit?.id?.startsWith(baseSha),
       )) ||
     historyEntries[historyEntries.length - 1]
 
@@ -221,7 +225,8 @@ function resolveBaselineFromCurrentJson(currentJson) {
     }
   }
 
-  const sourceSha = typeof currentJson?.sha === 'string' ? currentJson.sha : 'unknown'
+  const sourceSha =
+    typeof currentJson?.sha === 'string' ? currentJson.sha : 'unknown'
 
   return {
     source: `current:${sourceSha.slice(0, 12)}`,
@@ -246,7 +251,9 @@ async function main() {
 
   const current = readJsonMaybeData(currentPath)
   const history =
-    historyPath && fs.existsSync(historyPath) ? readJsonMaybeData(historyPath) : undefined
+    historyPath && fs.existsSync(historyPath)
+      ? readJsonMaybeData(historyPath)
+      : undefined
   const baselineCurrent =
     baselinePath && fs.existsSync(baselinePath)
       ? readJsonMaybeData(baselinePath)
@@ -289,10 +296,10 @@ async function main() {
   lines.push(args.marker)
   lines.push('## Bundle Size Benchmarks')
   lines.push('')
+  lines.push(`- Commit: \`${formatShortSha(current.sha)}\``)
   lines.push(
-    `- Commit: \`${formatShortSha(current.sha)}\``,
+    `- Measured at: \`${current.measuredAt || current.generatedAt || 'unknown'}\``,
   )
-  lines.push(`- Measured at: \`${current.measuredAt || current.generatedAt || 'unknown'}\``)
   lines.push(`- Baseline source: \`${baseline.source}\``)
   if (args.dashboardUrl) {
     lines.push(`- Dashboard: [bundle-size history](${args.dashboardUrl})`)

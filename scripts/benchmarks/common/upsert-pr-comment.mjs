@@ -64,7 +64,9 @@ function parseArgs(argv) {
   }
 
   if (!args.repo || !args.repo.includes('/')) {
-    throw new Error('Missing repository context. Provide --repo or GITHUB_REPOSITORY.')
+    throw new Error(
+      'Missing repository context. Provide --repo or GITHUB_REPOSITORY.',
+    )
   }
 
   if (!args.token) {
@@ -74,13 +76,7 @@ function parseArgs(argv) {
   return args
 }
 
-async function githubRequest({
-  apiUrl,
-  token,
-  method,
-  endpoint,
-  body,
-}) {
+async function githubRequest({ apiUrl, token, method, endpoint, body }) {
   const url = `${apiUrl.replace(/\/$/, '')}${endpoint}`
   const response = await fetch(url, {
     method,
@@ -148,7 +144,8 @@ async function main() {
   })
 
   const existing = comments.find(
-    (comment) => typeof comment?.body === 'string' && comment.body.includes(args.marker),
+    (comment) =>
+      typeof comment?.body === 'string' && comment.body.includes(args.marker),
   )
 
   if (existing) {
