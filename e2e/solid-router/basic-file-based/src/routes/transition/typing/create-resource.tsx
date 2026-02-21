@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { Suspense, createResource } from 'solid-js'
+import { Loading, createMemo } from 'solid-js'
 
 export const Route = createFileRoute('/transition/typing/create-resource')({
   validateSearch: (search: { query?: string }) => ({
@@ -13,12 +13,10 @@ function Home() {
   const searchQuery = Route.useSearch()
   const navigate = Route.useNavigate()
 
-  const [asyncResult] = createResource(
-    () => searchQuery().query,
-    async (query) => {
-      await new Promise((r) => setTimeout(r, 1000))
-      return query
-    },
+  const asyncResult = createMemo(async () => {
+    await new Promise((r) => setTimeout(r, 1000))
+    return searchQuery().query
+  },
   )
 
   return (
@@ -35,11 +33,11 @@ function Home() {
 
         <br />
 
-        <Suspense fallback="Loading...">
+        <Loading fallback="Loading...">
           Query: {searchQuery().query}
           <br />
           Result: {asyncResult()}
-        </Suspense>
+        </Loading>
       </div>
     </div>
   )

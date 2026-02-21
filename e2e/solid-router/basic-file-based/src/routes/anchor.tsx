@@ -36,10 +36,10 @@ function AnchorSection({ id, title }: { id: string; title: string }) {
   const [hasShown, setHasShown] = createSignal(false)
   let elementRef: HTMLHeadingElement | null = null
 
-  createEffect(() => {
+  createEffect(hasShown, (hasShownValue) => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!hasShown() && entry.isIntersecting) {
+        if (!hasShownValue && entry.isIntersecting) {
           setHasShown(true)
         }
       },
@@ -114,10 +114,10 @@ function AnchorComponent() {
 
             const hashScrollIntoView = withScroll()
               ? ({
-                  behavior: formData.get('scrollBehavior') as ScrollBehavior,
-                  block: formData.get('scrollBlock') as ScrollLogicalPosition,
-                  inline: formData.get('scrollInline') as ScrollLogicalPosition,
-                } satisfies ScrollIntoViewOptions)
+                behavior: formData.get('scrollBehavior') as ScrollBehavior,
+                block: formData.get('scrollBlock') as ScrollLogicalPosition,
+                inline: formData.get('scrollInline') as ScrollLogicalPosition,
+              } satisfies ScrollIntoViewOptions)
               : false
 
             navigate({ hash: toHash, hashScrollIntoView })

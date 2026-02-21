@@ -18,13 +18,13 @@ function RouteComponent() {
     strict: false,
   })
 
-  createEffect(() => {
-    params().bar
+  createEffect(params, (p) => {
+    p.bar
     setBarRenderCount((prev) => prev + 1)
   })
 
-  createEffect(() => {
-    params().baz
+  createEffect(params, (p) => {
+    p.baz
     setBazRenderCount((prev) => prev + 1)
   })
 
