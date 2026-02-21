@@ -1866,8 +1866,16 @@ export class RouterCore<
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
-            changedParams = true
-            Object.assign(nextParams, fn(nextParams))
+            try {
+              Object.assign(nextParams, fn(nextParams))
+              changedParams = true
+            } catch {
+              // Ignore errors here. When a paired parseParams is defined,
+              // extractStrictParams will re-throw during route matching,
+              // storing the error on the match and allowing the route's
+              // errorComponent to render. If no parseParams is defined,
+              // the stringify error is silently dropped.
+            }
           }
         }
       }
@@ -2834,10 +2842,7 @@ export class RouterCore<
     const matchLocation = {
       ...location,
       to: location.to
-        ? this.resolvePathWithBase(
-            (location.from || '') as string,
-            location.to as string,
-          )
+        ? this.resolvePathWithBase(location.from || '', location.to as string)
         : undefined,
       params: location.params || {},
       leaveParams: true,

@@ -64,7 +64,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
         request,
         router,
         responseHeaders,
-      } as any)
+      })
     } finally {
       if (!cbWillCleanup) {
         // Clean up router SSR state if the callback won't handle it

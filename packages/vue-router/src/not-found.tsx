@@ -22,7 +22,7 @@ export function CatchNotFound(props: {
     if (isNotFound(error)) {
       // If a fallback is provided, use it
       if (props.fallback) {
-        return props.fallback(error as NotFoundError)
+        return props.fallback(error)
       }
       // Otherwise return a default not found message
       return Vue.h('p', null, 'Not Found')

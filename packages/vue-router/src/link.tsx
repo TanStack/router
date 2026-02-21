@@ -287,7 +287,7 @@ export function useLinkProps<
         }
       })
 
-      return safeProps as LinkHTMLAttributes
+      return safeProps
     }
 
     // External links just have simple props
@@ -315,7 +315,7 @@ export function useLinkProps<
       }
     })
 
-    return externalProps as LinkHTMLAttributes
+    return externalProps
   }
 
   // The click handler
@@ -578,7 +578,7 @@ export function useLinkProps<
       }
     }
 
-    return result as LinkHTMLAttributes
+    return result
   })
 
   // Return the computed ref itself - callers should access .value
