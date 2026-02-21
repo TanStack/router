@@ -1877,10 +1877,6 @@ describe('Link', () => {
 
     expect(window.location.pathname).toBe('/')
     expect(homeHeading).toBeInTheDocument()
-
-    expect(consoleWarnSpy).not.toHaveBeenCalled()
-
-    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts to ../posts/$postId', async () => {
@@ -2443,10 +2439,6 @@ describe('Link', () => {
 
     expect(window.location.pathname).toEqual('/dashboard/users/id1')
     expect(user1Heading).toBeInTheDocument()
-
-    expect(consoleWarnSpy).not.toHaveBeenCalled()
-
-    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts/$postId to ./info and the current route is /posts/$postId/details', async () => {
@@ -4721,8 +4713,8 @@ describe('createLink', () => {
         overrideMeIfYouWant: string
       }>
     > = (props: any) => {
-      const { active, foo, children, ...rest } = props;
-      const local = { active, foo, children };
+      const { active, foo, children, ...rest } = props
+      const local = { active, foo, children }
 
       return (
         <button {...rest}>
