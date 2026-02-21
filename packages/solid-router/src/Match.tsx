@@ -21,6 +21,7 @@ import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
 function Dynamic(props: any) {
   const { component, ...rest } = props
+  if (!component) return null;
   return Solid.createComponent(component, rest)
 }
 

@@ -4,6 +4,7 @@ import type { AsyncRouteComponent } from './route'
 
 function Dynamic(props: any) {
   const { component, ...rest } = props
+  if (!component) return null;
   return Solid.createComponent(component, rest)
 }
 

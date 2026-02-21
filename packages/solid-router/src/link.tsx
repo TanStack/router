@@ -14,6 +14,7 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 function Dynamic(props: any) {
   const { component, ...rest } = props
+  if (!component) return null;
   return Solid.createComponent(component, rest)
 }
 
