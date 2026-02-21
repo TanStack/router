@@ -3,6 +3,7 @@
 import fs from 'node:fs'
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
+import { parseArgs as parseNodeArgs } from 'node:util'
 
 const DEFAULT_MARKER = '<!-- bundle-size-benchmark -->'
 const INT_FORMAT = new Intl.NumberFormat('en-US', {
@@ -19,63 +20,37 @@ const PERCENT_FORMAT = new Intl.NumberFormat('en-US', {
 })
 
 function parseArgs(argv) {
+  const { values } = parseNodeArgs({
+    args: argv,
+    allowPositionals: false,
+    strict: true,
+    options: {
+      current: { type: 'string' },
+      baseline: { type: 'string' },
+      history: { type: 'string' },
+      output: { type: 'string' },
+      'dashboard-url': { type: 'string' },
+      'base-sha': { type: 'string' },
+      marker: { type: 'string' },
+      'trend-points': { type: 'string' },
+    },
+  })
+
   const args = {
-    current: undefined,
-    baseline: undefined,
-    history: undefined,
-    output: undefined,
-    dashboardUrl: undefined,
-    baseSha: undefined,
-    marker: DEFAULT_MARKER,
-    trendPoints: 12,
+    current: values.current,
+    baseline: values.baseline,
+    history: values.history,
+    output: values.output,
+    dashboardUrl: values['dashboard-url'],
+    baseSha: values['base-sha'],
+    marker: values.marker ?? DEFAULT_MARKER,
+    trendPoints: values['trend-points']
+      ? Number.parseInt(values['trend-points'], 10)
+      : 12,
   }
 
-  for (let i = 0; i < argv.length; i++) {
-    const token = argv[i]
-    if (!token.startsWith('--')) {
-      continue
-    }
-
-    const key = token.slice(2)
-    const value = argv[i + 1]
-
-    if (!value || value.startsWith('--')) {
-      throw new Error(`Missing value for argument: ${token}`)
-    }
-
-    switch (key) {
-      case 'current':
-        args.current = value
-        break
-      case 'baseline':
-        args.baseline = value
-        break
-      case 'history':
-        args.history = value
-        break
-      case 'output':
-        args.output = value
-        break
-      case 'dashboard-url':
-        args.dashboardUrl = value
-        break
-      case 'base-sha':
-        args.baseSha = value
-        break
-      case 'marker':
-        args.marker = value
-        break
-      case 'trend-points':
-        args.trendPoints = Number.parseInt(value, 10)
-        if (!Number.isFinite(args.trendPoints) || args.trendPoints < 2) {
-          throw new Error(`Invalid trend points: ${value}`)
-        }
-        break
-      default:
-        throw new Error(`Unknown argument: ${token}`)
-    }
-
-    i += 1
+  if (!Number.isFinite(args.trendPoints) || args.trendPoints < 2) {
+    throw new Error(`Invalid trend points: ${values['trend-points']}`)
   }
 
   if (!args.current) {

@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parseArgs as parseNodeArgs } from 'node:util'
 import { brotliCompressSync, gzipSync } from 'node:zlib'
 import { execSync } from 'node:child_process'
 
@@ -85,52 +86,26 @@ const SCENARIOS = [
 ]
 
 function parseArgs(argv) {
-  const args = {
-    sha: undefined,
-    measuredAt: undefined,
-    appendHistory: undefined,
-    resultsDir: undefined,
-    distDir: undefined,
+  const { values } = parseNodeArgs({
+    args: argv,
+    allowPositionals: false,
+    strict: true,
+    options: {
+      sha: { type: 'string' },
+      'measured-at': { type: 'string' },
+      'append-history': { type: 'string' },
+      'results-dir': { type: 'string' },
+      'dist-dir': { type: 'string' },
+    },
+  })
+
+  return {
+    sha: values.sha,
+    measuredAt: values['measured-at'],
+    appendHistory: values['append-history'],
+    resultsDir: values['results-dir'],
+    distDir: values['dist-dir'],
   }
-
-  for (let i = 0; i < argv.length; i++) {
-    const token = argv[i]
-
-    if (!token.startsWith('--')) {
-      continue
-    }
-
-    const key = token.slice(2)
-    const value = argv[i + 1]
-
-    if (!value || value.startsWith('--')) {
-      throw new Error(`Missing value for argument: ${token}`)
-    }
-
-    switch (key) {
-      case 'sha':
-        args.sha = value
-        break
-      case 'measured-at':
-        args.measuredAt = value
-        break
-      case 'append-history':
-        args.appendHistory = value
-        break
-      case 'results-dir':
-        args.resultsDir = value
-        break
-      case 'dist-dir':
-        args.distDir = value
-        break
-      default:
-        throw new Error(`Unknown argument: ${token}`)
-    }
-
-    i += 1
-  }
-
-  return args
 }
 
 function toIsoDate(value) {

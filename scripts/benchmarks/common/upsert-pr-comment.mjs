@@ -2,56 +2,34 @@
 
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
+import { parseArgs as parseNodeArgs } from 'node:util'
 
 const DEFAULT_MARKER = '<!-- bundle-size-benchmark -->'
 
 function parseArgs(argv) {
+  const { values } = parseNodeArgs({
+    args: argv,
+    allowPositionals: false,
+    strict: true,
+    options: {
+      pr: { type: 'string' },
+      'body-file': { type: 'string' },
+      repo: { type: 'string' },
+      token: { type: 'string' },
+      marker: { type: 'string' },
+      'api-url': { type: 'string' },
+    },
+  })
+
   const args = {
-    pr: undefined,
-    bodyFile: undefined,
-    repo: process.env.GITHUB_REPOSITORY,
-    marker: DEFAULT_MARKER,
-    token: process.env.GITHUB_TOKEN || process.env.GH_TOKEN,
-    apiUrl: process.env.GITHUB_API_URL || 'https://api.github.com',
-  }
-
-  for (let i = 0; i < argv.length; i++) {
-    const token = argv[i]
-    if (!token.startsWith('--')) {
-      continue
-    }
-
-    const key = token.slice(2)
-    const value = argv[i + 1]
-
-    if (!value || value.startsWith('--')) {
-      throw new Error(`Missing value for argument: ${token}`)
-    }
-
-    switch (key) {
-      case 'pr':
-        args.pr = Number.parseInt(value, 10)
-        break
-      case 'body-file':
-        args.bodyFile = value
-        break
-      case 'repo':
-        args.repo = value
-        break
-      case 'token':
-        args.token = value
-        break
-      case 'marker':
-        args.marker = value
-        break
-      case 'api-url':
-        args.apiUrl = value
-        break
-      default:
-        throw new Error(`Unknown argument: ${token}`)
-    }
-
-    i += 1
+    pr: values.pr ? Number.parseInt(values.pr, 10) : undefined,
+    bodyFile: values['body-file'],
+    repo: values.repo ?? process.env.GITHUB_REPOSITORY,
+    marker: values.marker ?? DEFAULT_MARKER,
+    token: values.token ?? (process.env.GITHUB_TOKEN || process.env.GH_TOKEN),
+    apiUrl:
+      values['api-url'] ??
+      (process.env.GITHUB_API_URL || 'https://api.github.com'),
   }
 
   if (!Number.isFinite(args.pr) || args.pr <= 0) {
