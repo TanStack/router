@@ -1,0 +1,33 @@
+{
+  "name": "@tanstack/router-skills",
+  "version": "0.0.1",
+  "description": "TanStack Router and Start skills documentation for AI agents",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/router.git",
+    "directory": "packages/skills"
+  },
+  "homepage": "https://tanstack.com/router",
+  "keywords": [
+    "tanstack",
+    "router",
+    "skills",
+    "ai",
+    "llm",
+    "documentation"
+  ],
+  "bin": {
+    "router-skills": "./bin/cli.js"
+  },
+  "type": "module",
+  "files": [
+    "bin",
+    "skills",
+    "agents/*.agent.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
