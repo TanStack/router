@@ -14,9 +14,14 @@ const config = defineConfig(({ mode }) => {
         watch: false,
         environment: 'node',
         typecheck: { enabled: true },
+        resolve: {
+          alias: {
+            'solid-js/web': '@solidjs/web',
+          },
+        },
         server: {
           deps: {
-            inline: [/@solidjs/, /@tanstack\/solid-store/],
+            inline: [/@solidjs/, /@tanstack\/solid-store/, /@solid-primitives/],
           },
         },
       },
@@ -30,6 +35,9 @@ const config = defineConfig(({ mode }) => {
     ...(process.env.VITEST && {
       resolve: {
         conditions: ['development'],
+        alias: {
+          'solid-js/web': '@solidjs/web',
+        },
       },
     }),
     test: {
@@ -42,7 +50,7 @@ const config = defineConfig(({ mode }) => {
       setupFiles: ['./tests/setupTests.tsx'],
       server: {
         deps: {
-          inline: [/@solidjs/, /@tanstack\/solid-store/],
+          inline: [/@solidjs/, /@tanstack\/solid-store/, /@solid-primitives/],
         },
       },
     },

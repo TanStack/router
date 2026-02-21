@@ -3522,7 +3522,7 @@ describe('Link', () => {
         'idle' | 'success' | 'error'
       >('idle')
 
-      Solid.onMount(() => {
+      Solid.onSettled(() => {
         const onLoad = async () => {
           try {
             await router.preloadRoute({
@@ -4720,12 +4720,9 @@ describe('createLink', () => {
         foo?: boolean
         overrideMeIfYouWant: string
       }>
-    > = (props) => {
-      const [local, rest] = Solid.splitProps(props, [
-        'active',
-        'foo',
-        'children',
-      ])
+    > = (props: any) => {
+      const { active, foo, children, ...rest } = props;
+      const local = { active, foo, children };
 
       return (
         <button {...rest}>

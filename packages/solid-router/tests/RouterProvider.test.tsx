@@ -26,7 +26,8 @@ describe('RouterProvider', () => {
       <RouterProvider
         router={router}
         Wrap={(props) => {
-          return <ctx.Provider value={'findMe'}>{props.children}</ctx.Provider>
+          const Ctx = ctx as any
+          return <Ctx value={'findMe'}>{props.children}</Ctx>
         }}
       />
     ))

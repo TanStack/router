@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { z } from 'zod'
 
-import { createEffect, onMount } from 'solid-js'
+import { createTrackedEffect as createEffect, onSettled as onMount } from 'solid-js'
 import {
   Link,
   Outlet,
