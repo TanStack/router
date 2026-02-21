@@ -1,0 +1,20 @@
+import { createApp } from 'vue'
+import { RouterProvider, createRouter } from '@tanstack/vue-router'
+import { routeTree } from './routeTree.gen'
+
+const router = createRouter({ routeTree })
+
+declare module '@tanstack/vue-router' {
+  interface Register {
+    router: typeof router
+  }
+}
+
+const rootElement = document.getElementById('app')!
+if (!rootElement.innerHTML) {
+  createApp({
+    setup() {
+      return () => <RouterProvider router={router} />
+    },
+  }).mount('#app')
+}
