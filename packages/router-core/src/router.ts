@@ -1887,10 +1887,11 @@ export class RouterCore<
               Object.assign(nextParams, fn(nextParams))
               changedParams = true
             } catch {
-              // ignore errors here because they will be properly handled
-              // during route matching via parseParams/extractStrictParams,
-              // which stores the error on the match and renders the
-              // route's errorComponent
+              // Ignore errors here. When a paired parseParams is defined,
+              // extractStrictParams will re-throw during route matching,
+              // storing the error on the match and allowing the route's
+              // errorComponent to render. If no parseParams is defined,
+              // the stringify error is silently dropped.
             }
           }
         }
