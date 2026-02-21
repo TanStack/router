@@ -77,8 +77,15 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = useStore(router.stores.firstMatchId, (id) => id)
-  const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
+  const _isServer = isServer ?? router.isServer
+  const matchId = _isServer
+    ? router.stores.firstMatchId.state
+    : // eslint-disable-next-line react-hooks/rules-of-hooks
+      useStore(router.stores.firstMatchId, (id) => id)
+  const resetKey = _isServer
+    ? router.stores.loadedAt.state
+    : // eslint-disable-next-line react-hooks/rules-of-hooks
+      useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
 
   const matchComponent = matchId ? <Match matchId={matchId} /> : null
 
@@ -132,7 +139,10 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  useStore(router.stores.matchRouteReactivity, (d) => d)
+  if (!(isServer ?? router.isServer)) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useStore(router.stores.matchRouteReactivity, (d) => d)
+  }
 
   return React.useCallback(
     <
@@ -229,6 +239,17 @@ export function useMatches<
       undefined,
     )
 
+  if (isServer ?? router.isServer) {
+    const matches = router.stores.activeMatchesSnapshot.state as Array<
+      MakeRouteMatchUnion<TRouter>
+    >
+    return (opts?.select ? opts.select(matches) : matches) as UseMatchesResult<
+      TRouter,
+      TSelected
+    >
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   return useStore(router.stores.activeMatchesSnapshot, (matches) => {
     const selected = opts?.select
       ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)

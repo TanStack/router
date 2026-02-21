@@ -1,6 +1,6 @@
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
-import { createRouterStores } from "./stores"
+import { createRouterStores, createServerRouterStores } from './stores'
 import { batch } from './utils/batch'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
@@ -1107,9 +1107,9 @@ export class RouterCore<
     }
 
     if (!this.__store && this.latestLocation) {
-      const stores = createRouterStores<TRouteTree>(
-        getInitialRouterState(this.latestLocation)
-      )
+      const stores = (isServer ?? this.isServer)
+        ? createServerRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
+        : createRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
       this.stores = stores
       this.__store = stores.__store
 

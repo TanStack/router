@@ -1,4 +1,5 @@
 import { useStore } from '@tanstack/react-store'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
@@ -10,48 +11,68 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const assetScripts = useStore(router.stores.activeMatchesSnapshot, (matches) => {
-      const assetScripts: Array<RouterManagedTag> = []
-      const manifest = router.ssr?.manifest
 
-      if (!manifest) {
-        return []
-      }
+  const getAssetScripts = (matches: Array<any>) => {
+    const assetScripts: Array<RouterManagedTag> = []
+    const manifest = router.ssr?.manifest
 
-      matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) =>
-          manifest.routes[route.id]?.assets
-            ?.filter((d) => d.tag === 'script')
-            .forEach((asset) => {
-              assetScripts.push({
-                tag: 'script',
-                attrs: { ...asset.attrs, nonce },
-                children: asset.children,
-              } as any)
-            }),
-        )
+    if (!manifest) {
+      return []
+    }
 
-      return assetScripts
-  })
+    matches
+      .map((match) => router.looseRoutesById[match.routeId]!)
+      .forEach((route) =>
+        manifest.routes[route.id]?.assets
+          ?.filter((d) => d.tag === 'script')
+          .forEach((asset) => {
+            assetScripts.push({
+              tag: 'script',
+              attrs: { ...asset.attrs, nonce },
+              children: asset.children,
+            } as any)
+          }),
+      )
 
-  const scripts = useStore(router.stores.activeMatchesSnapshot, (matches) =>
+    return assetScripts
+  }
+
+  const getScripts = (matches: Array<any>): Array<RouterManagedTag> =>
     (
       matches
-          .map((match) => match.scripts!)
-          .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-    ).map(({ children, ...script }) => ({
-      tag: 'script',
-      attrs: {
-        ...script,
-        suppressHydrationWarning: true,
-        nonce,
-      },
-      children,
-    })),
-  )
+        .map((match) => match.scripts!)
+        .flat(1)
+        .filter(Boolean) as Array<RouterManagedTag>
+    ).map(
+      ({ children, ...script }) =>
+        ({
+          tag: 'script',
+          attrs: {
+            ...script,
+            suppressHydrationWarning: true,
+            nonce,
+          },
+          children,
+        }) satisfies RouterManagedTag,
+    )
 
+  if (isServer ?? router.isServer) {
+    const assetScripts = getAssetScripts(router.stores.activeMatchesSnapshot.state)
+    const scripts = getScripts(router.stores.activeMatchesSnapshot.state)
+    return renderScripts(router, scripts, assetScripts)
+  }
+
+  const assetScripts = useStore(router.stores.activeMatchesSnapshot, getAssetScripts)
+  const scripts = useStore(router.stores.activeMatchesSnapshot, getScripts)
+
+  return renderScripts(router, scripts, assetScripts)
+}
+
+function renderScripts(
+  router: ReturnType<typeof useRouter>,
+  scripts: Array<RouterManagedTag>,
+  assetScripts: Array<RouterManagedTag>,
+) {
   let serverBufferedScript: RouterManagedTag | undefined = undefined
 
   if (router.serverSsr) {

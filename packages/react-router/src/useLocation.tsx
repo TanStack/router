@@ -1,4 +1,5 @@
 import { useStore } from '@tanstack/react-store'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type {
   StructuralSharingOption,
@@ -47,6 +48,13 @@ export function useLocation<
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseLocationResult<TRouter, TSelected> {
   const router = useRouter<TRouter>()
+
+  if (isServer ?? router.isServer) {
+    const location = router.stores.location.state
+    return (opts?.select
+      ? opts.select(location as any)
+      : location) as UseLocationResult<TRouter, TSelected>
+  }
 
   return useStore(router.stores.location, (location) =>
     opts?.select ? opts.select(location as any) : location,

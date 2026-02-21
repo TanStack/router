@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
 import { replaceEqualDeep } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import invariant from 'tiny-invariant'
 import { dummyMatchContext, matchContext } from './matchContext'
 import { useRouter } from './useRouter'
@@ -112,6 +113,26 @@ export function useMatch<
     React.useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(
       undefined,
     )
+
+  if (isServer ?? router.isServer) {
+    const key = opts.from ?? nearestMatchId
+    const match = key
+      ? opts.from
+        ? router.stores.byRouteId.state[key]?.state
+        : router.stores.byId.state[key]?.state
+      : undefined
+
+    invariant(
+      !((opts.shouldThrow ?? true) && !match),
+      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+    )
+
+    if (match === undefined) {
+      return undefined as any
+    }
+
+    return (opts.select ? opts.select(match as any) : match) as any
+  }
 
   const matchStore = useStore(
     opts.from ? router.stores.byRouteId : router.stores.byId,
