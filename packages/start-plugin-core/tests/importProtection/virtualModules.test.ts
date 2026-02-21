@@ -1,15 +1,14 @@
 import { describe, expect, test } from 'vitest'
 import {
-  MOCK_MODULE_ID,
   MOCK_EDGE_PREFIX,
+  MOCK_MODULE_ID,
   MOCK_RUNTIME_PREFIX,
-  RESOLVED_MOCK_MODULE_ID,
-  loadSilentMockModule,
+  loadMarkerModule,
   loadMockEdgeModule,
   loadMockRuntimeModule,
-  loadMarkerModule,
-  mockRuntimeModuleIdFromViolation,
+  loadSilentMockModule,
   makeMockEdgeModuleId,
+  mockRuntimeModuleIdFromViolation,
 } from '../../src/import-protection-plugin/virtualModules'
 import type { ViolationInfo } from '../../src/import-protection-plugin/trace'
 

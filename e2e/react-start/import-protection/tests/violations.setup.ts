@@ -1,15 +1,18 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
-import { chromium, type FullConfig } from '@playwright/test'
+import {  chromium } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 
-import { extractViolationsFromLog } from './violations.utils'
+import {  extractViolationsFromLog } from './violations.utils'
+import type {FullConfig} from '@playwright/test';
+import type {Violation} from './violations.utils';
 
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()
-  // eslint-disable-next-line no-constant-condition
+   
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
     if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for ${url}`)
@@ -103,7 +106,10 @@ async function navigateAllRoutes(
  * Starts a dev server, navigates all routes, captures violations.
  * Returns the extracted violations array.
  */
-async function runDevPass(cwd: string, port: number): Promise<Array<any>> {
+async function runDevPass(
+  cwd: string,
+  port: number,
+): Promise<Array<Violation>> {
   const baseURL = `http://localhost:${port}`
   const logChunks: Array<string> = []
   const child = startDevServer(cwd, port)

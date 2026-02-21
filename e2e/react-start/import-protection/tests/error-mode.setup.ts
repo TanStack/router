@@ -158,7 +158,7 @@ async function captureDev(cwd: string): Promise<void> {
     await new Promise((r) => setTimeout(r, 750))
   } finally {
     await killChild(child)
-    out.end()
+    await new Promise<void>((resolve) => out.end(resolve))
   }
 
   const combined = fs.existsSync(logFile)

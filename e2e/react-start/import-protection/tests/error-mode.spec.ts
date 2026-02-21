@@ -13,8 +13,10 @@ interface ErrorResult {
 
 async function readResult(name: string): Promise<ErrorResult> {
   const p = path.resolve(import.meta.dirname, '..', name)
-  const mod = await import(p, { with: { type: 'json' } } as any)
-  return mod.default as ErrorResult
+  const mod: { default: ErrorResult } = await import(p, {
+    with: { type: 'json' },
+  })
+  return mod.default
 }
 
 // Build error mode tests
@@ -66,7 +68,7 @@ test('build violation is parseable', async () => {
   const violations = extractViolationsFromLog(result.combined)
   expect(violations.length).toBeGreaterThanOrEqual(1)
 
-  const v = violations[0]!
+  const v = violations[0]
   expect(v.envType).toMatch(/^(client|server)$/)
   expect(v.importer).toBeTruthy()
   expect(v.specifier).toBeTruthy()
@@ -111,7 +113,7 @@ test('dev error violation is parseable', async () => {
   const violations = extractViolationsFromLog(result.combined)
   expect(violations.length).toBeGreaterThanOrEqual(1)
 
-  const v = violations[0]!
+  const v = violations[0]
   expect(v.envType).toMatch(/^(client|server)$/)
   expect(v.importer).toBeTruthy()
   expect(v.specifier).toBeTruthy()
