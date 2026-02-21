@@ -20,7 +20,7 @@ export function Transitioner() {
     return null
   }
 
-  const [isSolidTransitioning, startSolidTransition] = Solid.useTransition()
+  const [isSolidTransitioning, startSolidTransition] = [() => false, (fn: any) => fn()]
 
   // Track pending state changes
   const hasPendingMatches = useRouterState({
@@ -37,14 +37,12 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   router.startTransition = (fn: () => void | Promise<void>) => {
-    Solid.startTransition(() => {
-      startSolidTransition(fn)
-    })
+    startSolidTransition(fn)
   }
 
   // Subscribe to location changes
   // and try to load the new location
-  Solid.onMount(() => {
+  Solid.onSettled(() => {
     const unsub = router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
@@ -72,7 +70,7 @@ export function Transitioner() {
   })
 
   // Try to load the initial location
-  Solid.createRenderEffect(() => {
+  Solid.createTrackedEffect(() => {
     Solid.untrack(() => {
       if (
         // if we are hydrating from SSR, loading is triggered in ssr-client
@@ -93,24 +91,21 @@ export function Transitioner() {
     })
   })
 
-  Solid.createRenderEffect(
-    Solid.on(
-      [previousIsLoading, isLoading],
-      ([previousIsLoading, isLoading]) => {
+  Solid.createEffect(
+    () => [previousIsLoading(), isLoading()] as const,
+    ([previousIsLoading, isLoading]) => {
         if (previousIsLoading.previous && !isLoading) {
           router.emit({
             type: 'onLoad',
             ...getLocationChangeInfo(router.state),
           })
         }
-      },
-    ),
+    }
   )
 
-  Solid.createComputed(
-    Solid.on(
-      [isPagePending, previousIsPagePending],
-      ([isPagePending, previousIsPagePending]) => {
+  Solid.createEffect(
+    () => [isPagePending(), previousIsPagePending()] as const,
+    ([isPagePending, previousIsPagePending]) => {
         // emit onBeforeRouteMount
         if (previousIsPagePending.previous && !isPagePending) {
           router.emit({
@@ -118,14 +113,12 @@ export function Transitioner() {
             ...getLocationChangeInfo(router.state),
           })
         }
-      },
-    ),
+    }
   )
 
-  Solid.createRenderEffect(
-    Solid.on(
-      [isAnyPending, previousIsAnyPending],
-      ([isAnyPending, previousIsAnyPending]) => {
+  Solid.createEffect(
+    () => [isAnyPending(), previousIsAnyPending()] as const,
+    ([isAnyPending, previousIsAnyPending]) => {
         if (previousIsAnyPending.previous && !isAnyPending) {
           const changeInfo = getLocationChangeInfo(router.state)
           router.emit({
@@ -143,8 +136,7 @@ export function Transitioner() {
             handleHashScroll(router)
           }
         }
-      },
-    ),
+    }
   )
 
   return null
