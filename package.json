@@ -84,6 +84,7 @@
       "@types/react-dom": "$@types/react-dom",
       "eslint": "$eslint",
       "vite": "$vite",
+			"vite-plugin-solid": "https://pkg.pr.new/vite-plugin-solid@215",
       "@types/node": "$@types/node",
       "@playwright/test": "$@playwright/test",
       "@tanstack/react-query": "$@tanstack/react-query",
