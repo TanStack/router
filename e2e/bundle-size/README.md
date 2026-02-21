@@ -44,7 +44,7 @@ This writes:
 
 ## Manual Update Policy
 
-When router/start public hooks/components evolve, update the corresponding `*-full/main.tsx` harness to keep full scenarios representative.
+When router/start public hooks/components evolve, update the corresponding `*-full/src/routes/__root.tsx` harness to keep full scenarios representative.
 
 ## Backfill Readiness
 

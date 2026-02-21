@@ -4,11 +4,7 @@ import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 
 export default defineConfig({
   plugins: [
-    tanstackStart({
-      router: {
-        autoCodeSplitting: true,
-      } as any,
-    }),
+    tanstackStart(),
     solid({ ssr: true }),
   ],
 })

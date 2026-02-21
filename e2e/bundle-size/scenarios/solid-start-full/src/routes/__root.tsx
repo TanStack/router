@@ -24,12 +24,13 @@ import {
   useAwaited,
   useBlocker,
   useCanGoBack,
+  useChildMatches,
   useElementScrollRestoration,
   useHydrated,
+  useLayoutEffect,
   useLinkProps,
   useLoaderData,
   useLoaderDeps,
-  useLayoutEffect,
   useLocation,
   useMatch,
   useMatchRoute,
@@ -37,7 +38,6 @@ import {
   useNavigate,
   useParams,
   useParentMatches,
-  useChildMatches,
   useRouteContext,
   useRouter,
   useRouterState,
@@ -49,6 +49,15 @@ import {
   createServerFn,
   useServerFn,
 } from '@tanstack/solid-start'
+
+type BundleSizeKeep = {
+  hooksAndComponents: ReadonlyArray<unknown>
+  startSurface: ReadonlyArray<unknown>
+}
+
+declare global {
+  var __TANSTACK_BUNDLE_SIZE_KEEP__: BundleSizeKeep | undefined
+}
 
 const requestMiddleware = createMiddleware().server(async ({ next }) => {
   return next()
@@ -76,18 +85,18 @@ function RootComponent() {
   const router = useRouter()
   const hydrated = useHydrated()
   const [awaited] = useAwaited({ promise: Promise.resolve('ready') })
-  const linkProps = useLinkProps({ to: '/' } as any)
+  const linkProps = useLinkProps({ to: '/' })
   const matchRoute = useMatchRoute()
   const matches = useMatches()
   const parentMatches = useParentMatches()
   const childMatches = useChildMatches()
-  const match = useMatch({ strict: false, shouldThrow: false } as any)
-  const loaderDeps = useLoaderDeps({ strict: false } as any)
-  const loaderData = useLoaderData({ strict: false } as any)
-  const params = useParams({ strict: false } as any)
-  const search = useSearch({ strict: false } as any)
-  const routeContext = useRouteContext({ strict: false } as any)
-  const routerState = useRouterState({ select: (state) => state.status } as any)
+  const match = useMatch({ strict: false, shouldThrow: false })
+  const loaderDeps = useLoaderDeps({ strict: false })
+  const loaderData = useLoaderData({ strict: false })
+  const params = useParams({ strict: false })
+  const search = useSearch({ strict: false })
+  const routeContext = useRouteContext({ strict: false })
+  const routerState = useRouterState({ select: (state) => state.status })
   const location = useLocation()
   const canGoBack = useCanGoBack()
   const navigate = useNavigate()
@@ -102,8 +111,8 @@ function RootComponent() {
     withResolver: false,
   })
 
-  const linkFactoryResult = linkOptions({ to: '/' } as any)
-  const routeMatchResult = matchRoute({ to: '/' } as any)
+  const linkFactoryResult = linkOptions({ to: '/' })
+  const routeMatchResult = matchRoute({ to: '/' })
   const SvgLink = createLink('svg')
 
   const startSurface = [createMiddleware, createServerFn, useServerFn]
@@ -151,7 +160,7 @@ function RootComponent() {
     Scripts,
   ]
 
-  ;(globalThis as any).__TANSTACK_BUNDLE_SIZE_KEEP__ = {
+  globalThis.__TANSTACK_BUNDLE_SIZE_KEEP__ = {
     hooksAndComponents,
     startSurface,
   }
@@ -187,7 +196,7 @@ function RootComponent() {
           tag="meta"
           attrs={{ name: 'bundle-size', content: 'solid-start-full' }}
         />
-        <Link {...(linkProps as any)}>home</Link>
+        <Link {...linkProps}>home</Link>
         <SvgLink to="/" aria-label="svg-home">
           <circle cx="8" cy="8" r="7" />
         </SvgLink>

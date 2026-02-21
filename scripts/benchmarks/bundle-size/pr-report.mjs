@@ -272,6 +272,7 @@ async function main() {
   for (const metric of current.metrics || []) {
     const baselineValue = baseline.benchesByName.get(metric.id)
     const historySeries = (seriesByScenario.get(metric.id) || []).slice(
+      // Reserve one slot for the current metric so the sparkline stays at trendPoints.
       -args.trendPoints + 1,
     )
 
