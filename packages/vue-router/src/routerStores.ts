@@ -1,4 +1,6 @@
 import { batch, createStore } from '@tanstack/vue-store'
+import { isServer } from "@tanstack/router-core/isServer"
+import { createNonReactiveMutableStore, createNonReactiveReadonlyStore } from '@tanstack/router-core'
 import type { Readable } from '@tanstack/vue-store'
 import type { AnyRoute, GetStoreConfig, RouterStores } from '@tanstack/router-core'
 
@@ -10,6 +12,13 @@ declare module '@tanstack/router-core' {
   }
 }
 export const getStoreFactory: GetStoreConfig = (opts) => {
+  if (isServer ?? opts.isServer) {
+    return {
+      createMutableStore: createNonReactiveMutableStore,
+      createReadonlyStore: createNonReactiveReadonlyStore,
+      batch: (fn) => fn(),
+    }
+  }
   return {
     createMutableStore: createStore,
     createReadonlyStore: createStore,
