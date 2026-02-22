@@ -136,7 +136,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Direct signal reads coalesce one additional intermediate update.
     expect(updates).toBe(8)
   })
 
@@ -199,7 +198,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Direct signal reads can fully coalesce this transition.
     expect(updates).toBe(0)
   })
 
