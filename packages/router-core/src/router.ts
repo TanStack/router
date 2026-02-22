@@ -1869,32 +1869,23 @@ export class RouterCore<
                 functionalUpdate(dest.params as any, fromParams),
               )
 
-      // Interpolate the path first to get the actual resolved path, then match against that
-      const interpolatedNextTo = interpolatePath({
-        path: nextTo,
-        params: nextParams,
-        decoder: this.pathParamsDecoder,
-        server: this.isServer,
-      }).interpolatedPath
-
       // Use lightweight getMatchedRoutes instead of matchRoutesInternal
       // This avoids creating full match objects (AbortController, ControlledPromise, etc.)
       // which are expensive and not needed for buildLocation
-      const destMatchResult = this.getMatchedRoutes(interpolatedNextTo)
+      const destMatchResult = this.getMatchedRoutes(nextTo)
       let destRoutes = destMatchResult.matchedRoutes
 
       // Compute globalNotFoundRouteId using the same logic as matchRoutesInternal
-      const isGlobalNotFound = destMatchResult.foundRoute
-        ? destMatchResult.foundRoute.path !== '/' &&
-          destMatchResult.routeParams['**']
-        : trimPathRight(interpolatedNextTo)
+      const isGlobalNotFound =
+        !destMatchResult.foundRoute ||
+        (destMatchResult.foundRoute.path !== '/' &&
+          destMatchResult.routeParams['**'])
 
       if (isGlobalNotFound && this.options.notFoundRoute) {
         destRoutes = [...destRoutes, this.options.notFoundRoute]
       }
 
       // If there are any params, we need to stringify them
-      let changedParams = false
       if (Object.keys(nextParams).length > 0) {
         for (const route of destRoutes) {
           const fn =
@@ -1902,7 +1893,6 @@ export class RouterCore<
           if (fn) {
             try {
               Object.assign(nextParams, fn(nextParams))
-              changedParams = true
             } catch {
               // Ignore errors here. When a paired parseParams is defined,
               // extractStrictParams will re-throw during route matching,
@@ -1919,14 +1909,12 @@ export class RouterCore<
           // This preserves the original parameter syntax including optional parameters
           nextTo
         : decodePath(
-            !changedParams
-              ? interpolatedNextTo
-              : interpolatePath({
-                  path: nextTo,
-                  params: nextParams,
-                  decoder: this.pathParamsDecoder,
-                  server: this.isServer,
-                }).interpolatedPath,
+            interpolatePath({
+              path: nextTo,
+              params: nextParams,
+              decoder: this.pathParamsDecoder,
+              server: this.isServer,
+            }).interpolatedPath,
           ).path
 
       // Resolve the next search

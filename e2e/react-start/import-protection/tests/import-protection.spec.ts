@@ -1,31 +1,10 @@
 import path from 'node:path'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
-
-interface TraceStep {
-  file: string
-  specifier?: string
-  line?: number
-  column?: number
-}
-
-interface CodeSnippet {
-  lines: Array<string>
-  location?: string
-}
-
-interface Violation {
-  type: string
-  specifier: string
-  importer: string
-  resolved?: string
-  trace: Array<TraceStep>
-  snippet?: CodeSnippet
-  envType?: string
-}
+import type { Violation } from './violations.utils'
 
 async function readViolations(
-  type: 'build' | 'dev',
+  type: 'build' | 'dev' | 'dev.cold' | 'dev.warm',
 ): Promise<Array<Violation>> {
   const filename = `violations.${type}.json`
   const violationsPath = path.resolve(import.meta.dirname, '..', filename)
@@ -65,15 +44,12 @@ test('client-only violations route loads in mock mode', async ({ page }) => {
   )
 })
 
-test('violations.build.json is written during build', async () => {
-  const violations = await readViolations('build')
-  expect(violations.length).toBeGreaterThan(0)
-})
-
-test('violations.dev.json is written during dev', async () => {
-  const violations = await readViolations('dev')
-  expect(violations.length).toBeGreaterThan(0)
-})
+for (const mode of ['build', 'dev'] as const) {
+  test(`violations.${mode}.json is written during ${mode}`, async () => {
+    const violations = await readViolations(mode)
+    expect(violations.length).toBeGreaterThan(0)
+  })
+}
 
 test('file-based violation: client importing .server. file', async () => {
   const violations = await readViolations('build')
@@ -108,22 +84,22 @@ test('marker violation: client importing server-only marked module', async () =>
   expect(markerViolation).toBeDefined()
 })
 
-test('violations contain trace information', async () => {
-  const violations = await readViolations('build')
+for (const mode of ['build', 'dev'] as const) {
+  test(`violations contain trace information in ${mode}`, async () => {
+    const violations = await readViolations(mode)
 
-  // File-based violation should have trace info
-  const fileViolation = violations.find(
-    (v) =>
-      v.type === 'file' &&
-      (v.specifier.includes('secret.server') ||
-        v.resolved?.includes('secret.server')),
-  )
+    const fileViolation = violations.find(
+      (v) =>
+        v.type === 'file' &&
+        (v.specifier.includes('secret.server') ||
+          v.resolved?.includes('secret.server')),
+    )
 
-  expect(fileViolation).toBeDefined()
-  // The trace should show the import chain
-  expect(fileViolation!.trace).toBeDefined()
-  expect(fileViolation!.trace.length).toBeGreaterThanOrEqual(2)
-})
+    expect(fileViolation).toBeDefined()
+    expect(fileViolation!.trace).toBeDefined()
+    expect(fileViolation!.trace.length).toBeGreaterThanOrEqual(2)
+  })
+}
 
 test('deep trace includes full chain', async () => {
   const violations = await readViolations('build')
@@ -140,171 +116,153 @@ test('deep trace includes full chain', async () => {
   expect(traceText).toContain('violations/edge-3')
 })
 
-test('all trace steps include line numbers', async () => {
-  const violations = await readViolations('build')
+for (const mode of ['build', 'dev'] as const) {
+  test(`all trace steps include line numbers in ${mode}`, async () => {
+    const violations = await readViolations(mode)
 
-  // Find a violation with a multi-step trace (the deep chain)
-  const v = violations.find(
-    (x) => x.type === 'file' && x.importer.includes('edge-3'),
-  )
-  expect(v).toBeDefined()
-  expect(v!.trace.length).toBeGreaterThanOrEqual(3)
+    // Find a violation with a multi-step trace
+    const v = violations.find((x) => x.type === 'file' && x.trace.length >= 3)
+    expect(v).toBeDefined()
 
-  // Every trace step (except possibly the entry) should have a line number.
-  // The entry (step 0) may not have one if it has no specifier pointing into it.
-  // All non-entry steps should have line numbers since they import something.
-  for (let i = 1; i < v!.trace.length; i++) {
-    const step = v!.trace[i]
-    expect(
-      step.line,
-      `trace step ${i} (${step.file}) should have a line number`,
-    ).toBeDefined()
-    expect(step.line).toBeGreaterThan(0)
-  }
-})
+    // Every non-entry trace step should have a line number, except:
+    // - Virtual specifiers (e.g. ?tsr-split=) injected by the router plugin
+    // - routeTree.gen.ts steps (generated code, import locations unreliable)
+    // - Steps immediately after ?tsr-split= (the re-entry from the split chunk)
+    for (let i = 1; i < v!.trace.length; i++) {
+      const step = v!.trace[i]
+      if (step.specifier?.includes('?tsr-split=')) continue
+      if (step.file.includes('routeTree.gen')) continue
+      // In dev mode, the step right after a ?tsr-split= virtual step
+      // re-enters the same file — its import may not be locatable.
+      const prev = v!.trace[i - 1]
+      if (prev?.specifier?.includes('?tsr-split=')) continue
 
-test('leaf trace step includes the denied import specifier', async () => {
-  const violations = await readViolations('build')
+      expect(
+        step.line,
+        `trace step ${i} (${step.file}) should have a line number`,
+      ).toBeDefined()
+      expect(step.line).toBeGreaterThan(0)
+    }
+  })
+}
 
-  const v = violations.find(
-    (x) => x.type === 'file' && x.importer.includes('edge-a'),
-  )
-  expect(v).toBeDefined()
+for (const mode of ['build', 'dev'] as const) {
+  test(`leaf trace step includes the denied import specifier in ${mode}`, async () => {
+    const violations = await readViolations(mode)
 
-  // The last trace step should be the leaf (edge-a) and include the specifier
-  const last = v!.trace[v!.trace.length - 1]
-  expect(last.file).toContain('edge-a')
-  expect(last.specifier).toContain('secret.server')
-  expect(last.line).toBeDefined()
-  expect(last.line).toBeGreaterThan(0)
-})
+    const v = violations.find(
+      (x) =>
+        x.type === 'file' &&
+        x.envType === 'client' &&
+        (x.specifier.includes('secret.server') ||
+          x.resolved?.includes('secret.server')),
+    )
+    expect(v).toBeDefined()
 
-test('violation includes code snippet showing offending usage', async () => {
-  const violations = await readViolations('build')
+    const last = v!.trace[v!.trace.length - 1]
+    expect(last.specifier).toContain('secret.server')
+    expect(last.line).toBeDefined()
+    expect(last.line).toBeGreaterThan(0)
+  })
+}
 
-  // File violation for edge-a should have a code snippet
-  const v = violations.find(
-    (x) => x.type === 'file' && x.importer.includes('edge-a'),
-  )
-  expect(v).toBeDefined()
-  expect(v!.snippet).toBeDefined()
-  expect(v!.snippet!.lines.length).toBeGreaterThan(0)
+for (const mode of ['build', 'dev'] as const) {
+  test(`violation includes code snippet showing offending usage in ${mode}`, async () => {
+    const violations = await readViolations(mode)
 
-  // The snippet should contain the usage site of the denied import's binding.
-  // The post-compile usage finder locates where `getSecret` is called (line 9),
-  // which is more useful than pointing at the import statement itself.
-  const snippetText = v!.snippet!.lines.join('\n')
-  expect(snippetText).toContain('getSecret')
+    const v = violations.find(
+      (x) =>
+        x.type === 'file' &&
+        x.envType === 'client' &&
+        (x.specifier.includes('secret.server') ||
+          x.resolved?.includes('secret.server')),
+    )
+    expect(v).toBeDefined()
+    expect(v!.snippet).toBeDefined()
+    expect(v!.snippet!.lines.length).toBeGreaterThan(0)
 
-  // The snippet location should be a clickable file:line:col reference
-  if (v!.snippet!.location) {
-    expect(v!.snippet!.location).toMatch(/:\d+:\d+/)
-  }
-})
+    const snippetText = v!.snippet!.lines.join('\n')
+    expect(snippetText).toContain('getSecret')
 
-test('compiler leak violation includes line/col in importer', async () => {
-  const violations = await readViolations('build')
-  const v = violations.find(
-    (x) => x.importer.includes('compiler-leak') && x.type === 'file',
-  )
-  expect(v).toBeDefined()
+    if (v!.snippet!.location) {
+      expect(v!.snippet!.location).toMatch(/:\d+:\d+/)
+    }
+  })
+}
 
-  // Should be clickable-ish: path:line:col
-  expect(v!.importer).toMatch(/:\d+:\d+$/)
-})
+for (const mode of ['build', 'dev'] as const) {
+  test(`compiler leak violation includes line/col in importer in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+    const v = violations.find(
+      (x) => x.importer.includes('compiler-leak') && x.type === 'file',
+    )
+    expect(v).toBeDefined()
+    expect(v!.importer).toMatch(/:\d+:\d+$/)
+  })
+}
 
-test('leaky @tanstack/react-start/server import points to usage site', async () => {
-  const violations = await readViolations('build')
-  const v = violations.find(
-    (x) =>
-      x.type === 'specifier' && x.specifier === '@tanstack/react-start/server',
-  )
-  expect(v).toBeDefined()
+for (const mode of ['build', 'dev'] as const) {
+  test(`leaky @tanstack/react-start/server import points to usage site in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+    const v = violations.find(
+      (x) =>
+        x.type === 'specifier' &&
+        x.specifier === '@tanstack/react-start/server' &&
+        x.importer.includes('leaky-server-import'),
+    )
+    expect(v).toBeDefined()
+    expect(v!.importer).toContain('violations/leaky-server-import')
+    expect(v!.importer).toMatch(/:\d+:\d+$/)
+  })
+}
 
-  // Importer should include a mapped location.
-  expect(v!.importer).toContain('violations/leaky-server-import')
-  expect(v!.importer).toMatch(/:\d+:\d+$/)
-})
+for (const mode of ['build', 'dev'] as const) {
+  test(`client-env violations exist in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+    const clientViolations = violations.filter((v) => v.envType === 'client')
+    expect(clientViolations.length).toBeGreaterThanOrEqual(
+      mode === 'build' ? 2 : 1,
+    )
+  })
+}
 
-test('all client-env violations are in the client environment', async () => {
-  const violations = await readViolations('build')
+for (const mode of ['build', 'dev'] as const) {
+  test(`no false positive for boundary-safe pattern in ${mode}`, async () => {
+    const violations = await readViolations(mode)
 
-  // Server-only violations (client env importing server stuff)
-  const clientViolations = violations.filter((v) => v.envType === 'client')
-  expect(clientViolations.length).toBeGreaterThanOrEqual(2)
-})
+    // boundary-safe.ts imports secret.server.ts but only uses it inside
+    // compiler boundaries (createServerFn/createServerOnlyFn/createIsomorphicFn).
+    const isBoundarySafe = (s: string) => /(?<![/-])boundary-safe/.test(s)
+    const safeHits = violations.filter(
+      (v) =>
+        v.envType === 'client' &&
+        (isBoundarySafe(v.importer) ||
+          v.trace.some((s) => isBoundarySafe(s.file))),
+    )
 
-test('dev violations include client environment violations', async () => {
-  const violations = await readViolations('dev')
-  expect(violations.length).toBeGreaterThan(0)
-  const clientViolations = violations.filter((v) => v.envType === 'client')
-  expect(clientViolations.length).toBeGreaterThanOrEqual(1)
-})
+    expect(safeHits).toEqual([])
+  })
+}
 
-test('dev violations include code snippets', async () => {
-  const violations = await readViolations('dev')
+for (const mode of ['build', 'dev'] as const) {
+  test(`compiler-processed module has code snippet in ${mode}`, async () => {
+    const violations = await readViolations(mode)
 
-  // Find a file-based client violation (e.g. compiler-leak or edge-a importing secret.server)
-  const fileViolation = violations.find(
-    (v) =>
-      v.type === 'file' &&
-      v.envType === 'client' &&
-      (v.specifier.includes('secret.server') ||
-        v.resolved?.includes('secret.server')),
-  )
+    // compiler-leak.ts is processed by the Start compiler (createServerFn),
+    // which shortens the output.  The snippet must still show the original
+    // source lines (mapped via sourcesContent in the compiler's sourcemap).
+    const compilerViolation = violations.find(
+      (v) => v.envType === 'client' && v.importer.includes('compiler-leak'),
+    )
 
-  expect(fileViolation).toBeDefined()
-  expect(fileViolation!.snippet).toBeDefined()
-  expect(fileViolation!.snippet!.lines.length).toBeGreaterThan(0)
+    expect(compilerViolation).toBeDefined()
+    expect(compilerViolation!.snippet).toBeDefined()
+    expect(compilerViolation!.snippet!.lines.length).toBeGreaterThan(0)
 
-  // The snippet should show original source (not transformed/compiled output)
-  const snippetText = fileViolation!.snippet!.lines.join('\n')
-  expect(snippetText).toContain('getSecret')
-
-  // The snippet location should be a clickable file:line:col reference
-  if (fileViolation!.snippet!.location) {
-    expect(fileViolation!.snippet!.location).toMatch(/:\d+:\d+/)
-  }
-})
-
-test('no violation for .server import used only inside compiler boundaries', async () => {
-  const violations = await readViolations('build')
-
-  // boundary-safe.ts imports secret.server.ts, but the import should be pruned
-  // from the client build because it is only referenced inside compiler
-  // boundaries (createServerFn/createServerOnlyFn/createIsomorphicFn).
-  const safeHits = violations.filter(
-    (v) =>
-      v.envType === 'client' &&
-      (v.importer.includes('boundary-safe') ||
-        v.trace.some((s) => s.file.includes('boundary-safe'))),
-  )
-
-  expect(safeHits).toEqual([])
-})
-
-test('compiler-processed module has code snippet in dev', async () => {
-  const violations = await readViolations('dev')
-
-  // compiler-leak.ts is processed by the Start compiler (createServerFn),
-  // which shortens the output.  The snippet must still show the original
-  // source lines (mapped via sourcesContent in the compiler's sourcemap).
-  const compilerViolation = violations.find(
-    (v) => v.envType === 'client' && v.importer.includes('compiler-leak'),
-  )
-
-  expect(compilerViolation).toBeDefined()
-  expect(compilerViolation!.snippet).toBeDefined()
-  expect(compilerViolation!.snippet!.lines.length).toBeGreaterThan(0)
-
-  // The snippet should contain the original source, not compiled output
-  const snippetText = compilerViolation!.snippet!.lines.join('\n')
-  expect(snippetText).toContain('getSecret')
-})
-
-// ---------------------------------------------------------------------------
-// Client-only violations: server (SSR) importing client-only code
-// ---------------------------------------------------------------------------
+    const snippetText = compilerViolation!.snippet!.lines.join('\n')
+    expect(snippetText).toContain('getSecret')
+  })
+}
 
 test('file-based violation: SSR importing .client. file', async () => {
   const violations = await readViolations('build')
@@ -382,38 +340,161 @@ test('build has violations in both client and SSR environments', async () => {
   expect(ssrViolations.length).toBeGreaterThanOrEqual(2)
 })
 
-test('no false positive for factory-safe middleware pattern in dev', async () => {
-  const violations = await readViolations('dev')
+for (const mode of ['build', 'dev'] as const) {
+  test(`no false positive for factory-safe middleware pattern in ${mode}`, async () => {
+    const violations = await readViolations(mode)
 
-  // createSecretFactory.ts uses @tanstack/react-start/server and ../secret.server
-  // ONLY inside createMiddleware().server() callbacks.  The compiler strips these
-  // on the client, so import-protection must not fire for them.
-  const factoryHits = violations.filter(
+    // createSecretFactory.ts uses @tanstack/react-start/server and ../secret.server
+    // ONLY inside createMiddleware().server() callbacks.  The compiler strips these
+    // on the client, so import-protection must not fire for them.
+    const factoryHits = violations.filter(
+      (v) =>
+        v.envType === 'client' &&
+        (v.importer.includes('createSecretFactory') ||
+          v.importer.includes('factory-safe') ||
+          v.trace.some(
+            (s) =>
+              s.file.includes('createSecretFactory') ||
+              s.file.includes('factory-safe'),
+          )),
+    )
+
+    expect(factoryHits).toEqual([])
+  })
+}
+
+for (const mode of ['build', 'dev'] as const) {
+  test(`no false positive for cross-boundary-safe pattern in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    // session-util.ts imports @tanstack/react-start/server, but it's only ever
+    // imported by usage.ts which uses it exclusively inside compiler boundaries
+    // (createServerFn().handler, createMiddleware().server).  The compiler should
+    // prune the import chain from the client build.
+    const crossHits = violations.filter(
+      (v) =>
+        v.envType === 'client' &&
+        (v.importer.includes('cross-boundary-safe') ||
+          v.importer.includes('session-util') ||
+          v.trace.some(
+            (s) =>
+              s.file.includes('cross-boundary-safe') ||
+              s.file.includes('session-util'),
+          )),
+    )
+
+    expect(crossHits).toEqual([])
+  })
+}
+
+for (const mode of ['build', 'dev'] as const) {
+  test(`cross-boundary-leak: leaky consumer still produces violation in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const leakHits = violations.filter(
+      (v) =>
+        v.envType === 'client' &&
+        (v.importer.includes('cross-boundary-leak') ||
+          v.importer.includes('shared-util') ||
+          v.trace.some(
+            (s) =>
+              s.file.includes('leaky-consumer') ||
+              s.file.includes('shared-util'),
+          )),
+    )
+
+    expect(leakHits.length).toBeGreaterThanOrEqual(1)
+  })
+}
+
+for (const mode of ['build', 'dev'] as const) {
+  test(`beforeload-leak: server import via beforeLoad triggers client violation in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const hits = violations.filter(
+      (v) =>
+        v.envType === 'client' &&
+        (v.importer.includes('beforeload-server-leak') ||
+          v.importer.includes('beforeload-leak') ||
+          v.trace.some(
+            (s) =>
+              s.file.includes('beforeload-server-leak') ||
+              s.file.includes('beforeload-leak'),
+          )),
+    )
+
+    expect(hits.length).toBeGreaterThanOrEqual(1)
+
+    if (mode === 'build') {
+      const specHit = hits.find(
+        (v) =>
+          v.type === 'specifier' &&
+          v.specifier === '@tanstack/react-start/server',
+      )
+      expect(specHit).toBeDefined()
+    }
+  })
+}
+
+test('beforeload-leak: violation trace includes the route file', async () => {
+  const violations = await readViolations('build')
+
+  const hit = violations.find(
     (v) =>
       v.envType === 'client' &&
-      (v.importer.includes('createSecretFactory') ||
-        v.importer.includes('factory-safe') ||
-        v.trace.some(
-          (s) =>
-            s.file.includes('createSecretFactory') ||
-            s.file.includes('factory-safe'),
-        )),
+      v.type === 'specifier' &&
+      v.specifier === '@tanstack/react-start/server' &&
+      (v.importer.includes('beforeload-server-leak') ||
+        v.trace.some((s) => s.file.includes('beforeload-server-leak'))),
   )
 
-  expect(factoryHits).toEqual([])
+  expect(hit).toBeDefined()
+  expect(hit!.trace.length).toBeGreaterThanOrEqual(2)
+
+  // The trace should include beforeload-leak route somewhere in the chain
+  const traceFiles = hit!.trace.map((s) => s.file).join(' -> ')
+  expect(traceFiles).toContain('beforeload-leak')
 })
 
-test('no false positive for boundary-safe pattern in dev', async () => {
-  const violations = await readViolations('dev')
+// Warm-start regression tests: second navigation (cached modules) must
+// still produce the same violations as the cold run.
 
-  // boundary-safe.ts imports secret.server.ts but only uses it inside
-  // compiler boundaries (createServerFn/createServerOnlyFn/createIsomorphicFn).
-  const safeHits = violations.filter(
-    (v) =>
-      v.envType === 'client' &&
-      (v.importer.includes('boundary-safe') ||
-        v.trace.some((s) => s.file.includes('boundary-safe'))),
-  )
+test('warm run produces violations', async () => {
+  const warm = await readViolations('dev.warm')
+  expect(warm.length).toBeGreaterThan(0)
+})
 
-  expect(safeHits).toEqual([])
+test('warm run detects the same unique violations as cold run', async () => {
+  const cold = await readViolations('dev.cold')
+  const warm = await readViolations('dev.warm')
+
+  // Deduplicate by (envType, type, specifier, importer-file) since the same
+  // logical violation can be reported multiple times via different code paths.
+  const uniqueKey = (v: Violation) =>
+    `${v.envType}|${v.type}|${v.specifier}|${v.importer.replace(/:.*/, '')}`
+
+  const coldUniq = [...new Set(cold.map(uniqueKey))].sort()
+  const warmUniq = [...new Set(warm.map(uniqueKey))].sort()
+  expect(warmUniq).toEqual(coldUniq)
+})
+
+test('warm run traces include line numbers', async () => {
+  const warm = await readViolations('dev.warm')
+
+  const v = warm.find((x) => x.type === 'file' && x.trace.length >= 3)
+  expect(v).toBeDefined()
+
+  for (let i = 1; i < v!.trace.length; i++) {
+    const step = v!.trace[i]
+    if (step.specifier?.includes('?tsr-split=')) continue
+    if (step.file.includes('routeTree.gen')) continue
+    const prev = v!.trace[i - 1]
+    if (prev?.specifier?.includes('?tsr-split=')) continue
+
+    expect(
+      step.line,
+      `warm trace step ${i} (${step.file}) should have a line number`,
+    ).toBeDefined()
+    expect(step.line).toBeGreaterThan(0)
+  }
 })

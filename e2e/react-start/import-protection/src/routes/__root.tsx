@@ -32,6 +32,8 @@ function RootComponent() {
           <Link to="/client-only-violations">Client-Only Violations</Link>
           {' | '}
           <Link to="/client-only-jsx">Client-Only JSX</Link>
+          {' | '}
+          <Link to="/beforeload-leak">Beforeload Leak</Link>
         </nav>
         <Outlet />
         <Scripts />
