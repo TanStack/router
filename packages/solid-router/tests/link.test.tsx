@@ -180,14 +180,16 @@ describe('Link', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => (
-        <>
-          <h1>Index</h1>
-          <Link to="/posts">
-            <ChildComponent />
-          </Link>
-        </>
-      ),
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/posts">
+              <ChildComponent />
+            </Link>
+          </>
+        )
+      },
     })
 
     const postsRoute = createRoute({

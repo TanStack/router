@@ -52,7 +52,8 @@ function splitProps<T extends Record<string, any>, K extends keyof T>(
   // A safe way to polyfill splitProps if native getter copy is too complex
   // is just to return [props, Solid.omit(props, keys)] but it modifies typing.
   // Actually, Solid.omit exists!
-  return [props as any, Solid.omit(props, keys as any) as any]
+  // Note: Solid.omit uses rest params (...keys), so we must spread the array.
+  return [props as any, Solid.omit(props, ...(keys as any)) as any]
 }
 
 export function useLinkProps<
@@ -106,34 +107,6 @@ export function useLinkProps<
     ],
   )
 
-  // const {
-  //   // custom props
-  //   activeProps = () => ({ class: 'active' }),
-  //   inactiveProps = () => ({}),
-  //   activeOptions,
-  //   to,
-  //   preload: userPreload,
-  //   preloadDelay: userPreloadDelay,
-  //   hashScrollIntoView,
-  //   replace,
-  //   startTransition,
-  //   resetScroll,
-  //   viewTransition,
-  //   // element props
-  //   children,
-  //   target,
-  //   disabled,
-  //   style,
-  //   class,
-  //   onClick,
-  //   onFocus,
-  //   onMouseEnter,
-  //   onMouseLeave,
-  //   onTouchStart,
-  //   ignoreBlocker,
-  //   ...rest
-  // } = options
-
   const [_, propsSafeToSpread] = splitProps(rest, [
     'params',
     'search',
@@ -155,10 +128,11 @@ export function useLinkProps<
   const from = options.from
 
   const _options = () => {
-    return {
+    const result = {
       ...options,
       from,
     }
+    return result
   }
 
   const next = Solid.createMemo(() => {
@@ -624,17 +598,17 @@ export const Link: LinkComponent<'a'> = (props) => {
     'type',
   ])
 
-  // Use Solid.children to resolve non-function children stably,
-  // so they are not re-evaluated on each linkProps change.
-  const resolvedStaticChildren = Solid.children(() => {
-    const ch = local.children
-    return typeof ch === 'function' ? null : (ch as Solid.JSX.Element)
-  })
+  // Resolve children once using Solid.children to avoid
+  // re-accessing the children getter (which in Solid 2.0 would
+  // re-invoke createComponent each time for JSX children).
+  const resolvedChildren = Solid.children(
+    () => local.children as Solid.JSX.Element,
+  )
 
   const children = () => {
-    const ch = local.children
+    const ch = resolvedChildren()
     if (typeof ch === 'function') {
-      return ch({
+      return (ch as Function)({
         get isActive() {
           return (linkProps as any)['data-status'] === 'active'
         },
@@ -644,7 +618,7 @@ export const Link: LinkComponent<'a'> = (props) => {
       })
     }
 
-    return resolvedStaticChildren()
+    return ch
   }
 
   if (local._asChild === 'svg') {
