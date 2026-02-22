@@ -240,6 +240,7 @@ export type {
   ClearCacheFn,
   CreateRouterFn,
   SSROption,
+  BackOptions,
 } from './router'
 
 export * from './config'

@@ -2063,8 +2063,16 @@ const createHistoryRouter = () => {
     },
   })
 
+  const aboutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/about',
+    component: function Component() {
+      return <h1>About</h1>
+    },
+  })
+
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute, aboutRoute]),
     history,
   })
 
@@ -2180,6 +2188,63 @@ describe('history: History gives correct notifcations and state', () => {
     ])
 
     unsub()
+  })
+
+  it('router.back should support steps and root', async () => {
+    const { router } = createHistoryRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/posts' }))
+    await act(() => router.navigate({ to: '/about' }))
+
+    expect(window.location.pathname).toBe('/about')
+
+    act(() => (router as any).back({ steps: 2 }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+
+    await act(() => router.navigate({ to: '/posts' }))
+    await act(() => router.navigate({ to: '/about' }))
+
+    expect(window.location.pathname).toBe('/about')
+
+    act(() => (router as any).back({ to: 'root' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+  })
+
+  it('router.back should support pathname targets with fallback', async () => {
+    const { router } = createHistoryRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(() => router.navigate({ to: '/posts' }))
+    await act(() => router.navigate({ to: '/about' }))
+
+    expect(window.location.pathname).toBe('/about')
+
+    act(() => (router as any).back({ to: '/posts' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    await act(async () => {
+      await (router as any).back({ to: '/about', ifMissing: 'push' })
+    })
+
+    expect(
+      await screen.findByRole('heading', { name: 'About' }),
+    ).toBeInTheDocument()
+
+    const beforeNoop = window.location.pathname
+    act(() => (router as any).back({ to: '/non-existent', ifMissing: 'noop' }))
+    expect(window.location.pathname).toBe(beforeNoop)
   })
 })
 

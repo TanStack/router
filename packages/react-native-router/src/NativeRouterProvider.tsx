@@ -91,7 +91,11 @@ function useAndroidBackHandler(router: AnyRouter) {
       'hardwareBackPress',
       () => {
         if (router.history.canGoBack()) {
-          router.history.back()
+          if ((router as any).back) {
+            ;(router as any).back()
+          } else {
+            router.history.back()
+          }
           return true // Prevent default back behavior
         }
         return false // Allow default back behavior (exit app)

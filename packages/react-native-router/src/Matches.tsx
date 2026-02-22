@@ -421,7 +421,11 @@ export function NativeScreenMatches() {
                   return
                 }
                 if (router.history.canGoBack()) {
-                  router.history.back()
+                  if ((router as any).back) {
+                    ;(router as any).back()
+                  } else {
+                    router.history.back()
+                  }
                 }
               }}
             >

@@ -53,3 +53,11 @@ Push multiple depth entries to exercise a mixed lifecycle policy:
 - top entry: `active`
 - previous 2 entries: `paused`
 - deeper entries: `detached`
+
+The depth lab screen also includes buttons to demo the new single-stack back API:
+
+- `back()`
+- `back({ steps: 2 })`
+- `back({ to: '/posts/:id/deep' })`
+- `back({ to: 'root' })`
+- `back({ to: '/about', ifMissing: 'push' })`

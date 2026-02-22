@@ -734,6 +734,13 @@ export type EmitFn = (routerEvent: RouterEvent) => void
 
 export type LoadFn = (opts?: { sync?: boolean }) => Promise<void>
 
+export interface BackOptions {
+  steps?: number
+  to?: string | 'root'
+  ifMissing?: 'push' | 'replace' | 'noop'
+  ignoreBlocker?: boolean
+}
+
 export type CommitLocationFn = ({
   viewTransition,
   ignoreBlocker,
@@ -985,6 +992,7 @@ export class RouterCore<
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
+  locationPathnameByIndex = new Map<number, string>()
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -1199,6 +1207,11 @@ export class RouterCore<
       this.history.location,
       this.latestLocation,
     )
+
+    const index = this.latestLocation.state.__TSR_index
+    if (typeof index === 'number') {
+      this.locationPathnameByIndex.set(index, this.latestLocation.pathname)
+    }
   }
 
   buildRouteTree = () => {
@@ -2311,6 +2324,62 @@ export class RouterCore<
       to: to as string,
       _isNavigate: true,
     })
+  }
+
+  back = ({
+    steps,
+    to,
+    ifMissing = 'push',
+    ignoreBlocker,
+  }: BackOptions = {}): Promise<void> | void => {
+    const currentIndex = this.history.location.state.__TSR_index
+
+    if (!currentIndex) {
+      if (to && to !== 'root') {
+        if (ifMissing === 'replace') {
+          return this.navigate({ to, replace: true, ignoreBlocker })
+        }
+        if (ifMissing === 'push') {
+          return this.navigate({ to, ignoreBlocker })
+        }
+      }
+      return
+    }
+
+    if (to !== undefined) {
+      if (to === 'root') {
+        this.history.go(-currentIndex, { ignoreBlocker })
+        return
+      }
+
+      const targetPathname = this.buildLocation({ to } as any).pathname
+
+      if (targetPathname === this.history.location.pathname) {
+        return
+      }
+
+      for (let index = currentIndex - 1; index >= 0; index--) {
+        if (this.locationPathnameByIndex.get(index) === targetPathname) {
+          this.history.go(index - currentIndex, { ignoreBlocker })
+          return
+        }
+      }
+
+      if (ifMissing === 'replace') {
+        return this.navigate({ to, replace: true, ignoreBlocker })
+      }
+
+      if (ifMissing === 'push') {
+        return this.navigate({ to, ignoreBlocker })
+      }
+
+      return
+    }
+
+    const requestedSteps = Math.max(1, Math.floor(steps ?? 1))
+    const indexDelta = Math.min(requestedSteps, currentIndex)
+
+    this.history.go(-indexDelta, { ignoreBlocker })
   }
 
   latestLoadPromise: undefined | Promise<void>
