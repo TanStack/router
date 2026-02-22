@@ -27,31 +27,21 @@ export type ReadonlyStoreFactory = <TValue>(
   read: () => TValue,
 ) => RouterReadableStore<TValue>
 
-export interface RouterStoreConfig {
+export type GetStoreConfig = (opts: { isServer?: boolean }) => StoreConfig
+
+export type StoreConfig = {
   createMutableStore: MutableStoreFactory
   createReadonlyStore: ReadonlyStoreFactory
   batch: RouterBatchFn
-}
-
-export interface RouterStoresBundle<TRouteTree extends AnyRoute> {
-  stores: RouterStores<TRouteTree>
-  batch: RouterBatchFn
-}
-
-export interface RouterStoresFactory {
-  createRouterStores: <TRouteTree extends AnyRoute>(
-    initialState: RouterState<TRouteTree>,
-    opts: {
-      isServer: boolean
-    },
-  ) => RouterStoresBundle<TRouteTree>
+  init?: (stores: RouterStores<AnyRoute>) => void
 }
 
 type MatchStore = RouterWritableStore<AnyRouteMatch>
 type MatchStoreLookup = Record<string, MatchStore>
 type ReadableStore<TValue> = RouterReadableStore<TValue>
 
-function createLightweightMutableStore<TValue>(
+/** SSR non-reactive createMutableStore */
+export function createNonReactiveMutableStore<TValue>(
   initialValue: TValue,
 ): RouterWritableStore<TValue> {
   let value = initialValue
@@ -66,7 +56,8 @@ function createLightweightMutableStore<TValue>(
   }
 }
 
-function createLightweightReadonlyStore<TValue>(
+/** SSR non-reactive createReadonlyStore */
+export function createNonReactiveReadonlyStore<TValue>(
   read: () => TValue,
 ): RouterReadableStore<TValue> {
   return {
@@ -102,8 +93,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   cachedMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
   firstMatchId: ReadableStore<string | undefined>
   lastMatchId: ReadableStore<string | undefined>
-  /* vue only */
-  lastMatchRouteFullPath: ReadableStore<string | undefined>
   hasPendingMatches: ReadableStore<boolean>
   matchRouteReactivity: ReadableStore<{
     locationHref: string
@@ -112,11 +101,8 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   }>
   __store: RouterReadableStore<RouterState<TRouteTree>>
 
-  /** @internal */
   activeMatchStoresById: Map<string, MatchStore>
-  /** @internal */
   pendingMatchStoresById: Map<string, MatchStore>
-  /** @internal */
   cachedMatchStoresById: Map<string, MatchStore>
 
   setActiveMatches: (nextMatches: Array<AnyRouteMatch>) => void
@@ -124,34 +110,11 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   setCachedMatches: (nextMatches: Array<AnyRouteMatch>) => void
 }
 
-export function createRouterStoresWithConfig<TRouteTree extends AnyRoute>(
+export function createRouterStores<TRouteTree extends AnyRoute>(
   initialState: RouterState<TRouteTree>,
-  config: RouterStoreConfig,
+  config: StoreConfig,
 ): RouterStores<TRouteTree> {
-  return createRouterStoresImpl(initialState, config)
-}
-
-export function createServerRouterStoresBundle<TRouteTree extends AnyRoute>(
-  initialState: RouterState<TRouteTree>,
-): RouterStoresBundle<TRouteTree> {
-  const batch: RouterBatchFn = (fn) => fn()
-  const config: RouterStoreConfig = {
-    createMutableStore: createLightweightMutableStore,
-    createReadonlyStore: createLightweightReadonlyStore,
-    batch,
-  }
-
-  return {
-    stores: createRouterStoresImpl(initialState, config),
-    batch,
-  }
-}
-
-function createRouterStoresImpl<TRouteTree extends AnyRoute>(
-  initialState: RouterState<TRouteTree>,
-  config: RouterStoreConfig,
-): RouterStores<TRouteTree> {
-  const { createMutableStore, createReadonlyStore, batch } = config
+  const { createMutableStore, createReadonlyStore, batch, init } = config
 
   // non reactive utilities
   const activeMatchStoresById = new Map<string, MatchStore>()
@@ -198,15 +161,6 @@ function createRouterStoresImpl<TRouteTree extends AnyRoute>(
     status: status.state,
   }))
 
-  // 2nd order derived stores
-  const lastMatchRouteFullPath = createReadonlyStore(() => {
-    const id = lastMatchId.state
-    if (!id) {
-      return undefined
-    }
-    return activeMatchStoresById.get(id)?.state.fullPath
-  })
-
   // compatibility "big" state store
   const __store = createReadonlyStore(() => ({
     status: status.state,
@@ -220,8 +174,49 @@ function createRouterStoresImpl<TRouteTree extends AnyRoute>(
     redirect: redirect.state,
   }))
 
+  const store = {
+    // atoms
+    status,
+    loadedAt,
+    isLoading,
+    isTransitioning,
+    location,
+    resolvedLocation,
+    statusCode,
+    redirect,
+    matchesId,
+    pendingMatchesId,
+    cachedMatchesId,
+    byId,
+    byRouteId,
+    pendingByRouteId,
+
+    // derived
+    activeMatchesSnapshot,
+    pendingMatchesSnapshot,
+    cachedMatchesSnapshot,
+    firstMatchId,
+    lastMatchId,
+    hasPendingMatches,
+    matchRouteReactivity,
+
+    // non-reactive state
+    activeMatchStoresById,
+    pendingMatchStoresById,
+    cachedMatchStoresById,
+
+    // compatibility "big" state
+    __store,
+
+    // methods
+    setActiveMatches,
+    setPendingMatches,
+    setCachedMatches,
+  }
+
   // initialize the active matches
   setActiveMatches(initialState.matches as Array<AnyRouteMatch>)
+  init?.(store)
 
   // setters to update non-reactive utilities in sync with the reactive stores
   function setActiveMatches(nextMatches: Array<AnyRouteMatch>) {
@@ -287,46 +282,7 @@ function createRouterStoresImpl<TRouteTree extends AnyRoute>(
     )
   }
 
-  return {
-    // atoms
-    status,
-    loadedAt,
-    isLoading,
-    isTransitioning,
-    location,
-    resolvedLocation,
-    statusCode,
-    redirect,
-    matchesId,
-    pendingMatchesId,
-    cachedMatchesId,
-    byId,
-    byRouteId,
-    pendingByRouteId,
-
-    // derived
-    activeMatchesSnapshot,
-    pendingMatchesSnapshot,
-    cachedMatchesSnapshot,
-    firstMatchId,
-    lastMatchId,
-    lastMatchRouteFullPath,
-    hasPendingMatches,
-    matchRouteReactivity,
-
-    // non-reactive state
-    activeMatchStoresById,
-    pendingMatchStoresById,
-    cachedMatchStoresById,
-
-    // compatibility "big" state
-    __store,
-
-    // methods
-    setActiveMatches,
-    setPendingMatches,
-    setCachedMatches,
-  }
+  return store
 }
 
 function readPoolMatches(

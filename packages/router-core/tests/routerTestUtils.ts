@@ -1,55 +1,32 @@
+import { batch, createStore } from "@tanstack/store"
 import { isServer } from "@tanstack/router-core/isServer"
 import {
   RouterCore,
-  createRouterStoresWithConfig,
-  createServerRouterStoresBundle,
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
 } from '../src'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
+  GetStoreConfig,
   RouterConstructorOptions,
-  RouterStoreConfig,
-  RouterStoresFactory,
   TrailingSlashOption,
 } from '../src'
 
-const testStoreConfig: RouterStoreConfig = {
-  createMutableStore(initialValue) {
-    let current = initialValue
-
+const getStoreConfig: GetStoreConfig = (opts) => {
+  if (isServer ?? opts.isServer) {
     return {
-      get state() {
-        return current
-      },
-      setState(updater) {
-        const next = updater(current)
-        if (Object.is(current, next)) return
+      createMutableStore: createNonReactiveMutableStore,
+      createReadonlyStore: createNonReactiveReadonlyStore,
+      batch: (fn) => fn(),
+    }
+  }
 
-        current = next
-      },
-    }
-  },
-  createReadonlyStore(read) {
-    return {
-      get state() {
-        return read()
-      },
-    }
-  },
-  batch: (fn) => fn(),
-}
-
-export const testRouterStoresFactory: RouterStoresFactory = {
-  createRouterStores(initialState, opts) {
-    if (isServer ?? opts.isServer) {
-      return createServerRouterStoresBundle(initialState)
-    }
-
-    return {
-      stores: createRouterStoresWithConfig(initialState, testStoreConfig),
-      batch: testStoreConfig.batch,
-    }
-  },
+  return {
+    createMutableStore: createStore,
+    createReadonlyStore: createStore,
+    batch
+  }
 }
 
 export function createTestRouter<
@@ -67,5 +44,5 @@ export function createTestRouter<
     TDehydrated
   >,
 ) {
-  return new RouterCore(options, testRouterStoresFactory)
+  return new RouterCore(options, getStoreConfig)
 }

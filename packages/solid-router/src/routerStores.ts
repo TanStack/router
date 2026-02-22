@@ -1,12 +1,12 @@
 import * as Solid from 'solid-js'
 import {
-  createRouterStoresWithConfig,
-  createServerRouterStoresBundle,
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import type {
+  GetStoreConfig,
   RouterReadableStore,
-  RouterStoresFactory,
   RouterWritableStore,
 } from '@tanstack/router-core'
 
@@ -38,19 +38,18 @@ function createSolidReadonlyStore<TValue>(
   }
 }
 
-export const solidRouterStoresFactory: RouterStoresFactory = {
-  createRouterStores(initialState, opts) {
-    if (isServer ?? opts.isServer) {
-      return createServerRouterStoresBundle(initialState)
-    }
-
+export const getStoreFactory: GetStoreConfig = (opts) => {
+  if (isServer ?? opts.isServer) {
     return {
-      stores: createRouterStoresWithConfig(initialState, {
-        createMutableStore: createSolidMutableStore,
-        createReadonlyStore: createSolidReadonlyStore,
-        batch: Solid.batch,
-      }),
-      batch: Solid.batch,
+      createMutableStore: createNonReactiveMutableStore,
+      createReadonlyStore: createNonReactiveReadonlyStore,
+      batch: (fn) => fn(),
     }
-  },
+  }
+
+  return {
+    createMutableStore: createSolidMutableStore,
+    createReadonlyStore: createSolidReadonlyStore,
+    batch: Solid.batch,
+  }
 }

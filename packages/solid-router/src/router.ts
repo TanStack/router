@@ -1,6 +1,6 @@
 import { RouterCore } from '@tanstack/router-core'
 import { createFileRoute, createLazyFileRoute } from './fileRoute'
-import { solidRouterStoresFactory } from './routerStores'
+import { getStoreFactory } from './routerStores'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -100,7 +100,7 @@ export class Router<
       TDehydrated
     >,
   ) {
-    super(options, solidRouterStoresFactory)
+    super(options, getStoreFactory)
   }
 }
 

@@ -167,6 +167,7 @@
     "tiny-warning": "^1.0.3"
   },
   "devDependencies": {
+    "@tanstack/store": "^0.9.1",
     "esbuild": "^0.25.0",
     "vite": "*"
   }

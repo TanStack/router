@@ -190,16 +190,14 @@ export type {
   FilebaseRouteOptionsInterface,
 } from './route'
 export {
-  createRouterStoresWithConfig,
-  createServerRouterStoresBundle,
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
 } from './stores'
 export type {
   RouterBatchFn,
   RouterReadableStore,
-  RouterStoreConfig,
+  GetStoreConfig,
   RouterStores,
-  RouterStoresBundle,
-  RouterStoresFactory,
   RouterWritableStore,
 } from './stores'
 export {

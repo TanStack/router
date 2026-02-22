@@ -41,6 +41,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
+import { createRouterStores } from './stores'
 import type { LRUCache } from './lru-cache'
 import type {
   ProcessRouteTreeResult,
@@ -102,8 +103,8 @@ import type {
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
 import type {
+  GetStoreConfig,
   RouterStores,
-  RouterStoresFactory,
 } from './stores'
 
 export type ControllablePromise<T = any> = Promise<T> & {
@@ -936,7 +937,7 @@ export class RouterCore<
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
-  private storeFactory: RouterStoresFactory
+  private getStoreConfig!: GetStoreConfig
   batch!: (fn: () => void) => void
 
   options!: PickAsRequired<
@@ -975,9 +976,9 @@ export class RouterCore<
       TRouterHistory,
       TDehydrated
     >,
-    storeFactory: RouterStoresFactory,
+    getStoreConfig: GetStoreConfig,
   ) {
-    this.storeFactory = storeFactory
+    this.getStoreConfig = getStoreConfig
 
     this.update({
       defaultPreloadDelay: 50,
@@ -1106,12 +1107,12 @@ export class RouterCore<
     }
 
     if (!this.stores && this.latestLocation) {
-      const { stores, batch } = this.storeFactory.createRouterStores(
+      const config = this.getStoreConfig(this)
+      this.batch = config.batch
+      this.stores = createRouterStores(
         getInitialRouterState(this.latestLocation),
-        this,
+        config,
       )
-      this.stores = stores
-      this.batch = batch
 
       if (!(isServer ?? this.isServer)) {
         setupScrollRestoration(this)

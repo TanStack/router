@@ -1,23 +1,27 @@
 import { batch, createStore } from '@tanstack/vue-store'
-import {
-  createRouterStoresWithConfig,
-} from '@tanstack/router-core'
 import type { Readable } from '@tanstack/vue-store'
-import type { RouterStoresFactory } from '@tanstack/router-core'
+import type { AnyRoute, GetStoreConfig, RouterStores } from '@tanstack/router-core'
 
 declare module '@tanstack/router-core' {
-  interface RouterReadableStore<TValue> extends Readable<TValue> { }
+  export interface RouterReadableStore<TValue> extends Readable<TValue> { }
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  export interface RouterStores<in out TRouteTree extends AnyRoute> {
+    lastMatchRouteFullPath: RouterReadableStore<string | undefined>
+  }
 }
-
-export const vueRouterStoresFactory: RouterStoresFactory = {
-  createRouterStores(initialState) {
-    return {
-      stores: createRouterStoresWithConfig(initialState, {
-        createMutableStore: createStore,
-        createReadonlyStore: createStore,
-        batch,
-      }),
-      batch,
+export const getStoreFactory: GetStoreConfig = (opts) => {
+  return {
+    createMutableStore: createStore,
+    createReadonlyStore: createStore,
+    batch: batch,
+    init: (stores: RouterStores<AnyRoute>) => {
+      stores.lastMatchRouteFullPath = createStore(() => {
+        const id = stores.lastMatchId.state
+        if (!id) {
+          return undefined
+        }
+        return stores.activeMatchStoresById.get(id)?.state.fullPath
+      })
     }
-  },
+  }
 }
