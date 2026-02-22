@@ -195,9 +195,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           params: match.params,
           loaderData: match.loaderData,
         }
-        const headFnContent = await route.options.head?.(assetContext)
+        const headFnContent = await route.options.head?.(assetContext as any)
 
-        const scripts = await route.options.scripts?.(assetContext)
+        const scripts = await route.options.scripts?.(assetContext as any)
 
         match.meta = headFnContent?.meta
         match.links = headFnContent?.links
