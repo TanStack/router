@@ -10,9 +10,9 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.161.4",
-    "@tanstack/solid-router-devtools": "^1.161.4",
-    "@tanstack/solid-start": "^1.161.4",
+    "@tanstack/solid-router": "^1.162.2",
+    "@tanstack/solid-router-devtools": "^1.162.2",
+    "@tanstack/solid-start": "^1.162.2",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^2.6.0"

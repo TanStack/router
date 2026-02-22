@@ -26,3 +26,5 @@ port-*.txt
 .tanstack
 
 webserver-*.log
+error-build-result.json
+error-build.log

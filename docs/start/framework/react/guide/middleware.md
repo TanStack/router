@@ -346,7 +346,7 @@ const requestLogger = createMiddleware({ type: 'function' })
 
 #### Client-Sent Context Security
 
-You may have noticed that in the example above that while client-sent context is type-safe, it is is not required to be validated at runtime. If you pass dynamic user-generated data via context, that could pose a security concern, so **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.**
+You may have noticed that in the example above while client-sent context is type-safe, it is not required to be validated at runtime. If you pass dynamic user-generated data via context, that could pose a security concern, so **if you are sending dynamic data from the client to the server via context, you should validate it in the server-side middleware before using it.**
 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
