@@ -109,6 +109,7 @@ export async function prerender({
     logger.error(error)
   } finally {
     await previewServer.close()
+    process.exit(0)
   }
 
   function extractLinks(html: string): Array<string> {
