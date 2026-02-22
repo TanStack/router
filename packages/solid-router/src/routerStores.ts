@@ -3,6 +3,7 @@ import {
   createRouterStoresWithConfig,
   createServerRouterStoresBundle,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { batch as solidBatch } from './store'
 import type {
   RouterReadableStore,
@@ -50,7 +51,7 @@ const clientStoreConfig: RouterStoreConfig = {
 
 export const solidRouterStoresFactory: RouterStoresFactory = {
   createRouterStores(initialState, opts) {
-    if (opts.isServer) {
+    if (isServer ?? opts.isServer) {
       return createServerRouterStoresBundle(initialState)
     }
 

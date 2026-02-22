@@ -17,7 +17,7 @@ export interface RouterWritableStore<
   setState: (updater: (prev: TValue) => TValue) => void
 }
 
-export type RouterBatchFn = <TValue>(fn: () => TValue) => TValue
+export type RouterBatchFn = (fn: () => void) => void
 
 export type MutableStoreFactory = <TValue>(
   initialValue: TValue,
@@ -134,7 +134,9 @@ export function createRouterStoresWithConfig<TRouteTree extends AnyRoute>(
 export function createServerRouterStoresBundle<TRouteTree extends AnyRoute>(
   initialState: RouterState<TRouteTree>,
 ): RouterStoresBundle<TRouteTree> {
-  const batch: RouterBatchFn = (fn) => fn()
+  const batch: RouterBatchFn = (fn) => {
+    fn()
+  }
   const config: RouterStoreConfig = {
     createMutableStore: createLightweightMutableStore,
     createReadonlyStore: createLightweightReadonlyStore,

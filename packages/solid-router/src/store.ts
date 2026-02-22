@@ -20,12 +20,8 @@ export function useStore<TState, TSelected = TState>(
   })
 }
 
-export function batch<TValue>(fn: () => TValue): TValue {
-  let result!: TValue
-  Solid.batch(() => {
-    result = fn()
-  })
-  return result
+export function batch(fn: () => void): void {
+  Solid.batch(fn)
 }
 
 export function shallow<T>(objA: T, objB: T) {

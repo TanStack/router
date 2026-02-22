@@ -51,10 +51,6 @@ export function useStore<TState, TSelected = TState>(
   return useReactStore(toReactStore(store) as any, selector as any) as TSelected
 }
 
-export function batch<TValue>(fn: () => TValue): TValue {
-  let result!: TValue
-  reactBatch(() => {
-    result = fn()
-  })
-  return result
+export function batch(fn: () => void): void {
+  reactBatch(fn)
 }

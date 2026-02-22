@@ -58,10 +58,6 @@ export function useStore<TState, TSelected = TState>(
   ) as Vue.Ref<TSelected>
 }
 
-export function batch<TValue>(fn: () => TValue): TValue {
-  let result!: TValue
-  vueBatch(() => {
-    result = fn()
-  })
-  return result
+export function batch(fn: () => void): void {
+  vueBatch(fn)
 }

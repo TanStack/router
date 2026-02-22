@@ -941,7 +941,9 @@ export class RouterCore<
   stores!: RouterStores<TRouteTree>
   __store!: RouterReadableStore<RouterState<TRouteTree>>
   private storeFactory: RouterStoresFactory
-  private batchInternal: RouterBatchFn = (fn) => fn()
+  private batchInternal: RouterBatchFn = (fn) => {
+    fn()
+  }
 
   options!: PickAsRequired<
     RouterOptions<
@@ -1007,8 +1009,8 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
-  batch<TValue>(fn: () => TValue): TValue {
-    return this.batchInternal(fn)
+  batch(fn: () => void): void {
+    this.batchInternal(fn)
   }
 
   isShell() {

@@ -41,8 +41,8 @@ const testStoreConfig: RouterStoreConfig = {
       },
     }
   },
-  batch<TValue>(fn: () => TValue): TValue {
-    return fn()
+  batch(fn: () => void): void {
+    fn()
   },
 }
 

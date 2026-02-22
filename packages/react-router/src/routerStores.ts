@@ -3,6 +3,7 @@ import {
   createRouterStoresWithConfig,
   createServerRouterStoresBundle,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import type {
   RouterBatchFn,
   RouterStoreConfig,
@@ -10,11 +11,7 @@ import type {
 } from '@tanstack/router-core'
 
 const batch: RouterBatchFn = (fn) => {
-  let result!: ReturnType<typeof fn>
-  reactBatch(() => {
-    result = fn()
-  })
-  return result
+  reactBatch(fn)
 }
 
 const clientStoreConfig: RouterStoreConfig = {
@@ -25,7 +22,7 @@ const clientStoreConfig: RouterStoreConfig = {
 
 export const reactRouterStoresFactory: RouterStoresFactory = {
   createRouterStores(initialState, opts) {
-    if (opts.isServer) {
+    if (isServer ?? opts.isServer) {
       return createServerRouterStoresBundle(initialState)
     }
 
