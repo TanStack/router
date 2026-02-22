@@ -84,7 +84,8 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     const navigation = router.navigate({ to: '/foo' })
     expect(beforeLoad).toHaveBeenCalledTimes(1)
-    expect(router.state.pendingMatches).toEqual(
+    expect(router.state.status).toBe('pending')
+    expect(router.internalStore.state.pendingMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await navigation
@@ -106,7 +107,7 @@ describe('beforeLoad skip or exec', () => {
     const beforeLoad = vi.fn()
     const router = setup({ beforeLoad })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.state.cachedMatches).toEqual(
+    expect(router.internalStore.state.cachedMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
@@ -120,7 +121,7 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(router.state.cachedMatches).toEqual(
+    expect(router.internalStore.state.cachedMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await router.navigate({ to: '/foo' })
@@ -168,14 +169,18 @@ describe('beforeLoad skip or exec', () => {
     })
     await router.preloadRoute({ to: '/foo' })
     expect(
-      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+      router.internalStore.state.cachedMatches.some(
+        (d) => d.status === 'redirected',
+      ),
     ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
     expect(
-      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+      router.internalStore.state.cachedMatches.some(
+        (d) => d.status === 'redirected',
+      ),
     ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
@@ -191,13 +196,17 @@ describe('beforeLoad skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(
-      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+      router.internalStore.state.cachedMatches.some(
+        (d) => d.status === 'redirected',
+      ),
     ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
     expect(
-      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+      router.internalStore.state.cachedMatches.some(
+        (d) => d.status === 'redirected',
+      ),
     ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
@@ -278,7 +287,8 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     const navigation = router.navigate({ to: '/foo' })
     expect(loader).toHaveBeenCalledTimes(1)
-    expect(router.state.pendingMatches).toEqual(
+    expect(router.state.status).toBe('pending')
+    expect(router.internalStore.state.pendingMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await navigation
@@ -300,7 +310,7 @@ describe('loader skip or exec', () => {
     const loader = vi.fn()
     const router = setup({ loader })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.state.cachedMatches).toEqual(
+    expect(router.internalStore.state.cachedMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
@@ -313,7 +323,7 @@ describe('loader skip or exec', () => {
     const loader = vi.fn()
     const router = setup({ loader, staleTime: 1000 })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.state.cachedMatches).toEqual(
+    expect(router.internalStore.state.cachedMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await sleep(10)
@@ -327,7 +337,7 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(router.state.cachedMatches).toEqual(
+    expect(router.internalStore.state.cachedMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
     await router.navigate({ to: '/foo' })
@@ -375,14 +385,18 @@ describe('loader skip or exec', () => {
     })
     await router.preloadRoute({ to: '/foo' })
     expect(
-      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+      router.internalStore.state.cachedMatches.some(
+        (d) => d.status === 'redirected',
+      ),
     ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
     expect(
-      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+      router.internalStore.state.cachedMatches.some(
+        (d) => d.status === 'redirected',
+      ),
     ).toBe(false)
     expect(loader).toHaveBeenCalledTimes(2)
   })
@@ -398,13 +412,17 @@ describe('loader skip or exec', () => {
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
     expect(
-      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+      router.internalStore.state.cachedMatches.some(
+        (d) => d.status === 'redirected',
+      ),
     ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/bar')
     expect(
-      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+      router.internalStore.state.cachedMatches.some(
+        (d) => d.status === 'redirected',
+      ),
     ).toBe(false)
     expect(loader).toHaveBeenCalledTimes(1)
   })
@@ -414,7 +432,7 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
 
     await router.preloadRoute({ to: '/foo' })
-    expect(router.state.cachedMatches).toEqual(
+    expect(router.internalStore.state.cachedMatches).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
     )
 
@@ -423,11 +441,13 @@ describe('loader skip or exec', () => {
       status: 'redirected',
     }))
 
-    expect(router.state.cachedMatches.some((d) => d.id === '/foo/foo')).toBe(
-      false,
-    )
     expect(
-      router.state.cachedMatches.some((d) => d.status === 'redirected'),
+      router.internalStore.state.cachedMatches.some((d) => d.id === '/foo/foo'),
+    ).toBe(false)
+    expect(
+      router.internalStore.state.cachedMatches.some(
+        (d) => d.status === 'redirected',
+      ),
     ).toBe(false)
   })
 
@@ -612,11 +632,9 @@ describe('params.parse notFound', () => {
     })
 
     await router.load()
-
-    const match = router.state.pendingMatches?.find(
+    const match = router.internalStore.state.pendingMatches?.find(
       (m) => m.routeId === testRoute.id,
     )
-
     expect(match?.status).toBe('notFound')
   })
 
@@ -842,6 +860,116 @@ describe('routeId in context options', () => {
       expect.objectContaining({
         routeId: '/_layout',
       }),
+    )
+  })
+})
+
+describe('internal devtools matches store', () => {
+  test('tracks pending during navigation and clears it after commit', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader: async () => {
+        await sleep(20)
+        return { page: 'foo' }
+      },
+    })
+    const barRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/bar',
+      loader: async () => {
+        await sleep(20)
+        return { page: 'bar' }
+      },
+    })
+    const routeTree = rootRoute.addChildren([fooRoute, barRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.navigate({ to: '/foo' })
+
+    const navigation = router.navigate({ to: '/bar' })
+    await Promise.resolve()
+
+    expect(
+      router.internalStore.state.pendingMatches?.some(
+        (match) => match.routeId === '/bar',
+      ),
+    ).toBe(true)
+
+    await navigation
+
+    expect(router.internalStore.state.pendingMatches).toBeUndefined()
+    expect(
+      router.internalStore.state.cachedMatches.some(
+        (match) => match.routeId === '/foo',
+      ),
+    ).toBe(true)
+  })
+
+  test('tracks preload cache entries and clearCache', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader: async () => {
+        await sleep(5)
+        return { page: 'foo' }
+      },
+    })
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.preloadRoute({ to: '/foo' })
+
+    expect(
+      router.internalStore.state.cachedMatches.some(
+        (match) => match.routeId === '/foo',
+      ),
+    ).toBe(true)
+
+    router.clearCache()
+
+    expect(router.internalStore.state.cachedMatches).toEqual([])
+  })
+
+  test('invalidates cached entries via invalidate(filter)', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loader: async () => {
+        await sleep(5)
+        return { page: 'foo' }
+      },
+    })
+    const routeTree = rootRoute.addChildren([fooRoute])
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    await router.preloadRoute({ to: '/foo' })
+
+    await router.invalidate({
+      filter: (match) => match.routeId === '/foo',
+      forcePending: true,
+    })
+
+    expect(router.internalStore.state.cachedMatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          routeId: '/foo',
+          invalid: true,
+          status: 'pending',
+        }),
+      ]),
     )
   })
 })
