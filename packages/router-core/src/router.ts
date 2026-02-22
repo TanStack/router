@@ -2435,27 +2435,36 @@ export class RouterCore<
 
                   // Commit the pending matches. If a previous match was
                   // removed, place it in the cachedMatches
-                  let exitingMatches: Array<AnyRouteMatch> = []
-                  let enteringMatches: Array<AnyRouteMatch> = []
-                  let stayingMatches: Array<AnyRouteMatch> = []
+                  let exitingMatches: Array<AnyRouteMatch> | null = null
+                  let enteringMatches: Array<AnyRouteMatch> | null = null
+                  let stayingMatches: Array<AnyRouteMatch>
 
                   batch(() => {
-                    this.__store.setState((s) => {
-                      const previousMatches = s.matches
-                      const newMatches =
-                        this.internalStore.state.pendingMatches || s.matches
+                    const pendingMatches =
+                      this.internalStore.state.pendingMatches
+                    const mountPending = !!pendingMatches
+                    const previousMatches = this.__store.state.matches
 
+                    if (mountPending) {
                       exitingMatches = previousMatches.filter(
-                        (match) => !newMatches.some((d) => d.id === match.id),
+                        (match) =>
+                          !pendingMatches.some((d) => d.id === match.id),
                       )
-                      enteringMatches = newMatches.filter(
+                      enteringMatches = pendingMatches.filter(
                         (match) =>
                           !previousMatches.some((d) => d.id === match.id),
                       )
-                      stayingMatches = newMatches.filter((match) =>
+                      stayingMatches = pendingMatches.filter((match) =>
                         previousMatches.some((d) => d.id === match.id),
                       )
+                    } else {
+                      stayingMatches = previousMatches
+                    }
 
+                    this.__store.setState((s) => {
+                      const newMatches = mountPending
+                        ? pendingMatches
+                        : previousMatches
                       return {
                         ...s,
                         isLoading: false,
@@ -2463,42 +2472,44 @@ export class RouterCore<
                         matches: newMatches,
                       }
                     })
-                    this.internalStore.setState((s) => ({
-                      ...s,
-                      pendingMatches: undefined,
-                      /**
-                       * When committing new matches, cache any exiting matches that are still usable.
-                       * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
-                       * deliberately excluded from `cachedMatches` so that subsequent invalidations
-                       * or reloads re-run their loaders instead of reusing the failed/not-found data.
-                       */
-                      cachedMatches: filterRedirectedMatches([
-                        ...s.cachedMatches,
-                        ...exitingMatches.filter(
-                          (match) =>
-                            match.status !== 'error' &&
-                            match.status !== 'notFound' &&
-                            match.status !== 'redirected',
-                        ),
-                      ]),
-                    }))
-                    this.clearExpiredCache()
+                    if (mountPending) {
+                      this.internalStore.setState((s) => ({
+                        ...s,
+                        pendingMatches: undefined,
+                        /**
+                         * When committing new matches, cache any exiting matches that are still usable.
+                         * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
+                         * deliberately excluded from `cachedMatches` so that subsequent invalidations
+                         * or reloads re-run their loaders instead of reusing the failed/not-found data.
+                         */
+                        cachedMatches: filterRedirectedMatches([
+                          ...s.cachedMatches,
+                          ...exitingMatches!.filter(
+                            (match) =>
+                              match.status !== 'error' &&
+                              match.status !== 'notFound' &&
+                              match.status !== 'redirected',
+                          ),
+                        ]),
+                      }))
+                      this.clearExpiredCache()
+                    }
                   })
 
-                  //
-                  ;(
-                    [
-                      [exitingMatches, 'onLeave'],
-                      [enteringMatches, 'onEnter'],
-                      [stayingMatches, 'onStay'],
-                    ] as const
-                  ).forEach(([matches, hook]) => {
-                    matches.forEach((match) => {
+                  // call lifecycle methods
+                  const cases = [
+                    [exitingMatches, 'onLeave'],
+                    [enteringMatches, 'onEnter'],
+                    [stayingMatches!, 'onStay'],
+                  ] as const
+                  for (const [matches, hook] of cases) {
+                    if (!matches) continue
+                    for (const match of matches) {
                       this.looseRoutesById[match.routeId]!.options[hook]?.(
                         match,
                       )
-                    })
-                  })
+                    }
+                  }
                 })
               })
             },
