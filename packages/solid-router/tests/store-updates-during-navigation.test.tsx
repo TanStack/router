@@ -136,8 +136,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(10) // WARN: this is flaky, and sometimes (rarely) is 12
-    expect(updates).toBeLessThanOrEqual(13)
+    expect(updates).toBeGreaterThanOrEqual(8)
+    expect(updates).toBeLessThanOrEqual(10)
   })
 
   test('redirection in preload', async () => {
@@ -173,7 +173,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Solid has different update counts than React due to different reactivity
-    expect(updates).toBe(8)
+    expect(updates).toBe(4)
   })
 
   test('nothing', async () => {
@@ -184,8 +184,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(6) // WARN: this is flaky
-    expect(updates).toBeLessThanOrEqual(10)
+    expect(updates).toBeGreaterThanOrEqual(3)
+    expect(updates).toBeLessThanOrEqual(5)
   })
 
   test('not found in beforeLoad', async () => {
@@ -200,7 +200,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(7)
+    expect(updates).toBe(2)
   })
 
   test('hover preload, then navigate, w/ async loaders', async () => {
@@ -226,7 +226,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(16)
+    expect(updates).toBeGreaterThanOrEqual(8)
+    expect(updates).toBeLessThanOrEqual(10)
   })
 
   test('navigate, w/ preloaded & async loaders', async () => {
@@ -242,8 +243,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(9) // WARN: this is flaky, and sometimes (rarely) is 12
-    expect(updates).toBeLessThanOrEqual(13)
+    expect(updates).toBeGreaterThanOrEqual(3)
+    expect(updates).toBeLessThanOrEqual(4)
   })
 
   test('navigate, w/ preloaded & sync loaders', async () => {
@@ -260,7 +261,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Solid has one fewer update than React due to different reactivity
-    expect(updates).toBe(7)
+    expect(updates).toBe(3)
   })
 
   test('navigate, w/ previous navigation & async loader', async () => {
@@ -276,7 +277,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(5)
+    expect(updates).toBe(3)
   })
 
   test('preload a preloaded route w/ async loader', async () => {

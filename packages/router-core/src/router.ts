@@ -531,7 +531,6 @@ export interface RouterState<
   isLoading: boolean
   isTransitioning: boolean
   matches: Array<TRouteMatch>
-  pendingMatches?: Array<TRouteMatch>
   cachedMatches: Array<TRouteMatch>
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
@@ -976,6 +975,7 @@ export class RouterCore<
   origin?: string
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   pendingBuiltLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
+  private pendingMatchesInternal?: Array<AnyRouteMatch>
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
@@ -1768,7 +1768,7 @@ export class RouterCore<
       (match) => match.isFetching === 'loader',
     )
     const matchesToCancelArray = new Set([
-      ...(this.state.pendingMatches ?? []),
+      ...(this.pendingMatchesInternal ?? []),
       ...currentPendingMatches,
       ...currentLoadingMatches,
     ])
@@ -2341,6 +2341,7 @@ export class RouterCore<
 
     // Match the routes
     const pendingMatches = this.matchRoutes(this.latestLocation)
+    this.pendingMatchesInternal = pendingMatches
 
     // Ingest the new matches
     this.__store.setState((s) => ({
@@ -2349,7 +2350,6 @@ export class RouterCore<
       statusCode: 200,
       isLoading: true,
       location: this.latestLocation,
-      pendingMatches,
       // If a cached moved to pendingMatches, remove it from cachedMatches
       cachedMatches: s.cachedMatches.filter(
         (d) => !pendingMatches.some((e) => e.id === d.id),
@@ -2391,7 +2391,7 @@ export class RouterCore<
           await loadMatches({
             router: this,
             sync: opts?.sync,
-            matches: this.state.pendingMatches as Array<AnyRouteMatch>,
+            matches: this.pendingMatchesInternal ?? [],
             location: next,
             updateMatch: this.updateMatch,
             // eslint-disable-next-line @typescript-eslint/require-await
@@ -2410,7 +2410,8 @@ export class RouterCore<
                   batch(() => {
                     this.__store.setState((s) => {
                       const previousMatches = s.matches
-                      const newMatches = s.pendingMatches || s.matches
+                      const newMatches =
+                        this.pendingMatchesInternal || s.matches
 
                       exitingMatches = previousMatches.filter(
                         (match) => !newMatches.some((d) => d.id === match.id),
@@ -2428,7 +2429,6 @@ export class RouterCore<
                         isLoading: false,
                         loadedAt: Date.now(),
                         matches: newMatches,
-                        pendingMatches: undefined,
                         /**
                          * When committing new matches, cache any exiting matches that are still usable.
                          * Routes that resolved with `status: 'error'` or `status: 'notFound'` are
@@ -2446,6 +2446,7 @@ export class RouterCore<
                         ],
                       }
                     })
+                    this.pendingMatchesInternal = undefined
                     this.clearExpiredCache()
                   })
 
@@ -2587,13 +2588,18 @@ export class RouterCore<
 
   updateMatch: UpdateMatchFn = (id, updater) => {
     this.startTransition(() => {
-      const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
-        ? 'pendingMatches'
-        : this.state.matches.some((d) => d.id === id)
-          ? 'matches'
-          : this.state.cachedMatches.some((d) => d.id === id)
-            ? 'cachedMatches'
-            : ''
+      if (this.pendingMatchesInternal?.some((d) => d.id === id)) {
+        this.pendingMatchesInternal = this.pendingMatchesInternal.map((d) =>
+          d.id === id ? updater(d) : d,
+        )
+        return
+      }
+
+      const matchesKey = this.state.matches.some((d) => d.id === id)
+        ? 'matches'
+        : this.state.cachedMatches.some((d) => d.id === id)
+          ? 'cachedMatches'
+          : ''
 
       if (matchesKey) {
         if (matchesKey === 'cachedMatches') {
@@ -2619,7 +2625,7 @@ export class RouterCore<
     const findFn = (d: { id: string }) => d.id === matchId
     return (
       this.state.cachedMatches.find(findFn) ??
-      this.state.pendingMatches?.find(findFn) ??
+      this.pendingMatchesInternal?.find(findFn) ??
       this.state.matches.find(findFn)
     )
   }
@@ -2656,11 +2662,12 @@ export class RouterCore<
       return d
     }
 
+    this.pendingMatchesInternal = this.pendingMatchesInternal?.map(invalidate)
+
     this.__store.setState((s) => ({
       ...s,
       matches: s.matches.map(invalidate),
       cachedMatches: s.cachedMatches.map(invalidate),
-      pendingMatches: s.pendingMatches?.map(invalidate),
     }))
 
     this.shouldViewTransition = false
@@ -2777,7 +2784,7 @@ export class RouterCore<
     })
 
     const activeMatchIds = new Set(
-      [...this.state.matches, ...(this.state.pendingMatches ?? [])].map(
+      [...this.state.matches, ...(this.pendingMatchesInternal ?? [])].map(
         (d) => d.id,
       ),
     )
@@ -2942,7 +2949,6 @@ export function getInitialRouterState(
     resolvedLocation: undefined,
     location,
     matches: [],
-    pendingMatches: [],
     cachedMatches: [],
     statusCode: 200,
   }

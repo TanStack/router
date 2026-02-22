@@ -29,10 +29,10 @@ function handleRouteUpdate(
   // TODO: how to rebuild the tree if we add a new route?
   walkReplaceSegmentTree(newRoute, router.processedTree.segmentTree)
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
-  if (
-    router.state.matches.find(filter) ||
-    router.state.pendingMatches?.find(filter)
-  ) {
+  const hasPendingRouteMatch =
+    router.state.status === 'pending' &&
+    router.matchRoutes(router.latestLocation).some(filter)
+  if (router.state.matches.find(filter) || hasPendingRouteMatch) {
     router.invalidate({ filter })
   }
   function walkReplaceSegmentTree(
