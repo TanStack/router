@@ -226,7 +226,7 @@ for (const mode of ['build', 'dev'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
   test(`no false positive for boundary-safe pattern in ${mode}`, async () => {
     const violations = await readViolations(mode)
 
@@ -340,7 +340,7 @@ test('build has violations in both client and SSR environments', async () => {
   expect(ssrViolations.length).toBeGreaterThanOrEqual(2)
 })
 
-for (const mode of ['build', 'dev'] as const) {
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
   test(`no false positive for factory-safe middleware pattern in ${mode}`, async () => {
     const violations = await readViolations(mode)
 
@@ -363,7 +363,7 @@ for (const mode of ['build', 'dev'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
   test(`no false positive for cross-boundary-safe pattern in ${mode}`, async () => {
     const violations = await readViolations(mode)
 
@@ -387,7 +387,7 @@ for (const mode of ['build', 'dev'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
   test(`cross-boundary-leak: leaky consumer still produces violation in ${mode}`, async () => {
     const violations = await readViolations(mode)
 
@@ -407,7 +407,7 @@ for (const mode of ['build', 'dev'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
   test(`beforeload-leak: server import via beforeLoad triggers client violation in ${mode}`, async () => {
     const violations = await readViolations(mode)
 
@@ -489,7 +489,7 @@ test('warm run traces include line numbers', async () => {
     if (step.specifier?.includes('?tsr-split=')) continue
     if (step.file.includes('routeTree.gen')) continue
     const prev = v!.trace[i - 1]
-    if (prev?.specifier?.includes('?tsr-split=')) continue
+    if (prev.specifier?.includes('?tsr-split=')) continue
 
     expect(
       step.line,
@@ -498,3 +498,45 @@ test('warm run traces include line numbers', async () => {
     expect(step.line).toBeGreaterThan(0)
   }
 })
+
+// Regression: SERVER_FN_LOOKUP variant pollution + hasSeenEntry bug.
+//
+// The Start compiler excludes ?server-fn-module-lookup variants from its
+// transform, so they retain the original (untransformed) imports.  If the
+// reachability check considers those untransformed imports, it would see
+// edges the compiler has actually pruned, causing a false positive.
+//
+// Additionally, in Vite dev mode the client entry resolves through virtual
+// modules, so a naïve resolveId-based entry detection may never fire,
+// causing all deferred violations to be confirmed immediately.
+//
+// The cross-boundary-safe pattern exercises both bugs:
+//   auth-wrapper.ts exports createAuthServerFn (factory with middleware)
+//   → session-util.ts wraps @tanstack/react-start/server
+//   → usage.ts calls createAuthServerFn().handler()
+// All server imports are inside compiler boundaries and must be pruned.
+
+for (const mode of ['dev', 'dev.warm'] as const) {
+  test(`regression: server-fn-lookup variant does not cause false positive in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    // Any violation touching the cross-boundary-safe chain where the importer
+    // or trace includes the ?server-fn-module-lookup query (or its normalized
+    // key) would indicate the lookup variant polluted the reachability check.
+    const lookupHits = violations.filter(
+      (v) =>
+        v.envType === 'client' &&
+        (v.importer.includes('auth-wrapper') ||
+          v.importer.includes('session-util') ||
+          v.importer.includes('cross-boundary-safe') ||
+          v.trace.some(
+            (s) =>
+              s.file.includes('auth-wrapper') ||
+              s.file.includes('session-util') ||
+              s.file.includes('cross-boundary-safe'),
+          )),
+    )
+
+    expect(lookupHits).toEqual([])
+  })
+}
