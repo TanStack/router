@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import { createRoute } from '@tanstack/react-native-router'
+import { Link } from '@tanstack/react-native-router'
 import { Route as RootRoute } from './__root'
 import { ScreenHeader } from '../components/ScreenHeader'
 
@@ -73,6 +74,14 @@ function CommentsScreen() {
             <Text style={styles.commentBody}>{comment.body}</Text>
           </View>
         ))}
+
+        <Link
+          to="/posts/$postId/deep/$depth"
+          params={{ postId, depth: '1' }}
+          style={styles.deepLink}
+        >
+          <Text style={styles.deepLinkText}>Open Stack Depth Lab →</Text>
+        </Link>
       </ScrollView>
     </View>
   )
@@ -110,6 +119,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#15803d',
     marginTop: 4,
+  },
+  deepLink: {
+    marginTop: 8,
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  deepLinkText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
   },
   commentCard: {
     backgroundColor: 'white',

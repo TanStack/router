@@ -255,15 +255,12 @@ export function NativeScreenMatches() {
       const locationKey =
         s.location.state.__TSR_key ?? s.location.state.key ?? s.location.href
 
-      const renderMatches =
-        s.status === 'pending' && s.pendingMatches?.length
-          ? s.pendingMatches
-          : s.matches
+      const usePendingMatches =
+        s.status === 'pending' && (s.pendingMatches?.length ?? 0) > 1
 
-      const renderState =
-        renderMatches === s.matches ? s : { ...s, matches: renderMatches }
+      const matches = usePendingMatches ? s.pendingMatches! : s.matches
 
-      const matches = renderMatches
+      const renderState = usePendingMatches ? { ...s, matches } : s
       // Find the deepest match that is a screen (not a layout/navigator)
       for (let i = matches.length - 1; i >= 0; i--) {
         const match = matches[i]!
@@ -432,7 +429,10 @@ export function NativeScreenMatches() {
               <React.Suspense fallback={pendingElement}>
                 <routerStateContext.Provider
                   value={
-                    isTop && !isPendingNavigation ? undefined : screen.state
+                    isTop &&
+                    (!isPendingNavigation || screen.state.matches.length <= 1)
+                      ? undefined
+                      : screen.state
                   }
                 >
                   {screen.resolvedStackState === 'paused' && Activity ? (

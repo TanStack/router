@@ -1,5 +1,8 @@
 // Import from /core subpath to avoid loading React Native components at module load time
-import { createRouter, createNativeHistory } from '@tanstack/react-native-router/core'
+import {
+  createRouter,
+  createNativeHistory,
+} from '@tanstack/react-native-router/core'
 import { routeTree } from './routeTree.gen'
 
 // Create the router with native history
