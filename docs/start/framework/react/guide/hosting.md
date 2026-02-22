@@ -23,6 +23,7 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 - [`node-server`](#nodejs--docker): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - [`appwrite-sites`](#appwrite-sites): Deploy to Appwrite Sites
+- [`edgeone-pages`](#edgeone-pages): Deploy to EdgeOne Pages
 - ... and more to come!
 
 ### Cloudflare Workers ⭐ _Official Partner_
@@ -444,3 +445,48 @@ In your Appwrite project, navigate to the **Sites** page from the sidebar. Click
 5. Click **Deploy**
 
 After successful deployment, click the **Visit site** button to see your deployed application.
+
+### EdgeOne Pages
+
+<a href="https://pages.edgeone.ai" alt="EdgeOne Pages Logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://pages.edgeone.ai/_next/static/media/WhiteHeadLogo.51cd0d20.svg?auto=format&fit=max&w=3840" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://pages.edgeone.ai/_next/static/media/BlackHeadLogo.65710e40.svg?auto=format&fit=max&w=3840" width="280">
+    <img alt="EdgeOne Pages logo" src="https://pages.edgeone.ai/_next/static/media/BlackHeadLogo.65710e40.svg?auto=format&fit=max&w=3840" width="280">
+  </picture>
+</a>
+
+To deploy TanStack Start on EdgeOne Pages, follow the steps below:
+
+1. Install the EdgeOne adapter
+
+```bash
+pnpm add @edgeone/tanstack-start
+```
+
+2. Configure Vite
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
+import edgeoneAdapter from '@edgeone/tanstack-start'
+
+export default defineConfig({
+  plugins: [tanstackStart(), viteReact(), edgeoneAdapter()],
+})
+```
+
+3. Deploy
+
+Push your code to GitHub or GitLab, then connect your repository in EdgeOne Pages. Alternatively, use EdgeOne CLI to deploy directly:
+
+```bash
+edgeone pages deploy
+```
+
+EdgeOne Pages supports SSR, SSG, SPA, route loaders, server functions, file-based routing, and streaming.
+
+For more details, visit the [EdgeOne Pages TanStack Start documentation](https://pages.edgeone.ai/zh/document/framework-tanstack-start).
+
