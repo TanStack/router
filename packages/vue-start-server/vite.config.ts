@@ -9,6 +9,7 @@ const config = defineConfig({
     name: packageJson.name,
     watch: false,
     environment: 'jsdom',
+    coverage: { enabled: true },
   },
 })
 
