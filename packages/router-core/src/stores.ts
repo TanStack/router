@@ -38,11 +38,9 @@ export interface RouterStores<
   /** @internal */
   cachedMatchesId: Store<Array<string>>
   /** store of stores */
-  byId: Store<MatchStoreLookup>
+  byId: ReadableStore<MatchStoreLookup>
   /** store of stores */
-  byRouteId: Store<MatchStoreLookup>
-  /** store of stores */
-  pendingByRouteId: Store<MatchStoreLookup>
+  byRouteId: ReadableStore<MatchStoreLookup>
   activeMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
   pendingMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
   cachedMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
@@ -153,11 +151,28 @@ function createRouterStoresImpl<
   const matchesId = createMutableStore<Array<string>>([])
   const pendingMatchesId = createMutableStore<Array<string>>([])
   const cachedMatchesId = createMutableStore<Array<string>>([])
-  const byId = createMutableStore<MatchStoreLookup>({})
-  const byRouteId = createMutableStore<MatchStoreLookup>({})
-  const pendingByRouteId = createMutableStore<MatchStoreLookup>({})
 
   // 1st order derived stores
+  const byId = createReadonlyStore(() => {
+    const stores: MatchStoreLookup = {}
+    for (const matchId of matchesId.state) {
+      const store = activeMatchStoresById.get(matchId)
+      if (store) {
+        stores[matchId] = store
+      }
+    }
+    return stores
+  })
+  const byRouteId = createReadonlyStore(() => {
+    const stores: MatchStoreLookup = {}
+    for (const matchId of matchesId.state) {
+      const store = activeMatchStoresById.get(matchId)
+      if (store) {
+        stores[store.state.routeId] = store
+      }
+    }
+    return stores
+  })
   const activeMatchesSnapshot = createReadonlyStore(() =>
     readPoolMatches(
       activeMatchStoresById,
@@ -218,51 +233,22 @@ function createRouterStoresImpl<
   // setters to update non-reactive utilities in sync with the reactive stores
   function setActiveMatches(nextMatches: Array<AnyRouteMatch>) {
     batch(() => {
-      const idsChanged = reconcileMatchPool(
+      reconcileMatchPool(
         nextMatches,
         activeMatchStoresById,
         matchesId,
         createMutableStore,
       )
-      if (idsChanged) {
-        const nextById: MatchStoreLookup = {}
-        const nextByRouteId: MatchStoreLookup = {}
-
-        for (const matchId of matchesId.state) {
-          const store = activeMatchStoresById.get(matchId)
-          if (!store) return
-          nextById[matchId] = store
-          nextByRouteId[store.state.routeId] = store
-        }
-        byId.setState(() => nextById)
-
-        if (!lookupEqual(byRouteId.state, nextByRouteId)) {
-          byRouteId.setState(() => nextByRouteId)
-        }
-      }
     })
   }
   function setPendingMatches(nextMatches: Array<AnyRouteMatch>) {
     batch(() => {
-      const idsChanged = reconcileMatchPool(
+      reconcileMatchPool(
         nextMatches,
         pendingMatchStoresById,
         pendingMatchesId,
         createMutableStore,
       )
-      if (idsChanged) {
-        const byRouteId: MatchStoreLookup = {}
-
-        for (const matchId of pendingMatchesId.state) {
-          const store = pendingMatchStoresById.get(matchId)
-          if (!store) return
-          byRouteId[store.state.routeId] = store
-        }
-
-        if (!lookupEqual(pendingByRouteId.state, byRouteId)) {
-          pendingByRouteId.setState(() => byRouteId)
-        }
-      }
     })
   }
   function setCachedMatches(nextMatches: Array<AnyRouteMatch>) {
@@ -289,7 +275,6 @@ function createRouterStoresImpl<
     cachedMatchesId,
     byId,
     byRouteId,
-    pendingByRouteId,
 
     // derived
     activeMatchesSnapshot,
@@ -335,10 +320,9 @@ function reconcileMatchPool(
   pool: Map<string, MatchStore>,
   idStore: Store<Array<string>>,
   createMutableStore: MutableStoreFactory,
-): boolean {
+): void {
   const nextIds = nextMatches.map((d) => d.id)
   const nextIdSet = new Set(nextIds)
-  let idsChanged = false
 
   for (const id of pool.keys()) {
     if (!nextIdSet.has(id)) {
@@ -360,20 +344,7 @@ function reconcileMatchPool(
     }
 
     if (!arraysEqual(idStore.state, nextIds)) {
-      idsChanged = true
       idStore.setState(() => nextIds)
     }
   })
-
-  return idsChanged
-}
-
-function lookupEqual(a: MatchStoreLookup, b: MatchStoreLookup): boolean {
-  if (a === b) return true
-  const aKeys = Object.keys(a)
-  if (aKeys.length !== Object.keys(b).length) return false
-  for (const key of aKeys) {
-    if (!(key in b) || a[key] !== b[key]) return false
-  }
-  return true
 }

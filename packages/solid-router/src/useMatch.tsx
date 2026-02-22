@@ -3,9 +3,7 @@ import invariant from 'tiny-invariant'
 import { useStore } from '@tanstack/solid-store'
 import {
   dummyMatchContext,
-  dummyPendingMatchContext,
   matchContext,
-  pendingMatchContext,
 } from './matchContext'
 import { useStoreOfStoresValue } from './storeOfStores'
 import { useRouter } from './useRouter'
@@ -80,8 +78,13 @@ export function useMatch<
   const nearestMatchId = Solid.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
-  const hasPendingNearestMatch = Solid.useContext(
-    opts.from ? dummyPendingMatchContext : pendingMatchContext,
+  const hasPendingNearestMatch = useStore(
+    router.stores.pendingMatchesId,
+    (ids) => {
+      const id = nearestMatchId()
+      return id ? ids.includes(id) : false
+    },
+    { equal: Object.is },
   )
 
   const activeMatchStore = useStore(
@@ -94,8 +97,8 @@ export function useMatch<
   )
   const hasPendingRouteMatch = opts.from
     ? useStore(
-        router.stores.pendingByRouteId,
-        (stores) => Boolean(stores[opts.from as string]),
+        router.stores.pendingMatchesSnapshot,
+        (matches) => matches.some((match) => match.routeId === opts.from),
         { equal: Object.is },
       )
     : undefined
@@ -105,10 +108,7 @@ export function useMatch<
     { equal: Object.is },
   )
 
-  const match = useStoreOfStoresValue(
-    () => activeMatchStore(),
-    (value) => value,
-  )
+  const match = useStoreOfStoresValue(() => activeMatchStore())
 
   return Solid.createMemo(() => {
     const selectedMatch = match()
@@ -119,10 +119,14 @@ export function useMatch<
       const shouldThrowError =
         !hasPendingMatch && !isTransitioning() && (opts.shouldThrow ?? true)
 
-      invariant(
-        !shouldThrowError,
-        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-      )
+      if (process.env.NODE_ENV !== 'production') {
+        invariant(
+          !shouldThrowError,
+          `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
+      } else {
+        invariant(!shouldThrowError)
+      }
       return undefined
     }
 
