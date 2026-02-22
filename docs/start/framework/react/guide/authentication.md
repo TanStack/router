@@ -361,6 +361,8 @@ export const resetPasswordFn = createServerFn({ method: 'POST' })
 
 ## Security Best Practices
 
+> For a complete overview of TanStack Start's built-in security protections, see the [Security FAQ](./security).
+
 ### 1. Password Security
 
 ```tsx
