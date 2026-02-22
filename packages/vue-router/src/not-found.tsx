@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from '@tanstack/vue-store'
+import { useStore } from './store'
 import { isNotFound } from '@tanstack/router-core'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'

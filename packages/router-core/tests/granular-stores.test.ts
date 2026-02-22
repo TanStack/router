@@ -1,16 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, RouterCore } from '../src'
-
-type UnsubscribeResult = (() => void) | { unsubscribe: () => void }
-
-function cleanupSubscription(subscription: UnsubscribeResult) {
-  if (typeof subscription === 'function') {
-    subscription()
-    return
-  }
-  subscription.unsubscribe()
-}
+import { BaseRootRoute, BaseRoute } from '../src'
+import { createTestRouter } from './routerTestUtils'
 
 function createRouter() {
   const rootRoute = new BaseRootRoute({})
@@ -32,7 +23,7 @@ function createRouter() {
 
   const routeTree = rootRoute.addChildren([indexRoute, aboutRoute, postRoute])
 
-  return new RouterCore({
+  return createTestRouter({
     routeTree,
     history: createMemoryHistory({
       initialEntries: ['/'],
@@ -95,26 +86,17 @@ describe('granular stores', () => {
       throw new Error('Expected root and leaf match stores to exist')
     }
 
-    let rootUpdates = 0
-    let leafUpdates = 0
-
-    const unsubscribeRoot = rootStore.subscribe(() => {
-      rootUpdates++
-    })
-    const unsubscribeLeaf = leafStore.subscribe(() => {
-      leafUpdates++
-    })
+    const rootBefore = rootStore.state
+    const leafBefore = leafStore.state
 
     router.updateMatch(leafMatch.id, (prev) => ({
       ...prev,
       status: 'pending',
     }))
 
-    cleanupSubscription(unsubscribeRoot)
-    cleanupSubscription(unsubscribeLeaf)
-
-    expect(rootUpdates).toBe(0)
-    expect(leafUpdates).toBe(1)
+    expect(rootStore.state).toBe(rootBefore)
+    expect(leafStore.state).not.toBe(leafBefore)
+    expect(leafStore.state.status).toBe('pending')
   })
 
   test('supports duplicate ids across pools without cross-pool contamination', async () => {

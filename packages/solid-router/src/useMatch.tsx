@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import { useStore } from '@tanstack/solid-store'
+import { useStore } from './store'
 import {
   dummyMatchContext,
   dummyPendingMatchContext,
@@ -110,9 +110,13 @@ export function useMatch<
     (value) => value,
   )
 
-  return Solid.createMemo(() => {
+  return Solid.createMemo((previous) => {
     const selectedMatch = match()
     if (selectedMatch === undefined) {
+      if (previous !== undefined) {
+        return previous
+      }
+
       const hasPendingMatch = opts.from
         ? Boolean(hasPendingRouteMatch?.())
         : hasPendingNearestMatch()

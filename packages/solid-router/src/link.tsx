@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js'
-import { useStore } from '@tanstack/solid-store'
 
 import { mergeRefs } from '@solid-primitives/refs'
 
@@ -14,6 +13,7 @@ import {
 
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
+import { useStore } from './store'
 import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
@@ -143,7 +143,7 @@ export function useLinkProps<
 
   const next = Solid.createMemo(() => {
     currentSearch()
-    return router.buildLocation(_options() as any)
+    return Solid.untrack(() => router.buildLocation(_options() as any))
   })
 
   const hrefOption = Solid.createMemo(() => {

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { batch, useStore } from '@tanstack/react-store'
+import { batch, useStore } from './store'
 import {
   getLocationChangeInfo,
   handleHashScroll,

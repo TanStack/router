@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useStore } from './store'
 import { replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import invariant from 'tiny-invariant'

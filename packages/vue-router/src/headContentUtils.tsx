@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from '@tanstack/vue-store'
+import { useStore } from './store'
 
 import { escapeHtml } from '@tanstack/router-core'
 import { useRouter } from './useRouter'

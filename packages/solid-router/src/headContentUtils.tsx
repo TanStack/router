@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
-import { useStore } from '@tanstack/solid-store'
 import { escapeHtml } from '@tanstack/router-core'
+import { useStore } from './store'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 

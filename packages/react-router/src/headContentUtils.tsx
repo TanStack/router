@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useStore } from './store'
 import { escapeHtml } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'

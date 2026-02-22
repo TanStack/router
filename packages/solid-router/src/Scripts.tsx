@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/solid-store'
+import { useStore } from './store'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'

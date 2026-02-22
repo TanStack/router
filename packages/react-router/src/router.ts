@@ -13,6 +13,7 @@ import type {
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
+import { reactRouterStoresFactory } from './routerStores'
 
 declare module '@tanstack/router-core' {
   export interface RouterOptionsExtensions {
@@ -114,7 +115,7 @@ export class Router<
       TDehydrated
     >,
   ) {
-    super(options)
+    super(options, reactRouterStoresFactory)
   }
 }
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_PROTOCOL_ALLOWLIST, isDangerousProtocol } from '../src/utils'
 import { redirect } from '../src/redirect'
-import { BaseRootRoute, RouterCore } from '../src'
+import { BaseRootRoute } from '../src'
+import { createTestRouter } from './routerTestUtils'
 
 const defaultAllowlistSet = new Set(DEFAULT_PROTOCOL_ALLOWLIST)
 
@@ -245,7 +246,7 @@ describe('integration test on Router', () => {
     'foo:bar',
   ]
   it('should accept weird protocols from the allowlist', () => {
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree: new BaseRootRoute(),
       protocolAllowlist: [
         'x-safari-https:',
@@ -261,7 +262,7 @@ describe('integration test on Router', () => {
     }
   })
   it('should block weird protocols not in the allowlist', () => {
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree: new BaseRootRoute(),
       protocolAllowlist: [],
     })

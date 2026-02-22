@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/solid-store'
+import { useStore } from './store'
 import { useRouter } from './useRouter'
 
 export function useCanGoBack() {

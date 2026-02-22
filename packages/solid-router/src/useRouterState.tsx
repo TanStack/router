@@ -1,5 +1,5 @@
-import { useStore } from '@tanstack/solid-store'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useStore } from './store'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,

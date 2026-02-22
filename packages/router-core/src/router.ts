@@ -1,7 +1,5 @@
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
-import { createRouterStores, createServerRouterStores } from './stores'
-import { batch } from './utils/batch'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
   arraysEqual,
@@ -50,7 +48,6 @@ import type {
 } from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
-import type { ReadonlyStore, Store } from '@tanstack/store'
 import type {
   HistoryLocation,
   HistoryState,
@@ -104,7 +101,12 @@ import type {
   AnySerializationAdapter,
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
-import type { RouterStores } from "./stores"
+import type {
+  RouterBatchFn,
+  RouterReadableStore,
+  RouterStores,
+  RouterStoresFactory,
+} from './stores'
 // import type { AnyRouterConfig } from './config'
 
 export type ControllablePromise<T = any> = Promise<T> & {
@@ -907,10 +909,6 @@ declare global {
     | undefined
 }
 
-type MatchStore = Store<AnyRouteMatch>
-type MatchStoreLookup = Record<string, MatchStore>
-type ReadableStore<TValue> = Pick<Store<TValue>, 'state' | 'get' | 'subscribe'>
-
 /**
  * Core, framework-agnostic router engine that powers TanStack Router.
  *
@@ -941,8 +939,10 @@ export class RouterCore<
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
-  __store!: ReadonlyStore<RouterState<TRouteTree>>
-  
+  __store!: RouterReadableStore<RouterState<TRouteTree>>
+  private storeFactory: RouterStoresFactory
+  private batchInternal: RouterBatchFn = (fn) => fn()
+
   options!: PickAsRequired<
     RouterOptions<
       TRouteTree,
@@ -979,7 +979,10 @@ export class RouterCore<
       TRouterHistory,
       TDehydrated
     >,
+    storeFactory: RouterStoresFactory,
   ) {
+    this.storeFactory = storeFactory
+
     this.update({
       defaultPreloadDelay: 50,
       defaultPendingMs: 1000,
@@ -1003,6 +1006,10 @@ export class RouterCore<
   // by the router provider once rendered. We provide this so that the
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
+
+  batch<TValue>(fn: () => TValue): TValue {
+    return this.batchInternal(fn)
+  }
 
   isShell() {
     return !!this.options.isShell
@@ -1107,13 +1114,18 @@ export class RouterCore<
     }
 
     if (!this.__store && this.latestLocation) {
-      const stores = (isServer ?? this.isServer)
-        ? createServerRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
-        : createRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
+      const isRouterServer = isServer ?? this.isServer
+      const { stores, batch } = this.storeFactory.createRouterStores(
+        getInitialRouterState(this.latestLocation),
+        {
+          isServer: isRouterServer,
+        },
+      )
       this.stores = stores
       this.__store = stores.__store
+      this.batchInternal = batch
 
-      if (!(isServer ?? this.isServer)) {
+      if (!isRouterServer) {
         setupScrollRestoration(this)
       }
     }
@@ -2342,7 +2354,7 @@ export class RouterCore<
     )
 
     // Ingest the new matches
-    batch(() => {
+    this.batch(() => {
       this.stores.status.setState(() => 'pending')
       this.stores.statusCode.setState(() => 200)
       this.stores.isLoading.setState(() => true)
@@ -2403,7 +2415,7 @@ export class RouterCore<
                   let enteringMatches: Array<AnyRouteMatch> = []
                   let stayingMatches: Array<AnyRouteMatch> = []
 
-                  batch(() => {
+                  this.batch(() => {
                     const pendingMatches =
                       this.stores.pendingMatchesSnapshot.state
                     const mountPending = pendingMatches.length
@@ -2492,7 +2504,7 @@ export class RouterCore<
                 ? 500
                 : 200
 
-          batch(() => {
+          this.batch(() => {
             this.stores.statusCode.setState(() => nextStatusCode)
             this.stores.redirect.setState(() => redirect)
           })
@@ -2660,7 +2672,7 @@ export class RouterCore<
       return d
     }
 
-    batch(() => {
+    this.batch(() => {
       this.stores.setActiveMatches(
         this.stores.activeMatchesSnapshot.state.map(invalidate),
       )

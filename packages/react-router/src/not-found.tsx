@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { isNotFound } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from '@tanstack/react-store'
+import { useStore } from './store'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import type { ErrorInfo } from 'react'

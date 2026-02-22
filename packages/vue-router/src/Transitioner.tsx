@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { batch, useStore } from '@tanstack/vue-store'
+import { batch, useStore } from './store'
 import {
   getLocationChangeInfo,
   handleHashScroll,

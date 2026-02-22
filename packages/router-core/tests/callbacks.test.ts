@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, RouterCore } from '../src'
+import { BaseRootRoute, BaseRoute } from '../src'
+import { createTestRouter } from './routerTestUtils'
 
 describe('callbacks', () => {
   const setup = ({
@@ -32,7 +33,7 @@ describe('callbacks', () => {
 
     const routeTree = rootRoute.addChildren([fooRoute, barRoute])
 
-    const router = new RouterCore({
+    const router = createTestRouter({
       routeTree,
       history: createMemoryHistory(),
     })

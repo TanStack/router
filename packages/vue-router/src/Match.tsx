@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from '@tanstack/vue-store'
+import { useStore } from './store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
