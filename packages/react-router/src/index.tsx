@@ -298,10 +298,6 @@ export { useNavigate, Navigate } from './useNavigate'
 export { useParams } from './useParams'
 export { useSearch } from './useSearch'
 
-export {
-  getRouterContext, // SSR
-} from './routerContext'
-
 export { useRouteContext } from './useRouteContext'
 export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
