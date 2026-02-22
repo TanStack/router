@@ -1,0 +1,24 @@
+{
+  "name": "tanstack-router-react-example-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3000",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "start": "vite"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/preact-router": "^1.160.0",
+    "preact": "^10.25.0",
+    "preact-render-to-string": "^6.6.5",
+    "redaxios": "^0.5.1",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.3",
+    "typescript": "^5.7.2",
+    "vite": "^7.3.1"
+  }
+}

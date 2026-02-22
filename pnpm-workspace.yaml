@@ -4,6 +4,7 @@ preferWorkspacePackages: true
 
 packages:
   - 'packages/*'
+  - 'examples/preact/*'
   - 'examples/react/*'
   - 'examples/solid/*'
   - 'examples/vue/*'
@@ -13,6 +14,7 @@ packages:
   - 'e2e/e2e-utils'
   - 'e2e/bundle-size'
   - 'e2e/react-router/*'
+  - 'e2e/preact-router/*'
   - 'e2e/solid-router/*'
   - 'e2e/vue-router/*'
   - 'e2e/react-start/*'
