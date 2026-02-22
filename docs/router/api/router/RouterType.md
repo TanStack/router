@@ -81,7 +81,7 @@ Builds a new parsed location object that can be used later to navigate to a new 
     - `unmaskOnReload`
       - Type: `boolean`
       - Optional
-      - If `true`, the route mask will be removed when the page is reloaded. This can be overridden on a per-navigation basis by setting the `unmaskOnReload` option in the `Navigate` options.
+      - If `true`, the route mask will be removed when the page is reloaded. This can be overridden on a per-navigation basis by setting `mask.unmaskOnReload` in [`NavigateOptions`](./NavigateOptionsType.md).
 
 ### `.commitLocation` method
 
