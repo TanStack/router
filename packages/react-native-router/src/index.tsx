@@ -19,7 +19,9 @@ export type {
   RouteComponent,
   ErrorRouteComponent,
   NotFoundRouteComponent,
-  NativeScreenOptions,
+  NativeRouteOptions,
+  NativeStackState,
+  NativeStackStateResolverContext,
 } from './route'
 
 // Provider

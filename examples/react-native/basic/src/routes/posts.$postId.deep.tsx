@@ -27,7 +27,7 @@ async function fetchComments(postId: string): Promise<Comment[]> {
 export const Route = createRoute({
   getParentRoute: () => RootRoute,
   path: 'posts/$postId/deep',
-  nativeOptions: {
+  native: {
     presentation: 'push',
     gestureEnabled: true,
     animation: 'slide_from_right',

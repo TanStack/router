@@ -27,7 +27,7 @@ async function fetchPost(postId: string): Promise<Post> {
 export const Route = createRoute({
   getParentRoute: () => RootRoute,
   path: 'posts/$postId',
-  nativeOptions: {
+  native: {
     presentation: 'push',
     gestureEnabled: true,
     animation: 'default',

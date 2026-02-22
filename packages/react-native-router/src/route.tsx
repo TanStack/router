@@ -54,7 +54,7 @@ export type NotFoundRouteComponent = React.ComponentType<NotFoundRouteProps>
 /**
  * Native screen presentation options for React Native.
  */
-export interface NativeScreenOptions {
+export interface NativeRouteOptions {
   /**
    * How this route should be presented in the native navigation stack.
    * - 'push': Standard screen push with back gesture (default)
@@ -114,6 +114,27 @@ export interface NativeScreenOptions {
    * Whether this screen should be rendered with a translucent status bar.
    */
   statusBarTranslucent?: boolean
+
+  /**
+   * Controls lifecycle behavior of this route when it is in the stack.
+   * - 'active': Rendered and effects running
+   * - 'paused': Rendered but effects paused via React Activity
+   * - 'detached': Not rendered, but still present in history
+   */
+  stackState?:
+    | NativeStackState
+    | ((ctx: NativeStackStateResolverContext) => NativeStackState)
+}
+
+export type NativeStackState = 'active' | 'paused' | 'detached'
+
+export interface NativeStackStateResolverContext {
+  pathname: string
+  params: Record<string, string>
+  search: unknown
+  depth: number
+  isTop: boolean
+  navigationType: 'push' | 'pop' | 'replace' | 'none'
 }
 
 // Type extensions for components
@@ -123,11 +144,7 @@ declare module '@tanstack/router-core' {
     errorComponent?: false | null | undefined | ErrorRouteComponent
     notFoundComponent?: NotFoundRouteComponent
     pendingComponent?: RouteComponent
-    /**
-     * Native screen options for React Native navigation.
-     * Controls how this route is presented in the native navigation stack.
-     */
-    nativeOptions?: NativeScreenOptions
+    native?: NativeRouteOptions
   }
 
   export interface RootRouteOptionsExtensions {

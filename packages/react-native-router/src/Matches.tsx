@@ -8,7 +8,11 @@ import { routerStateContext } from './routerStateContext'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { Transitioner } from './Transitioner'
 import type { AnyRoute, RouterState } from '@tanstack/router-core'
-import type { NativeScreenOptions } from './route'
+import type {
+  NativeRouteOptions,
+  NativeStackState,
+  NativeStackStateResolverContext,
+} from './route'
 
 // Lazily load react-native-screens to avoid accessing native modules at module load time
 let _Screen: any = null
@@ -113,7 +117,7 @@ function MatchesInner() {
  * Map our animation option to react-native-screens stackAnimation
  */
 function getStackAnimation(
-  animation: NativeScreenOptions['animation'],
+  animation: NativeRouteOptions['animation'],
 ): string | undefined {
   if (!animation || animation === 'default') return undefined
   return animation
@@ -129,11 +133,74 @@ function getGestureEnabled(screen: ScreenEntry): boolean {
 
 interface ScreenEntry {
   pathname: string
+  locationKey: string
+  historyIndex: number
+  params: Record<string, string>
+  search: unknown
   state: RouterState<AnyRoute>
   revision: number
-  presentation?: NativeScreenOptions['presentation']
+  stackState?: NativeRouteOptions['stackState']
+  resolvedStackState: NativeStackState
+  presentation?: NativeRouteOptions['presentation']
   gestureEnabled?: boolean
-  animation?: NativeScreenOptions['animation']
+  animation?: NativeRouteOptions['animation']
+}
+
+function resolveStackState(
+  entry: ScreenEntry,
+  ctx: NativeStackStateResolverContext,
+  fallback: NativeStackState,
+): NativeStackState {
+  const option = entry.stackState
+
+  if (!option) {
+    return fallback
+  }
+
+  if (typeof option === 'function') {
+    return option(ctx)
+  }
+
+  return option
+}
+
+function applyStackStates(
+  stack: Array<ScreenEntry>,
+  navigationType: NativeStackStateResolverContext['navigationType'],
+): Array<ScreenEntry> {
+  if (!stack.length) return stack
+
+  const lastIndex = stack.length - 1
+  const next = stack.map((entry, index) => {
+    const depth = lastIndex - index
+    const fallbackState: NativeStackState =
+      depth === 0 ? 'active' : depth === 1 ? 'paused' : 'detached'
+
+    const resolved = resolveStackState(
+      entry,
+      {
+        pathname: entry.pathname,
+        params: entry.params,
+        search: entry.search,
+        depth,
+        isTop: depth === 0,
+        navigationType,
+      },
+      fallbackState,
+    )
+
+    return {
+      ...entry,
+      resolvedStackState: resolved,
+    }
+  })
+
+  next[lastIndex] = {
+    ...next[lastIndex]!,
+    resolvedStackState: 'active',
+  }
+
+  return next
 }
 
 function cloneRouterState(state: RouterState<AnyRoute>): RouterState<AnyRoute> {
@@ -167,37 +234,72 @@ function cloneRouterState(state: RouterState<AnyRoute>): RouterState<AnyRoute> {
  */
 export function NativeScreenMatches() {
   const router = useRouter()
+  const Activity = (React as any).Activity as
+    | React.ComponentType<{
+        mode?: 'visible' | 'hidden'
+        children?: React.ReactNode
+      }>
+    | undefined
 
   // Lazily get screen components
   const { Screen, ScreenStack, ScreenStackHeaderConfig } = getScreenComponents()
 
+  const isPendingNavigation = useRouterState({
+    select: (s) => s.status === 'pending' && s.isLoading,
+  })
+
   // Get current pathname and animation options from deepest screen match
   const currentScreen = useRouterState({
     select: (s): ScreenEntry => {
-      const matches = s.matches
+      const historyIndex = s.location.state.__TSR_index
+      const locationKey =
+        s.location.state.__TSR_key ?? s.location.state.key ?? s.location.href
+
+      const renderMatches =
+        s.status === 'pending' && s.pendingMatches?.length
+          ? s.pendingMatches
+          : s.matches
+
+      const renderState =
+        renderMatches === s.matches ? s : { ...s, matches: renderMatches }
+
+      const matches = renderMatches
       // Find the deepest match that is a screen (not a layout/navigator)
       for (let i = matches.length - 1; i >= 0; i--) {
         const match = matches[i]!
         if (match.routeId === rootRouteId) continue
         const route = router.routesById[match.routeId] as AnyRoute
-        const nativeOptions = (route.options as any)?.nativeOptions as
-          | NativeScreenOptions
+        const native = (route.options as any)?.native as
+          | NativeRouteOptions
           | undefined
-        // Skip routes with presentation: 'none' (these are layouts/navigators)
-        if (nativeOptions?.presentation === 'none') continue
+        if (native?.presentation === 'none') continue
+
         return {
           pathname: s.location.pathname,
-          state: cloneRouterState(s),
+          locationKey,
+          historyIndex,
+          params: (match as any).params ?? {},
+          search: (match as any).search,
+          state: cloneRouterState(renderState),
           revision: s.loadedAt,
-          presentation: nativeOptions?.presentation,
-          gestureEnabled: nativeOptions?.gestureEnabled,
-          animation: nativeOptions?.animation,
+          stackState: native?.stackState,
+          resolvedStackState: 'active',
+          presentation: native?.presentation,
+          gestureEnabled: native?.gestureEnabled,
+          animation: native?.animation,
         }
       }
+
       return {
         pathname: s.location.pathname,
-        state: cloneRouterState(s),
+        locationKey,
+        historyIndex,
+        params: {},
+        search: undefined,
+        state: cloneRouterState(renderState),
         revision: s.loadedAt,
+        stackState: undefined,
+        resolvedStackState: 'active',
         presentation: undefined,
         gestureEnabled: undefined,
         animation: undefined,
@@ -206,44 +308,74 @@ export function NativeScreenMatches() {
   })
 
   // Track screen stack for proper animation direction
-  const [screenStack, setScreenStack] = React.useState<Array<ScreenEntry>>(
-    () => [currentScreen],
+  const [screenStack, setScreenStack] = React.useState<Array<ScreenEntry>>(() =>
+    applyStackStates([currentScreen], 'none'),
   )
 
   // Update stack when navigation happens
   React.useEffect(() => {
     setScreenStack((prev) => {
-      // Check if navigating back to a screen in the stack
-      const existingIndex = prev.findIndex(
-        (s) => s.pathname === currentScreen.pathname,
-      )
-
-      if (existingIndex !== -1 && existingIndex < prev.length - 1) {
-        // Going back - trim stack to this screen
-        return prev.slice(0, existingIndex + 1)
-      }
-
-      // Check if same screen (no navigation)
       const top = prev[prev.length - 1]
-      if (top?.pathname === currentScreen.pathname) {
-        if (
-          top.revision !== currentScreen.revision ||
-          top.animation !== currentScreen.animation ||
-          top.presentation !== currentScreen.presentation ||
-          top.gestureEnabled !== currentScreen.gestureEnabled
-        ) {
-          const next = prev.slice()
-          next[next.length - 1] = currentScreen
-          return next
-        }
-        return prev
+
+      if (!top) {
+        return applyStackStates([currentScreen], 'none')
       }
 
-      // Forward navigation - push new screen
-      return [...prev, currentScreen]
+      const nextIndex = currentScreen.historyIndex
+      const topIndex = top.historyIndex
+
+      if (nextIndex > topIndex) {
+        return applyStackStates([...prev, currentScreen], 'push')
+      }
+
+      if (nextIndex < topIndex) {
+        const existingIndex = prev.findIndex(
+          (s) => s.historyIndex === nextIndex,
+        )
+
+        if (existingIndex === -1) {
+          return applyStackStates([currentScreen], 'pop')
+        }
+
+        const trimmed = prev.slice(0, existingIndex + 1)
+        trimmed[trimmed.length - 1] = {
+          ...currentScreen,
+          resolvedStackState: trimmed[trimmed.length - 1]!.resolvedStackState,
+        }
+
+        return applyStackStates(trimmed, 'pop')
+      }
+
+      const isReplace = top.locationKey !== currentScreen.locationKey
+
+      if (isReplace) {
+        const next = prev.slice()
+        next[next.length - 1] = {
+          ...currentScreen,
+          resolvedStackState: top.resolvedStackState,
+        }
+        return applyStackStates(next, 'replace')
+      }
+
+      if (
+        top.revision !== currentScreen.revision ||
+        top.animation !== currentScreen.animation ||
+        top.presentation !== currentScreen.presentation ||
+        top.gestureEnabled !== currentScreen.gestureEnabled
+      ) {
+        const next = prev.slice()
+        next[next.length - 1] = {
+          ...currentScreen,
+          resolvedStackState: top.resolvedStackState,
+        }
+        return next
+      }
+
+      return prev
     })
   }, [
-    currentScreen.pathname,
+    currentScreen.locationKey,
+    currentScreen.historyIndex,
     currentScreen.revision,
     currentScreen.animation,
     currentScreen.presentation,
@@ -260,7 +392,16 @@ export function NativeScreenMatches() {
     return <Matches />
   }
 
-  const visibleStack = screenStack.slice(-2)
+  const renderStack = screenStack.filter((entry) => {
+    if (entry.resolvedStackState === 'detached') {
+      return false
+    }
+    return true
+  })
+
+  const visibleStack = renderStack.length
+    ? renderStack
+    : [screenStack[screenStack.length - 1]!]
 
   return (
     <>
@@ -272,7 +413,7 @@ export function NativeScreenMatches() {
 
           return (
             <Screen
-              key={screen.pathname}
+              key={`${screen.historyIndex}:${screen.locationKey}`}
               style={styles.screen}
               stackPresentation={screen.presentation ?? 'push'}
               stackAnimation={stackAnimation}
@@ -290,9 +431,17 @@ export function NativeScreenMatches() {
               <ScreenStackHeaderConfig hidden />
               <React.Suspense fallback={pendingElement}>
                 <routerStateContext.Provider
-                  value={isTop ? undefined : screen.state}
+                  value={
+                    isTop && !isPendingNavigation ? undefined : screen.state
+                  }
                 >
-                  <MatchesImpl includeTransitioner={false} />
+                  {screen.resolvedStackState === 'paused' && Activity ? (
+                    <Activity mode="hidden">
+                      <MatchesImpl includeTransitioner={false} />
+                    </Activity>
+                  ) : (
+                    <MatchesImpl includeTransitioner={false} />
+                  )}
                 </routerStateContext.Provider>
               </React.Suspense>
             </Screen>
