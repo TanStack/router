@@ -186,18 +186,6 @@ interface EnvState {
   postTransformImports: Map<string, Set<string>>
 
   /**
-   * Whether a `resolveId` call without an importer has been observed for this
-   * environment since `buildStart`.  Vite calls `resolveId(source, undefined)`
-   * for true entry modules during a cold start.  On warm start (`.vite` cache
-   * exists), Vite reuses its module graph and does NOT call `resolveId` for
-   * entries, so this stays `false`.
-   *
-   * When `false`, the import graph is considered unreliable (edges may be
-   * missing) and violations are reported immediately instead of deferred.
-   */
-  hasSeenEntry: boolean
-
-  /**
    * Violations deferred in dev mock mode.  Keyed by the violating importer's
    * normalized file path.  Violations are confirmed or discarded by the
    * transform-cache hook once enough post-transform data is available to
@@ -579,7 +567,6 @@ export function importProtectionPlugin(
           },
         },
         postTransformImports: new Map(),
-        hasSeenEntry: false,
         serverFnLookupModules: new Set(),
         pendingViolations: new Map(),
       }
@@ -682,12 +669,16 @@ export function importProtectionPlugin(
 
         // Check all code-split variants for this parent. The edge is
         // live if ANY variant's resolved imports include `current`.
+        // Skip SERVER_FN_LOOKUP variants — they contain untransformed
+        // code (the compiler excludes them), so their import lists
+        // include imports that the compiler would normally strip.
         const keySet = env.transformResultKeysByFile.get(parent)
         let anyVariantCached = false
         let edgeLive = false
 
         if (keySet) {
           for (const k of keySet) {
+            if (k.includes(SERVER_FN_LOOKUP_QUERY)) continue
             const resolvedImports = env.postTransformImports.get(k)
             if (resolvedImports) {
               anyVariantCached = true
@@ -752,10 +743,12 @@ export function importProtectionPlugin(
     const toDelete: Array<string> = []
 
     for (const [file, violations] of env.pendingViolations) {
-      // On warm start, skip graph reachability — confirm immediately.
-      const status = env.hasSeenEntry
-        ? checkPostTransformReachability(env, file)
-        : 'reachable'
+      // Wait for entries before running reachability.  registerEntries()
+      // populates entries at buildStart; resolveId(!importer) may add more.
+      const status =
+        env.graph.entries.size > 0
+          ? checkPostTransformReachability(env, file)
+          : 'unknown'
 
       if (status === 'reachable') {
         for (const pv of violations) {
@@ -1033,7 +1026,6 @@ export function importProtectionPlugin(
           envState.transformResultCache.clear()
           envState.transformResultKeysByFile.clear()
           envState.postTransformImports.clear()
-          envState.hasSeenEntry = false
           envState.serverFnLookupModules.clear()
           envState.graph.clear()
           envState.deniedSources.clear()
@@ -1118,7 +1110,6 @@ export function importProtectionPlugin(
               source,
               importer: importerPath,
               isEntryResolve,
-              hasSeenEntry: env.hasSeenEntry,
               command: config.command,
               behavior: config.effectiveBehavior,
             })
@@ -1141,7 +1132,9 @@ export function importProtectionPlugin(
 
         if (!importer) {
           env.graph.addEntry(source)
-          env.hasSeenEntry = true
+          // Flush pending violations now that an additional entry is known
+          // and reachability analysis may have new roots.
+          await processPendingViolations(env, this.warn.bind(this))
           return undefined
         }
 
