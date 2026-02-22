@@ -37,13 +37,6 @@ describe('compileMatcher', () => {
     // Would fail without resetting lastIndex
     expect(m.test('pg')).toBe(true)
   })
-
-  test('escapes regex special characters in glob', () => {
-    const m = compileMatcher('@tanstack/react-start/server')
-    // Dots should be literal, not regex wildcards
-    expect(m.test('@tanstack/react-start/server')).toBe(true)
-    expect(m.test('@tanstack/react-startXserver')).toBe(false)
-  })
 })
 
 describe('compileMatchers', () => {

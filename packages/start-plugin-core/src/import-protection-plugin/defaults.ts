@@ -1,4 +1,3 @@
-import type { CompileStartFrameworkOptions } from '../types'
 import type { ImportProtectionEnvRules } from '../schema'
 import type { Pattern } from './utils'
 
@@ -7,19 +6,15 @@ export interface DefaultImportProtectionRules {
   server: Required<ImportProtectionEnvRules>
 }
 
-/**
- * Returns the default import protection rules for a given framework.
- */
-export function getDefaultImportProtectionRules(
-  _framework: CompileStartFrameworkOptions,
-): DefaultImportProtectionRules {
-  const frameworks: Array<CompileStartFrameworkOptions> = [
-    'react',
-    'solid',
-    'vue',
-  ]
+const frameworks = ['react', 'solid', 'vue'] as const
 
-  // Deny client importing server-specific entrypoints
+/**
+ * Returns the default import protection rules.
+ *
+ * All three framework variants are always included so that, e.g., a React
+ * project also denies `@tanstack/solid-start/server` imports.
+ */
+export function getDefaultImportProtectionRules(): DefaultImportProtectionRules {
   const clientSpecifiers: Array<Pattern> = frameworks.map(
     (fw) => `@tanstack/${fw}-start/server`,
   )
@@ -39,16 +34,10 @@ export function getDefaultImportProtectionRules(
 /**
  * Marker module specifiers that restrict a file to a specific environment.
  */
-export function getMarkerSpecifiers(_framework: CompileStartFrameworkOptions): {
+export function getMarkerSpecifiers(): {
   serverOnly: Array<string>
   clientOnly: Array<string>
 } {
-  const frameworks: Array<CompileStartFrameworkOptions> = [
-    'react',
-    'solid',
-    'vue',
-  ]
-
   return {
     serverOnly: frameworks.map((fw) => `@tanstack/${fw}-start/server-only`),
     clientOnly: frameworks.map((fw) => `@tanstack/${fw}-start/client-only`),

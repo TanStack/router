@@ -1,22 +1,15 @@
 import { SourceMapConsumer } from 'source-map'
 import * as path from 'pathe'
 
-import { normalizeFilePath } from './utils'
+import { escapeRegExp, getOrCreate, normalizeFilePath } from './utils'
 import type { Loc } from './trace'
 import type { RawSourceMap } from 'source-map'
 
-// ---------------------------------------------------------------------------
 // Source-map type compatible with both Rollup's SourceMap and source-map's
-// RawSourceMap.  We define our own structural type so that the value returned
-// by `getCombinedSourcemap()` (version: number) flows seamlessly into
-// `SourceMapConsumer` (version: string) without requiring a cast.
-// ---------------------------------------------------------------------------
+// RawSourceMap.  Structural type avoids version: number vs string mismatch.
 
 /**
  * Minimal source-map shape used throughout the import-protection plugin.
- *
- * Structurally compatible with both Rollup's `SourceMap` (version: number)
- * and the `source-map` package's `RawSourceMap` (version: string).
  */
 export interface SourceMapLike {
   file?: string
@@ -28,21 +21,7 @@ export interface SourceMapLike {
   mappings: string
 }
 
-// ---------------------------------------------------------------------------
 // Transform result provider (replaces ctx.load() which doesn't work in dev)
-// ---------------------------------------------------------------------------
-
-/**
- * A cached transform result for a single module.
- *
- * - `code`         – fully-transformed source (after all plugins).
- * - `map`          – composed sourcemap (chains back to the original file).
- * - `originalCode` – the untransformed source, extracted from the
- *                    sourcemap's `sourcesContent[0]` during the transform
- *                    hook.  Used by {@link buildCodeSnippet} so we never
- *                    have to re-derive it via a flaky `sourceContentFor`
- *                    lookup at display time.
- */
 export interface TransformResult {
   code: string
   map: SourceMapLike | undefined
@@ -54,29 +33,14 @@ export interface TransformResult {
 /**
  * Provides the transformed code and composed sourcemap for a module.
  *
- * During `resolveId`, Vite's `this.load()` does NOT return code/map in dev
- * mode (the ModuleInfo proxy throws on `.code` access). Even in build mode,
- * Rollup's `ModuleInfo` has `.code` but not `.map`.
- *
- * Instead, we populate this cache from a late-running transform hook that
- * stores `{ code, map, originalCode }` for every module as it passes through
- * the pipeline.  By the time `resolveId` fires for an import, the importer
- * has already been fully transformed, so the cache always has the data we
- * need.
- *
- * The `id` parameter is the **raw** module ID (may include Vite query
- * parameters like `?tsr-split=component`).  Implementations should look up
- * with the full ID first, then fall back to the query-stripped path so that
- * virtual-module variants are resolved correctly without losing the base-file
- * fallback.
+ * Populated from a late-running transform hook. By the time `resolveId`
+ * fires for an import, the importer has already been fully transformed.
  */
 export interface TransformResultProvider {
   getTransformResult: (id: string) => TransformResult | undefined
 }
 
-// ---------------------------------------------------------------------------
 // Index → line/column conversion
-// ---------------------------------------------------------------------------
 
 export type LineIndex = {
   offsets: Array<number>
@@ -107,53 +71,18 @@ function indexToLineColWithIndex(
   lineIndex: LineIndex,
   idx: number,
 ): { line: number; column0: number } {
-  let line = 1
-
   const offsets = lineIndex.offsets
   const ub = upperBound(offsets, idx)
   const lineIdx = Math.max(0, ub - 1)
-  line = lineIdx + 1
+  const line = lineIdx + 1
 
   const lineStart = offsets[lineIdx] ?? 0
   return { line, column0: Math.max(0, idx - lineStart) }
 }
 
-// ---------------------------------------------------------------------------
-// Pick the best original source from sourcesContent
-// ---------------------------------------------------------------------------
-
-function suffixSegmentScore(a: string, b: string): number {
-  const aSeg = a.split('/').filter(Boolean)
-  const bSeg = b.split('/').filter(Boolean)
-  let score = 0
-  for (
-    let i = aSeg.length - 1, j = bSeg.length - 1;
-    i >= 0 && j >= 0;
-    i--, j--
-  ) {
-    if (aSeg[i] !== bSeg[j]) break
-    score++
-  }
-  return score
-}
-
-function normalizeSourceCandidate(
-  source: string,
-  root: string,
-  sourceRoot: string | undefined,
-): string {
-  // Prefer resolving relative source paths against root/sourceRoot when present.
-  if (!source) return ''
-  if (path.isAbsolute(source)) return normalizeFilePath(source)
-  const base = sourceRoot ? path.resolve(root, sourceRoot) : root
-  return normalizeFilePath(path.resolve(base, source))
-}
-
 /**
- * Pick the most-likely original source text for `importerFile`.
- *
- * Sourcemaps can contain multiple sources (composed maps), so `sourcesContent[0]`
- * is not guaranteed to represent the importer.
+ * Pick the most-likely original source text for `importerFile` from
+ * a sourcemap that may contain multiple sources.
  */
 export function pickOriginalCodeFromSourcesContent(
   map: SourceMapLike | undefined,
@@ -166,6 +95,9 @@ export function pickOriginalCodeFromSourcesContent(
 
   const file = normalizeFilePath(importerFile)
   const sourceRoot = map.sourceRoot
+  const fileSeg = file.split('/').filter(Boolean)
+
+  const resolveBase = sourceRoot ? path.resolve(root, sourceRoot) : root
 
   let bestIdx = -1
   let bestScore = -1
@@ -176,21 +108,32 @@ export function pickOriginalCodeFromSourcesContent(
 
     const src = map.sources[i] ?? ''
 
-    // Exact match via raw normalized source.
     const normalizedSrc = normalizeFilePath(src)
     if (normalizedSrc === file) {
       return content
     }
 
-    // Exact match via resolved absolute candidate.
-    const resolved = normalizeSourceCandidate(src, root, sourceRoot)
+    let resolved: string
+    if (!src) {
+      resolved = ''
+    } else if (path.isAbsolute(src)) {
+      resolved = normalizeFilePath(src)
+    } else {
+      resolved = normalizeFilePath(path.resolve(resolveBase, src))
+    }
     if (resolved === file) {
       return content
     }
 
+    // Count matching path segments from the end.
+    const normalizedSrcSeg = normalizedSrc.split('/').filter(Boolean)
+    const resolvedSeg =
+      resolved !== normalizedSrc
+        ? resolved.split('/').filter(Boolean)
+        : normalizedSrcSeg
     const score = Math.max(
-      suffixSegmentScore(normalizedSrc, file),
-      suffixSegmentScore(resolved, file),
+      segmentSuffixScore(normalizedSrcSeg, fileSeg),
+      segmentSuffixScore(resolvedSeg, fileSeg),
     )
 
     if (score > bestScore) {
@@ -199,21 +142,28 @@ export function pickOriginalCodeFromSourcesContent(
     }
   }
 
-  // Require at least a basename match; otherwise fall back to index 0.
   if (bestIdx !== -1 && bestScore >= 1) {
-    const best = map.sourcesContent[bestIdx]
-    return typeof best === 'string' ? best : undefined
+    return map.sourcesContent[bestIdx] ?? undefined
   }
 
-  const fallback = map.sourcesContent[0]
-  return typeof fallback === 'string' ? fallback : undefined
+  return map.sourcesContent[0] ?? undefined
 }
 
-// ---------------------------------------------------------------------------
-// Sourcemap: generated → original mapping
-// ---------------------------------------------------------------------------
+/** Count matching path segments from the end of `aSeg` against `bSeg`. */
+function segmentSuffixScore(aSeg: Array<string>, bSeg: Array<string>): number {
+  let score = 0
+  for (
+    let i = aSeg.length - 1, j = bSeg.length - 1;
+    i >= 0 && j >= 0;
+    i--, j--
+  ) {
+    if (aSeg[i] !== bSeg[j]) break
+    score++
+  }
+  return score
+}
 
-export async function mapGeneratedToOriginal(
+async function mapGeneratedToOriginal(
   map: SourceMapLike | undefined,
   generated: { line: number; column0: number },
   fallbackFile: string,
@@ -244,28 +194,32 @@ export async function mapGeneratedToOriginal(
       }
     }
   } catch {
-    // Invalid or malformed sourcemap — fall through to fallback.
+    // Malformed sourcemap
   }
 
   return fallback
 }
 
-// Cache SourceMapConsumer per sourcemap object.
 const consumerCache = new WeakMap<object, Promise<SourceMapConsumer | null>>()
+
+function toRawSourceMap(map: SourceMapLike): RawSourceMap {
+  return {
+    ...map,
+    file: map.file ?? '',
+    version: Number(map.version),
+    sourcesContent: map.sourcesContent?.map((s) => s ?? '') ?? [],
+  }
+}
 
 async function getSourceMapConsumer(
   map: SourceMapLike,
 ): Promise<SourceMapConsumer | null> {
-  // WeakMap requires an object key; SourceMapLike should be an object in all
-  // real cases, but guard anyway.
-  // (TypeScript already guarantees `map` is an object here.)
-
   const cached = consumerCache.get(map)
   if (cached) return cached
 
   const promise = (async () => {
     try {
-      return await new SourceMapConsumer(map as unknown as RawSourceMap)
+      return await new SourceMapConsumer(toRawSourceMap(map))
     } catch {
       return null
     }
@@ -275,24 +229,66 @@ async function getSourceMapConsumer(
   return promise
 }
 
-// ---------------------------------------------------------------------------
-// Import specifier search (regex-based, no AST needed)
-// ---------------------------------------------------------------------------
+export type ImportLocEntry = { file?: string; line: number; column: number }
 
-export function findFirstImportSpecifierIndex(
-  code: string,
-  source: string,
-): number {
-  const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/**
+ * Cache for import statement locations with reverse index for O(1)
+ * invalidation by file.  Keys: `${importerFile}::${source}`.
+ */
+export class ImportLocCache {
+  private cache = new Map<string, ImportLocEntry | null>()
+  private reverseIndex = new Map<string, Set<string>>()
 
-  const patterns: Array<RegExp> = [
-    // import 'x'
-    new RegExp(`\\bimport\\s+(['"])${escaped}\\1`),
-    // import ... from 'x' / export ... from 'x'
-    new RegExp(`\\bfrom\\s+(['"])${escaped}\\1`),
-    // import('x')
-    new RegExp(`\\bimport\\s*\\(\\s*(['"])${escaped}\\1\\s*\\)`),
-  ]
+  has(key: string): boolean {
+    return this.cache.has(key)
+  }
+
+  get(key: string): ImportLocEntry | null | undefined {
+    return this.cache.get(key)
+  }
+
+  set(key: string, value: ImportLocEntry | null): void {
+    this.cache.set(key, value)
+    const file = key.slice(0, key.indexOf('::'))
+    getOrCreate(this.reverseIndex, file, () => new Set()).add(key)
+  }
+
+  clear(): void {
+    this.cache.clear()
+    this.reverseIndex.clear()
+  }
+
+  /** Remove all cache entries where the importer matches `file`. */
+  deleteByFile(file: string): void {
+    const keys = this.reverseIndex.get(file)
+    if (keys) {
+      for (const key of keys) {
+        this.cache.delete(key)
+      }
+      this.reverseIndex.delete(file)
+    }
+  }
+}
+
+// Import specifier search (regex-based)
+
+const importPatternCache = new Map<string, Array<RegExp>>()
+
+export function clearImportPatternCache(): void {
+  importPatternCache.clear()
+}
+
+function findFirstImportSpecifierIndex(code: string, source: string): number {
+  let patterns = importPatternCache.get(source)
+  if (!patterns) {
+    const escaped = escapeRegExp(source)
+    patterns = [
+      new RegExp(`\\bimport\\s+(['"])${escaped}\\1`),
+      new RegExp(`\\bfrom\\s+(['"])${escaped}\\1`),
+      new RegExp(`\\bimport\\s*\\(\\s*(['"])${escaped}\\1\\s*\\)`),
+    ]
+    importPatternCache.set(source, patterns)
+  }
 
   let best = -1
   for (const re of patterns) {
@@ -305,38 +301,24 @@ export function findFirstImportSpecifierIndex(
   return best
 }
 
-// ---------------------------------------------------------------------------
-// High-level location finders (use transform result cache, no disk reads)
-// ---------------------------------------------------------------------------
-
 /**
- * Find the location of an import statement in a transformed module.
- *
- * Looks up the module's transformed code + composed sourcemap from the
- * {@link TransformResultProvider}, finds the import specifier in the
- * transformed code, and maps back to the original source via the sourcemap.
- *
+ * Find the location of an import statement in a transformed module
+ * by searching the post-transform code and mapping back via sourcemap.
  * Results are cached in `importLocCache`.
  */
 export async function findImportStatementLocationFromTransformed(
   provider: TransformResultProvider,
   importerId: string,
   source: string,
-  importLocCache: Map<
-    string,
-    { file?: string; line: number; column: number } | null
-  >,
+  importLocCache: ImportLocCache,
 ): Promise<Loc | undefined> {
   const importerFile = normalizeFilePath(importerId)
   const cacheKey = `${importerFile}::${source}`
   if (importLocCache.has(cacheKey)) {
-    return importLocCache.get(cacheKey) || undefined
+    return importLocCache.get(cacheKey) ?? undefined
   }
 
   try {
-    // Pass the raw importerId so the provider can look up the exact virtual
-    // module variant (e.g. ?tsr-split=component) before falling back to the
-    // base file path.
     const res = provider.getTransformResult(importerId)
     if (!res) {
       importLocCache.set(cacheKey, null)
@@ -344,10 +326,6 @@ export async function findImportStatementLocationFromTransformed(
     }
 
     const { code, map } = res
-    if (typeof code !== 'string') {
-      importLocCache.set(cacheKey, null)
-      return undefined
-    }
 
     const lineIndex = res.lineIndex ?? buildLineIndex(code)
 
@@ -369,10 +347,8 @@ export async function findImportStatementLocationFromTransformed(
 
 /**
  * Find the first post-compile usage location for a denied import specifier.
- *
- * Best-effort: looks up the module's transformed output from the
- * {@link TransformResultProvider}, finds the first non-import usage of
- * an imported binding, and maps back to original source via sourcemap.
+ * Best-effort: searches transformed code for non-import uses of imported
+ * bindings and maps back to original source via sourcemap.
  */
 export async function findPostCompileUsageLocation(
   provider: TransformResultProvider,
@@ -385,17 +361,10 @@ export async function findPostCompileUsageLocation(
 ): Promise<Loc | undefined> {
   try {
     const importerFile = normalizeFilePath(importerId)
-    // Pass the raw importerId so the provider can look up the exact virtual
-    // module variant (e.g. ?tsr-split=component) before falling back to the
-    // base file path.
     const res = provider.getTransformResult(importerId)
     if (!res) return undefined
     const { code, map } = res
-    if (typeof code !== 'string') return undefined
 
-    // Ensure we have a line index ready for any downstream mapping.
-    // (We don't currently need it here, but keeping it hot improves locality
-    // for callers that also need import-statement mapping.)
     if (!res.lineIndex) {
       res.lineIndex = buildLineIndex(code)
     }
@@ -421,10 +390,7 @@ export async function addTraceImportLocations(
     line?: number
     column?: number
   }>,
-  importLocCache: Map<
-    string,
-    { file?: string; line: number; column: number } | null
-  >,
+  importLocCache: ImportLocCache,
 ): Promise<void> {
   for (const step of trace) {
     if (!step.specifier) continue
@@ -441,9 +407,7 @@ export async function addTraceImportLocations(
   }
 }
 
-// ---------------------------------------------------------------------------
 // Code snippet extraction (vitest-style context around a location)
-// ---------------------------------------------------------------------------
 
 export interface CodeSnippet {
   /** Source lines with line numbers, e.g. `["  6 | import { getSecret } from './secret.server'", ...]` */
@@ -455,16 +419,10 @@ export interface CodeSnippet {
 }
 
 /**
- * Build a vitest-style code snippet showing the lines surrounding a location.
+ * Build a vitest-style code snippet showing lines surrounding a location.
  *
- * Uses the `originalCode` stored in the transform result cache (extracted from
- * `sourcesContent[0]` of the composed sourcemap at transform time).  This is
- * reliable regardless of how the sourcemap names its sources.
- *
- * Falls back to the transformed code only when `originalCode` is unavailable
- * (e.g. a virtual module with no sourcemap).
- *
- * @param contextLines Number of lines to show above/below the target line (default 2).
+ * Prefers `originalCode` from the sourcemap's sourcesContent; falls back
+ * to transformed code when unavailable.
  */
 export function buildCodeSnippet(
   provider: TransformResultProvider,
@@ -474,40 +432,81 @@ export function buildCodeSnippet(
 ): CodeSnippet | undefined {
   try {
     const importerFile = normalizeFilePath(moduleId)
-    // Pass the raw moduleId so the provider can look up the exact virtual
-    // module variant (e.g. ?tsr-split=component) before falling back to the
-    // base file path.
     const res = provider.getTransformResult(moduleId)
     if (!res) return undefined
 
     const { code: transformedCode, originalCode } = res
-    if (typeof transformedCode !== 'string') return undefined
 
-    // Prefer the original source that was captured at transform time from the
-    // sourcemap's sourcesContent.  This avoids the source-name-mismatch
-    // problem that plagued the old sourceContentFor()-based lookup.
     const sourceCode = originalCode ?? transformedCode
-
-    const allLines = sourceCode.split(/\r?\n/)
     const targetLine = loc.line // 1-indexed
     const targetCol = loc.column // 1-indexed
 
-    if (targetLine < 1 || targetLine > allLines.length) return undefined
+    if (targetLine < 1) return undefined
 
-    const startLine = Math.max(1, targetLine - contextLines)
-    const endLine = Math.min(allLines.length, targetLine + contextLines)
-    const gutterWidth = String(endLine).length
+    const wantStart = Math.max(1, targetLine - contextLines)
+    const wantEnd = targetLine + contextLines
+
+    // Advance to wantStart
+    let lineNum = 1
+    let pos = 0
+    while (lineNum < wantStart && pos < sourceCode.length) {
+      const ch = sourceCode.charCodeAt(pos)
+      if (ch === 10) {
+        lineNum++
+      } else if (ch === 13) {
+        lineNum++
+        if (
+          pos + 1 < sourceCode.length &&
+          sourceCode.charCodeAt(pos + 1) === 10
+        )
+          pos++
+      }
+      pos++
+    }
+    if (lineNum < wantStart) return undefined
+
+    const lines: Array<string> = []
+    let curLine = wantStart
+    while (curLine <= wantEnd && pos <= sourceCode.length) {
+      // Find end of current line
+      let eol = pos
+      while (eol < sourceCode.length) {
+        const ch = sourceCode.charCodeAt(eol)
+        if (ch === 10 || ch === 13) break
+        eol++
+      }
+      lines.push(sourceCode.slice(pos, eol))
+      curLine++
+      if (eol < sourceCode.length) {
+        if (
+          sourceCode.charCodeAt(eol) === 13 &&
+          eol + 1 < sourceCode.length &&
+          sourceCode.charCodeAt(eol + 1) === 10
+        ) {
+          pos = eol + 2
+        } else {
+          pos = eol + 1
+        }
+      } else {
+        pos = eol + 1
+      }
+    }
+
+    if (targetLine > wantStart + lines.length - 1) return undefined
+
+    const actualEnd = wantStart + lines.length - 1
+    const gutterWidth = String(actualEnd).length
 
     const sourceFile = loc.file ?? importerFile
     const snippetLines: Array<string> = []
-    for (let i = startLine; i <= endLine; i++) {
-      const lineContent = allLines[i - 1] ?? ''
-      const lineNum = String(i).padStart(gutterWidth, ' ')
-      const marker = i === targetLine ? '>' : ' '
-      snippetLines.push(`  ${marker} ${lineNum} | ${lineContent}`)
+    for (let i = 0; i < lines.length; i++) {
+      const ln = wantStart + i
+      const lineContent = lines[i]!
+      const lineNumStr = String(ln).padStart(gutterWidth, ' ')
+      const marker = ln === targetLine ? '>' : ' '
+      snippetLines.push(`  ${marker} ${lineNumStr} | ${lineContent}`)
 
-      // Add column pointer on the target line
-      if (i === targetLine && targetCol > 0) {
+      if (ln === targetLine && targetCol > 0) {
         const padding = ' '.repeat(targetCol - 1)
         snippetLines.push(`    ${' '.repeat(gutterWidth)} | ${padding}^`)
       }

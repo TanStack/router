@@ -5,8 +5,8 @@ import {
 } from '../../src/import-protection-plugin/defaults'
 
 describe('getDefaultImportProtectionRules', () => {
-  test('returns client rules for react', () => {
-    const rules = getDefaultImportProtectionRules('react')
+  test('returns client rules with all framework specifiers', () => {
+    const rules = getDefaultImportProtectionRules()
 
     expect(rules.client.specifiers).toEqual(
       expect.arrayContaining([
@@ -21,8 +21,8 @@ describe('getDefaultImportProtectionRules', () => {
     )
   })
 
-  test('returns server rules for react', () => {
-    const rules = getDefaultImportProtectionRules('react')
+  test('returns server rules', () => {
+    const rules = getDefaultImportProtectionRules()
 
     expect(rules.server.specifiers).toEqual([])
 
@@ -30,27 +30,18 @@ describe('getDefaultImportProtectionRules', () => {
       expect.arrayContaining(['**/*.client.*']),
     )
   })
-
-  test('works for all frameworks', () => {
-    for (const fw of ['react', 'solid', 'vue'] as const) {
-      const rules = getDefaultImportProtectionRules(fw)
-      expect(rules.client.specifiers.length).toBeGreaterThan(0)
-      expect(rules.client.files.length).toBeGreaterThan(0)
-      expect(rules.server.files.length).toBeGreaterThan(0)
-    }
-  })
 })
 
 describe('getMarkerSpecifiers', () => {
-  test('returns server-only and client-only markers for react', () => {
-    const markers = getMarkerSpecifiers('react')
+  test('returns server-only and client-only markers', () => {
+    const markers = getMarkerSpecifiers()
 
     expect(markers.serverOnly).toContain('@tanstack/react-start/server-only')
     expect(markers.clientOnly).toContain('@tanstack/react-start/client-only')
   })
 
   test('includes all frameworks', () => {
-    const markers = getMarkerSpecifiers('react')
+    const markers = getMarkerSpecifiers()
 
     expect(markers.serverOnly.length).toBe(3)
     expect(markers.clientOnly.length).toBe(3)
