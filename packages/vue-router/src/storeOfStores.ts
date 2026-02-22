@@ -15,34 +15,31 @@ function cleanupSubscription(subscription: UnsubscribeResult) {
   subscription.unsubscribe()
 }
 
-export function useStoreOfStoresValue<TValue, TSelected>(
+export function useStoreOfStoresValue<TValue>(
   storeRef: Vue.Ref<SubscribableStore<TValue> | undefined>,
-  selector: (value: TValue | undefined) => TSelected,
-  equal: (a: TSelected, b: TSelected) => boolean = Object.is,
-): Readonly<Vue.Ref<TSelected>> {
-  const selected = Vue.shallowRef(selector(storeRef.value?.state)) as Vue.ShallowRef<TSelected>
+): Readonly<Vue.Ref<TValue | undefined>> {
+  const value = Vue.shallowRef(
+    storeRef.value?.state,
+  ) as Vue.ShallowRef<TValue | undefined>
 
   Vue.watch(
     storeRef,
     (store, _previous, onCleanup) => {
-      const update = (value: TValue | undefined) => {
-        const next = selector(value)
-        if (!equal(selected.value, next)) {
-          selected.value = next
-        }
-      }
-
       if (!store) {
-        update(undefined)
+        value.value = undefined
         return
       }
 
-      update(store.state)
-      const subscription = store.subscribe(() => update(store.state))
+      const update = () => {
+        value.value = store.state
+      }
+      update()
+
+      const subscription = store.subscribe(update)
       onCleanup(() => cleanupSubscription(subscription))
     },
     { immediate: true },
   )
 
-  return Vue.readonly(selected) as Readonly<Vue.Ref<TSelected>>
+  return Vue.readonly(value) as Readonly<Vue.Ref<TValue | undefined>>
 }

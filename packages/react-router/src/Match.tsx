@@ -24,17 +24,15 @@ import type {
   RootRouteOptions,
 } from '@tanstack/router-core'
 
-function useActiveMatchStore(matchId: string, shouldThrow: boolean = true) {
+function useActiveMatchStore(matchId: string) {
   const router = useRouter()
 
   return useStore(router.stores.byId, (activeStores) => {
     const store = activeStores[matchId]
-    if (shouldThrow) {
-      invariant(
-        store,
-        `Could not find match for matchId "${matchId}". Please file an issue!`,
-      )
-    }
+    invariant(
+      store,
+      `Could not find match for matchId "${matchId}". Please file an issue!`,
+    )
     return store
   })
 }
@@ -84,18 +82,15 @@ export const Match = React.memo(function MatchImpl({
     return ids[ids.findIndex((id) => id === matchId) - 1]
   })
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const matchState = React.useMemo(() => {
-    const parentRouteId = parentMatchId
-      ? router.stores.byId.state[parentMatchId]?.state.routeId
-      : undefined
-
-    return {
-      routeId: match.routeId as string,
-      ssr: match.ssr,
-      _displayPending: match._displayPending,
-      parentRouteId: parentRouteId as string | undefined,
-    } satisfies MatchViewState
-  }, [parentMatchId, match, router.stores.byId.state])
+  const parentRouteId = parentMatchId
+    ? router.stores.byId.state[parentMatchId]?.state.routeId
+    : undefined
+  const matchState = {
+    routeId: match.routeId as string,
+    ssr: match.ssr,
+    _displayPending: match._displayPending,
+    parentRouteId: parentRouteId as string | undefined,
+  } satisfies MatchViewState
 
   return (
     <MatchView
@@ -165,6 +160,8 @@ function MatchView({
   const ShellComponent = route.isRoot
     ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
     : SafeFragment
+  const matchInner = <MatchInner matchId={matchId} />
+
   return (
     <ShellComponent>
       <matchContext.Provider value={matchId}>
@@ -194,11 +191,9 @@ function MatchView({
               }}
             >
               {resolvedNoSsr || matchState._displayPending ? (
-                <ClientOnly fallback={pendingElement}>
-                  <MatchInner matchId={matchId} />
-                </ClientOnly>
+                <ClientOnly fallback={pendingElement}>{matchInner}</ClientOnly>
               ) : (
-                <MatchInner matchId={matchId} />
+                matchInner
               )}
             </ResolvedNotFoundBoundary>
           </ResolvedCatchBoundary>
@@ -326,35 +321,18 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   const match = useStore(matchStore, (value) => value!)
   const routeId = match.routeId as string
   const route = router.routesById[routeId] as AnyRoute
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const key = React.useMemo(() => {
-    const remountFn =
-      (router.routesById[routeId] as AnyRoute).options.remountDeps ??
-      router.options.defaultRemountDeps
-    const remountDeps = remountFn?.({
-      routeId,
-      loaderDeps: match.loaderDeps,
-      params: match._strictParams,
-      search: match._strictSearch,
-    })
-    return remountDeps ? JSON.stringify(remountDeps) : undefined
-  }, [
+  const remountFn =
+    (router.routesById[routeId] as AnyRoute).options.remountDeps ??
+    router.options.defaultRemountDeps
+  const remountDeps = remountFn?.({
     routeId,
-    match.loaderDeps,
-    match._strictParams,
-    match._strictSearch,
-    router.options.defaultRemountDeps,
-    router.routesById,
-  ])
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const out = React.useMemo(() => {
-    const Comp = route.options.component ?? router.options.defaultComponent
-    if (Comp) {
-      return <Comp key={key} />
-    }
-    return <Outlet />
-  }, [key, route.options.component, router.options.defaultComponent])
+    loaderDeps: match.loaderDeps,
+    params: match._strictParams,
+    search: match._strictSearch,
+  })
+  const key = remountDeps ? JSON.stringify(remountDeps) : undefined
+  const Comp = route.options.component ?? router.options.defaultComponent
+  const out = Comp ? <Comp key={key} /> : <Outlet />
 
   if (match._displayPending) {
     throw router.getMatch(match.id)?._nonReactive.displayPendingPromise

@@ -1,10 +1,8 @@
 import * as Vue from 'vue'
 import { useStore } from '@tanstack/vue-store'
 import {
-  injectDummyMatch,
-  injectDummyPendingMatch,
-  injectMatch,
-  injectPendingMatch,
+  dummyMatchContext,
+  matchContext,
 } from './matchContext'
 import { useStoreOfStoresValue } from './storeOfStores'
 import { useRouter } from './useRouter'
@@ -76,10 +74,18 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
-  const hasPendingNearestMatch = opts.from
-    ? injectDummyPendingMatch()
-    : injectPendingMatch()
+  const nearestMatchId = Vue.inject(
+    opts.from ? dummyMatchContext : matchContext,
+    Vue.ref<string | undefined>(undefined),
+  )
+  const hasPendingNearestMatch = useStore(
+    router.stores.pendingMatchesId,
+    (ids) => {
+      const id = nearestMatchId.value
+      return id ? ids.includes(id) : false
+    },
+    { equal: Object.is },
+  )
   const activeMatchStore = useStore(
     opts.from ? router.stores.byRouteId : router.stores.byId,
     (stores) => {
@@ -90,8 +96,8 @@ export function useMatch<
   )
   const hasPendingRouteMatch = opts.from
     ? useStore(
-        router.stores.pendingByRouteId,
-        (stores) => Boolean(stores[opts.from as string]),
+        router.stores.pendingMatchesSnapshot,
+        (matches) => matches.some((match) => match.routeId === opts.from),
         { equal: Object.is },
       )
     : undefined
@@ -101,10 +107,7 @@ export function useMatch<
     { equal: Object.is },
   )
 
-  const match = useStoreOfStoresValue(
-    Vue.computed(() => activeMatchStore.value),
-    (value) => value,
-  )
+  const match = useStoreOfStoresValue(Vue.computed(() => activeMatchStore.value))
 
   const result = Vue.computed(() => {
     const selectedMatch = match.value
@@ -117,9 +120,12 @@ export function useMatch<
         !isTransitioning.value &&
         (opts.shouldThrow ?? true)
       if (shouldThrowError) {
-        throw new Error(
-          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-        )
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
+            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+          )
+        }
+        throw new Error('Invariant failed')
       }
       return undefined
     }

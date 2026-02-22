@@ -8,12 +8,3 @@ export const matchContext = Solid.createContext<
 export const dummyMatchContext = Solid.createContext<
   Solid.Accessor<string | undefined>
 >(() => undefined)
-
-export const pendingMatchContext = Solid.createContext<Solid.Accessor<boolean>>(
-  () => false,
-)
-
-// N.B. this only exists so we can conditionally call useContext on it when we are not interested in the nearest match
-export const dummyPendingMatchContext = Solid.createContext<
-  Solid.Accessor<boolean>
->(() => false)

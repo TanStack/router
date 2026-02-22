@@ -14,7 +14,7 @@ import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
-import { matchContext, pendingMatchContext } from './matchContext'
+import { matchContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { useStoreOfStoresValue } from './storeOfStores'
@@ -50,15 +50,8 @@ export const Match = Vue.defineComponent({
     const selectedMatchStore = Vue.computed(
       () => activeMatchStore.value ?? fallbackMatchStore.value,
     )
-    const activeMatch = useStoreOfStoresValue(
-      selectedMatchStore,
-      (value) => value,
-    )
+    const activeMatch = useStoreOfStoresValue(selectedMatchStore)
     const activeMatchIds = useStore(router.stores.matchesId, (ids) => ids)
-    const pendingMatchIds = useStore(
-      router.stores.pendingMatchesId,
-      (ids) => ids,
-    )
     const loadedAt = useStore(router.stores.loadedAt, (value) => value)
 
     Vue.watchEffect(() => {
@@ -160,14 +153,8 @@ export const Match = Vue.defineComponent({
       { immediate: true },
     )
 
-    const isPendingMatchRef = Vue.computed(() =>
-      pendingMatchIds.value.includes(matchIdRef.value),
-    )
-
     // Provide the matchId to child components
     Vue.provide(matchContext, matchIdRef)
-    Vue.provide(pendingMatchContext, isPendingMatchRef)
-
     return (): VNode => {
       // Use the actual matchId from matchData, not props (which may be stale)
       const actualMatchId = matchData.value?.matchId ?? props.matchId
@@ -316,10 +303,7 @@ export const MatchInner = Vue.defineComponent({
     const selectedMatchStore = Vue.computed(
       () => activeMatchStore.value ?? fallbackMatchStore.value,
     )
-    const activeMatch = useStoreOfStoresValue(
-      selectedMatchStore,
-      (value) => value,
-    )
+    const activeMatch = useStoreOfStoresValue(selectedMatchStore)
 
     Vue.watchEffect(() => {
       const match = activeMatch.value
@@ -502,18 +486,17 @@ export const Outlet = Vue.defineComponent({
       { equal: Object.is },
     )
 
-    const routeId = useStoreOfStoresValue(
-      parentMatchStore,
-      (parentMatch) => parentMatch?.routeId as string | undefined,
+    const parentMatch = useStoreOfStoresValue(parentMatchStore)
+    const routeId = Vue.computed(
+      () => parentMatch.value?.routeId as string | undefined,
     )
 
     const route = Vue.computed(() =>
       routeId.value ? router.routesById[routeId.value]! : undefined,
     )
 
-    const parentGlobalNotFound = useStoreOfStoresValue(
-      parentMatchStore,
-      (parentMatch) => parentMatch?.globalNotFound ?? false,
+    const parentGlobalNotFound = Vue.computed(
+      () => parentMatch.value?.globalNotFound ?? false,
     )
 
     const childMatchId = Vue.computed(() => {
@@ -530,10 +513,7 @@ export const Outlet = Vue.defineComponent({
       { equal: Object.is },
     )
 
-    const childMatch = useStoreOfStoresValue(
-      childMatchStore,
-      (value) => value,
-    )
+    const childMatch = useStoreOfStoresValue(childMatchStore)
 
     const childMatchData = Vue.computed(() => {
       const child = childMatch.value
