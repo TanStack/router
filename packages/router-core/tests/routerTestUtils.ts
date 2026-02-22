@@ -15,7 +15,9 @@ import type {
 } from '../src'
 
 const testStoreConfig: RouterStoreConfig = {
-  createMutableStore<TValue>(initialValue: TValue): RouterWritableStore<TValue> {
+  createMutableStore<TValue>(
+    initialValue: TValue,
+  ): RouterWritableStore<TValue> {
     let current = initialValue
 
     return {

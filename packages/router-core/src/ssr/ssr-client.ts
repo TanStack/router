@@ -258,7 +258,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
         if (router.stores.status.state === 'pending') {
           router.batch(() => {
             router.stores.status.setState(() => 'idle')
-            router.stores.resolvedLocation.setState(() => router.stores.location.state)
+            router.stores.resolvedLocation.setState(
+              () => router.stores.location.state,
+            )
           })
         }
         // hide the pending component once the load is finished

@@ -48,8 +48,7 @@ function toVueStore<TValue>(store: RouterReadableStore<TValue> | undefined) {
 
 export function useStore<TState, TSelected = TState>(
   store: RouterReadableStore<TState> | undefined,
-  selector: (state: TState) => TSelected =
-    (d) => d as unknown as TSelected,
+  selector: (state: TState) => TSelected = (d) => d as unknown as TSelected,
   options?: UseStoreOptions<TSelected>,
 ): Vue.Ref<TSelected> {
   return useVueStore(

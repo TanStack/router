@@ -2424,12 +2424,14 @@ export class RouterCore<
 
                     exitingMatches = mountPending
                       ? previousMatches.filter(
-                          (match) => !this.stores.pendingMatchStoresById.has(match.id),
+                          (match) =>
+                            !this.stores.pendingMatchStoresById.has(match.id),
                         )
                       : []
                     enteringMatches = mountPending
                       ? pendingMatches.filter(
-                          (match) => !this.stores.activeMatchStoresById.has(match.id),
+                          (match) =>
+                            !this.stores.activeMatchStoresById.has(match.id),
                         )
                       : []
                     stayingMatches = mountPending
@@ -2440,7 +2442,9 @@ export class RouterCore<
 
                     this.stores.isLoading.setState(() => false)
                     this.stores.loadedAt.setState(() => Date.now())
-                    this.stores.setActiveMatches(mountPending ? pendingMatches : previousMatches)
+                    this.stores.setActiveMatches(
+                      mountPending ? pendingMatches : previousMatches,
+                    )
                     this.stores.setPendingMatches([])
                     /**
                      * When committing new matches, cache any exiting matches that are still usable.

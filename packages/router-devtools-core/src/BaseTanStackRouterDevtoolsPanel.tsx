@@ -281,10 +281,12 @@ export const BaseTanStackRouterDevtoolsPanel =
     )
 
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
-    const [pendingMatches, setPendingMatches] = createSignal<Array<AnyRouteMatch>>(
-      [],
-    )
-    const [cachedMatches, setCachedMatches] = createSignal<Array<AnyRouteMatch>>([])
+    const [pendingMatches, setPendingMatches] = createSignal<
+      Array<AnyRouteMatch>
+    >([])
+    const [cachedMatches, setCachedMatches] = createSignal<
+      Array<AnyRouteMatch>
+    >([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
 
     createEffect(() => {

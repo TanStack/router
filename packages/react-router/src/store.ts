@@ -1,4 +1,7 @@
-import { batch as reactBatch, useStore as useReactStore } from '@tanstack/react-store'
+import {
+  batch as reactBatch,
+  useStore as useReactStore,
+} from '@tanstack/react-store'
 import type { RouterReadableStore } from '@tanstack/router-core'
 
 type StoreWithSubscription<TValue> = RouterReadableStore<TValue> & {
@@ -43,13 +46,9 @@ function toReactStore<TValue>(store: RouterReadableStore<TValue> | undefined) {
 
 export function useStore<TState, TSelected = TState>(
   store: RouterReadableStore<TState> | undefined,
-  selector: (state: TState) => TSelected =
-    (d) => d as unknown as TSelected,
+  selector: (state: TState) => TSelected = (d) => d as unknown as TSelected,
 ): TSelected {
-  return useReactStore(
-    toReactStore(store) as any,
-    selector as any,
-  ) as TSelected
+  return useReactStore(toReactStore(store) as any, selector as any) as TSelected
 }
 
 export function batch<TValue>(fn: () => TValue): TValue {

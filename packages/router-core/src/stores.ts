@@ -11,8 +11,9 @@ export interface RouterReadableStore<TValue> {
   readonly state: TValue
 }
 
-export interface RouterWritableStore<TValue>
-  extends RouterReadableStore<TValue> {
+export interface RouterWritableStore<
+  TValue,
+> extends RouterReadableStore<TValue> {
   setState: (updater: (prev: TValue) => TValue) => void
 }
 

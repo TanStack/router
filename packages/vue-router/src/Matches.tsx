@@ -257,7 +257,10 @@ export const MatchRoute = Vue.defineComponent({
   },
   setup(props, { slots }) {
     const router = useRouter()
-    const status = useStore(router.stores.matchRouteReactivity, (value) => value.status)
+    const status = useStore(
+      router.stores.matchRouteReactivity,
+      (value) => value.status,
+    )
 
     return () => {
       if (!status.value) return null
