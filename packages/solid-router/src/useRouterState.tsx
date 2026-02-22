@@ -1,5 +1,5 @@
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from './store'
+import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -69,11 +69,10 @@ export function useRouterState<
     >
   }
 
-  return useStore(
-    router.stores.__store,
-    (state) => {
+  return Solid.createMemo(
+    () => {
+      const state = router.stores.__store.state
       if (opts?.select) return opts.select(state)
-
       return state
     },
     {

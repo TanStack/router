@@ -10,7 +10,6 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
-import { useStore } from './store'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
@@ -23,7 +22,7 @@ import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
 function useActiveMatchStore(matchId: Solid.Accessor<string | undefined>) {
   const router = useRouter()
-  const byId = useStore(router.stores.byId, (stores) => stores)
+  const byId = Solid.createMemo(() => router.stores.byId.state)
   return Solid.createMemo(() => {
     const id = matchId()
     return id ? byId()[id] : undefined
@@ -41,7 +40,7 @@ function useResolvedActiveMatch(matchId: Solid.Accessor<string | undefined>) {
     (previousRouteId) =>
       (activeMatch()?.routeId as string | undefined) ?? previousRouteId,
   )
-  const byRouteId = useStore(router.stores.byRouteId, (stores) => stores)
+  const byRouteId = Solid.createMemo(() => router.stores.byRouteId.state)
   const fallbackMatchStore = Solid.createMemo(() => {
     const routeId = fallbackRouteId()
     return routeId ? byRouteId()[routeId] : undefined
@@ -57,8 +56,8 @@ function useResolvedActiveMatch(matchId: Solid.Accessor<string | undefined>) {
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
   const match = useResolvedActiveMatch(() => props.matchId)
-  const activeMatchIds = useStore(router.stores.matchesId, (ids) => ids)
-  const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
+  const activeMatchIds = Solid.createMemo(() => router.stores.matchesId.state)
+  const resetKey = Solid.createMemo(() => router.stores.loadedAt.state)
 
   const rawMatchState = Solid.createMemo(() => {
     const currentMatch = match()
@@ -86,7 +85,9 @@ export const Match = (props: { matchId: string }) => {
     null,
   )
 
-  const isPendingMatch = useStore(router.stores.pendingMatchesId, (ids) => ids)
+  const isPendingMatch = Solid.createMemo(
+    () => router.stores.pendingMatchesId.state,
+  )
   const hasPendingMatch = Solid.createMemo(() => {
     const currentMatchId = matchState()?.matchId
     return currentMatchId ? isPendingMatch().includes(currentMatchId) : false
@@ -208,9 +209,8 @@ export const Match = (props: { matchId: string }) => {
 function OnRendered() {
   const router = useRouter()
 
-  const location = useStore(
-    router.stores.resolvedLocation,
-    (resolvedLocation) => resolvedLocation?.state.__TSR_key,
+  const location = Solid.createMemo(
+    () => router.stores.resolvedLocation.state?.state.__TSR_key,
   )
   Solid.createEffect(
     Solid.on([location], () => {
@@ -421,7 +421,7 @@ export const Outlet = () => {
     (parentMatch) => parentMatch?.globalNotFound ?? false,
   )
 
-  const matchIds = useStore(router.stores.matchesId, (ids) => ids)
+  const matchIds = Solid.createMemo(() => router.stores.matchesId.state)
   const childMatchId = Solid.createMemo(() => {
     const ids = matchIds()
     const index = ids.findIndex((id) => id === matchId())

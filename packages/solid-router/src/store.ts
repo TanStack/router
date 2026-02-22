@@ -1,25 +1,3 @@
-import * as Solid from 'solid-js'
-import type { RouterReadableStore } from '@tanstack/router-core'
-
-type EqualityFn<T> = (objA: T, objB: T) => boolean
-interface UseStoreOptions<T> {
-  equal?: EqualityFn<T>
-}
-
-type StoreLike<TValue> = Pick<RouterReadableStore<TValue>, 'state'>
-
-export function useStore<TState, TSelected = TState>(
-  store: StoreLike<TState>,
-  selector: (state: TState) => TSelected = (d) => d as unknown as TSelected,
-  options: UseStoreOptions<TSelected> = {},
-): Solid.Accessor<TSelected> {
-  const equal = options.equal ?? shallow
-
-  return Solid.createMemo(() => selector(store.state), undefined, {
-    equals: equal,
-  })
-}
-
 export function shallow<T>(objA: T, objB: T) {
   if (Object.is(objA, objB)) {
     return true

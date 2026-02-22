@@ -1,6 +1,5 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import { useStore } from './store'
 import {
   dummyMatchContext,
   dummyPendingMatchContext,
@@ -84,25 +83,20 @@ export function useMatch<
     opts.from ? dummyPendingMatchContext : pendingMatchContext,
   )
 
-  const activeMatchStore = useStore(
-    opts.from ? router.stores.byRouteId : router.stores.byId,
-    (stores) => {
-      const key = opts.from ?? nearestMatchId()
-      return key ? stores[key] : undefined
-    },
-    { equal: Object.is },
-  )
+  const activeMatchStore = Solid.createMemo(() => {
+    const stores = opts.from
+      ? router.stores.byRouteId.state
+      : router.stores.byId.state
+    const key = opts.from ?? nearestMatchId()
+    return key ? stores[key] : undefined
+  })
   const hasPendingRouteMatch = opts.from
-    ? useStore(
-        router.stores.pendingByRouteId,
-        (stores) => Boolean(stores[opts.from as string]),
-        { equal: Object.is },
+    ? Solid.createMemo(
+        () => Boolean(router.stores.pendingByRouteId.state[opts.from as string]),
       )
     : undefined
-  const isTransitioning = useStore(
-    router.stores.isTransitioning,
-    (value) => value,
-    { equal: Object.is },
+  const isTransitioning = Solid.createMemo(
+    () => router.stores.isTransitioning.state,
   )
 
   const match = useStoreOfStoresValue(

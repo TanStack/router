@@ -2,7 +2,7 @@ import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
 import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from './store'
+import { shallow } from './store'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
@@ -67,8 +67,8 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = useStore(router.stores.firstMatchId, (id) => id)
-  const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
+  const matchId = Solid.createMemo(() => router.stores.firstMatchId.state)
+  const resetKey = Solid.createMemo(() => router.stores.loadedAt.state)
 
   const matchComponent = () => {
     return (
@@ -117,7 +117,9 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const reactivity = useStore(router.stores.matchRouteReactivity, (value) => value)
+  const reactivity = Solid.createMemo(
+    () => router.stores.matchRouteReactivity.state,
+  )
 
   return <
     const TFrom extends string = string,
@@ -171,7 +173,9 @@ export function MatchRoute<
   const TMaskTo extends string = '',
 >(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
   const router = useRouter()
-  const reactivity = useStore(router.stores.matchRouteReactivity, (value) => value)
+  const reactivity = Solid.createMemo(
+    () => router.stores.matchRouteReactivity.state,
+  )
 
   return (
     <Solid.Show when={reactivity().status} keyed>
@@ -205,11 +209,12 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
-  return useStore(router.stores.activeMatchesSnapshot, (matches) => {
+  return Solid.createMemo(() => {
+    const matches = router.stores.activeMatchesSnapshot.state as Array<MakeRouteMatchUnion<TRouter>>
     return opts?.select
-      ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
-      : (matches as any)
-  }) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
+      ? opts.select(matches)
+      : matches
+  }, undefined, {equals: shallow}) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 }
 
 export function useParentMatches<

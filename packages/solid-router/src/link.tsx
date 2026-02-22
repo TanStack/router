@@ -13,7 +13,6 @@ import {
 
 import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
-import { useStore } from './store'
 import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
@@ -121,15 +120,9 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  const currentLocation = useStore(router.stores.location, (location) => ({
-    pathname: location.pathname,
-    search: location.search,
-    hash: location.hash,
-  }))
-  const currentSearch = useStore(
-    router.stores.location,
-    (location) => location.searchStr,
-    { equal: Object.is },
+  const currentLocation = Solid.createMemo(() => router.stores.location.state)
+  const currentSearch = Solid.createMemo(
+    () => router.stores.location.state.searchStr,
   )
 
   const from = options.from
