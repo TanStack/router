@@ -17,7 +17,13 @@ import type {
 } from './Matches'
 import type { RootRouteId } from './root'
 import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
-import type { AnyRouter, Register, RegisteredRouter, SSROption } from './router'
+import type {
+  AnyRouter,
+  HydrateOption,
+  Register,
+  RegisteredRouter,
+  SSROption,
+} from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
   Assign,
@@ -965,6 +971,8 @@ export interface FilebaseRouteOptionsInterface<
         ctx: SsrContextOptions<TParentRoute, TSearchValidator, TParams>,
       ) => Awaitable<undefined | SSROption>)
   >
+
+  hydrate?: undefined | HydrateOption
 
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
