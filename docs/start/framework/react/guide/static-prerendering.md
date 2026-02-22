@@ -19,10 +19,10 @@ export default defineConfig({
   plugins: [
     tanstackStart({
       prerender: {
-        // Enable prerendering
-        enabled: true,
+        // Switch to true to enable prerendering
+        enabled: false,
 
-        // Enable if you need pages to be at `/page/index.html` instead of `/page.html`
+        // Disable if you need pages to be at `/page.html` instead of `/page/index.html`
         autoSubfolderIndex: true,
 
         // If disabled, only the root path or the paths defined in the pages config will be prerendered
