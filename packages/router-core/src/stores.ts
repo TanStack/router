@@ -92,6 +92,7 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   pendingMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
   cachedMatchesSnapshot: ReadableStore<Array<AnyRouteMatch>>
   firstMatchId: ReadableStore<string | undefined>
+  /** could be react/vue only, the only use inside router-core/router could easily be removed */
   lastMatchId: ReadableStore<string | undefined>
   hasPendingMatches: ReadableStore<boolean>
   matchRouteReactivity: ReadableStore<{
