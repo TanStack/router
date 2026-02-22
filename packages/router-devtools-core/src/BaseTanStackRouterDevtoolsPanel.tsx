@@ -269,7 +269,7 @@ export const BaseTanStackRouterDevtoolsPanel =
       'No router was found for the TanStack Router Devtools. Please place the devtools in the <RouterProvider> component tree or pass the router instance to the devtools manually.',
     )
 
-    // useStore(router.__store)
+    // useStore(router.stores.__store)
 
     const [currentTab, setCurrentTab] = useLocalStorage<
       'routes' | 'matches' | 'history'
@@ -375,7 +375,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             (d) =>
               typeof d[1] !== 'function' &&
               ![
-                '__store',
+                'stores',
                 'basepath',
                 'injectedHtml',
                 'subscribers',
