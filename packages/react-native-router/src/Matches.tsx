@@ -4,9 +4,10 @@ import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { Match } from './Match'
 import { matchContext } from './matchContext'
+import { routerStateContext } from './routerStateContext'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { Transitioner } from './Transitioner'
-import type { AnyRoute } from '@tanstack/router-core'
+import type { AnyRoute, RouterState } from '@tanstack/router-core'
 import type { NativeScreenOptions } from './route'
 
 // Lazily load react-native-screens to avoid accessing native modules at module load time
@@ -44,6 +45,14 @@ function getScreenComponents() {
  * Uses View-based rendering (no native screen stack).
  */
 export function Matches() {
+  return <MatchesImpl includeTransitioner />
+}
+
+function MatchesImpl({
+  includeTransitioner,
+}: {
+  includeTransitioner: boolean
+}) {
   const router = useRouter()
   const rootRoute: AnyRoute = router.routesById[rootRouteId]
 
@@ -54,7 +63,7 @@ export function Matches() {
 
   const inner = (
     <React.Suspense fallback={pendingElement}>
-      <Transitioner />
+      {includeTransitioner ? <Transitioner /> : null}
       <MatchesInner />
     </React.Suspense>
   )
@@ -120,9 +129,32 @@ function getGestureEnabled(screen: ScreenEntry): boolean {
 
 interface ScreenEntry {
   pathname: string
+  state: RouterState<AnyRoute>
+  revision: number
   presentation?: NativeScreenOptions['presentation']
   gestureEnabled?: boolean
   animation?: NativeScreenOptions['animation']
+}
+
+function cloneRouterState(state: RouterState<AnyRoute>): RouterState<AnyRoute> {
+  try {
+    if (typeof structuredClone === 'function') {
+      return structuredClone(state)
+    }
+  } catch {
+    // Fallback below
+  }
+
+  return {
+    ...state,
+    location: { ...state.location },
+    resolvedLocation: state.resolvedLocation
+      ? { ...state.resolvedLocation }
+      : undefined,
+    matches: state.matches.map((match) => ({ ...match })),
+    pendingMatches: state.pendingMatches?.map((match) => ({ ...match })),
+    cachedMatches: state.cachedMatches.map((match) => ({ ...match })),
+  }
 }
 
 /**
@@ -155,6 +187,8 @@ export function NativeScreenMatches() {
         if (nativeOptions?.presentation === 'none') continue
         return {
           pathname: s.location.pathname,
+          state: cloneRouterState(s),
+          revision: s.loadedAt,
           presentation: nativeOptions?.presentation,
           gestureEnabled: nativeOptions?.gestureEnabled,
           animation: nativeOptions?.animation,
@@ -162,14 +196,14 @@ export function NativeScreenMatches() {
       }
       return {
         pathname: s.location.pathname,
+        state: cloneRouterState(s),
+        revision: s.loadedAt,
         presentation: undefined,
         gestureEnabled: undefined,
         animation: undefined,
       }
     },
   })
-
-  const currentPathRef = React.useRef(currentScreen.pathname)
 
   // Track screen stack for proper animation direction
   const [screenStack, setScreenStack] = React.useState<Array<ScreenEntry>>(
@@ -193,6 +227,7 @@ export function NativeScreenMatches() {
       const top = prev[prev.length - 1]
       if (top?.pathname === currentScreen.pathname) {
         if (
+          top.revision !== currentScreen.revision ||
           top.animation !== currentScreen.animation ||
           top.presentation !== currentScreen.presentation ||
           top.gestureEnabled !== currentScreen.gestureEnabled
@@ -207,11 +242,13 @@ export function NativeScreenMatches() {
       // Forward navigation - push new screen
       return [...prev, currentScreen]
     })
-  }, [currentScreen.pathname])
-
-  React.useEffect(() => {
-    currentPathRef.current = currentScreen.pathname
-  }, [currentScreen.pathname])
+  }, [
+    currentScreen.pathname,
+    currentScreen.revision,
+    currentScreen.animation,
+    currentScreen.presentation,
+    currentScreen.gestureEnabled,
+  ])
 
   const rootRoute: AnyRoute = router.routesById[rootRouteId]
   const PendingComponent =
@@ -223,38 +260,46 @@ export function NativeScreenMatches() {
     return <Matches />
   }
 
-  return (
-    <ScreenStack style={styles.container}>
-      {screenStack.map((screen, index) => {
-        const isTop = index === screenStack.length - 1
-        const stackAnimation = getStackAnimation(screen.animation)
+  const visibleStack = screenStack.slice(-2)
 
-        return (
-          <Screen
-            key={screen.pathname}
-            style={styles.screen}
-            stackPresentation={screen.presentation ?? 'push'}
-            stackAnimation={stackAnimation}
-            gestureEnabled={getGestureEnabled(screen)}
-            onDismissed={() => {
-              if (screen.pathname !== currentPathRef.current) {
-                return
-              }
-              if (router.history.canGoBack()) {
-                router.history.back()
-              }
-            }}
-          >
-            <ScreenStackHeaderConfig hidden />
-            {isTop ? (
+  return (
+    <>
+      <Transitioner />
+      <ScreenStack style={styles.container}>
+        {visibleStack.map((screen, index) => {
+          const isTop = index === visibleStack.length - 1
+          const stackAnimation = getStackAnimation(screen.animation)
+
+          return (
+            <Screen
+              key={screen.pathname}
+              style={styles.screen}
+              stackPresentation={screen.presentation ?? 'push'}
+              stackAnimation={stackAnimation}
+              gestureEnabled={getGestureEnabled(screen)}
+              freezeOnBlur
+              onDismissed={() => {
+                if (!isTop) {
+                  return
+                }
+                if (router.history.canGoBack()) {
+                  router.history.back()
+                }
+              }}
+            >
+              <ScreenStackHeaderConfig hidden />
               <React.Suspense fallback={pendingElement}>
-                <Matches />
+                <routerStateContext.Provider
+                  value={isTop ? undefined : screen.state}
+                >
+                  <MatchesImpl includeTransitioner={false} />
+                </routerStateContext.Provider>
               </React.Suspense>
-            ) : null}
-          </Screen>
-        )
-      })}
-    </ScreenStack>
+            </Screen>
+          )
+        })}
+      </ScreenStack>
+    </>
   )
 }
 
@@ -268,7 +313,7 @@ function getStyles() {
         flex: 1,
       },
       screen: {
-        flex: 1,
+        ...StyleSheet.absoluteFillObject,
       },
     })
   }

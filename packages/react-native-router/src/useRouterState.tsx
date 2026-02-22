@@ -1,5 +1,5 @@
 import { useStore } from '@tanstack/react-store'
-import { useRef } from 'react'
+import { useContext, useRef } from 'react'
 import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
@@ -11,6 +11,7 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
+import { routerStateContext } from './routerStateContext'
 
 export type UseRouterStateOptions<
   TRouter extends AnyRouter,
@@ -45,19 +46,24 @@ export function useRouterState<
   const router = opts?.router || contextRouter
   const previousResult =
     useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
+  const stateOverride = useContext(routerStateContext)
 
   return useStore(router.__store, (state) => {
+    const resolvedState = (stateOverride ?? state) as RouterState<
+      TRouter['routeTree']
+    >
+
     if (opts?.select) {
       if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
         const newSlice = replaceEqualDeep(
           previousResult.current,
-          opts.select(state),
+          opts.select(resolvedState),
         )
         previousResult.current = newSlice
         return newSlice
       }
-      return opts.select(state)
+      return opts.select(resolvedState)
     }
-    return state
+    return resolvedState
   }) as UseRouterStateResult<TRouter, TSelected>
 }
