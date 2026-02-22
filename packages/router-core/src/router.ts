@@ -102,12 +102,9 @@ import type {
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
 import type {
-  RouterBatchFn,
-  RouterReadableStore,
   RouterStores,
   RouterStoresFactory,
 } from './stores'
-// import type { AnyRouterConfig } from './config'
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -939,11 +936,8 @@ export class RouterCore<
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
-  __store!: RouterReadableStore<RouterState<TRouteTree>>
   private storeFactory: RouterStoresFactory
-  private batchInternal: RouterBatchFn = (fn) => {
-    fn()
-  }
+  batch!: (fn: () => void) => void
 
   options!: PickAsRequired<
     RouterOptions<
@@ -1008,10 +1002,6 @@ export class RouterCore<
   // by the router provider once rendered. We provide this so that the
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
-
-  batch(fn: () => void): void {
-    this.batchInternal(fn)
-  }
 
   isShell() {
     return !!this.options.isShell
@@ -1115,19 +1105,15 @@ export class RouterCore<
       this.setRoutes(processRouteTreeResult)
     }
 
-    if (!this.__store && this.latestLocation) {
-      const isRouterServer = isServer ?? this.isServer
+    if (!this.stores && this.latestLocation) {
       const { stores, batch } = this.storeFactory.createRouterStores(
         getInitialRouterState(this.latestLocation),
-        {
-          isServer: isRouterServer,
-        },
+        this,
       )
       this.stores = stores
-      this.__store = stores.__store
-      this.batchInternal = batch
+      this.batch = batch
 
-      if (!isRouterServer) {
+      if (!(isServer ?? this.isServer)) {
         setupScrollRestoration(this)
       }
     }
@@ -1168,7 +1154,7 @@ export class RouterCore<
       needsLocationUpdate = true
     }
 
-    if (needsLocationUpdate && this.__store) {
+    if (needsLocationUpdate && this.stores) {
       this.stores.location.setState(() => this.latestLocation)
     }
 
@@ -1184,7 +1170,7 @@ export class RouterCore<
   }
 
   get state(): RouterState<TRouteTree> {
-    return this.__store.state
+    return this.stores.__store.state
   }
 
   updateLatestLocation = () => {
@@ -2426,14 +2412,12 @@ export class RouterCore<
 
                     exitingMatches = mountPending
                       ? previousMatches.filter(
-                          (match) =>
-                            !this.stores.pendingMatchStoresById.has(match.id),
+                          (match) => !this.stores.pendingMatchStoresById.has(match.id),
                         )
                       : []
                     enteringMatches = mountPending
                       ? pendingMatches.filter(
-                          (match) =>
-                            !this.stores.activeMatchStoresById.has(match.id),
+                          (match) => !this.stores.activeMatchStoresById.has(match.id),
                         )
                       : []
                     stayingMatches = mountPending

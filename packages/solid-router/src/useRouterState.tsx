@@ -70,7 +70,7 @@ export function useRouterState<
   }
 
   return useStore(
-    router.__store,
+    router.stores.__store,
     (state) => {
       if (opts?.select) return opts.select(state)
 

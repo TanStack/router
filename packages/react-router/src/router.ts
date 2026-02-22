@@ -1,5 +1,6 @@
 import { RouterCore } from '@tanstack/router-core'
 import { createFileRoute, createLazyFileRoute } from './fileRoute'
+import { reactRouterStoresFactory } from './routerStores'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -13,7 +14,6 @@ import type {
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
-import { reactRouterStoresFactory } from './routerStores'
 
 declare module '@tanstack/router-core' {
   export interface RouterOptionsExtensions {

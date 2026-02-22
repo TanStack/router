@@ -5,7 +5,7 @@ import {
   trimPathRight,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { batch, useStore } from './store'
+import { useStore } from './store'
 import { useRouter } from './useRouter'
 import { usePrevious } from './utils'
 
@@ -132,11 +132,9 @@ export function Transitioner() {
             ...changeInfo,
           })
 
-          batch(() => {
+          Solid.batch(() => {
             router.stores.status.setState(() => 'idle')
-            router.stores.resolvedLocation.setState(
-              () => router.stores.location.state,
-            )
+            router.stores.resolvedLocation.setState(() => router.stores.location.state)
           })
 
           if (changeInfo.hrefChanged) {

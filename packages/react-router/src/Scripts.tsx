@@ -1,4 +1,4 @@
-import { useStore } from './store'
+import { useStore } from '@tanstack/react-store'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -57,17 +57,12 @@ export const Scripts = () => {
     )
 
   if (isServer ?? router.isServer) {
-    const assetScripts = getAssetScripts(
-      router.stores.activeMatchesSnapshot.state,
-    )
+    const assetScripts = getAssetScripts(router.stores.activeMatchesSnapshot.state)
     const scripts = getScripts(router.stores.activeMatchesSnapshot.state)
     return renderScripts(router, scripts, assetScripts)
   }
 
-  const assetScripts = useStore(
-    router.stores.activeMatchesSnapshot,
-    getAssetScripts,
-  )
+  const assetScripts = useStore(router.stores.activeMatchesSnapshot, getAssetScripts)
   const scripts = useStore(router.stores.activeMatchesSnapshot, getScripts)
 
   return renderScripts(router, scripts, assetScripts)

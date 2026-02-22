@@ -1,4 +1,5 @@
 import { RouterCore } from '@tanstack/router-core'
+import { vueRouterStoresFactory } from './routerStores'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -11,7 +12,6 @@ import type {
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
-import { vueRouterStoresFactory } from './routerStores'
 import type { VNode } from 'vue'
 
 declare module '@tanstack/router-core' {

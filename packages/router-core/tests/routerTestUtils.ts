@@ -1,3 +1,4 @@
+import { isServer } from "@tanstack/router-core/isServer"
 import {
   RouterCore,
   createRouterStoresWithConfig,
@@ -7,17 +8,13 @@ import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
   RouterConstructorOptions,
-  RouterReadableStore,
   RouterStoreConfig,
   RouterStoresFactory,
-  RouterWritableStore,
   TrailingSlashOption,
 } from '../src'
 
 const testStoreConfig: RouterStoreConfig = {
-  createMutableStore<TValue>(
-    initialValue: TValue,
-  ): RouterWritableStore<TValue> {
+  createMutableStore(initialValue) {
     let current = initialValue
 
     return {
@@ -26,29 +23,25 @@ const testStoreConfig: RouterStoreConfig = {
       },
       setState(updater) {
         const next = updater(current)
-        if (Object.is(current, next)) {
-          return
-        }
+        if (Object.is(current, next)) return
 
         current = next
       },
     }
   },
-  createReadonlyStore<TValue>(read: () => TValue): RouterReadableStore<TValue> {
+  createReadonlyStore(read) {
     return {
       get state() {
         return read()
       },
     }
   },
-  batch(fn: () => void): void {
-    fn()
-  },
+  batch: (fn) => fn(),
 }
 
 export const testRouterStoresFactory: RouterStoresFactory = {
   createRouterStores(initialState, opts) {
-    if (opts.isServer) {
+    if (isServer ?? opts.isServer) {
       return createServerRouterStoresBundle(initialState)
     }
 

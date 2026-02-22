@@ -6,33 +6,30 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const assetScripts = useStore(
-    router.stores.activeMatchesSnapshot,
-    (matches) => {
-      const assetScripts: Array<RouterManagedTag> = []
-      const manifest = router.ssr?.manifest
+  const assetScripts = useStore(router.stores.activeMatchesSnapshot, (matches) => {
+    const assetScripts: Array<RouterManagedTag> = []
+    const manifest = router.ssr?.manifest
 
-      if (!manifest) {
-        return []
-      }
+    if (!manifest) {
+      return []
+    }
 
-      matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) =>
-          manifest.routes[route.id]?.assets
-            ?.filter((d) => d.tag === 'script')
-            .forEach((asset) => {
-              assetScripts.push({
-                tag: 'script',
-                attrs: { ...asset.attrs, nonce },
-                children: asset.children,
-              } as any)
-            }),
-        )
+    matches
+      .map((match) => router.looseRoutesById[match.routeId]!)
+      .forEach((route) =>
+        manifest.routes[route.id]?.assets
+          ?.filter((d) => d.tag === 'script')
+          .forEach((asset) => {
+            assetScripts.push({
+              tag: 'script',
+              attrs: { ...asset.attrs, nonce },
+              children: asset.children,
+            } as any)
+          }),
+      )
 
-      return assetScripts
-    },
-  )
+    return assetScripts
+  })
 
   const scripts = useStore(router.stores.activeMatchesSnapshot, (matches) => ({
     scripts: (

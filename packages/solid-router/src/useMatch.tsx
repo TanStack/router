@@ -113,6 +113,7 @@ export function useMatch<
   return Solid.createMemo((previous) => {
     const selectedMatch = match()
     if (selectedMatch === undefined) {
+      // TODO: why do we return the previous here? That doesn't seem super safe, what if the `select` function reads other signals, then we wouldn't re-run it on changes to those signals.
       if (previous !== undefined) {
         return previous
       }

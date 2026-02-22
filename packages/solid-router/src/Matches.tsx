@@ -117,10 +117,7 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const reactivity = useStore(
-    router.stores.matchRouteReactivity,
-    (value) => value,
-  )
+  const reactivity = useStore(router.stores.matchRouteReactivity, (value) => value)
 
   return <
     const TFrom extends string = string,
@@ -174,10 +171,7 @@ export function MatchRoute<
   const TMaskTo extends string = '',
 >(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
   const router = useRouter()
-  const reactivity = useStore(
-    router.stores.matchRouteReactivity,
-    (value) => value,
-  )
+  const reactivity = useStore(router.stores.matchRouteReactivity, (value) => value)
 
   return (
     <Solid.Show when={reactivity().status} keyed>

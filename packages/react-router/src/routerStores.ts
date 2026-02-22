@@ -1,23 +1,15 @@
-import { batch as reactBatch, createStore } from '@tanstack/react-store'
+import { batch, createStore } from '@tanstack/react-store'
 import {
   createRouterStoresWithConfig,
   createServerRouterStoresBundle,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import type {
-  RouterBatchFn,
-  RouterStoreConfig,
-  RouterStoresFactory,
-} from '@tanstack/router-core'
+import type { Readable } from '@tanstack/react-store'
+import type { RouterStoresFactory } from '@tanstack/router-core'
 
-const batch: RouterBatchFn = (fn) => {
-  reactBatch(fn)
-}
 
-const clientStoreConfig: RouterStoreConfig = {
-  createMutableStore: (initialValue) => createStore(initialValue),
-  createReadonlyStore: (read) => createStore(read),
-  batch,
+declare module '@tanstack/router-core' {
+  interface RouterReadableStore<TValue> extends Readable<TValue> { }
 }
 
 export const reactRouterStoresFactory: RouterStoresFactory = {
@@ -27,7 +19,11 @@ export const reactRouterStoresFactory: RouterStoresFactory = {
     }
 
     return {
-      stores: createRouterStoresWithConfig(initialState, clientStoreConfig),
+      stores: createRouterStoresWithConfig(initialState, {
+        createMutableStore: createStore,
+        createReadonlyStore: createStore,
+        batch,
+      }),
       batch,
     }
   },

@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from './store'
+import { useStore } from '@tanstack/vue-store'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
@@ -9,10 +9,7 @@ export const Scripts = Vue.defineComponent({
   setup() {
     const router = useRouter()
     const nonce = router.options.ssr?.nonce
-    const matches = useStore(
-      router.stores.activeMatchesSnapshot,
-      (value) => value,
-    )
+    const matches = useStore(router.stores.activeMatchesSnapshot, (value) => value)
 
     const assetScripts = Vue.computed<Array<RouterManagedTag>>(() => {
       const assetScripts: Array<RouterManagedTag> = []

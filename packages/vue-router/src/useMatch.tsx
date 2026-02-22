@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from './store'
+import { useStore } from '@tanstack/vue-store'
 import {
   injectDummyMatch,
   injectDummyPendingMatch,
@@ -113,7 +113,9 @@ export function useMatch<
         ? Boolean(hasPendingRouteMatch?.value)
         : hasPendingNearestMatch.value
       const shouldThrowError =
-        !hasPendingMatch && !isTransitioning.value && (opts.shouldThrow ?? true)
+        !hasPendingMatch &&
+        !isTransitioning.value &&
+        (opts.shouldThrow ?? true)
       if (shouldThrowError) {
         throw new Error(
           `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,

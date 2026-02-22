@@ -143,6 +143,7 @@ export function useLinkProps<
 
   const next = Solid.createMemo(() => {
     currentSearch()
+    // TODO: why do we need to untrack here? It wasn't here before
     return Solid.untrack(() => router.buildLocation(_options() as any))
   })
 

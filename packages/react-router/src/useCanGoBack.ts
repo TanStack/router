@@ -1,4 +1,4 @@
-import { useStore } from './store'
+import { useStore } from '@tanstack/react-store'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 

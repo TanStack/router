@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useStore } from './store'
+import { useStore } from '@tanstack/react-store'
 import { replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import invariant from 'tiny-invariant'
@@ -134,30 +134,29 @@ export function useMatch<
     return (opts.select ? opts.select(match as any) : match) as any
   }
 
-  const matchStore =
-    useStore(
-      opts.from ? router.stores.byRouteId : router.stores.byId,
-      (activeMatchStores) => {
-        const key = opts.from ?? nearestMatchId
-        const store = key ? activeMatchStores[key] : undefined
+  const matchStore = useStore(
+    opts.from ? router.stores.byRouteId : router.stores.byId,
+    (activeMatchStores) => {
+      const key = opts.from ?? nearestMatchId
+      const store = key ? activeMatchStores[key] : undefined
 
-        invariant(
-          !((opts.shouldThrow ?? true) && !store),
-          `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-        )
+      invariant(
+        !((opts.shouldThrow ?? true) && !store),
+        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      )
 
-        return store
-      },
-    ) ?? dummyStore
+      return store
+    },
+  ) ?? dummyStore
 
   return useStore(matchStore, (match) => {
     if (match === undefined) {
       return undefined
     }
 
-    const selected = (
-      opts.select ? opts.select(match as any) : match
-    ) as ValidateSelected<TRouter, TSelected, TStructuralSharing>
+    const selected = (opts.select
+      ? opts.select(match as any)
+      : match) as ValidateSelected<TRouter, TSelected, TStructuralSharing>
 
     if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
       const shared = replaceEqualDeep(previousResult.current, selected)

@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from './store'
+import { useStore } from '@tanstack/vue-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
@@ -80,10 +80,11 @@ export const Match = Vue.defineComponent({
       const matchIndex = activeMatchIds.value.findIndex((id) => id === match.id)
       const parentMatchId =
         matchIndex > 0 ? activeMatchIds.value[matchIndex - 1] : undefined
-      const parentRouteId = parentMatchId
-        ? ((router.stores.byId.state[parentMatchId]?.state.routeId as string) ??
-          null)
-        : null
+      const parentRouteId =
+        parentMatchId
+          ? ((router.stores.byId.state[parentMatchId]?.state.routeId as string) ??
+            null)
+          : null
 
       return {
         matchId: match.id, // Return the actual matchId (may differ from props.matchId)
@@ -516,9 +517,7 @@ export const Outlet = Vue.defineComponent({
     )
 
     const childMatchId = Vue.computed(() => {
-      const index = activeMatchIds.value.findIndex(
-        (id) => id === safeMatchId.value,
-      )
+      const index = activeMatchIds.value.findIndex((id) => id === safeMatchId.value)
       return activeMatchIds.value[index + 1]
     })
 
@@ -531,7 +530,10 @@ export const Outlet = Vue.defineComponent({
       { equal: Object.is },
     )
 
-    const childMatch = useStoreOfStoresValue(childMatchStore, (value) => value)
+    const childMatch = useStoreOfStoresValue(
+      childMatchStore,
+      (value) => value,
+    )
 
     const childMatchData = Vue.computed(() => {
       const child = childMatch.value

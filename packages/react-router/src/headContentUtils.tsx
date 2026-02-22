@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useStore } from './store'
+import { useStore } from '@tanstack/react-store'
 import { escapeHtml } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
@@ -258,45 +258,43 @@ export const useTags = () => {
   }, [routeMeta, nonce])
 
   const links = useStore(router.stores.activeMatchesSnapshot, (matches) => {
-    const constructed = matches
-      .map((match) => match.links!)
-      .filter(Boolean)
-      .flat(1)
-      .map((link) => ({
-        tag: 'link',
-        attrs: {
-          ...link,
-          nonce,
-        },
-      })) satisfies Array<RouterManagedTag>
+      const constructed = matches
+        .map((match) => match.links!)
+        .filter(Boolean)
+        .flat(1)
+        .map((link) => ({
+          tag: 'link',
+          attrs: {
+            ...link,
+            nonce,
+          },
+        })) satisfies Array<RouterManagedTag>
 
-    const manifest = router.ssr?.manifest
+      const manifest = router.ssr?.manifest
 
-    // These are the assets extracted from the ViteManifest
-    // using the `startManifestPlugin`
-    const assets = matches
-      .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
-      .filter(Boolean)
-      .flat(1)
-      .filter((asset) => asset.tag === 'link')
-      .map(
-        (asset) =>
-          ({
-            tag: 'link',
-            attrs: {
-              ...asset.attrs,
-              suppressHydrationWarning: true,
-              nonce,
-            },
-          }) satisfies RouterManagedTag,
-      )
+      // These are the assets extracted from the ViteManifest
+      // using the `startManifestPlugin`
+      const assets = matches
+        .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
+        .filter(Boolean)
+        .flat(1)
+        .filter((asset) => asset.tag === 'link')
+        .map(
+          (asset) =>
+            ({
+              tag: 'link',
+              attrs: {
+                ...asset.attrs,
+                suppressHydrationWarning: true,
+                nonce,
+              },
+            }) satisfies RouterManagedTag,
+        )
 
-    return [...constructed, ...assets]
+      return [...constructed, ...assets]
   })
 
-  const preloadLinks = useStore(
-    router.stores.activeMatchesSnapshot,
-    (matches) => {
+  const preloadLinks = useStore(router.stores.activeMatchesSnapshot, (matches) => {
       const preloadLinks: Array<RouterManagedTag> = []
 
       matches
@@ -317,23 +315,24 @@ export const useTags = () => {
         )
 
       return preloadLinks
-    },
-  )
+  })
 
-  const styles = useStore(router.stores.activeMatchesSnapshot, (matches) =>
-    (
-      matches
-        .map((match) => match.styles!)
-        .flat(1)
-        .filter(Boolean) as Array<RouterManagedTag>
-    ).map(({ children, ...attrs }) => ({
-      tag: 'style',
-      attrs: {
-        ...attrs,
-        nonce,
-      },
-      children,
-    })),
+  const styles = useStore(
+    router.stores.activeMatchesSnapshot,
+    (matches) =>
+      (
+        matches
+          .map((match) => match.styles!)
+          .flat(1)
+          .filter(Boolean) as Array<RouterManagedTag>
+      ).map(({ children, ...attrs }) => ({
+        tag: 'style',
+        attrs: {
+          ...attrs,
+          nonce,
+        },
+        children,
+      })),
   )
 
   const headScripts: Array<RouterManagedTag> = useStore(

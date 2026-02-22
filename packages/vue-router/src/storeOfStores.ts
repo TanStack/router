@@ -7,6 +7,7 @@ type SubscribableStore<TValue> = {
   ) => (() => void) | { unsubscribe: () => void }
 }
 
+// TODO: why is this implementation so complicated when the Solid one is so simple?
 export function useStoreOfStoresValue<TValue, TSelected>(
   storeRef: Vue.Ref<SubscribableStore<TValue> | undefined>,
   selector: (value: TValue | undefined) => TSelected,

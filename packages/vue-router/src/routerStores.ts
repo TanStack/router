@@ -1,33 +1,22 @@
-import { batch as vueBatch, createStore } from '@tanstack/vue-store'
+import { batch, createStore } from '@tanstack/vue-store'
 import {
   createRouterStoresWithConfig,
-  createServerRouterStoresBundle,
 } from '@tanstack/router-core'
-import { isServer } from '@tanstack/router-core/isServer'
-import type {
-  RouterBatchFn,
-  RouterStoreConfig,
-  RouterStoresFactory,
-} from '@tanstack/router-core'
+import type { Readable } from '@tanstack/vue-store'
+import type { RouterStoresFactory } from '@tanstack/router-core'
 
-const batch: RouterBatchFn = (fn) => {
-  vueBatch(fn)
-}
-
-const clientStoreConfig: RouterStoreConfig = {
-  createMutableStore: (initialValue) => createStore(initialValue),
-  createReadonlyStore: (read) => createStore(read),
-  batch,
+declare module '@tanstack/router-core' {
+  interface RouterReadableStore<TValue> extends Readable<TValue> { }
 }
 
 export const vueRouterStoresFactory: RouterStoresFactory = {
-  createRouterStores(initialState, opts) {
-    if (isServer ?? opts.isServer) {
-      return createServerRouterStoresBundle(initialState)
-    }
-
+  createRouterStores(initialState) {
     return {
-      stores: createRouterStoresWithConfig(initialState, clientStoreConfig),
+      stores: createRouterStoresWithConfig(initialState, {
+        createMutableStore: createStore,
+        createReadonlyStore: createStore,
+        batch,
+      }),
       batch,
     }
   },

@@ -1,5 +1,5 @@
 import * as Vue from 'vue'
-import { useStore } from './store'
+import { useStore } from '@tanstack/vue-store'
 import {
   deepEqual,
   exactPathTest,
