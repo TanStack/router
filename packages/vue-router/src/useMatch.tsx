@@ -1,6 +1,13 @@
 import * as Vue from 'vue'
-import { useRouterState } from './useRouterState'
-import { injectDummyMatch, injectMatch } from './matchContext'
+import { useStore } from '@tanstack/vue-store'
+import {
+  injectDummyMatch,
+  injectDummyPendingMatch,
+  injectMatch,
+  injectPendingMatch,
+} from './matchContext'
+import { useStoreOfStoresValue } from './storeOfStores'
+import { useRouter } from './useRouter'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -68,60 +75,60 @@ export function useMatch<
 ): Vue.Ref<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
+  const router = useRouter<TRouter>()
   const nearestMatchId = opts.from ? injectDummyMatch() : injectMatch()
-
-  // Store to track pending error for deferred throwing
-  const pendingError = Vue.ref<Error | null>(null)
-
-  // Select the match from router state
-  const matchSelection = useRouterState({
-    select: (state: any) => {
-      const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
-      )
-
-      if (match === undefined) {
-        // During navigation transitions, check if the match exists in pendingMatches
-        const pendingMatch = state.pendingMatches?.find((d: any) =>
-          opts.from ? opts.from === d.routeId : d.id === nearestMatchId.value,
-        )
-
-        // If there's a pending match or we're transitioning, return undefined without throwing
-        if (pendingMatch || state.isTransitioning) {
-          pendingError.value = null
-          return undefined
-        }
-
-        // Store the error to throw later if shouldThrow is enabled
-        if (opts.shouldThrow ?? true) {
-          pendingError.value = new Error(
-            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-          )
-        }
-
-        return undefined
-      }
-
-      pendingError.value = null
-      return opts.select ? opts.select(match) : match
+  const hasPendingNearestMatch = opts.from
+    ? injectDummyPendingMatch()
+    : injectPendingMatch()
+  const activeMatchStore = useStore(
+    opts.from ? router.stores.byRouteId : router.stores.byId,
+    (stores) => {
+      const key = opts.from ?? nearestMatchId.value
+      return key ? stores[key] : undefined
     },
-  } as any)
+    { equal: Object.is },
+  )
+  const hasPendingRouteMatch = opts.from
+    ? useStore(
+        router.stores.pendingByRouteId,
+        (stores) => Boolean(stores[opts.from as string]),
+        { equal: Object.is },
+      )
+    : undefined
+  const isTransitioning = useStore(
+    router.stores.isTransitioning,
+    (value) => value,
+    { equal: Object.is },
+  )
 
-  // Throw the error if we have one - this happens after the selector runs
-  // Using a computed so the error is thrown when the return value is accessed
+  const match = useStoreOfStoresValue(
+    Vue.computed(() => activeMatchStore.value),
+    (value) => value,
+  )
+
   const result = Vue.computed(() => {
-    // Check for pending error first
-    if (pendingError.value) {
-      throw pendingError.value
+    const selectedMatch = match.value
+    if (selectedMatch === undefined) {
+      const hasPendingMatch = opts.from
+        ? Boolean(hasPendingRouteMatch?.value)
+        : hasPendingNearestMatch.value
+      const shouldThrowError =
+        !hasPendingMatch &&
+        !isTransitioning.value &&
+        (opts.shouldThrow ?? true)
+      if (shouldThrowError) {
+        throw new Error(
+          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
+      }
+      return undefined
     }
-    return matchSelection.value
-  })
 
-  // Also immediately throw if there's already an error from initial render
-  // This ensures errors are thrown even if the returned ref is never accessed
-  if (pendingError.value) {
-    throw pendingError.value
-  }
+    return opts.select ? opts.select(selectedMatch as any) : selectedMatch
+  }) as any
 
-  return result as any
+  // Keep eager throw behavior for setups that call useMatch for side effects only.
+  result.value
+
+  return result
 }

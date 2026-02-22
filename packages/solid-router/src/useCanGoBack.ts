@@ -1,5 +1,10 @@
-import { useRouterState } from './useRouterState'
+import { useStore } from '@tanstack/solid-store'
+import { useRouter } from './useRouter'
 
 export function useCanGoBack() {
-  return useRouterState({ select: (s) => s.location.state.__TSR_index !== 0 })
+  const router = useRouter()
+  return useStore(
+    router.stores.location,
+    (location) => location.state.__TSR_index !== 0,
+  )
 }

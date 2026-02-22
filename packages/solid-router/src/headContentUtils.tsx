@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
+import { useStore } from '@tanstack/solid-store'
 import { escapeHtml } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 /**
@@ -11,11 +11,9 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const useTags = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const routeMeta = useRouterState({
-    select: (state) => {
-      return state.matches.map((match) => match.meta!).filter(Boolean)
-    },
-  })
+  const routeMeta = useStore(router.stores.activeMatchesSnapshot, (matches) =>
+    matches.map((match) => match.meta!).filter(Boolean),
+  )
 
   const meta: Solid.Accessor<Array<RouterManagedTag>> = Solid.createMemo(() => {
     const resultMeta: Array<RouterManagedTag> = []
@@ -89,9 +87,8 @@ export const useTags = () => {
     return resultMeta
   })
 
-  const links = useRouterState({
-    select: (state) => {
-      const constructed = state.matches
+  const links = useStore(router.stores.activeMatchesSnapshot, (matches) => {
+      const constructed = matches
         .map((match) => match.links!)
         .filter(Boolean)
         .flat(1)
@@ -105,7 +102,7 @@ export const useTags = () => {
 
       const manifest = router.ssr?.manifest
 
-      const assets = state.matches
+      const assets = matches
         .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
         .filter(Boolean)
         .flat(1)
@@ -119,14 +116,12 @@ export const useTags = () => {
         )
 
       return [...constructed, ...assets]
-    },
   })
 
-  const preloadLinks = useRouterState({
-    select: (state) => {
+  const preloadLinks = useStore(router.stores.activeMatchesSnapshot, (matches) => {
       const preloadLinks: Array<RouterManagedTag> = []
 
-      state.matches
+      matches
         .map((match) => router.looseRoutesById[match.routeId]!)
         .forEach((route) =>
           router.ssr?.manifest?.routes[route.id]?.preloads
@@ -144,13 +139,13 @@ export const useTags = () => {
         )
 
       return preloadLinks
-    },
   })
 
-  const styles = useRouterState({
-    select: (state) =>
+  const styles = useStore(
+    router.stores.activeMatchesSnapshot,
+    (matches) =>
       (
-        state.matches
+        matches
           .map((match) => match.styles!)
           .flat(1)
           .filter(Boolean) as Array<RouterManagedTag>
@@ -162,12 +157,13 @@ export const useTags = () => {
         },
         children,
       })),
-  })
+  )
 
-  const headScripts = useRouterState({
-    select: (state) =>
+  const headScripts = useStore(
+    router.stores.activeMatchesSnapshot,
+    (matches) =>
       (
-        state.matches
+        matches
           .map((match) => match.headScripts!)
           .flat(1)
           .filter(Boolean) as Array<RouterManagedTag>
@@ -179,7 +175,7 @@ export const useTags = () => {
         },
         children,
       })),
-  })
+  )
 
   return () =>
     uniqBy(

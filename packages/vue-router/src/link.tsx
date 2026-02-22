@@ -1,4 +1,5 @@
 import * as Vue from 'vue'
+import { useStore } from '@tanstack/vue-store'
 import {
   deepEqual,
   exactPathTest,
@@ -7,10 +8,8 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
-import { useMatches } from './Matches'
 
 import type {
   AnyRouter,
@@ -91,14 +90,19 @@ export function useLinkProps<
     }
   })
 
-  const currentSearch = useRouterState({
-    select: (s) => s.location.searchStr,
-  })
-
-  // when `from` is not supplied, use the leaf route of the current matches as the `from` location
-  const from = useMatches({
-    select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
-  })
+  const currentLocation = useStore(router.stores.location, (location) => ({
+    pathname: location.pathname,
+    search: location.search,
+    hash: location.hash,
+  }))
+  const currentSearch = useStore(
+    router.stores.location,
+    (location) => location.searchStr,
+    { equal: Object.is },
+  )
+  const from = options.from
+    ? Vue.computed(() => options.from)
+    : useStore(router.stores.lastMatchRouteFullPath, (fullPath) => fullPath)
 
   const _options = Vue.computed(() => ({
     ...options,
@@ -122,51 +126,53 @@ export function useLinkProps<
     () => options.preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
   )
 
-  const isActive = useRouterState({
-    select: (s) => {
-      const activeOptions = options.activeOptions
-      if (activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next.value.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        ).split('/')
-        const nextPathSplit = removeTrailingSlash(
-          next.value?.pathname,
-          router.basepath,
-        )?.split('/')
-
-        const pathIsFuzzyEqual = nextPathSplit?.every(
-          (d, i) => d === currentPathSplit[i],
-        )
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+  const isActive = Vue.computed(() => {
+    const activeOptions = options.activeOptions
+    if (activeOptions?.exact) {
+      const testExact = exactPathTest(
+        currentLocation.value.pathname,
+        next.value.pathname,
+        router.basepath,
+      )
+      if (!testExact) {
+        return false
       }
+    } else {
+      const currentPathSplit = removeTrailingSlash(
+        currentLocation.value.pathname,
+        router.basepath,
+      ).split('/')
+      const nextPathSplit = removeTrailingSlash(
+        next.value?.pathname,
+        router.basepath,
+      )?.split('/')
 
-      if (activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next.value.search, {
+      const pathIsFuzzyEqual = nextPathSplit?.every(
+        (d, i) => d === currentPathSplit[i],
+      )
+      if (!pathIsFuzzyEqual) {
+        return false
+      }
+    }
+
+    if (activeOptions?.includeSearch ?? true) {
+      const searchTest = deepEqual(
+        currentLocation.value.search,
+        next.value.search,
+        {
           partial: !activeOptions?.exact,
           ignoreUndefined: !activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
+        },
+      )
+      if (!searchTest) {
+        return false
       }
+    }
 
-      if (activeOptions?.includeHash) {
-        return s.location.hash === next.value.hash
-      }
-      return true
-    },
+    if (activeOptions?.includeHash) {
+      return currentLocation.value.hash === next.value.hash
+    }
+    return true
   })
 
   const doPreload = () =>
