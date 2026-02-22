@@ -69,7 +69,8 @@ export const Match = (props: { matchId: string }) => {
   const resolvedNoSsr =
     matchState()!.ssr === false || matchState()!.ssr === 'data-only'
 
-  const ResolvedSuspenseBoundary = () => Solid.Loading
+  const ResolvedSuspenseBoundary = () =>
+    resolvedNoSsr ? SafeFragment : Solid.Loading
 
   const ResolvedCatchBoundary = () =>
     routeErrorComponent() ? CatchBoundary : SafeFragment
@@ -428,13 +429,19 @@ export const Outlet = () => {
             when={routeId() === rootRouteId}
             fallback={<Match matchId={currentMatchId()} />}
           >
-            <Solid.Loading
-              fallback={
-                <Dynamic component={router.options.defaultPendingComponent} />
-              }
-            >
-              <Match matchId={currentMatchId()} />
-            </Solid.Loading>
+            <Solid.Show when={currentMatchId()} keyed>
+              {(_matchId) => (
+                <Solid.Loading
+                  fallback={
+                    <Dynamic
+                      component={router.options.defaultPendingComponent}
+                    />
+                  }
+                >
+                  <Match matchId={currentMatchId()} />
+                </Solid.Loading>
+              )}
+            </Solid.Show>
           </Solid.Show>
         )
       }}
