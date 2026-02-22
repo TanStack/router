@@ -11,6 +11,7 @@ import type {
   NotFoundRouteComponent,
   RouteComponent,
 } from './route'
+import { vueRouterStoresFactory } from './routerStores'
 import type { VNode } from 'vue'
 
 declare module '@tanstack/router-core' {
@@ -98,6 +99,6 @@ export class Router<
       TDehydrated
     >,
   ) {
-    super(options)
+    super(options, vueRouterStoresFactory)
   }
 }

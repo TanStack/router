@@ -1,8 +1,8 @@
 import * as Solid from 'solid-js'
-import { useStore } from '@tanstack/solid-store'
 import warning from 'tiny-warning'
 import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useStore } from './store'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { Transitioner } from './Transitioner'
@@ -117,7 +117,10 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const reactivity = useStore(router.stores.matchRouteReactivity, (value) => value)
+  const reactivity = useStore(
+    router.stores.matchRouteReactivity,
+    (value) => value,
+  )
 
   return <
     const TFrom extends string = string,
@@ -171,7 +174,10 @@ export function MatchRoute<
   const TMaskTo extends string = '',
 >(props: MakeMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): any {
   const router = useRouter()
-  const reactivity = useStore(router.stores.matchRouteReactivity, (value) => value)
+  const reactivity = useStore(
+    router.stores.matchRouteReactivity,
+    (value) => value,
+  )
 
   return (
     <Solid.Show when={reactivity().status} keyed>

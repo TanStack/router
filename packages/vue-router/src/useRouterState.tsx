@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/vue-store'
+import { useStore } from './store'
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'

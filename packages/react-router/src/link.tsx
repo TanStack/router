@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useStore } from './store'
 import { flushSync } from 'react-dom'
 import {
   deepEqual,

@@ -190,6 +190,19 @@ export type {
   FilebaseRouteOptionsInterface,
 } from './route'
 export {
+  createRouterStoresWithConfig,
+  createServerRouterStoresBundle,
+} from './stores'
+export type {
+  RouterBatchFn,
+  RouterReadableStore,
+  RouterStoreConfig,
+  RouterStores,
+  RouterStoresBundle,
+  RouterStoresFactory,
+  RouterWritableStore,
+} from './stores'
+export {
   defaultSerializeError,
   getLocationChangeInfo,
   RouterCore,

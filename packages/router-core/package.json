@@ -160,7 +160,6 @@
   },
   "dependencies": {
     "@tanstack/history": "workspace:*",
-    "@tanstack/store": "^0.9.1",
     "cookie-es": "^2.0.0",
     "seroval": "^1.4.2",
     "seroval-plugins": "^1.4.2",
