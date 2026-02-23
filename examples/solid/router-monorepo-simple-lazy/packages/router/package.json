@@ -9,8 +9,8 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/history": "^1.161.4",
-    "@tanstack/solid-router": "^1.162.5",
-    "@tanstack/router-plugin": "^1.162.5",
+    "@tanstack/solid-router": "^1.162.6",
+    "@tanstack/router-plugin": "^1.162.6",
     "redaxios": "^0.5.1",
     "zod": "^3.24.2",
     "solid-js": "^1.9.10"
