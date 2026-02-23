@@ -73,6 +73,7 @@ export function useLinkProps<
       'style',
       'class',
       'onClick',
+      'onBlur',
       'onFocus',
       'onMouseEnter',
       'onMouseLeave',
@@ -297,6 +298,7 @@ export function useLinkProps<
         'style',
         'class',
         'onClick',
+        'onBlur',
         'onFocus',
         'onMouseEnter',
         'onMouseLeave',
@@ -373,11 +375,9 @@ export function useLinkProps<
     enqueueIntentPreload(eventTarget)
   }
 
-  const handleFocus = handleEnter
-
-  const handleLeave = (e: MouseEvent) => {
+  const handleLeave = (e: MouseEvent | FocusEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       clearTimeout(eventTarget.preloadTimeout)
@@ -444,7 +444,8 @@ export function useLinkProps<
         href: hrefOption()?.href,
         ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
-        onFocus: composeEventHandlers([local.onFocus, handleFocus]),
+        onBlur: composeEventHandlers([local.onBlur, handleLeave]),
+        onFocus: composeEventHandlers([local.onFocus, handleEnter]),
         onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
         onMouseOver: composeEventHandlers([local.onMouseOver, handleEnter]),
         onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),

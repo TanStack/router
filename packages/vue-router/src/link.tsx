@@ -226,6 +226,7 @@ export function useLinkProps<
           'style',
           'class',
           'onClick',
+          'onBlur',
           'onFocus',
           'onMouseEnter',
           'onMouseLeave',
@@ -266,6 +267,7 @@ export function useLinkProps<
         style: options.style,
         class: options.class,
         onClick: options.onClick,
+        onBlur: options.onBlur,
         onFocus: options.onFocus,
         onMouseEnter: options.onMouseEnter,
         onMouseLeave: options.onMouseLeave,
@@ -294,6 +296,7 @@ export function useLinkProps<
       style: options.style,
       class: options.class,
       onClick: options.onClick,
+      onBlur: options.onBlur,
       onFocus: options.onFocus,
       onMouseEnter: options.onMouseEnter,
       onMouseLeave: options.onMouseLeave,
@@ -385,9 +388,7 @@ export function useLinkProps<
     enqueueIntentPreload(eventTarget)
   }
 
-  const handleFocus = handleEnter
-
-  const handleLeave = (e: MouseEvent) => {
+  const handleLeave = (e: MouseEvent | FocusEvent) => {
     if (options.disabled) return
     // Use currentTarget (the element with the handler) instead of target (which may be a child)
     const eventTarget = (e.currentTarget ||
@@ -490,9 +491,13 @@ export function useLinkProps<
       options.onClick,
       handleClick,
     ]) as any,
+    onBlur: composeEventHandlers<FocusEvent>([
+      options.onBlur,
+      handleLeave,
+    ]) as any,
     onFocus: composeEventHandlers<FocusEvent>([
       options.onFocus,
-      handleFocus,
+      handleEnter,
     ]) as any,
     onMouseenter: composeEventHandlers<MouseEvent>([
       options.onMouseEnter,

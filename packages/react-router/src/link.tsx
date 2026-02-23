@@ -76,6 +76,7 @@ export function useLinkProps<
     style,
     className,
     onClick,
+    onBlur,
     onFocus,
     onMouseEnter,
     onMouseLeave,
@@ -651,6 +652,7 @@ export function useLinkProps<
       ...(style && { style }),
       ...(className && { className }),
       ...(onClick && { onClick }),
+      ...(onBlur && { onBlur }),
       ...(onFocus && { onFocus }),
       ...(onMouseEnter && { onMouseEnter }),
       ...(onMouseLeave && { onMouseLeave }),
@@ -687,9 +689,7 @@ export function useLinkProps<
     enqueueIntentPreload(e.target)
   }
 
-  const handleFocus = handleEnter
-
-  const handleLeave = (e: React.MouseEvent) => {
+  const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
     if (disabled || !preload || !preloadDelay) return
     const eventTarget = e.target
     const id = timeoutMap.get(eventTarget)
@@ -706,7 +706,8 @@ export function useLinkProps<
     href: hrefOption?.href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
-    onFocus: composeHandlers([onFocus, handleFocus]),
+    onBlur: composeHandlers([onBlur, handleLeave]),
+    onFocus: composeHandlers([onFocus, handleEnter]),
     onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
