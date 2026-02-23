@@ -104,6 +104,7 @@ const routes = [
   '/client-only-violations',
   '/client-only-jsx',
   '/beforeload-leak',
+  '/barrel-false-positive',
 ]
 
 async function captureDev(cwd: string): Promise<void> {

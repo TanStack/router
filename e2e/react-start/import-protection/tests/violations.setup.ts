@@ -79,6 +79,8 @@ const routes = [
   '/client-only-violations',
   '/client-only-jsx',
   '/beforeload-leak',
+  '/component-server-leak',
+  '/barrel-false-positive',
 ]
 
 async function navigateAllRoutes(

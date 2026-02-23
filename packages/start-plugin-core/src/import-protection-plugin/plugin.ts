@@ -26,6 +26,7 @@ import {
   MOCK_MODULE_ID,
   MOCK_RUNTIME_PREFIX,
   RESOLVED_MARKER_PREFIX,
+  RESOLVED_MOCK_BUILD_PREFIX,
   RESOLVED_MOCK_EDGE_PREFIX,
   RESOLVED_MOCK_MODULE_ID,
   RESOLVED_MOCK_RUNTIME_PREFIX,
@@ -192,12 +193,25 @@ interface EnvState {
    * determine whether the importer is still reachable from an entry point.
    */
   pendingViolations: Map<string, Array<PendingViolation>>
+
+  /**
+   * Violations deferred in build mode (both mock and error).  Each gets a
+   * unique mock module ID so we can check which ones survived tree-shaking
+   * in `generateBundle`.
+   */
+  deferredBuildViolations: Array<DeferredBuildViolation>
 }
 
 interface PendingViolation {
   info: ViolationInfo
   /** The mock module ID that resolveId already returned for this violation. */
   mockReturnValue: string
+}
+
+interface DeferredBuildViolation {
+  info: ViolationInfo
+  /** Unique mock module ID assigned to this violation. */
+  mockModuleId: string
 }
 
 /**
@@ -569,6 +583,7 @@ export function importProtectionPlugin(
         postTransformImports: new Map(),
         serverFnLookupModules: new Set(),
         pendingViolations: new Map(),
+        deferredBuildViolations: [],
       }
       envStates.set(envName, envState)
     }
@@ -812,6 +827,9 @@ export function importProtectionPlugin(
     })
   }
 
+  /** Counter for generating unique per-violation mock module IDs in build mode. */
+  let buildViolationCounter = 0
+
   function handleViolation(
     ctx: ViolationReporter,
     env: EnvState,
@@ -833,18 +851,29 @@ export function importProtectionPlugin(
         }
       }
 
-      const seen = hasSeen(env, key)
-
       if (config.effectiveBehavior === 'error') {
-        if (!seen) ctx.error(formatViolation(info, config.root))
-        return undefined
+        // Dev+error: throw immediately.
+        // Always throw on error — do NOT deduplicate via hasSeen().
+        // Rollup may resolve the same specifier multiple times (e.g.
+        // commonjs--resolver's nested this.resolve() fires before
+        // getResolveStaticDependencyPromises). If we record the key
+        // on the first (nested) throw, the second (real) resolve
+        // silently returns undefined and the build succeeds — which
+        // is the bug this fixes.
+        //
+        // Build mode never reaches here — all build violations are
+        // deferred via shouldDefer and handled silently.
+
+        return ctx.error(formatViolation(info, config.root))
       }
+
+      const seen = hasSeen(env, key)
 
       if (!seen) {
         ctx.warn(formatViolation(info, config.root))
       }
     } else {
-      if (config.effectiveBehavior === 'error') {
+      if (config.effectiveBehavior === 'error' && config.command !== 'build') {
         return undefined
       }
     }
@@ -868,17 +897,23 @@ export function importProtectionPlugin(
       )
     }
 
-    // Build: Rollup uses syntheticNamedExports
-    return { id: RESOLVED_MOCK_MODULE_ID, syntheticNamedExports: true }
+    // Build: unique per-violation mock IDs so generateBundle can check
+    // which violations survived tree-shaking (both mock and error mode).
+    const mockId = `${RESOLVED_MOCK_BUILD_PREFIX}${buildViolationCounter++}`
+    return { id: mockId, syntheticNamedExports: true }
   }
 
   /**
    * Unified violation dispatch: either defers or reports immediately.
    *
    * When `shouldDefer` is true, calls `handleViolation` silently to obtain
-   * the mock module ID, stores the violation as pending, and triggers
-   * `processPendingViolations`.  Otherwise reports (or silences for
-   * pre-transform resolves) immediately.
+   * the mock module ID, then stores the violation for later verification:
+   *   - Dev mock mode: defers to `pendingViolations` for graph-reachability
+   *     checking via `processPendingViolations`.
+   *   - Build mode (mock + error): defers to `deferredBuildViolations` for
+   *     tree-shaking verification in `generateBundle`.
+   *
+   * Otherwise reports (or silences for pre-transform resolves) immediately.
    *
    * Returns the mock module ID / resolve result from `handleViolation`.
    */
@@ -892,8 +927,18 @@ export function importProtectionPlugin(
   ): Promise<ReturnType<typeof handleViolation>> {
     if (shouldDefer) {
       const result = handleViolation(ctx, env, info, { silent: true })
-      deferViolation(env, importerFile, info, result)
-      await processPendingViolations(env, ctx.warn.bind(ctx))
+
+      if (config.command === 'build') {
+        // Build mode: store for generateBundle tree-shaking check.
+        // The unique mock ID is inside `result`.
+        const mockId = typeof result === 'string' ? result : (result?.id ?? '')
+        env.deferredBuildViolations.push({ info, mockModuleId: mockId })
+      } else {
+        // Dev mock: store for graph-reachability check.
+        deferViolation(env, importerFile, info, result)
+        await processPendingViolations(env, ctx.warn.bind(ctx))
+      }
+
       return result
     }
     return handleViolation(ctx, env, info, {
@@ -1156,10 +1201,13 @@ export function importProtectionPlugin(
 
         // Dev mock mode: defer violations until post-transform data is
         // available, then confirm/discard via graph reachability.
+        // Build mode (both mock and error): defer violations until
+        // generateBundle so tree-shaking can eliminate false positives.
         const isDevMock =
           config.command === 'serve' && config.effectiveBehavior === 'mock'
+        const isBuild = config.command === 'build'
 
-        const shouldDefer = isDevMock && !isPreTransformResolve
+        const shouldDefer = (isDevMock && !isPreTransformResolve) || isBuild
 
         // Check if this is a marker import
         const markerKind = config.markerSpecifiers.serverOnly.has(source)
@@ -1198,7 +1246,7 @@ export function importProtectionPlugin(
                     : `Module "${getRelativePath(normalizedImporter)}" is marked client-only but is imported in the server environment`,
               },
             )
-            await reportOrDeferViolation(
+            const markerResult = await reportOrDeferViolation(
               this,
               env,
               normalizedImporter,
@@ -1206,6 +1254,16 @@ export function importProtectionPlugin(
               shouldDefer,
               isPreTransformResolve,
             )
+
+            // In build mode, if the violation was deferred, return the unique
+            // build mock ID instead of the marker module. This lets
+            // generateBundle check whether the importer (and thus its marker
+            // import) survived tree-shaking. The mock is side-effect-free just
+            // like the marker module, and the bare import has no bindings, so
+            // replacing it is transparent.
+            if (isBuild && markerResult != null) {
+              return markerResult
+            }
           }
 
           return markerKind === 'server'
@@ -1338,6 +1396,7 @@ export function importProtectionPlugin(
           id: new RegExp(
             [
               RESOLVED_MOCK_MODULE_ID,
+              RESOLVED_MOCK_BUILD_PREFIX,
               RESOLVED_MARKER_PREFIX,
               RESOLVED_MOCK_EDGE_PREFIX,
               RESOLVED_MOCK_RUNTIME_PREFIX,
@@ -1360,6 +1419,11 @@ export function importProtectionPlugin(
             return loadSilentMockModule()
           }
 
+          // Per-violation build mock modules — same silent mock code
+          if (id.startsWith(RESOLVED_MOCK_BUILD_PREFIX)) {
+            return loadSilentMockModule()
+          }
+
           if (id.startsWith(RESOLVED_MOCK_EDGE_PREFIX)) {
             return loadMockEdgeModule(
               id.slice(RESOLVED_MOCK_EDGE_PREFIX.length),
@@ -1378,6 +1442,53 @@ export function importProtectionPlugin(
 
           return undefined
         },
+      },
+
+      generateBundle(_options, bundle) {
+        const envName = this.environment.name
+        const env = envStates.get(envName)
+        if (!env || env.deferredBuildViolations.length === 0) return
+
+        // Collect all module IDs that survived tree-shaking in this bundle.
+        const survivingModules = new Set<string>()
+        for (const chunk of Object.values(bundle)) {
+          if (chunk.type === 'chunk') {
+            for (const moduleId of Object.keys(chunk.modules)) {
+              survivingModules.add(moduleId)
+            }
+          }
+        }
+
+        // Check each deferred violation: if its unique mock module survived
+        // in the bundle, the import was NOT tree-shaken — real leak.
+        const realViolations: Array<ViolationInfo> = []
+        for (const { info, mockModuleId } of env.deferredBuildViolations) {
+          if (survivingModules.has(mockModuleId)) {
+            realViolations.push(info)
+          }
+        }
+
+        if (realViolations.length === 0) return
+
+        if (config.effectiveBehavior === 'error') {
+          // Error mode: fail the build on the first real violation.
+          this.error(formatViolation(realViolations[0]!, config.root))
+        } else {
+          // Mock mode: warn for each surviving violation.
+          const seen = new Set<string>()
+          for (const info of realViolations) {
+            const key = dedupeKey(
+              info.type,
+              info.importer,
+              info.specifier,
+              info.resolved,
+            )
+            if (!seen.has(key)) {
+              seen.add(key)
+              this.warn(formatViolation(info, config.root))
+            }
+          }
+        }
       },
     },
     {
