@@ -540,3 +540,93 @@ for (const mode of ['dev', 'dev.warm'] as const) {
     expect(lookupHits).toEqual([])
   })
 }
+
+// Component-level server leak: the .server import is used exclusively inside
+// the route component function, which is code-split by the router plugin into
+// a separate lazy chunk.  Import protection must still detect this.
+
+test('component-server-leak route loads in mock mode', async ({ page }) => {
+  await page.goto('/component-server-leak')
+  await expect(page.getByTestId('component-leak-heading')).toContainText(
+    'Component Server Leak',
+  )
+})
+
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
+  test(`component-server-leak: .server import inside code-split component is caught in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const hits = violations.filter(
+      (v) =>
+        v.envType === 'client' &&
+        (v.specifier.includes('db-credentials.server') ||
+          v.resolved?.includes('db-credentials.server') ||
+          v.importer.includes('db-credentials.server') ||
+          v.trace.some(
+            (s) =>
+              s.file.includes('db-credentials.server') ||
+              s.file.includes('component-server-leak'),
+          )),
+    )
+
+    expect(hits.length).toBeGreaterThanOrEqual(1)
+  })
+}
+
+// Barrel re-export false positive: the barrel re-exports from a .server
+// module AND a marker-protected module (foo.ts with `import 'server-only'`),
+// but the component only uses values that would be tree-shaken away
+// (getUsers inside createServerFn) or originate from a safe source, and
+// never imports foo at all. Both the .server module and the marker module
+// should NOT survive tree-shaking in the client bundle, so import-protection
+// must NOT flag violations for either in build mode.
+// In dev mode there is no tree-shaking so the violation is expected (mock).
+
+test('barrel-false-positive route loads in mock mode', async ({ page }) => {
+  await page.goto('/barrel-false-positive')
+  await expect(page.getByTestId('barrel-heading')).toContainText(
+    'Barrel False Positive',
+  )
+})
+
+test('no false positive for barrel-reexport .server pattern in build', async () => {
+  const violations = await readViolations('build')
+
+  const barrelHits = violations.filter(
+    (v) =>
+      v.envType === 'client' &&
+      (v.importer.includes('barrel-reexport') ||
+        v.importer.includes('barrel-false-positive') ||
+        v.specifier.includes('db.server') ||
+        v.resolved?.includes('barrel-reexport') ||
+        v.trace.some(
+          (s) =>
+            s.file.includes('barrel-reexport') ||
+            s.file.includes('barrel-false-positive'),
+        )),
+  )
+
+  expect(barrelHits).toEqual([])
+})
+
+test('no false positive for barrel-reexport marker pattern in build', async () => {
+  const violations = await readViolations('build')
+
+  // foo.ts uses `import '@tanstack/react-start/server-only'` marker and is
+  // re-exported through the barrel, but never imported by the route.
+  // Tree-shaking should eliminate it — no marker violation should fire.
+  const markerHits = violations.filter(
+    (v) =>
+      v.envType === 'client' &&
+      (v.specifier.includes('server-only') ||
+        v.specifier.includes('foo') ||
+        v.resolved?.includes('foo')) &&
+      v.trace.some(
+        (s) =>
+          s.file.includes('barrel-reexport') ||
+          s.file.includes('barrel-false-positive'),
+      ),
+  )
+
+  expect(markerHits).toEqual([])
+})

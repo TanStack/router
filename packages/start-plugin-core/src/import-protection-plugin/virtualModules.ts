@@ -8,6 +8,14 @@ import type { ViolationInfo } from './trace'
 export const MOCK_MODULE_ID = 'tanstack-start-import-protection:mock'
 export const RESOLVED_MOCK_MODULE_ID = resolveViteId(MOCK_MODULE_ID)
 
+/**
+ * Per-violation mock prefix used in build+error mode.
+ * Each deferred violation gets a unique ID so we can check which ones
+ * survived tree-shaking in `generateBundle`.
+ */
+export const MOCK_BUILD_PREFIX = 'tanstack-start-import-protection:mock:build:'
+export const RESOLVED_MOCK_BUILD_PREFIX = resolveViteId(MOCK_BUILD_PREFIX)
+
 export const MOCK_EDGE_PREFIX = 'tanstack-start-import-protection:mock-edge:'
 export const RESOLVED_MOCK_EDGE_PREFIX = resolveViteId(MOCK_EDGE_PREFIX)
 

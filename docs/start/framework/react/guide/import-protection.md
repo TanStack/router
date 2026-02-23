@@ -335,13 +335,21 @@ The same idea applies to `createIsomorphicFn()`: the compiler removes the non-ta
 
 If you see an import-protection violation for a file you expected to be "compiled away", check whether the import is referenced outside a compiler-recognized environment boundary (or is otherwise kept live by surviving code).
 
+## False Positives: Dev vs Build
+
+In **build mode**, the plugin defers violation checks until after tree-shaking. If an import is eliminated from the final bundle (e.g., a barrel re-exports a `.server` module but no client code actually uses that export), no violation is reported. This means build-time violations are definitive — if the build flags it, the import truly survived.
+
+In **dev mode**, there is no tree-shaking. The plugin uses graph reachability to filter violations, but it cannot determine whether individual bindings are unused. This means barrel re-exports of `.server` or marker-protected modules may produce warnings even when the server-only exports would be tree-shaken away in production. These dev warnings are informational — run a build to confirm whether the violation is real.
+
+The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a barrel but never consumed by client code, the build correctly suppresses the violation while dev may still warn.
+
 ## The `onViolation` Callback
 
 You can hook into violations for custom reporting or to override the verdict:
 
 ```ts
 importProtection: {
-  onViolation: (info) => {
+  onViolation: async (info) => {
     // info.env -- environment name (e.g. 'client', 'ssr', ...)
     // info.envType -- 'client' or 'server'
     // info.type -- 'specifier', 'file', or 'marker'
@@ -352,7 +360,7 @@ importProtection: {
     // info.snippet -- { lines, location } with the source code snippet (if available)
     // info.message -- the formatted diagnostic message
 
-    // Return false to allow this specific import (override the denial)
+    // Return false (or Promise<false>) to allow this specific import (override the denial)
     if (info.specifier === 'some-special-case') {
       return false
     }
@@ -392,7 +400,9 @@ interface ImportProtectionOptions {
     specifiers?: Array<string | RegExp>
     files?: Array<string | RegExp>
   }
-  onViolation?: (info: ViolationInfo) => boolean | void
+  onViolation?: (
+    info: ViolationInfo,
+  ) => boolean | void | Promise<boolean | void>
 }
 ```
 

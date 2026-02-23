@@ -42,7 +42,13 @@ const importProtectionOptionsSchema = z
     onViolation: z
       .function()
       .args(z.any())
-      .returns(z.union([z.boolean(), z.void()]))
+      .returns(
+        z.union([
+          z.boolean(),
+          z.void(),
+          z.promise(z.union([z.boolean(), z.void()])),
+        ]),
+      )
       .optional(),
     include: z.array(patternSchema).optional(),
     exclude: z.array(patternSchema).optional(),
