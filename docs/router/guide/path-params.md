@@ -282,7 +282,7 @@ You can also combine suffixes with wildcards for more complex routing patterns:
 # React
 
 ```tsx title="src/routes/files/{$}[.]txt.tsx"
-export const Route = createFileRoute('/files/{$fileName}[.]txt')({
+export const Route = createFileRoute('/files/{$}.txt')({
   component: FileComponent,
 })
 
@@ -296,7 +296,7 @@ function FileComponent() {
 # Solid
 
 ```tsx title="src/routes/files/{$}[.]txt.tsx"
-export const Route = createFileRoute('/files/{$fileName}[.]txt')({
+export const Route = createFileRoute('/files/{$}.txt')({
   component: FileComponent,
 })
 
