@@ -677,20 +677,17 @@ export function useLinkProps<
     timeoutMap.set(eventTarget, id)
   }
 
-  const handleFocus = (e: React.FocusEvent) => {
-    if (disabled) return
-    enqueueIntentPreload(e.target)
-  }
-
   const handleTouchStart = (_: React.TouchEvent) => {
     if (disabled || !preload) return
     doPreload()
   }
 
-  const handleEnter = (e: React.MouseEvent) => {
+  const handleEnter = (e: React.MouseEvent | React.FocusEvent) => {
     if (disabled) return
     enqueueIntentPreload(e.target)
   }
+
+  const handleFocus = handleEnter
 
   const handleLeave = (e: React.MouseEvent) => {
     if (disabled || !preload || !preloadDelay) return

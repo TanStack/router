@@ -368,15 +368,6 @@ export function useLinkProps<
     }, preloadDelay.value)
   }
 
-  // The focus handler
-  const handleFocus = (e: FocusEvent) => {
-    if (options.disabled) return
-    const eventTarget = (e.currentTarget ||
-      e.target ||
-      {}) as LinkCurrentTargetElement
-    enqueueIntentPreload(eventTarget)
-  }
-
   const handleTouchStart = (_: TouchEvent) => {
     if (options.disabled) return
     if (preload.value) {
@@ -384,7 +375,7 @@ export function useLinkProps<
     }
   }
 
-  const handleEnter = (e: MouseEvent) => {
+  const handleEnter = (e: MouseEvent | FocusEvent) => {
     if (options.disabled) return
     // Use currentTarget (the element with the handler) instead of target (which may be a child)
     const eventTarget = (e.currentTarget ||
@@ -393,6 +384,8 @@ export function useLinkProps<
 
     enqueueIntentPreload(eventTarget)
   }
+
+  const handleFocus = handleEnter
 
   const handleLeave = (e: MouseEvent) => {
     if (options.disabled) return

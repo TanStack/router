@@ -359,13 +359,6 @@ export function useLinkProps<
     }, preloadDelay())
   }
 
-  // The click handler
-  const handleFocus = (e: FocusEvent) => {
-    if (local.disabled) return
-    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
-    enqueueIntentPreload(eventTarget)
-  }
-
   const handleTouchStart = (_: TouchEvent) => {
     if (local.disabled) return
     if (preload()) {
@@ -373,12 +366,14 @@ export function useLinkProps<
     }
   }
 
-  const handleEnter = (e: MouseEvent) => {
+  const handleEnter = (e: MouseEvent | FocusEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
 
     enqueueIntentPreload(eventTarget)
   }
+
+  const handleFocus = handleEnter
 
   const handleLeave = (e: MouseEvent) => {
     if (local.disabled) return
