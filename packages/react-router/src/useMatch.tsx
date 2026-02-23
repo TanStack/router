@@ -124,7 +124,9 @@ export function useMatch<
 
     invariant(
       !((opts.shouldThrow ?? true) && !match),
-      `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      process.env.NODE_ENV !== 'production'
+        ? `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`
+        : 'No active match',
     )
 
     if (match === undefined) {
@@ -142,7 +144,9 @@ export function useMatch<
 
       invariant(
         !((opts.shouldThrow ?? true) && !store),
-        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        process.env.NODE_ENV !== 'production'
+          ? `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`
+          : 'No active match',
       )
 
       return store

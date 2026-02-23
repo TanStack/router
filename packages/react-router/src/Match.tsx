@@ -175,7 +175,9 @@ function MatchView({
             onCatch={(error, errorInfo) => {
               // Forward not found errors (we don't want to show the error component for these)
               if (isNotFound(error)) throw error
-              warning(false, `Error in route match: ${matchId}`)
+              if (process.env.NODE_ENV !== 'production') {
+                warning(false, `Error in route match: ${matchId}`)
+              }
               routeOnCatch?.(error, errorInfo)
             }}
           >

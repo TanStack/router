@@ -1019,7 +1019,7 @@ export class RouterCore<
     TRouterHistory,
     TDehydrated
   > = (newOptions) => {
-    if (newOptions.notFoundRoute) {
+    if (process.env.NODE_ENV !== 'production' && newOptions.notFoundRoute) {
       console.warn(
         'The notFoundRoute API is deprecated and will be removed in the next major version. See https://tanstack.com/router/v1/docs/framework/react/guide/not-found-errors#migrating-from-notfoundroute for more info.',
       )
@@ -2699,7 +2699,9 @@ export class RouterCore<
       isDangerousProtocol(redirect.options.href, this.protocolAllowlist)
     ) {
       throw new Error(
-        `Redirect blocked: unsafe protocol in href "${redirect.options.href}". Allowed protocols: ${Array.from(this.protocolAllowlist).join(', ')}.`,
+        process.env.NODE_ENV !== 'production'
+          ? `Redirect blocked: unsafe protocol in href "${redirect.options.href}". Allowed protocols: ${Array.from(this.protocolAllowlist).join(', ')}.`
+          : 'Redirect blocked: unsafe protocol',
       )
     }
 

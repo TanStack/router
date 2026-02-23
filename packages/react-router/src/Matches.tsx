@@ -98,11 +98,13 @@ function MatchesInner() {
           getResetKey={() => resetKey}
           errorComponent={ErrorComponent}
           onCatch={(error) => {
-            warning(
-              false,
-              `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-            )
-            warning(false, error.message || error.toString())
+            if (process.env.NODE_ENV !== 'production') {
+              warning(
+                false,
+                `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+              )
+              warning(false, error.message || error.toString())
+            }
           }}
         >
           {matchComponent}
