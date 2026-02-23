@@ -22,7 +22,6 @@ import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
-  LinkCurrentTargetElement,
   LinkOptions,
   RegisteredRouter,
   RoutePaths,
@@ -31,6 +30,8 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
+
+const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -350,18 +351,14 @@ export function useLinkProps<
 
   const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
     if (local.disabled || !preload()) return
-    const eventTarget = (e.currentTarget ||
-      e.target ||
-      {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || e.target)
 
-    if (eventTarget.preloadTimeout) {
-      return
-    }
+    if (!eventTarget || timeoutMap.has(eventTarget)) return
 
-    eventTarget.preloadTimeout = setTimeout(() => {
-      eventTarget.preloadTimeout = null
+    timeoutMap.set(eventTarget, setTimeout(() => {
+      timeoutMap.delete(eventTarget)
       doPreload()
-    }, preloadDelay())
+    }, preloadDelay()))
   }
 
   const handleTouchStart = (_: TouchEvent) => {
@@ -373,13 +370,12 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent | FocusEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.currentTarget ||
-      e.target ||
-      {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget || e.target)
 
-    if (eventTarget.preloadTimeout) {
-      clearTimeout(eventTarget.preloadTimeout)
-      eventTarget.preloadTimeout = null
+    if (eventTarget) {
+      const id = timeoutMap.get(eventTarget)
+      clearTimeout(id)
+      timeoutMap.delete(eventTarget)
     }
   }
 
