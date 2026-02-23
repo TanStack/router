@@ -43,7 +43,10 @@ export function CatchNotFound(props: {
   }
 
   // TODO: Some way for the user to programmatically reset the not-found boundary?
-  const pathname = useStore(router.stores.location, (location) => location.pathname)
+  const pathname = useStore(
+    router.stores.location,
+    (location) => location.pathname,
+  )
   const status = useStore(router.stores.status, (status) => status)
   const resetKey = `not-found-${pathname}-${status}`
 

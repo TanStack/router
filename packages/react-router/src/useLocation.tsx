@@ -51,9 +51,9 @@ export function useLocation<
 
   if (isServer ?? router.isServer) {
     const location = router.stores.location.state
-    return (opts?.select
-      ? opts.select(location as any)
-      : location) as UseLocationResult<TRouter, TSelected>
+    return (
+      opts?.select ? opts.select(location as any) : location
+    ) as UseLocationResult<TRouter, TSelected>
   }
 
   return useStore(router.stores.location, (location) =>

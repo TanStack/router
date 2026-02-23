@@ -136,31 +136,32 @@ export function useMatch<
     return (opts.select ? opts.select(match as any) : match) as any
   }
 
-  const matchStore = useStore(
-    opts.from ? router.stores.byRouteId : router.stores.byId,
-    (activeMatchStores) => {
-      const key = opts.from ?? nearestMatchId
-      const store = key ? activeMatchStores[key] : undefined
+  const matchStore =
+    useStore(
+      opts.from ? router.stores.byRouteId : router.stores.byId,
+      (activeMatchStores) => {
+        const key = opts.from ?? nearestMatchId
+        const store = key ? activeMatchStores[key] : undefined
 
-      invariant(
-        !((opts.shouldThrow ?? true) && !store),
-        process.env.NODE_ENV !== 'production'
-          ? `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`
-          : 'No active match',
-      )
+        invariant(
+          !((opts.shouldThrow ?? true) && !store),
+          process.env.NODE_ENV !== 'production'
+            ? `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`
+            : 'No active match',
+        )
 
-      return store
-    },
-  ) ?? dummyStore
+        return store
+      },
+    ) ?? dummyStore
 
   return useStore(matchStore, (match) => {
     if (match === undefined) {
       return undefined
     }
 
-    const selected = (opts.select
-      ? opts.select(match as any)
-      : match) as ValidateSelected<TRouter, TSelected, TStructuralSharing>
+    const selected = (
+      opts.select ? opts.select(match as any) : match
+    ) as ValidateSelected<TRouter, TSelected, TStructuralSharing>
 
     if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
       const shared = replaceEqualDeep(previousResult.current, selected)

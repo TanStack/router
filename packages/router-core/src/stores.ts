@@ -1,28 +1,28 @@
-import { createStore } from "@tanstack/store"
-import { batch } from "./utils/batch"
-import { arraysEqual, last } from "./utils"
+import { createStore } from '@tanstack/store'
+import { batch } from './utils/batch'
+import { arraysEqual, last } from './utils'
 
-import type { AnyRoute } from "./route"
-import type { RouterState } from "./router"
-import type { FullSearchSchema } from "./routeInfo"
-import type { ParsedLocation } from "./location"
-import type { AnyRedirect } from "./redirect"
-import type { AnyRouteMatch } from "./Matches"
-import type { ReadonlyStore, Store } from "@tanstack/store"
+import type { AnyRoute } from './route'
+import type { RouterState } from './router'
+import type { FullSearchSchema } from './routeInfo'
+import type { ParsedLocation } from './location'
+import type { AnyRedirect } from './redirect'
+import type { AnyRouteMatch } from './Matches'
+import type { ReadonlyStore, Store } from '@tanstack/store'
 
 type MatchStore = Store<AnyRouteMatch>
 type MatchStoreLookup = Record<string, MatchStore>
 type ReadableStore<TValue> = Pick<Store<TValue>, 'state' | 'get' | 'subscribe'>
 type MutableStoreFactory = <TValue>(initialValue: TValue) => Store<TValue>
-type ReadonlyStoreFactory = <TValue>(read: () => TValue) => ReadonlyStore<TValue>
+type ReadonlyStoreFactory = <TValue>(
+  read: () => TValue,
+) => ReadonlyStore<TValue>
 
 const NOOP_SUBSCRIPTION = {
-  unsubscribe: () => { },
+  unsubscribe: () => {},
 }
 
-export interface RouterStores<
-  in out TRouteTree extends AnyRoute
-> {
+export interface RouterStores<in out TRouteTree extends AnyRoute> {
   status: Store<RouterState<TRouteTree>['status']>
   loadedAt: Store<number>
   isLoading: Store<boolean>
@@ -70,7 +70,9 @@ export interface RouterStores<
   setCachedMatches: (nextMatches: Array<AnyRouteMatch>) => void
 }
 
-function createLightweightMutableStore<TValue>(initialValue: TValue): Store<TValue> {
+function createLightweightMutableStore<TValue>(
+  initialValue: TValue,
+): Store<TValue> {
   let value = initialValue
 
   return {
@@ -105,21 +107,13 @@ function createLightweightReadonlyStore<TValue>(
   } as unknown as ReadonlyStore<TValue>
 }
 
-export function createRouterStores<
-  TRouteTree extends AnyRoute
->(
+export function createRouterStores<TRouteTree extends AnyRoute>(
   initialState: RouterState<TRouteTree>,
 ): RouterStores<TRouteTree> {
-  return createRouterStoresImpl(
-    initialState,
-    createStore,
-    createStore,
-  )
+  return createRouterStoresImpl(initialState, createStore, createStore)
 }
 
-export function createServerRouterStores<
-  TRouteTree extends AnyRoute
->(
+export function createServerRouterStores<TRouteTree extends AnyRoute>(
   initialState: RouterState<TRouteTree>,
 ): RouterStores<TRouteTree> {
   return createRouterStoresImpl(
@@ -129,9 +123,7 @@ export function createServerRouterStores<
   )
 }
 
-function createRouterStoresImpl<
-  TRouteTree extends AnyRoute
->(
+function createRouterStoresImpl<TRouteTree extends AnyRoute>(
   initialState: RouterState<TRouteTree>,
   createMutableStore: MutableStoreFactory,
   createReadonlyStore: ReadonlyStoreFactory,
@@ -159,22 +151,13 @@ function createRouterStoresImpl<
 
   // 1st order derived stores
   const activeMatchesSnapshot = createReadonlyStore(() =>
-    readPoolMatches(
-      activeMatchStoresById,
-      matchesId.state,
-    ),
+    readPoolMatches(activeMatchStoresById, matchesId.state),
   )
   const pendingMatchesSnapshot = createReadonlyStore(() =>
-    readPoolMatches(
-      pendingMatchStoresById,
-      pendingMatchesId.state,
-    ),
+    readPoolMatches(pendingMatchStoresById, pendingMatchesId.state),
   )
   const cachedMatchesSnapshot = createReadonlyStore(() =>
-    readPoolMatches(
-      cachedMatchStoresById,
-      cachedMatchesId.state,
-    ),
+    readPoolMatches(cachedMatchStoresById, cachedMatchesId.state),
   )
   const firstMatchId = createReadonlyStore(() => matchesId.state[0])
   const lastMatchId = createReadonlyStore(() => last(matchesId.state))

@@ -20,7 +20,9 @@ export function useStoreOfStoresValue<TValue, TSelected>(
   selector: (value: TValue | undefined) => TSelected,
   equal: (a: TSelected, b: TSelected) => boolean = Object.is,
 ): Readonly<Vue.Ref<TSelected>> {
-  const selected = Vue.shallowRef(selector(storeRef.value?.state)) as Vue.ShallowRef<TSelected>
+  const selected = Vue.shallowRef(
+    selector(storeRef.value?.state),
+  ) as Vue.ShallowRef<TSelected>
 
   Vue.watch(
     storeRef,

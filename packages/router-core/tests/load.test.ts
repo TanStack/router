@@ -440,10 +440,10 @@ describe('loader skip or exec', () => {
     }))
 
     expect(
-      router.stores.cachedMatchesSnapshot.state.some((d) => d.id === '/foo/foo'),
-    ).toBe(
-      false,
-    )
+      router.stores.cachedMatchesSnapshot.state.some(
+        (d) => d.id === '/foo/foo',
+      ),
+    ).toBe(false)
     expect(
       router.stores.cachedMatchesSnapshot.state.some(
         (d) => d.status === 'redirected',

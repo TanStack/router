@@ -104,7 +104,7 @@ import type {
   AnySerializationAdapter,
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
-import type { RouterStores } from "./stores"
+import type { RouterStores } from './stores'
 // import type { AnyRouterConfig } from './config'
 
 export type ControllablePromise<T = any> = Promise<T> & {
@@ -942,7 +942,7 @@ export class RouterCore<
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
   __store!: ReadonlyStore<RouterState<TRouteTree>>
-  
+
   options!: PickAsRequired<
     RouterOptions<
       TRouteTree,
@@ -1107,9 +1107,14 @@ export class RouterCore<
     }
 
     if (!this.__store && this.latestLocation) {
-      const stores = (isServer ?? this.isServer)
-        ? createServerRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
-        : createRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
+      const stores =
+        (isServer ?? this.isServer)
+          ? createServerRouterStores<TRouteTree>(
+              getInitialRouterState(this.latestLocation),
+            )
+          : createRouterStores<TRouteTree>(
+              getInitialRouterState(this.latestLocation),
+            )
       this.stores = stores
       this.__store = stores.__store
 
@@ -2400,12 +2405,14 @@ export class RouterCore<
 
                     exitingMatches = mountPending
                       ? previousMatches.filter(
-                          (match) => !this.stores.pendingMatchStoresById.has(match.id),
+                          (match) =>
+                            !this.stores.pendingMatchStoresById.has(match.id),
                         )
                       : []
                     enteringMatches = mountPending
                       ? pendingMatches.filter(
-                          (match) => !this.stores.activeMatchStoresById.has(match.id),
+                          (match) =>
+                            !this.stores.activeMatchStoresById.has(match.id),
                         )
                       : []
                     stayingMatches = mountPending
@@ -2416,7 +2423,9 @@ export class RouterCore<
 
                     this.stores.isLoading.setState(() => false)
                     this.stores.loadedAt.setState(() => Date.now())
-                    this.stores.setActiveMatches(mountPending ? pendingMatches : previousMatches)
+                    this.stores.setActiveMatches(
+                      mountPending ? pendingMatches : previousMatches,
+                    )
                     this.stores.setPendingMatches([])
                     /**
                      * When committing new matches, cache any exiting matches that are still usable.

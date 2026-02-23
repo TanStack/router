@@ -46,12 +46,10 @@ describe('granular stores', () => {
     await router.navigate({ to: '/posts/123' })
 
     const activeMatches = router.state.matches
-    const pendingMatches = [...activeMatches]
-      .reverse()
-      .map((match, index) => ({
-        ...match,
-        id: `${match.id}__pending_${index}`,
-      }))
+    const pendingMatches = [...activeMatches].reverse().map((match, index) => ({
+      ...match,
+      id: `${match.id}__pending_${index}`,
+    }))
     const cachedMatches = [...activeMatches].map((match, index) => ({
       ...match,
       id: `${match.id}__cached_${index}`,
@@ -148,7 +146,9 @@ describe('granular stores', () => {
     )
 
     expect(router.stores.byId.state[duplicatedId]?.state.status).toBe('error')
-    expect(router.stores.pendingMatchesSnapshot.state[0]?.status).toBe('pending')
+    expect(router.stores.pendingMatchesSnapshot.state[0]?.status).toBe(
+      'pending',
+    )
     expect(router.stores.cachedMatchesSnapshot.state[0]?.status).toBe('success')
     expect(router.getMatch(duplicatedId)?.status).toBe('success')
   })
