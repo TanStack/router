@@ -660,8 +660,9 @@ export function useLinkProps<
     }
   }
 
-  const enqueueIntentPreload = (eventTarget: EventTarget) => {
-    if (!preload) return
+  const enqueueIntentPreload = (e: React.MouseEvent | React.FocusEvent) => {
+    if (disabled || !preload) return
+    const eventTarget = e.currentTarget
 
     if (!preloadDelay) {
       doPreload()
@@ -684,14 +685,9 @@ export function useLinkProps<
     doPreload()
   }
 
-  const handleEnter = (e: React.MouseEvent | React.FocusEvent) => {
-    if (disabled) return
-    enqueueIntentPreload(e.target)
-  }
-
   const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
     if (disabled || !preload || !preloadDelay) return
-    const eventTarget = e.target
+    const eventTarget = e.currentTarget
     const id = timeoutMap.get(eventTarget)
     if (id) {
       clearTimeout(id)
@@ -707,8 +703,8 @@ export function useLinkProps<
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onBlur: composeHandlers([onBlur, handleLeave]),
-    onFocus: composeHandlers([onFocus, handleEnter]),
-    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+    onFocus: composeHandlers([onFocus, enqueueIntentPreload]),
+    onMouseEnter: composeHandlers([onMouseEnter, enqueueIntentPreload]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,
