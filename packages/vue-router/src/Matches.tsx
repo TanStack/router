@@ -134,13 +134,13 @@ const MatchesInner = Vue.defineComponent({
       return Vue.h(CatchBoundary, {
         getResetKey: () => resetKey.value,
         errorComponent: errorComponentFn,
-        onCatch: (error: Error) => {
+        onCatch: process.env.NODE_ENV !== 'production' ? (error: Error) => {
           warning(
             false,
             `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
           )
           warning(false, error.message || error.toString())
-        },
+        } : undefined,
         children: childElement,
       })
     }

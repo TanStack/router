@@ -94,14 +94,14 @@ function MatchesInner() {
         <CatchBoundary
           getResetKey={() => resetKey()}
           errorComponent={ErrorComponent}
-          onCatch={(error) => {
+          onCatch={process.env.NODE_ENV !== 'production' ? (error) => {
             warning(
               false,
               `The following error wasn't caught by any route! At the very leas
     t, consider setting an 'errorComponent' in your RootRoute!`,
             )
             warning(false, error.message || error.toString())
-          }}
+          } : undefined}
         >
           {matchComponent()}
         </CatchBoundary>
