@@ -348,8 +348,9 @@ export function useLinkProps<
     }
   }
 
-  const enqueueIntentPreload = (eventTarget: LinkCurrentTargetElement) => {
-    if (!preload()) return
+  const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
+    if (local.disabled || !preload()) return
+    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       return
@@ -366,13 +367,6 @@ export function useLinkProps<
     if (preload()) {
       doPreload()
     }
-  }
-
-  const handleEnter = (e: MouseEvent | FocusEvent) => {
-    if (local.disabled) return
-    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
-
-    enqueueIntentPreload(eventTarget)
   }
 
   const handleLeave = (e: MouseEvent | FocusEvent) => {
@@ -445,9 +439,12 @@ export function useLinkProps<
         ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onBlur: composeEventHandlers([local.onBlur, handleLeave]),
-        onFocus: composeEventHandlers([local.onFocus, handleEnter]),
-        onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
-        onMouseOver: composeEventHandlers([local.onMouseOver, handleEnter]),
+        onFocus: composeEventHandlers([local.onFocus, enqueueIntentPreload]),
+        onMouseEnter: composeEventHandlers([
+          local.onMouseEnter,
+          enqueueIntentPreload,
+        ]),
+        onMouseOver: composeEventHandlers([local.onMouseOver, enqueueIntentPreload]),
         onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
         onMouseOut: composeEventHandlers([local.onMouseOut, handleLeave]),
         onTouchStart: composeEventHandlers([

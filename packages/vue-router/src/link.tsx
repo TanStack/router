@@ -358,8 +358,12 @@ export function useLinkProps<
     }
   }
 
-  const enqueueIntentPreload = (eventTarget: LinkCurrentTargetElement) => {
-    if (!preload.value) return
+  const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
+    if (options.disabled || !preload.value) return
+    // Use currentTarget (the element with the handler) instead of target (which may be a child)
+    const eventTarget = (e.currentTarget ||
+      e.target ||
+      {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       return
@@ -376,16 +380,6 @@ export function useLinkProps<
     if (preload.value) {
       doPreload()
     }
-  }
-
-  const handleEnter = (e: MouseEvent | FocusEvent) => {
-    if (options.disabled) return
-    // Use currentTarget (the element with the handler) instead of target (which may be a child)
-    const eventTarget = (e.currentTarget ||
-      e.target ||
-      {}) as LinkCurrentTargetElement
-
-    enqueueIntentPreload(eventTarget)
   }
 
   const handleLeave = (e: MouseEvent | FocusEvent) => {
@@ -497,15 +491,15 @@ export function useLinkProps<
     ]) as any,
     onFocus: composeEventHandlers<FocusEvent>([
       options.onFocus,
-      handleEnter,
+      enqueueIntentPreload,
     ]) as any,
     onMouseenter: composeEventHandlers<MouseEvent>([
       options.onMouseEnter,
-      handleEnter,
+      enqueueIntentPreload,
     ]) as any,
     onMouseover: composeEventHandlers<MouseEvent>([
       options.onMouseOver,
-      handleEnter,
+      enqueueIntentPreload,
     ]) as any,
     onMouseleave: composeEventHandlers<MouseEvent>([
       options.onMouseLeave,
