@@ -63,7 +63,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   })
 
   if (dehydratedRouter.lastMatchId) {
-    dehydratedRouter.lastMatchId = hydrateSsrMatchId(dehydratedRouter.lastMatchId)
+    dehydratedRouter.lastMatchId = hydrateSsrMatchId(
+      dehydratedRouter.lastMatchId,
+    )
   }
 
   router.ssr = {
@@ -123,7 +125,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
   matches.forEach((match) => {
-    const dehydratedMatch = dehydratedRouter.matches.find((d) => d.i === match.id)
+    const dehydratedMatch = dehydratedRouter.matches.find(
+      (d) => d.i === match.id,
+    )
     if (!dehydratedMatch) {
       match._nonReactive.dehydrated = false
       match.ssr = false
@@ -231,7 +235,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
-  const isSpaMode = matches[matches.length - 1]!.id !== dehydratedRouter.lastMatchId
+  const isSpaMode =
+    matches[matches.length - 1]!.id !== dehydratedRouter.lastMatchId
   const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
   // all matches have data from the server and we are not in SPA mode so we don't need to kick of router.load()
   if (!hasSsrFalseMatches && !isSpaMode) {
