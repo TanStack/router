@@ -1,7 +1,8 @@
 import * as Vue from 'vue'
+import { useStore } from '@tanstack/vue-store'
 import { isNotFound } from '@tanstack/router-core'
 import { CatchBoundary } from './CatchBoundary'
-import { useRouterState } from './useRouterState'
+import { useRouter } from './useRouter'
 import type { ErrorComponentProps, NotFoundError } from '@tanstack/router-core'
 
 export function CatchNotFound(props: {
@@ -9,10 +10,10 @@ export function CatchNotFound(props: {
   onCatch?: (error: Error) => void
   children: Vue.VNode
 }) {
+  const router = useRouter()
   // TODO: Some way for the user to programmatically reset the not-found boundary?
-  const resetKey = useRouterState({
-    select: (s) => `not-found-${s.location.pathname}-${s.status}`,
-  })
+  const pathname = useStore(router.stores.location, (location) => location.pathname)
+  const status = useStore(router.stores.status, (value) => value)
 
   // Create a function that returns a VNode to match the SyncRouteComponent signature
   const errorComponentFn = (componentProps: ErrorComponentProps) => {
@@ -32,7 +33,7 @@ export function CatchNotFound(props: {
   }
 
   return Vue.h(CatchBoundary, {
-    getResetKey: () => resetKey.value,
+    getResetKey: () => `not-found-${pathname.value}-${status.value}`,
     onCatch: (error: Error) => {
       if (isNotFound(error)) {
         if (props.onCatch) {

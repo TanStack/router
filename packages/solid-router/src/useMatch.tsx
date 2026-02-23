@@ -1,7 +1,14 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import { useRouterState } from './useRouterState'
-import { dummyMatchContext, matchContext } from './matchContext'
+import { useStore } from '@tanstack/solid-store'
+import {
+  dummyMatchContext,
+  dummyPendingMatchContext,
+  matchContext,
+  pendingMatchContext,
+} from './matchContext'
+import { useStoreOfStoresValue } from './storeOfStores'
+import { useRouter } from './useRouter'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -69,52 +76,56 @@ export function useMatch<
 ): Solid.Accessor<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
+  const router = useRouter<TRouter>()
   const nearestMatchId = Solid.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
+  const hasPendingNearestMatch = Solid.useContext(
+    opts.from ? dummyPendingMatchContext : pendingMatchContext,
+  )
 
-  // Create a signal to track error state separately from the match
-  const matchState: Solid.Accessor<{
-    match: any
-    shouldThrowError: boolean
-  }> = useRouterState({
-    select: (state: any) => {
-      const match = state.matches.find((d: any) =>
-        opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
-      )
-
-      if (match === undefined) {
-        // During navigation transitions, check if the match exists in pendingMatches
-        const pendingMatch = state.pendingMatches?.find((d: any) =>
-          opts.from ? opts.from === d.routeId : d.id === nearestMatchId(),
-        )
-
-        // Determine if we should throw an error
-        const shouldThrowError =
-          !pendingMatch && !state.isTransitioning && (opts.shouldThrow ?? true)
-
-        return { match: undefined, shouldThrowError }
-      }
-
-      return {
-        match: opts.select ? opts.select(match) : match,
-        shouldThrowError: false,
-      }
+  const activeMatchStore = useStore(
+    opts.from ? router.stores.byRouteId : router.stores.byId,
+    (stores) => {
+      const key = opts.from ?? nearestMatchId()
+      return key ? stores[key] : undefined
     },
-  } as any)
+    { equal: Object.is },
+  )
+  const hasPendingRouteMatch = opts.from
+    ? useStore(
+        router.stores.pendingByRouteId,
+        (stores) => Boolean(stores[opts.from as string]),
+        { equal: Object.is },
+      )
+    : undefined
+  const isTransitioning = useStore(
+    router.stores.isTransitioning,
+    (value) => value,
+    { equal: Object.is },
+  )
 
-  // Use createEffect to throw errors outside the reactive selector context
-  // This allows error boundaries to properly catch the errors
-  Solid.createEffect(() => {
-    const state = matchState()
-    if (state.shouldThrowError) {
+  const match = useStoreOfStoresValue(
+    () => activeMatchStore(),
+    (value) => value,
+  )
+
+  return Solid.createMemo(() => {
+    const selectedMatch = match()
+    if (selectedMatch === undefined) {
+      const hasPendingMatch = opts.from
+        ? Boolean(hasPendingRouteMatch?.())
+        : hasPendingNearestMatch()
+      const shouldThrowError =
+        !hasPendingMatch && !isTransitioning() && (opts.shouldThrow ?? true)
+
       invariant(
-        false,
+        !shouldThrowError,
         `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
       )
+      return undefined
     }
-  })
 
-  // Return an accessor that extracts just the match value
-  return Solid.createMemo(() => matchState().match) as any
+    return opts.select ? opts.select(selectedMatch as any) : selectedMatch
+  }) as any
 }

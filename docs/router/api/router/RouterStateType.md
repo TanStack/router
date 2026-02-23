@@ -11,7 +11,6 @@ type RouterState = {
   isLoading: boolean
   isTransitioning: boolean
   matches: Array<RouteMatch>
-  pendingMatches: Array<RouteMatch>
   location: ParsedLocation
   resolvedLocation: ParsedLocation
 }
@@ -40,11 +39,6 @@ The `RouterState` type contains all of the properties that are available on the 
 
 - Type: [`Array<RouteMatch>`](./RouteMatchType.md)
 - An array of all of the route matches that have been resolved and are currently active.
-
-### `pendingMatches` property
-
-- Type: [`Array<RouteMatch>`](./RouteMatchType.md)
-- An array of all of the route matches that are currently pending.
 
 ### `location` property
 

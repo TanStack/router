@@ -1,8 +1,8 @@
 import * as Vue from 'vue'
+import { useStore } from '@tanstack/vue-store'
 import warning from 'tiny-warning'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary } from './CatchBoundary'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
 import { matchContext } from './matchContext'
@@ -21,7 +21,6 @@ import type {
   ResolveRelativePath,
   ResolveRoute,
   RouteByPath,
-  RouterState,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
 
@@ -104,15 +103,8 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const matchId = useRouterState({
-      select: (s) => {
-        return s.matches[0]?.id
-      },
-    })
-
-    const resetKey = useRouterState({
-      select: (s) => s.loadedAt,
-    })
+    const matchId = useStore(router.stores.firstMatchId, (id) => id)
+    const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
 
     // Create a ref for the match id to provide
     const matchIdRef = Vue.computed(() => matchId.value)
@@ -165,15 +157,10 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  // Track state changes to trigger re-computation
-  // Use multiple state values like React does for complete reactivity
-  const routerState = useRouterState({
-    select: (s) => ({
-      locationHref: s.location.href,
-      resolvedLocationHref: s.resolvedLocation?.href,
-      status: s.status,
-    }),
-  })
+  const routerState = useStore(
+    router.stores.matchRouteReactivity,
+    (value) => value,
+  )
 
   return <
     const TFrom extends string = string,
@@ -272,9 +259,8 @@ export const MatchRoute = Vue.defineComponent({
     },
   },
   setup(props, { slots }) {
-    const status = useRouterState({
-      select: (s) => s.status,
-    })
+    const router = useRouter()
+    const status = useStore(router.stores.matchRouteReactivity, (value) => value.status)
 
     return () => {
       if (!status.value) return null
@@ -314,14 +300,12 @@ export function useMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
-  return useRouterState({
-    select: (state: RouterState<TRouter['routeTree']>) => {
-      const matches = state?.matches || []
-      return opts?.select
-        ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
-        : matches
-    },
-  } as any) as Vue.Ref<UseMatchesResult<TRouter, TSelected>>
+  const router = useRouter<TRouter>()
+  return useStore(router.stores.activeMatchesSnapshot, (matches) => {
+    return opts?.select
+      ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
+      : (matches as any)
+  }) as Vue.Ref<UseMatchesResult<TRouter, TSelected>>
 }
 
 export function useParentMatches<

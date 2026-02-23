@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useStore } from '@tanstack/react-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
@@ -10,7 +11,6 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
@@ -24,31 +24,107 @@ import type {
   RootRouteOptions,
 } from '@tanstack/router-core'
 
+function useActiveMatchStore(matchId: string, shouldThrow: boolean = true) {
+  const router = useRouter()
+
+  return useStore(router.stores.byId, (activeStores) => {
+    const store = activeStores[matchId]
+    if (shouldThrow) {
+      invariant(
+        store,
+        `Could not find match for matchId "${matchId}". Please file an issue!`,
+      )
+    }
+    return store
+  })
+}
+
 export const Match = React.memo(function MatchImpl({
   matchId,
 }: {
   matchId: string
 }) {
   const router = useRouter()
-  const matchState = useRouterState({
-    select: (s) => {
-      const matchIndex = s.matches.findIndex((d) => d.id === matchId)
-      const match = s.matches[matchIndex]
-      invariant(
-        match,
-        `Could not find match for matchId "${matchId}". Please file an issue!`,
-      )
-      return {
-        routeId: match.routeId,
-        ssr: match.ssr,
-        _displayPending: match._displayPending,
-        resetKey: s.loadedAt,
-        parentRouteId: s.matches[matchIndex - 1]?.routeId as string,
-      }
-    },
-    structuralSharing: true as any,
-  })
 
+  if (isServer ?? router.isServer) {
+    const match = router.stores.byId.state[matchId]?.state
+    invariant(
+      match,
+      `Could not find match for matchId "${matchId}". Please file an issue!`,
+    )
+
+    const matches = router.state.matches
+    const matchIndex = matches.findIndex((d) => d.id === matchId)
+    const parentRouteId =
+      matchIndex > 0 ? (matches[matchIndex - 1]?.routeId as string) : undefined
+
+    return (
+      <MatchView
+        router={router}
+        matchId={matchId}
+        resetKey={router.stores.loadedAt.state}
+        matchState={{
+          routeId: match.routeId as string,
+          ssr: match.ssr,
+          _displayPending: match._displayPending,
+          parentRouteId,
+        }}
+      />
+    )
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const matchStore = useActiveMatchStore(matchId)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const match = useStore(matchStore, (value) => value!)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const parentMatchId = useStore(router.stores.matchesId, (ids) => {
+    return ids[ids.findIndex((id) => id === matchId) - 1]
+  })
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const matchState = React.useMemo(() => {
+    const parentRouteId = parentMatchId
+      ? router.stores.byId.state[parentMatchId]?.state.routeId
+      : undefined
+
+    return {
+      routeId: match.routeId as string,
+      ssr: match.ssr,
+      _displayPending: match._displayPending,
+      parentRouteId: parentRouteId as string | undefined,
+    } satisfies MatchViewState
+  }, [parentMatchId, match, router.stores.byId.state])
+
+  return (
+    <MatchView
+      router={router}
+      matchId={matchId}
+      resetKey={resetKey}
+      matchState={matchState}
+    />
+  )
+})
+
+type MatchViewState = {
+  routeId: string
+  ssr: boolean | 'data-only' | undefined
+  _displayPending: boolean | undefined
+  parentRouteId: string | undefined
+}
+
+function MatchView({
+  router,
+  matchId,
+  resetKey,
+  matchState,
+}: {
+  router: ReturnType<typeof useRouter>
+  matchId: string
+  resetKey: number
+  matchState: MatchViewState
+}) {
   const route: AnyRoute = router.routesById[matchState.routeId]
 
   const PendingComponent =
@@ -94,7 +170,7 @@ export const Match = React.memo(function MatchImpl({
       <matchContext.Provider value={matchId}>
         <ResolvedSuspenseBoundary fallback={pendingElement}>
           <ResolvedCatchBoundary
-            getResetKey={() => matchState.resetKey}
+            getResetKey={() => resetKey}
             errorComponent={routeErrorComponent || ErrorComponent}
             onCatch={(error, errorInfo) => {
               // Forward not found errors (we don't want to show the error component for these)
@@ -137,7 +213,7 @@ export const Match = React.memo(function MatchImpl({
       ) : null}
     </ShellComponent>
   )
-})
+}
 
 // On Rendered can't happen above the root layout because it actually
 // renders a dummy dom element to track the rendered state of the app.
@@ -181,40 +257,97 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 }): any {
   const router = useRouter()
 
-  const { match, key, routeId } = useRouterState({
-    select: (s) => {
-      const match = s.matches.find((d) => d.id === matchId)!
-      const routeId = match.routeId as string
+  if (isServer ?? router.isServer) {
+    const match = router.stores.byId.state[matchId]?.state
+    invariant(
+      match,
+      `Could not find match for matchId "${matchId}". Please file an issue!`,
+    )
 
-      const remountFn =
-        (router.routesById[routeId] as AnyRoute).options.remountDeps ??
-        router.options.defaultRemountDeps
-      const remountDeps = remountFn?.({
-        routeId,
-        loaderDeps: match.loaderDeps,
-        params: match._strictParams,
-        search: match._strictSearch,
-      })
-      const key = remountDeps ? JSON.stringify(remountDeps) : undefined
+    const routeId = match.routeId as string
+    const route = router.routesById[routeId] as AnyRoute
+    const remountFn =
+      (router.routesById[routeId] as AnyRoute).options.remountDeps ??
+      router.options.defaultRemountDeps
+    const remountDeps = remountFn?.({
+      routeId,
+      loaderDeps: match.loaderDeps,
+      params: match._strictParams,
+      search: match._strictSearch,
+    })
+    const key = remountDeps ? JSON.stringify(remountDeps) : undefined
+    const Comp = route.options.component ?? router.options.defaultComponent
+    const out = Comp ? <Comp key={key} /> : <Outlet />
 
-      return {
-        key,
-        routeId,
-        match: {
-          id: match.id,
-          status: match.status,
-          error: match.error,
-          invalid: match.invalid,
-          _forcePending: match._forcePending,
-          _displayPending: match._displayPending,
-        },
-      }
-    },
-    structuralSharing: true as any,
-  })
+    if (match._displayPending) {
+      throw router.getMatch(match.id)?._nonReactive.displayPendingPromise
+    }
 
+    if (match._forcePending) {
+      throw router.getMatch(match.id)?._nonReactive.minPendingPromise
+    }
+
+    if (match.status === 'pending') {
+      throw router.getMatch(match.id)?._nonReactive.loadPromise
+    }
+
+    if (match.status === 'notFound') {
+      invariant(isNotFound(match.error), 'Expected a notFound error')
+      return renderRouteNotFound(router, route, match.error)
+    }
+
+    if (match.status === 'redirected') {
+      invariant(isRedirect(match.error), 'Expected a redirect error')
+      throw router.getMatch(match.id)?._nonReactive.loadPromise
+    }
+
+    if (match.status === 'error') {
+      const RouteErrorComponent =
+        (route.options.errorComponent ??
+          router.options.defaultErrorComponent) ||
+        ErrorComponent
+      return (
+        <RouteErrorComponent
+          error={match.error as any}
+          reset={undefined as any}
+          info={{
+            componentStack: '',
+          }}
+        />
+      )
+    }
+
+    return out
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const matchStore = useActiveMatchStore(matchId)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const match = useStore(matchStore, (value) => value!)
+  const routeId = match.routeId as string
   const route = router.routesById[routeId] as AnyRoute
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const key = React.useMemo(() => {
+    const remountFn =
+      (router.routesById[routeId] as AnyRoute).options.remountDeps ??
+      router.options.defaultRemountDeps
+    const remountDeps = remountFn?.({
+      routeId,
+      loaderDeps: match.loaderDeps,
+      params: match._strictParams,
+      search: match._strictSearch,
+    })
+    return remountDeps ? JSON.stringify(remountDeps) : undefined
+  }, [
+    routeId,
+    match.loaderDeps,
+    match._strictParams,
+    match._strictSearch,
+    router.options.defaultRemountDeps,
+    router.routesById,
+  ])
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const out = React.useMemo(() => {
     const Comp = route.options.component ?? router.options.defaultComponent
     if (Comp) {
@@ -310,37 +443,54 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 export const Outlet = React.memo(function OutletImpl() {
   const router = useRouter()
   const matchId = React.useContext(matchContext)
-  const routeId = useRouterState({
-    select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
-  })
 
-  const route = router.routesById[routeId]!
+  let routeId: string | undefined
+  let parentGlobalNotFound = false
+  let childMatchId: string | undefined
 
-  const parentGlobalNotFound = useRouterState({
-    select: (s) => {
-      const matches = s.matches
-      const parentMatch = matches.find((d) => d.id === matchId)
-      invariant(
-        parentMatch,
-        `Could not find parent match for matchId "${matchId}"`,
-      )
-      return parentMatch.globalNotFound
-    },
-  })
+  if (isServer ?? router.isServer) {
+    const matches = router.state.matches
+    const parentIndex = matchId
+      ? matches.findIndex((match) => match.id === matchId)
+      : -1
+    const parentMatch = parentIndex >= 0 ? matches[parentIndex] : undefined
+    routeId = parentMatch?.routeId as string | undefined
+    parentGlobalNotFound = parentMatch?.globalNotFound ?? false
+    childMatchId =
+      parentIndex >= 0 ? (matches[parentIndex + 1]?.id as string) : undefined
+  } else {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const parentMatchStore = useStore(router.stores.byId, (stores) =>
+      matchId ? stores[matchId] : undefined,
+    )
 
-  const childMatchId = useRouterState({
-    select: (s) => {
-      const matches = s.matches
-      const index = matches.findIndex((d) => d.id === matchId)
-      return matches[index + 1]?.id
-    },
-  })
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    routeId = useStore(
+      parentMatchStore,
+      (match) => match?.routeId as string | undefined,
+    )
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    parentGlobalNotFound = useStore(
+      parentMatchStore,
+      (match) => match?.globalNotFound ?? false,
+    )
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    childMatchId = useStore(router.stores.matchesId, (ids) => {
+      const index = ids.findIndex((id) => id === matchId)
+      return ids[index + 1]
+    })
+  }
+
+  const route = routeId ? router.routesById[routeId] : undefined
 
   const pendingElement = router.options.defaultPendingComponent ? (
     <router.options.defaultPendingComponent />
   ) : null
 
   if (parentGlobalNotFound) {
+    invariant(route, 'Could not resolve route for Outlet render')
     return renderRouteNotFound(router, route, undefined)
   }
 

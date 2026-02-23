@@ -262,7 +262,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   //     // console.log('mutation observer restoreScroll')
   //     restoreScroll(
   //       storageKey,
-  //       getKey(router.state.location),
+  //       getKey(router.stores.location.state),
   //       router.options.scrollRestorationBehavior,
   //     )
   //   })
@@ -306,7 +306,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       }
     }
 
-    const restoreKey = getKey(router.state.location)
+    const restoreKey = getKey(router.stores.location.state)
 
     scrollRestorationCache.set((state) => {
       const keyEntry = (state[restoreKey] ||= {} as ScrollRestorationByElement)
@@ -389,11 +389,12 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
  */
 export function handleHashScroll(router: AnyRouter) {
   if (typeof document !== 'undefined' && (document as any).querySelector) {
+    const location = router.stores.location.state
     const hashScrollIntoViewOptions =
-      router.state.location.state.__hashScrollIntoViewOptions ?? true
+      location.state.__hashScrollIntoViewOptions ?? true
 
-    if (hashScrollIntoViewOptions && router.state.location.hash !== '') {
-      const el = document.getElementById(router.state.location.hash)
+    if (hashScrollIntoViewOptions && location.hash !== '') {
+      const el = document.getElementById(location.hash)
       if (el) {
         el.scrollIntoView(hashScrollIntoViewOptions)
       }

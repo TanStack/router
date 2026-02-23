@@ -102,6 +102,7 @@ function NavigateLink(props: {
 
 function RouteComp({
   routerState,
+  pendingMatches,
   router,
   route,
   isRoot,
@@ -133,6 +134,7 @@ function RouteComp({
       MakeRouteMatchUnion
     >
   >
+  pendingMatches: Accessor<Array<AnyRouteMatch>>
   router: Accessor<AnyRouter>
   route: AnyRoute
   isRoot?: boolean
@@ -140,8 +142,8 @@ function RouteComp({
   setActiveId: (id: string) => void
 }) {
   const styles = useStyles()
-  const matches = createMemo(
-    () => routerState().pendingMatches || routerState().matches,
+  const matches = createMemo(() =>
+    pendingMatches().length ? pendingMatches() : routerState().matches,
   )
   const match = createMemo(() =>
     routerState().matches.find((d) => d.routeId === route.id),
@@ -231,6 +233,7 @@ function RouteComp({
             .map((r) => (
               <RouteComp
                 routerState={routerState}
+                pendingMatches={pendingMatches}
                 router={router}
                 route={r}
                 activeId={activeId}
@@ -278,7 +281,29 @@ export const BaseTanStackRouterDevtoolsPanel =
     )
 
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
+    const [pendingMatches, setPendingMatches] = createSignal<Array<AnyRouteMatch>>(
+      [],
+    )
+    const [cachedMatches, setCachedMatches] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
+
+    createEffect(() => {
+      const pendingMatchesStore = router().stores.pendingMatchesSnapshot
+      setPendingMatches(pendingMatchesStore.state)
+      const subscription = pendingMatchesStore.subscribe(() => {
+        setPendingMatches(pendingMatchesStore.state)
+      })
+      onCleanup(() => subscription.unsubscribe())
+    })
+
+    createEffect(() => {
+      const cachedMatchesStore = router().stores.cachedMatchesSnapshot
+      setCachedMatches(cachedMatchesStore.state)
+      const subscription = cachedMatchesStore.subscribe(() => {
+        setCachedMatches(cachedMatchesStore.state)
+      })
+      onCleanup(() => subscription.unsubscribe())
+    })
 
     createEffect(() => {
       const matches = routerState().matches
@@ -309,9 +334,9 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const activeMatch = createMemo(() => {
       const matches = [
-        ...(routerState().pendingMatches ?? []),
+        ...pendingMatches(),
         ...routerState().matches,
-        ...routerState().cachedMatches,
+        ...cachedMatches(),
       ]
       return matches.find(
         (d) => d.routeId === activeId() || d.id === activeId(),
@@ -512,6 +537,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <Match when={currentTab() === 'routes'}>
                   <RouteComp
                     routerState={routerState}
+                    pendingMatches={pendingMatches}
                     router={router}
                     route={router().routeTree}
                     isRoot
@@ -521,10 +547,10 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </Match>
                 <Match when={currentTab() === 'matches'}>
                   <div>
-                    {(routerState().pendingMatches?.length
-                      ? routerState().pendingMatches
+                    {(pendingMatches().length
+                      ? pendingMatches()
                       : routerState().matches
-                    )?.map((match: any, _i: any) => {
+                    ).map((match: any, _i: any) => {
                       return (
                         <div
                           role="button"
@@ -608,7 +634,7 @@ export const BaseTanStackRouterDevtoolsPanel =
               </Switch>
             </div>
           </div>
-          {routerState().cachedMatches.length ? (
+          {cachedMatches().length ? (
             <div class={styles().cachedMatchesContainer}>
               <div class={styles().detailsHeader}>
                 <div>Cached Matches</div>
@@ -617,7 +643,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 </div>
               </div>
               <div>
-                {routerState().cachedMatches.map((match: any) => {
+                {cachedMatches().map((match: any) => {
                   return (
                     <div
                       role="button"
@@ -679,9 +705,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {routerState().pendingMatches?.find(
-                      (d: any) => d.id === activeMatch()?.id,
-                    )
+                    {pendingMatches().find((d) => d.id === activeMatch()?.id)
                       ? 'Pending'
                       : routerState().matches.find(
                             (d: any) => d.id === activeMatch()?.id,

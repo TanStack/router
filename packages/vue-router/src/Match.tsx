@@ -1,4 +1,5 @@
 import * as Vue from 'vue'
+import { useStore } from '@tanstack/vue-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
@@ -11,12 +12,12 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
-import { matchContext } from './matchContext'
+import { matchContext, pendingMatchContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
+import { useStoreOfStoresValue } from './storeOfStores'
 import type { VNode } from 'vue'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
@@ -31,48 +32,68 @@ export const Match = Vue.defineComponent({
   setup(props) {
     const router = useRouter()
 
-    // Track the last known routeId to handle stale props during same-route transitions
-    let lastKnownRouteId: string | null = null
+    // Track the last known routeId to handle stale props during same-route transitions.
+    const lastKnownRouteId = Vue.shallowRef<string | undefined>(undefined)
+    const activeMatchStore = useStore(
+      router.stores.byId,
+      (stores) => stores[props.matchId],
+      { equal: Object.is },
+    )
+    const fallbackMatchStore = useStore(
+      router.stores.byRouteId,
+      (stores) => {
+        const routeId = lastKnownRouteId.value
+        return routeId ? stores[routeId] : undefined
+      },
+      { equal: Object.is },
+    )
+    const selectedMatchStore = Vue.computed(
+      () => activeMatchStore.value ?? fallbackMatchStore.value,
+    )
+    const activeMatch = useStoreOfStoresValue(
+      selectedMatchStore,
+      (value) => value,
+    )
+    const activeMatchIds = useStore(router.stores.matchesId, (ids) => ids)
+    const pendingMatchIds = useStore(
+      router.stores.pendingMatchesId,
+      (ids) => ids,
+    )
+    const loadedAt = useStore(router.stores.loadedAt, (value) => value)
+
+    Vue.watchEffect(() => {
+      const match = activeMatch.value
+      if (match) {
+        lastKnownRouteId.value = match.routeId as string
+      }
+    })
 
     // Combined selector that returns all needed data including the actual matchId
     // This handles stale props.matchId during same-route transitions
-    const matchData = useRouterState({
-      select: (s) => {
-        // First try to find match by props.matchId
-        let match = s.matches.find((d) => d.id === props.matchId)
-        let matchIndex = match
-          ? s.matches.findIndex((d) => d.id === props.matchId)
-          : -1
+    const matchData = Vue.computed(() => {
+      const match = activeMatch.value
+      if (!match) {
+        return null
+      }
 
-        // If match found, update lastKnownRouteId
-        if (match) {
-          lastKnownRouteId = match.routeId as string
-        } else if (lastKnownRouteId) {
-          // Match not found - props.matchId might be stale during a same-route transition
-          // Try to find the NEW match by routeId
-          match = s.matches.find((d) => d.routeId === lastKnownRouteId)
-          matchIndex = match
-            ? s.matches.findIndex((d) => d.routeId === lastKnownRouteId)
-            : -1
-        }
+      const routeId = match.routeId as string
+      const matchIndex = activeMatchIds.value.findIndex((id) => id === match.id)
+      const parentMatchId =
+        matchIndex > 0 ? activeMatchIds.value[matchIndex - 1] : undefined
+      const parentRouteId =
+        parentMatchId
+          ? ((router.stores.byId.state[parentMatchId]?.state.routeId as string) ??
+            null)
+          : null
 
-        if (!match) {
-          return null
-        }
-
-        const routeId = match.routeId as string
-        const parentRouteId =
-          matchIndex > 0 ? (s.matches[matchIndex - 1]?.routeId as string) : null
-
-        return {
-          matchId: match.id, // Return the actual matchId (may differ from props.matchId)
-          routeId,
-          parentRouteId,
-          loadedAt: s.loadedAt,
-          ssr: match.ssr,
-          _displayPending: match._displayPending,
-        }
-      },
+      return {
+        matchId: match.id, // Return the actual matchId (may differ from props.matchId)
+        routeId,
+        parentRouteId,
+        loadedAt: loadedAt.value,
+        ssr: match.ssr,
+        _displayPending: match._displayPending,
+      }
     })
 
     invariant(
@@ -139,8 +160,13 @@ export const Match = Vue.defineComponent({
       { immediate: true },
     )
 
+    const isPendingMatchRef = Vue.computed(() =>
+      pendingMatchIds.value.includes(matchIdRef.value),
+    )
+
     // Provide the matchId to child components
     Vue.provide(matchContext, matchIdRef)
+    Vue.provide(pendingMatchContext, isPendingMatchRef)
 
     return (): VNode => {
       // Use the actual matchId from matchData, not props (which may be stale)
@@ -245,11 +271,10 @@ const OnRendered = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const location = useRouterState({
-      select: (s) => {
-        return s.resolvedLocation?.state.key
-      },
-    })
+    const location = useStore(
+      router.stores.resolvedLocation,
+      (resolvedLocation) => resolvedLocation?.state.key,
+    )
 
     Vue.watchEffect(() => {
       if (location.value) {
@@ -274,69 +299,74 @@ export const MatchInner = Vue.defineComponent({
   },
   setup(props) {
     const router = useRouter()
+    const lastKnownRouteId = Vue.shallowRef<string | undefined>(undefined)
+    const activeMatchStore = useStore(
+      router.stores.byId,
+      (stores) => stores[props.matchId],
+      { equal: Object.is },
+    )
+    const fallbackMatchStore = useStore(
+      router.stores.byRouteId,
+      (stores) => {
+        const routeId = lastKnownRouteId.value
+        return routeId ? stores[routeId] : undefined
+      },
+      { equal: Object.is },
+    )
+    const selectedMatchStore = Vue.computed(
+      () => activeMatchStore.value ?? fallbackMatchStore.value,
+    )
+    const activeMatch = useStoreOfStoresValue(
+      selectedMatchStore,
+      (value) => value,
+    )
 
-    // Track the last known routeId to handle stale props during same-route transitions
-    // This is stored outside the selector so it persists across selector calls
-    let lastKnownRouteId: string | null = null
+    Vue.watchEffect(() => {
+      const match = activeMatch.value
+      if (match) {
+        lastKnownRouteId.value = match.routeId as string
+      }
+    })
 
     // Combined selector for match state AND remount key
     // This ensures both are computed in the same selector call with consistent data
-    const combinedState = useRouterState({
-      select: (s) => {
-        // First try to find match by props.matchId
-        let match = s.matches.find((d) => d.id === props.matchId)
+    const combinedState = Vue.computed(() => {
+      const match = activeMatch.value
+      if (!match) {
+        // Route no longer exists - truly navigating away
+        return null
+      }
 
-        // If match found, update lastKnownRouteId
-        if (match) {
-          lastKnownRouteId = match.routeId as string
-        } else if (lastKnownRouteId) {
-          // Match not found - props.matchId might be stale during a same-route transition
-          // (matchId changed due to loaderDepsHash but props haven't updated yet)
-          // Try to find the NEW match by routeId and use that instead
-          const sameRouteMatch = s.matches.find(
-            (d) => d.routeId === lastKnownRouteId,
-          )
-          if (sameRouteMatch) {
-            match = sameRouteMatch
-          }
-        }
+      const routeId = match.routeId as string
 
-        if (!match) {
-          // Route no longer exists - truly navigating away
-          return null
-        }
+      // Compute remount key
+      const remountFn =
+        (router.routesById[routeId] as AnyRoute).options.remountDeps ??
+        router.options.defaultRemountDeps
 
-        const routeId = match.routeId as string
-
-        // Compute remount key
-        const remountFn =
-          (router.routesById[routeId] as AnyRoute).options.remountDeps ??
-          router.options.defaultRemountDeps
-
-        let remountKey: string | undefined
-        if (remountFn) {
-          const remountDeps = remountFn({
-            routeId,
-            loaderDeps: match.loaderDeps,
-            params: match._strictParams,
-            search: match._strictSearch,
-          })
-          remountKey = remountDeps ? JSON.stringify(remountDeps) : undefined
-        }
-
-        return {
+      let remountKey: string | undefined
+      if (remountFn) {
+        const remountDeps = remountFn({
           routeId,
-          match: {
-            id: match.id,
-            status: match.status,
-            error: match.error,
-            ssr: match.ssr,
-            _forcePending: match._forcePending,
-            _displayPending: match._displayPending,
-          },
-          remountKey,
-        }
-      },
+          loaderDeps: match.loaderDeps,
+          params: match._strictParams,
+          search: match._strictSearch,
+        })
+        remountKey = remountDeps ? JSON.stringify(remountDeps) : undefined
+      }
+
+      return {
+        routeId,
+        match: {
+          id: match.id,
+          status: match.status,
+          error: match.error,
+          ssr: match.ssr,
+          _forcePending: match._forcePending,
+          _displayPending: match._displayPending,
+        },
+        remountKey,
+      }
     })
 
     const route = Vue.computed(() => {
@@ -462,47 +492,67 @@ export const Outlet = Vue.defineComponent({
     const router = useRouter()
     const matchId = Vue.inject(matchContext)
     const safeMatchId = Vue.computed(() => matchId?.value || '')
+    const activeMatchIds = useStore(router.stores.matchesId, (ids) => ids)
+    const parentMatchStore = useStore(
+      router.stores.byId,
+      (stores) => {
+        const id = safeMatchId.value
+        return id ? stores[id] : undefined
+      },
+      { equal: Object.is },
+    )
 
-    const routeId = useRouterState({
-      select: (s) =>
-        s.matches.find((d) => d.id === safeMatchId.value)?.routeId as string,
+    const routeId = useStoreOfStoresValue(
+      parentMatchStore,
+      (parentMatch) => parentMatch?.routeId as string | undefined,
+    )
+
+    const route = Vue.computed(() =>
+      routeId.value ? router.routesById[routeId.value]! : undefined,
+    )
+
+    const parentGlobalNotFound = useStoreOfStoresValue(
+      parentMatchStore,
+      (parentMatch) => parentMatch?.globalNotFound ?? false,
+    )
+
+    const childMatchId = Vue.computed(() => {
+      const index = activeMatchIds.value.findIndex((id) => id === safeMatchId.value)
+      return activeMatchIds.value[index + 1]
     })
 
-    const route = Vue.computed(() => router.routesById[routeId.value]!)
-
-    const parentGlobalNotFound = useRouterState({
-      select: (s) => {
-        const matches = s.matches
-        const parentMatch = matches.find((d) => d.id === safeMatchId.value)
-
-        // During navigation transitions, parent match can be temporarily removed
-        // Return false to avoid errors - the component will handle this gracefully
-        if (!parentMatch) {
-          return false
-        }
-
-        return parentMatch.globalNotFound
+    const childMatchStore = useStore(
+      router.stores.byId,
+      (stores) => {
+        const id = childMatchId.value
+        return id ? stores[id] : undefined
       },
-    })
+      { equal: Object.is },
+    )
 
-    const childMatchData = useRouterState({
-      select: (s) => {
-        const matches = s.matches
-        const index = matches.findIndex((d) => d.id === safeMatchId.value)
-        const child = matches[index + 1]
-        if (!child) return null
-        return {
-          id: child.id,
-          // Key based on routeId + params only (not loaderDeps)
-          // This ensures component recreates when params change,
-          // but NOT when only loaderDeps change
-          paramsKey: child.routeId + JSON.stringify(child._strictParams),
-        }
-      },
+    const childMatch = useStoreOfStoresValue(
+      childMatchStore,
+      (value) => value,
+    )
+
+    const childMatchData = Vue.computed(() => {
+      const child = childMatch.value
+      if (!child) return null
+
+      return {
+        id: child.id,
+        // Key based on routeId + params only (not loaderDeps)
+        // This ensures component recreates when params change,
+        // but NOT when only loaderDeps change
+        paramsKey: child.routeId + JSON.stringify(child._strictParams),
+      }
     })
 
     return (): VNode | null => {
       if (parentGlobalNotFound.value) {
+        if (!route.value) {
+          return null
+        }
         return renderRouteNotFound(router, route.value, undefined)
       }
 
