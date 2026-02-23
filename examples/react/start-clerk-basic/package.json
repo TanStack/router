@@ -13,7 +13,7 @@
     "@clerk/tanstack-react-start": "^0.27.14",
     "@tanstack/react-router": "^1.162.6",
     "@tanstack/react-router-devtools": "^1.162.6",
-    "@tanstack/react-start": "^1.162.6",
+    "@tanstack/react-start": "^1.162.7",
     "@vitejs/plugin-react": "^4.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
