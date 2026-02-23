@@ -350,7 +350,9 @@ export function useLinkProps<
 
   const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
     if (local.disabled || !preload()) return
-    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget ||
+      e.target ||
+      {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       return
@@ -371,7 +373,9 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent | FocusEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget ||
+      e.target ||
+      {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       clearTimeout(eventTarget.preloadTimeout)
@@ -444,7 +448,10 @@ export function useLinkProps<
           local.onMouseEnter,
           enqueueIntentPreload,
         ]),
-        onMouseOver: composeEventHandlers([local.onMouseOver, enqueueIntentPreload]),
+        onMouseOver: composeEventHandlers([
+          local.onMouseOver,
+          enqueueIntentPreload,
+        ]),
         onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
         onMouseOut: composeEventHandlers([local.onMouseOut, handleLeave]),
         onTouchStart: composeEventHandlers([
