@@ -351,14 +351,17 @@ export function useLinkProps<
 
   const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
     if (local.disabled || !preload()) return
-    const eventTarget = (e.currentTarget || e.target)
+    const eventTarget = e.currentTarget || e.target
 
     if (!eventTarget || timeoutMap.has(eventTarget)) return
 
-    timeoutMap.set(eventTarget, setTimeout(() => {
-      timeoutMap.delete(eventTarget)
-      doPreload()
-    }, preloadDelay()))
+    timeoutMap.set(
+      eventTarget,
+      setTimeout(() => {
+        timeoutMap.delete(eventTarget)
+        doPreload()
+      }, preloadDelay()),
+    )
   }
 
   const handleTouchStart = (_: TouchEvent) => {
@@ -370,7 +373,7 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent | FocusEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.currentTarget || e.target)
+    const eventTarget = e.currentTarget || e.target
 
     if (eventTarget) {
       const id = timeoutMap.get(eventTarget)
