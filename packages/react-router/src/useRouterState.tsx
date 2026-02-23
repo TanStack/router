@@ -69,7 +69,7 @@ export function useRouterState<
     useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  return useStore(router.__store, (state) => {
+  return useStore(router.stores.__store, (state) => {
     if (opts?.select) {
       if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
         const newSlice = replaceEqualDeep(

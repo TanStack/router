@@ -1,8 +1,7 @@
 import { isNotFound } from '@tanstack/router-core'
-import { useStore } from '@tanstack/solid-store'
+import * as Solid from 'solid-js'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
-import type * as Solid from 'solid-js'
 import type { NotFoundError } from '@tanstack/router-core'
 
 export function CatchNotFound(props: {
@@ -12,8 +11,8 @@ export function CatchNotFound(props: {
 }) {
   const router = useRouter()
   // TODO: Some way for the user to programmatically reset the not-found boundary?
-  const pathname = useStore(router.stores.location, (location) => location.pathname)
-  const status = useStore(router.stores.status, (value) => value)
+  const pathname = Solid.createMemo(() => router.stores.location.state.pathname)
+  const status = Solid.createMemo(() => router.stores.status.state)
 
   return (
     <CatchBoundary

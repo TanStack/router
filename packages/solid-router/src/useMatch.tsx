@@ -1,6 +1,5 @@
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
-import { useStore } from '@tanstack/solid-store'
 import {
   dummyMatchContext,
   dummyPendingMatchContext,
@@ -84,25 +83,20 @@ export function useMatch<
     opts.from ? dummyPendingMatchContext : pendingMatchContext,
   )
 
-  const activeMatchStore = useStore(
-    opts.from ? router.stores.byRouteId : router.stores.byId,
-    (stores) => {
-      const key = opts.from ?? nearestMatchId()
-      return key ? stores[key] : undefined
-    },
-    { equal: Object.is },
-  )
+  const activeMatchStore = Solid.createMemo(() => {
+    const stores = opts.from
+      ? router.stores.byRouteId.state
+      : router.stores.byId.state
+    const key = opts.from ?? nearestMatchId()
+    return key ? stores[key] : undefined
+  })
   const hasPendingRouteMatch = opts.from
-    ? useStore(
-        router.stores.pendingByRouteId,
-        (stores) => Boolean(stores[opts.from as string]),
-        { equal: Object.is },
+    ? Solid.createMemo(() =>
+        Boolean(router.stores.pendingByRouteId.state[opts.from as string]),
       )
     : undefined
-  const isTransitioning = useStore(
-    router.stores.isTransitioning,
-    (value) => value,
-    { equal: Object.is },
+  const isTransitioning = Solid.createMemo(
+    () => router.stores.isTransitioning.state,
   )
 
   const match = useStoreOfStoresValue(
@@ -110,9 +104,14 @@ export function useMatch<
     (value) => value,
   )
 
-  return Solid.createMemo(() => {
+  return Solid.createMemo((previous) => {
     const selectedMatch = match()
     if (selectedMatch === undefined) {
+      // TODO (injectable stores) why do we return the previous here? That doesn't seem super safe, what if the `select` function reads other signals, then we wouldn't re-run it on changes to those signals.
+      if (previous !== undefined) {
+        return previous
+      }
+
       const hasPendingMatch = opts.from
         ? Boolean(hasPendingRouteMatch?.())
         : hasPendingNearestMatch()

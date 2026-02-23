@@ -1,10 +1,9 @@
-import { useStore } from '@tanstack/solid-store'
+import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
 
 export function useCanGoBack() {
   const router = useRouter()
-  return useStore(
-    router.stores.location,
-    (location) => location.state.__TSR_index !== 0,
+  return Solid.createMemo(
+    () => router.stores.location.state.state.__TSR_index !== 0,
   )
 }

@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
-import { useStore } from '@tanstack/vue-store'
 import warning from 'tiny-warning'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useStore } from './store'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
@@ -260,7 +260,10 @@ export const MatchRoute = Vue.defineComponent({
   },
   setup(props, { slots }) {
     const router = useRouter()
-    const status = useStore(router.stores.matchRouteReactivity, (value) => value.status)
+    const status = useStore(
+      router.stores.matchRouteReactivity,
+      (value) => value.status,
+    )
 
     return () => {
       if (!status.value) return null

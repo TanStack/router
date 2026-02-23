@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js'
-import { useStore } from '@tanstack/solid-store'
 
 import { mergeRefs } from '@solid-primitives/refs'
 
@@ -121,15 +120,9 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  const currentLocation = useStore(router.stores.location, (location) => ({
-    pathname: location.pathname,
-    search: location.search,
-    hash: location.hash,
-  }))
-  const currentSearch = useStore(
-    router.stores.location,
-    (location) => location.searchStr,
-    { equal: Object.is },
+  const currentLocation = Solid.createMemo(() => router.stores.location.state)
+  const currentSearch = Solid.createMemo(
+    () => router.stores.location.state.searchStr,
   )
 
   const from = options.from
@@ -143,7 +136,8 @@ export function useLinkProps<
 
   const next = Solid.createMemo(() => {
     currentSearch()
-    return router.buildLocation(_options() as any)
+    // TODO (injectable stores) why do we need to untrack here? It wasn't here before
+    return Solid.untrack(() => router.buildLocation(_options() as any))
   })
 
   const hrefOption = Solid.createMemo(() => {

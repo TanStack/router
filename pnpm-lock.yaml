@@ -11887,9 +11887,6 @@ importers:
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
-      '@tanstack/store':
-        specifier: ^0.9.1
-        version: 0.9.1
       cookie-es:
         specifier: ^2.0.0
         version: 2.0.0
@@ -11906,6 +11903,9 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
     devDependencies:
+      '@tanstack/store':
+        specifier: ^0.9.1
+        version: 0.9.1
       esbuild:
         specifier: ^0.25.0
         version: 0.25.4
@@ -12155,9 +12155,6 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      '@tanstack/solid-store':
-        specifier: ^0.9.1
-        version: 0.9.1(solid-js@1.9.10)
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
@@ -12559,9 +12556,9 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
-      '@tanstack/vue-store':
+      '@tanstack/store':
         specifier: ^0.9.1
-        version: 0.9.1(vue@3.5.25(typescript@5.9.3))
+        version: 0.9.1
       '@vue/runtime-dom':
         specifier: ^3.5.25
         version: 3.5.25
@@ -17723,11 +17720,6 @@ packages:
     peerDependencies:
       solid-js: 1.9.10
 
-  '@tanstack/solid-store@0.9.1':
-    resolution: {integrity: sha512-gx7ToM+Yrkui36NIj0HjAufzv1Dg8usjtVFy5H3Ll52Xjuz+eliIJL+ihAr4LRuWh3nDPBR+nCLW0ShFrbE5yw==}
-    peerDependencies:
-      solid-js: 1.9.10
-
   '@tanstack/solid-virtual@3.13.12':
     resolution: {integrity: sha512-0dS8GkBTmbuM9cUR6Jni0a45eJbd32CAEbZj8HrZMWIj3lu974NpGz5ywcomOGJ9GdeHuDaRzlwtonBbKV1ihQ==}
     peerDependencies:
@@ -17779,15 +17771,6 @@ packages:
     peerDependencies:
       '@vue/composition-api': ^1.1.2
       vue: ^2.6.0 || ^3.3.0
-    peerDependenciesMeta:
-      '@vue/composition-api':
-        optional: true
-
-  '@tanstack/vue-store@0.9.1':
-    resolution: {integrity: sha512-mXXZzPWom656MExX2gG1fqopJhToDbqGEl98WtJ5/hyouQHtQXiAgtsPNLzUcVcwU9okM/OCWv7QAgXf6C5ziQ==}
-    peerDependencies:
-      '@vue/composition-api': ^1.2.1
-      vue: ^2.5.0 || ^3.0.0
     peerDependenciesMeta:
       '@vue/composition-api':
         optional: true
@@ -30231,11 +30214,6 @@ snapshots:
       '@tanstack/query-core': 5.90.19
       solid-js: 1.9.10
 
-  '@tanstack/solid-store@0.9.1(solid-js@1.9.10)':
-    dependencies:
-      '@tanstack/store': 0.9.1
-      solid-js: 1.9.10
-
   '@tanstack/solid-virtual@3.13.12(solid-js@1.9.10)':
     dependencies:
       '@tanstack/virtual-core': 3.13.12
@@ -30325,12 +30303,6 @@ snapshots:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.25(typescript@5.9.2)
       vue-demi: 0.14.10(vue@3.5.25(typescript@5.9.2))
-
-  '@tanstack/vue-store@0.9.1(vue@3.5.25(typescript@5.9.3))':
-    dependencies:
-      '@tanstack/store': 0.9.1
-      vue: 3.5.25(typescript@5.9.3)
-      vue-demi: 0.14.10(vue@3.5.25(typescript@5.9.3))
 
   '@tanstack/vue-virtual@3.13.13(vue@3.5.25(typescript@5.8.3))':
     dependencies:

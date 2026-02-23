@@ -1,11 +1,11 @@
 import * as Vue from 'vue'
-import { batch, useStore } from '@tanstack/vue-store'
 import {
   getLocationChangeInfo,
   handleHashScroll,
   trimPathRight,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { batch, useStore } from './store'
 import { useRouter } from './useRouter'
 import { usePrevious } from './utils'
 
@@ -143,7 +143,9 @@ export function useTransitionerSetup() {
       if (router.stores.status.state === 'pending') {
         batch(() => {
           router.stores.status.setState(() => 'idle')
-          router.stores.resolvedLocation.setState(() => router.stores.location.state)
+          router.stores.resolvedLocation.setState(
+            () => router.stores.location.state,
+          )
         })
       }
     }
@@ -215,7 +217,9 @@ export function useTransitionerSetup() {
       if (!newValue && router.state.status === 'pending') {
         batch(() => {
           router.stores.status.setState(() => 'idle')
-          router.stores.resolvedLocation.setState(() => router.stores.location.state)
+          router.stores.resolvedLocation.setState(
+            () => router.stores.location.state,
+          )
         })
       }
 

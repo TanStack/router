@@ -1,5 +1,4 @@
 import * as Vue from 'vue'
-import { useStore } from '@tanstack/vue-store'
 import {
   deepEqual,
   exactPathTest,
@@ -8,6 +7,7 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 
+import { useStore } from './store'
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
 

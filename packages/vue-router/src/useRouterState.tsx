@@ -1,6 +1,6 @@
-import { useStore } from '@tanstack/vue-store'
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useStore } from './store'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -30,7 +30,7 @@ export function useRouterState<
   const router = opts?.router || contextRouter
 
   // Return a safe default if router is undefined
-  if (!router || !router.__store) {
+  if (!router || !router.stores.__store) {
     return Vue.ref(undefined) as Vue.Ref<
       UseRouterStateResult<TRouter, TSelected>
     >
@@ -48,7 +48,7 @@ export function useRouterState<
     >
   }
 
-  return useStore(router.__store, (state) => {
+  return useStore(router.stores.__store, (state) => {
     if (opts?.select) return opts.select(state)
 
     return state

@@ -1,7 +1,5 @@
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
-import { createRouterStores, createServerRouterStores } from './stores'
-import { batch } from './utils/batch'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
   arraysEqual,
@@ -43,6 +41,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
+import { createRouterStores } from './stores'
 import type { LRUCache } from './lru-cache'
 import type {
   ProcessRouteTreeResult,
@@ -50,7 +49,6 @@ import type {
 } from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
-import type { ReadonlyStore, Store } from '@tanstack/store'
 import type {
   HistoryLocation,
   HistoryState,
@@ -104,8 +102,7 @@ import type {
   AnySerializationAdapter,
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
-import type { RouterStores } from "./stores"
-// import type { AnyRouterConfig } from './config'
+import type { GetStoreConfig, RouterStores } from './stores'
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -907,10 +904,6 @@ declare global {
     | undefined
 }
 
-type MatchStore = Store<AnyRouteMatch>
-type MatchStoreLookup = Record<string, MatchStore>
-type ReadableStore<TValue> = Pick<Store<TValue>, 'state' | 'get' | 'subscribe'>
-
 /**
  * Core, framework-agnostic router engine that powers TanStack Router.
  *
@@ -941,8 +934,9 @@ export class RouterCore<
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
-  __store!: ReadonlyStore<RouterState<TRouteTree>>
-  
+  private getStoreConfig!: GetStoreConfig
+  batch!: (fn: () => void) => void
+
   options!: PickAsRequired<
     RouterOptions<
       TRouteTree,
@@ -979,7 +973,10 @@ export class RouterCore<
       TRouterHistory,
       TDehydrated
     >,
+    getStoreConfig: GetStoreConfig,
   ) {
+    this.getStoreConfig = getStoreConfig
+
     this.update({
       defaultPreloadDelay: 50,
       defaultPendingMs: 1000,
@@ -1108,12 +1105,13 @@ export class RouterCore<
       this.setRoutes(processRouteTreeResult)
     }
 
-    if (!this.__store && this.latestLocation) {
-      const stores = (isServer ?? this.isServer)
-        ? createServerRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
-        : createRouterStores<TRouteTree>(getInitialRouterState(this.latestLocation))
-      this.stores = stores
-      this.__store = stores.__store
+    if (!this.stores && this.latestLocation) {
+      const config = this.getStoreConfig(this)
+      this.batch = config.batch
+      this.stores = createRouterStores(
+        getInitialRouterState(this.latestLocation),
+        config,
+      )
 
       if (!(isServer ?? this.isServer)) {
         setupScrollRestoration(this)
@@ -1156,7 +1154,7 @@ export class RouterCore<
       needsLocationUpdate = true
     }
 
-    if (needsLocationUpdate && this.__store) {
+    if (needsLocationUpdate && this.stores) {
       this.stores.location.setState(() => this.latestLocation)
     }
 
@@ -1172,7 +1170,7 @@ export class RouterCore<
   }
 
   get state(): RouterState<TRouteTree> {
-    return this.__store.state
+    return this.stores.__store.state
   }
 
   updateLatestLocation = () => {
@@ -2332,7 +2330,7 @@ export class RouterCore<
     )
 
     // Ingest the new matches
-    batch(() => {
+    this.batch(() => {
       this.stores.status.setState(() => 'pending')
       this.stores.statusCode.setState(() => 200)
       this.stores.isLoading.setState(() => true)
@@ -2393,7 +2391,7 @@ export class RouterCore<
                   let enteringMatches: Array<AnyRouteMatch> = []
                   let stayingMatches: Array<AnyRouteMatch> = []
 
-                  batch(() => {
+                  this.batch(() => {
                     const pendingMatches =
                       this.stores.pendingMatchesSnapshot.state
                     const mountPending = pendingMatches.length
@@ -2402,12 +2400,14 @@ export class RouterCore<
 
                     exitingMatches = mountPending
                       ? previousMatches.filter(
-                          (match) => !this.stores.pendingMatchStoresById.has(match.id),
+                          (match) =>
+                            !this.stores.pendingMatchStoresById.has(match.id),
                         )
                       : []
                     enteringMatches = mountPending
                       ? pendingMatches.filter(
-                          (match) => !this.stores.activeMatchStoresById.has(match.id),
+                          (match) =>
+                            !this.stores.activeMatchStoresById.has(match.id),
                         )
                       : []
                     stayingMatches = mountPending
@@ -2418,7 +2418,9 @@ export class RouterCore<
 
                     this.stores.isLoading.setState(() => false)
                     this.stores.loadedAt.setState(() => Date.now())
-                    this.stores.setActiveMatches(mountPending ? pendingMatches : previousMatches)
+                    this.stores.setActiveMatches(
+                      mountPending ? pendingMatches : previousMatches,
+                    )
                     this.stores.setPendingMatches([])
                     /**
                      * When committing new matches, cache any exiting matches that are still usable.
@@ -2482,7 +2484,7 @@ export class RouterCore<
                 ? 500
                 : 200
 
-          batch(() => {
+          this.batch(() => {
             this.stores.statusCode.setState(() => nextStatusCode)
             this.stores.redirect.setState(() => redirect)
           })
@@ -2650,7 +2652,7 @@ export class RouterCore<
       return d
     }
 
-    batch(() => {
+    this.batch(() => {
       this.stores.setActiveMatches(
         this.stores.activeMatchesSnapshot.state.map(invalidate),
       )

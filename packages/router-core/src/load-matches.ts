@@ -1,6 +1,5 @@
 import invariant from 'tiny-invariant'
 import { isServer } from '@tanstack/router-core/isServer'
-import { batch } from './utils/batch'
 import { createControlledPromise, isPromise } from './utils'
 import { isNotFound } from './not-found'
 import { rootRouteId } from './root'
@@ -53,7 +52,9 @@ const hasForcePendingActiveMatch = (router: AnyRouter): boolean => {
 }
 
 const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
-  return !!(inner.preload && !inner.router.stores.activeMatchStoresById.has(matchId))
+  return !!(
+    inner.preload && !inner.router.stores.activeMatchStoresById.has(matchId)
+  )
 }
 
 /**
@@ -444,7 +445,7 @@ const executeBeforeLoad = (
   // if there is no `beforeLoad` option, just mark as pending and resolve
   // Context will be updated later in loadRouteMatch after loader completes
   if (!route.options.beforeLoad) {
-    batch(() => {
+    inner.router.batch(() => {
       pending()
       resolve()
     })
@@ -492,7 +493,7 @@ const executeBeforeLoad = (
 
   const updateContext = (beforeLoadContext: any) => {
     if (beforeLoadContext === undefined) {
-      batch(() => {
+      inner.router.batch(() => {
         pending()
         resolve()
       })
@@ -503,7 +504,7 @@ const executeBeforeLoad = (
       handleSerialError(inner, index, beforeLoadContext, 'BEFORE_LOAD')
     }
 
-    batch(() => {
+    inner.router.batch(() => {
       pending()
       // Only store __beforeLoadContext here, don't update context yet
       // Context will be updated in loadRouteMatch after loader completes
@@ -864,7 +865,8 @@ const loadRouteMatch = async (
         await handleLoader(preload, prevMatch, match, route)
       }
     } else {
-      const nextPreload = preload && !inner.router.stores.activeMatchStoresById.has(matchId)
+      const nextPreload =
+        preload && !inner.router.stores.activeMatchStoresById.has(matchId)
       const match = inner.router.getMatch(matchId)!
       match._nonReactive.loaderPromise = createControlledPromise<void>()
       if (nextPreload !== match.preload) {
