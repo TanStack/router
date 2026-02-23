@@ -1040,6 +1040,7 @@ export async function loadRouteChunk(route: AnyRoute) {
           // Lazy load failed; don't mark components as loaded.
           // Clear _componentsPromise so both blocks can retry on next navigation.
           route._componentsPromise = undefined
+          return undefined
         })
       : loadComponents()
   }
