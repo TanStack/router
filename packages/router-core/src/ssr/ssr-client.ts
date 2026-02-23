@@ -21,7 +21,7 @@ function hydrateMatch(
   match: AnyRouteMatch,
   deyhydratedMatch: DehydratedMatch,
 ): void {
-  match.id = hydrateSsrMatchId(deyhydratedMatch.i)
+  match.id = deyhydratedMatch.i
   match.__beforeLoadContext = deyhydratedMatch.b
   match.loaderData = deyhydratedMatch.l
   match.status = deyhydratedMatch.s
@@ -55,10 +55,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
   )
 
-  const { manifest, dehydratedData, lastMatchId } = window.$_TSR.router
-  const hydratedLastMatchId = lastMatchId
-    ? hydrateSsrMatchId(lastMatchId)
-    : undefined
+  const dehydratedRouter = window.$_TSR.router
+  const { manifest, dehydratedData } = dehydratedRouter
+
+  dehydratedRouter.matches.forEach((dehydratedMatch) => {
+    dehydratedMatch.i = hydrateSsrMatchId(dehydratedMatch.i)
+  })
+
+  if (dehydratedRouter.lastMatchId) {
+    dehydratedRouter.lastMatchId = hydrateSsrMatchId(dehydratedRouter.lastMatchId)
+  }
 
   router.ssr = {
     manifest,
@@ -116,14 +122,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // Right after hydration and before the first render, we need to rehydrate each match
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
-  const dehydratedMatchesByHydratedId = new Map(
-    window.$_TSR.router.matches.map((dehydratedMatch) => [
-      hydrateSsrMatchId(dehydratedMatch.i),
-      dehydratedMatch,
-    ]),
-  )
   matches.forEach((match) => {
-    const dehydratedMatch = dehydratedMatchesByHydratedId.get(match.id)
+    const dehydratedMatch = dehydratedRouter.matches.find((d) => d.i === match.id)
     if (!dehydratedMatch) {
       match._nonReactive.dehydrated = false
       match.ssr = false
@@ -231,7 +231,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
-  const isSpaMode = matches[matches.length - 1]!.id !== hydratedLastMatchId
+  const isSpaMode = matches[matches.length - 1]!.id !== dehydratedRouter.lastMatchId
   const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
   // all matches have data from the server and we are not in SPA mode so we don't need to kick of router.load()
   if (!hasSsrFalseMatches && !isSpaMode) {
