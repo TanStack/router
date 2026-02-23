@@ -1079,6 +1079,8 @@ export function importProtectionPlugin(
           envState.transformResultKeysByFile.clear()
           envState.postTransformImports.clear()
           envState.serverFnLookupModules.clear()
+          envState.pendingViolations.clear()
+          envState.deferredBuildViolations.length = 0
           envState.graph.clear()
           envState.deniedSources.clear()
           envState.deniedEdges.clear()

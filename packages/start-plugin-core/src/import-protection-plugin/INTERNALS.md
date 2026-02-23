@@ -216,6 +216,10 @@ Key fields for violation handling:
   deferral. Keyed by importer file path.
 - `deferredBuildViolations: Array<DeferredBuildViolation>` — build mode
   deferral. Each entry has `{ info, mockModuleId }`.
+
+Per-build/watch iteration, `buildStart` clears `pendingViolations` and resets
+`deferredBuildViolations` so deferred entries don't leak across rebuilds.
+
 - `graph: ImportGraph` — import dependency graph for reachability checks.
 - `serverFnLookupModules: Set<string>` — modules transitively loaded during
   server-fn analysis (false-positive suppression).
