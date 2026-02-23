@@ -13,6 +13,12 @@ import {
   safeServerFn,
   safeServerOnly,
 } from '../violations/boundary-safe'
+import {
+  crossBoundarySafeServerFn,
+  crossBoundarySafeWithAuth,
+} from '../violations/cross-boundary-safe/usage'
+import { safeFn } from '../violations/cross-boundary-leak/safe-consumer'
+import { leakyGetSharedData } from '../violations/cross-boundary-leak/leaky-consumer'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -31,6 +37,16 @@ function Home() {
       <p data-testid="boundary-safe-so">{String(typeof safeServerOnly)}</p>
       <p data-testid="boundary-safe-sf">{String(typeof safeServerFn)}</p>
       <p data-testid="boundary-safe-iso">{String(typeof safeIsomorphic)}</p>
+      <p data-testid="cross-boundary-safe-sf">
+        {String(typeof crossBoundarySafeServerFn)}
+      </p>
+      <p data-testid="cross-boundary-safe-mw">
+        {String(typeof crossBoundarySafeWithAuth)}
+      </p>
+      <p data-testid="cross-boundary-leak-safe">{String(typeof safeFn)}</p>
+      <p data-testid="cross-boundary-leak-leaky">
+        {String(typeof leakyGetSharedData)}
+      </p>
     </div>
   )
 }
