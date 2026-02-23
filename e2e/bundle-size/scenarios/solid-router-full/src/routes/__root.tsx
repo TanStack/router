@@ -27,7 +27,6 @@ import {
   useChildMatches,
   useElementScrollRestoration,
   useHydrated,
-  useLayoutEffect,
   useLinkProps,
   useLoaderData,
   useLoaderDeps,
@@ -71,7 +70,6 @@ function RootComponent() {
   const scrollEntry = useElementScrollRestoration({ id: 'root-scroll' })
   const tags = useTags()
 
-  useLayoutEffect(() => {})
   useBlocker({
     shouldBlockFn: () => false,
     disabled: true,
@@ -93,7 +91,6 @@ function RootComponent() {
     useMatch,
     useLoaderDeps,
     useLoaderData,
-    useLayoutEffect,
     useBlocker,
     useNavigate,
     useParams,

@@ -29,7 +29,6 @@ import {
   useLinkProps,
   useLoaderData,
   useLoaderDeps,
-  useLayoutEffect,
   useLocation,
   useMatch,
   useMatchRoute,
@@ -42,7 +41,6 @@ import {
   useRouter,
   useRouterState,
   useSearch,
-  useStableCallback,
   useTags,
 } from '@tanstack/react-router'
 
@@ -69,11 +67,9 @@ function RootComponent() {
   const location = useLocation()
   const canGoBack = useCanGoBack()
   const navigate = useNavigate()
-  const stableCallback = useStableCallback(() => {})
   const scrollEntry = useElementScrollRestoration({ id: 'root-scroll' })
   const tags = useTags()
 
-  useLayoutEffect(() => {}, [])
   useBlocker({
     shouldBlockFn: () => false,
     disabled: true,
@@ -95,7 +91,6 @@ function RootComponent() {
     useMatch,
     useLoaderDeps,
     useLoaderData,
-    useLayoutEffect,
     useBlocker,
     useNavigate,
     useParams,
@@ -105,7 +100,6 @@ function RootComponent() {
     useRouterState,
     useLocation,
     useCanGoBack,
-    useStableCallback,
     useElementScrollRestoration,
     useTags,
     Await,
@@ -147,7 +141,6 @@ function RootComponent() {
   void routerState
   void location
   void canGoBack
-  stableCallback()
   void navigate
   void scrollEntry
   void tags
