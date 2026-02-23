@@ -80,14 +80,14 @@ export function useMatch<
   const hasPendingNearestMatch = opts.from
     ? injectDummyPendingMatch()
     : injectPendingMatch()
-  const activeMatchStore = useStore(
+  const activeMatchesLookup = useStore(
     opts.from ? router.stores.byRouteId : router.stores.byId,
-    (stores) => {
-      const key = opts.from ?? nearestMatchId.value
-      return key ? stores[key] : undefined
-    },
-    { equal: Object.is },
+    (stores) => stores,
   )
+  const activeMatchStore = Vue.computed(() => {
+    const key = opts.from ?? nearestMatchId.value
+    return key ? activeMatchesLookup.value[key] : undefined
+  })
   const hasPendingRouteMatch = opts.from
     ? useStore(
         router.stores.pendingByRouteId,
@@ -101,10 +101,7 @@ export function useMatch<
     { equal: Object.is },
   )
 
-  const match = useStoreOfStoresValue(
-    Vue.computed(() => activeMatchStore.value),
-    (value) => value,
-  )
+  const match = useStoreOfStoresValue(activeMatchStore, (value) => value)
 
   const result = Vue.computed(() => {
     const selectedMatch = match.value
