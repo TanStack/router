@@ -1,5 +1,4 @@
 import * as Vue from 'vue'
-import { useStore } from '@tanstack/vue-store'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
@@ -10,6 +9,7 @@ import {
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useStore } from './store'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
