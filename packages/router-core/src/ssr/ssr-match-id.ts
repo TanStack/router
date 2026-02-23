@@ -3,5 +3,5 @@ export function dehydrateSsrMatchId(id: string): string {
 }
 
 export function hydrateSsrMatchId(id: string): string {
-  return id.replaceAll('\0', '/')
+  return id.replaceAll('\0', '/').replaceAll('\uFFFD', '/')
 }

@@ -19,4 +19,8 @@ describe('ssr match id codec', () => {
     expect(dehydrateSsrMatchId(id)).toBe(id)
     expect(hydrateSsrMatchId(id)).toBe(id)
   })
+
+  it('decodes browser-normalized replacement chars back to slashes', () => {
+    expect(hydrateSsrMatchId('\uFFFDposts\uFFFD1')).toBe('/posts/1')
+  })
 })
