@@ -213,12 +213,16 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
-  return Solid.createMemo(() => {
-    const matches = router.stores.activeMatchesSnapshot.state as Array<MakeRouteMatchUnion<TRouter>>
-    return opts?.select
-      ? opts.select(matches)
-      : matches
-  }, undefined, {equals: shallow}) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
+  return Solid.createMemo(
+    () => {
+      const matches = router.stores.activeMatchesSnapshot.state as Array<
+        MakeRouteMatchUnion<TRouter>
+      >
+      return opts?.select ? opts.select(matches) : matches
+    },
+    undefined,
+    { equals: shallow },
+  ) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 }
 
 export function useParentMatches<

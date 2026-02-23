@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
-import { shallow } from "./store"
+import { shallow } from './store'
 import type {
   AnyRouter,
   RegisteredRouter,

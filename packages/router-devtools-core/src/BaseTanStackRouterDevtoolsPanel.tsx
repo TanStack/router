@@ -282,7 +282,7 @@ export const BaseTanStackRouterDevtoolsPanel =
 
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
-    
+
     let pendingMatches: Accessor<Array<AnyRouteMatch>>
     let cachedMatches: Accessor<Array<AnyRouteMatch>>
     // subscribable implementation
@@ -299,7 +299,9 @@ export const BaseTanStackRouterDevtoolsPanel =
       createEffect(() => {
         const pendingMatchesStore = router().stores.pendingMatchesSnapshot
         setPendingMatches(pendingMatchesStore.state)
-        const subscription = ((pendingMatchesStore as any).subscribe as Subscribe)(() => {
+        const subscription = (
+          (pendingMatchesStore as any).subscribe as Subscribe
+        )(() => {
           setPendingMatches(pendingMatchesStore.state)
         })
         onCleanup(() => subscription.unsubscribe())
@@ -307,12 +309,14 @@ export const BaseTanStackRouterDevtoolsPanel =
       createEffect(() => {
         const cachedMatchesStore = router().stores.cachedMatchesSnapshot
         setCachedMatches(cachedMatchesStore.state)
-        const subscription = ((cachedMatchesStore as any).subscribe as Subscribe)(() => {
+        const subscription = (
+          (cachedMatchesStore as any).subscribe as Subscribe
+        )(() => {
           setCachedMatches(cachedMatchesStore.state)
         })
         onCleanup(() => subscription.unsubscribe())
       })
-    } 
+    }
     // signal implementation
     else {
       pendingMatches = () => router().stores.pendingMatchesSnapshot.state

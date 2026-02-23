@@ -102,10 +102,7 @@ import type {
   AnySerializationAdapter,
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
-import type {
-  GetStoreConfig,
-  RouterStores,
-} from './stores'
+import type { GetStoreConfig, RouterStores } from './stores'
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -2403,12 +2400,14 @@ export class RouterCore<
 
                     exitingMatches = mountPending
                       ? previousMatches.filter(
-                          (match) => !this.stores.pendingMatchStoresById.has(match.id),
+                          (match) =>
+                            !this.stores.pendingMatchStoresById.has(match.id),
                         )
                       : []
                     enteringMatches = mountPending
                       ? pendingMatches.filter(
-                          (match) => !this.stores.activeMatchStoresById.has(match.id),
+                          (match) =>
+                            !this.stores.activeMatchStoresById.has(match.id),
                         )
                       : []
                     stayingMatches = mountPending

@@ -135,20 +135,21 @@ export function useMatch<
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const matchStore = useStore(
-    opts.from ? router.stores.byRouteId : router.stores.byId,
-    (activeMatchStores) => {
-      const key = opts.from ?? nearestMatchId
-      const store = key ? activeMatchStores[key] : undefined
+  const matchStore =
+    useStore(
+      opts.from ? router.stores.byRouteId : router.stores.byId,
+      (activeMatchStores) => {
+        const key = opts.from ?? nearestMatchId
+        const store = key ? activeMatchStores[key] : undefined
 
-      invariant(
-        !((opts.shouldThrow ?? true) && !store),
-        `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-      )
+        invariant(
+          !((opts.shouldThrow ?? true) && !store),
+          `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
 
-      return store
-    },
-  ) ?? dummyStore
+        return store
+      },
+    ) ?? dummyStore
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(matchStore, (match) => {
@@ -156,9 +157,9 @@ export function useMatch<
       return undefined
     }
 
-    const selected = (opts.select
-      ? opts.select(match as any)
-      : match) as ValidateSelected<TRouter, TSelected, TStructuralSharing>
+    const selected = (
+      opts.select ? opts.select(match as any) : match
+    ) as ValidateSelected<TRouter, TSelected, TStructuralSharing>
 
     if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
       const shared = replaceEqualDeep(previousResult.current, selected)

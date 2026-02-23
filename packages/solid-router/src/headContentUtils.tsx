@@ -14,7 +14,9 @@ export const useTags = () => {
     () => router.stores.activeMatchesSnapshot.state,
   )
   const routeMeta = Solid.createMemo(() =>
-    activeMatches().map((match) => match.meta!).filter(Boolean),
+    activeMatches()
+      .map((match) => match.meta!)
+      .filter(Boolean),
   )
 
   const meta: Solid.Accessor<Array<RouterManagedTag>> = Solid.createMemo(() => {

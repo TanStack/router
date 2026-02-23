@@ -1,8 +1,4 @@
-import {
-  batch,
-  createVueMutableStore,
-  createVueReadonlyStore,
-} from './store'
+import { batch, createVueMutableStore, createVueReadonlyStore } from './store'
 import type {
   AnyRoute,
   GetStoreConfig,

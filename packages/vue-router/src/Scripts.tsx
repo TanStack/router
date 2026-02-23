@@ -9,7 +9,10 @@ export const Scripts = Vue.defineComponent({
   setup() {
     const router = useRouter()
     const nonce = router.options.ssr?.nonce
-    const matches = useStore(router.stores.activeMatchesSnapshot, (value) => value)
+    const matches = useStore(
+      router.stores.activeMatchesSnapshot,
+      (value) => value,
+    )
 
     const assetScripts = Vue.computed<Array<RouterManagedTag>>(() => {
       const assetScripts: Array<RouterManagedTag> = []

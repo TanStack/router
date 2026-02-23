@@ -185,9 +185,9 @@ describe('granular stores', () => {
     )
 
     expect(router.stores.byId.state[duplicatedId]?.state.status).toBe('error')
-    expect(router.stores.byRouteId.state[activeLeaf.routeId]?.state.status).toBe(
-      'error',
-    )
+    expect(
+      router.stores.byRouteId.state[activeLeaf.routeId]?.state.status,
+    ).toBe('error')
     expect(
       router.stores.pendingByRouteId.state[activeLeaf.routeId]?.state.status,
     ).toBe('pending')

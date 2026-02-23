@@ -1,5 +1,5 @@
-import { batch, createStore } from "@tanstack/store"
-import { isServer } from "@tanstack/router-core/isServer"
+import { batch, createStore } from '@tanstack/store'
+import { isServer } from '@tanstack/router-core/isServer'
 import {
   RouterCore,
   createNonReactiveMutableStore,
@@ -25,7 +25,7 @@ const getStoreConfig: GetStoreConfig = (opts) => {
   return {
     createMutableStore: createStore,
     createReadonlyStore: createStore,
-    batch
+    batch,
   }
 }
 

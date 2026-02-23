@@ -91,8 +91,8 @@ export function useMatch<
     return key ? stores[key] : undefined
   })
   const hasPendingRouteMatch = opts.from
-    ? Solid.createMemo(
-        () => Boolean(router.stores.pendingByRouteId.state[opts.from as string]),
+    ? Solid.createMemo(() =>
+        Boolean(router.stores.pendingByRouteId.state[opts.from as string]),
       )
     : undefined
   const isTransitioning = Solid.createMemo(
