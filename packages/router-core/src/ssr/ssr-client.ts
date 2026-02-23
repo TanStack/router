@@ -2,6 +2,7 @@ import invariant from 'tiny-invariant'
 import { batch } from '../utils/batch'
 import { isNotFound } from '../not-found'
 import { createControlledPromise } from '../utils'
+import { hydrateSsrMatchId } from './ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './constants'
 import type { DehydratedMatch, TsrSsrGlobal } from './types'
 import type { AnyRouteMatch } from '../Matches'
@@ -20,7 +21,7 @@ function hydrateMatch(
   match: AnyRouteMatch,
   deyhydratedMatch: DehydratedMatch,
 ): void {
-  match.id = deyhydratedMatch.i
+  match.id = hydrateSsrMatchId(deyhydratedMatch.i)
   match.__beforeLoadContext = deyhydratedMatch.b
   match.loaderData = deyhydratedMatch.l
   match.status = deyhydratedMatch.s
@@ -55,6 +56,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   )
 
   const { manifest, dehydratedData, lastMatchId } = window.$_TSR.router
+  const hydratedLastMatchId = lastMatchId
+    ? hydrateSsrMatchId(lastMatchId)
+    : undefined
 
   router.ssr = {
     manifest,
@@ -112,10 +116,14 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // Right after hydration and before the first render, we need to rehydrate each match
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
+  const dehydratedMatchesByHydratedId = new Map(
+    window.$_TSR.router.matches.map((dehydratedMatch) => [
+      hydrateSsrMatchId(dehydratedMatch.i),
+      dehydratedMatch,
+    ]),
+  )
   matches.forEach((match) => {
-    const dehydratedMatch = window.$_TSR!.router!.matches.find(
-      (d) => d.i === match.id,
-    )
+    const dehydratedMatch = dehydratedMatchesByHydratedId.get(match.id)
     if (!dehydratedMatch) {
       match._nonReactive.dehydrated = false
       match.ssr = false
@@ -223,7 +231,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
-  const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
+  const isSpaMode = matches[matches.length - 1]!.id !== hydratedLastMatchId
   const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
   // all matches have data from the server and we are not in SPA mode so we don't need to kick of router.load()
   if (!hasSsrFalseMatches && !isSpaMode) {
