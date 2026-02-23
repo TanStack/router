@@ -3,7 +3,9 @@ import { dehydrateSsrMatchId, hydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 
 describe('ssr match id codec', () => {
   it('removes forward slashes in dehydrated ids', () => {
-    const dehydratedId = dehydrateSsrMatchId('/$orgId/projects/$projectId//acme/projects/dashboard/{}')
+    const dehydratedId = dehydrateSsrMatchId(
+      '/$orgId/projects/$projectId//acme/projects/dashboard/{}',
+    )
 
     expect(dehydratedId).not.toContain('/')
     expect(hydrateSsrMatchId(dehydratedId)).toBe(
