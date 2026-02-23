@@ -134,6 +134,7 @@ export function useMatch<
     return (opts.select ? opts.select(match as any) : match) as any
   }
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const matchStore = useStore(
     opts.from ? router.stores.byRouteId : router.stores.byId,
     (activeMatchStores) => {
@@ -149,6 +150,7 @@ export function useMatch<
     },
   ) ?? dummyStore
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(matchStore, (match) => {
     if (match === undefined) {
       return undefined

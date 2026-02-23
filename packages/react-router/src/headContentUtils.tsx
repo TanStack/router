@@ -182,10 +182,12 @@ export const useTags = () => {
     )
   }
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const routeMeta = useStore(router.stores.activeMatchesSnapshot, (matches) => {
     return matches.map((match) => match.meta!).filter(Boolean)
   })
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const meta: Array<RouterManagedTag> = React.useMemo(() => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
@@ -257,6 +259,7 @@ export const useTags = () => {
     return resultMeta
   }, [routeMeta, nonce])
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const links = useStore(router.stores.activeMatchesSnapshot, (matches) => {
       const constructed = matches
         .map((match) => match.links!)
@@ -294,6 +297,7 @@ export const useTags = () => {
       return [...constructed, ...assets]
   })
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const preloadLinks = useStore(router.stores.activeMatchesSnapshot, (matches) => {
       const preloadLinks: Array<RouterManagedTag> = []
 
@@ -317,6 +321,7 @@ export const useTags = () => {
       return preloadLinks
   })
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const styles = useStore(
     router.stores.activeMatchesSnapshot,
     (matches) =>
@@ -335,6 +340,7 @@ export const useTags = () => {
       })),
   )
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const headScripts: Array<RouterManagedTag> = useStore(
     router.stores.activeMatchesSnapshot,
     (matches) =>

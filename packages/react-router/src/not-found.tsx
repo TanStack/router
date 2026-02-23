@@ -43,7 +43,9 @@ export function CatchNotFound(props: {
   }
 
   // TODO: Some way for the user to programmatically reset the not-found boundary?
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const pathname = useStore(router.stores.location, (location) => location.pathname)
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const status = useStore(router.stores.status, (status) => status)
   const resetKey = `not-found-${pathname}-${status}`
 

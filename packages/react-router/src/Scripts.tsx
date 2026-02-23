@@ -62,7 +62,9 @@ export const Scripts = () => {
     return renderScripts(router, scripts, assetScripts)
   }
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const assetScripts = useStore(router.stores.activeMatchesSnapshot, getAssetScripts)
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const scripts = useStore(router.stores.activeMatchesSnapshot, getScripts)
 
   return renderScripts(router, scripts, assetScripts)
