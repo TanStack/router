@@ -349,7 +349,7 @@ You can hook into violations for custom reporting or to override the verdict:
 
 ```ts
 importProtection: {
-  onViolation: (info) => {
+  onViolation: async (info) => {
     // info.env -- environment name (e.g. 'client', 'ssr', ...)
     // info.envType -- 'client' or 'server'
     // info.type -- 'specifier', 'file', or 'marker'
@@ -360,7 +360,7 @@ importProtection: {
     // info.snippet -- { lines, location } with the source code snippet (if available)
     // info.message -- the formatted diagnostic message
 
-    // Return false to allow this specific import (override the denial)
+    // Return false (or Promise<false>) to allow this specific import (override the denial)
     if (info.specifier === 'some-special-case') {
       return false
     }
@@ -400,7 +400,9 @@ interface ImportProtectionOptions {
     specifiers?: Array<string | RegExp>
     files?: Array<string | RegExp>
   }
-  onViolation?: (info: ViolationInfo) => boolean | void
+  onViolation?: (
+    info: ViolationInfo,
+  ) => boolean | void | Promise<boolean | void>
 }
 ```
 

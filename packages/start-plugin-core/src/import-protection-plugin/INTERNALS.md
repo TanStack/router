@@ -50,7 +50,7 @@ provide explicit ESM named exports. Only active in dev + mock mode.
 
 A common pattern:
 
-```
+```text
 db/index.ts        →  export { getUsers } from './db.server'
                        export { userColumns } from './shared'
 
@@ -86,7 +86,7 @@ analysing a module's exports. These are tracked via `serverFnLookupModules` and
 
 ### `shouldDefer` logic
 
-```
+```ts
 shouldDefer = (isDevMock && !isPreTransformResolve) || isBuild
 ```
 

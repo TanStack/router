@@ -123,7 +123,9 @@ interface PluginConfig {
   markerSpecifiers: { serverOnly: Set<string>; clientOnly: Set<string> }
   envTypeMap: Map<string, 'client' | 'server'>
 
-  onViolation?: (info: ViolationInfo) => boolean | void
+  onViolation?: (
+    info: ViolationInfo,
+  ) => boolean | void | Promise<boolean | void>
 }
 
 /**
@@ -787,7 +789,7 @@ export function importProtectionPlugin(
             }
 
             if (config.onViolation) {
-              const result = config.onViolation(pv.info)
+              const result = await config.onViolation(pv.info)
               if (result === false) continue
             }
             warnFn(formatViolation(pv.info, config.root))
@@ -830,12 +832,17 @@ export function importProtectionPlugin(
   /** Counter for generating unique per-violation mock module IDs in build mode. */
   let buildViolationCounter = 0
 
-  function handleViolation(
+  type HandleViolationResult =
+    | { id: string; syntheticNamedExports: boolean }
+    | string
+    | undefined
+
+  async function handleViolation(
     ctx: ViolationReporter,
     env: EnvState,
     info: ViolationInfo,
     violationOpts?: { silent?: boolean },
-  ): { id: string; syntheticNamedExports: boolean } | string | undefined {
+  ): Promise<HandleViolationResult> {
     const key = dedupeKey(
       info.type,
       info.importer,
@@ -845,7 +852,7 @@ export function importProtectionPlugin(
 
     if (!violationOpts?.silent) {
       if (config.onViolation) {
-        const result = config.onViolation(info)
+        const result = await config.onViolation(info)
         if (result === false) {
           return undefined
         }
@@ -924,9 +931,9 @@ export function importProtectionPlugin(
     info: ViolationInfo,
     shouldDefer: boolean,
     isPreTransformResolve: boolean,
-  ): Promise<ReturnType<typeof handleViolation>> {
+  ): Promise<HandleViolationResult> {
     if (shouldDefer) {
-      const result = handleViolation(ctx, env, info, { silent: true })
+      const result = await handleViolation(ctx, env, info, { silent: true })
 
       if (config.command === 'build') {
         // Build mode: store for generateBundle tree-shaking check.
@@ -941,7 +948,7 @@ export function importProtectionPlugin(
 
       return result
     }
-    return handleViolation(ctx, env, info, {
+    return await handleViolation(ctx, env, info, {
       silent: isPreTransformResolve,
     })
   }
@@ -1444,7 +1451,7 @@ export function importProtectionPlugin(
         },
       },
 
-      generateBundle(_options, bundle) {
+      async generateBundle(_options, bundle) {
         const envName = this.environment.name
         const env = envStates.get(envName)
         if (!env || env.deferredBuildViolations.length === 0) return
@@ -1463,9 +1470,14 @@ export function importProtectionPlugin(
         // in the bundle, the import was NOT tree-shaken — real leak.
         const realViolations: Array<ViolationInfo> = []
         for (const { info, mockModuleId } of env.deferredBuildViolations) {
-          if (survivingModules.has(mockModuleId)) {
-            realViolations.push(info)
+          if (!survivingModules.has(mockModuleId)) continue
+
+          if (config.onViolation) {
+            const result = await config.onViolation(info)
+            if (result === false) continue
           }
+
+          realViolations.push(info)
         }
 
         if (realViolations.length === 0) return
