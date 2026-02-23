@@ -31,7 +31,7 @@ function handleRouteUpdate(
   const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
   if (
     router.state.matches.find(filter) ||
-    router.state.pendingMatches?.find(filter)
+    router.internalStore.state.pendingMatches?.find(filter)
   ) {
     router.invalidate({ filter })
   }

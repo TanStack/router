@@ -219,6 +219,7 @@ export type {
   MatchRouteFn,
   RouterContextOptions,
   RouterOptions,
+  InternalStoreState,
   RouterConstructorOptions,
   UpdateFn,
   ParseLocationFn,
