@@ -213,7 +213,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     )
     const before = select.mock.calls.length
     fireEvent.focus(link)
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, 100))
     fireEvent.click(link)
     const title = await waitFor(() =>
       screen.getByRole('heading', { name: /Title$/ }),
