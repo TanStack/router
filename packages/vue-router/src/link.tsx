@@ -15,7 +15,6 @@ import { useMatches } from './Matches'
 import type {
   AnyRouter,
   Constrain,
-  LinkCurrentTargetElement,
   LinkOptions,
   RegisteredRouter,
   RoutePaths,
@@ -27,6 +26,8 @@ import type {
 } from './typePrimitives'
 
 type EventHandler<TEvent = Event> = (e: TEvent) => void
+
+const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
 
 type DataAttributes = {
   [K in `data-${string}`]?: unknown
@@ -360,19 +361,17 @@ export function useLinkProps<
 
   const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
     if (options.disabled || !preload.value) return
-    // Use currentTarget (the element with the handler) instead of target (which may be a child)
-    const eventTarget = (e.currentTarget ||
-      e.target ||
-      {}) as LinkCurrentTargetElement
+    const eventTarget = e.currentTarget || e.target
 
-    if (eventTarget.preloadTimeout) {
-      return
-    }
+    if (!eventTarget || timeoutMap.has(eventTarget)) return
 
-    eventTarget.preloadTimeout = setTimeout(() => {
-      eventTarget.preloadTimeout = null
-      doPreload()
-    }, preloadDelay.value)
+    timeoutMap.set(
+      eventTarget,
+      setTimeout(() => {
+        timeoutMap.delete(eventTarget)
+        doPreload()
+      }, preloadDelay.value),
+    )
   }
 
   const handleTouchStart = (_: TouchEvent) => {
@@ -384,14 +383,12 @@ export function useLinkProps<
 
   const handleLeave = (e: MouseEvent | FocusEvent) => {
     if (options.disabled) return
-    // Use currentTarget (the element with the handler) instead of target (which may be a child)
-    const eventTarget = (e.currentTarget ||
-      e.target ||
-      {}) as LinkCurrentTargetElement
+    const eventTarget = e.currentTarget || e.target
 
-    if (eventTarget.preloadTimeout) {
-      clearTimeout(eventTarget.preloadTimeout)
-      eventTarget.preloadTimeout = null
+    if (eventTarget) {
+      const id = timeoutMap.get(eventTarget)
+      clearTimeout(id)
+      timeoutMap.delete(eventTarget)
     }
   }
 
