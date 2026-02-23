@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771863319040,
+  "lastUpdate": 1771863977831,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -926,6 +926,90 @@ window.BENCHMARK_DATA = {
             "value": 55050,
             "unit": "bytes",
             "extra": "raw=164941; brotli=48514"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fpellet@ensc.fr",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "343f8a8ff9ae8ea8c803d7f2b57bb52682fe6551",
+          "message": "refactor(router-core,react-router,solid-router,vue-router): Remove long strings from production bundle (#6740)",
+          "timestamp": "2026-02-23T17:23:46+01:00",
+          "tree_id": "fc29f3f0c57c8f3113d5084f1e54b63941123cc9",
+          "url": "https://github.com/TanStack/router/commit/343f8a8ff9ae8ea8c803d7f2b57bb52682fe6551"
+        },
+        "date": 1771863976652,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88602,
+            "unit": "bytes",
+            "extra": "raw=278616; brotli=76916"
+          },
+          {
+            "name": "react-router.full",
+            "value": 91702,
+            "unit": "bytes",
+            "extra": "raw=289197; brotli=79731"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36654,
+            "unit": "bytes",
+            "extra": "raw=109803; brotli=32926"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41086,
+            "unit": "bytes",
+            "extra": "raw=123167; brotli=36905"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 52881,
+            "unit": "bytes",
+            "extra": "raw=150766; brotli=47611"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 57832,
+            "unit": "bytes",
+            "extra": "raw=166728; brotli=51946"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101448,
+            "unit": "bytes",
+            "extra": "raw=318691; brotli=87833"
+          },
+          {
+            "name": "react-start.full",
+            "value": 104869,
+            "unit": "bytes",
+            "extra": "raw=328699; brotli=90676"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49257,
+            "unit": "bytes",
+            "extra": "raw=148277; brotli=43556"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 54852,
+            "unit": "bytes",
+            "extra": "raw=164571; brotli=48298"
           }
         ]
       }
