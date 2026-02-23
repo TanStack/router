@@ -56,17 +56,15 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   )
 
   const dehydratedRouter = window.$_TSR.router
-  const { manifest, dehydratedData } = dehydratedRouter
-
   dehydratedRouter.matches.forEach((dehydratedMatch) => {
     dehydratedMatch.i = hydrateSsrMatchId(dehydratedMatch.i)
   })
-
   if (dehydratedRouter.lastMatchId) {
     dehydratedRouter.lastMatchId = hydrateSsrMatchId(
       dehydratedRouter.lastMatchId,
     )
   }
+  const { manifest, dehydratedData, lastMatchId } = dehydratedRouter
 
   router.ssr = {
     manifest,
@@ -235,8 +233,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
-  const isSpaMode =
-    matches[matches.length - 1]!.id !== dehydratedRouter.lastMatchId
+  const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
   const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
   // all matches have data from the server and we are not in SPA mode so we don't need to kick of router.load()
   if (!hasSsrFalseMatches && !isSpaMode) {
