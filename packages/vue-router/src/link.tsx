@@ -355,12 +355,26 @@ export function useLinkProps<
     }
   }
 
-  // The focus handler
-  const handleFocus = (_: FocusEvent) => {
-    if (options.disabled) return
-    if (preload.value) {
-      doPreload()
+  const enqueueIntentPreload = (eventTarget: LinkCurrentTargetElement) => {
+    if (!preload.value) return
+
+    if (eventTarget.preloadTimeout) {
+      return
     }
+
+    eventTarget.preloadTimeout = setTimeout(() => {
+      eventTarget.preloadTimeout = null
+      doPreload()
+    }, preloadDelay.value)
+  }
+
+  // The focus handler
+  const handleFocus = (e: FocusEvent) => {
+    if (options.disabled) return
+    const eventTarget = (e.currentTarget ||
+      e.target ||
+      {}) as LinkCurrentTargetElement
+    enqueueIntentPreload(eventTarget)
   }
 
   const handleTouchStart = (_: TouchEvent) => {
@@ -377,16 +391,7 @@ export function useLinkProps<
       e.target ||
       {}) as LinkCurrentTargetElement
 
-    if (preload.value) {
-      if (eventTarget.preloadTimeout) {
-        return
-      }
-
-      eventTarget.preloadTimeout = setTimeout(() => {
-        eventTarget.preloadTimeout = null
-        doPreload()
-      }, preloadDelay.value)
-    }
+    enqueueIntentPreload(eventTarget)
   }
 
   const handleLeave = (e: MouseEvent) => {

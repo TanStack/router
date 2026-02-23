@@ -4556,6 +4556,97 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/posts')
   })
 
+  test('Router.preload="intent", focus preloading respects preloadDelay', async () => {
+    const postsLoaderFn = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/posts" preload="intent" preloadDelay={50}>
+              link to posts
+            </Link>
+          </div>
+        )
+      },
+    })
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      loader: postsLoaderFn,
+      component: () => <div>Posts page</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([postRoute, indexRoute])
+    const router = createRouter({
+      routeTree,
+      defaultPreload: 'intent',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const linkToPosts = await screen.findByRole('link', {
+      name: 'link to posts',
+    })
+
+    fireEvent.focus(linkToPosts)
+
+    expect(postsLoaderFn).not.toHaveBeenCalled()
+    await sleep(10)
+    expect(postsLoaderFn).not.toHaveBeenCalled()
+    await waitFor(() => expect(postsLoaderFn).toHaveBeenCalledTimes(1))
+  })
+
+  test('Router.preload="intent", touchstart preloading ignores preloadDelay', async () => {
+    const postsLoaderFn = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <div>
+            <h1>Index page</h1>
+            <Link to="/posts" preload="intent" preloadDelay={1000}>
+              link to posts
+            </Link>
+          </div>
+        )
+      },
+    })
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      loader: postsLoaderFn,
+      component: () => <div>Posts page</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([postRoute, indexRoute])
+    const router = createRouter({
+      routeTree,
+      defaultPreload: 'intent',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const linkToPosts = await screen.findByRole('link', {
+      name: 'link to posts',
+    })
+
+    fireEvent.touchStart(linkToPosts)
+
+    await waitFor(() => expect(postsLoaderFn).toHaveBeenCalledTimes(1), {
+      timeout: 200,
+    })
+  })
+
   describe('when preloading a link, `preload` should be', () => {
     async function runTest({
       expectedPreload,

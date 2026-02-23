@@ -346,30 +346,38 @@ export function useLinkProps<
     }
   }
 
+  const enqueueIntentPreload = (eventTarget: LinkCurrentTargetElement) => {
+    if (!preload()) return
+
+    if (eventTarget.preloadTimeout) {
+      return
+    }
+
+    eventTarget.preloadTimeout = setTimeout(() => {
+      eventTarget.preloadTimeout = null
+      doPreload()
+    }, preloadDelay())
+  }
+
   // The click handler
-  const handleFocus = (_: MouseEvent) => {
+  const handleFocus = (e: FocusEvent) => {
+    if (local.disabled) return
+    const eventTarget = (e.currentTarget || e.target || {}) as LinkCurrentTargetElement
+    enqueueIntentPreload(eventTarget)
+  }
+
+  const handleTouchStart = (_: TouchEvent) => {
     if (local.disabled) return
     if (preload()) {
       doPreload()
     }
   }
 
-  const handleTouchStart = handleFocus
-
   const handleEnter = (e: MouseEvent) => {
     if (local.disabled) return
     const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
 
-    if (preload()) {
-      if (eventTarget.preloadTimeout) {
-        return
-      }
-
-      eventTarget.preloadTimeout = setTimeout(() => {
-        eventTarget.preloadTimeout = null
-        doPreload()
-      }, preloadDelay())
-    }
+    enqueueIntentPreload(eventTarget)
   }
 
   const handleLeave = (e: MouseEvent) => {

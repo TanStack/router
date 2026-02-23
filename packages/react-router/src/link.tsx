@@ -658,31 +658,38 @@ export function useLinkProps<
     }
   }
 
-  const handleFocus = (_: React.MouseEvent) => {
-    if (disabled) return
-    if (preload) {
-      doPreload()
-    }
-  }
-
-  const handleTouchStart = handleFocus
-
-  const handleEnter = (e: React.MouseEvent) => {
-    if (disabled || !preload) return
+  const enqueueIntentPreload = (eventTarget: EventTarget) => {
+    if (!preload) return
 
     if (!preloadDelay) {
       doPreload()
-    } else {
-      const eventTarget = e.target
-      if (timeoutMap.has(eventTarget)) {
-        return
-      }
-      const id = setTimeout(() => {
-        timeoutMap.delete(eventTarget)
-        doPreload()
-      }, preloadDelay)
-      timeoutMap.set(eventTarget, id)
+      return
     }
+
+    if (timeoutMap.has(eventTarget)) {
+      return
+    }
+
+    const id = setTimeout(() => {
+      timeoutMap.delete(eventTarget)
+      doPreload()
+    }, preloadDelay)
+    timeoutMap.set(eventTarget, id)
+  }
+
+  const handleFocus = (e: React.FocusEvent) => {
+    if (disabled) return
+    enqueueIntentPreload(e.target)
+  }
+
+  const handleTouchStart = (_: React.TouchEvent) => {
+    if (disabled || !preload) return
+    doPreload()
+  }
+
+  const handleEnter = (e: React.MouseEvent) => {
+    if (disabled) return
+    enqueueIntentPreload(e.target)
   }
 
   const handleLeave = (e: React.MouseEvent) => {
