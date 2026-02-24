@@ -8486,7 +8486,7 @@ importers:
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17(vitest@4.0.17))(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -8896,6 +8896,9 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
+      '@tanstack/react-router-ssr-query':
+        specifier: workspace:*
+        version: link:../../../packages/react-router-ssr-query
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -11002,7 +11005,7 @@ importers:
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+        version: 3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17(vitest@4.0.17))(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -38516,7 +38519,7 @@ snapshots:
     optionalDependencies:
       vite: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
 
-  vitest@3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17)(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1):
+  vitest@3.2.4(@types/node@25.0.9)(@vitest/browser@4.0.17(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.3))(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))(vitest@4.0.17))(@vitest/ui@4.0.17(vitest@4.0.17))(jiti@2.6.1)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.2)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(sass-embedded@1.97.2)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
