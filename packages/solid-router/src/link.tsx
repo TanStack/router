@@ -350,7 +350,7 @@ export function useLinkProps<
   }
 
   const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
-    if (local.disabled || !preload()) return
+    if (local.disabled || preload() !== 'intent') return
     const eventTarget = e.currentTarget || e.target
 
     if (!eventTarget || timeoutMap.has(eventTarget)) return
@@ -365,10 +365,8 @@ export function useLinkProps<
   }
 
   const handleTouchStart = (_: TouchEvent) => {
-    if (local.disabled) return
-    if (preload()) {
-      doPreload()
-    }
+    if (local.disabled || preload() !== 'intent') return
+    doPreload()
   }
 
   const handleLeave = (e: MouseEvent | FocusEvent) => {
