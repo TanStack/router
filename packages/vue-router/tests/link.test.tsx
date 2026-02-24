@@ -4555,7 +4555,7 @@ describe('Link', () => {
       fireEvent.mouseOver(aboutLink)
       fireEvent.touchStart(aboutLink)
 
-      await sleep(1)
+      await sleep(100)
       expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls)
     },
   )
