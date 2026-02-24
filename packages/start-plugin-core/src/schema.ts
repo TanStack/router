@@ -7,6 +7,59 @@ const tsrConfig = configSchema
   .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
   .partial()
 
+// --- Import Protection Schema ---
+
+const patternSchema = z.union([z.string(), z.instanceof(RegExp)])
+
+const importProtectionBehaviorSchema = z.enum(['error', 'mock'])
+
+const importProtectionEnvRulesSchema = z.object({
+  specifiers: z.array(patternSchema).optional(),
+  files: z.array(patternSchema).optional(),
+})
+
+const importProtectionOptionsSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    behavior: z
+      .union([
+        importProtectionBehaviorSchema,
+        z.object({
+          dev: importProtectionBehaviorSchema.optional(),
+          build: importProtectionBehaviorSchema.optional(),
+        }),
+      ])
+      .optional(),
+    /**
+     * In `behavior: 'mock'`, control whether mocked imports emit a runtime
+     * console diagnostic when accessed.
+     *
+     * - 'error': console.error(new Error(...)) (default)
+     * - 'warn': console.warn(new Error(...))
+     * - 'off': disable runtime diagnostics
+     */
+    mockAccess: z.enum(['error', 'warn', 'off']).optional(),
+    onViolation: z
+      .function()
+      .args(z.any())
+      .returns(
+        z.union([
+          z.boolean(),
+          z.void(),
+          z.promise(z.union([z.boolean(), z.void()])),
+        ]),
+      )
+      .optional(),
+    include: z.array(patternSchema).optional(),
+    exclude: z.array(patternSchema).optional(),
+    client: importProtectionEnvRulesSchema.optional(),
+    server: importProtectionEnvRulesSchema.optional(),
+    ignoreImporters: z.array(patternSchema).optional(),
+    maxTraceDepth: z.number().optional(),
+    log: z.enum(['once', 'always']).optional(),
+  })
+  .optional()
+
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartOptionsSchema>,
   corePluginOpts: TanStackStartVitePluginCoreOptions,
@@ -201,6 +254,7 @@ const tanstackStartOptionsSchema = z
     vite: z
       .object({ installDevServerMiddleware: z.boolean().optional() })
       .optional(),
+    importProtection: importProtectionOptionsSchema,
   })
   .optional()
   .default({})
@@ -211,3 +265,13 @@ export type TanStackStartInputConfig = z.input<
   typeof tanstackStartOptionsSchema
 >
 export type TanStackStartOutputConfig = ReturnType<typeof parseStartConfig>
+
+export type ImportProtectionBehavior = z.infer<
+  typeof importProtectionBehaviorSchema
+>
+export type ImportProtectionEnvRules = z.infer<
+  typeof importProtectionEnvRulesSchema
+>
+export type ImportProtectionOptions = z.input<
+  typeof importProtectionOptionsSchema
+>

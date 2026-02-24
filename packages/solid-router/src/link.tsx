@@ -73,6 +73,7 @@ export function useLinkProps<
       'style',
       'class',
       'onClick',
+      'onBlur',
       'onFocus',
       'onMouseEnter',
       'onMouseLeave',
@@ -167,7 +168,7 @@ export function useLinkProps<
     const _href = hrefOption()
     if (_href?.external) {
       // Block dangerous protocols for external links
-      if (isDangerousProtocol(_href.href)) {
+      if (isDangerousProtocol(_href.href, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
         }
@@ -183,8 +184,8 @@ export function useLinkProps<
     if (isSafeInternal) return undefined
     try {
       new URL(to as any)
-      // Block dangerous protocols like javascript:, data:, vbscript:
-      if (isDangerousProtocol(to as string)) {
+      // Block dangerous protocols like javascript:, blob:, data:
+      if (isDangerousProtocol(to as string, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
@@ -297,6 +298,7 @@ export function useLinkProps<
         'style',
         'class',
         'onClick',
+        'onBlur',
         'onFocus',
         'onMouseEnter',
         'onMouseLeave',
@@ -346,35 +348,34 @@ export function useLinkProps<
     }
   }
 
-  // The click handler
-  const handleFocus = (_: MouseEvent) => {
+  const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
+    if (local.disabled || !preload()) return
+    const eventTarget = (e.currentTarget ||
+      e.target ||
+      {}) as LinkCurrentTargetElement
+
+    if (eventTarget.preloadTimeout) {
+      return
+    }
+
+    eventTarget.preloadTimeout = setTimeout(() => {
+      eventTarget.preloadTimeout = null
+      doPreload()
+    }, preloadDelay())
+  }
+
+  const handleTouchStart = (_: TouchEvent) => {
     if (local.disabled) return
     if (preload()) {
       doPreload()
     }
   }
 
-  const handleTouchStart = handleFocus
-
-  const handleEnter = (e: MouseEvent) => {
+  const handleLeave = (e: MouseEvent | FocusEvent) => {
     if (local.disabled) return
-    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
-
-    if (preload()) {
-      if (eventTarget.preloadTimeout) {
-        return
-      }
-
-      eventTarget.preloadTimeout = setTimeout(() => {
-        eventTarget.preloadTimeout = null
-        doPreload()
-      }, preloadDelay())
-    }
-  }
-
-  const handleLeave = (e: MouseEvent) => {
-    if (local.disabled) return
-    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
+    const eventTarget = (e.currentTarget ||
+      e.target ||
+      {}) as LinkCurrentTargetElement
 
     if (eventTarget.preloadTimeout) {
       clearTimeout(eventTarget.preloadTimeout)
@@ -441,9 +442,16 @@ export function useLinkProps<
         href: hrefOption()?.href,
         ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
-        onFocus: composeEventHandlers([local.onFocus, handleFocus]),
-        onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
-        onMouseOver: composeEventHandlers([local.onMouseOver, handleEnter]),
+        onBlur: composeEventHandlers([local.onBlur, handleLeave]),
+        onFocus: composeEventHandlers([local.onFocus, enqueueIntentPreload]),
+        onMouseEnter: composeEventHandlers([
+          local.onMouseEnter,
+          enqueueIntentPreload,
+        ]),
+        onMouseOver: composeEventHandlers([
+          local.onMouseOver,
+          enqueueIntentPreload,
+        ]),
         onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
         onMouseOut: composeEventHandlers([local.onMouseOut, handleLeave]),
         onTouchStart: composeEventHandlers([

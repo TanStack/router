@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/zod-adapter",
-  "version": "1.159.5",
+  "version": "1.162.8",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -61,7 +61,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
@@ -69,7 +69,8 @@
     "@tanstack/react-router": "workspace:*",
     "zod": "^3.24.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "vite": "*"
   },
   "peerDependencies": {
     "zod": "^3.23.8",

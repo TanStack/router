@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Matches } from './Matches'
-import { getRouterContext } from './routerContext'
+import { routerContext } from './routerContext'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -30,10 +30,8 @@ export function RouterContextProvider<
         ...router.options.context,
         ...rest.context,
       },
-    } as any)
+    })
   }
-
-  const routerContext = getRouterContext()
 
   const provider = (
     <routerContext.Provider value={router as AnyRouter}>

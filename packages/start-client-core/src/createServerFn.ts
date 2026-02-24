@@ -25,7 +25,6 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AssignAllServerFnContext,
-  FunctionMiddlewareClientFnResult,
   FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
@@ -65,7 +64,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
   }
 
   const res: ServerFnBuilder<Register, Method> = {
-    options: resolvedOptions as any,
+    options: resolvedOptions,
     middleware: (middleware) => {
       // multiple calls to `middleware()` merge the middlewares with the previously supplied ones
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
@@ -280,8 +279,8 @@ export async function executeMiddleware(
         // Execute the middleware
         const result = await middlewareFn({
           ...ctx,
-          next: userNext as any,
-        } as any)
+          next: userNext,
+        })
 
         // If result is NOT a ctx object, we need to return it as
         // the { result }
@@ -782,11 +781,7 @@ function serverFnBaseToMiddleware(
         // but not before serializing the context
         const res = await options.extractedFn?.(payload)
 
-        return next(res) as unknown as FunctionMiddlewareClientFnResult<
-          any,
-          any,
-          any
-        >
+        return next(res)
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function

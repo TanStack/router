@@ -19,6 +19,7 @@
     "test:build": "nx affected --target=test:build --exclude=examples/**",
     "test:types": "nx affected --target=test:types --exclude=examples/**",
     "test:e2e": "nx run-many --target=test:e2e",
+    "benchmark:bundle-size": "pnpm nx run tanstack-router-e2e-bundle-size:build",
     "build": "nx affected --target=build --exclude=e2e/** --exclude=examples/**",
     "build:all": "nx run-many --target=build --exclude=examples/** --exclude=e2e/**",
     "watch": "pnpm run build:all && nx watch --all -- pnpm run build:all",
@@ -29,7 +30,10 @@
     "set-ts-version": "node scripts/set-ts-version.js",
     "labeler-generate": "node scripts/generate-labeler-config.ts",
     "cleanup-empty-packages": "node scripts/cleanup-empty-packages.mjs",
-    "test:docs": "node scripts/verify-links.ts"
+    "test:docs": "node scripts/verify-links.ts",
+    "vite-ecosystem-ci:build": "nx run-many --targets=build --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start,@tanstack/react-start-client,@tanstack/react-start-server --skipRemoteCache",
+    "vite-ecosystem-ci:before-test": "pnpm exec playwright install chromium",
+    "vite-ecosystem-ci:test": "nx run-many --targets=test:unit --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start-client --skipRemoteCache && nx run-many --target=test:e2e --projects=tanstack-router-e2e-react-basic-file-based,tanstack-router-e2e-react-basic-file-based-code-splitting,tanstack-react-start-e2e-basic --skipRemoteCache"
   },
   "nx": {
     "includedScripts": [
@@ -53,7 +57,7 @@
     "eslint-plugin-unused-imports": "^4.1.4",
     "jsdom": "^25.0.1",
     "markdown-link-extractor": "^4.0.3",
-    "nx": "22.3.3",
+    "nx": "22.5.1",
     "prettier": "^3.8.0",
     "publint": "^0.3.16",
     "react": "^19.2.3",

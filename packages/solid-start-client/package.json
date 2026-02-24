@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-start-client",
-  "version": "1.159.5",
+  "version": "1.162.8",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -68,6 +68,7 @@
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "^6.6.3",
+    "vite": "*",
     "vite-plugin-solid": "^2.11.10"
   },
   "peerDependencies": {

@@ -56,6 +56,10 @@ type DirectCallSetup = {
 }
 type JSXSetup = { type: 'jsx'; componentName: string }
 
+function isLookupKind(kind: Kind): kind is LookupKind {
+  return kind in LookupSetup
+}
+
 const LookupSetup: Record<
   LookupKind,
   MethodChainSetup | DirectCallSetup | JSXSetup
@@ -944,11 +948,22 @@ export class StartCompiler {
 
     deadCodeElimination(ast, refIdents)
 
-    return generateFromAst(ast, {
+    const result = generateFromAst(ast, {
       sourceMaps: true,
       sourceFileName: id,
       filename: id,
     })
+
+    // @babel/generator does not populate sourcesContent because it only has
+    // the AST, not the original text.  Without this, Vite's composed
+    // sourcemap omits the original source, causing downstream consumers
+    // (e.g. import-protection snippet display) to fall back to the shorter
+    // compiled output and fail to resolve original line numbers.
+    if (result.map) {
+      result.map.sourcesContent = [code]
+    }
+
+    return result
   }
 
   private async resolveIdentifierKind(
@@ -1120,6 +1135,21 @@ export class StartCompiler {
       fileId,
       visited,
     )
+    // When a var binding's init is a call to a directCall factory
+    // (e.g., `const myFn = createServerOnlyFn(() => ...)`), the binding holds
+    // the RESULT of the factory, not the factory itself. Clear the kind so
+    // `myFn()` isn't incorrectly matched as a directCall candidate.
+    // We only clear when the init is a CallExpression — an alias like
+    // `const createSO = createServerOnlyFn` should still propagate the kind.
+    if (
+      isLookupKind(resolvedKind) &&
+      LookupSetup[resolvedKind].type === 'directCall' &&
+      binding.init &&
+      t.isCallExpression(binding.init)
+    ) {
+      binding.resolvedKind = 'None'
+      return 'None'
+    }
     binding.resolvedKind = resolvedKind
     return resolvedKind
   }

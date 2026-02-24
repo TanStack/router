@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-start-server",
-  "version": "1.159.5",
+  "version": "1.162.8",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -67,6 +67,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue-jsx": "^4.1.2",
     "typescript": "^5.7.2",
+    "vite": "*",
     "vue": "^3.5.25"
   },
   "peerDependencies": {
