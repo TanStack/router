@@ -351,6 +351,12 @@ export function useLinkProps<
 
   const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
     if (local.disabled || preload() !== 'intent') return
+
+    if (!preloadDelay()) {
+      doPreload()
+      return
+    }
+
     const eventTarget = e.currentTarget || e.target
 
     if (!eventTarget || timeoutMap.has(eventTarget)) return
