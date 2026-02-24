@@ -38,6 +38,8 @@ function RootComponent() {
           <Link to="/component-server-leak">Component Server Leak</Link>
           {' | '}
           <Link to="/barrel-false-positive">Barrel False Positive</Link>
+          {' | '}
+          <Link to="/noexternal-client-pkg">noExternal Client Pkg</Link>
         </nav>
         <Outlet />
         <Scripts />

@@ -23,10 +23,12 @@ export function getDefaultImportProtectionRules(): DefaultImportProtectionRules 
     client: {
       specifiers: clientSpecifiers,
       files: ['**/*.server.*'],
+      excludeFiles: ['**/node_modules/**'],
     },
     server: {
       specifiers: [],
       files: ['**/*.client.*'],
+      excludeFiles: ['**/node_modules/**'],
     },
   }
 }

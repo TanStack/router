@@ -110,10 +110,12 @@ interface PluginConfig {
     client: {
       specifiers: Array<CompiledMatcher>
       files: Array<CompiledMatcher>
+      excludeFiles: Array<CompiledMatcher>
     }
     server: {
       specifiers: Array<CompiledMatcher>
       files: Array<CompiledMatcher>
+      excludeFiles: Array<CompiledMatcher>
     }
   }
   includeMatchers: Array<CompiledMatcher>
@@ -350,8 +352,8 @@ export function importProtectionPlugin(
     logMode: 'once',
     maxTraceDepth: 20,
     compiledRules: {
-      client: { specifiers: [], files: [] },
-      server: { specifiers: [], files: [] },
+      client: { specifiers: [], files: [], excludeFiles: [] },
+      server: { specifiers: [], files: [], excludeFiles: [] },
     },
     includeMatchers: [],
     excludeMatchers: [],
@@ -540,6 +542,7 @@ export function importProtectionPlugin(
   function getRulesForEnvironment(envName: string): {
     specifiers: Array<CompiledMatcher>
     files: Array<CompiledMatcher>
+    excludeFiles: Array<CompiledMatcher>
   } {
     const type = getEnvType(envName)
     return type === 'client'
@@ -1021,20 +1024,28 @@ export function importProtectionPlugin(
         const clientFiles = userOpts?.client?.files
           ? [...userOpts.client.files]
           : [...defaults.client.files]
+        const clientExcludeFiles = userOpts?.client?.excludeFiles
+          ? [...userOpts.client.excludeFiles]
+          : [...defaults.client.excludeFiles]
         const serverSpecifiers = userOpts?.server?.specifiers
           ? dedupePatterns([...userOpts.server.specifiers])
           : dedupePatterns([...defaults.server.specifiers])
         const serverFiles = userOpts?.server?.files
           ? [...userOpts.server.files]
           : [...defaults.server.files]
+        const serverExcludeFiles = userOpts?.server?.excludeFiles
+          ? [...userOpts.server.excludeFiles]
+          : [...defaults.server.excludeFiles]
 
         config.compiledRules.client = {
           specifiers: compileMatchers(clientSpecifiers),
           files: compileMatchers(clientFiles),
+          excludeFiles: compileMatchers(clientExcludeFiles),
         }
         config.compiledRules.server = {
           specifiers: compileMatchers(serverSpecifiers),
           files: compileMatchers(serverFiles),
+          excludeFiles: compileMatchers(serverExcludeFiles),
         }
 
         // Include/exclude
@@ -1344,56 +1355,69 @@ export function importProtectionPlugin(
 
           env.graph.addEdge(resolved, normalizedImporter, source)
 
-          const fileMatch =
-            matchers.files.length > 0
-              ? matchesAny(relativePath, matchers.files)
-              : undefined
+          // Skip file-based and marker-based denial for resolved paths that
+          // match the per-environment `excludeFiles` patterns.  By default
+          // this includes `**/node_modules/**` so that third-party packages
+          // using `.client.` / `.server.` in their filenames (e.g. react-tweet
+          // exports `index.client.js`) are not treated as user-authored
+          // environment boundaries.  Users can override `excludeFiles` per
+          // environment to narrow or widen this exclusion.
+          const isExcludedFile =
+            matchers.excludeFiles.length > 0 &&
+            matchesAny(relativePath, matchers.excludeFiles)
 
-          if (fileMatch) {
-            const info = await buildViolationInfo(
+          if (!isExcludedFile) {
+            const fileMatch =
+              matchers.files.length > 0
+                ? matchesAny(relativePath, matchers.files)
+                : undefined
+
+            if (fileMatch) {
+              const info = await buildViolationInfo(
+                provider,
+                env,
+                envName,
+                envType,
+                importer,
+                normalizedImporter,
+                source,
+                {
+                  type: 'file',
+                  pattern: fileMatch.pattern,
+                  resolved,
+                  message: `Import "${source}" (resolved to "${relativePath}") is denied in the ${envType} environment`,
+                },
+              )
+              return reportOrDeferViolation(
+                this,
+                env,
+                normalizedImporter,
+                info,
+                shouldDefer,
+                isPreTransformResolve,
+              )
+            }
+
+            const markerInfo = await buildMarkerViolationFromResolvedImport(
               provider,
               env,
               envName,
               envType,
               importer,
-              normalizedImporter,
               source,
-              {
-                type: 'file',
-                pattern: fileMatch.pattern,
-                resolved,
-                message: `Import "${source}" (resolved to "${relativePath}") is denied in the ${envType} environment`,
-              },
+              resolved,
+              relativePath,
             )
-            return reportOrDeferViolation(
-              this,
-              env,
-              normalizedImporter,
-              info,
-              shouldDefer,
-              isPreTransformResolve,
-            )
-          }
-
-          const markerInfo = await buildMarkerViolationFromResolvedImport(
-            provider,
-            env,
-            envName,
-            envType,
-            importer,
-            source,
-            resolved,
-            relativePath,
-          )
-          if (markerInfo) {
-            return reportOrDeferViolation(
-              this,
-              env,
-              normalizedImporter,
-              markerInfo,
-              shouldDefer,
-              isPreTransformResolve,
-            )
+            if (markerInfo) {
+              return reportOrDeferViolation(
+                this,
+                env,
+                normalizedImporter,
+                markerInfo,
+                shouldDefer,
+                isPreTransformResolve,
+              )
+            }
           }
         }
 

@@ -630,3 +630,32 @@ test('no false positive for barrel-reexport marker pattern in build', async () =
 
   expect(markerHits).toEqual([])
 })
+
+// noExternal .client package false positive: react-tweet's package.json
+// exports resolve to `index.client.js` via the "default" condition.
+// When listed in ssr.noExternal, Vite bundles it and the resolved path
+// contains `.client.`, matching the default **/*.client.* deny pattern.
+// Import-protection must NOT flag node_modules paths with file-based
+// deny rules — these are third-party conventions, not user source code.
+
+test('noexternal-client-pkg route loads in mock mode', async ({ page }) => {
+  await page.goto('/noexternal-client-pkg')
+  await expect(page.getByTestId('noexternal-heading')).toContainText(
+    'noExternal .client Package',
+  )
+})
+
+for (const mode of ['build', 'dev'] as const) {
+  test(`no false positive for noExternal react-tweet (.client entry) in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const hits = violations.filter(
+      (v) =>
+        v.specifier.includes('react-tweet') ||
+        v.resolved?.includes('react-tweet') ||
+        v.importer.includes('noexternal-client-pkg'),
+    )
+
+    expect(hits).toEqual([])
+  })
+}

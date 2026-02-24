@@ -16,6 +16,7 @@ const importProtectionBehaviorSchema = z.enum(['error', 'mock'])
 const importProtectionEnvRulesSchema = z.object({
   specifiers: z.array(patternSchema).optional(),
   files: z.array(patternSchema).optional(),
+  excludeFiles: z.array(patternSchema).optional(),
 })
 
 const importProtectionOptionsSchema = z
