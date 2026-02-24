@@ -38,7 +38,7 @@ Import protection is enabled out of the box with these defaults:
 - Files matching `**/*.client.*`
 - Excluded from file checks: `**/node_modules/**`
 
-By default, files inside `node_modules` are excluded from file-pattern checks via the `excludeFiles` option. This prevents false positives from third-party packages whose resolved filenames contain `.client.` or `.server.`. If you need to check third-party files, set `excludeFiles: []` on the relevant environment — see [Configuring Deny Rules](#configuring-deny-rules).
+By default, files inside `node_modules` are excluded from resolved-target deny checks via the `excludeFiles` option. This prevents false positives from third-party packages whose resolved filenames contain `.client.` or `.server.`. If you need to check third-party files, set `excludeFiles: []` on the relevant environment — see [Configuring Deny Rules](#configuring-deny-rules).
 
 These defaults mean you can use the `.server.ts` / `.client.ts` naming convention to restrict files to a single environment without any configuration. To also deny entire directories (e.g. `server/` or `client/`), add them via `files` in your [deny rules configuration](#configuring-deny-rules) — for example `files: ['**/*.server.*', '**/server/**']` for the client environment.
 
@@ -136,7 +136,7 @@ export default defineConfig({
 
 ### Checking third-party packages
 
-By default, resolved files inside `node_modules` are excluded from file-pattern checks. This avoids false positives from packages that happen to use `.client.` or `.server.` in their distribution filenames. If you want to re-enable checking for a specific environment, set `excludeFiles` to an empty array:
+By default, resolved files inside `node_modules` are excluded from resolved-target deny checks (file-pattern and marker checks). This avoids false positives from packages that happen to use `.client.` or `.server.` in their distribution filenames. If you want to re-enable checking for a specific environment, set `excludeFiles` to an empty array:
 
 ```ts
 importProtection: {
@@ -435,21 +435,21 @@ interface ImportProtectionOptions {
 }
 ```
 
-| Option                | Type                 | Default                           | Description                                                                         |
-| --------------------- | -------------------- | --------------------------------- | ----------------------------------------------------------------------------------- |
-| `enabled`             | `boolean`            | `true`                            | Set to `false` to disable the plugin                                                |
-| `behavior`            | `string \| object`   | `{ dev: 'mock', build: 'error' }` | What to do on violation                                                             |
-| `log`                 | `'once' \| 'always'` | `'once'`                          | Whether to deduplicate repeated violations                                          |
-| `include`             | `Pattern[]`          | Start's `srcDirectory`            | Only check importers matching these patterns                                        |
-| `exclude`             | `Pattern[]`          | `[]`                              | Skip importers matching these patterns                                              |
-| `ignoreImporters`     | `Pattern[]`          | `[]`                              | Ignore violations from these importers                                              |
-| `maxTraceDepth`       | `number`             | `20`                              | Maximum depth for import traces                                                     |
-| `client`              | `object`             | See defaults above                | Additional deny rules for the client environment                                    |
-| `client.specifiers`   | `Pattern[]`          | Framework server specifiers       | Specifier patterns denied in the client environment (additive with defaults)        |
-| `client.files`        | `Pattern[]`          | `['**/*.server.*']`               | File patterns denied in the client environment (replaces defaults)                  |
-| `client.excludeFiles` | `Pattern[]`          | `['**/node_modules/**']`          | Resolved files matching these patterns skip file-pattern checks (replaces defaults) |
-| `server`              | `object`             | See defaults above                | Additional deny rules for the server environment                                    |
-| `server.specifiers`   | `Pattern[]`          | `[]`                              | Specifier patterns denied in the server environment (replaces defaults)             |
-| `server.files`        | `Pattern[]`          | `['**/*.client.*']`               | File patterns denied in the server environment (replaces defaults)                  |
-| `server.excludeFiles` | `Pattern[]`          | `['**/node_modules/**']`          | Resolved files matching these patterns skip file-pattern checks (replaces defaults) |
-| `onViolation`         | `function`           | `undefined`                       | Callback invoked on every violation                                                 |
+| Option                | Type                 | Default                           | Description                                                                                                    |
+| --------------------- | -------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `enabled`             | `boolean`            | `true`                            | Set to `false` to disable the plugin                                                                           |
+| `behavior`            | `string \| object`   | `{ dev: 'mock', build: 'error' }` | What to do on violation                                                                                        |
+| `log`                 | `'once' \| 'always'` | `'once'`                          | Whether to deduplicate repeated violations                                                                     |
+| `include`             | `Pattern[]`          | Start's `srcDirectory`            | Only check importers matching these patterns                                                                   |
+| `exclude`             | `Pattern[]`          | `[]`                              | Skip importers matching these patterns                                                                         |
+| `ignoreImporters`     | `Pattern[]`          | `[]`                              | Ignore violations from these importers                                                                         |
+| `maxTraceDepth`       | `number`             | `20`                              | Maximum depth for import traces                                                                                |
+| `client`              | `object`             | See defaults above                | Additional deny rules for the client environment                                                               |
+| `client.specifiers`   | `Pattern[]`          | Framework server specifiers       | Specifier patterns denied in the client environment (additive with defaults)                                   |
+| `client.files`        | `Pattern[]`          | `['**/*.server.*']`               | File patterns denied in the client environment (replaces defaults)                                             |
+| `client.excludeFiles` | `Pattern[]`          | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults) |
+| `server`              | `object`             | See defaults above                | Additional deny rules for the server environment                                                               |
+| `server.specifiers`   | `Pattern[]`          | `[]`                              | Specifier patterns denied in the server environment (replaces defaults)                                        |
+| `server.files`        | `Pattern[]`          | `['**/*.client.*']`               | File patterns denied in the server environment (replaces defaults)                                             |
+| `server.excludeFiles` | `Pattern[]`          | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults) |
+| `onViolation`         | `function`           | `undefined`                       | Callback invoked on every violation                                                                            |
