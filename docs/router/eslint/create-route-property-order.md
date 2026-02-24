@@ -36,10 +36,10 @@ Examples of **incorrect** code for this rule:
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/path')({
-  loader: async ({context}) => {
-    await context.queryClient.ensureQueryData(getQueryOptions(context.hello)),
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(getQueryOptions(context.hello))
   },
-  beforeLoad: () => ({hello: 'world'})
+  beforeLoad: () => ({ hello: 'world' }),
 })
 ```
 
@@ -54,10 +54,10 @@ export const Route = createFileRoute('/path')({
 import { createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/path')({
-  loader: async ({context}) => {
-    await context.queryClient.ensureQueryData(getQueryOptions(context.hello)),
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(getQueryOptions(context.hello))
   },
-  beforeLoad: () => ({hello: 'world'})
+  beforeLoad: () => ({ hello: 'world' }),
 })
 ```
 
@@ -78,10 +78,10 @@ Examples of **correct** code for this rule:
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/path')({
-  beforeLoad: () => ({hello: 'world'}),
-  loader: async ({context}) => {
-    await context.queryClient.ensureQueryData(getQueryOptions(context.hello)),
-  }
+  beforeLoad: () => ({ hello: 'world' }),
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(getQueryOptions(context.hello))
+  },
 })
 ```
 
@@ -96,10 +96,10 @@ export const Route = createFileRoute('/path')({
 import { createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/path')({
-  beforeLoad: () => ({hello: 'world'}),
-  loader: async ({context}) => {
-    await context.queryClient.ensureQueryData(getQueryOptions(context.hello)),
-  }
+  beforeLoad: () => ({ hello: 'world' }),
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(getQueryOptions(context.hello))
+  },
 })
 ```
 

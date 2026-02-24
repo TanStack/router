@@ -82,7 +82,7 @@ const getLookupConfigurationsForEnv = (
     ]
   }
 }
-const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
+export const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
 
 function resolveViteId(id: string) {
   return `\0${id}`

@@ -1,15 +1,18 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawn } from 'node:child_process'
-import type { FullConfig } from '@playwright/test'
+import { chromium } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 
 import { extractViolationsFromLog } from './violations.utils'
+import type { FullConfig } from '@playwright/test'
+import type { Violation } from './violations.utils'
 
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()
-  // eslint-disable-next-line no-constant-condition
+
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
     if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for ${url}`)
@@ -75,166 +78,92 @@ const routes = [
   '/leaky-server-import',
   '/client-only-violations',
   '/client-only-jsx',
+  '/beforeload-leak',
+  '/component-server-leak',
+  '/barrel-false-positive',
 ]
 
-const extraModulePaths = [
-  '/src/routes/leaky-server-import.tsx',
-  '/src/violations/leaky-server-import.ts',
-  '/src/routes/client-only-violations.tsx',
-  '/src/routes/client-only-jsx.tsx',
-  '/src/violations/window-size.client.tsx',
-  // Index route violation modules: triggers client-env violations for
-  // file-based (edge-a, edge-3, compiler-leak → secret.server) and
-  // marker-based (marked-server-only) denials.
-  '/src/routes/index.tsx',
-  '/src/violations/edge-a.ts',
-  '/src/violations/edge-1.ts',
-  '/src/violations/edge-2.ts',
-  '/src/violations/edge-3.ts',
-  '/src/violations/compiler-leak.ts',
-  '/src/violations/marked-server-only-edge.ts',
-  '/src/violations/marked-server-only.ts',
-]
-
-/**
- * Warmup pass: start a throwaway Vite dev server, hit all routes and module
- * URLs so that Vite's dep optimization runs and populates the
- * `node_modules/.vite` cache, then kill the server.
- *
- * On a cold start (no `.vite` cache), Vite's dep optimization runs lazily on
- * first request.  During that burst, `resolveId` can fire before the
- * transform-cache plugin has stored `{code, map}` for importers, which means
- * violations logged in this window may lack snippets.
- *
- * By running the warmup in a separate server instance we ensure the `.vite`
- * dep cache exists before the real capture pass starts.  The second server
- * boots with a warm dep cache so all transforms are populated before
- * `resolveId` fires for violation edges.
- */
-async function warmupDepOptimization(
-  cwd: string,
-  port: number,
+async function navigateAllRoutes(
   baseURL: string,
+  browser: Awaited<ReturnType<typeof chromium.launch>>,
 ): Promise<void> {
-  const child = startDevServer(cwd, port)
+  const context = await browser.newContext()
+  const page = await context.newPage()
 
-  // Drain output to /dev/null — we don't need warmup logs.
-  child.stdout?.resume()
-  child.stderr?.resume()
-
-  try {
-    await waitForHttpOk(baseURL, 30_000)
-
-    // Fetch HTML pages to trigger SSR transforms + dep discovery.
-    for (const route of routes) {
-      try {
-        await fetch(`${baseURL}${route}`, {
-          signal: AbortSignal.timeout(10_000),
-        })
-      } catch {
-        // ignore
-      }
+  for (const route of routes) {
+    try {
+      await page.goto(`${baseURL}${route}`, {
+        waitUntil: 'networkidle',
+        timeout: 15_000,
+      })
+    } catch {
+      // ignore navigation errors — we only care about server logs
     }
-
-    // Fetch module URLs to trigger client-env transforms and ensure all
-    // external deps are discovered and optimized.
-    const moduleUrls = ['/@vite/client', ...extraModulePaths].map((u) =>
-      u.startsWith('http') ? u : `${baseURL}${u}`,
-    )
-    for (const url of moduleUrls) {
-      try {
-        await fetch(url, { signal: AbortSignal.timeout(10_000) })
-      } catch {
-        // ignore
-      }
-    }
-
-    // Wait for dep optimization to finish writing the .vite cache.
-    await new Promise((r) => setTimeout(r, 2000))
-  } finally {
-    await killChild(child)
   }
+
+  await context.close()
 }
 
-async function captureDevViolations(cwd: string): Promise<void> {
-  const port = await getTestServerPort(`${packageJson.name}_dev`)
+/**
+ * Starts a dev server, navigates all routes, captures violations.
+ * Returns the extracted violations array.
+ */
+async function runDevPass(
+  cwd: string,
+  port: number,
+): Promise<Array<Violation>> {
   const baseURL = `http://localhost:${port}`
-  const logFile = path.resolve(cwd, 'webserver-dev.log')
-
-  // --- Warmup pass ----------------------------------------------------------
-  // Run a throwaway dev server to populate the .vite dep cache.  This is a
-  // no-op when the cache already exists (warm start).
-  await warmupDepOptimization(cwd, port, baseURL)
-
-  // --- Capture pass (warm dep cache) ----------------------------------------
-  const out = fs.createWriteStream(logFile)
+  const logChunks: Array<string> = []
   const child = startDevServer(cwd, port)
 
-  child.stdout?.on('data', (d: Buffer) => out.write(d))
-  child.stderr?.on('data', (d: Buffer) => out.write(d))
+  child.stdout?.on('data', (d: Buffer) => logChunks.push(d.toString()))
+  child.stderr?.on('data', (d: Buffer) => logChunks.push(d.toString()))
 
   try {
     await waitForHttpOk(baseURL, 30_000)
 
-    const htmlPages: Array<string> = []
-    for (const route of routes) {
-      try {
-        const htmlRes = await fetch(`${baseURL}${route}`, {
-          signal: AbortSignal.timeout(5000),
-        })
-        htmlPages.push(await htmlRes.text())
-      } catch {
-        // ignore
-      }
+    const browser = await chromium.launch()
+    try {
+      await navigateAllRoutes(baseURL, browser)
+    } finally {
+      await browser.close()
     }
 
-    const scriptSrcs = htmlPages
-      .flatMap((html) =>
-        Array.from(
-          html.matchAll(/<script[^>]*type="module"[^>]*src="([^"]+)"/g),
-        ).map((m) => m[1]),
-      )
-      .filter(Boolean)
-      .slice(0, 10)
-
-    // Trigger module transforms by fetching module scripts referenced from
-    // HTML, plus known module paths to ensure code-split routes are
-    // transformed.  Fetching these via HTTP triggers Vite's client-environment
-    // transform pipeline, which fires resolveId for each import and surfaces
-    // violations.
-    const moduleUrls = Array.from(
-      new Set(['/@vite/client', ...scriptSrcs, ...extraModulePaths]),
-    )
-      .map((u) => (u.startsWith('http') ? u : `${baseURL}${u}`))
-      .slice(0, 30)
-
-    for (const url of moduleUrls) {
-      try {
-        await fetch(url, {
-          signal: AbortSignal.timeout(10_000),
-        })
-      } catch {
-        // ignore
-      }
-    }
-
-    // Give the server a moment to flush logs.
     await new Promise((r) => setTimeout(r, 750))
   } finally {
     await killChild(child)
-    out.end()
   }
 
-  if (!fs.existsSync(logFile)) {
-    fs.writeFileSync(path.resolve(cwd, 'violations.dev.json'), '[]')
-    return
-  }
+  const text = logChunks.join('')
+  return extractViolationsFromLog(text)
+}
 
-  const text = fs.readFileSync(logFile, 'utf-8')
-  const violations = extractViolationsFromLog(text)
+/**
+ * Captures dev violations in two passes:
+ *   1. Cold — fresh dev server, Vite compiles all modules from scratch.
+ *   2. Warm — restart dev server (Vite's .vite cache persists on disk),
+ *      modules are pre-transformed so resolveId/transform paths differ.
+ */
+async function captureDevViolations(cwd: string): Promise<void> {
+  const port = await getTestServerPort(`${packageJson.name}_dev`)
+
+  const coldViolations = await runDevPass(cwd, port)
+
   fs.writeFileSync(
     path.resolve(cwd, 'violations.dev.json'),
-    JSON.stringify(violations, null, 2),
+    JSON.stringify(coldViolations, null, 2),
+  )
+  fs.writeFileSync(
+    path.resolve(cwd, 'violations.dev.cold.json'),
+    JSON.stringify(coldViolations, null, 2),
+  )
+
+  // Warm pass: the .vite cache from the cold run is still on disk.
+  const warmViolations = await runDevPass(cwd, port)
+
+  fs.writeFileSync(
+    path.resolve(cwd, 'violations.dev.warm.json'),
+    JSON.stringify(warmViolations, null, 2),
   )
 }
 

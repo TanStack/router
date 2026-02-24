@@ -51,18 +51,44 @@ describe('ImportGraph', () => {
     // Edges where /b is importer should be removed
     const edgesForA = graph.getEdges('/a')
     expect(edgesForA).toBeDefined()
-    // /a's only importer was /b, which was invalidated, so empty
     expect(edgesForA!.size).toBe(0)
 
     const edgesForC = graph.getEdges('/c')
-    // /c was imported by /b, which was invalidated
     expect(edgesForC).toBeDefined()
     expect(edgesForC!.size).toBe(0)
 
-    // /d -> /a edge should be untouched (importer is /a, not /b)
     const edgesForD = graph.getEdges('/d')
     expect(edgesForD).toBeDefined()
     expect(edgesForD!.size).toBe(1)
+  })
+
+  test('getEdges returns undefined for unknown ID', () => {
+    const graph = new ImportGraph()
+    expect(graph.getEdges('/nonexistent')).toBeUndefined()
+  })
+
+  test('invalidate also removes reverseEdges entry for the invalidated module', () => {
+    const graph = new ImportGraph()
+    graph.addEdge('/a', '/b', './a')
+    graph.invalidate('/a')
+    // /a's own reverse-edge map should be gone
+    expect(graph.reverseEdges.has('/a')).toBe(false)
+  })
+
+  test('invalidate is safe on unknown ID', () => {
+    const graph = new ImportGraph()
+    graph.addEdge('/a', '/b', './a')
+    graph.invalidate('/unknown')
+    expect(graph.getEdges('/a')!.size).toBe(1)
+  })
+
+  test('addEdge overwrites specifier for same importer→resolved pair', () => {
+    const graph = new ImportGraph()
+    graph.addEdge('/a', '/b', './a-old')
+    graph.addEdge('/a', '/b', './a-new')
+    const edges = graph.getEdges('/a')
+    expect(edges!.size).toBe(1)
+    expect([...edges!][0]!.specifier).toBe('./a-new')
   })
 })
 
@@ -87,12 +113,8 @@ describe('buildTrace', () => {
     // Build trace starting from edge-a (the importer of the denied module)
     const trace = buildTrace(graph, '/src/violations/edge-a.ts')
 
-    // Trace should go: main.tsx -> routes/index.tsx -> violations/edge-a.ts
     expect(trace.length).toBeGreaterThanOrEqual(2)
-
-    // First should be the entry
     expect(trace[0]!.file).toBe('/src/main.tsx')
-    // Last should be the starting node
     expect(trace[trace.length - 1]!.file).toBe('/src/violations/edge-a.ts')
   })
 
@@ -108,7 +130,6 @@ describe('buildTrace', () => {
     graph.addEdge('/e', '/d', './e')
 
     const trace = buildTrace(graph, '/e', 2)
-    // Should be limited - won't reach all the way to /entry
     expect(trace.length).toBeLessThanOrEqual(4)
   })
 
@@ -119,32 +140,21 @@ describe('buildTrace', () => {
     expect(trace[0]!.file).toBe('/orphan')
   })
 
-  test('treats node with no reverse-edge map entry as entry (root)', () => {
-    // Regression: previously `importers?.size === 0` returned `undefined`
-    // (not `true`) when importers was undefined, so the node wasn't
-    // recognized as an entry.
+  test('treats node with no reverse-edge map entry as entry', () => {
     const graph = new ImportGraph()
-    // /a imports /b, but /a has no entry in reverseEdges (no one imports /a)
-    // and /a is NOT in graph.entries.
     graph.addEdge('/b', '/a', './b')
 
     const trace = buildTrace(graph, '/b')
-    // /a should be recognized as an entry even though it was never added
-    // via addEntry — it has no importers.
     expect(trace[0]!.file).toBe('/a')
     expect(trace[trace.length - 1]!.file).toBe('/b')
   })
 
   test('treats node with empty importers map as entry', () => {
     const graph = new ImportGraph()
-    // Create a reverse-edge entry for /a that is empty (e.g. after invalidation)
     graph.addEdge('/a', '/b', './a')
     graph.addEdge('/b', '/a', './b')
-    // Invalidate /a so its outgoing edges (as importer) are removed,
-    // leaving /a's reverse-edge map empty.
     graph.invalidate('/a')
 
-    // Re-add only the edge from /a -> /b (not /b -> /a)
     graph.addEdge('/b', '/a', './b')
 
     const trace = buildTrace(graph, '/b')
@@ -154,14 +164,32 @@ describe('buildTrace', () => {
 
   test('prefers explicit entry over implicit no-importers entry', () => {
     const graph = new ImportGraph()
-    graph.addEntry('/entry')
-    // /entry -> /mid -> /leaf
+    graph.addEntry('/entry') // /entry -> /mid -> /leaf
     graph.addEdge('/mid', '/entry', './mid')
     graph.addEdge('/leaf', '/mid', './leaf')
 
     const trace = buildTrace(graph, '/leaf')
     expect(trace[0]!.file).toBe('/entry')
     expect(trace[trace.length - 1]!.file).toBe('/leaf')
+  })
+
+  test('handles cycles without infinite loop', () => {
+    const graph = new ImportGraph()
+    graph.addEntry('/entry')
+    graph.addEdge('/a', '/entry', './a')
+    graph.addEdge('/b', '/a', './b')
+    graph.addEdge('/a', '/b', './a') // cycle: /a -> /b -> /a
+
+    const trace = buildTrace(graph, '/b')
+    // Should terminate and produce a trace ending at /b
+    expect(trace[trace.length - 1]!.file).toBe('/b')
+    expect(trace.length).toBeGreaterThanOrEqual(2)
+  })
+
+  test('handles fully disconnected node (no edges at all)', () => {
+    const graph = new ImportGraph()
+    const trace = buildTrace(graph, '/island')
+    expect(trace).toEqual([{ file: '/island', specifier: undefined }])
   })
 })
 
@@ -234,7 +262,6 @@ describe('formatViolation', () => {
 
     expect(formatted).toContain('marker')
     expect(formatted).toContain('restricted to the opposite environment')
-    // Marker violations in the client env should also get server-in-client suggestions
     expect(formatted).toContain('Suggestions:')
     expect(formatted).toContain('createServerFn')
   })
@@ -259,7 +286,6 @@ describe('formatViolation', () => {
     expect(formatted).toContain('createClientOnlyFn')
     expect(formatted).toContain('createIsomorphicFn')
     expect(formatted).toContain('Move the client-only import')
-    // No JSX in snippet, so no ClientOnly suggestion
     expect(formatted).not.toContain('<ClientOnly')
   })
 
@@ -380,11 +406,9 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    // The top-level Import line should show the relative path, not absolute.
     expect(formatted).toContain('Import: "src/utils/prisma"')
     expect(formatted).not.toContain('Import: "/project/src/utils/prisma"')
 
-    // The trace step specifier should also be relative.
     expect(formatted).toContain('(import "src/utils/prisma")')
     expect(formatted).not.toContain('(import "/project/src/utils/prisma")')
   })
@@ -409,9 +433,7 @@ describe('formatViolation', () => {
 
     const formatted = formatViolation(info, '/project')
 
-    // Bare specifier should be preserved as-is.
     expect(formatted).toContain('Import: "@tanstack/react-start/server"')
-    // Relative specifier in trace should also be preserved as-is.
     expect(formatted).toContain('(import "./secret.server")')
   })
 })
