@@ -173,6 +173,7 @@ export class Route<
     TPath
   >,
   in out TSearchValidator = undefined,
+  in out TStateValidator = undefined,
   in out TParams = ResolveParams<TPath>,
   in out TRouterContext = AnyContext,
   in out TRouteContextFn = AnyContext,
@@ -193,6 +194,7 @@ export class Route<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -214,6 +216,7 @@ export class Route<
       TCustomId,
       TId,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TRouterContext,
       TRouteContextFn,
@@ -239,6 +242,7 @@ export class Route<
       TFullPath,
       TPath,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TLoaderDeps,
       TLoaderFn,
@@ -318,6 +322,7 @@ export function createRoute<
     TPath
   >,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TParams = ResolveParams<TPath>,
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
@@ -335,6 +340,7 @@ export function createRoute<
     TFullPath,
     TPath,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TLoaderDeps,
     TLoaderFn,
@@ -352,6 +358,7 @@ export function createRoute<
   TCustomId,
   TId,
   TSearchValidator,
+  TStateValidator,
   TParams,
   AnyContext,
   TRouteContextFn,
@@ -371,6 +378,7 @@ export function createRoute<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     AnyContext,
     TRouteContextFn,
@@ -394,6 +402,7 @@ export type AnyRootRoute = RootRoute<
   any,
   any,
   any,
+  any,
   any
 >
 
@@ -403,6 +412,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
+    TStateValidator = undefined,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
     TSSR = unknown,
@@ -411,6 +421,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     options?: RootRouteOptions<
       TRegister,
       TSearchValidator,
+      TStateValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
@@ -423,6 +434,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     return createRootRoute<
       TRegister,
       TSearchValidator,
+      TStateValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
@@ -442,6 +454,7 @@ export const rootRouteWithContext = createRootRouteWithContext
 export class RootRoute<
   in out TRegister = Register,
   in out TSearchValidator = undefined,
+  in out TStateValidator = undefined,
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
@@ -455,6 +468,7 @@ export class RootRoute<
   extends BaseRootRoute<
     TRegister,
     TSearchValidator,
+    TStateValidator,
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
@@ -469,6 +483,7 @@ export class RootRoute<
     RootRouteCore<
       TRegister,
       TSearchValidator,
+      TStateValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
@@ -487,6 +502,7 @@ export class RootRoute<
     options?: RootRouteOptions<
       TRegister,
       TSearchValidator,
+      TStateValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
@@ -582,6 +598,7 @@ export class NotFoundRoute<
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TChildren = unknown,
@@ -595,6 +612,7 @@ export class NotFoundRoute<
   '404',
   '404',
   TSearchValidator,
+  TStateValidator,
   {},
   TRouterContext,
   TRouteContextFn,
@@ -615,6 +633,7 @@ export class NotFoundRoute<
         string,
         string,
         TSearchValidator,
+        TStateValidator,
         {},
         TLoaderDeps,
         TLoaderFn,
@@ -642,6 +661,7 @@ export class NotFoundRoute<
 export function createRootRoute<
   TRegister = Register,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
@@ -653,6 +673,7 @@ export function createRootRoute<
   options?: RootRouteOptions<
     TRegister,
     TSearchValidator,
+    TStateValidator,
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
@@ -664,6 +685,7 @@ export function createRootRoute<
 ): RootRoute<
   TRegister,
   TSearchValidator,
+  TStateValidator,
   TRouterContext,
   TRouteContextFn,
   TBeforeLoadFn,
@@ -677,6 +699,7 @@ export function createRootRoute<
   return new RootRoute<
     TRegister,
     TSearchValidator,
+    TStateValidator,
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,

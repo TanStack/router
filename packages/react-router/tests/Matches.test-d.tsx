@@ -19,6 +19,7 @@ type RootMatch = RouteMatch<
   RootRoute['fullPath'],
   RootRoute['types']['allParams'],
   RootRoute['types']['fullSearchSchema'],
+  RootRoute['types']['fullStateSchema'],
   RootRoute['types']['loaderData'],
   RootRoute['types']['allContext'],
   RootRoute['types']['loaderDeps']
@@ -36,6 +37,7 @@ type IndexMatch = RouteMatch<
   IndexRoute['fullPath'],
   IndexRoute['types']['allParams'],
   IndexRoute['types']['fullSearchSchema'],
+  IndexRoute['types']['fullStateSchema'],
   IndexRoute['types']['loaderData'],
   IndexRoute['types']['allContext'],
   IndexRoute['types']['loaderDeps']
@@ -52,6 +54,7 @@ type InvoiceMatch = RouteMatch<
   InvoiceRoute['fullPath'],
   InvoiceRoute['types']['allParams'],
   InvoiceRoute['types']['fullSearchSchema'],
+  InvoiceRoute['types']['fullStateSchema'],
   InvoiceRoute['types']['loaderData'],
   InvoiceRoute['types']['allContext'],
   InvoiceRoute['types']['loaderDeps']
@@ -64,6 +67,7 @@ type InvoicesMatch = RouteMatch<
   InvoicesRoute['fullPath'],
   InvoicesRoute['types']['allParams'],
   InvoicesRoute['types']['fullSearchSchema'],
+  InvoicesRoute['types']['fullStateSchema'],
   InvoicesRoute['types']['loaderData'],
   InvoicesRoute['types']['allContext'],
   InvoicesRoute['types']['loaderDeps']
@@ -81,6 +85,7 @@ type InvoicesIndexMatch = RouteMatch<
   InvoicesIndexRoute['fullPath'],
   InvoicesIndexRoute['types']['allParams'],
   InvoicesIndexRoute['types']['fullSearchSchema'],
+  InvoicesIndexRoute['types']['fullStateSchema'],
   InvoicesIndexRoute['types']['loaderData'],
   InvoicesIndexRoute['types']['allContext'],
   InvoicesIndexRoute['types']['loaderDeps']
@@ -106,6 +111,7 @@ type LayoutMatch = RouteMatch<
   LayoutRoute['fullPath'],
   LayoutRoute['types']['allParams'],
   LayoutRoute['types']['fullSearchSchema'],
+  LayoutRoute['types']['fullStateSchema'],
   LayoutRoute['types']['loaderData'],
   LayoutRoute['types']['allContext'],
   LayoutRoute['types']['loaderDeps']
@@ -129,6 +135,7 @@ type CommentsMatch = RouteMatch<
   CommentsRoute['fullPath'],
   CommentsRoute['types']['allParams'],
   CommentsRoute['types']['fullSearchSchema'],
+  CommentsRoute['types']['fullStateSchema'],
   CommentsRoute['types']['loaderData'],
   CommentsRoute['types']['allContext'],
   CommentsRoute['types']['loaderDeps']
