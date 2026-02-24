@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771916345009,
+  "lastUpdate": 1771916954133,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -1201,6 +1201,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/623cbb0de419dcf4c3d84caf0d9f30555af4b5df"
         },
         "date": 1771916343163,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88607,
+            "unit": "bytes",
+            "extra": "raw=278686; brotli=76973"
+          },
+          {
+            "name": "react-router.full",
+            "value": 91696,
+            "unit": "bytes",
+            "extra": "raw=289268; brotli=79747"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36662,
+            "unit": "bytes",
+            "extra": "raw=109846; brotli=32891"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41109,
+            "unit": "bytes",
+            "extra": "raw=123210; brotli=36962"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 52899,
+            "unit": "bytes",
+            "extra": "raw=150779; brotli=47604"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 57844,
+            "unit": "bytes",
+            "extra": "raw=166741; brotli=51912"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101453,
+            "unit": "bytes",
+            "extra": "raw=318762; brotli=87769"
+          },
+          {
+            "name": "react-start.full",
+            "value": 104876,
+            "unit": "bytes",
+            "extra": "raw=328770; brotli=90596"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49277,
+            "unit": "bytes",
+            "extra": "raw=148320; brotli=43575"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 54863,
+            "unit": "bytes",
+            "extra": "raw=164615; brotli=48473"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "118944686+jong-kyung@users.noreply.github.com",
+            "name": "JongKyung Lee",
+            "username": "jong-kyung"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9fd7fb95c63fbf0eb2a6f1fbc29bbe262d39083c",
+          "message": "docs(router): add MaskOptions to Navigation documentation (#6625)",
+          "timestamp": "2026-02-24T20:06:53+13:00",
+          "tree_id": "d82c3aedb5325187b16d5d768f3de7519c68c5c4",
+          "url": "https://github.com/TanStack/router/commit/9fd7fb95c63fbf0eb2a6f1fbc29bbe262d39083c"
+        },
+        "date": 1771916953153,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
