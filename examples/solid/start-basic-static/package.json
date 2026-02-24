@@ -12,8 +12,8 @@
   "dependencies": {
     "@tanstack/solid-router": "^1.162.9",
     "@tanstack/solid-router-devtools": "^1.162.9",
-    "@tanstack/solid-start": "^1.162.9",
-    "@tanstack/start-static-server-functions": "^1.162.9",
+    "@tanstack/solid-start": "^1.163.0",
+    "@tanstack/start-static-server-functions": "^1.163.0",
     "solid-js": "^1.9.10",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0"
