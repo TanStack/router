@@ -399,6 +399,14 @@ export const Outlet = () => {
     },
   })
 
+  const childRouteId = useRouterState({
+    select: (s) => {
+      const matches = s.matches
+      const index = matches.findIndex((d) => d.id === matchId())
+      return matches[index + 1]?.routeId
+    },
+  })
+
   const childMatchStatus = useRouterState({
     select: (s) => {
       const matches = s.matches
@@ -429,8 +437,8 @@ export const Outlet = () => {
             when={routeId() === rootRouteId}
             fallback={<Match matchId={currentMatchId()} />}
           >
-            <Solid.Show when={currentMatchId()} keyed>
-              {(_matchId) => (
+            <Solid.Show when={childRouteId()} keyed>
+              {(_routeId) => (
                 <Solid.Loading
                   fallback={
                     <Dynamic

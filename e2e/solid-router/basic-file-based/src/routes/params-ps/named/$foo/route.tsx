@@ -9,9 +9,7 @@ function RouteComponent() {
   const [renderCount, setRenderCount] = createSignal(0)
   const params = Route.useParams()
 
-  createEffect(params, (p) => {
-    p.foo
-
+  createEffect(() => params().foo, () => {
     setRenderCount((prev) => prev + 1)
   })
 
