@@ -41,6 +41,11 @@ const getLookupConfigurationsForEnv = (
     },
     {
       libName: `@tanstack/${framework}-start`,
+      rootExport: 'createStart',
+      kind: 'Root',
+    },
+    {
+      libName: `@tanstack/${framework}-start`,
       rootExport: 'createIsomorphicFn',
       kind: 'IsomorphicFn',
     },
@@ -61,11 +66,6 @@ const getLookupConfigurationsForEnv = (
       {
         libName: `@tanstack/${framework}-start`,
         rootExport: 'createMiddleware',
-        kind: 'Root',
-      },
-      {
-        libName: `@tanstack/${framework}-start`,
-        rootExport: 'createStart',
         kind: 'Root',
       },
       ...commonConfigs,
