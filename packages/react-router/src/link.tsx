@@ -661,7 +661,7 @@ export function useLinkProps<
   }
 
   const enqueueIntentPreload = (e: React.MouseEvent | React.FocusEvent) => {
-    if (disabled || !preload) return
+    if (disabled || preload !== 'intent') return
 
     if (!preloadDelay) {
       doPreload()
@@ -682,7 +682,7 @@ export function useLinkProps<
   }
 
   const handleTouchStart = (_: React.TouchEvent) => {
-    if (disabled || !preload) return
+    if (disabled || preload !== 'intent') return
     doPreload()
   }
 
