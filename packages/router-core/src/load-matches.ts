@@ -150,13 +150,21 @@ const handleRedirectAndNotFound = (
 
     match._nonReactive.error = err
 
-    inner.updateMatch(match.id, (prev) => ({
-      ...prev,
-      status,
-      context: buildMatchContext(inner, match.index),
-      isFetching: false,
-      error: err,
-    }))
+    // For redirects, skip the synchronous store update entirely.
+    // The redirect will trigger navigate() which replaces all matches,
+    // making this status update unnecessary. More importantly, the
+    // synchronous store update triggers a reactive flush in frameworks
+    // like Solid that can corrupt the reactive graph when nodes are
+    // being disposed during an async stale-while-revalidate cycle.
+    if (!isRedirect(err)) {
+      inner.updateMatch(match.id, (prev) => ({
+        ...prev,
+        status,
+        context: buildMatchContext(inner, match.index),
+        isFetching: false,
+        error: err,
+      }))
+    }
 
     if (isNotFound(err) && !err.routeId) {
       err.routeId = match.routeId
