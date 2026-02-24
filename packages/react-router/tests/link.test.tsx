@@ -4554,60 +4554,57 @@ describe('Link', () => {
     },
   )
 
-  test(
-    'Link.preload="intent" should preload on focus, hover, and touchstart',
-    async () => {
-      const rootRoute = createRootRoute()
-      const indexRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
-        component: () => (
-          <>
-            <h1>Index Heading</h1>
-            <Link to="/about" preload="intent">
-              About Link
-            </Link>
-          </>
-        ),
-      })
-      const aboutRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/about',
-        component: () => <h1>About Heading</h1>,
-      })
+  test('Link.preload="intent" should preload on focus, hover, and touchstart', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/about" preload="intent">
+            About Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <h1>About Heading</h1>,
+    })
 
-      const router = createRouter({
-        routeTree: rootRoute.addChildren([aboutRoute, indexRoute]),
-        defaultPreload: false,
-        defaultPreloadDelay: 0,
-        history,
-      })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([aboutRoute, indexRoute]),
+      defaultPreload: false,
+      defaultPreloadDelay: 0,
+      history,
+    })
 
-      const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
 
-      render(<RouterProvider router={router} />)
+    render(<RouterProvider router={router} />)
 
-      const aboutLink = await screen.findByRole('link', { name: 'About Link' })
-      expect(aboutLink).toBeInTheDocument()
+    const aboutLink = await screen.findByRole('link', { name: 'About Link' })
+    expect(aboutLink).toBeInTheDocument()
 
-      const baselineCalls = preloadRouteSpy.mock.calls.length
+    const baselineCalls = preloadRouteSpy.mock.calls.length
 
-      fireEvent.focus(aboutLink)
-      await waitFor(() =>
-        expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 1),
-      )
+    fireEvent.focus(aboutLink)
+    await waitFor(() =>
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 1),
+    )
 
-      fireEvent.mouseOver(aboutLink)
-      await waitFor(() =>
-        expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 2),
-      )
+    fireEvent.mouseOver(aboutLink)
+    await waitFor(() =>
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 2),
+    )
 
-      fireEvent.touchStart(aboutLink)
-      await waitFor(() =>
-        expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 3),
-      )
-    },
-  )
+    fireEvent.touchStart(aboutLink)
+    await waitFor(() =>
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 3),
+    )
+  })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
     const rootRoute = createRootRoute()
