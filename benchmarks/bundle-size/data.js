@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771937463966,
+  "lastUpdate": 1771961485885,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -1369,6 +1369,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/f58d457542a65eb93671f92a1fe84f76330f221e"
         },
         "date": 1771937462315,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88613,
+            "unit": "bytes",
+            "extra": "raw=278706; brotli=77016"
+          },
+          {
+            "name": "react-router.full",
+            "value": 91702,
+            "unit": "bytes",
+            "extra": "raw=289288; brotli=79745"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36706,
+            "unit": "bytes",
+            "extra": "raw=109862; brotli=32995"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41144,
+            "unit": "bytes",
+            "extra": "raw=123226; brotli=36913"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 52951,
+            "unit": "bytes",
+            "extra": "raw=150797; brotli=47607"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 57871,
+            "unit": "bytes",
+            "extra": "raw=166759; brotli=51972"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101457,
+            "unit": "bytes",
+            "extra": "raw=318782; brotli=87801"
+          },
+          {
+            "name": "react-start.full",
+            "value": 104877,
+            "unit": "bytes",
+            "extra": "raw=328790; brotli=90650"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49313,
+            "unit": "bytes",
+            "extra": "raw=148336; brotli=43620"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 54905,
+            "unit": "bytes",
+            "extra": "raw=164631; brotli=48399"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "44531564+valerii15298@users.noreply.github.com",
+            "name": "Valerii Petryniak",
+            "username": "valerii15298"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9a4161acff05baea72706b0ea58b51705b000c5d",
+          "message": "docs: Fix frontmatter title field (#6753)\n\nFix frontmatter title field",
+          "timestamp": "2026-02-24T20:28:51+01:00",
+          "tree_id": "3f53af6eafb23611dead24d6aeafaed2e822e1d0",
+          "url": "https://github.com/TanStack/router/commit/9a4161acff05baea72706b0ea58b51705b000c5d"
+        },
+        "date": 1771961484012,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
