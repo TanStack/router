@@ -8,7 +8,10 @@ import type {
 } from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
 
-const RouterContext = getRouterContext() as unknown as Solid.Component<{ value: any, children: any }>;
+const RouterContext = getRouterContext() as unknown as Solid.Component<{
+  value: any
+  children: any
+}>
 
 export function RouterContextProvider<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -30,15 +33,11 @@ export function RouterContextProvider<
     },
   } as any)
 
-  const routerContext = getRouterContext()
-
   const OptionalWrapper = router.options.Wrap || SafeFragment
 
   return (
     <OptionalWrapper>
-      <RouterContext value={router as AnyRouter}>
-        {children()}
-      </RouterContext>
+      <RouterContext value={router as AnyRouter}>{children()}</RouterContext>
     </OptionalWrapper>
   )
 }

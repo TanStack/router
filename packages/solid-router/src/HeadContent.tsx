@@ -1,4 +1,3 @@
-// import { MetaProvider } from '@solidjs/meta'
 import { For } from 'solid-js'
 import { Asset } from './Asset'
 import { useTags } from './headContentUtils'
@@ -13,8 +12,11 @@ export function HeadContent() {
   const tags = useTags()
 
   return (
-    // <MetaProvider>
-    <For each={tags()}>{(tag) => <Asset {...(tag as any)} />}</For>
-    // </MetaProvider>
+    <For each={tags()}>
+      {(tag) => {
+        const t = tag() as any
+        return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
+      }}
+    </For>
   )
 }

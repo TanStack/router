@@ -14,8 +14,7 @@ export const usePrevious = (fn: () => boolean) => {
       const current = fn()
 
       if (prev.current !== current) {
-        prev.previous = prev.current
-        prev.current = current
+        return { previous: prev.current, current }
       }
 
       return prev

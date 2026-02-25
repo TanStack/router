@@ -254,8 +254,7 @@ async function structuralSharingTest(page: Page, enabled: boolean) {
   await checkSearch({ bar: 'b2', foo: 'f2' })
 }
 
-// needs Solid meta upgraded to work with Solid 2.0
-test.skip('Should change title on client side navigation', async ({ page }) => {
+test('Should change title on client side navigation', async ({ page }) => {
   await page.goto('/')
 
   await page.getByRole('link', { name: 'Posts' }).click()

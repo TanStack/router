@@ -1,4 +1,3 @@
-// import { MetaProvider } from '@solidjs/meta'
 import { For, createEffect, createMemo } from 'solid-js'
 import { Asset } from './Asset'
 import { useHydrated } from './ClientOnly'
@@ -41,8 +40,11 @@ export function HeadContent() {
   })
 
   return (
-    // <MetaProvider>
-    <For each={filteredTags()}>{(tag) => <Asset {...(tag as any)} />}</For>
-    // </MetaProvider>
+    <For each={filteredTags()}>
+      {(tag) => {
+        const t = tag() as any
+        return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
+      }}
+    </For>
   )
 }
