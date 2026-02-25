@@ -1,4 +1,4 @@
-import { Store } from '@tanstack/store'
+import { createStore } from '@tanstack/store'
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import { batch } from './utils/batch'
@@ -42,6 +42,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
+import type { Store } from '@tanstack/store'
 import type { LRUCache } from './lru-cache'
 import type {
   ProcessRouteTreeResult,
@@ -1132,7 +1133,7 @@ export class RouterCore<
           getInitialRouterState(this.latestLocation),
         ) as unknown as Store<any>
       } else {
-        this.__store = new Store(getInitialRouterState(this.latestLocation))
+        this.__store = createStore(getInitialRouterState(this.latestLocation))
 
         setupScrollRestoration(this)
       }
