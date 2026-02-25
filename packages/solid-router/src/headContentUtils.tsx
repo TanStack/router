@@ -91,17 +91,36 @@ export const useTags = () => {
 
   const links = useRouterState({
     select: (state) => {
-      const constructed = state.matches
-        .map((match) => match.links!)
-        .filter(Boolean)
-        .flat(1)
-        .map((link) => ({
-          tag: 'link',
-          attrs: {
-            ...link,
-            nonce,
-          },
-        })) satisfies Array<RouterManagedTag>
+      const constructedLinks: Array<RouterManagedTag> = []
+      const relsToDedupe = new Set(['canonical'])
+      const linksByRel: Record<string, true> = {}
+
+      for (let i = state.matches.length - 1; i >= 0; i--) {
+        const match = state.matches[i]!
+        const matchLinks = match.links
+        if (!matchLinks) continue
+
+        for (let j = matchLinks.length - 1; j >= 0; j--) {
+          const link = matchLinks[j]!
+          if (link.rel && relsToDedupe.has(link.rel)) {
+            if (linksByRel[link.rel]) {
+              continue
+            }
+            linksByRel[link.rel] = true
+          }
+
+          constructedLinks.push({
+            tag: 'link',
+            attrs: {
+              ...link,
+              nonce,
+            },
+          })
+        }
+      }
+
+      constructedLinks.reverse()
+      const constructed = constructedLinks satisfies Array<RouterManagedTag>
 
       const manifest = router.ssr?.manifest
 
