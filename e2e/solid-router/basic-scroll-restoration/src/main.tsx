@@ -10,6 +10,7 @@ import {
   useElementScrollRestoration,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+// Solid virtual is not compatible with solid v2
 import { createVirtualizer } from '@tanstack/solid-virtual'
 import './styles.css'
 import { createRenderEffect } from 'solid-js'
@@ -50,9 +51,9 @@ const indexRoute = createRoute({
 })
 
 function IndexComponent() {
-  createRenderEffect(() => {
+  createRenderEffect(() => undefined, () => {
     window.invokeOrders.push('index-useLayoutEffect')
-  }, [])
+  })
 
   return (
     <div class="p-2">
@@ -79,9 +80,9 @@ const aboutRoute = createRoute({
 })
 
 function AboutComponent() {
-  createRenderEffect(() => {
+  createRenderEffect(() => undefined, () => {
     window.invokeOrders.push('about-useLayoutEffect')
-  }, [])
+  })
   return (
     <div class="p-2">
       <h3 id="greeting">Hello from About!</h3>

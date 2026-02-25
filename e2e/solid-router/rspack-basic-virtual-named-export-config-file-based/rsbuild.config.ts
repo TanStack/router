@@ -19,6 +19,9 @@ export default defineConfig({
           virtualRouteConfig: './routes.ts',
         }),
       ],
+      resolve: {
+        conditionNames: ['solid', 'import', 'module', 'browser', 'default'],
+      },
     },
   },
 })

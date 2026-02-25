@@ -13,6 +13,9 @@ export default defineConfig({
   tools: {
     rspack: {
       plugins: [tanstackRouter({ target: 'solid', autoCodeSplitting: true })],
+      resolve: {
+        conditionNames: ['solid', 'import', 'module', 'browser', 'default'],
+      },
     },
   },
 })
