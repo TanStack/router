@@ -13,12 +13,13 @@ import {
 import type { ViolationInfo } from '../../src/import-protection-plugin/trace'
 
 describe('loadSilentMockModule', () => {
-  test('returns code with syntheticNamedExports', () => {
+  test('returns mock code', () => {
     const result = loadSilentMockModule()
-    expect(result.syntheticNamedExports).toBe(true)
     expect(result.code).toContain('export default mock')
     expect(result.code).toContain('createMock')
     expect(result.code).toContain('Proxy')
+    expect(result.code).toContain('@__NO_SIDE_EFFECTS__')
+    expect(result.code).toContain('@__PURE__')
   })
 })
 

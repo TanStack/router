@@ -21,21 +21,13 @@ import {
 } from './utils'
 import { collectMockExportNamesBySource } from './rewriteDeniedImports'
 import {
-  MARKER_PREFIX,
-  MOCK_EDGE_PREFIX,
-  MOCK_MODULE_ID,
-  MOCK_RUNTIME_PREFIX,
-  RESOLVED_MARKER_PREFIX,
-  RESOLVED_MOCK_BUILD_PREFIX,
-  RESOLVED_MOCK_EDGE_PREFIX,
-  RESOLVED_MOCK_MODULE_ID,
-  RESOLVED_MOCK_RUNTIME_PREFIX,
-  loadMarkerModule,
-  loadMockEdgeModule,
-  loadMockRuntimeModule,
-  loadSilentMockModule,
+  MOCK_BUILD_PREFIX,
+  getResolvedVirtualModuleMatchers,
+  loadResolvedVirtualModule,
   makeMockEdgeModuleId,
   mockRuntimeModuleIdFromViolation,
+  resolveInternalVirtualModuleId,
+  resolvedMarkerVirtualModuleId,
 } from './virtualModules'
 import {
   ImportLocCache,
@@ -62,9 +54,6 @@ import type {
 import type { CompileStartFrameworkOptions, GetConfigFn } from '../types'
 
 const SERVER_FN_LOOKUP_QUERY = '?' + SERVER_FN_LOOKUP
-const RESOLVED_MARKER_SERVER_ONLY = resolveViteId(`${MARKER_PREFIX}server-only`)
-const RESOLVED_MARKER_CLIENT_ONLY = resolveViteId(`${MARKER_PREFIX}client-only`)
-
 const IMPORT_PROTECTION_DEBUG =
   process.env.TSR_IMPORT_PROTECTION_DEBUG === '1' ||
   process.env.TSR_IMPORT_PROTECTION_DEBUG === 'true'
@@ -82,7 +71,6 @@ function matchesDebugFilter(...values: Array<string>): boolean {
   return values.some((v) => v.includes(IMPORT_PROTECTION_DEBUG_FILTER))
 }
 
-export { RESOLVED_MOCK_MODULE_ID } from './virtualModules'
 export { rewriteDeniedImports } from './rewriteDeniedImports'
 export { dedupePatterns, extractImportSources } from './utils'
 export type { Pattern } from './utils'
@@ -216,6 +204,16 @@ interface DeferredBuildViolation {
   info: ViolationInfo
   /** Unique mock module ID assigned to this violation. */
   mockModuleId: string
+
+  /**
+   * Module ID to check for tree-shaking survival in `generateBundle`.
+   *
+   * For most violations we check the unique mock module ID.
+   * For `marker` violations the import is a bare side-effect import that often
+   * gets optimized away regardless of whether the importer survives, so we
+   * instead check whether the importer module itself survived.
+   */
+  checkModuleId?: string
 }
 
 /**
@@ -818,27 +816,18 @@ export function importProtectionPlugin(
     env: EnvState,
     importerFile: string,
     info: ViolationInfo,
-    mockReturnValue:
-      | { id: string; syntheticNamedExports: boolean }
-      | string
-      | undefined,
+    mockReturnValue: string | undefined,
   ): void {
     getOrCreate(env.pendingViolations, importerFile, () => []).push({
       info,
-      mockReturnValue:
-        typeof mockReturnValue === 'string'
-          ? mockReturnValue
-          : (mockReturnValue?.id ?? ''),
+      mockReturnValue: mockReturnValue ?? '',
     })
   }
 
   /** Counter for generating unique per-violation mock module IDs in build mode. */
   let buildViolationCounter = 0
 
-  type HandleViolationResult =
-    | { id: string; syntheticNamedExports: boolean }
-    | string
-    | undefined
+  type HandleViolationResult = string | undefined
 
   async function handleViolation(
     ctx: ViolationReporter,
@@ -909,8 +898,22 @@ export function importProtectionPlugin(
 
     // Build: unique per-violation mock IDs so generateBundle can check
     // which violations survived tree-shaking (both mock and error mode).
-    const mockId = `${RESOLVED_MOCK_BUILD_PREFIX}${buildViolationCounter++}`
-    return { id: mockId, syntheticNamedExports: true }
+    // We wrap the base mock in a mock-edge module that provides explicit
+    // named exports — Rolldown doesn't support Rollup's
+    // syntheticNamedExports, so without this named imports like
+    // `import { Foo } from "denied-pkg"` would fail with MISSING_EXPORT.
+    //
+    // Use the unresolved MOCK_BUILD_PREFIX (without \0) as the runtimeId
+    // so the mock-edge module's `import mock from "..."` goes through
+    // resolveId, which adds the \0 prefix. Using the resolved ID directly
+    // would cause Rollup/Vite to skip resolveId and fail to find the module.
+    const baseMockId = `${MOCK_BUILD_PREFIX}${buildViolationCounter++}`
+    const importerFile = normalizeFilePath(info.importer)
+    const exports =
+      env.mockExportsByImporter.get(importerFile)?.get(info.specifier) ?? []
+    return resolveViteId(
+      makeMockEdgeModuleId(exports, info.specifier, baseMockId),
+    )
   }
 
   /**
@@ -940,9 +943,14 @@ export function importProtectionPlugin(
 
       if (config.command === 'build') {
         // Build mode: store for generateBundle tree-shaking check.
-        // The unique mock ID is inside `result`.
-        const mockId = typeof result === 'string' ? result : (result?.id ?? '')
-        env.deferredBuildViolations.push({ info, mockModuleId: mockId })
+        // The mock-edge module ID is returned as a plain string.
+        const mockId = result ?? ''
+        env.deferredBuildViolations.push({
+          info,
+          mockModuleId: mockId,
+          // For marker violations, check importer survival instead of mock.
+          checkModuleId: info.type === 'marker' ? info.importer : undefined,
+        })
       } else {
         // Dev mock: store for graph-reachability check.
         deferViolation(env, importerFile, info, result)
@@ -1182,18 +1190,8 @@ export function importProtectionPlugin(
         }
 
         // Internal virtual modules
-        if (source === MOCK_MODULE_ID) {
-          return RESOLVED_MOCK_MODULE_ID
-        }
-        if (source.startsWith(MOCK_EDGE_PREFIX)) {
-          return resolveViteId(source)
-        }
-        if (source.startsWith(MOCK_RUNTIME_PREFIX)) {
-          return resolveViteId(source)
-        }
-        if (source.startsWith(MARKER_PREFIX)) {
-          return resolveViteId(source)
-        }
+        const internalVirtualId = resolveInternalVirtualModuleId(source)
+        if (internalVirtualId) return internalVirtualId
 
         if (!importer) {
           env.graph.addEntry(source)
@@ -1287,8 +1285,8 @@ export function importProtectionPlugin(
           }
 
           return markerKind === 'server'
-            ? RESOLVED_MARKER_SERVER_ONLY
-            : RESOLVED_MARKER_CLIENT_ONLY
+            ? resolvedMarkerVirtualModuleId('server')
+            : resolvedMarkerVirtualModuleId('client')
         }
 
         // Check if the importer is within our scope
@@ -1427,15 +1425,7 @@ export function importProtectionPlugin(
       load: {
         filter: {
           id: new RegExp(
-            [
-              RESOLVED_MOCK_MODULE_ID,
-              RESOLVED_MOCK_BUILD_PREFIX,
-              RESOLVED_MARKER_PREFIX,
-              RESOLVED_MOCK_EDGE_PREFIX,
-              RESOLVED_MOCK_RUNTIME_PREFIX,
-            ]
-              .map(escapeRegExp)
-              .join('|'),
+            getResolvedVirtualModuleMatchers().map(escapeRegExp).join('|'),
           ),
         },
         handler(id) {
@@ -1448,32 +1438,7 @@ export function importProtectionPlugin(
             }
           }
 
-          if (id === RESOLVED_MOCK_MODULE_ID) {
-            return loadSilentMockModule()
-          }
-
-          // Per-violation build mock modules — same silent mock code
-          if (id.startsWith(RESOLVED_MOCK_BUILD_PREFIX)) {
-            return loadSilentMockModule()
-          }
-
-          if (id.startsWith(RESOLVED_MOCK_EDGE_PREFIX)) {
-            return loadMockEdgeModule(
-              id.slice(RESOLVED_MOCK_EDGE_PREFIX.length),
-            )
-          }
-
-          if (id.startsWith(RESOLVED_MOCK_RUNTIME_PREFIX)) {
-            return loadMockRuntimeModule(
-              id.slice(RESOLVED_MOCK_RUNTIME_PREFIX.length),
-            )
-          }
-
-          if (id.startsWith(RESOLVED_MARKER_PREFIX)) {
-            return loadMarkerModule()
-          }
-
-          return undefined
+          return loadResolvedVirtualModule(id)
         },
       },
 
@@ -1492,11 +1457,16 @@ export function importProtectionPlugin(
           }
         }
 
-        // Check each deferred violation: if its unique mock module survived
+        // Check each deferred violation: if its check module survived
         // in the bundle, the import was NOT tree-shaken — real leak.
         const realViolations: Array<ViolationInfo> = []
-        for (const { info, mockModuleId } of env.deferredBuildViolations) {
-          if (!survivingModules.has(mockModuleId)) continue
+        for (const {
+          info,
+          mockModuleId,
+          checkModuleId,
+        } of env.deferredBuildViolations) {
+          const checkId = checkModuleId ?? mockModuleId
+          if (!survivingModules.has(checkId)) continue
 
           if (config.onViolation) {
             const result = await config.onViolation(info)
@@ -1648,18 +1618,17 @@ export function importProtectionPlugin(
       name: 'tanstack-start-core:import-protection-mock-rewrite',
       enforce: 'pre',
 
-      // Only needed during dev. In build, we rely on Rollup's syntheticNamedExports.
-      apply: 'serve',
-
       applyToEnvironment(env) {
         if (!config.enabled) return false
-        // Only needed in mock mode — when not mocking, there is nothing to
-        // record.  applyToEnvironment runs after configResolved, so
-        // config.effectiveBehavior is already set.
-        if (config.effectiveBehavior !== 'mock') return false
-        // We record expected named exports per importer in all Start Vite
-        // environments during dev so mock-edge modules can provide explicit
-        // ESM named exports.
+        // We record expected named exports per importer so mock-edge modules
+        // can provide explicit ESM named exports.  This is needed in both dev
+        // and build: native ESM (dev) requires real named exports, and
+        // Rolldown (used in Vite 6+) doesn't support Rollup's
+        // syntheticNamedExports flag which was previously relied upon in build.
+        //
+        // In build+error mode we still emit mock modules for deferred
+        // violations (checked at generateBundle time), so we always need the
+        // export name data when import protection is active.
         return environmentNames.has(env.name)
       },
 

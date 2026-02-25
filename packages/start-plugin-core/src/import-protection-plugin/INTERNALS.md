@@ -78,9 +78,9 @@ analysing a module's exports. These are tracked via `serverFnLookupModules` and
 ### Central functions
 
 - **`handleViolation()`**: Formats + reports (or silences) the violation. Returns
-  a mock module ID (or `{ id, syntheticNamedExports }` in build) so `resolveId`
-  can substitute the offending import. May also return `undefined` (suppressed by
-  `onViolation` or silent+error in dev) or throw via `ctx.error()` (dev+error).
+  a mock-edge module ID (string) so `resolveId` can substitute the offending
+  import. May also return `undefined` (suppressed by `onViolation` or
+  silent+error in dev) or throw via `ctx.error()` (dev+error).
 - **`reportOrDeferViolation()`**: Dispatch layer. Either defers (stores for later
   verification) or reports immediately, depending on `shouldDefer`.
 
@@ -138,8 +138,11 @@ In dev, each violation gets a **per-importer mock edge module** that:
 - Delegates to a **runtime mock module** that contains a recursive Proxy and
   optional runtime diagnostics (console warnings when mocked values are used).
 
-This differs from build mode, where `syntheticNamedExports: true` lets Rollup
-handle named export resolution from the silent mock.
+This differs from build mode, where each violation gets a **per-violation mock
+edge module** wrapping a unique base mock module
+(`\0tanstack-start-import-protection:mock:build:N`). The edge module re-exports
+the named exports the importer expects, just like in dev, ensuring compatibility
+with both Rollup and Rolldown (which doesn't support `syntheticNamedExports`).
 
 ## Build Mode Strategy
 
@@ -148,15 +151,19 @@ handle named export resolution from the silent mock.
 Both mock and error build modes follow the same pattern:
 
 1. **`resolveId`**: Call `handleViolation({ silent: true })`. Generate a
-   **unique per-violation mock module ID** (`\0tanstack-start-import-protection:mock:build:N`).
-   Store the violation + mock ID in `env.deferredBuildViolations`. Return the
-   mock ID so Rollup substitutes the offending import.
+   **unique per-violation mock-edge module** that wraps a base mock module
+   (`\0tanstack-start-import-protection:mock:build:N`) and provides explicit
+   named exports matching the importer's import bindings. Store the violation +
+   mock-edge ID in `env.deferredBuildViolations`. Return the mock-edge ID so the
+   bundler substitutes the offending import.
 
-2. **`load`**: Return a silent Proxy-based mock module (same code as
-   `RESOLVED_MOCK_MODULE_ID`) with `syntheticNamedExports: true`.
+2. **`load`**: For the base mock module, return a silent Proxy-based mock. For
+   the mock-edge module, return code that imports from the base mock and
+   re-exports the expected named bindings (e.g. `export const Foo = mock.Foo`).
 
-3. **Tree-shaking**: Rollup processes the bundle normally. If no binding from
-   the mock module is actually used at runtime, the mock module is eliminated.
+3. **Tree-shaking**: The bundler processes the bundle normally. If no binding from
+   the mock-edge module is actually used at runtime, both the edge and base
+   modules are eliminated.
 
 4. **`generateBundle`**: Inspect the output chunks. For each deferred violation,
    check whether its unique mock module ID appears in any chunk's `modules`.
@@ -171,15 +178,16 @@ Both mock and error build modes follow the same pattern:
 The original `RESOLVED_MOCK_MODULE_ID` is a single shared virtual module used
 for all mock-mode violations. If multiple violations are deferred, we need to
 know _which specific ones_ survived tree-shaking. A shared ID would tell us
-"something survived" but not which violation it corresponds to. The unique IDs
-(`...mock:build:0`, `...mock:build:1`, etc.) provide this granularity.
+"something survived" but not which violation it corresponds to. Each violation
+gets a unique mock-edge module (wrapping a unique base mock
+`...mock:build:0`, `...mock:build:1`, etc.) to provide this granularity.
 
 ### Why mocking doesn't affect tree-shaking
 
 From the consumer's perspective, the import bindings are identical whether they
-point to the real module or the mock. Rollup tree-shakes based on binding usage,
-not module content. If a binding from the barrel's re-export of `.server` is
-unused after the Start compiler strips server fn handlers, tree-shaking
+point to the real module or the mock. The bundler tree-shakes based on binding
+usage, not module content. If a binding from the barrel's re-export of `.server`
+is unused after the Start compiler strips server fn handlers, tree-shaking
 eliminates it regardless of whether it points to real DB code or a Proxy mock.
 
 ### Per-environment operation
