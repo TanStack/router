@@ -83,6 +83,16 @@ const routes = [
   '/barrel-false-positive',
 ]
 
+const routeReadyTestIds: Record<string, string> = {
+  '/': 'heading',
+  '/leaky-server-import': 'leaky-heading',
+  '/client-only-violations': 'client-only-heading',
+  '/client-only-jsx': 'client-only-jsx-heading',
+  '/beforeload-leak': 'beforeload-leak-heading',
+  '/component-server-leak': 'component-leak-heading',
+  '/barrel-false-positive': 'barrel-heading',
+}
+
 async function navigateAllRoutes(
   baseURL: string,
   browser: Awaited<ReturnType<typeof chromium.launch>>,
@@ -92,10 +102,27 @@ async function navigateAllRoutes(
 
   for (const route of routes) {
     try {
-      await page.goto(`${baseURL}${route}`, {
-        waitUntil: 'networkidle',
-        timeout: 15_000,
-      })
+      // Prefer 'networkidle' (ensures route chunks are actually fetched), but
+      // fall back if it hangs in certain CI environments.
+      try {
+        await page.goto(`${baseURL}${route}`, {
+          waitUntil: 'networkidle',
+          timeout: 15_000,
+        })
+      } catch {
+        await page.goto(`${baseURL}${route}`, {
+          waitUntil: 'load',
+          timeout: 30_000,
+        })
+      }
+
+      const testId = routeReadyTestIds[route]
+      if (testId) {
+        await page.getByTestId(testId).waitFor({ timeout: 10_000 })
+      }
+
+      // Allow any deferred transforms/logging to flush.
+      await new Promise((r) => setTimeout(r, 750))
     } catch {
       // ignore navigation errors — we only care about server logs
     }
