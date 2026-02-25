@@ -43,12 +43,6 @@ export function resolvedMarkerVirtualModuleId(
  * Vite/Rollup call `load(id)` with the *resolved* virtual id (prefixed by `\0`).
  * `resolveId(source)` sees the *unresolved* id/prefix (without `\0`).
  */
-/**
- * Convenience list for plugin `load` filters/handlers.
- *
- * Vite/Rollup call `load(id)` with the *resolved* virtual id (prefixed by `\0`).
- * `resolveId(source)` sees the *unresolved* id/prefix (without `\0`).
- */
 export function getResolvedVirtualModuleMatchers(): ReadonlyArray<string> {
   return RESOLVED_VIRTUAL_MODULE_MATCHERS
 }
