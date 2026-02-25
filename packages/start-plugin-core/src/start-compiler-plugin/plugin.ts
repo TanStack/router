@@ -114,7 +114,7 @@ function generateManifestModule(
   includeClientReferencedCheck: boolean,
 ): string {
   const manifestEntries = Object.entries(serverFnsById)
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([id, fn]) => {
       const baseEntry = `'${id}': {
                 functionName: '${fn.functionName}',
