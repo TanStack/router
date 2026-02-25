@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@tanstack/solid-devtools": "^0.7.0",
-    "@tanstack/solid-router": "^1.162.9",
-    "@tanstack/solid-router-devtools": "^1.162.9",
-    "@tanstack/solid-start": "^1.163.1",
+    "@tanstack/solid-router": "^1.163.2",
+    "@tanstack/solid-router-devtools": "^1.163.2",
+    "@tanstack/solid-start": "^1.163.2",
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
