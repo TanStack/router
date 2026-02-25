@@ -6,7 +6,7 @@ import { relativizePath } from './utils'
 import type { ViolationInfo } from './trace'
 
 export const MOCK_MODULE_ID = 'tanstack-start-import-protection:mock'
-export const RESOLVED_MOCK_MODULE_ID = resolveViteId(MOCK_MODULE_ID)
+const RESOLVED_MOCK_MODULE_ID = resolveViteId(MOCK_MODULE_ID)
 
 /**
  * Per-violation mock prefix used in build+error mode.
@@ -14,17 +14,69 @@ export const RESOLVED_MOCK_MODULE_ID = resolveViteId(MOCK_MODULE_ID)
  * survived tree-shaking in `generateBundle`.
  */
 export const MOCK_BUILD_PREFIX = 'tanstack-start-import-protection:mock:build:'
-export const RESOLVED_MOCK_BUILD_PREFIX = resolveViteId(MOCK_BUILD_PREFIX)
+const RESOLVED_MOCK_BUILD_PREFIX = resolveViteId(MOCK_BUILD_PREFIX)
 
 export const MOCK_EDGE_PREFIX = 'tanstack-start-import-protection:mock-edge:'
-export const RESOLVED_MOCK_EDGE_PREFIX = resolveViteId(MOCK_EDGE_PREFIX)
+const RESOLVED_MOCK_EDGE_PREFIX = resolveViteId(MOCK_EDGE_PREFIX)
 
 export const MOCK_RUNTIME_PREFIX =
   'tanstack-start-import-protection:mock-runtime:'
-export const RESOLVED_MOCK_RUNTIME_PREFIX = resolveViteId(MOCK_RUNTIME_PREFIX)
+const RESOLVED_MOCK_RUNTIME_PREFIX = resolveViteId(MOCK_RUNTIME_PREFIX)
 
 export const MARKER_PREFIX = 'tanstack-start-import-protection:marker:'
-export const RESOLVED_MARKER_PREFIX = resolveViteId(MARKER_PREFIX)
+const RESOLVED_MARKER_PREFIX = resolveViteId(MARKER_PREFIX)
+
+const RESOLVED_MARKER_SERVER_ONLY = resolveViteId(`${MARKER_PREFIX}server-only`)
+const RESOLVED_MARKER_CLIENT_ONLY = resolveViteId(`${MARKER_PREFIX}client-only`)
+
+export function resolvedMarkerVirtualModuleId(
+  kind: 'server' | 'client',
+): string {
+  return kind === 'server'
+    ? RESOLVED_MARKER_SERVER_ONLY
+    : RESOLVED_MARKER_CLIENT_ONLY
+}
+
+/**
+ * Convenience list for plugin `load` filters/handlers.
+ *
+ * Vite/Rollup call `load(id)` with the *resolved* virtual id (prefixed by `\0`).
+ * `resolveId(source)` sees the *unresolved* id/prefix (without `\0`).
+ */
+/**
+ * Convenience list for plugin `load` filters/handlers.
+ *
+ * Vite/Rollup call `load(id)` with the *resolved* virtual id (prefixed by `\0`).
+ * `resolveId(source)` sees the *unresolved* id/prefix (without `\0`).
+ */
+export function getResolvedVirtualModuleMatchers(): ReadonlyArray<string> {
+  return RESOLVED_VIRTUAL_MODULE_MATCHERS
+}
+
+const RESOLVED_VIRTUAL_MODULE_MATCHERS = [
+  RESOLVED_MOCK_MODULE_ID,
+  RESOLVED_MOCK_BUILD_PREFIX,
+  RESOLVED_MOCK_EDGE_PREFIX,
+  RESOLVED_MOCK_RUNTIME_PREFIX,
+  RESOLVED_MARKER_PREFIX,
+] as const
+
+/**
+ * Resolve import-protection's internal virtual module IDs.
+ *
+ * `resolveId(source)` sees *unresolved* ids/prefixes (no `\0`).
+ * Returning a resolved id (with `\0`) ensures Vite/Rollup route it to `load`.
+ */
+export function resolveInternalVirtualModuleId(
+  source: string,
+): string | undefined {
+  if (source === MOCK_MODULE_ID) return RESOLVED_MOCK_MODULE_ID
+  if (source.startsWith(MOCK_EDGE_PREFIX)) return resolveViteId(source)
+  if (source.startsWith(MOCK_RUNTIME_PREFIX)) return resolveViteId(source)
+  if (source.startsWith(MOCK_BUILD_PREFIX)) return resolveViteId(source)
+  if (source.startsWith(MARKER_PREFIX)) return resolveViteId(source)
+  return undefined
+}
 
 function toBase64Url(input: string): string {
   return Buffer.from(input, 'utf8').toString('base64url')
@@ -87,7 +139,8 @@ export function makeMockEdgeModuleId(
  * (property access for primitive coercion, calls, construction, sets).
  *
  * When `diagnostics` is omitted, the mock is completely silent — suitable
- * for the shared `MOCK_MODULE_ID` that uses `syntheticNamedExports`.
+ * for base mock modules (e.g. `MOCK_MODULE_ID` or per-violation build mocks)
+ * that are consumed by mock-edge modules providing explicit named exports.
  */
 function generateMockCode(diagnostics?: {
   meta: {
@@ -170,7 +223,8 @@ function __report(action, accessPath) {
     : ''
 
   return `
-${preamble}function ${fnName}(name) {
+${preamble}/* @__NO_SIDE_EFFECTS__ */
+function ${fnName}(name) {
   const fn = function () {};
   fn.prototype.name = name;
   const children = Object.create(null);
@@ -197,16 +251,13 @@ ${preamble}function ${fnName}(name) {
   });
   return proxy;
 }
-const mock = ${fnName}('mock');
+const mock = /* @__PURE__ */ ${fnName}('mock');
 export default mock;
 `
 }
 
-export function loadSilentMockModule(): {
-  syntheticNamedExports: boolean
-  code: string
-} {
-  return { syntheticNamedExports: true, code: generateMockCode() }
+export function loadSilentMockModule(): { code: string } {
+  return { code: generateMockCode() }
 }
 
 export function loadMockEdgeModule(encodedPayload: string): { code: string } {
@@ -291,4 +342,31 @@ const MARKER_MODULE_RESULT = { code: 'export {}' } as const
 
 export function loadMarkerModule(): { code: string } {
   return MARKER_MODULE_RESULT
+}
+
+export function loadResolvedVirtualModule(
+  id: string,
+): { code: string } | undefined {
+  if (id === RESOLVED_MOCK_MODULE_ID) {
+    return loadSilentMockModule()
+  }
+
+  // Per-violation build mock modules — same silent mock code
+  if (id.startsWith(RESOLVED_MOCK_BUILD_PREFIX)) {
+    return loadSilentMockModule()
+  }
+
+  if (id.startsWith(RESOLVED_MOCK_EDGE_PREFIX)) {
+    return loadMockEdgeModule(id.slice(RESOLVED_MOCK_EDGE_PREFIX.length))
+  }
+
+  if (id.startsWith(RESOLVED_MOCK_RUNTIME_PREFIX)) {
+    return loadMockRuntimeModule(id.slice(RESOLVED_MOCK_RUNTIME_PREFIX.length))
+  }
+
+  if (id.startsWith(RESOLVED_MARKER_PREFIX)) {
+    return loadMarkerModule()
+  }
+
+  return undefined
 }

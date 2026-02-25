@@ -13,12 +13,30 @@ import {
 import type { ViolationInfo } from '../../src/import-protection-plugin/trace'
 
 describe('loadSilentMockModule', () => {
-  test('returns code with syntheticNamedExports', () => {
+  test('returns mock code', () => {
     const result = loadSilentMockModule()
-    expect(result.syntheticNamedExports).toBe(true)
     expect(result.code).toContain('export default mock')
     expect(result.code).toContain('createMock')
     expect(result.code).toContain('Proxy')
+    expect(result.code).toContain('@__NO_SIDE_EFFECTS__')
+    expect(result.code).toContain('@__PURE__')
+  })
+})
+
+describe('loadMockEdgeModule', () => {
+  test('does not add PURE annotations to property reads', () => {
+    const encodedPayload = Buffer.from(
+      JSON.stringify({ exports: ['foo', 'bar'], runtimeId: 'x' }),
+    )
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '')
+
+    const result = loadMockEdgeModule(encodedPayload)
+    expect(result.code).toContain('export const foo = mock.foo')
+    expect(result.code).toContain('export const bar = mock.bar')
+    expect(result.code).not.toContain('@__PURE__ */ mock.')
   })
 })
 
