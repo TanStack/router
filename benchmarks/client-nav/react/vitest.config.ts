@@ -4,6 +4,9 @@ import codspeedPlugin from '@codspeed/vitest-plugin'
 
 export default defineConfig({
   plugins: [react(), codspeedPlugin()],
+  resolve: {
+    conditions: ['browser'],
+  },
   test: {
     environment: 'jsdom',
     include: ['react/**/*.bench.tsx'],

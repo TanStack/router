@@ -15,6 +15,7 @@ import {
   HOOK_COUNT,
   LINK_COUNT,
   TARGET_ID,
+  TIMEOUT,
   heavySelect,
   parseIntOrZero,
 } from '../shared'
@@ -109,21 +110,42 @@ function setupBenchmark() {
   const done = new Promise<void>((resolve, reject) => {
     const expectedHref = `/${TARGET_ID}?n=${TARGET_ID}`
 
+    let settled = false
+    let unsubscribe = () => {}
+
+    const settle = (error?: Error) => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      window.clearTimeout(timeoutId)
+      unsubscribe()
+
+      if (error) {
+        reject(error)
+      } else {
+        resolve()
+      }
+    }
+
     const timeoutId = window.setTimeout(() => {
-      reject(
+      settle(
         new Error(
           `React benchmark timed out at ${router.state.location.href}; expected ${expectedHref}`,
         ),
       )
-    }, 30_000)
+    }, TIMEOUT)
 
-    const intervalId = window.setInterval(() => {
-      if (router.state.location.href === expectedHref) {
-        window.clearTimeout(timeoutId)
-        window.clearInterval(intervalId)
-        resolve()
+    unsubscribe = router.subscribe('onResolved', (event) => {
+      if (event.toLocation.href === expectedHref) {
+        settle()
       }
-    }, 0)
+    })
+
+    if (router.state.location.href === expectedHref) {
+      settle()
+    }
   })
 
   return {
@@ -135,12 +157,18 @@ function setupBenchmark() {
   }
 }
 
-bench('client-nav.react.100-nav', async () => {
-  const { done, cleanup } = setupBenchmark()
+bench(
+  'client-nav.react.10-nav',
+  async () => {
+    const { done, cleanup } = setupBenchmark()
 
-  try {
-    await done
-  } finally {
-    cleanup()
-  }
-})
+    try {
+      await done
+    } finally {
+      cleanup()
+    }
+  },
+  {
+    throws: true,
+  },
+)

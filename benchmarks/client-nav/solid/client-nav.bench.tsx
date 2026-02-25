@@ -1,104 +1,92 @@
-import { createEffect } from 'solid-js'
-import { render } from 'solid-js/web'
+import { render } from '@solidjs/testing-library'
 import { bench } from 'vitest'
 import {
   Link,
-  Outlet,
-  RouterProvider,
+  RouterContextProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
+  useParams,
+  useSearch,
 } from '@tanstack/solid-router'
 
 import {
   HOOK_COUNT,
   LINK_COUNT,
   TARGET_ID,
+  TIMEOUT,
   heavySelect,
   parseIntOrZero,
 } from '../shared'
 
-function setupBenchmark() {
-  const rootRoute = createRootRoute({
-    component: () => {
-      const selectedParams = Array.from({ length: HOOK_COUNT }, (_, index) =>
-        rootRoute.useParams({
-          strict: false,
-          select: (params) => heavySelect(params.id, index),
-        }),
-      )
+function BenchmarkComponent() {
+  const selectedParams = Array.from({ length: HOOK_COUNT }, (_, index) =>
+    useParams({
+      from: '/$id',
+      strict: false,
+      shouldThrow: false,
+      select: (params) => heavySelect(params.id, index),
+    }),
+  )
 
-      const selectedSearch = Array.from({ length: HOOK_COUNT }, (_, index) =>
-        rootRoute.useSearch({
-          strict: false,
-          select: (search) => heavySelect(search.n, index + HOOK_COUNT),
-        }),
-      )
+  const selectedSearch = Array.from({ length: HOOK_COUNT }, (_, index) =>
+    useSearch({
+      from: '/$id',
+      strict: false,
+      shouldThrow: false,
+      select: (search) => heavySelect(search.n, index + HOOK_COUNT),
+    }),
+  )
 
-      const rootScore = () => {
-        const paramsScore = selectedParams.reduce(
-          (sum, accessor) => sum + accessor(),
-          0,
-        )
-        const searchScore = selectedSearch.reduce(
-          (sum, accessor) => sum + accessor(),
-          0,
-        )
-        return paramsScore + searchScore
-      }
-
-      return (
-        <div>
-          <div style={{ display: 'none' }}>{rootScore()}</div>
-          <div style={{ display: 'none' }}>
-            {Array.from({ length: LINK_COUNT }, (_, index) => (
-              <Link
-                to="/$id"
-                params={{ id: String(index) }}
-                search={{ n: index }}
-              >
-                Link {index}
-              </Link>
-            ))}
-          </div>
-          <Outlet />
-        </div>
-      )
-    },
+  const selectedId = useParams({
+    from: '/$id',
+    strict: false,
+    shouldThrow: false,
+    select: (params) => parseIntOrZero(params.id),
   })
 
+  const selectedN = useSearch({
+    from: '/$id',
+    strict: false,
+    shouldThrow: false,
+    select: (search) => parseIntOrZero(search.n),
+  })
+
+  const rootScore = () => {
+    const paramsScore = selectedParams.reduce(
+      (sum, accessor) => sum + accessor(),
+      0,
+    )
+    const searchScore = selectedSearch.reduce(
+      (sum, accessor) => sum + accessor(),
+      0,
+    )
+    return paramsScore + searchScore + selectedId() + selectedN()
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'none' }}>{rootScore()}</div>
+      <div style={{ display: 'none' }}>
+        {Array.from({ length: LINK_COUNT }, (_, index) => (
+          <Link to="/$id" params={{ id: String(index) }} search={{ n: index }}>
+            Link {index}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function setupBenchmark() {
+  const rootRoute = createRootRoute()
   const idRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/$id',
     validateSearch: (search: Record<string, unknown>) => ({
       n: parseIntOrZero(search.n),
     }),
-    component: () => {
-      const id = idRoute.useParams({
-        select: (params) => parseIntOrZero(params.id),
-      })
-      const n = idRoute.useSearch({
-        select: (search) => parseIntOrZero(search.n),
-      })
-      const navigate = idRoute.useNavigate()
-
-      createEffect(() => {
-        const currentId = id()
-        void n()
-
-        if (currentId < TARGET_ID) {
-          const next = currentId + 1
-          void navigate({
-            to: '/$id',
-            params: { id: String(next) },
-            search: { n: next },
-          })
-        }
-      })
-
-      return null
-    },
   })
 
   const routeTree = rootRoute.addChildren([idRoute])
@@ -110,9 +98,11 @@ function setupBenchmark() {
     }),
   })
 
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-  const dispose = render(() => <RouterProvider router={router} />, container)
+  const mounted = render(() => (
+    <RouterContextProvider router={router}>
+      {() => <BenchmarkComponent />}
+    </RouterContextProvider>
+  ))
 
   const done = new Promise<void>((resolve, reject) => {
     const expectedHref = `/${TARGET_ID}?n=${TARGET_ID}`
@@ -123,32 +113,58 @@ function setupBenchmark() {
           `Solid benchmark timed out at ${router.state.location.href}; expected ${expectedHref}`,
         ),
       )
-    }, 30_000)
+    }, TIMEOUT)
 
-    const intervalId = window.setInterval(() => {
-      if (router.state.location.href === expectedHref) {
-        window.clearTimeout(timeoutId)
-        window.clearInterval(intervalId)
+    void (async () => {
+      try {
+        await router.load()
+
+        for (let next = 1; next <= TARGET_ID; next++) {
+          await router.navigate({
+            to: '/$id',
+            params: { id: String(next) },
+            search: { n: next },
+          })
+        }
+
+        if (router.state.location.href !== expectedHref) {
+          reject(
+            new Error(
+              `Solid benchmark stopped at ${router.state.location.href}; expected ${expectedHref}`,
+            ),
+          )
+          return
+        }
+
         resolve()
+      } catch (error) {
+        reject(error)
+      } finally {
+        window.clearTimeout(timeoutId)
       }
-    }, 0)
+    })()
   })
 
   return {
     done,
     cleanup: () => {
-      dispose()
-      container.remove()
+      mounted.unmount()
     },
   }
 }
 
-bench('client-nav.solid.100-nav', async () => {
-  const { done, cleanup } = setupBenchmark()
+bench(
+  'client-nav.solid.10-nav',
+  async () => {
+    const { done, cleanup } = setupBenchmark()
 
-  try {
-    await done
-  } finally {
-    cleanup()
-  }
-})
+    try {
+      await done
+    } finally {
+      cleanup()
+    }
+  },
+  {
+    throws: true,
+  },
+)

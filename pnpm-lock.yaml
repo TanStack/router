@@ -164,7 +164,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/react-router
       '@tanstack/solid-router':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../packages/solid-router
       '@tanstack/vue-router':
         specifier: workspace:*
@@ -34315,7 +34315,7 @@ snapshots:
       ufo: 1.6.3
       uncrypto: 0.1.3
 
-  h3@2.0.1-rc.11(crossws@0.4.3(srvx@0.10.1)):
+  h3@2.0.1-rc.11(crossws@0.4.3(srvx@0.11.7)):
     dependencies:
       rou3: 0.7.12
       srvx: 0.10.1
@@ -35686,7 +35686,7 @@ snapshots:
       consola: 3.4.2
       crossws: 0.4.3(srvx@0.10.1)
       db0: 0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3)
-      h3: 2.0.1-rc.11(crossws@0.4.3(srvx@0.10.1))
+      h3: 2.0.1-rc.11(crossws@0.4.3(srvx@0.11.7))
       jiti: 2.6.1
       nf3: 0.3.6
       ofetch: 2.0.0-alpha.3
@@ -35734,7 +35734,7 @@ snapshots:
       consola: 3.4.2
       crossws: 0.4.3(srvx@0.10.1)
       db0: 0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3)
-      h3: 2.0.1-rc.11(crossws@0.4.3(srvx@0.10.1))
+      h3: 2.0.1-rc.11(crossws@0.4.3(srvx@0.11.7))
       jiti: 2.6.1
       nf3: 0.3.5
       ofetch: 2.0.0-alpha.3

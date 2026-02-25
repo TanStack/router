@@ -4,6 +4,9 @@ import codspeedPlugin from '@codspeed/vitest-plugin'
 
 export default defineConfig({
   plugins: [vue(), codspeedPlugin()],
+  resolve: {
+    conditions: ['browser'],
+  },
   test: {
     environment: 'jsdom',
     include: ['vue/**/*.bench.ts'],

@@ -3,9 +3,9 @@ import solid from 'vite-plugin-solid'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 
 export default defineConfig({
-  plugins: [solid({ ssr: false }), codspeedPlugin()],
+  plugins: [solid({ ssr: false, dev: false, hot: false }), codspeedPlugin()],
   resolve: {
-    conditions: ['browser', 'development'],
+    conditions: ['solid', 'browser'],
   },
   test: {
     environment: 'jsdom',

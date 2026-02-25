@@ -1,6 +1,7 @@
 export const LINK_COUNT = 20
 export const HOOK_COUNT = 20
-export const TARGET_ID = 100
+export const TARGET_ID = 10
+export const TIMEOUT = 10_000
 
 export function heavySelect(
   seed: string | number | undefined,
@@ -9,7 +10,7 @@ export function heavySelect(
   let value =
     typeof seed === 'number' ? seed : Number.parseInt(seed ?? '0', 10) || 0
 
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 5; i++) {
     value = (value * 33 + salt + i) % 104_729
     value ^= (value << 5) & 0xffff
     value &= 0x7fffffff

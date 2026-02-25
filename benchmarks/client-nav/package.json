@@ -9,9 +9,9 @@
     "bench:vue": "NODE_ENV=production vitest bench --run --config vue/vitest.config.ts vue/client-nav.bench.ts"
   },
   "dependencies": {
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/solid-router": "workspace:^",
-    "@tanstack/vue-router": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/vue-router": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "solid-js": "^1.9.10",
