@@ -72,15 +72,15 @@
     "typescript58": "npm:typescript@5.8",
     "vite": "^7.3.1",
     "vitest": "^4.0.17",
-    "@solidjs/web": "2.0.0-experimental.14"
+    "@solidjs/web": "2.0.0-experimental.15"
   },
   "pnpm": {
     "overrides": {
       "@types/babel__traverse": "^7.28.0",
       "vite-plugin-dts": "4.0.3",
-      "solid-js": "2.0.0-experimental.14",
-      "@solidjs/web": "2.0.0-experimental.14",
-      "babel-preset-solid": "2.0.0-experimental.14",
+      "solid-js": "2.0.0-experimental.15",
+      "@solidjs/web": "2.0.0-experimental.15",
+      "babel-preset-solid": "2.0.0-experimental.15",
       "react": "$react",
       "react-dom": "$react-dom",
       "@types/react": "$@types/react",
