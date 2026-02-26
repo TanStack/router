@@ -123,7 +123,7 @@ using `defaultRenderHandler`
 ```tsx title="src/entry-server.tsx"
 import {
   createRequestHandler,
-  defaultRenderToString,
+  defaultRenderHandler,
 } from '@tanstack/react-router/ssr/server'
 import { createRouter } from './router'
 
@@ -139,7 +139,7 @@ export async function render({ request }: { request: Request }) {
 ```tsx title="src/entry-server.tsx"
 import {
   createRequestHandler,
-  defaultRenderToString,
+  defaultRenderHandler,
 } from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 
