@@ -2416,14 +2416,21 @@ export class RouterCore<
                       const newMatches = s.pendingMatches || s.matches
 
                       exitingMatches = previousMatches.filter(
-                        (match) => !newMatches.some((d) => d.id === match.id),
+                        (match) =>
+                          !newMatches.some(
+                            (d) => d.routeId === match.routeId,
+                          ),
                       )
                       enteringMatches = newMatches.filter(
                         (match) =>
-                          !previousMatches.some((d) => d.id === match.id),
+                          !previousMatches.some(
+                            (d) => d.routeId === match.routeId,
+                          ),
                       )
                       stayingMatches = newMatches.filter((match) =>
-                        previousMatches.some((d) => d.id === match.id),
+                        previousMatches.some(
+                          (d) => d.routeId === match.routeId,
+                        ),
                       )
 
                       return {

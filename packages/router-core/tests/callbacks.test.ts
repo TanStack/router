@@ -39,6 +39,38 @@ describe('callbacks', () => {
 
     return router
   }
+
+  const setupWithLoaderDeps = ({
+    onEnter,
+    onLeave,
+    onStay,
+  }: {
+    onEnter?: () => void
+    onLeave?: () => void
+    onStay?: () => void
+  }) => {
+    const rootRoute = new BaseRootRoute({})
+
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+        page: search['page'],
+      }),
+      onLeave,
+      onEnter,
+      onStay,
+    })
+
+    const routeTree = rootRoute.addChildren([fooRoute])
+
+    const router = new RouterCore({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    return router
+  }
   describe('onEnter', () => {
     it('runs on navigate to a new route', async () => {
       const onEnter = vi.fn()
@@ -101,6 +133,31 @@ describe('callbacks', () => {
         2,
         expect.objectContaining({ id: '/foo/foo', search: { foo: 'quux' } }),
       )
+    })
+
+    it('runs instead of onLeave/onEnter when loaderDeps change from search param updates', async () => {
+      const onEnter = vi.fn()
+      const onLeave = vi.fn()
+      const onStay = vi.fn()
+      const router = setupWithLoaderDeps({ onEnter, onLeave, onStay })
+
+      // Navigate to foo — onEnter should fire
+      await router.navigate({ to: '/foo', search: { page: '1' } })
+      expect(onEnter).toHaveBeenCalledTimes(1)
+      expect(onLeave).toHaveBeenCalledTimes(0)
+      expect(onStay).toHaveBeenCalledTimes(0)
+
+      // Update search param that's in loaderDeps — onStay should fire, not onLeave+onEnter
+      await router.navigate({ to: '/foo', search: { page: '2' } })
+      expect(onEnter).toHaveBeenCalledTimes(1) // no new onEnter
+      expect(onLeave).toHaveBeenCalledTimes(0) // no onLeave
+      expect(onStay).toHaveBeenCalledTimes(1) // onStay fires
+
+      // Update again — onStay fires again
+      await router.navigate({ to: '/foo', search: { page: '3' } })
+      expect(onEnter).toHaveBeenCalledTimes(1)
+      expect(onLeave).toHaveBeenCalledTimes(0)
+      expect(onStay).toHaveBeenCalledTimes(2)
     })
   })
 })
