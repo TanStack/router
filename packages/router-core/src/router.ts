@@ -2417,9 +2417,7 @@ export class RouterCore<
 
                       exitingMatches = previousMatches.filter(
                         (match) =>
-                          !newMatches.some(
-                            (d) => d.routeId === match.routeId,
-                          ),
+                          !newMatches.some((d) => d.routeId === match.routeId),
                       )
                       enteringMatches = newMatches.filter(
                         (match) =>
