@@ -9,7 +9,6 @@ export default [
       solidPlugin: solidPlugin(),
     },
     rules: {
-      'unused-imports/no-unused-vars': 'off',
       '@typescript-eslint/no-unnecessary-condition': 'off',
     },
   },
