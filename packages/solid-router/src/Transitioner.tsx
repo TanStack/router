@@ -37,7 +37,7 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   router.startTransition = (fn: () => void | Promise<void>) => {
-    fn()
+    Solid.runWithOwner(null, fn)
   }
 
   // Subscribe to location changes

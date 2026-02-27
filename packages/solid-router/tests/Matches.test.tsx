@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from '@solidjs/testing-library'
+import { createMemo } from 'solid-js'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   Link,
@@ -39,31 +40,37 @@ const invoicesRoute = createRoute({
 const InvoicesIndex = () => {
   const matches = useMatches<DefaultRouter>()
 
-  const loaderDataMatches = matches().filter((match) =>
-    isMatch(match, 'loaderData.0.id'),
+  const loaderDataMatches = createMemo(() =>
+    matches().filter((match) => isMatch(match, 'loaderData.0.id')),
   )
 
-  const contextMatches = matches().filter((match) =>
-    isMatch(match, 'context.permissions'),
+  const contextMatches = createMemo(() =>
+    matches().filter((match) => isMatch(match, 'context.permissions')),
   )
 
-  const incorrectMatches = matches().filter((match) =>
-    isMatch(match, 'loaderData.6.id'),
+  const incorrectMatches = createMemo(() =>
+    matches().filter((match) => isMatch(match, 'loaderData.6.id')),
   )
 
   return (
     <div>
       <section>
         Loader Matches -{' '}
-        {loaderDataMatches.map((match) => match.fullPath).join(',')}
+        {loaderDataMatches()
+          .map((match) => match.fullPath)
+          .join(',')}
       </section>
       <section>
         Context Matches -{' '}
-        {contextMatches.map((match) => match.fullPath).join(',')}
+        {contextMatches()
+          .map((match) => match.fullPath)
+          .join(',')}
       </section>
       <section>
         Incorrect Matches -{' '}
-        {incorrectMatches.map((match) => match.fullPath).join(',')}
+        {incorrectMatches()
+          .map((match) => match.fullPath)
+          .join(',')}
       </section>
     </div>
   )
