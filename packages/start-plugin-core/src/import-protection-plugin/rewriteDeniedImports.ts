@@ -1,8 +1,11 @@
 import * as t from '@babel/types'
-import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import { generateFromAst } from '@tanstack/router-utils'
 
 import { MOCK_MODULE_ID } from './virtualModules'
 import { getOrCreate } from './utils'
+import { parseImportProtectionAst } from './ast'
+import type { SourceMapLike } from './sourceLocation'
+import type { ParsedAst } from './ast'
 
 export function isValidExportName(name: string): boolean {
   if (name === 'default' || name.length === 0) return false
@@ -34,16 +37,17 @@ export function isValidExportName(name: string): boolean {
   return true
 }
 
-/**
- * Best-effort static analysis of an importer's source to determine which
- * named exports are needed per specifier, to keep native ESM valid in dev.
- */
 export function collectMockExportNamesBySource(
   code: string,
 ): Map<string, Array<string>> {
-  const ast = parseAst({ code })
+  return collectMockExportNamesBySourceFromAst(parseImportProtectionAst(code))
+}
 
+function collectMockExportNamesBySourceFromAst(
+  ast: ParsedAst,
+): Map<string, Array<string>> {
   const namesBySource = new Map<string, Set<string>>()
+  const memberBindingToSource = new Map<string, string>()
   const add = (source: string, name: string) => {
     if (name === 'default' || name.length === 0) return
     getOrCreate(namesBySource, source, () => new Set<string>()).add(name)
@@ -54,6 +58,14 @@ export function collectMockExportNamesBySource(
       if (node.importKind === 'type') continue
       const source = node.source.value
       for (const s of node.specifiers) {
+        if (t.isImportNamespaceSpecifier(s)) {
+          memberBindingToSource.set(s.local.name, source)
+          continue
+        }
+        if (t.isImportDefaultSpecifier(s)) {
+          memberBindingToSource.set(s.local.name, source)
+          continue
+        }
         if (!t.isImportSpecifier(s)) continue
         if (s.importKind === 'type') continue
         const importedName = t.isIdentifier(s.imported)
@@ -76,11 +88,115 @@ export function collectMockExportNamesBySource(
     }
   }
 
+  // For namespace/default imports, collect property names used as
+  // `binding.foo`/`binding?.foo` so mock-edge modules can expose explicit ESM
+  // named exports required by Rolldown/native ESM.
+  if (memberBindingToSource.size > 0) {
+    const visit = (node: t.Node): void => {
+      if (t.isMemberExpression(node)) {
+        const object = node.object
+        if (t.isIdentifier(object)) {
+          const source = memberBindingToSource.get(object.name)
+          if (source) {
+            const property = node.property
+            if (!node.computed && t.isIdentifier(property)) {
+              add(source, property.name)
+            } else if (node.computed && t.isStringLiteral(property)) {
+              add(source, property.value)
+            }
+          }
+        }
+      }
+
+      const keys = t.VISITOR_KEYS[node.type]
+      if (!keys) return
+      for (const key of keys) {
+        const child = (node as unknown as Record<string, unknown>)[key]
+        if (Array.isArray(child)) {
+          for (const item of child) {
+            if (item && typeof item === 'object' && 'type' in item) {
+              visit(item as t.Node)
+            }
+          }
+        } else if (child && typeof child === 'object' && 'type' in child) {
+          visit(child as t.Node)
+        }
+      }
+    }
+
+    visit(ast.program)
+  }
+
   const out = new Map<string, Array<string>>()
   for (const [source, set] of namesBySource) {
     out.set(source, Array.from(set).sort())
   }
   return out
+}
+
+/** Collect all valid named export identifiers from the given code. */
+export function collectNamedExports(code: string): Array<string> {
+  return collectNamedExportsFromAst(parseImportProtectionAst(code))
+}
+
+function collectIdentifiersFromPattern(
+  pattern: t.LVal,
+  add: (name: string) => void,
+): void {
+  if (t.isIdentifier(pattern)) {
+    add(pattern.name)
+  } else if (t.isObjectPattern(pattern)) {
+    for (const prop of pattern.properties) {
+      if (t.isRestElement(prop)) {
+        collectIdentifiersFromPattern(prop.argument as t.LVal, add)
+      } else {
+        collectIdentifiersFromPattern(prop.value as t.LVal, add)
+      }
+    }
+  } else if (t.isArrayPattern(pattern)) {
+    for (const elem of pattern.elements) {
+      if (elem) collectIdentifiersFromPattern(elem as t.LVal, add)
+    }
+  } else if (t.isAssignmentPattern(pattern)) {
+    collectIdentifiersFromPattern(pattern.left, add)
+  } else if (t.isRestElement(pattern)) {
+    collectIdentifiersFromPattern(pattern.argument as t.LVal, add)
+  }
+}
+
+function collectNamedExportsFromAst(ast: ParsedAst): Array<string> {
+  const names = new Set<string>()
+  const add = (name: string) => {
+    if (isValidExportName(name)) names.add(name)
+  }
+
+  for (const node of ast.program.body) {
+    if (t.isExportNamedDeclaration(node)) {
+      if (node.exportKind === 'type') continue
+
+      if (node.declaration) {
+        const decl = node.declaration
+        if (t.isFunctionDeclaration(decl) || t.isClassDeclaration(decl)) {
+          if (decl.id?.name) add(decl.id.name)
+        } else if (t.isVariableDeclaration(decl)) {
+          for (const d of decl.declarations) {
+            collectIdentifiersFromPattern(d.id as t.LVal, add)
+          }
+        }
+      }
+
+      for (const s of node.specifiers) {
+        if (!t.isExportSpecifier(s)) continue
+        if (s.exportKind === 'type') continue
+        const exportedName = t.isIdentifier(s.exported)
+          ? s.exported.name
+          : s.exported.value
+        add(exportedName)
+      }
+    }
+  }
+
+  return Array.from(names).sort()
 }
 
 /**
@@ -105,8 +221,21 @@ export function rewriteDeniedImports(
   id: string,
   deniedSources: Set<string>,
   getMockModuleId: (source: string) => string = () => MOCK_MODULE_ID,
-): { code: string; map?: object | null } | undefined {
-  const ast = parseAst({ code })
+): { code: string; map?: SourceMapLike } | undefined {
+  return rewriteDeniedImportsFromAst(
+    parseImportProtectionAst(code),
+    id,
+    deniedSources,
+    getMockModuleId,
+  )
+}
+
+function rewriteDeniedImportsFromAst(
+  ast: ParsedAst,
+  id: string,
+  deniedSources: Set<string>,
+  getMockModuleId: (source: string) => string = () => MOCK_MODULE_ID,
+): { code: string; map?: SourceMapLike } | undefined {
   let modified = false
   let mockCounter = 0
 
@@ -243,5 +372,8 @@ export function rewriteDeniedImports(
     filename: id,
   })
 
-  return { code: result.code, map: result.map }
+  return {
+    code: result.code,
+    ...(result.map ? { map: result.map as SourceMapLike } : {}),
+  }
 }
