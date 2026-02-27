@@ -199,9 +199,9 @@ describe('callbacks', () => {
       )?.id
       expect(page2MatchId).toBeDefined()
       expect(page2MatchId).not.toBe(page1MatchId)
-      expect(router.state.cachedMatches.some((d) => d.id === page1MatchId)).toBe(
-        true,
-      )
+      expect(
+        router.state.cachedMatches.some((d) => d.id === page1MatchId),
+      ).toBe(true)
 
       await router.navigate({ to: '/foo', search: { page: '1' } })
       expect(loader).toHaveBeenCalledTimes(2)
