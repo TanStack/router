@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772007969389,
+  "lastUpdate": 1772219678303,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -1705,6 +1705,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/6b421389988275b66c1383be4473e0f2584cdefc"
         },
         "date": 1772007967888,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88650,
+            "unit": "bytes",
+            "extra": "raw=278912; brotli=77107"
+          },
+          {
+            "name": "react-router.full",
+            "value": 91749,
+            "unit": "bytes",
+            "extra": "raw=289494; brotli=79793"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36730,
+            "unit": "bytes",
+            "extra": "raw=110068; brotli=33038"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41168,
+            "unit": "bytes",
+            "extra": "raw=123432; brotli=36975"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 52982,
+            "unit": "bytes",
+            "extra": "raw=151003; brotli=47604"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 57891,
+            "unit": "bytes",
+            "extra": "raw=166965; brotli=52022"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101478,
+            "unit": "bytes",
+            "extra": "raw=318988; brotli=87754"
+          },
+          {
+            "name": "react-start.full",
+            "value": 104930,
+            "unit": "bytes",
+            "extra": "raw=328996; brotli=90736"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49338,
+            "unit": "bytes",
+            "extra": "raw=148542; brotli=43609"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 54946,
+            "unit": "bytes",
+            "extra": "raw=164837; brotli=48478"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fpellet@ensc.fr",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d958ef18d84e7f0feca9bbcb577bf8970bc078da",
+          "message": "fix(ci): harden bundle-size PR workflow trust boundaries (#6773)",
+          "timestamp": "2026-02-27T20:12:13+01:00",
+          "tree_id": "e9d82c28414c1f078d0541dc937156d3b1928c90",
+          "url": "https://github.com/TanStack/router/commit/d958ef18d84e7f0feca9bbcb577bf8970bc078da"
+        },
+        "date": 1772219676726,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
