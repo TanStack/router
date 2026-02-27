@@ -22,7 +22,7 @@ jobs:
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     outputs:
-      current_json: ${{ steps.capture.outputs.current_json }}
+      current_json_b64: ${{ steps.capture.outputs.current_json_b64 }}
       base_sha: ${{ steps.capture.outputs.base_sha }}
       pr_number: ${{ steps.capture.outputs.pr_number }}
     steps:
@@ -42,11 +42,8 @@ jobs:
       - name: Capture Benchmark Outputs
         id: capture
         run: |
-          DELIM="$(uuidgen)"
           {
-            echo "current_json<<$DELIM"
-            cat e2e/bundle-size/results/current.json
-            echo "$DELIM"
+            echo "current_json_b64=$(base64 -w 0 < e2e/bundle-size/results/current.json)"
             echo "base_sha=${{ github.event.pull_request.base.sha }}"
             echo "pr_number=${{ github.event.pull_request.number }}"
           } >> "$GITHUB_OUTPUT"
@@ -68,10 +65,10 @@ jobs:
 
       - name: Restore Benchmark Outputs
         env:
-          CURRENT_JSON: ${{ needs.benchmark-pr.outputs.current_json }}
+          CURRENT_JSON_B64: ${{ needs.benchmark-pr.outputs.current_json_b64 }}
         run: |
           mkdir -p e2e/bundle-size/results
-          node -e "const fs=require('node:fs'); fs.writeFileSync('e2e/bundle-size/results/current.json', process.env.CURRENT_JSON || '', 'utf8')"
+          node -e "const fs=require('node:fs'); fs.writeFileSync('e2e/bundle-size/results/current.json', Buffer.from(process.env.CURRENT_JSON_B64 || '', 'base64'))"
 
       - name: Read Historical Data (if available)
         run: |
