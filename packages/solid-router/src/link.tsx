@@ -10,7 +10,7 @@ import {
 } from '@tanstack/router-core'
 
 import { isServer } from '@tanstack/router-core/isServer'
-import { Dynamic, untrack } from '@solidjs/web'
+import { Dynamic } from '@solidjs/web'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
@@ -263,13 +263,19 @@ export function useLinkProps<
     }
   }
 
-  const [ref, setRef] = Solid.createSignal<Element | null>(null)
+  const [ref, setRefSignal] = Solid.createSignal<Element | null>(null)
+
+  const setRef = (el: Element | null) => {
+    Solid.runWithOwner(null, () => {
+      setRefSignal(el)
+    })
+  }
 
   useIntersectionObserver(
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!local.disabled || !(preload() === 'viewport') },
+    { disabled: !!local.disabled || !(Solid.untrack(preload) === 'viewport') },
   )
 
   Solid.createEffect(preload, (preloadValue) => {
@@ -282,7 +288,7 @@ export function useLinkProps<
     }
   })
 
-  if (externalLink()) {
+  if (Solid.untrack(externalLink)) {
     return Solid.merge(
       propsSafeToSpread,
       {

@@ -48,8 +48,8 @@ export type UseMatchResult<
   TSelected,
 > = unknown extends TSelected
   ? TStrict extends true
-    ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
-    : MakeRouteMatchUnion<TRouter>
+  ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
+  : MakeRouteMatchUnion<TRouter>
   : TSelected
 
 export function useMatch<
@@ -103,7 +103,7 @@ export function useMatch<
     },
   } as any)
 
-  if (matchState().shouldThrowError) {
+  if (Solid.untrack(matchState).shouldThrowError) {
     invariant(
       false,
       `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,

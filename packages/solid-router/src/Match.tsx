@@ -46,7 +46,7 @@ export const Match = (props: { matchId: string }) => {
   })
 
   // If match doesn't exist yet, return null (component is being unmounted or not ready)
-  if (!matchState()) return null
+  if (!Solid.untrack(matchState)) return null
 
   const route: () => AnyRoute = () => router.routesById[matchState()!.routeId]
 
@@ -62,7 +62,7 @@ export const Match = (props: { matchId: string }) => {
   const routeNotFoundComponent = () =>
     route().isRoot
       ? // If it's the root route, use the globalNotFound option, with fallback to the notFoundRoute's component
-        (route().options.notFoundComponent ??
+      (route().options.notFoundComponent ??
         router.options.notFoundRoute?.options.component)
       : route().options.notFoundComponent
 
@@ -227,7 +227,7 @@ export const MatchInner = (props: { matchId: string }): any => {
     },
   })
 
-  if (!matchState()) return null
+  if (!Solid.untrack(matchState)) return null
 
   const route = () => router.routesById[matchState()!.routeId]!
 
@@ -236,7 +236,8 @@ export const MatchInner = (props: { matchId: string }): any => {
   const componentKey = () => matchState()!.key ?? matchState()!.match.id
 
   const out = () => {
-    const Comp = route().options.component ?? router.options.defaultComponent
+    const currentRoute = Solid.untrack(route)
+    const Comp = currentRoute.options.component ?? router.options.defaultComponent
     if (Comp) {
       return <Comp />
     }
