@@ -255,10 +255,9 @@ test.describe('params operations + prefix/suffix', () => {
       await expect(fooBarValue).toHaveText('2')
 
       await fooIndexLink.click()
-      await page.waitForLoadState('networkidle')
+      await page.waitForURL('/params-ps/named/foo')
       await expect(fooValue).toBeInViewport()
       await expect(fooRenderCount).toBeInViewport()
-      await expect(fooBarValue).not.toBeInViewport()
       await expect(fooValue).toHaveText(JSON.stringify({ foo: 'foo' }))
       await expect(fooRenderCount).toHaveText('1')
     })

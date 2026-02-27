@@ -9,9 +9,12 @@ function RouteComponent() {
   const [renderCount, setRenderCount] = createSignal(0)
   const params = Route.useParams()
 
-  createEffect(() => params().foo, () => {
-    setRenderCount((prev) => prev + 1)
-  })
+  createEffect(
+    () => params().foo,
+    () => {
+      setRenderCount((prev) => prev + 1)
+    },
+  )
 
   return (
     <div>
@@ -20,7 +23,11 @@ function RouteComponent() {
         RenderCount: <span data-testid="foo-render-count">{renderCount()}</span>
       </div>
       <div data-testid="params-output">{JSON.stringify(params())}</div>
-      <Link from={Route.fullPath} to="." data-testid="params-foo-links-index">
+      <Link
+        to="/params-ps/named/$foo"
+        params={{ foo: params().foo }}
+        data-testid="params-foo-links-index"
+      >
         Index
       </Link>
       <Link

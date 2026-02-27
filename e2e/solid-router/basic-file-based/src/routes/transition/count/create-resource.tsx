@@ -30,8 +30,9 @@ function Result() {
   const searchQuery = Route.useSearch()
 
   const doubleQuery = createMemo(async () => {
+    const n = searchQuery().n
     await new Promise((r) => setTimeout(r, 1000))
-    return searchQuery().n * 2
+    return n * 2
   })
 
   return (

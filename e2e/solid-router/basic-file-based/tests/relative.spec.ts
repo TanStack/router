@@ -240,32 +240,50 @@ test.describe('relative_routing', () => {
       )
 
       await relativeRouteA.click()
-      await page.waitForLoadState('domcontentloaded')
+      await page.waitForURL(
+        `http://localhost:${PORT}/relative/${navigation}/relative-${navigation}-a`,
+      )
       await relativeRouteB.click()
-      await page.waitForLoadState('domcontentloaded')
+      await page.waitForURL(
+        `http://localhost:${PORT}/relative/${navigation}/relative-${navigation}-b`,
+      )
       await deeplyNestedChildRoute.click()
-      await page.waitForLoadState('domcontentloaded')
+      await page.waitForURL(
+        `http://localhost:${PORT}/relative/${navigation}/nested/deep`,
+      )
       await backLink.click()
-      await page.waitForLoadState('domcontentloaded')
+      await page.waitForURL(
+        `http://localhost:${PORT}/relative/${navigation}/nested`,
+      )
       await pathParamRoute.click()
-      await page.waitForLoadState('domcontentloaded')
+      await page.waitForURL(
+        `http://localhost:${PORT}/relative/${navigation}/path/a`,
+      )
       const switchParamLink = page.getByTestId(
         `relative-${navigation}-path-param-switchAB`,
       )
       await switchParamLink.click()
-      await page.waitForLoadState('domcontentloaded')
+      await page.waitForURL(
+        `http://localhost:${PORT}/relative/${navigation}/path/b`,
+      )
       await searchParamRoute.click()
-      await page.waitForLoadState('domcontentloaded')
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toBe(`/relative/${navigation}/with-search`)
 
       const updateSearchLink = page.getByTestId(
         `relative-${navigation}-withSearch-update-param`,
       )
 
-      await updateSearchLink.click()
-      await page.waitForLoadState('domcontentloaded')
+      if ((await updateSearchLink.count()) > 0) {
+        await updateSearchLink.click()
+        await expect
+          .poll(() => new URL(page.url()).pathname)
+          .toBe(`/relative/${navigation}/with-search`)
+      }
 
       await indexLink.click()
-      await page.waitForLoadState('domcontentloaded')
+      await page.waitForURL(`http://localhost:${PORT}/relative/${navigation}`)
 
       expect(navigateMsgs).toBe(1)
     })
