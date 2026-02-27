@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, RouterCore } from '../src'
 
@@ -158,6 +158,159 @@ describe('callbacks', () => {
       expect(onEnter).toHaveBeenCalledTimes(1)
       expect(onLeave).toHaveBeenCalledTimes(0)
       expect(onStay).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  // Regression tests: switching lifecycle hooks to use routeId must NOT break
+  // match-level caching, which still relies on match.id (routeId + params + loaderDeps).
+  describe('same-route match caching', () => {
+    const setupWithLoaderDepsForCaching = ({
+      loader,
+      staleTime,
+    }: {
+      loader?: () => unknown
+      staleTime?: number
+    }) => {
+      const rootRoute = new BaseRootRoute({})
+      const fooRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/foo',
+        loader,
+        staleTime,
+        gcTime: staleTime,
+        loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
+          page: search['page'],
+        }),
+      })
+      const routeTree = rootRoute.addChildren([fooRoute])
+      return new RouterCore({
+        routeTree,
+        history: createMemoryHistory(),
+      })
+    }
+
+    const setupWithPathParams = ({
+      loader,
+      staleTime,
+    }: {
+      loader?: () => unknown
+      staleTime?: number
+    }) => {
+      const rootRoute = new BaseRootRoute({})
+      const postRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/$postId',
+        loader,
+        staleTime,
+        gcTime: staleTime,
+      })
+      const routeTree = rootRoute.addChildren([postRoute])
+      return new RouterCore({
+        routeTree,
+        history: createMemoryHistory(),
+      })
+    }
+
+    test('keeps previous loaderDeps variant cached and reuses it within staleTime', async () => {
+      const loader = vi.fn()
+      const router = setupWithLoaderDepsForCaching({ loader, staleTime: 60_000 })
+
+      await router.navigate({ to: '/foo', search: { page: '1' } })
+      const page1MatchId = router.state.matches.find(
+        (d) => d.routeId === '/foo',
+      )?.id
+      expect(page1MatchId).toBeDefined()
+
+      await router.navigate({ to: '/foo', search: { page: '2' } })
+      const page2MatchId = router.state.matches.find(
+        (d) => d.routeId === '/foo',
+      )?.id
+      expect(page2MatchId).toBeDefined()
+      expect(page2MatchId).not.toBe(page1MatchId)
+      expect(router.state.cachedMatches.some((d) => d.id === page1MatchId)).toBe(
+        true,
+      )
+
+      await router.navigate({ to: '/foo', search: { page: '1' } })
+      expect(loader).toHaveBeenCalledTimes(2)
+      expect(router.state.matches.some((d) => d.id === page1MatchId)).toBe(true)
+    })
+
+    test('keeps previous params variant cached and reuses it within staleTime', async () => {
+      const loader = vi.fn()
+      const router = setupWithPathParams({ loader, staleTime: 60_000 })
+
+      await router.navigate({ to: '/posts/$postId', params: { postId: '1' } })
+      const post1MatchId = router.state.matches.find(
+        (d) => d.routeId === '/posts/$postId',
+      )?.id
+      expect(post1MatchId).toBeDefined()
+
+      await router.navigate({ to: '/posts/$postId', params: { postId: '2' } })
+      const post2MatchId = router.state.matches.find(
+        (d) => d.routeId === '/posts/$postId',
+      )?.id
+      expect(post2MatchId).toBeDefined()
+      expect(post2MatchId).not.toBe(post1MatchId)
+      expect(
+        router.state.cachedMatches.some((d) => d.id === post1MatchId),
+      ).toBe(true)
+
+      await router.navigate({ to: '/posts/$postId', params: { postId: '1' } })
+      expect(loader).toHaveBeenCalledTimes(2)
+      expect(router.state.matches.some((d) => d.id === post1MatchId)).toBe(true)
+    })
+  })
+
+  // Verify that router-level subscription events still fire correctly.
+  // These are used by integrations like Sentry's TanStack Router instrumentation
+  // (https://github.com/getsentry/sentry-javascript/blob/develop/packages/react/src/tanstackrouter.ts)
+  // to track page transitions.
+  describe('onBeforeNavigate event', () => {
+    it('fires when navigating to a new route', async () => {
+      const router = setup({})
+      const onBeforeNavigate = vi.fn()
+      router.subscribe('onBeforeNavigate', onBeforeNavigate)
+
+      await router.navigate({ to: '/foo' })
+      expect(onBeforeNavigate).toHaveBeenCalledTimes(1)
+      expect(onBeforeNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'onBeforeNavigate',
+          pathChanged: true,
+        }),
+      )
+    })
+
+    it('fires on every navigation including same-route loaderDeps changes', async () => {
+      const router = setupWithLoaderDeps({})
+      const onBeforeNavigate = vi.fn()
+      router.subscribe('onBeforeNavigate', onBeforeNavigate)
+
+      await router.navigate({ to: '/foo', search: { page: '1' } })
+      expect(onBeforeNavigate).toHaveBeenCalledTimes(1)
+
+      // loaderDeps change — same route, different params
+      await router.navigate({ to: '/foo', search: { page: '2' } })
+      expect(onBeforeNavigate).toHaveBeenCalledTimes(2)
+    })
+
+    it('includes toLocation and pathChanged in the event', async () => {
+      const router = setup({})
+      const events: Array<{ to: string; pathChanged: boolean }> = []
+      router.subscribe('onBeforeNavigate', (e) => {
+        events.push({
+          to: e.toLocation.pathname,
+          pathChanged: e.pathChanged,
+        })
+      })
+
+      await router.navigate({ to: '/foo' })
+      await router.navigate({ to: '/bar' })
+
+      expect(events).toHaveLength(2)
+      expect(events[0]).toMatchObject({ to: '/foo', pathChanged: true })
+      expect(events[1]).toMatchObject({ to: '/bar', pathChanged: true })
     })
   })
 })
