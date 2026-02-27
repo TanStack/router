@@ -2406,26 +2406,48 @@ export class RouterCore<
 
                   // Commit the pending matches. If a previous match was
                   // removed, place it in the cachedMatches
+                  //
+                  // Cache identity uses match.id (routeId + params + loaderDeps) so
+                  // navigating /foo?page=1 → /foo?page=2 correctly caches the page=1 entry.
                   let exitingMatches: Array<AnyRouteMatch> = []
                   let enteringMatches: Array<AnyRouteMatch> = []
                   let stayingMatches: Array<AnyRouteMatch> = []
+
+                  // Lifecycle-hook identity uses routeId only so that navigating between
+                  // different params/deps of the same route fires onStay (not onLeave+onEnter).
+                  let hookExitingMatches: Array<AnyRouteMatch> = []
+                  let hookEnteringMatches: Array<AnyRouteMatch> = []
+                  let hookStayingMatches: Array<AnyRouteMatch> = []
 
                   batch(() => {
                     this.__store.setState((s) => {
                       const previousMatches = s.matches
                       const newMatches = s.pendingMatches || s.matches
 
+                      // Cache-level identity: route id + params + loaderDeps
                       exitingMatches = previousMatches.filter(
+                        (match) => !newMatches.some((d) => d.id === match.id),
+                      )
+                      enteringMatches = newMatches.filter(
+                        (match) =>
+                          !previousMatches.some((d) => d.id === match.id),
+                      )
+                      stayingMatches = newMatches.filter((match) =>
+                        previousMatches.some((d) => d.id === match.id),
+                      )
+
+                      // Lifecycle-hook identity: routeId only (route presence in tree)
+                      hookExitingMatches = previousMatches.filter(
                         (match) =>
                           !newMatches.some((d) => d.routeId === match.routeId),
                       )
-                      enteringMatches = newMatches.filter(
+                      hookEnteringMatches = newMatches.filter(
                         (match) =>
                           !previousMatches.some(
                             (d) => d.routeId === match.routeId,
                           ),
                       )
-                      stayingMatches = newMatches.filter((match) =>
+                      hookStayingMatches = newMatches.filter((match) =>
                         previousMatches.some(
                           (d) => d.routeId === match.routeId,
                         ),
@@ -2460,9 +2482,9 @@ export class RouterCore<
                   //
                   ;(
                     [
-                      [exitingMatches, 'onLeave'],
-                      [enteringMatches, 'onEnter'],
-                      [stayingMatches, 'onStay'],
+                      [hookExitingMatches, 'onLeave'],
+                      [hookEnteringMatches, 'onEnter'],
+                      [hookStayingMatches, 'onStay'],
                     ] as const
                   ).forEach(([matches, hook]) => {
                     matches.forEach((match) => {
