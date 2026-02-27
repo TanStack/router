@@ -3,6 +3,7 @@ name: Bundle Size
 on:
   # We use `pull_request_target` to split trust boundaries across jobs:
   # - `benchmark-pr` checks out PR merge code and runs it as untrusted with read-only permissions.
+  # - `capture` runs trusted base-repo code, captures metadata, and passes outputs to other trusted jobs.
   # - `comment-pr` runs trusted base-repo code with limited write access to upsert the PR comment.
   pull_request_target:
   push:
@@ -21,10 +22,6 @@ jobs:
     name: Benchmark PR
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
-    outputs:
-      current_json_b64: ${{ steps.capture.outputs.current_json_b64 }}
-      base_sha: ${{ steps.capture.outputs.base_sha }}
-      pr_number: ${{ steps.capture.outputs.pr_number }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.1
@@ -39,6 +36,30 @@ jobs:
       - name: Measure Bundle Size
         run: pnpm nx run tanstack-router-e2e-bundle-size:build --outputStyle=stream --skipRemoteCache
 
+      - name: Upload Benchmark Outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-size-current-json
+          path: e2e/bundle-size/results/current.json
+          if-no-files-found: error
+          retention-days: 1
+
+  capture:
+    name: Capture PR Metadata
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    needs: benchmark-pr
+    outputs:
+      current_json_b64: ${{ steps.capture.outputs.current_json_b64 }}
+      base_sha: ${{ steps.capture.outputs.base_sha }}
+      pr_number: ${{ steps.capture.outputs.pr_number }}
+    steps:
+      - name: Download Benchmark Outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-size-current-json
+          path: e2e/bundle-size/results
+
       - name: Capture Benchmark Outputs
         id: capture
         run: |
@@ -52,7 +73,7 @@ jobs:
     name: Upsert PR Comment
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
-    needs: benchmark-pr
+    needs: capture
     permissions:
       contents: read
       pull-requests: write
@@ -65,7 +86,7 @@ jobs:
 
       - name: Restore Benchmark Outputs
         env:
-          CURRENT_JSON_B64: ${{ needs.benchmark-pr.outputs.current_json_b64 }}
+          CURRENT_JSON_B64: ${{ needs.capture.outputs.current_json_b64 }}
         run: |
           mkdir -p e2e/bundle-size/results
           node -e "const fs=require('node:fs'); fs.writeFileSync('e2e/bundle-size/results/current.json', Buffer.from(process.env.CURRENT_JSON_B64 || '', 'base64'))"
@@ -88,7 +109,7 @@ jobs:
             --current e2e/bundle-size/results/current.json \
             --history e2e/bundle-size/results/history-data.js \
             --output e2e/bundle-size/results/pr-comment.md \
-            --base-sha "${{ needs.benchmark-pr.outputs.base_sha }}" \
+            --base-sha "${{ needs.capture.outputs.base_sha }}" \
             --dashboard-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/benchmarks/bundle-size/"
 
       - name: Upsert Sticky PR Comment
@@ -96,7 +117,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           node scripts/benchmarks/common/upsert-pr-comment.mjs \
-            --pr "${{ needs.benchmark-pr.outputs.pr_number }}" \
+            --pr "${{ needs.capture.outputs.pr_number }}" \
             --body-file e2e/bundle-size/results/pr-comment.md
 
   benchmark-main:
