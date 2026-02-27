@@ -1624,9 +1624,12 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
   // only process files that are relevant for the route tree generation
   private isFileRelevantForRouteTreeGeneration(filePath: string): boolean {
-    // the generated route tree file
+    // Skip the generated route tree file itself — changes to it are caused by
+    // the generator writing its own output and must not re-trigger generation,
+    // otherwise the Vite watcher creates an infinite feedback loop:
+    // write → watchChange → isFileRelevant=true → run() → write → …
     if (filePath === this.generatedRouteTreePath) {
-      return true
+      return false
     }
 
     // files inside the routes folder
