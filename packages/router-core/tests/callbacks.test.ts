@@ -40,36 +40,33 @@ describe('callbacks', () => {
     return router
   }
 
-  const setupWithLoaderDeps = ({
-    onEnter,
-    onLeave,
-    onStay,
-  }: {
-    onEnter?: () => void
-    onLeave?: () => void
-    onStay?: () => void
-  }) => {
+  const createFooRouter = (
+    opts: {
+      onEnter?: () => void
+      onLeave?: () => void
+      onStay?: () => void
+      loader?: () => unknown
+      staleTime?: number
+    } = {},
+  ) => {
     const rootRoute = new BaseRootRoute({})
-
     const fooRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/foo',
       loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
         page: search['page'],
       }),
-      onLeave,
-      onEnter,
-      onStay,
+      onEnter: opts.onEnter,
+      onLeave: opts.onLeave,
+      onStay: opts.onStay,
+      loader: opts.loader,
+      staleTime: opts.staleTime,
+      gcTime: opts.staleTime,
     })
-
-    const routeTree = rootRoute.addChildren([fooRoute])
-
-    const router = new RouterCore({
-      routeTree,
+    return new RouterCore({
+      routeTree: rootRoute.addChildren([fooRoute]),
       history: createMemoryHistory(),
     })
-
-    return router
   }
   describe('onEnter', () => {
     it('runs on navigate to a new route', async () => {
@@ -139,7 +136,7 @@ describe('callbacks', () => {
       const onEnter = vi.fn()
       const onLeave = vi.fn()
       const onStay = vi.fn()
-      const router = setupWithLoaderDeps({ onEnter, onLeave, onStay })
+      const router = createFooRouter({ onEnter, onLeave, onStay })
 
       // Navigate to foo — onEnter should fire
       await router.navigate({ to: '/foo', search: { page: '1' } })
@@ -164,31 +161,6 @@ describe('callbacks', () => {
   // Regression tests: switching lifecycle hooks to use routeId must NOT break
   // match-level caching, which still relies on match.id (routeId + params + loaderDeps).
   describe('same-route match caching', () => {
-    const setupWithLoaderDepsForCaching = ({
-      loader,
-      staleTime,
-    }: {
-      loader?: () => unknown
-      staleTime?: number
-    }) => {
-      const rootRoute = new BaseRootRoute({})
-      const fooRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/foo',
-        loader,
-        staleTime,
-        gcTime: staleTime,
-        loaderDeps: ({ search }: { search: Record<string, unknown> }) => ({
-          page: search['page'],
-        }),
-      })
-      const routeTree = rootRoute.addChildren([fooRoute])
-      return new RouterCore({
-        routeTree,
-        history: createMemoryHistory(),
-      })
-    }
-
     const setupWithPathParams = ({
       loader,
       staleTime,
@@ -213,7 +185,7 @@ describe('callbacks', () => {
 
     test('keeps previous loaderDeps variant cached and reuses it within staleTime', async () => {
       const loader = vi.fn()
-      const router = setupWithLoaderDepsForCaching({ loader, staleTime: 60_000 })
+      const router = createFooRouter({ loader, staleTime: 60_000 })
 
       await router.navigate({ to: '/foo', search: { page: '1' } })
       const page1MatchId = router.state.matches.find(
@@ -283,7 +255,7 @@ describe('callbacks', () => {
     })
 
     it('fires on every navigation including same-route loaderDeps changes', async () => {
-      const router = setupWithLoaderDeps({})
+      const router = createFooRouter({})
       const onBeforeNavigate = vi.fn()
       router.subscribe('onBeforeNavigate', onBeforeNavigate)
 
