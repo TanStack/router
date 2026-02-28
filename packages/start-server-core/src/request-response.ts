@@ -114,19 +114,22 @@ function attachResponseHeaders<T>(
         const eventStatus = event.res.status
         if (eventStatus) {
           const eventStatusText = event.res.statusText
-          if (error instanceof Response) {
-            return new Response(error.body, {
-              status: eventStatus,
-              statusText: eventStatusText || error.statusText,
-              headers: error.headers,
-            }) as T
-          }
-          const message =
-            error instanceof Error ? error.message : String(error)
-          return new Response(message, {
-            status: eventStatus,
-            statusText: eventStatusText || '',
-          }) as T
+          const response =
+            error instanceof Response
+              ? new Response(error.body, {
+                  status: eventStatus,
+                  statusText: eventStatusText || error.statusText,
+                  headers: error.headers,
+                })
+              : new Response(
+                  error instanceof Error ? error.message : String(error),
+                  {
+                    status: eventStatus,
+                    statusText: eventStatusText || '',
+                  },
+                )
+          mergeEventResponseHeaders(response, event)
+          return response as T
         }
         throw error
       },
