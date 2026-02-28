@@ -101,7 +101,6 @@ export { type LinkOptions as LinkInputOptions, Link } from './Link'
 
 // Utilities
 export { injectIntersectionObserver } from './injectIntersectionObserver'
-export { injectRender } from './renderer/injectRender'
 export { injectTransitionerSetup } from './transitioner'
 export { getRouterInjectionKey } from './routerInjectionToken'
 export { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'

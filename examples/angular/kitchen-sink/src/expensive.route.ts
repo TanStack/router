@@ -22,7 +22,7 @@ class ExpensiveComponent {
 
 export const Route = createLazyRoute('/expensive')({
   component: () => ExpensiveComponent,
-  errorComponent: () => ExpensiveErrorComponent,
+  // errorComponent: () => ExpensiveErrorComponent,
 })
 
 @Component({

@@ -138,6 +138,7 @@ const rootRoute = createRootRouteWithContext<{
   inject: Injector['get']
 }>()({
   component: () => RootComponent,
+  errorComponent: () => ErrorComponent,
 })
 
 @Component({
@@ -856,7 +857,7 @@ const usersIndexRoute = createRoute({
     </div>
   `,
 })
-class UsersIndexComponent {}
+class UsersIndexComponent { }
 
 const userRoute = createRoute({
   getParentRoute: () => usersLayoutRoute,
@@ -1061,7 +1062,7 @@ const pathlessLayoutRoute = createRoute({
     </div>
   `,
 })
-class PathlessLayoutComponent {}
+class PathlessLayoutComponent { }
 
 const pathlessLayoutARoute = createRoute({
   getParentRoute: () => pathlessLayoutRoute,
@@ -1078,7 +1079,7 @@ const pathlessLayoutARoute = createRoute({
     </div>
   `,
 })
-class PathlessLayoutAComponent {}
+class PathlessLayoutAComponent { }
 
 const pathlessLayoutBRoute = createRoute({
   getParentRoute: () => pathlessLayoutRoute,
@@ -1095,7 +1096,7 @@ const pathlessLayoutBRoute = createRoute({
     </div>
   `,
 })
-class PathlessLayoutBComponent {}
+class PathlessLayoutBComponent { }
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -1113,7 +1114,7 @@ const routeTree = rootRoute.addChildren([
 const router = createRouter({
   routeTree,
   defaultPendingComponent: () => SpinnerComponent,
-  defaultErrorComponent: () => ErrorComponent,
+  // defaultErrorComponent: () => ErrorComponent,
   context: {
     auth: undefined!,
     inject: undefined!,

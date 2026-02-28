@@ -4,7 +4,6 @@ import { injectRouterState } from './injectRouterState'
 import {
   AnyRoute,
   AnyRouter,
-  createControlledPromise,
   getLocationChangeInfo,
   rootRouteId,
 } from '@tanstack/router-core'
@@ -13,6 +12,7 @@ import { DefaultNotFoundComponent } from './DefaultNotFound'
 import { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'
 import { injectRender } from './renderer/injectRender'
 import { ERROR_STATE_INJECTOR_TOKEN } from './injectErrorState'
+import { injectIsCatchingError } from './renderer/injectIsCatchingError'
 
 // In Angular, there is not concept of suspense or error boundaries,
 // so we dont' need to wrap the inner content of the match.
@@ -115,6 +115,10 @@ export class RouteMatch {
     ),
   })
 
+  isCatchingError = injectIsCatchingError({
+    matchId: this.matchId,
+  })
+
   render = injectRender(() => {
     const matchData = this.matchData()
     if (!matchData) return null
@@ -131,7 +135,7 @@ export class RouteMatch {
       return {
         component: NotFoundComponent,
       }
-    } else if (match.status === 'error') {
+    } else if (match.status === 'error' || this.isCatchingError()) {
       const RouteErrorComponent =
         getComponent(route.options.errorComponent) ??
         getComponent(this.router.options.defaultErrorComponent)

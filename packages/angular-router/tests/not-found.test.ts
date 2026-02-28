@@ -9,8 +9,6 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  notFound,
-  injectErrorState,
 } from '../src'
 import type { RouterHistory } from '@tanstack/history'
 
