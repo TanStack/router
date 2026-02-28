@@ -10,6 +10,7 @@ import {
   ProviderToken,
   signal,
 } from '@angular/core'
+import './router-register'
 import { bootstrapApplication } from '@angular/platform-browser'
 import {
   Outlet,
@@ -152,6 +153,37 @@ class RouterSpinnerComponent {
 }
 
 @Component({
+  selector: 'app-top-loading-bar',
+  standalone: true,
+  styles: `
+    @keyframes top-loader-indeterminate {
+      0% {
+        transform: translateX(-110%);
+      }
+      100% {
+        transform: translateX(260%);
+      }
+    }
+
+    .top-loader-indeterminate {
+      animation: top-loader-indeterminate 1.1s linear infinite;
+    }
+  `,
+  template: `
+    <div
+      class="pointer-events-none absolute left-0 top-0 z-50 h-1 w-full overflow-hidden transition-opacity duration-200"
+      [class.opacity-0]="!isLoading()"
+      [class.opacity-100]="isLoading()"
+    >
+      <div class="top-loader-indeterminate h-full w-2/5 bg-blue-500"></div>
+    </div>
+  `,
+})
+class TopLoadingBarComponent {
+  isLoading = injectRouterState({ select: (s) => s.status === 'pending' })
+}
+
+@Component({
   selector: 'app-breadcrumbs',
   standalone: true,
   imports: [Link],
@@ -199,12 +231,14 @@ class BreadcrumbsComponent {
   imports: [
     Outlet,
     Link,
+    TopLoadingBarComponent,
     RouterSpinnerComponent,
     TanStackRouterDevtoolsInProd,
     BreadcrumbsComponent,
   ],
   template: `
-    <div class="min-h-screen flex flex-col">
+    <div class="relative min-h-screen flex flex-col">
+      <app-top-loading-bar />
       <div class="flex items-center border-b gap-2">
         <h1 class="text-3xl p-2">Kitchen Sink</h1>
         <app-breadcrumbs />
@@ -1111,7 +1145,7 @@ const routeTree = rootRoute.addChildren([
   pathlessLayoutRoute.addChildren([pathlessLayoutARoute, pathlessLayoutBRoute]),
 ])
 
-const router = createRouter({
+export const router = createRouter({
   routeTree,
   defaultPendingComponent: () => SpinnerComponent,
   // defaultErrorComponent: () => ErrorComponent,
@@ -1122,12 +1156,6 @@ const router = createRouter({
   defaultPreload: 'intent',
   scrollRestoration: true,
 })
-
-declare module '@tanstack/angular-router' {
-  interface Register {
-    router: typeof router
-  }
-}
 
 const auth: Auth = {
   status: 'loggedOut',
