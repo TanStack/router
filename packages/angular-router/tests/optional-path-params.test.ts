@@ -54,7 +54,7 @@ describe('Angular Router - Optional Path Parameters', () => {
       await router.load()
 
       const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent)).toEqual({})
+      expect(JSON.parse(String(paramsElement.textContent))).toEqual({})
     })
 
     it('should match route with one optional parameter', async () => {
@@ -78,7 +78,7 @@ describe('Angular Router - Optional Path Parameters', () => {
       await router.load()
 
       const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent)).toEqual({
+      expect(JSON.parse(String(paramsElement.textContent))).toEqual({
         category: 'tech',
       })
     })
@@ -104,7 +104,7 @@ describe('Angular Router - Optional Path Parameters', () => {
       await router.load()
 
       const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent)).toEqual({
+      expect(JSON.parse(String(paramsElement.textContent))).toEqual({
         category: 'tech',
         slug: 'hello-world',
       })
@@ -153,7 +153,7 @@ describe('Angular Router - Optional Path Parameters', () => {
         await router.load()
 
         const paramsElement = await screen.findByTestId('params')
-        expect(JSON.parse(paramsElement.textContent)).toEqual(expectedParams)
+        expect(JSON.parse(String(paramsElement.textContent))).toEqual(expectedParams)
       },
     )
   })
@@ -281,7 +281,7 @@ describe('Angular Router - Optional Path Parameters', () => {
 
         await expect(screen.findByText('Posts')).resolves.toBeTruthy()
         const paramsElement = await screen.findByTestId('params')
-        expect(JSON.parse(paramsElement.textContent)).toEqual({})
+        expect(JSON.parse(String(paramsElement.textContent))).toEqual({})
         expect(router.state.location.pathname).toBe('/posts')
       }
 
@@ -297,7 +297,7 @@ describe('Angular Router - Optional Path Parameters', () => {
 
         await expect(screen.findByText('Posts')).resolves.toBeTruthy()
         const updatedParamsElement = await screen.findByTestId('params')
-        expect(JSON.parse(updatedParamsElement.textContent)).toEqual({
+        expect(JSON.parse(String(updatedParamsElement.textContent))).toEqual({
           category: 'tech',
         })
         expect(router.state.location.pathname).toBe('/posts/tech')
@@ -382,5 +382,85 @@ describe('Angular Router - Optional Path Parameters', () => {
         expect(router.state.location.pathname).toBe('/posts/tech/hello-world')
       })
     })
+  })
+})
+
+describe('Additional Optional Path Parameter Cases', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
+    window.history.replaceState(null, 'root', '/')
+  })
+
+  it('supports optional params with prefix and suffix', async () => {
+    const rootRoute = createRootRoute()
+
+    @Angular.Component({
+      template: '<div data-testid="params">{{ paramsJson() }}</div>',
+      standalone: true,
+    })
+    class PrefixedComponent {
+      params = injectParams({ from: '/docs/prefix{-$id}.md' })
+      paramsJson = Angular.computed(() => JSON.stringify(this.params()))
+    }
+
+    const docsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/docs/prefix{-$id}.md',
+      component: () => PrefixedComponent,
+    })
+
+    window.history.replaceState({}, '', '/docs/prefix123.md')
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([docsRoute]),
+      defaultPendingMinMs: 0,
+    })
+
+    await render(RouterProvider, {
+      bindings: [Angular.inputBinding('router', () => router)],
+    })
+
+    const paramsElement = await screen.findByTestId('params')
+    expect(JSON.parse(String(paramsElement.textContent))).toEqual({ id: '123' })
+  })
+
+  it('passes optional params to beforeLoad and loader', async () => {
+    const rootRoute = createRootRoute()
+
+    const beforeLoadSpy = vi.fn()
+    const loaderSpy = vi.fn()
+
+    @Angular.Component({
+      template: '<h1 data-testid="loaded">Loaded</h1>',
+      standalone: true,
+    })
+    class LoadedComponent {}
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/{-$category}',
+      beforeLoad: ({ params }) => {
+        beforeLoadSpy(params)
+      },
+      loader: ({ params }) => {
+        loaderSpy(params)
+      },
+      component: () => LoadedComponent,
+    })
+
+    window.history.replaceState({}, '', '/posts/tech')
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      defaultPendingMinMs: 0,
+    })
+
+    await render(RouterProvider, {
+      bindings: [Angular.inputBinding('router', () => router)],
+    })
+
+    await expect(screen.findByTestId('loaded')).resolves.toBeTruthy()
+    expect(beforeLoadSpy).toHaveBeenCalledWith({ category: 'tech' })
+    expect(loaderSpy).toHaveBeenCalledWith({ category: 'tech' })
   })
 })

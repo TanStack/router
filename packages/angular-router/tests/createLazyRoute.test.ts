@@ -1,6 +1,6 @@
 import * as Angular from '@angular/core'
 import { fireEvent, render, screen } from '@testing-library/angular'
-import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   Link,
   RouterProvider,

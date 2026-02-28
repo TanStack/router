@@ -1,6 +1,4 @@
 import * as Angular from '@angular/core'
-import { injectRouter } from './injectRouter'
-import { injectRouterState } from './injectRouterState'
 import {
   AnyRoute,
   AnyRouter,
@@ -8,6 +6,8 @@ import {
   rootRouteId,
 } from '@tanstack/router-core'
 import warning from 'tiny-warning'
+import { injectRouter } from './injectRouter'
+import { injectRouterState } from './injectRouterState'
 import { DefaultNotFoundComponent } from './DefaultNotFound'
 import { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'
 import { injectRender } from './renderer/injectRender'
@@ -166,7 +166,7 @@ export class RouteMatch {
       return {
         component: PendingComponent,
       }
-    } else if (match.status === 'success') {
+    } else {
       const Component =
         getComponent(route.options.component) ??
         getComponent(this.router.options.defaultComponent) ??
@@ -186,7 +186,6 @@ export class RouteMatch {
       }
     }
 
-    return null
   })
 }
 
@@ -251,7 +250,7 @@ export class Outlet {
 }
 
 function getNotFoundComponent(router: AnyRouter, route: AnyRoute) {
-  let NotFoundComponent =
+  const NotFoundComponent =
     getComponent(route.options.notFoundComponent) ??
     getComponent(router.options.defaultNotFoundComponent)
 
@@ -269,7 +268,7 @@ function getNotFoundComponent(router: AnyRouter, route: AnyRoute) {
   return DefaultNotFoundComponent
 }
 
-type CalledIfFunction<T> = T extends (...args: any[]) => any ? ReturnType<T> : T
+type CalledIfFunction<T> = T extends (...args: Array<any>) => any ? ReturnType<T> : T
 
 function getComponent<T>(routeComponent: T): CalledIfFunction<T> {
   if (typeof routeComponent === 'function') {

@@ -5,7 +5,7 @@ import {
   DUMMY_MATCH_ID_INJECTOR_TOKEN,
   MATCH_ID_INJECTOR_TOKEN,
 } from './matchInjectorToken'
-import {
+import type {
   AnyRouter,
   MakeRouteMatch,
   MakeRouteMatchUnion,

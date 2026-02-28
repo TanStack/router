@@ -1,6 +1,6 @@
-import * as Angular from '@angular/core'
-import { injectRouter } from './injectRouter'
 import { injectStore } from '@tanstack/angular-store'
+import { injectRouter } from './injectRouter'
+import type * as Angular from '@angular/core'
 import type {
   AnyRouter,
   RegisteredRouter,

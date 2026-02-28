@@ -1,11 +1,11 @@
 import { expectTypeOf, test } from 'vitest'
-import * as Angular from '@angular/core'
 import {
   createRootRoute,
   createRoute,
   createRouter,
   injectLocation,
 } from '../src'
+import type * as Angular from '@angular/core'
 import type { ParsedLocation } from '@tanstack/router-core'
 
 const rootRoute = createRootRoute()
@@ -22,9 +22,9 @@ const invoicesRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
-const defaultRouter = createRouter({ routeTree })
+const _defaultRouter = createRouter({ routeTree })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
 test('should have the types for a ParsedLocation in injectLocation', () => {
   const location = injectLocation<DefaultRouter>()

@@ -1,5 +1,5 @@
 import * as Angular from '@angular/core'
-import { fireEvent, render, screen } from '@testing-library/angular'
+import { render, screen } from '@testing-library/angular'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import {
   Link,

@@ -1,10 +1,22 @@
-import * as Angular from '@angular/core'
 import {
   BaseRootRoute,
   BaseRoute,
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
+import { injectLoaderData } from './injectLoaderData'
+import { injectLoaderDeps } from './injectLoaderDeps'
+import { injectMatch } from './injectMatch'
+import { injectNavigate } from './injectNavigate'
+import { injectParams } from './injectParams'
+import { injectRouter } from './injectRouter'
+import { injectSearch } from './injectSearch'
+import type { InjectParamsRoute } from './injectParams'
+import type { InjectRouteContextRoute } from './injectRouteContext'
+import type { InjectMatchRoute } from './injectMatch'
+import type { InjectLoaderDepsRoute } from './injectLoaderDeps'
+import type { InjectLoaderDataRoute } from './injectLoaderData'
+import type * as Angular from '@angular/core'
 import type {
   AnyContext,
   AnyRoute,
@@ -29,18 +41,6 @@ import type {
   ToMaskOptions,
   UseNavigateResult,
 } from '@tanstack/router-core'
-import { injectLoaderData } from './injectLoaderData'
-import type { InjectLoaderDataRoute } from './injectLoaderData'
-import { injectLoaderDeps } from './injectLoaderDeps'
-import type { InjectLoaderDepsRoute } from './injectLoaderDeps'
-import { injectMatch } from './injectMatch'
-import type { InjectMatchRoute } from './injectMatch'
-import { injectNavigate } from './injectNavigate'
-import { injectParams } from './injectParams'
-import type { InjectParamsRoute } from './injectParams'
-import type { InjectRouteContextRoute } from './injectRouteContext'
-import { injectRouter } from './injectRouter'
-import { injectSearch } from './injectSearch'
 import type { InjectSearchRoute } from './injectSearch'
 
 declare module '@tanstack/router-core' {

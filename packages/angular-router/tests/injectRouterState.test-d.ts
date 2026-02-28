@@ -1,5 +1,4 @@
 import { expectTypeOf, test } from 'vitest'
-import * as Angular from '@angular/core'
 import {
   createRootRoute,
   createRoute,
@@ -40,11 +39,11 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 ])
 
-const defaultRouter = createRouter({
+const _defaultRouter = createRouter({
   routeTree,
 })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
 test('can select router state', () => {
   expectTypeOf(injectRouterState<DefaultRouter>)

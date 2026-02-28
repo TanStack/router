@@ -1,8 +1,7 @@
-import { rootRouteId } from '@tanstack/router-core'
-import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
-import { injectRouter } from '../injectRouter'
 import * as Angular from '@angular/core'
+import { injectRouter } from '../injectRouter'
 import { injectRouterState } from '../injectRouterState'
+import type { AnyRoute } from '@tanstack/router-core'
 
 export function injectIsCatchingError({
   matchId,

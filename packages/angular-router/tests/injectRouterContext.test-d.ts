@@ -1,5 +1,4 @@
 import { expectTypeOf, test } from 'vitest'
-import * as Angular from '@angular/core'
 import {
   createRootRoute,
   createRootRouteWithContext,
@@ -7,6 +6,7 @@ import {
   createRouter,
   injectRouterContext,
 } from '../src'
+import type * as Angular from '@angular/core'
 
 test('when there is no context', () => {
   const rootRoute = createRootRoute()
@@ -31,11 +31,11 @@ test('when there is no context', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectRouterContext<DefaultRouter>)
     .parameter(0)
@@ -101,12 +101,12 @@ test('when there is the root context', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectRouterContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Angular.Signal<{
@@ -184,12 +184,12 @@ test('when there are multiple contexts', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectRouterContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Angular.Signal<{
@@ -269,12 +269,12 @@ test('when there are overlapping contexts', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectRouterContext<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Angular.Signal<{

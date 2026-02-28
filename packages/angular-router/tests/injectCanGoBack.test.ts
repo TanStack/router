@@ -84,7 +84,7 @@ describe('injectCanGoBack', () => {
   }
 
   test('when no location behind', async () => {
-    const { router } = setup()
+    setup()
 
     const indexTitle = await screen.findByText('IndexTitle')
     expect(indexTitle).toBeTruthy()
@@ -111,4 +111,3 @@ describe('injectCanGoBack', () => {
     expect(indexTitle).toBeTruthy()
   })
 })
-

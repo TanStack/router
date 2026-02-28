@@ -1,5 +1,5 @@
 import * as Angular from '@angular/core'
-import { fireEvent, render, screen } from '@testing-library/angular'
+import { fireEvent, render, screen, waitFor } from '@testing-library/angular'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import {
   Outlet,
@@ -172,5 +172,194 @@ describe('injectNavigate', () => {
     expect(await screen.findByText('Params: id1')).toBeTruthy()
 
     expect(window.location.pathname).toBe('/posts/id1')
+  })
+
+  test('should navigate to the parent route and keep params', async () => {
+    const rootRoute = createRootRoute()
+
+    @Angular.Component({
+      template: `
+        <h1>Leaf</h1>
+        <button
+          (click)="navigate({ to: '/param/$id/a', from: '/param/$id/a/b', params: true })"
+        >
+          Parent Keep Params
+        </button>
+      `,
+      standalone: true,
+    })
+    class LeafComponent {
+      navigate = injectNavigate()
+    }
+
+    @Angular.Component({
+      imports: [Outlet],
+      template: '<h1>Layout A</h1><outlet />',
+    })
+    class AComponent {}
+
+    const paramRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/param/$id',
+    })
+    const aRoute = createRoute({
+      getParentRoute: () => paramRoute,
+      path: '/a',
+      component: () => AComponent,
+    })
+    const bRoute = createRoute({
+      getParentRoute: () => aRoute,
+      path: '/b',
+      component: () => LeafComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        paramRoute.addChildren([aRoute.addChildren([bRoute])]),
+      ]),
+      history,
+      defaultPendingMinMs: 0,
+    })
+
+    window.history.replaceState(null, 'root', '/param/foo/a/b')
+
+    await render(RouterProvider, {
+      bindings: [Angular.inputBinding('router', () => router)],
+    })
+
+    const button = await screen.findByRole('button', {
+      name: 'Parent Keep Params',
+    })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/param/foo/a')
+    })
+  })
+
+  test('should navigate to the parent route and change params', async () => {
+    const rootRoute = createRootRoute()
+
+    @Angular.Component({
+      template: `
+        <h1>Leaf</h1>
+        <button (click)="navigateWithChangedParams()">
+          Parent Change Params
+        </button>
+      `,
+      standalone: true,
+    })
+    class LeafComponent {
+      navigate = injectNavigate()
+
+      navigateWithChangedParams() {
+        this.navigate({
+          to: '/param/$id/a',
+          from: '/param/$id/a/b',
+          params: (prev: any) => ({ ...prev, id: 'bar' }),
+        })
+      }
+    }
+
+    @Angular.Component({
+      imports: [Outlet],
+      template: '<h1>Layout A</h1><outlet />',
+    })
+    class AComponent {}
+
+    const paramRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/param/$id',
+    })
+    const aRoute = createRoute({
+      getParentRoute: () => paramRoute,
+      path: '/a',
+      component: () => AComponent,
+    })
+    const bRoute = createRoute({
+      getParentRoute: () => aRoute,
+      path: '/b',
+      component: () => LeafComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        paramRoute.addChildren([aRoute.addChildren([bRoute])]),
+      ]),
+      history,
+      defaultPendingMinMs: 0,
+    })
+
+    window.history.replaceState(null, 'root', '/param/foo/a/b')
+
+    await render(RouterProvider, {
+      bindings: [Angular.inputBinding('router', () => router)],
+    })
+
+    const button = await screen.findByRole('button', {
+      name: 'Parent Change Params',
+    })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/param/bar/a')
+    })
+  })
+
+  test('should navigate to same route with different params', async () => {
+    const rootRoute = createRootRoute()
+
+    @Angular.Component({
+      template: `
+        <h1>Leaf</h1>
+        <button
+          (click)="navigate({ to: '/param/$id/a/b', from: '/param/$id/a/b', params: { id: 'bar' } })"
+        >
+          Same Route Different Params
+        </button>
+      `,
+      standalone: true,
+    })
+    class LeafComponent {
+      navigate = injectNavigate()
+      params = injectParams({ strict: false })
+    }
+
+    const paramRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/param/$id',
+    })
+    const aRoute = createRoute({
+      getParentRoute: () => paramRoute,
+      path: '/a',
+    })
+    const bRoute = createRoute({
+      getParentRoute: () => aRoute,
+      path: '/b',
+      component: () => LeafComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        paramRoute.addChildren([aRoute.addChildren([bRoute])]),
+      ]),
+      history,
+      defaultPendingMinMs: 0,
+    })
+
+    window.history.replaceState(null, 'root', '/param/foo/a/b')
+
+    await render(RouterProvider, {
+      bindings: [Angular.inputBinding('router', () => router)],
+    })
+
+    const button = await screen.findByRole('button', {
+      name: 'Same Route Different Params',
+    })
+    fireEvent.click(button)
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/param/bar/a/b')
+    })
   })
 })

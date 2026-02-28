@@ -1,6 +1,6 @@
-import * as Angular from '@angular/core'
-import { AnyRouter, RegisteredRouter, RouterState } from '@tanstack/router-core'
 import { injectRouterState } from './injectRouterState'
+import type * as Angular from '@angular/core'
+import type { AnyRouter, RegisteredRouter, RouterState } from '@tanstack/router-core'
 
 export interface InjectLocationOptions<TRouter extends AnyRouter, TSelected> {
   select?: (

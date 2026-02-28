@@ -1,3 +1,4 @@
+import { injectRouter } from './injectRouter'
 import type {
   AnyRouter,
   FromPathOption,
@@ -5,7 +6,6 @@ import type {
   RegisteredRouter,
   UseNavigateResult,
 } from '@tanstack/router-core'
-import { injectRouter } from './injectRouter'
 
 export function injectNavigate<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -26,4 +26,5 @@ export function injectNavigate<
 export type InjectNavigateResult<
   TRouter extends AnyRouter = RegisteredRouter,
   TDefaultFrom extends string = string,
-> = UseNavigateResult<TDefaultFrom>
+> = UseNavigateResult<TDefaultFrom> &
+  (TRouter extends AnyRouter ? unknown : never)

@@ -1,7 +1,7 @@
 import * as Angular from '@angular/core'
-import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
 import warning from 'tiny-warning'
 import { getRouterInjectionKey } from './routerInjectionToken'
+import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
 
 export function injectRouter<
   TRouter extends AnyRouter = RegisteredRouter,

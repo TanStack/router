@@ -1,4 +1,5 @@
-import * as Angular from '@angular/core'
+import { injectMatch } from './injectMatch'
+import type * as Angular from '@angular/core'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -8,7 +9,6 @@ import type {
   ThrowOrOptional,
   UseParamsResult,
 } from '@tanstack/router-core'
-import { injectMatch } from './injectMatch'
 
 export interface InjectParamsBaseOptions<
   TRouter extends AnyRouter,

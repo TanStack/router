@@ -1,14 +1,14 @@
 import * as Angular from '@angular/core'
 import {
   AnyRouter,
+  LinkOptions as CoreLinkOptions,
+  LinkCurrentTargetElement,
+  RegisteredRouter,
+  RoutePaths,
   deepEqual,
   exactPathTest,
-  LinkCurrentTargetElement,
-  LinkOptions as CoreLinkOptions,
   preloadWarning,
-  RegisteredRouter,
   removeTrailingSlash,
-  RoutePaths,
 } from '@tanstack/router-core'
 import { injectRouterState } from './injectRouterState'
 import { injectRouter } from './injectRouter'
@@ -21,7 +21,7 @@ import { injectIntersectionObserver } from './injectIntersectionObserver'
   host: {
     '[href]': 'hrefOption()?.href',
     '(click)': 'handleClick($event)',
-    '(focus)': 'handleFocus($event)',
+    '(focus)': 'handleFocus()',
     '(mouseenter)': 'handleEnter($event)',
     '(mouseover)': 'handleEnter($event)',
     '(mouseleave)': 'handleLeave($event)',
@@ -41,7 +41,7 @@ export class Link<
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
 > {
-  #passiveEvents = injectPasiveEvents(() => ({
+  passiveEvents = injectPasiveEvents(() => ({
     touchstart: this.handleTouchStart,
   }))
 
@@ -110,7 +110,7 @@ export class Link<
     try {
       new URL(this.options()['to'] as any)
       return this.options()['to']
-    } catch {}
+    } catch { }
     return undefined
   })
 
@@ -245,14 +245,14 @@ export class Link<
     }
   }
 
-  protected handleFocus = (event: FocusEvent) => {
+  protected handleFocus = () => {
     if (this._options().disabled) return
     if (this.preload()) {
       this.doPreload()
     }
   }
 
-  protected handleTouchStart = (event: TouchEvent) => {
+  protected handleTouchStart = () => {
     if (this._options().disabled) return
     if (this.preload()) {
       this.doPreload()

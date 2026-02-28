@@ -1,11 +1,11 @@
 import { describe, expectTypeOf, test } from 'vitest'
-import * as Angular from '@angular/core'
 import {
   createRootRoute,
   createRoute,
   createRouter,
   injectParams,
 } from '../src'
+import type * as Angular from '@angular/core'
 
 describe('injectParams', () => {
   test('when there are no params', () => {
@@ -31,11 +31,11 @@ describe('injectParams', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectParams<DefaultRouter>)
       .parameter(0)
@@ -97,11 +97,11 @@ describe('injectParams', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectParams<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Angular.Signal<{}>
@@ -180,11 +180,11 @@ describe('injectParams', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectParams<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Angular.Signal<{}>
@@ -256,13 +256,13 @@ describe('injectParams', () => {
       indexRoute,
     ])
 
-    const router = createRouter({ routeTree })
+    const _router = createRouter({ routeTree })
 
     const from = '/invoices/$id'
     test('return type is `{ id: string }` when shouldThrow = true', () => {
       const shouldThrow = true
       const params = injectParams<
-        typeof router,
+        typeof _router,
         typeof from,
         /* strict */ true,
         typeof shouldThrow
@@ -274,7 +274,7 @@ describe('injectParams', () => {
     test('return type is `{id: string} | undefined` when shouldThrow = false', () => {
       const shouldThrow = false
       const params = injectParams<
-        typeof router,
+        typeof _router,
         typeof from,
         /* strict */ true,
         typeof shouldThrow

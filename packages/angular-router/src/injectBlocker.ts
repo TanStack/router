@@ -1,8 +1,9 @@
 import * as Angular from '@angular/core'
-import {
+import { injectRouter } from './injectRouter'
+import type {
   BlockerFnArgs,
-  HistoryLocation,
   HistoryAction,
+  HistoryLocation,
 } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -10,7 +11,6 @@ import type {
   ParseRoute,
   RegisteredRouter,
 } from '@tanstack/router-core'
-import { injectRouter } from './injectRouter'
 
 interface ShouldBlockFnLocation<
   out TRouteId,

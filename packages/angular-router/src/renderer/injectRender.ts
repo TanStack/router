@@ -4,7 +4,7 @@ export type RenderValue = {
   key?: string
   component: Angular.Type<any> | null | undefined
   inputs?: Record<string, () => unknown>
-  providers?: Angular.Provider[]
+  providers?: Array<Angular.Provider>
 } | null | undefined
 
 export function injectRender(renderValueFn: () => RenderValue): void {
@@ -15,7 +15,7 @@ export function injectRender(renderValueFn: () => RenderValue): void {
     vcr.clear()
   })
 
-  let lastKey: any[] = [];
+  let lastKey: Array<any> = [];
 
   Angular.effect(() => {
     const renderValue = renderValueFn()
@@ -45,12 +45,12 @@ export function injectRender(renderValueFn: () => RenderValue): void {
 }
 
 function resolvedKey(value: RenderValue) {
-  let component = value?.component
+  const component = value?.component
   if (!value || !component) return []
   return [component, value.key]
 }
 
-function keysAreEqual(a: any[], b: any[]) {
+function keysAreEqual(a: Array<any>, b: Array<any>) {
   if (a.length !== b.length) return false
   for (let i = 0; i < a.length; i++) {
     if (a[i] !== b[i]) return false

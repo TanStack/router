@@ -1,11 +1,11 @@
 import { describe, expectTypeOf, test } from 'vitest'
-import * as Angular from '@angular/core'
 import {
   createRootRoute,
   createRoute,
   createRouter,
   injectSearch,
 } from '../src'
+import type * as Angular from '@angular/core'
 import type { SearchSchemaInput } from '@tanstack/router-core'
 
 describe('injectSearch', () => {
@@ -37,11 +37,11 @@ describe('injectSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectSearch<DefaultRouter>)
       .parameter(0)
@@ -106,11 +106,11 @@ describe('injectSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Angular.Signal<{}>
@@ -192,11 +192,11 @@ describe('injectSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Angular.Signal<{}>
@@ -256,11 +256,11 @@ describe('injectSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Angular.Signal<{}>
@@ -321,11 +321,11 @@ describe('injectSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Angular.Signal<{
@@ -388,11 +388,11 @@ describe('injectSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Angular.Signal<{
@@ -458,11 +458,11 @@ describe('injectSearch', () => {
       indexRoute,
     ])
 
-    const defaultRouter = createRouter({
+    const _defaultRouter = createRouter({
       routeTree,
     })
 
-    type DefaultRouter = typeof defaultRouter
+    type DefaultRouter = typeof _defaultRouter
 
     expectTypeOf(injectSearch<DefaultRouter, '/'>).returns.toEqualTypeOf<
       Angular.Signal<{
@@ -516,8 +516,8 @@ describe('injectSearch', () => {
 
     const routeTree = rootRoute.addChildren([indexRoute])
 
-    const router = createRouter({ routeTree })
-    expectTypeOf(injectSearch<typeof router, '/'>).returns.toEqualTypeOf<
+    const _router = createRouter({ routeTree })
+    expectTypeOf(injectSearch<typeof _router, '/'>).returns.toEqualTypeOf<
       Angular.Signal<{
         page: number
       }>
@@ -547,8 +547,8 @@ describe('injectSearch', () => {
       indexRoute.addChildren([indexRoute]),
     ])
 
-    const router = createRouter({ routeTree })
-    expectTypeOf(injectSearch<typeof router, '/'>).returns.toEqualTypeOf<
+    const _router = createRouter({ routeTree })
+    expectTypeOf(injectSearch<typeof _router, '/'>).returns.toEqualTypeOf<
       Angular.Signal<
         { status: 'in'; detail: string } | { status: 'out'; detail: string }
       >
@@ -571,13 +571,13 @@ describe('injectSearch', () => {
 
     const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
-    const router = createRouter({ routeTree })
+    const _router = createRouter({ routeTree })
 
     const from = '/invoices'
     test('return type is `{ page: number }` when shouldThrow = true', () => {
       const shouldThrow = true
       const search = injectSearch<
-        typeof router,
+        typeof _router,
         typeof from,
         /* strict */ true,
         typeof shouldThrow
@@ -589,7 +589,7 @@ describe('injectSearch', () => {
     test('return type is `{page: number} | undefined` when shouldThrow = false', () => {
       const shouldThrow = false
       const search = injectSearch<
-        typeof router,
+        typeof _router,
         typeof from,
         /* strict */ true,
         typeof shouldThrow

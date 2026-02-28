@@ -1,4 +1,5 @@
-import * as Angular from '@angular/core'
+import { injectMatch } from './injectMatch'
+import type * as Angular from '@angular/core'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -6,7 +7,6 @@ import type {
   UseRouteContextOptions,
   UseRouteContextResult,
 } from '@tanstack/router-core'
-import { injectMatch } from './injectMatch'
 
 export type InjectRouteContextRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,

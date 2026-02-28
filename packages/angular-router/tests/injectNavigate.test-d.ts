@@ -34,11 +34,11 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
 ])
 
-const defaultRouter = createRouter({
+const _defaultRouter = createRouter({
   routeTree,
 })
 
-type DefaultRouter = typeof defaultRouter
+type DefaultRouter = typeof _defaultRouter
 
 test('when navigating to a route', () => {
   const navigate = injectNavigate()

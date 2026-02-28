@@ -1,5 +1,4 @@
 import { expectTypeOf, test } from 'vitest'
-import * as Angular from '@angular/core'
 import {
   createRootRoute,
   createRoute,
@@ -30,11 +29,11 @@ test('blocker without resolver', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectBlocker<DefaultRouter, false>).returns.toBeVoid()
 })
@@ -62,11 +61,11 @@ test('blocker with resolver', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectBlocker<DefaultRouter, true>).returns.toBeObject()
 })
@@ -94,11 +93,11 @@ test('shouldBlockFn has corrent action', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectBlocker<DefaultRouter>)
     .parameter(0)

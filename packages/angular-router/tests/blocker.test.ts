@@ -1,6 +1,6 @@
 import * as Angular from '@angular/core'
 import { fireEvent, render, screen } from '@testing-library/angular'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi  } from 'vitest'
 import combinate from 'combinate'
 import {
   Link,
@@ -8,12 +8,11 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  redirect,
   injectBlocker,
   injectNavigate,
+  redirect,
 } from '../src'
 import type { InjectBlockerOpts, ShouldBlockFn } from '../src'
-import { beforeEach } from 'vitest'
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })

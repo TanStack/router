@@ -157,7 +157,7 @@ describe('injectMatch', () => {
           match = injectMatch({
             from: 'posts',
             shouldThrow: false,
-            select: (match) => match?.routeId,
+            select: (match) => match.routeId,
           })
           matchValue = Angular.computed(() => {
             expect(this.match()).toBeUndefined()
@@ -173,4 +173,3 @@ describe('injectMatch', () => {
     })
   })
 })
-

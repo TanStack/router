@@ -1,20 +1,146 @@
-import {
+
+import { createRoute } from './route'
+import { injectLoaderData } from './injectLoaderData'
+import { injectLoaderDeps } from './injectLoaderDeps'
+import { injectMatch } from './injectMatch'
+import { injectNavigate } from './injectNavigate'
+import { injectParams } from './injectParams'
+import { injectRouter } from './injectRouter'
+import { injectSearch } from './injectSearch'
+import type {
+  AnyContext,
   AnyRoute,
   AnyRouter,
   ConstrainLiteral,
+  FileBaseRouteOptions,
+  FileRoutesByPath,
   LazyRouteOptions,
+  Register,
   RegisteredRouter,
+  ResolveParams,
+  Route,
   RouteById,
+  RouteConstraints,
   RouteIds,
+  UpdatableRouteOptions,
 } from '@tanstack/router-core'
-import { injectMatch, InjectMatchRoute } from './injectMatch'
-import { InjectRouteContextRoute } from './injectRouteContext'
-import { injectSearch, InjectSearchRoute } from './injectSearch'
-import { injectParams, InjectParamsRoute } from './injectParams'
-import { injectLoaderDeps, InjectLoaderDepsRoute } from './injectLoaderDeps'
-import { injectLoaderData, InjectLoaderDataRoute } from './injectLoaderData'
-import { injectNavigate, InjectNavigateResult } from './injectNavigate'
-import { injectRouter } from './injectRouter'
+import type { InjectLoaderDataRoute } from './injectLoaderData'
+import type { InjectLoaderDepsRoute } from './injectLoaderDeps'
+import type { InjectMatchRoute } from './injectMatch'
+import type { InjectNavigateResult } from './injectNavigate'
+import type { InjectParamsRoute } from './injectParams'
+import type { InjectRouteContextRoute } from './injectRouteContext'
+import type { InjectSearchRoute } from './injectSearch'
+
+export function createFileRoute<
+  TFilePath extends keyof FileRoutesByPath,
+  TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
+  TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
+  TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
+  TFullPath extends
+  RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
+>(
+  path?: TFilePath,
+): InternalFileRouteFactory<
+  TFilePath,
+  TParentRoute,
+  TId,
+  TPath,
+  TFullPath
+>['createRoute'] {
+  if (typeof path === 'object') {
+    return new InternalFileRouteFactory<
+      TFilePath,
+      TParentRoute,
+      TId,
+      TPath,
+      TFullPath
+    >().createRoute(path) as any
+  }
+  return new InternalFileRouteFactory<
+    TFilePath,
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath
+  >().createRoute
+}
+
+class InternalFileRouteFactory<
+  TFilePath extends keyof FileRoutesByPath,
+  TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],
+  TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
+  TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
+  TFullPath extends
+  RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
+> {
+  createRoute = <
+    TRegister = Register,
+    TSearchValidator = undefined,
+    TParams = ResolveParams<TPath>,
+    TRouteContextFn = AnyContext,
+    TBeforeLoadFn = AnyContext,
+    TLoaderDeps extends Record<string, any> = {},
+    TLoaderFn = undefined,
+    TChildren = unknown,
+    TSSR = unknown,
+    TMiddlewares = unknown,
+    THandlers = undefined,
+  >(
+    options?: FileBaseRouteOptions<
+      TRegister,
+      TParentRoute,
+      TId,
+      TPath,
+      TSearchValidator,
+      TParams,
+      TLoaderDeps,
+      TLoaderFn,
+      AnyContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      AnyContext,
+      TSSR,
+      TMiddlewares,
+      THandlers
+    > &
+      UpdatableRouteOptions<
+        TParentRoute,
+        TId,
+        TFullPath,
+        TParams,
+        TSearchValidator,
+        TLoaderFn,
+        TLoaderDeps,
+        AnyContext,
+        TRouteContextFn,
+        TBeforeLoadFn
+      >,
+  ): Route<
+    TRegister,
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TFilePath,
+    TId,
+    TSearchValidator,
+    TParams,
+    AnyContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    unknown,
+    TSSR,
+    TMiddlewares,
+    THandlers
+  > => {
+    const route = createRoute(options as any)
+      ; (route as any).isRoot = false
+    return route as any
+  }
+}
 
 declare module '@tanstack/router-core' {
   export interface LazyRoute<in out TRoute extends AnyRoute> {
@@ -24,7 +150,7 @@ declare module '@tanstack/router-core' {
     injectParams: InjectParamsRoute<TRoute['id']>
     injectLoaderDeps: InjectLoaderDepsRoute<TRoute['id']>
     injectLoaderData: InjectLoaderDataRoute<TRoute['id']>
-    injectNavigate: () => InjectNavigateResult<TRoute['fullPath']>
+    injectNavigate: () => InjectNavigateResult<AnyRouter, TRoute['fullPath']>
   }
 }
 
@@ -77,7 +203,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
     return injectLoaderData({ ...opts, from: this.options.id } as any)
   }
 
-  injectNavigate = (): InjectNavigateResult<TRoute['fullPath']> => {
+  injectNavigate = (): InjectNavigateResult<AnyRouter, TRoute['fullPath']> => {
     const router = injectRouter()
     return injectNavigate({ from: router.routesById[this.options.id].fullPath })
   }
@@ -106,4 +232,15 @@ export function createLazyRoute<
       ...opts,
     })
   }
+}
+
+export function createLazyFileRoute<
+  TFilePath extends keyof FileRoutesByPath,
+  TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
+>(id: TFilePath): (opts: LazyRouteOptions) => LazyRoute<TRoute> {
+  if (typeof id === 'object') {
+    return new LazyRoute<TRoute>(id) as any
+  }
+
+  return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
 }

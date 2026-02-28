@@ -213,7 +213,7 @@ test('injectParams must return parsed result if applicable.', async () => {
   let postTitleValue = await screen.findByTestId('post_title_value')
   let postIdValue = await screen.findByTestId('post_id_value')
   let renderedPost = {
-    id: parseInt(postIdValue.textContent),
+    id: Number(postIdValue.textContent),
     title: postTitleValue.textContent,
     category: postCategory.textContent,
   }
@@ -257,7 +257,7 @@ test('injectParams must return parsed result if applicable.', async () => {
   postTitleValue = await screen.findByTestId('post_title_value')
   postIdValue = await screen.findByTestId('post_id_value')
   renderedPost = {
-    id: parseInt(postIdValue.textContent),
+    id: Number(postIdValue.textContent),
     title: postTitleValue.textContent,
     category: postCategory.textContent,
   }

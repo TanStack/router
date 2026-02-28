@@ -10,9 +10,6 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  injectRouter,
-  injectLoaderData,
-  injectParams,
 } from '../src'
 import { sleep } from './utils'
 import type { RouterHistory } from '@tanstack/history'

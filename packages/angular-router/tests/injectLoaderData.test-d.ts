@@ -1,11 +1,11 @@
 import { expectTypeOf, test } from 'vitest'
-import * as Angular from '@angular/core'
 import {
   createRootRoute,
   createRoute,
   createRouter,
   injectLoaderData,
 } from '../src'
+import type * as Angular from '@angular/core'
 
 test('when there is no loaders', () => {
   const rootRoute = createRootRoute()
@@ -30,11 +30,11 @@ test('when there is no loaders', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectLoaderData<DefaultRouter>)
     .parameter(0)
@@ -94,12 +94,12 @@ test('when there is one loader', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
     Angular.Signal<{ data: Array<string> }>
@@ -157,12 +157,12 @@ test('when there is one loader that is async', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
     Angular.Signal<{ data: Array<string> }>
@@ -222,11 +222,11 @@ test('when there are multiple loaders', () => {
     indexRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Angular.Signal<undefined>
@@ -318,11 +318,11 @@ test('when there are multiple loaders of objects and primtives', () => {
     postsRoute,
   ])
 
-  const defaultRouter = createRouter({
+  const _defaultRouter = createRouter({
     routeTree,
   })
 
-  type DefaultRouter = typeof defaultRouter
+  type DefaultRouter = typeof _defaultRouter
 
   expectTypeOf(injectLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<
     Angular.Signal<undefined>

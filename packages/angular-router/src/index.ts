@@ -18,7 +18,12 @@ export {
   type NotFoundRouteComponent,
 } from './route'
 
-export { createLazyRoute } from './fileRoute'
+export {
+  createFileRoute,
+  LazyRoute,
+  createLazyRoute,
+  createLazyFileRoute,
+} from './fileRoute'
 
 // Router Provider
 export { RouterProvider } from './RouterProvider'
@@ -98,13 +103,6 @@ export { injectErrorState } from './injectErrorState'
 
 // Link
 export { type LinkOptions as LinkInputOptions, Link } from './Link'
-
-// Utilities
-export { injectIntersectionObserver } from './injectIntersectionObserver'
-export { injectTransitionerSetup } from './transitioner'
-export { getRouterInjectionKey } from './routerInjectionToken'
-export { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'
-export { DefaultNotFoundComponent } from './DefaultNotFound'
 
 // Core re-exports
 export {

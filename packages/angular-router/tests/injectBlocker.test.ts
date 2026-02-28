@@ -246,3 +246,59 @@ describe('injectBlocker', () => {
     })
   })
 })
+
+test('gives parsed path/search params to shouldBlockFn on param+search navigation', async () => {
+  const rootRoute = createRootRoute()
+  const shouldBlockFn = vi.fn().mockReturnValue(false)
+
+  @Angular.Component({
+    template: `
+      <h1>Posts</h1>
+      <button (click)="navigate({ to: '/posts/$postId', params: { postId: '2' }, search: { page: 2 } })">Go to post 2</button>
+    `,
+    standalone: true,
+  })
+  class PostComponent {
+    navigate = injectNavigate()
+    blocker = injectBlocker({ shouldBlockFn })
+  }
+
+  const postRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts/$postId',
+    validateSearch: (search) => ({ page: Number(search.page ?? 1) }),
+    component: () => PostComponent,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([postRoute]),
+    history: createBrowserHistory(),
+  })
+
+  window.history.replaceState(null, '', '/posts/1?page=1')
+
+  await render(RouterProvider, {
+    bindings: [Angular.inputBinding('router', () => router)],
+  })
+
+  const button = await screen.findByRole('button', { name: 'Go to post 2' })
+  fireEvent.click(button)
+
+  await expect(screen.findByRole('heading', { name: 'Posts' })).resolves
+    .toBeTruthy()
+
+  expect(shouldBlockFn).toHaveBeenCalledWith({
+    action: 'PUSH',
+    current: expect.objectContaining({
+      pathname: '/posts/1',
+      params: { postId: '1' },
+      search: { page: 1 },
+    }),
+    next: expect.objectContaining({
+      pathname: '/posts/2',
+      params: { postId: '2' },
+      search: { page: 2 },
+    }),
+  })
+})
+

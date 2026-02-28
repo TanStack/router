@@ -1,30 +1,27 @@
 import * as Angular from '@angular/core'
-import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/angular'
 
-import { z } from 'zod'
 
-import { trailingSlashOptions, stripSearchParams } from '@tanstack/router-core'
+import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
   RouterProvider,
   createBrowserHistory,
-  createHashHistory,
   createMemoryHistory,
   createRootRoute,
   createRootRouteWithContext,
   createRoute,
-  createRouteMask,
   createRouter,
-  redirect,
-  retainSearchParams,
   injectErrorState,
   injectLoaderData,
   injectMatch,
   injectParams,
   injectRouterContext,
   injectSearch,
+  redirect,
+  retainSearchParams,
 } from '../src'
 import {
   getIntersectionObserverMock,
@@ -48,7 +45,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  history.destroy?.()
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
 })
@@ -2901,5 +2898,170 @@ describe('Link', () => {
         })
       },
     )
+  })
+})
+
+describe('search middleware with redirect parity', () => {
+  test('middleware-derived search is retained after redirect', async () => {
+    const rootRoute = createRootRoute({
+      validateSearch: (input) => ({ value: String(input.value ?? 'none') }),
+      search: {
+        middlewares: [retainSearchParams(['value']) as any],
+      },
+    })
+
+    @Angular.Component({
+      imports: [Link],
+      template: '<a [link]="{ to: \'/source\' }">Source</a>',
+      standalone: true,
+    })
+    class IndexComponent {}
+
+    @Angular.Component({
+      template: '<h1 data-testid="target">Target</h1>',
+      standalone: true,
+    })
+    class TargetComponent {}
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => IndexComponent,
+    })
+
+    const sourceRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      beforeLoad: () => {
+        throw redirect({ to: '/target' })
+      },
+      component: () => IndexComponent,
+    })
+
+    const targetRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      component: () => TargetComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, sourceRoute, targetRoute]),
+      history,
+      defaultPendingMinMs: 0,
+    })
+
+    window.history.replaceState(null, '', '/?value=from-root')
+
+    await render(RouterProvider, {
+      bindings: [Angular.inputBinding('router', () => router)],
+    })
+
+    const sourceLink = await screen.findByRole('link', { name: 'Source' })
+    fireEvent.click(sourceLink)
+
+    await expect(screen.findByTestId('target')).resolves.toBeTruthy()
+    expect(router.state.location.pathname).toBe('/target')
+    expect(router.state.location.search).toEqual({ value: 'none' })
+  })
+})
+
+describe('Link parity smoke (framework-agnostic)', () => {
+  test('navigates to /posts from root', async () => {
+    const rootRoute = createRootRoute()
+
+    @Angular.Component({
+      imports: [Link],
+      template: '<a [link]="{ to: \'/posts\' }">Posts</a>',
+      standalone: true,
+    })
+    class IndexComponent {}
+
+    @Angular.Component({
+      template: '<h1>Posts</h1>',
+      standalone: true,
+    })
+    class PostsComponent {}
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => IndexComponent,
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+      defaultPendingMinMs: 0,
+    })
+
+    await render(RouterProvider, {
+      bindings: [Angular.inputBinding('router', () => router)],
+    })
+
+    const link = await screen.findByRole('link', { name: 'Posts' })
+    expect(link.getAttribute('href')).toBe('/posts')
+
+    fireEvent.click(link)
+
+    await expect(screen.findByRole('heading', { name: 'Posts' })).resolves
+      .toBeTruthy()
+    expect(window.location.pathname).toBe('/posts')
+  })
+
+  test('resolves links correctly when router has basepath', async () => {
+    const rootRoute = createRootRoute()
+
+    @Angular.Component({
+      imports: [Link],
+      template: '<a [link]="{ to: \'/posts\' }">Posts</a>',
+      standalone: true,
+    })
+    class IndexComponent {}
+
+    @Angular.Component({
+      template: '<h1>Posts</h1>',
+      standalone: true,
+    })
+    class PostsComponent {}
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => IndexComponent,
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+      basepath: '/basepath',
+      defaultPendingMinMs: 0,
+    })
+
+    window.history.replaceState(null, 'root', '/basepath/')
+
+    await render(RouterProvider, {
+      bindings: [Angular.inputBinding('router', () => router)],
+    })
+
+    const link = await screen.findByRole('link', { name: 'Posts' })
+    expect(link.getAttribute('href')).toBe('/basepath/posts')
+
+    fireEvent.click(link)
+
+    await expect(screen.findByRole('heading', { name: 'Posts' })).resolves
+      .toBeTruthy()
+    expect(window.location.pathname).toBe('/basepath/posts')
   })
 })

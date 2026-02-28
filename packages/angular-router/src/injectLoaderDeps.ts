@@ -1,12 +1,12 @@
-import * as Angular from '@angular/core'
-import {
+import { injectMatch } from './injectMatch'
+import type * as Angular from '@angular/core'
+import type {
   AnyRouter,
   RegisteredRouter,
   ResolveUseLoaderDeps,
   StrictOrFrom,
   UseLoaderDepsResult,
 } from '@tanstack/router-core'
-import { injectMatch } from './injectMatch'
 
 export interface InjectLoaderDepsBaseOptions<
   TRouter extends AnyRouter,
