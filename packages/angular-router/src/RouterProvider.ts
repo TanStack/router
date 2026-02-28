@@ -4,7 +4,7 @@ import {
   RegisteredRouter,
   RouterOptions,
 } from '@tanstack/router-core'
-import { injectDynamicRenderer } from './dynamicRenderer'
+import { injectRender } from './renderer/injectRender'
 import { Matches } from './Matches'
 import { getRouterInjectionKey } from './routerInjectionToken'
 
@@ -22,7 +22,6 @@ export class RouterProvider<TRouter extends AnyRouter = RegisteredRouter> {
   > = Angular.input<Omit<RouterInputs<TRouter>, 'router' | 'context'>>({})
 
   router = Angular.input.required<AnyRouter>()
-  renderer = injectDynamicRenderer()
 
   updateRouter = Angular.effect(() => {
     // This effect will run before we render
@@ -36,9 +35,9 @@ export class RouterProvider<TRouter extends AnyRouter = RegisteredRouter> {
     })
   })
 
-  render = Angular.effect(() => {
+  render = injectRender(() => {
     const router = Angular.untracked(this.router)
-    this.renderer.render({
+    return {
       component: Matches,
       providers: [
         {
@@ -46,7 +45,7 @@ export class RouterProvider<TRouter extends AnyRouter = RegisteredRouter> {
           useValue: router,
         },
       ],
-    })
+    }
   })
 }
 

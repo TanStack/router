@@ -1,6 +1,6 @@
 import * as Angular from '@angular/core'
 import { injectRouterState } from './injectRouterState'
-import { injectDynamicRenderer } from './dynamicRenderer'
+import { injectRender } from './renderer/injectRender'
 import { RouteMatch } from './Match'
 import { injectTransitionerSetup } from './transitioner'
 
@@ -14,22 +14,20 @@ export class Matches {
     select: (s) => s.matches[0]?.id,
   })
 
-  renderer = injectDynamicRenderer()
   transitioner = injectTransitionerSetup()
 
-  render = Angular.effect(() => {
+  render = injectRender(() => {
     const matchId = this.matchId()
 
     if (!matchId) {
-      this.renderer.clear()
-      return
+      return null
     }
 
-    this.renderer.render({
+    return {
       component: RouteMatch,
       inputs: {
         matchId: () => matchId,
       },
-    })
+    }
   })
 }

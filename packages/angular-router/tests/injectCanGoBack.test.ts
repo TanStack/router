@@ -19,56 +19,56 @@ beforeEach(() => {
 })
 
 describe('injectCanGoBack', () => {
+  @Angular.Component({
+    imports: [Link, Outlet],
+    template: `
+      <button (click)="goBack()">Back</button>
+      <a [link]="{ to: '/' }">Home</a>
+      <a [link]="{ to: '/about' }">About</a>
+      <outlet />
+    `,
+  })
+  class RootComponent {
+    router = injectRouter()
+    location = injectLocation()
+    canGoBack = injectCanGoBack()
+
+    goBack() {
+      this.router.history.back()
+    }
+  }
+
+  @Angular.Component({
+    selector: 'can-go-back-index',
+    template: '<h1>IndexTitle</h1>',
+    standalone: true,
+  })
+  class IndexComponent {}
+
+  @Angular.Component({
+    selector: 'can-go-back-about',
+    template: '<h1>AboutTitle</h1>',
+    standalone: true,
+  })
+  class AboutComponent {}
+
   function setup({
     initialEntries = ['/'],
   }: {
     initialEntries?: Array<string>
   } = {}) {
-    @Angular.Component({
-      imports: [Link, Outlet],
-      template: `
-        <button (click)="goBack()">Back</button>
-        <a [link]="{ to: '/' }">Home</a>
-        <a [link]="{ to: '/about' }">About</a>
-        <outlet />
-      `,
-    })
-    class RootComponent {
-      router = injectRouter()
-      location = injectLocation()
-      canGoBack = injectCanGoBack()
-
-      goBack() {
-        this.router.history.back()
-      }
-    }
-
     const rootRoute = createRootRoute({
       component: () => RootComponent,
     })
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        @Angular.Component({
-          template: '<h1>IndexTitle</h1>',
-          standalone: true,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
+      component: () => IndexComponent,
     })
     const aboutRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/about',
-      component: () => {
-        @Angular.Component({
-          template: '<h1>AboutTitle</h1>',
-          standalone: true,
-        })
-        class AboutComponent {}
-        return AboutComponent
-      },
+      component: () => AboutComponent,
     })
 
     const router = createRouter({

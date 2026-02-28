@@ -19,6 +19,22 @@ afterEach(() => {
 })
 
 describe('injectMatch', () => {
+  @Angular.Component({
+    imports: [Link],
+    template: `
+      <h1>IndexTitle</h1>
+      <a [link]="{ to: '/posts' }">Posts</a>
+    `,
+    standalone: true,
+  })
+  class IndexComponent {}
+
+  @Angular.Component({
+    template: '<h1>PostsTitle</h1>',
+    standalone: true,
+  })
+  class PostsComponent {}
+
   function setup({
     RootComponent,
     history,
@@ -32,17 +48,7 @@ describe('injectMatch', () => {
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        @Angular.Component({
-          imports: [Link],
-          template: `
-            <h1>IndexTitle</h1>
-            <a [link]="{ to: '/posts' }">Posts</a>
-          `,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
+      component: () => IndexComponent,
     })
 
     history = history || createMemoryHistory({ initialEntries: ['/'] })
@@ -50,14 +56,7 @@ describe('injectMatch', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',
-      component: () => {
-        @Angular.Component({
-          template: '<h1>PostsTitle</h1>',
-          standalone: true,
-        })
-        class PostsComponent {}
-        return PostsComponent
-      },
+      component: () => PostsComponent,
     })
 
     const router = createRouter({

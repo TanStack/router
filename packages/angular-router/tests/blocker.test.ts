@@ -200,7 +200,7 @@ describe('Blocker', () => {
 
       fireEvent.click(clickable[clickTarget])
       await expect(
-        screen.findByRole('header', { name: 'Posts' }),
+        screen.findByRole('heading', { name: 'Posts' }, { timeout: 100 }),
       ).rejects.toThrow()
       expect(window.location.pathname).toBe('/')
     },

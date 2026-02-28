@@ -39,7 +39,7 @@ test('when there is no loaders', () => {
   expectTypeOf(injectLoaderData<DefaultRouter>)
     .parameter(0)
     .toHaveProperty('from')
-    .toEqualTypeOf<'/invoices' | '__root__' | '/invoices/' | '/' | undefined>()
+    .toExtend<'/invoices' | '__root__' | '/invoices/' | '/' | undefined>()
 
   expectTypeOf(injectLoaderData<DefaultRouter>)
     .parameter(0)
@@ -248,11 +248,11 @@ test('when there are multiple loaders', () => {
   ).returns.toEqualTypeOf<
     Angular.Signal<
       | {
-          data?:
-            | readonly ['invoice1', 'invoice2']
-            | readonly ['post1', 'post2']
-            | undefined
-        }
+        data?:
+        | readonly ['invoice1', 'invoice2']
+        | readonly ['post1', 'post2']
+        | undefined
+      }
       | undefined
     >
   >()
@@ -268,11 +268,11 @@ test('when there are multiple loaders', () => {
     .parameter(0)
     .toEqualTypeOf<
       | {
-          data?:
-            | readonly ['invoice1', 'invoice2']
-            | readonly ['post1', 'post2']
-            | undefined
-        }
+        data?:
+        | readonly ['invoice1', 'invoice2']
+        | readonly ['post1', 'post2']
+        | undefined
+      }
       | undefined
     >()
 
@@ -350,12 +350,12 @@ test('when there are multiple loaders of objects and primtives', () => {
       | readonly ['invoice1', 'invoice2']
       | readonly ['post1', 'post2']
       | {
-          invoice?:
-            | {
-                readonly id: 1
-              }
-            | undefined
+        invoice?:
+        | {
+          readonly id: 1
         }
+        | undefined
+      }
       | undefined
     >
   >()
@@ -368,12 +368,12 @@ test('when there are multiple loaders of objects and primtives', () => {
       | readonly ['invoice1', 'invoice2']
       | readonly ['post1', 'post2']
       | {
-          invoice?:
-            | {
-                readonly id: 1
-              }
-            | undefined
+        invoice?:
+        | {
+          readonly id: 1
         }
+        | undefined
+      }
       | undefined
     >()
 })

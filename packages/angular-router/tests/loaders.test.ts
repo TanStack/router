@@ -36,7 +36,7 @@ const WAIT_TIME = 100
   template: '<div>Index page</div>',
   standalone: true,
 })
-class IndexPageComponent {}
+class IndexPageComponent { }
 
 @Angular.Component({
   imports: [Link],
@@ -47,19 +47,19 @@ class IndexPageComponent {}
     </div>
   `,
 })
-class IndexWithLinkComponent {}
+class IndexWithLinkComponent { }
 
 @Angular.Component({
   template: '<div>Nested Foo page</div>',
   standalone: true,
 })
-class NestedFooComponent {}
+class NestedFooComponent { }
 
 @Angular.Component({
   imports: [Outlet],
   template: '<outlet />',
 })
-class NestedLayoutComponent {}
+class NestedLayoutComponent { }
 
 describe('loaders are being called', () => {
   test('called on /', async () => {
@@ -208,11 +208,7 @@ describe('loaders parentMatchPromise', () => {
 })
 
 test('reproducer for #2031', async () => {
-  const rootRoute = createRootRoute({
-    beforeLoad: () => {
-      console.log('beforeload called')
-    },
-  })
+  const rootRoute = createRootRoute()
 
   const searchSchema = z.object({
     data: z.string().array().default([]),
@@ -237,11 +233,7 @@ test('reproducer for #2031', async () => {
 })
 
 test('reproducer for #2053', async () => {
-  const rootRoute = createRootRoute({
-    beforeLoad: () => {
-      console.log('beforeload called')
-    },
-  })
+  const rootRoute = createRootRoute()
 
   const fooRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -283,13 +275,13 @@ test('reproducer for #2198 - throw error from beforeLoad upon initial load', asy
     template: '<div>indexErrorComponent</div>',
     standalone: true,
   })
-  class IndexErrorComponent {}
+  class IndexErrorComponent { }
 
   @Angular.Component({
     template: '<div>defaultErrorComponent</div>',
     standalone: true,
   })
-  class DefaultErrorComponent {}
+  class DefaultErrorComponent { }
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -324,13 +316,13 @@ test('throw error from loader upon initial load', async () => {
     template: '<div>indexErrorComponent</div>',
     standalone: true,
   })
-  class IndexErrorComponent {}
+  class IndexErrorComponent { }
 
   @Angular.Component({
     template: '<div>defaultErrorComponent</div>',
     standalone: true,
   })
-  class DefaultErrorComponent {}
+  class DefaultErrorComponent { }
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -370,31 +362,31 @@ test('throw error from beforeLoad when navigating to route', async () => {
       </div>
     `,
   })
-  class IndexWithLinkComponent2 {}
+  class IndexWithLinkComponent2 { }
 
   @Angular.Component({
     template: '<div>Foo page</div>',
     standalone: true,
   })
-  class FooPageComponent {}
+  class FooPageComponent { }
 
   @Angular.Component({
     template: '<div>indexErrorComponent</div>',
     standalone: true,
   })
-  class IndexErrorComponent2 {}
+  class IndexErrorComponent2 { }
 
   @Angular.Component({
     template: '<div>fooErrorComponent</div>',
     standalone: true,
   })
-  class FooErrorComponent {}
+  class FooErrorComponent { }
 
   @Angular.Component({
     template: '<div>defaultErrorComponent</div>',
     standalone: true,
   })
-  class DefaultErrorComponent2 {}
+  class DefaultErrorComponent2 { }
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,

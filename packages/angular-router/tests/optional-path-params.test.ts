@@ -19,27 +19,27 @@ describe('Angular Router - Optional Path Parameters', () => {
   })
 
   describe('Route matching with optional parameters', () => {
+    @Angular.Component({
+      template: `
+        <div>
+          <h1>Posts</h1>
+          <div data-testid="params">{{ paramsJson() }}</div>
+        </div>
+      `,
+      standalone: true,
+    })
+    class OptionalParamsPostsComponent {
+      params = injectParams({ from: '/posts/{-$category}/{-$slug}' })
+      paramsJson = Angular.computed(() => JSON.stringify(this.params()))
+    }
+
     it('should match route with no optional parameters', async () => {
       const rootRoute = createRootRoute()
-
-      @Angular.Component({
-        template: `
-          <div>
-            <h1>Posts</h1>
-            <div data-testid="params">{{ paramsJson() }}</div>
-          </div>
-        `,
-        standalone: true,
-      })
-      class PostsComponent {
-        params = injectParams({ from: '/posts/{-$category}/{-$slug}' })
-        paramsJson = Angular.computed(() => JSON.stringify(this.params()))
-      }
 
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}/{-$slug}',
-        component: () => PostsComponent,
+        component: () => OptionalParamsPostsComponent,
       })
       window.history.replaceState({}, '', '/posts')
 
@@ -60,24 +60,10 @@ describe('Angular Router - Optional Path Parameters', () => {
     it('should match route with one optional parameter', async () => {
       const rootRoute = createRootRoute()
 
-      @Angular.Component({
-        template: `
-          <div>
-            <h1>Posts</h1>
-            <div data-testid="params">{{ paramsJson() }}</div>
-          </div>
-        `,
-        standalone: true,
-      })
-      class PostsComponent {
-        params = injectParams({ from: '/posts/{-$category}/{-$slug}' })
-        paramsJson = Angular.computed(() => JSON.stringify(this.params()))
-      }
-
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}/{-$slug}',
-        component: () => PostsComponent,
+        component: () => OptionalParamsPostsComponent,
       })
       window.history.replaceState({}, '', '/posts/tech')
 
@@ -100,24 +86,10 @@ describe('Angular Router - Optional Path Parameters', () => {
     it('should match route with all optional parameters', async () => {
       const rootRoute = createRootRoute()
 
-      @Angular.Component({
-        template: `
-          <div>
-            <h1>Posts</h1>
-            <div data-testid="params">{{ paramsJson() }}</div>
-          </div>
-        `,
-        standalone: true,
-      })
-      class PostsComponent {
-        params = injectParams({ from: '/posts/{-$category}/{-$slug}' })
-        paramsJson = Angular.computed(() => JSON.stringify(this.params()))
-      }
-
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}/{-$slug}',
-        component: () => PostsComponent,
+        component: () => OptionalParamsPostsComponent,
       })
       window.history.replaceState({}, '', '/posts/tech/hello-world')
 
@@ -138,6 +110,20 @@ describe('Angular Router - Optional Path Parameters', () => {
       })
     })
 
+    @Angular.Component({
+      template: `
+        <div>
+          <h1>User Profile</h1>
+          <div data-testid="params">{{ paramsJson() }}</div>
+        </div>
+      `,
+      standalone: true,
+    })
+    class UserProfileComponent {
+      params = injectParams({ from: '/users/$id/{-$tab}' })
+      paramsJson = Angular.computed(() => JSON.stringify(this.params()))
+    }
+
     it.each([
       { path: '/users/123', expectedParams: { id: '123' } },
       {
@@ -148,20 +134,6 @@ describe('Angular Router - Optional Path Parameters', () => {
       'should handle mixed required and optional parameters: $path',
       async ({ path, expectedParams }) => {
         const rootRoute = createRootRoute()
-
-        @Angular.Component({
-          template: `
-            <div>
-              <h1>User Profile</h1>
-              <div data-testid="params">{{ paramsJson() }}</div>
-            </div>
-          `,
-          standalone: true,
-        })
-        class UserProfileComponent {
-          params = injectParams({ from: '/users/$id/{-$tab}' })
-          paramsJson = Angular.computed(() => JSON.stringify(this.params()))
-        }
 
         const usersRoute = createRoute({
           getParentRoute: () => rootRoute,
@@ -187,36 +159,36 @@ describe('Angular Router - Optional Path Parameters', () => {
   })
 
   describe('Link component with optional parameters', () => {
+    @Angular.Component({
+      imports: [Link],
+      template: `
+        <a [link]="{ to: '/posts/{-$category}/{-$slug}' }" data-testid="posts-link">All Posts</a>
+        <a [link]="{ to: '/posts/{-$category}/{-$slug}', params: { category: 'tech' } }" data-testid="tech-link">Tech Posts</a>
+        <a [link]="{ to: '/posts/{-$category}/{-$slug}', params: { category: 'tech', slug: 'hello-world' } }" data-testid="specific-link">Specific Post</a>
+        <a [link]="{ to: '/posts/{-$category}/{-$slug}', params: {} }" data-testid="empty-params-link">Empty Params</a>
+      `,
+    })
+    class OptionalPathLinksIndexComponent {}
+
+    @Angular.Component({
+      template: '<div>Posts</div>',
+      standalone: true,
+    })
+    class OptionalPathLinksPostsSimpleComponent {}
+
     it('should generate correct href for optional parameters', async () => {
       const rootRoute = createRootRoute()
-
-      @Angular.Component({
-        imports: [Link],
-        template: `
-          <a [link]="{ to: '/posts/{-$category}/{-$slug}' }" data-testid="posts-link">All Posts</a>
-          <a [link]="{ to: '/posts/{-$category}/{-$slug}', params: { category: 'tech' } }" data-testid="tech-link">Tech Posts</a>
-          <a [link]="{ to: '/posts/{-$category}/{-$slug}', params: { category: 'tech', slug: 'hello-world' } }" data-testid="specific-link">Specific Post</a>
-          <a [link]="{ to: '/posts/{-$category}/{-$slug}', params: {} }" data-testid="empty-params-link">Empty Params</a>
-        `,
-      })
-      class IndexComponent {}
-
-      @Angular.Component({
-        template: '<div>Posts</div>',
-        standalone: true,
-      })
-      class PostsComponent {}
 
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        component: () => IndexComponent,
+        component: () => OptionalPathLinksIndexComponent,
       })
 
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}/{-$slug}',
-        component: () => PostsComponent,
+        component: () => OptionalPathLinksPostsSimpleComponent,
       })
 
       const router = createRouter({
@@ -239,57 +211,57 @@ describe('Angular Router - Optional Path Parameters', () => {
       expect(emptyParamsLink.getAttribute('href')).toBe('/posts')
     })
 
+    @Angular.Component({
+      imports: [Link, Outlet],
+      template: `
+        <div>
+          <h1>Root Layout</h1>
+          <a [link]="{ to: '/' }" data-testid="home-link">Home</a>
+          <outlet />
+        </div>
+      `,
+    })
+    class OptionalPathLinksRootLayoutComponent {}
+
+    @Angular.Component({
+      imports: [Link],
+      template: `
+        <h1 data-testid="home-heading">Home</h1>
+        <a [link]="{ to: '/posts/{-$category}/{-$slug}' }" data-testid="posts-link">All Posts</a>
+        <a [link]="{ to: '/posts/{-$category}/{-$slug}', params: { category: 'tech' } }" data-testid="tech-link">Tech Posts</a>
+      `,
+    })
+    class OptionalPathLinksHomeComponent {}
+
+    @Angular.Component({
+      template: `
+        <div>
+          <h1>Posts</h1>
+          <div data-testid="params">{{ paramsJson() }}</div>
+        </div>
+      `,
+      standalone: true,
+    })
+    class OptionalPathLinksPostsWithParamsComponent {
+      params = injectParams({ from: '/posts/{-$category}/{-$slug}' })
+      paramsJson = Angular.computed(() => JSON.stringify(this.params()))
+    }
+
     it('should navigate correctly with optional parameters', async () => {
-      @Angular.Component({
-        imports: [Link, Outlet],
-        template: `
-          <div>
-            <h1>Root Layout</h1>
-            <a [link]="{ to: '/' }" data-testid="home-link">Home</a>
-            <outlet />
-          </div>
-        `,
-      })
-      class RootLayoutComponent {}
-
       const rootRoute = createRootRoute({
-        component: () => RootLayoutComponent,
+        component: () => OptionalPathLinksRootLayoutComponent,
       })
-
-      @Angular.Component({
-        imports: [Link],
-        template: `
-          <h1 data-testid="home-heading">Home</h1>
-          <a [link]="{ to: '/posts/{-$category}/{-$slug}' }" data-testid="posts-link">All Posts</a>
-          <a [link]="{ to: '/posts/{-$category}/{-$slug}', params: { category: 'tech' } }" data-testid="tech-link">Tech Posts</a>
-        `,
-      })
-      class HomeComponent {}
-
-      @Angular.Component({
-        template: `
-          <div>
-            <h1>Posts</h1>
-            <div data-testid="params">{{ paramsJson() }}</div>
-          </div>
-        `,
-        standalone: true,
-      })
-      class PostsComponent {
-        params = injectParams({ from: '/posts/{-$category}/{-$slug}' })
-        paramsJson = Angular.computed(() => JSON.stringify(this.params()))
-      }
 
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        component: () => HomeComponent,
+        component: () => OptionalPathLinksHomeComponent,
       })
 
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}/{-$slug}',
-        component: () => PostsComponent,
+        component: () => OptionalPathLinksPostsWithParamsComponent,
       })
 
       const router = createRouter({

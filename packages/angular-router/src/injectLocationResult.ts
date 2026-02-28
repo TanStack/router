@@ -19,9 +19,9 @@ export function injectLocation<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
 >(
-  opts: InjectLocationOptions<TRouter, TSelected>,
+  opts?: InjectLocationOptions<TRouter, TSelected>,
 ): Angular.Signal<InjectLocationResult<TRouter, TSelected>> {
   return injectRouterState({
-    select: (s) => (opts.select ? opts.select(s.location) : s.location),
+    select: (s) => (opts?.select ? opts.select(s.location) : s.location),
   }) as any
 }

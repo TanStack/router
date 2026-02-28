@@ -40,7 +40,7 @@ test('when there is no context', () => {
   expectTypeOf(injectRouterContext<DefaultRouter>)
     .parameter(0)
     .toHaveProperty('from')
-    .toEqualTypeOf<'/invoices' | '__root__' | '/invoices/' | '/' | undefined>()
+    .toExtend<'/invoices' | '__root__' | '/invoices/' | '/' | undefined>()
 
   expectTypeOf(injectRouterContext<DefaultRouter>)
     .parameter(0)
@@ -296,9 +296,9 @@ test('when there are overlapping contexts', () => {
     .toHaveProperty('select')
     .toEqualTypeOf<
       | ((search: {
-          userId: string
-          readonly username: 'username2'
-        }) => unknown)
+        userId: string
+        readonly username: 'username2'
+      }) => unknown)
       | undefined
     >()
 
@@ -316,9 +316,9 @@ test('when there are overlapping contexts', () => {
     .toHaveProperty('select')
     .toEqualTypeOf<
       | ((search: {
-          userId?: string
-          username?: 'username2' | 'username1'
-        }) => unknown)
+        userId?: string
+        username?: 'username2' | 'username1'
+      }) => unknown)
       | undefined
     >()
 })

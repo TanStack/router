@@ -50,19 +50,19 @@ afterEach(() => {
     </div>
   `,
 })
-class HomeComponent {}
+class HomeComponent { }
 
 @Angular.Component({
   template: '<div>About route content</div>',
   standalone: true,
 })
-class AboutComponent {}
+class AboutComponent { }
 
 @Angular.Component({
   template: '<div>Index route content</div>',
   standalone: true,
 })
-class IndexComponent {}
+class IndexComponent { }
 
 describe.each([{ preload: false }, { preload: 'intent' }] as const)(
   'errorComponent is rendered when the preload=$preload',

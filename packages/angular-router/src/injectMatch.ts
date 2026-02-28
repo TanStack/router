@@ -51,8 +51,8 @@ export type InjectMatchResult<
   TSelected,
 > = unknown extends TSelected
   ? TStrict extends true
-    ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
-    : MakeRouteMatchUnion<TRouter>
+  ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
+  : MakeRouteMatchUnion<TRouter>
   : TSelected
 
 export function injectMatch<

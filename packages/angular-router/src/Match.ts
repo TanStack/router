@@ -11,7 +11,7 @@ import {
 import warning from 'tiny-warning'
 import { DefaultNotFoundComponent } from './DefaultNotFound'
 import { MATCH_ID_INJECTOR_TOKEN } from './matchInjectorToken'
-import { injectDynamicRenderer } from './dynamicRenderer'
+import { injectRender } from './renderer/injectRender'
 import { ERROR_STATE_INJECTOR_TOKEN } from './injectErrorState'
 
 // In Angular, there is not concept of suspense or error boundaries,
@@ -103,7 +103,6 @@ export class RouteMatch {
     return this.resolvedNoSsr() || !!match._displayPending
   })
 
-  rendering = injectDynamicRenderer()
 
   parentRouteIdSignal = Angular.computed(
     () => this.matchData()?.parentRouteId ?? '',
@@ -116,13 +115,12 @@ export class RouteMatch {
     ),
   })
 
-  render = Angular.effect(() => {
+  render = injectRender(() => {
     const matchData = this.matchData()
-    if (!matchData) return
+    if (!matchData) return null
 
     if (this.shouldClientOnly() && this.router.isServer) {
-      this.rendering.clear()
-      return
+      return null
     }
 
     const { match, route } = matchData
@@ -130,13 +128,15 @@ export class RouteMatch {
     if (match.status === 'notFound') {
       const NotFoundComponent = getNotFoundComponent(this.router, route)
 
-      this.rendering.render({ component: NotFoundComponent })
+      return {
+        component: NotFoundComponent,
+      }
     } else if (match.status === 'error') {
       const RouteErrorComponent =
         getComponent(route.options.errorComponent) ??
         getComponent(this.router.options.defaultErrorComponent)
 
-      this.rendering.render({
+      return {
         component: RouteErrorComponent || null,
         providers: [
           {
@@ -150,40 +150,18 @@ export class RouteMatch {
             },
           },
         ],
-      })
+      }
     } else if (
-      match._forcePending ||
-      match._displayPending ||
       match.status === 'redirected' ||
       match.status === 'pending'
     ) {
-      const pendingMinMs =
-        route.options.pendingMinMs ?? this.router.options.defaultPendingMinMs
-
-      // If the compoennt is pending and has a minPendingMs,
-      // we create a promise that will be awaited in the route core
-      // to ensure that the pending state is displayed for that amount of time
-      if (
-        match.status === 'pending' &&
-        pendingMinMs &&
-        !match._nonReactive.minPendingPromise &&
-        !this.router.isServer
-      ) {
-        const minPendingPromise = createControlledPromise<void>()
-
-        match._nonReactive.minPendingPromise = minPendingPromise
-
-        setTimeout(() => {
-          minPendingPromise.resolve()
-          match._nonReactive.minPendingPromise = undefined
-        }, pendingMinMs)
-      }
-
       const PendingComponent =
         getComponent(route.options.pendingComponent) ??
         getComponent(this.router.options.defaultPendingComponent)
 
-      this.rendering.render({ component: PendingComponent })
+      return {
+        component: PendingComponent,
+      }
     } else if (match.status === 'success') {
       const Component =
         getComponent(route.options.component) ??
@@ -192,7 +170,7 @@ export class RouteMatch {
 
       const key = matchData.key
 
-      this.rendering.render({
+      return {
         key,
         component: Component,
         providers: [
@@ -201,8 +179,10 @@ export class RouteMatch {
             useValue: this.matchId as Angular.Signal<string | undefined>,
           },
         ],
-      })
+      }
     }
+
+    return null
   })
 }
 
@@ -244,29 +224,25 @@ export class Outlet {
     },
   })
 
-  rendering = injectDynamicRenderer()
-
-  render = Angular.effect(() => {
+  render = injectRender(() => {
     if (this.parentGlobalNotFound()) {
       // Render not found with warning
       const NotFoundComponent = getNotFoundComponent(this.router, this.route())
-      this.rendering.render({ component: NotFoundComponent })
-      return
+      return { component: NotFoundComponent }
     }
     const childMatchId = this.childMatchId()
 
     if (!childMatchId) {
       // Do not render anything
-      this.rendering.clear()
-      return
+      return null
     }
 
-    this.rendering.render({
+    return {
       component: RouteMatch,
       inputs: {
         matchId: () => this.childMatchId(),
       },
-    })
+    }
   })
 }
 

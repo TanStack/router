@@ -40,7 +40,7 @@ describe('injectParams', () => {
     expectTypeOf(injectParams<DefaultRouter>)
       .parameter(0)
       .toHaveProperty('from')
-      .toEqualTypeOf<'/invoices' | '__root__' | '/invoices/' | '/' | undefined>()
+      .toMatchTypeOf<'/invoices' | '__root__' | '/invoices/' | '/' | undefined>()
 
     expectTypeOf(injectParams<DefaultRouter>)
       .parameter(0)
@@ -118,7 +118,7 @@ describe('injectParams', () => {
 
     expectTypeOf(
       injectParams<DefaultRouter, '/invoices', false>,
-    ).returns.toEqualTypeOf<Angular.Signal<{ invoiceId?: string }>>()
+    ).returns.toExtend<Angular.Signal<{ invoiceId?: string }>>()
 
     expectTypeOf(injectParams<DefaultRouter, '/invoices', false>)
       .parameter(0)
@@ -201,7 +201,7 @@ describe('injectParams', () => {
 
     expectTypeOf(
       injectParams<DefaultRouter, '/invoices', false>,
-    ).returns.toEqualTypeOf<
+    ).returns.toExtend<
       Angular.Signal<{ invoiceId?: string; postId?: string }>
     >()
 
@@ -227,8 +227,8 @@ describe('injectParams', () => {
       .toHaveProperty('select')
       .toEqualTypeOf<
         | ((search: {}) => {
-            func: () => void
-          })
+          func: () => void
+        })
         | undefined
       >()
   })

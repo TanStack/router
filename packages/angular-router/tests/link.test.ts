@@ -161,34 +161,58 @@ describe('Link', () => {
   })
 
   describe('when the current route has a search fields with undefined values', () => {
+    @Angular.Component({
+      imports: [Link],
+      template: `
+        <h1>Index</h1>
+        <a [link]="{ to: '/', activeOptions: { exact: true } }">Index exact</a>
+        <a [link]="{
+          to: '/',
+          search: { foo: undefined },
+          activeOptions: { explicitUndefined: false }
+        }">Index foo=undefined</a>
+        <a [link]="{
+          to: '/',
+          search: { foo: undefined },
+          activeOptions: { exact: true, explicitUndefined: false }
+        }">Index foo=undefined-exact</a>
+        <a [link]="{ to: '/', search: { foo: 'bar' } }">Index foo=bar</a>
+      `,
+      standalone: true,
+    })
+    class SearchUndefinedIndexExplicitFalseComponent {}
+
+    @Angular.Component({
+      imports: [Link],
+      template: `
+        <h1>Index</h1>
+        <a [link]="{ to: '/', activeOptions: { exact: true } }">Index exact</a>
+        <a [link]="{
+          to: '/',
+          search: { foo: undefined },
+          activeOptions: { explicitUndefined: true }
+        }">Index foo=undefined</a>
+        <a [link]="{
+          to: '/',
+          search: { foo: undefined },
+          activeOptions: { exact: true, explicitUndefined: true }
+        }">Index foo=undefined-exact</a>
+        <a [link]="{ to: '/', search: { foo: 'bar' } }">Index foo=bar</a>
+      `,
+      standalone: true,
+    })
+    class SearchUndefinedIndexExplicitTrueComponent {}
+
     async function runTest(opts: { explicitUndefined: boolean | undefined }) {
+      const IndexComponent =
+        opts.explicitUndefined === true
+          ? SearchUndefinedIndexExplicitTrueComponent
+          : SearchUndefinedIndexExplicitFalseComponent
       const rootRoute = createRootRoute()
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        component: () => {
-          @Angular.Component({
-            imports: [Link],
-            template: `
-              <h1>Index</h1>
-              <a [link]="{ to: '/', activeOptions: { exact: true } }">Index exact</a>
-              <a [link]="{ 
-                to: '/', 
-                search: { foo: undefined },
-                activeOptions: { explicitUndefined: ${opts.explicitUndefined} }
-              }">Index foo=undefined</a>
-              <a [link]="{ 
-                to: '/', 
-                search: { foo: undefined },
-                activeOptions: { exact: true, explicitUndefined: ${opts.explicitUndefined} }
-              }">Index foo=undefined-exact</a>
-              <a [link]="{ to: '/', search: { foo: 'bar' } }">Index foo=bar</a>
-            `,
-            standalone: true,
-          })
-          class IndexComponent {}
-          return IndexComponent
-        },
+        component: () => IndexComponent,
       })
 
       const router = createRouter({
@@ -365,60 +389,56 @@ describe('Link', () => {
   })
 
   test('when navigation to . from /posts while updating search from /', async () => {
-    const RootComponent = () => {
-      @Angular.Component({
-        imports: [Link, Outlet],
-        template: `
-          <div data-testid="root-nav">
-            <a [link]="{ to: '.', search: { page: 2, filter: 'inactive' } }" data-testid="update-search">
-              Update Search
-            </a>
-          </div>
-          <outlet />
-        `,
-        standalone: true,
-      })
-      class RootComponentClass {}
-      return RootComponentClass
+    @Angular.Component({
+      selector: 'nav-from-posts-root',
+      imports: [Link, Outlet],
+      template: `
+        <div data-testid="root-nav">
+          <a [link]="{ to: '.', search: { page: 2, filter: 'inactive' } }" data-testid="update-search">
+            Update Search
+          </a>
+        </div>
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class NavFromPostsRootComponent {}
+
+    @Angular.Component({
+      selector: 'nav-from-posts-index',
+      imports: [Link],
+      template: `
+        <h1>Index</h1>
+        <a [link]="{ to: '/posts', search: { page: 1, filter: 'active' } }" data-testid="to-posts">
+          Go to Posts
+        </a>
+      `,
+      standalone: true,
+    })
+    class NavFromPostsIndexComponent {}
+
+    @Angular.Component({
+      selector: 'nav-from-posts-posts',
+      template: `
+        <h1>Posts</h1>
+        <span data-testid="current-page">Page: {{ search().page }}</span>
+        <span data-testid="current-filter">Filter: {{ search().filter }}</span>
+      `,
+      standalone: true,
+    })
+    class NavFromPostsPostsComponent {
+      search = injectSearch({ strict: false })
     }
 
     const rootRoute = createRootRoute({
-      component: RootComponent,
+      component: () => NavFromPostsRootComponent,
     })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        @Angular.Component({
-          imports: [Link],
-          template: `
-            <h1>Index</h1>
-            <a [link]="{ to: '/posts', search: { page: 1, filter: 'active' } }" data-testid="to-posts">
-              Go to Posts
-            </a>
-          `,
-          standalone: true,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
+      component: () => NavFromPostsIndexComponent,
     })
-
-    const PostsComponent = () => {
-      @Angular.Component({
-        template: `
-          <h1>Posts</h1>
-          <span data-testid="current-page">Page: {{ search().page }}</span>
-          <span data-testid="current-filter">Filter: {{ search().filter }}</span>
-        `,
-        standalone: true,
-      })
-      class PostsComponentClass {
-        search = injectSearch({ strict: false })
-      }
-      return PostsComponentClass
-    }
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -429,7 +449,7 @@ describe('Link', () => {
           filter: (input.filter as string) || 'all',
         }
       },
-      component: PostsComponent,
+      component: () => NavFromPostsPostsComponent,
     })
 
     const router = createRouter({
@@ -804,45 +824,59 @@ describe('Link', () => {
   })
 
   test('when navigating away from a route with a loader that errors', async () => {
+    @Angular.Component({
+      selector: 'loader-error-root',
+      imports: [Link, Outlet],
+      template: `
+        <div>
+          <a [link]="{ to: '/' }">Index</a> <a [link]="{ to: '/posts' }">Posts</a>
+        </div>
+        <hr />
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class LoaderErrorRootComponent {}
+
+    @Angular.Component({
+      selector: 'loader-error-index',
+      template: '<h1>Index</h1>',
+      standalone: true,
+    })
+    class LoaderErrorIndexComponent {}
+
+    @Angular.Component({
+      selector: 'loader-error-index-error',
+      template: '<span>IndexError</span>',
+      standalone: true,
+    })
+    class LoaderErrorIndexErrorComponent {}
+
+    @Angular.Component({
+      selector: 'loader-error-posts-error',
+      template: '<span>PostsError</span>',
+      standalone: true,
+    })
+    class LoaderErrorPostsErrorComponent {}
+
+    @Angular.Component({
+      selector: 'loader-error-posts',
+      template: '<h1>Posts</h1>',
+      standalone: true,
+    })
+    class LoaderErrorPostsComponent {}
+
     const postsOnError = vi.fn()
     const indexOnError = vi.fn()
     const rootRoute = createRootRoute({
-      component: () => {
-        @Angular.Component({
-          imports: [Link, Outlet],
-          template: `
-            <div>
-              <a [link]="{ to: '/' }">Index</a> <a [link]="{ to: '/posts' }">Posts</a>
-            </div>
-            <hr />
-            <outlet />
-          `,
-          standalone: true,
-        })
-        class RootComponent {}
-        return RootComponent
-      },
+      component: () => LoaderErrorRootComponent,
     })
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        @Angular.Component({
-          template: '<h1>Index</h1>',
-          standalone: true,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
+      component: () => LoaderErrorIndexComponent,
       onError: indexOnError,
-      errorComponent: () => {
-        @Angular.Component({
-          template: '<span>IndexError</span>',
-          standalone: true,
-        })
-        class ErrorComponent {}
-        return ErrorComponent
-      },
+      errorComponent: () => LoaderErrorIndexErrorComponent,
     })
 
     const error = new Error('Something went wrong!')
@@ -855,22 +889,8 @@ describe('Link', () => {
         throw error
       },
       onError: postsOnError,
-      errorComponent: () => {
-        @Angular.Component({
-          template: '<span>PostsError</span>',
-          standalone: true,
-        })
-        class ErrorComponent {}
-        return ErrorComponent
-      },
-      component: () => {
-        @Angular.Component({
-          template: '<h1>Posts</h1>',
-          standalone: true,
-        })
-        class PostsComponent {}
-        return PostsComponent
-      },
+      errorComponent: () => LoaderErrorPostsErrorComponent,
+      component: () => LoaderErrorPostsComponent,
     })
 
     const router = createRouter({
@@ -1239,82 +1259,76 @@ describe('Link', () => {
   })
 
   test('when navigating from /posts to ./$postId', async () => {
+    @Angular.Component({
+      selector: 'posts-to-postid-index',
+      imports: [Link],
+      template: `
+        <h1>Index</h1>
+        <a [link]="{ to: '/posts' }">Posts</a>
+        <a [link]="{ to: '/posts/$postId', params: { postId: 'id1' } }">To first post</a>
+      `,
+      standalone: true,
+    })
+    class PostsToPostIdIndexComponent {}
+
+    @Angular.Component({
+      selector: 'posts-to-postid-posts',
+      imports: [Outlet],
+      template: `
+        <h1>Posts</h1>
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class PostsToPostIdPostsComponent {}
+
+    @Angular.Component({
+      selector: 'posts-to-postid-posts-index',
+      imports: [Link],
+      template: `
+        <h1>Posts Index</h1>
+        <a [link]="{ from: '/posts/', to: './$postId', params: { postId: 'id1' } }">To the first post</a>
+      `,
+      standalone: true,
+    })
+    class PostsToPostIdPostsIndexComponent {}
+
+    @Angular.Component({
+      selector: 'posts-to-postid-post',
+      imports: [Link],
+      template: `
+        <span>Params: {{ params().postId }}</span>
+        <a [link]="{ to: '/' }">Index</a>
+      `,
+      standalone: true,
+    })
+    class PostsToPostIdPostComponent {
+      params = injectParams({ strict: false })
+    }
+
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        @Angular.Component({
-          imports: [Link],
-          template: `
-            <h1>Index</h1>
-            <a [link]="{ to: '/posts' }">Posts</a>
-            <a [link]="{ to: '/posts/$postId', params: { postId: 'id1' } }">To first post</a>
-          `,
-          standalone: true,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
+      component: () => PostsToPostIdIndexComponent,
     })
-
-    const PostsComponent = () => {
-      @Angular.Component({
-        imports: [Outlet],
-        template: `
-          <h1>Posts</h1>
-          <outlet />
-        `,
-        standalone: true,
-      })
-      class PostsComponentClass {}
-      return PostsComponentClass
-    }
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'posts',
-      component: PostsComponent,
+      component: () => PostsToPostIdPostsComponent,
     })
-
-    const PostsIndexComponent = () => {
-      @Angular.Component({
-        imports: [Link],
-        template: `
-          <h1>Posts Index</h1>
-          <a [link]="{ from: '/posts/', to: './$postId', params: { postId: 'id1' } }">To the first post</a>
-        `,
-        standalone: true,
-      })
-      class PostsIndexComponentClass {}
-      return PostsIndexComponentClass
-    }
 
     const postsIndexRoute = createRoute({
       getParentRoute: () => postsRoute,
       path: '/',
-      component: PostsIndexComponent,
+      component: () => PostsToPostIdPostsIndexComponent,
     })
-
-    const PostComponent = () => {
-      @Angular.Component({
-        imports: [Link],
-        template: `
-          <span>Params: {{ params().postId }}</span>
-          <a [link]="{ to: '/' }">Index</a>
-        `,
-        standalone: true,
-      })
-      class PostComponentClass {
-        params = injectParams({ strict: false })
-      }
-      return PostComponentClass
-    }
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
       path: '$postId',
-      component: PostComponent,
+      component: () => PostsToPostIdPostComponent,
     })
 
     const router = createRouter({
@@ -1479,82 +1493,76 @@ describe('Link', () => {
   })
 
   test('when navigating from /posts to ../posts/$postId', async () => {
+    @Angular.Component({
+      selector: 'posts-to-parent-postid-index',
+      imports: [Link],
+      template: `
+        <h1>Index</h1>
+        <a [link]="{ to: '/posts' }">Posts</a>
+        <a [link]="{ to: '/posts/$postId', params: { postId: 'id1' } }">To first post</a>
+      `,
+      standalone: true,
+    })
+    class PostsToParentPostIdIndexComponent {}
+
+    @Angular.Component({
+      selector: 'posts-to-parent-postid-posts',
+      imports: [Outlet],
+      template: `
+        <h1>Posts</h1>
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class PostsToParentPostIdPostsComponent {}
+
+    @Angular.Component({
+      selector: 'posts-to-parent-postid-posts-index',
+      imports: [Link],
+      template: `
+        <h1>Posts Index</h1>
+        <a [link]="{ from: '/posts/', to: '../posts/$postId', params: { postId: 'id1' } }">To the first post</a>
+      `,
+      standalone: true,
+    })
+    class PostsToParentPostIdPostsIndexComponent {}
+
+    @Angular.Component({
+      selector: 'posts-to-parent-postid-post',
+      imports: [Link],
+      template: `
+        <span>Params: {{ params().postId }}</span>
+        <a [link]="{ to: '/' }">Index</a>
+      `,
+      standalone: true,
+    })
+    class PostsToParentPostIdPostComponent {
+      params = injectParams({ strict: false })
+    }
+
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        @Angular.Component({
-          imports: [Link],
-          template: `
-            <h1>Index</h1>
-            <a [link]="{ to: '/posts' }">Posts</a>
-            <a [link]="{ to: '/posts/$postId', params: { postId: 'id1' } }">To first post</a>
-          `,
-          standalone: true,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
+      component: () => PostsToParentPostIdIndexComponent,
     })
-
-    const PostsComponent = () => {
-      @Angular.Component({
-        imports: [Outlet],
-        template: `
-          <h1>Posts</h1>
-          <outlet />
-        `,
-        standalone: true,
-      })
-      class PostsComponentClass {}
-      return PostsComponentClass
-    }
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'posts',
-      component: PostsComponent,
+      component: () => PostsToParentPostIdPostsComponent,
     })
-
-    const PostsIndexComponent = () => {
-      @Angular.Component({
-        imports: [Link],
-        template: `
-          <h1>Posts Index</h1>
-          <a [link]="{ from: '/posts/', to: '../posts/$postId', params: { postId: 'id1' } }">To the first post</a>
-        `,
-        standalone: true,
-      })
-      class PostsIndexComponentClass {}
-      return PostsIndexComponentClass
-    }
 
     const postsIndexRoute = createRoute({
       getParentRoute: () => postsRoute,
       path: '/',
-      component: PostsIndexComponent,
+      component: () => PostsToParentPostIdPostsIndexComponent,
     })
-
-    const PostComponent = () => {
-      @Angular.Component({
-        imports: [Link],
-        template: `
-          <span>Params: {{ params().postId }}</span>
-          <a [link]="{ to: '/' }">Index</a>
-        `,
-        standalone: true,
-      })
-      class PostComponentClass {
-        params = injectParams({ strict: false })
-      }
-      return PostComponentClass
-    }
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
       path: '$postId',
-      component: PostComponent,
+      component: () => PostsToParentPostIdPostComponent,
     })
 
     const router = createRouter({
@@ -1590,93 +1598,87 @@ describe('Link', () => {
   })
 
   test('when navigating from /posts to /invoices with conditionally rendering Link on the root', async () => {
-    const ErrorComponent = vi.fn(() => {
-      @Angular.Component({
-        template: '<div>Something went wrong!</div>',
-        standalone: true,
-      })
-      class ErrorComponentClass {}
-      return ErrorComponentClass
+    @Angular.Component({
+      template: '<div>Something went wrong!</div>',
+      standalone: true,
     })
-    const RootComponent = () => {
-      @Angular.Component({
-        selector: 'root-component-conditional-links',
-        imports: [Link, Outlet],
-        template: `
-          @if (matchPosts()) {
-            <a [link]="{ from: '/posts', to: '/posts' }">From posts</a>
-          }
-          @if (matchInvoices()) {
-            <a [link]="{ from: '/invoices', to: '/invoices' }">From invoices</a>
-          }
-          <outlet />
-        `,
-        standalone: true,
-      })
-      class RootComponentClass {
-        matchPosts = injectMatch({ from: '/posts', shouldThrow: false })
-        matchInvoices = injectMatch({ from: '/invoices', shouldThrow: false })
-      }
-      return RootComponentClass
+    class ConditionalLinksErrorComponent {}
+
+    const ErrorComponent = vi.fn(() => ConditionalLinksErrorComponent)
+
+    @Angular.Component({
+      selector: 'root-component-conditional-links',
+      imports: [Link, Outlet],
+      template: `
+        @if (matchPosts()) {
+          <a [link]="{ from: '/posts', to: '/posts' }">From posts</a>
+        }
+        @if (matchInvoices()) {
+          <a [link]="{ from: '/invoices', to: '/invoices' }">From invoices</a>
+        }
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class ConditionalLinksRootComponent {
+      matchPosts = injectMatch({ from: '/posts', shouldThrow: false })
+      matchInvoices = injectMatch({ from: '/invoices', shouldThrow: false })
     }
 
+    @Angular.Component({
+      selector: 'index-component-conditional',
+      imports: [Link],
+      template: `
+        <h1>Index Route</h1>
+        <a [link]="{ to: '/posts' }">Go to posts</a>
+      `,
+      standalone: true,
+    })
+    class ConditionalLinksIndexComponent {}
+
+    @Angular.Component({
+      selector: 'posts-component-conditional',
+      imports: [Link],
+      template: `
+        <h1>On Posts</h1>
+        <a [link]="{ to: '/invoices' }">To invoices</a>
+      `,
+      standalone: true,
+    })
+    class ConditionalLinksPostsComponent {}
+
+    @Angular.Component({
+      selector: 'invoices-component-conditional',
+      imports: [Link],
+      template: `
+        <h1>On Invoices</h1>
+        <a [link]="{ to: '/posts' }">To posts</a>
+      `,
+      standalone: true,
+    })
+    class ConditionalLinksInvoicesComponent {}
+
     const rootRoute = createRootRoute({
-      component: RootComponent,
+      component: () => ConditionalLinksRootComponent,
       errorComponent: ErrorComponent as any,
     })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        @Angular.Component({
-          selector: 'index-component-conditional',
-          imports: [Link],
-          template: `
-            <h1>Index Route</h1>
-            <a [link]="{ to: '/posts' }">Go to posts</a>
-          `,
-          standalone: true,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
+      component: () => ConditionalLinksIndexComponent,
     })
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'posts',
-      component: () => {
-        @Angular.Component({
-          selector: 'posts-component-conditional',
-          imports: [Link],
-          template: `
-            <h1>On Posts</h1>
-            <a [link]="{ to: '/invoices' }">To invoices</a>
-          `,
-          standalone: true,
-        })
-        class PostsComponent {}
-        return PostsComponent
-      },
+      component: () => ConditionalLinksPostsComponent,
     })
 
     const invoicesRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'invoices',
-      component: () => {
-        @Angular.Component({
-          selector: 'invoices-component-conditional',
-          imports: [Link],
-          template: `
-            <h1>On Invoices</h1>
-            <a [link]="{ to: '/posts' }">To posts</a>
-          `,
-          standalone: true,
-        })
-        class InvoicesComponent {}
-        return InvoicesComponent
-      },
+      component: () => ConditionalLinksInvoicesComponent,
     })
 
     const routeTree = rootRoute.addChildren([
@@ -2214,24 +2216,38 @@ describe('Link', () => {
   })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
+    @Angular.Component({
+      selector: 'preload-intent-index',
+      imports: [Link],
+      template: `
+        <div>
+          <h1>Index page</h1>
+          <a [link]="{ to: '/posts', preload: 'intent' }">link to posts</a>
+        </div>
+      `,
+      standalone: true,
+    })
+    class PreloadIntentIndexComponent {}
+
+    @Angular.Component({
+      selector: 'preload-intent-post',
+      template: '<div>Posts page</div>',
+      standalone: true,
+    })
+    class PreloadIntentPostComponent {}
+
+    @Angular.Component({
+      selector: 'preload-intent-pending',
+      template: '<p>Loading...</p>',
+      standalone: true,
+    })
+    class PreloadIntentPendingComponent {}
+
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        @Angular.Component({
-          imports: [Link],
-          template: `
-            <div>
-              <h1>Index page</h1>
-              <a [link]="{ to: '/posts', preload: 'intent' }">link to posts</a>
-            </div>
-          `,
-          standalone: true,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
+      component: () => PreloadIntentIndexComponent,
     })
 
     const postRoute = createRoute({
@@ -2239,14 +2255,7 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '/posts',
       loader: () => sleep(WAIT_TIME),
-      component: () => {
-        @Angular.Component({
-          template: '<div>Posts page</div>',
-          standalone: true,
-        })
-        class PostComponent {}
-        return PostComponent
-      },
+      component: () => PreloadIntentPostComponent,
     })
 
     const routeTree = rootRoute.addChildren([postRoute, indexRoute])
@@ -2254,14 +2263,7 @@ describe('Link', () => {
       routeTree,
       defaultPreload: 'intent',
       defaultPendingMs: 200,
-      defaultPendingComponent: () => {
-        @Angular.Component({
-          template: '<p>Loading...</p>',
-          standalone: true,
-        })
-        class PendingComponent {}
-        return PendingComponent
-      },
+      defaultPendingComponent: () => PreloadIntentPendingComponent,
     })
 
     await render(RouterProvider, {
@@ -2286,6 +2288,45 @@ describe('Link', () => {
   })
 
   describe('when preloading a link, `preload` should be', () => {
+    @Angular.Component({
+      imports: [Link, Outlet],
+      template: `
+        <a [link]="{ to: '/posts/$postId', params: { postId: 'id1' } }" data-testid="link-1">
+          To first post
+        </a>
+        <a [link]="{ to: '/posts/$postId', params: { postId: 'id2' } }" data-testid="link-2">
+          To second post
+        </a>
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class PreloadRootComponent {}
+
+    @Angular.Component({
+      template: '<h1>Index</h1>',
+      standalone: true,
+    })
+    class PreloadIndexComponent {}
+
+    @Angular.Component({
+      imports: [Outlet],
+      template: `
+        <h1>Posts</h1>
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class PreloadPostsComponent {}
+
+    @Angular.Component({
+      template: '<span>Params: {{ params().postId }}</span>',
+      standalone: true,
+    })
+    class PreloadPostComponent {
+      params = injectParams({ strict: false })
+    }
+
     async function runTest({
       expectedPreload,
       testIdToHover,
@@ -2294,50 +2335,14 @@ describe('Link', () => {
       testIdToHover: string
     }) {
       const rootRoute = createRootRoute({
-        component: () => {
-          @Angular.Component({
-            imports: [Link, Outlet],
-            template: `
-              <a [link]="{ to: '/posts/$postId', params: { postId: 'id1' } }" data-testid="link-1">
-                To first post
-              </a>
-              <a [link]="{ to: '/posts/$postId', params: { postId: 'id2' } }" data-testid="link-2">
-                To second post
-              </a>
-              <outlet />
-            `,
-            standalone: true,
-          })
-          class RootComponent {}
-          return RootComponent
-        },
+        component: () => PreloadRootComponent,
       })
 
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        component: () => {
-          @Angular.Component({
-            template: '<h1>Index</h1>',
-            standalone: true,
-          })
-          class IndexComponent {}
-          return IndexComponent
-        },
+        component: () => PreloadIndexComponent,
       })
-
-      const PostsComponent = () => {
-        @Angular.Component({
-          imports: [Outlet],
-          template: `
-            <h1>Posts</h1>
-            <outlet />
-          `,
-          standalone: true,
-        })
-        class PostsComponentClass {}
-        return PostsComponentClass
-      }
 
       const postsBeforeLoadFn = vi.fn()
       const postsLoaderFn = vi.fn()
@@ -2345,21 +2350,10 @@ describe('Link', () => {
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: 'posts',
-        component: PostsComponent,
+        component: () => PreloadPostsComponent,
         beforeLoad: postsBeforeLoadFn,
         loader: postsLoaderFn,
       })
-
-      const PostComponent = () => {
-        @Angular.Component({
-          template: '<span>Params: {{ params().postId }}</span>',
-          standalone: true,
-        })
-        class PostComponentClass {
-          params = injectParams({ strict: false })
-        }
-        return PostComponentClass
-      }
 
       const postBeforeLoadFn = vi.fn()
       const postLoaderFn = vi.fn()
@@ -2367,7 +2361,7 @@ describe('Link', () => {
       const postRoute = createRoute({
         getParentRoute: () => postsRoute,
         path: '$postId',
-        component: PostComponent,
+        component: () => PreloadPostComponent,
         beforeLoad: postBeforeLoadFn,
         loader: postLoaderFn,
       })
@@ -2415,123 +2409,116 @@ describe('Link', () => {
   })
 
   describe('relative links with basepath', () => {
+    @Angular.Component({
+      template: '<h1>Index Route</h1>',
+      standalone: true,
+    })
+    class RelativeLinksIndexComponent {}
+
+    @Angular.Component({
+      imports: [Outlet],
+      template: `
+        <h1>A Route</h1>
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class RelativeLinksARouteComponent {}
+
+    @Angular.Component({
+      imports: [Link],
+      template: `
+        <h1>B Route</h1>
+        <a [link]="{ to: '..' }">Link to Parent</a>
+      `,
+      standalone: true,
+    })
+    class RelativeLinksBRouteComponent {}
+
+    @Angular.Component({
+      imports: [Link, Outlet],
+      template: `
+        <h1>Param Route</h1>
+        <a [link]="{ from: '/param/$param', to: './a' }">Link to ./a</a>
+        <a [link]="{ to: 'c', unsafeRelative: 'path' }">Link to c</a>
+        <a [link]="{ to: '../c', unsafeRelative: 'path' }">Link to ../c</a>
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class RelativeLinksParamRouteComponent {}
+
+    @Angular.Component({
+      imports: [Link, Outlet],
+      template: `
+        <h1>Param A Route</h1>
+        <a [link]="{ from: '/param/$param/a', to: '..' }">Link to .. from /param/foo/a</a>
+        <a [link]="{ to: '..' }" data-testid="link-to-previous">Link to .. from current active route</a>
+        <outlet />
+      `,
+      standalone: true,
+    })
+    class RelativeLinksParamARouteComponent {}
+
+    @Angular.Component({
+      imports: [Link],
+      template: `
+        <h1>Param B Route</h1>
+        <a [link]="{ to: '..' }">Link to Parent</a>
+        <a [link]="{ to: '.', params: { param: 'bar' } }">Link to . with param:bar</a>
+        <a [link]="{ to: '..', params: { param: 'bar' } }">Link to Parent with param:bar</a>
+      `,
+      standalone: true,
+    })
+    class RelativeLinksParamBRouteComponent {}
+
+    @Angular.Component({
+      template: '<h1>Param C Route</h1>',
+      standalone: true,
+    })
+    class RelativeLinksParamCRouteComponent {}
+
     const setupRouter = (basepath: string = '') => {
       const rootRoute = createRootRoute()
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        component: () => {
-          @Angular.Component({
-            template: '<h1>Index Route</h1>',
-            standalone: true,
-          })
-          class IndexComponent {}
-          return IndexComponent
-        },
+        component: () => RelativeLinksIndexComponent,
       })
       const aRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: 'a',
-        component: () => {
-          @Angular.Component({
-            imports: [Outlet],
-            template: `
-              <h1>A Route</h1>
-              <outlet />
-            `,
-            standalone: true,
-          })
-          class ARouteComponent {}
-          return ARouteComponent
-        },
+        component: () => RelativeLinksARouteComponent,
       })
 
       const bRoute = createRoute({
         getParentRoute: () => aRoute,
         path: 'b',
-        component: () => {
-          @Angular.Component({
-            imports: [Link],
-            template: `
-              <h1>B Route</h1>
-              <a [link]="{ to: '..' }">Link to Parent</a>
-            `,
-            standalone: true,
-          })
-          class BRouteComponent {}
-          return BRouteComponent
-        },
+        component: () => RelativeLinksBRouteComponent,
       })
 
       const paramRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: 'param/$param',
-        component: () => {
-          @Angular.Component({
-            imports: [Link, Outlet],
-            template: `
-              <h1>Param Route</h1>
-              <a [link]="{ from: '/param/$param', to: './a' }">Link to ./a</a>
-              <a [link]="{ to: 'c', unsafeRelative: 'path' }">Link to c</a>
-              <a [link]="{ to: '../c', unsafeRelative: 'path' }">Link to ../c</a>
-              <outlet />
-            `,
-            standalone: true,
-          })
-          class ParamRouteComponent {}
-          return ParamRouteComponent
-        },
+        component: () => RelativeLinksParamRouteComponent,
       })
 
       const paramARoute = createRoute({
         getParentRoute: () => paramRoute,
         path: 'a',
-        component: () => {
-          @Angular.Component({
-            imports: [Link, Outlet],
-            template: `
-              <h1>Param A Route</h1>
-              <a [link]="{ from: '/param/$param/a', to: '..' }">Link to .. from /param/foo/a</a>
-              <a [link]="{ to: '..' }" data-testid="link-to-previous">Link to .. from current active route</a>
-              <outlet />
-            `,
-            standalone: true,
-          })
-          class ParamARouteComponent {}
-          return ParamARouteComponent
-        },
+        component: () => RelativeLinksParamARouteComponent,
       })
 
       const paramBRoute = createRoute({
         getParentRoute: () => paramARoute,
         path: 'b',
-        component: () => {
-          @Angular.Component({
-            imports: [Link],
-            template: `
-              <h1>Param B Route</h1>
-              <a [link]="{ to: '..' }">Link to Parent</a>
-              <a [link]="{ to: '.', params: { param: 'bar' } }">Link to . with param:bar</a>
-              <a [link]="{ to: '..', params: { param: 'bar' } }">Link to Parent with param:bar</a>
-            `,
-            standalone: true,
-          })
-          class ParamBRouteComponent {}
-          return ParamBRouteComponent
-        },
+        component: () => RelativeLinksParamBRouteComponent,
       })
 
       const paramCRoute = createRoute({
         getParentRoute: () => paramARoute,
         path: 'c',
-        component: () => {
-          @Angular.Component({
-            template: '<h1>Param C Route</h1>',
-            standalone: true,
-          })
-          class ParamCRouteComponent {}
-          return ParamCRouteComponent
-        },
+        component: () => RelativeLinksParamCRouteComponent,
       })
 
       return createRouter({
@@ -2728,18 +2715,40 @@ describe('Link', () => {
   })
 
   describe('search middleware', () => {
+    @Angular.Component({
+      selector: 'search-middleware-error',
+      template: '<div>{{ errorState().error.stack }}</div>',
+      standalone: true,
+    })
+    class SearchMiddlewareErrorComponent {
+      errorState = injectErrorState()
+    }
+
+    @Angular.Component({
+      selector: 'search-middleware-index',
+      imports: [Link],
+      template: `
+        <h1>Index</h1>
+        <div data-testid="search">{{ search().root ?? '$undefined' }}</div>
+        <a [link]="{ to: '/', search: { root: 'newValue' } }" data-testid="update-search">update search</a>
+        <a [link]="{ to: '/posts', search: { page: 123 } }">Posts</a>
+      `,
+      standalone: true,
+    })
+    class SearchMiddlewareIndexComponent {
+      search = injectSearch({ strict: false })
+    }
+
+    @Angular.Component({
+      selector: 'search-middleware-posts',
+      template: '<h1>Posts</h1>',
+      standalone: true,
+    })
+    class SearchMiddlewarePostsComponent {}
+
     test('search middlewares work', async () => {
       const rootRoute = createRootRoute({
-        errorComponent: () => {
-          @Angular.Component({
-            template: '<div>{{ errorState().error.stack }}</div>',
-            standalone: true,
-          })
-          class ErrorComponent {
-            errorState = injectErrorState()
-          }
-          return ErrorComponent
-        },
+        errorComponent: () => SearchMiddlewareErrorComponent,
         validateSearch: (input) => {
           return {
             root: input.root as string | undefined,
@@ -2762,32 +2771,8 @@ describe('Link', () => {
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        component: () => {
-          @Angular.Component({
-            imports: [Link],
-            template: `
-              <h1>Index</h1>
-              <div data-testid="search">{{ search().root ?? '$undefined' }}</div>
-              <a [link]="{ to: '/', search: { root: 'newValue' } }" data-testid="update-search">update search</a>
-              <a [link]="{ to: '/posts', search: { page: 123 } }">Posts</a>
-            `,
-            standalone: true,
-          })
-          class IndexComponent {
-            search = injectSearch({ strict: false })
-          }
-          return IndexComponent
-        },
+        component: () => SearchMiddlewareIndexComponent,
       })
-
-      const PostsComponent = () => {
-        @Angular.Component({
-          template: '<h1>Posts</h1>',
-          standalone: true,
-        })
-        class PostsComponentClass {}
-        return PostsComponentClass
-      }
 
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
@@ -2798,7 +2783,7 @@ describe('Link', () => {
             page,
           }
         },
-        component: PostsComponent,
+        component: () => SearchMiddlewarePostsComponent,
       })
 
       const router = createRouter({
@@ -2836,6 +2821,23 @@ describe('Link', () => {
   })
 
   describe('relative links to current route', () => {
+    @Angular.Component({
+      imports: [Link],
+      template: `
+        <a [link]="{ to: '/post' }" data-testid="posts-link">Post</a>
+        <a [link]="{ to: '.', search: { param1: 'value1' } }" data-testid="search-link">Search</a>
+        <a [link]="{ to: '.', search: { param1: 'value2' } }" data-testid="search2-link">Search2</a>
+      `,
+      standalone: true,
+    })
+    class TrailingSlashIndexComponent {}
+
+    @Angular.Component({
+      template: '<h1>Post Route</h1>',
+      standalone: true,
+    })
+    class TrailingSlashPostComponent {}
+
     test.each(Object.values(trailingSlashOptions))(
       'should navigate to current route when using "." in nested route structure from Index Route with trailingSlash: %s',
       async (trailingSlash) => {
@@ -2843,37 +2845,16 @@ describe('Link', () => {
 
         const rootRoute = createRootRoute()
 
-        const IndexComponent = () => {
-          @Angular.Component({
-            imports: [Link],
-            template: `
-              <a [link]="{ to: '/post' }" data-testid="posts-link">Post</a>
-              <a [link]="{ to: '.', search: { param1: 'value1' } }" data-testid="search-link">Search</a>
-              <a [link]="{ to: '.', search: { param1: 'value2' } }" data-testid="search2-link">Search2</a>
-            `,
-            standalone: true,
-          })
-          class IndexComponentClass {}
-          return IndexComponentClass
-        }
-
         const indexRoute = createRoute({
           getParentRoute: () => rootRoute,
           path: '/',
-          component: IndexComponent,
+          component: () => TrailingSlashIndexComponent,
         })
 
         const postRoute = createRoute({
           getParentRoute: () => rootRoute,
           path: 'post',
-          component: () => {
-            @Angular.Component({
-              template: '<h1>Post Route</h1>',
-              standalone: true,
-            })
-            class PostComponent {}
-            return PostComponent
-          },
+          component: () => TrailingSlashPostComponent,
         })
 
         const router = createRouter({

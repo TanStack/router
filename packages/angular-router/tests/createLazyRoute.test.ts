@@ -93,7 +93,7 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
     expect(router.state.location.pathname).toBe('/')
     expect(window.location.pathname).toBe('/')
 
-    // click the link to navigate to the heavy route
+    // Click the link to navigate to the heavy route
     fireEvent.click(linkToHeavy)
 
     const heavyElement = await screen.findByText('I am sooo heavy')
