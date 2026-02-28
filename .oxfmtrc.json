@@ -4,5 +4,21 @@
   "semi": false,
   "singleQuote": true,
   "trailingComma": "all",
-  "sortPackageJson": false
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "**/worker-configuration.d.ts",
+    "**/prisma/migrations/migration_lock.toml",
+    "examples/solid/start-basic-netlify/netlify.toml"
+  ],
+  "overrides": [
+    {
+      "files": ["examples/react/start-workos/**/*.{js,jsx,ts,tsx,d.ts}"],
+      "options": {
+        "printWidth": 120,
+        "semi": true,
+        "singleQuote": true,
+        "trailingComma": "all"
+      }
+    }
+  ]
 }

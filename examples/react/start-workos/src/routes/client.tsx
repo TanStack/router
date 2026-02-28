@@ -1,24 +1,11 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
-import {
-  Badge,
-  Box,
-  Button,
-  Callout,
-  Code,
-  Flex,
-  Heading,
-  Text,
-  TextField,
-} from '@radix-ui/themes'
-import {
-  useAccessToken,
-  useAuth,
-} from '@workos/authkit-tanstack-react-start/client'
-import { useState } from 'react'
+import { Link, createFileRoute } from '@tanstack/react-router';
+import { Badge, Box, Button, Callout, Code, Flex, Heading, Text, TextField } from '@radix-ui/themes';
+import { useAccessToken, useAuth } from '@workos/authkit-tanstack-react-start/client';
+import { useState } from 'react';
 
 export const Route = createFileRoute('/client')({
   component: RouteComponent,
-})
+});
 
 function RouteComponent() {
   const {
@@ -34,76 +21,70 @@ function RouteComponent() {
     impersonator,
     signOut,
     switchToOrganization,
-  } = useAuth()
-  const {
-    accessToken,
-    loading: tokenLoading,
-    error: tokenError,
-    refresh,
-    getAccessToken,
-  } = useAccessToken()
+  } = useAuth();
+  const { accessToken, loading: tokenLoading, error: tokenError, refresh, getAccessToken } = useAccessToken();
 
   const handleRefreshToken = async () => {
     try {
-      await refresh()
+      await refresh();
     } catch (err) {
-      console.error('Token refresh failed:', err)
+      console.error('Token refresh failed:', err);
     }
-  }
+  };
 
   const handleGetFreshToken = async () => {
     try {
-      const token = await getAccessToken()
-      console.log('Fresh token:', token)
+      const token = await getAccessToken();
+      console.log('Fresh token:', token);
     } catch (err) {
-      console.error('Get fresh token failed:', err)
+      console.error('Get fresh token failed:', err);
     }
-  }
+  };
 
   const handleClientSignOut = async () => {
-    console.log('🧪 Testing client-side signOut() from useAuth()...')
+    console.log('🧪 Testing client-side signOut() from useAuth()...');
     try {
-      await signOut({ returnTo: '/' })
-      console.log('✅ signOut() completed')
+      await signOut({ returnTo: '/' });
+      console.log('✅ signOut() completed');
     } catch (err) {
-      console.error('❌ signOut() failed:', err)
+      console.error('❌ signOut() failed:', err);
     }
-  }
+  };
 
-  const [orgIdInput, setOrgIdInput] = useState('')
-  const [switchOrgResult, setSwitchOrgResult] = useState<string | null>(null)
+  const [orgIdInput, setOrgIdInput] = useState('');
+  const [switchOrgResult, setSwitchOrgResult] = useState<string | null>(null);
 
   const handleSwitchOrg = async () => {
     if (!orgIdInput.trim()) {
-      setSwitchOrgResult('Please enter an organization ID')
-      return
+      setSwitchOrgResult('Please enter an organization ID');
+      return;
     }
 
-    console.log(`🔄 Switching to organization: ${orgIdInput}...`)
-    setSwitchOrgResult(null)
+    console.log(`🔄 Switching to organization: ${orgIdInput}...`);
+    setSwitchOrgResult(null);
 
     try {
-      const result = await switchToOrganization(orgIdInput.trim())
+      const result = await switchToOrganization(orgIdInput.trim());
       if (result && 'error' in result) {
-        console.error('❌ Switch failed:', result.error)
-        setSwitchOrgResult(`Error: ${result.error}`)
+        console.error('❌ Switch failed:', result.error);
+        setSwitchOrgResult(`Error: ${result.error}`);
       } else {
-        console.log('✅ Successfully switched organizations')
-        setSwitchOrgResult('✅ Success! Check updated claims above.')
+        console.log('✅ Successfully switched organizations');
+        setSwitchOrgResult('✅ Success! Check updated claims above.');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error('❌ Switch error:', message)
-      setSwitchOrgResult(`Error: ${message}`)
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('❌ Switch error:', message);
+      setSwitchOrgResult(`Error: ${message}`);
     }
-  }
+  };
 
   if (loading) {
     return (
       <Flex direction="column" gap="2" align="center">
         <Heading size="8">Loading...</Heading>
       </Flex>
-    )
+    );
   }
 
   if (!user) {
@@ -113,16 +94,13 @@ function RouteComponent() {
           Client-Side Hooks Demo
         </Heading>
         <Text size="5" align="center" color="gray">
-          This page demonstrates the client-side hooks from{' '}
-          <Code>@workos/authkit-tanstack-start/client</Code>
+          This page demonstrates the client-side hooks from <Code>@workos/authkit-tanstack-start/client</Code>
         </Text>
         <Callout.Root>
-          <Callout.Text>
-            ℹ️ Please sign in to see the client-side hooks in action.
-          </Callout.Text>
+          <Callout.Text>ℹ️ Please sign in to see the client-side hooks in action.</Callout.Text>
         </Callout.Root>
       </Flex>
-    )
+    );
   }
 
   return (
@@ -138,9 +116,8 @@ function RouteComponent() {
 
       <Callout.Root>
         <Callout.Text>
-          ℹ️ This page uses client-side React hooks to access authentication
-          data. Unlike server-side loaders, these hooks work in client
-          components and automatically update when auth state changes.
+          ℹ️ This page uses client-side React hooks to access authentication data. Unlike server-side loaders, these
+          hooks work in client components and automatically update when auth state changes.
         </Callout.Text>
       </Callout.Root>
 
@@ -157,52 +134,32 @@ function RouteComponent() {
             <Text weight="bold" style={{ width: 150 }}>
               Email:
             </Text>
-            <TextField.Root
-              value={user.email}
-              readOnly
-              style={{ flexGrow: 1 }}
-            />
+            <TextField.Root value={user.email} readOnly style={{ flexGrow: 1 }} />
           </Flex>
           <Flex align="center" gap="2">
             <Text weight="bold" style={{ width: 150 }}>
               First Name:
             </Text>
-            <TextField.Root
-              value={user.firstName || ''}
-              readOnly
-              style={{ flexGrow: 1 }}
-            />
+            <TextField.Root value={user.firstName || ''} readOnly style={{ flexGrow: 1 }} />
           </Flex>
           <Flex align="center" gap="2">
             <Text weight="bold" style={{ width: 150 }}>
               Last Name:
             </Text>
-            <TextField.Root
-              value={user.lastName || ''}
-              readOnly
-              style={{ flexGrow: 1 }}
-            />
+            <TextField.Root value={user.lastName || ''} readOnly style={{ flexGrow: 1 }} />
           </Flex>
           <Flex align="center" gap="2">
             <Text weight="bold" style={{ width: 150 }}>
               Session ID:
             </Text>
-            <TextField.Root
-              value={sessionId || ''}
-              readOnly
-              style={{ flexGrow: 1 }}
-            />
+            <TextField.Root value={sessionId || ''} readOnly style={{ flexGrow: 1 }} />
           </Flex>
           {organizationId && (
             <Flex align="center" gap="2">
               <Text weight="bold" style={{ width: 150 }}>
                 Organization ID:
               </Text>
-              <TextField.Root
-                value={organizationId}
-                readOnly
-                style={{ flexGrow: 1 }}
-              />
+              <TextField.Root value={organizationId} readOnly style={{ flexGrow: 1 }} />
             </Flex>
           )}
           {role && (
@@ -272,11 +229,7 @@ function RouteComponent() {
               <Text weight="bold" style={{ width: 150 }}>
                 Impersonator:
               </Text>
-              <TextField.Root
-                value={impersonator.email}
-                readOnly
-                style={{ flexGrow: 1 }}
-              />
+              <TextField.Root value={impersonator.email} readOnly style={{ flexGrow: 1 }} />
             </Flex>
           )}
         </Flex>
@@ -289,9 +242,7 @@ function RouteComponent() {
             <Text weight="bold" style={{ width: 150 }}>
               Token Status:
             </Text>
-            <Badge
-              color={tokenLoading ? 'yellow' : accessToken ? 'green' : 'gray'}
-            >
+            <Badge color={tokenLoading ? 'yellow' : accessToken ? 'green' : 'gray'}>
               {tokenLoading ? 'Loading' : accessToken ? 'Available' : 'None'}
             </Badge>
           </Flex>
@@ -308,13 +259,8 @@ function RouteComponent() {
               <Text weight="bold" style={{ width: 150 }}>
                 Access Token:
               </Text>
-              <Box
-                style={{ flexGrow: 1, maxWidth: '100%', overflow: 'hidden' }}
-              >
-                <Code
-                  size="2"
-                  style={{ wordBreak: 'break-all', display: 'block' }}
-                >
+              <Box style={{ flexGrow: 1, maxWidth: '100%', overflow: 'hidden' }}>
+                <Code size="2" style={{ wordBreak: 'break-all', display: 'block' }}>
                   ...{accessToken.slice(-20)}
                 </Code>
               </Box>
@@ -324,11 +270,7 @@ function RouteComponent() {
             <Button onClick={handleRefreshToken} disabled={tokenLoading}>
               Refresh Token
             </Button>
-            <Button
-              onClick={handleGetFreshToken}
-              disabled={tokenLoading}
-              variant="soft"
-            >
+            <Button onClick={handleGetFreshToken} disabled={tokenLoading} variant="soft">
               Get Fresh Token (Console)
             </Button>
           </Flex>
@@ -338,14 +280,12 @@ function RouteComponent() {
       <Flex direction="column" gap="3">
         <Heading size="5">Organization Management</Heading>
         <Text size="2" color="gray">
-          Switch to a different organization. Requires multi-organization setup
-          in WorkOS.
+          Switch to a different organization. Requires multi-organization setup in WorkOS.
         </Text>
         <Callout.Root>
           <Callout.Text>
-            <strong>Setup required:</strong> This feature requires your WorkOS
-            user to be a member of multiple organizations. Create organizations
-            in the WorkOS dashboard and add your user to them.
+            <strong>Setup required:</strong> This feature requires your WorkOS user to be a member of multiple
+            organizations. Create organizations in the WorkOS dashboard and add your user to them.
           </Callout.Text>
         </Callout.Root>
         <Flex direction="column" gap="2">
@@ -372,9 +312,7 @@ function RouteComponent() {
             </Button>
           </Flex>
           {switchOrgResult && (
-            <Callout.Root
-              color={switchOrgResult.startsWith('✅') ? 'green' : 'red'}
-            >
+            <Callout.Root color={switchOrgResult.startsWith('✅') ? 'green' : 'red'}>
               <Callout.Text>{switchOrgResult}</Callout.Text>
             </Callout.Root>
           )}
@@ -384,8 +322,7 @@ function RouteComponent() {
       <Flex direction="column" gap="3">
         <Heading size="5">Sign Out Methods</Heading>
         <Text size="2" color="gray">
-          Test different sign out approaches. Check the browser console for
-          logs.
+          Test different sign out approaches. Check the browser console for logs.
         </Text>
         <Flex gap="2" wrap="wrap">
           <Button onClick={handleClientSignOut} color="red">
@@ -399,15 +336,14 @@ function RouteComponent() {
         </Flex>
         <Callout.Root color="blue">
           <Callout.Text>
-            <strong>Client-Side useAuth:</strong> Calls <Code>signOut()</Code>{' '}
-            from the provider context. This tests the redirect handling logic we
-            just fixed.
+            <strong>Client-Side useAuth:</strong> Calls <Code>signOut()</Code> from the provider context. This tests the
+            redirect handling logic we just fixed.
             <br />
-            <strong>Route Loader:</strong> Uses the <Code>/logout</Code> route
-            which calls the server function directly in a loader.
+            <strong>Route Loader:</strong> Uses the <Code>/logout</Code> route which calls the server function directly
+            in a loader.
           </Callout.Text>
         </Callout.Root>
       </Flex>
     </Flex>
-  )
+  );
 }

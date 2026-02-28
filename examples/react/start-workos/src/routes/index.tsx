@@ -1,27 +1,25 @@
-import { Button, Flex, Heading, Text } from '@radix-ui/themes'
-import { Link, createFileRoute } from '@tanstack/react-router'
-import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start'
-import SignInButton from '../components/sign-in-button'
+import { Button, Flex, Heading, Text } from '@radix-ui/themes';
+import { Link, createFileRoute } from '@tanstack/react-router';
+import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
+import SignInButton from '../components/sign-in-button';
 
 export const Route = createFileRoute('/')({
   component: Home,
   loader: async () => {
-    const { user } = await getAuth()
-    const url = await getSignInUrl()
-    return { user, url }
+    const { user } = await getAuth();
+    const url = await getSignInUrl();
+    return { user, url };
   },
-})
+});
 
 function Home() {
-  const { user, url } = Route.useLoaderData()
+  const { user, url } = Route.useLoaderData();
 
   return (
     <Flex direction="column" align="center" gap="2">
       {user ? (
         <>
-          <Heading size="8">
-            Welcome back{user?.firstName && `, ${user?.firstName}`}
-          </Heading>
+          <Heading size="8">Welcome back{user?.firstName && `, ${user?.firstName}`}</Heading>
           <Text size="5" color="gray">
             You are now authenticated into the TanStack Start application
           </Text>
@@ -43,5 +41,5 @@ function Home() {
         </>
       )}
     </Flex>
-  )
+  );
 }
