@@ -19,8 +19,6 @@ export const renderRouterToStream = async ({
 }) => {
   const { writable, readable } = new TransformStream()
 
-  const docType = Solid.ssr('<!DOCTYPE html>')
-
   const serializationAdapters =
     (router.options as any)?.serializationAdapters ||
     (router.options.ssr as any)?.serializationAdapters
@@ -29,18 +27,10 @@ export const renderRouterToStream = async ({
     return plugin
   })
 
-  const stream = Solid.renderToStream(
-    () => (
-      <>
-        {docType}
-        {children()}
-      </>
-    ),
-    {
-      nonce: router.options.ssr?.nonce,
-      plugins: serovalPlugins,
-    } as any,
-  )
+  const stream = Solid.renderToStream(() => children, {
+    nonce: router.options.ssr?.nonce,
+    plugins: serovalPlugins,
+  } as any)
 
   if (isbot(request.headers.get('User-Agent'))) {
     await stream

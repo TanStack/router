@@ -6,7 +6,7 @@ import type {
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
-import type { Accessor } from 'solid-js'
+import { createMemo, type Accessor } from 'solid-js'
 
 // Deep equality check to match behavior of solid-store 0.7.0's reconcile()
 function deepEqual(a: any, b: any): boolean {
@@ -61,12 +61,10 @@ export function useRouterState<
   const _isServer = isServer ?? router.isServer
   if (_isServer) {
     const state = router.state as RouterState<TRouter['routeTree']>
-    const selected = (
-      opts?.select ? opts.select(state) : state
-    ) as UseRouterStateResult<TRouter, TSelected>
-    return (() => selected) as Accessor<
-      UseRouterStateResult<TRouter, TSelected>
-    >
+    const selected = createMemo(() =>
+      opts?.select ? opts.select(state) : state,
+    ) as Accessor<UseRouterStateResult<TRouter, TSelected>>
+    return selected
   }
 
   return useStore(

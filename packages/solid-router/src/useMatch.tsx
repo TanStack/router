@@ -48,8 +48,8 @@ export type UseMatchResult<
   TSelected,
 > = unknown extends TSelected
   ? TStrict extends true
-  ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
-  : MakeRouteMatchUnion<TRouter>
+    ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
+    : MakeRouteMatchUnion<TRouter>
   : TSelected
 
 export function useMatch<

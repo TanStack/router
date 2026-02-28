@@ -189,7 +189,7 @@ export function useLinkProps<
         return undefined
       }
       return to
-    } catch { }
+    } catch {}
     return undefined
   })
 
@@ -416,14 +416,14 @@ export function useLinkProps<
   const resolvedActiveProps: () => Omit<Solid.ComponentProps<'a'>, 'style'> & {
     style?: Solid.JSX.CSSProperties
   } = () =>
-      isActive() ? (functionalUpdate(local.activeProps as any, {}) ?? {}) : {}
+    isActive() ? (functionalUpdate(local.activeProps as any, {}) ?? {}) : {}
 
   // Get the inactive props
   const resolvedInactiveProps: () => Omit<
     Solid.ComponentProps<'a'>,
     'style'
   > & { style?: Solid.JSX.CSSProperties } = () =>
-      isActive() ? {} : functionalUpdate(local.inactiveProps, {})
+    isActive() ? {} : functionalUpdate(local.inactiveProps, {})
 
   const resolvedClassName = () =>
     [local.class, resolvedActiveProps().class, resolvedInactiveProps().class]
@@ -526,11 +526,11 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-  | Solid.JSX.Element
-  | ((state: {
-    isActive: boolean
-    isTransitioning: boolean
-  }) => Solid.JSX.Element)
+    | Solid.JSX.Element
+    | ((state: {
+        isActive: boolean
+        isTransitioning: boolean
+      }) => Solid.JSX.Element)
 }
 
 type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
@@ -654,8 +654,8 @@ export type LinkOptionsFnOptions<
   TRouter extends AnyRouter = RegisteredRouter,
 > =
   TOptions extends ReadonlyArray<any>
-  ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
-  : ValidateLinkOptions<TRouter, TOptions, string, TComp>
+    ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
+    : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
 export type LinkOptionsFn<TComp> = <
   const TOptions,

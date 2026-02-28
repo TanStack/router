@@ -51,9 +51,12 @@ const indexRoute = createRoute({
 })
 
 function IndexComponent() {
-  createRenderEffect(() => undefined, () => {
-    window.invokeOrders.push('index-useLayoutEffect')
-  })
+  createRenderEffect(
+    () => undefined,
+    () => {
+      window.invokeOrders.push('index-useLayoutEffect')
+    },
+  )
 
   return (
     <div class="p-2">
@@ -80,9 +83,12 @@ const aboutRoute = createRoute({
 })
 
 function AboutComponent() {
-  createRenderEffect(() => undefined, () => {
-    window.invokeOrders.push('about-useLayoutEffect')
-  })
+  createRenderEffect(
+    () => undefined,
+    () => {
+      window.invokeOrders.push('about-useLayoutEffect')
+    },
+  )
   return (
     <div class="p-2">
       <h3 id="greeting">Hello from About!</h3>

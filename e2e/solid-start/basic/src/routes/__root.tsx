@@ -159,7 +159,7 @@ function RootComponent() {
         </div>
         <Outlet />
         <div class="inline-div">This is an inline styled div</div>
-        <TanStackRouterDevtoolsInProd />
+        {/* <TanStackRouterDevtoolsInProd /> */}
         <Scripts />
       </body>
     </html>

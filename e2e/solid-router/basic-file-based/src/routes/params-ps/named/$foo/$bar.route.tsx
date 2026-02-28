@@ -18,13 +18,19 @@ function RouteComponent() {
     strict: false,
   })
 
-  createEffect(() => params().bar, () => {
-    setBarRenderCount((prev) => prev + 1)
-  })
+  createEffect(
+    () => params().bar,
+    () => {
+      setBarRenderCount((prev) => prev + 1)
+    },
+  )
 
-  createEffect(() => params().baz, () => {
-    setBazRenderCount((prev) => prev + 1)
-  })
+  createEffect(
+    () => params().baz,
+    () => {
+      setBazRenderCount((prev) => prev + 1)
+    },
+  )
 
   return (
     <div>

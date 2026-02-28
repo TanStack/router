@@ -114,10 +114,10 @@ function AnchorComponent() {
 
             const hashScrollIntoView = withScroll()
               ? ({
-                behavior: formData.get('scrollBehavior') as ScrollBehavior,
-                block: formData.get('scrollBlock') as ScrollLogicalPosition,
-                inline: formData.get('scrollInline') as ScrollLogicalPosition,
-              } satisfies ScrollIntoViewOptions)
+                  behavior: formData.get('scrollBehavior') as ScrollBehavior,
+                  block: formData.get('scrollBlock') as ScrollLogicalPosition,
+                  inline: formData.get('scrollInline') as ScrollLogicalPosition,
+                } satisfies ScrollIntoViewOptions)
               : false
 
             navigate({ hash: toHash, hashScrollIntoView })

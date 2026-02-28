@@ -13,12 +13,10 @@ function Home() {
   const searchQuery = Route.useSearch()
   const navigate = Route.useNavigate()
 
-  const asyncResult = createMemo(
-    async () => {
-      await new Promise((r) => setTimeout(r, 1000))
-      return searchQuery().query
-    },
-  )
+  const asyncResult = createMemo(async () => {
+    await new Promise((r) => setTimeout(r, 1000))
+    return searchQuery().query
+  })
 
   return (
     <div class="p-2">

@@ -4,7 +4,6 @@ import {
   handleHashScroll,
   trimPathRight,
 } from '@tanstack/router-core'
-import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
@@ -15,10 +14,6 @@ export function Transitioner() {
   const isLoading = useRouterState({
     select: ({ isLoading }) => isLoading,
   })
-
-  if (isServer ?? router.isServer) {
-    return null
-  }
 
   const [isSolidTransitioning] = [() => false]
 

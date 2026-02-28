@@ -24,7 +24,10 @@ export function useAwaited<T>({
   return [promise[TSR_DEFERRED_PROMISE].data, promise]
 }
 
-function InnerAwait<T>(props: { promise: Promise<T>, children: (res: T) => SolidNode }) {
+function InnerAwait<T>(props: {
+  promise: Promise<T>
+  children: (res: T) => SolidNode
+}) {
   const [data] = useAwaited({ promise: props.promise })
   return props.children(data) as any
 }
