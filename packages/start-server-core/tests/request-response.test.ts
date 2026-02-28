@@ -17,6 +17,7 @@ describe('setResponseStatus + throw preserves status code', () => {
     const response = await handler(request, {})
 
     expect(response.status).toBe(401)
+    expect(await response.text()).toBe('Unauthorized')
   })
 
   it('should preserve status code when handler throws a bare Response after setResponseStatus', async () => {
