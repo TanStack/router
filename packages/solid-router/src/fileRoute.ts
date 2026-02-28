@@ -55,7 +55,7 @@ export function createFileRoute<
   }).createRoute
 }
 
-/** 
+/**
   @deprecated It's no longer recommended to use the `FileRoute` class directly.
   Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
 */
@@ -150,7 +150,7 @@ export class FileRoute<
   }
 }
 
-/** 
+/**
   @deprecated It's recommended not to split loaders into separate files.
   Instead, place the loader function in the the main route file, inside the
   `createFileRoute('/path/to/file)(options)` options.
