@@ -1,6 +1,6 @@
 import * as Angular from '@angular/core'
-import { fireEvent, render, screen } from '@testing-library/angular'
-import { afterEach, beforeEach, describe, expect, test, vi  } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/angular'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import combinate from 'combinate'
 import {
   Link,
@@ -36,8 +36,10 @@ const BLOCKER_OPTIONS_TOKEN = new Angular.InjectionToken<InjectBlockerOpts>(
 const IGNORE_BLOCKER_TOKEN = new Angular.InjectionToken<boolean>(
   'IGNORE_BLOCKER',
 )
+const SHOULD_NOT_NAVIGATE_TIMEOUT_MS = 120
 
 @Angular.Component({
+  selector: 'blocker-index',
   imports: [Link],
   template: `
     <h1>Index</h1>
@@ -53,19 +55,22 @@ class IndexComponent {
 }
 
 @Angular.Component({
+  selector: 'blocker-posts',
   template: '<h1>Posts</h1>',
 })
-class PostsComponent {}
+class PostsComponent { }
 
 @Angular.Component({
+  selector: 'blocker-foo',
   template: '<h1>Foo</h1>',
 })
-class FooComponent {}
+class FooComponent { }
 
 @Angular.Component({
+  selector: 'blocker-bar',
   template: '<h1>Bar</h1>',
 })
-class BarComponent {}
+class BarComponent { }
 
 async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
   const _mockBlockerFn = vi.fn(blockerFn)
@@ -198,9 +203,12 @@ describe('Blocker', () => {
       const { clickable } = await setup(opts)
 
       fireEvent.click(clickable[clickTarget])
-      await expect(
-        screen.findByRole('heading', { name: 'Posts' }, { timeout: 100 }),
-      ).rejects.toThrow()
+      await waitFor(
+        () => {
+          expect(screen.queryByRole('heading', { name: 'Posts' })).toBeNull()
+        },
+        { timeout: SHOULD_NOT_NAVIGATE_TIMEOUT_MS },
+      )
       expect(window.location.pathname).toBe('/')
     },
   )

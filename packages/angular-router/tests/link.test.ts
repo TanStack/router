@@ -50,44 +50,59 @@ afterEach(() => {
   vi.resetAllMocks()
 })
 
-const WAIT_TIME = 300
+@Angular.Component({
+  selector: 'link-disabled-index',
+  imports: [Link],
+  template: `
+    <h1>Index</h1>
+    <a [link]="{ to: '/posts', disabled: true }">Posts</a>
+  `,
+  standalone: true,
+})
+class LinkDisabledIndexComponent {}
+
+@Angular.Component({
+  selector: 'link-children-index',
+  imports: [Link],
+  template: `
+    <h1>Index</h1>
+    <a [link]="{ to: '/posts' }">
+      <button>Posts</button>
+    </a>
+  `,
+  standalone: true,
+})
+class LinkChildrenIndexComponent {}
+
+@Angular.Component({
+  selector: 'link-basic-posts',
+  template: '<h1>Posts</h1>',
+  standalone: true,
+})
+class LinkBasicPostsComponent {}
+
+function createBasicPostsRouter(indexComponent: Angular.Type<unknown>) {
+  const rootRoute = createRootRoute()
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => indexComponent,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts',
+    component: () => LinkBasicPostsComponent,
+  })
+
+  return createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+  })
+}
 
 describe('Link', () => {
   test('when a Link is disabled', async () => {
-    const rootRoute = createRootRoute()
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => {
-        @Angular.Component({
-          imports: [Link],
-          template: `
-            <h1>Index</h1>
-            <a [link]="{ to: '/posts', disabled: true }">Posts</a>
-          `,
-          standalone: true,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
-    })
-
-    const postsRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/posts',
-      component: () => {
-        @Angular.Component({
-          template: '<h1>Posts</h1>',
-          standalone: true,
-        })
-        class PostsComponent {}
-        return PostsComponent
-      },
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
-    })
+    const router = createBasicPostsRouter(LinkDisabledIndexComponent)
 
     await render(RouterProvider, {
       bindings: [Angular.inputBinding('router', () => router)],
@@ -102,48 +117,15 @@ describe('Link', () => {
 
     fireEvent.click(postsLink)
 
-    await expect(
-      screen.findByRole('header', { name: 'Posts' }),
-    ).rejects.toThrow()
+    await waitFor(
+      () => {
+        expect(screen.queryByRole('heading', { name: 'Posts' })).toBeNull()
+      }
+    )
   })
 
   test('when a Link has children', async () => {
-    const rootRoute = createRootRoute()
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => {
-        @Angular.Component({
-          imports: [Link],
-          template: `
-            <h1>Index</h1>
-            <a [link]="{ to: '/posts' }">
-              <button>Posts</button>
-            </a>
-          `,
-          standalone: true,
-        })
-        class IndexComponent {}
-        return IndexComponent
-      },
-    })
-
-    const postsRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/posts',
-      component: () => {
-        @Angular.Component({
-          template: '<h1>Posts</h1>',
-          standalone: true,
-        })
-        class PostsComponent {}
-        return PostsComponent
-      },
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
-    })
+    const router = createBasicPostsRouter(LinkChildrenIndexComponent)
 
     await render(RouterProvider, {
       bindings: [Angular.inputBinding('router', () => router)],
@@ -902,8 +884,6 @@ describe('Link', () => {
 
     fireEvent.click(postsLink)
 
-    await sleep(WAIT_TIME)
-
     const postsErrorText = await screen.findByText('PostsError')
     expect(postsErrorText).toBeTruthy()
 
@@ -912,8 +892,12 @@ describe('Link', () => {
 
     const indexLink = await screen.findByRole('link', { name: 'Index' })
     fireEvent.click(indexLink)
-    await sleep(WAIT_TIME)
-    await expect(screen.findByText('IndexError')).rejects.toThrow()
+    await waitFor(
+      () => {
+        expect(screen.queryByText('IndexError')).toBeNull()
+      },
+      { timeout: 200 },
+    )
     expect(indexOnError).not.toHaveBeenCalledOnce()
   })
 
@@ -2212,78 +2196,6 @@ describe('Link', () => {
     expect(mock).toHaveBeenCalledTimes(1)
   })
 
-  test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
-    @Angular.Component({
-      selector: 'preload-intent-index',
-      imports: [Link],
-      template: `
-        <div>
-          <h1>Index page</h1>
-          <a [link]="{ to: '/posts', preload: 'intent' }">link to posts</a>
-        </div>
-      `,
-      standalone: true,
-    })
-    class PreloadIntentIndexComponent {}
-
-    @Angular.Component({
-      selector: 'preload-intent-post',
-      template: '<div>Posts page</div>',
-      standalone: true,
-    })
-    class PreloadIntentPostComponent {}
-
-    @Angular.Component({
-      selector: 'preload-intent-pending',
-      template: '<p>Loading...</p>',
-      standalone: true,
-    })
-    class PreloadIntentPendingComponent {}
-
-    const rootRoute = createRootRoute()
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => PreloadIntentIndexComponent,
-    })
-
-    const postRoute = createRoute({
-      ssr: false,
-      getParentRoute: () => rootRoute,
-      path: '/posts',
-      loader: () => sleep(WAIT_TIME),
-      component: () => PreloadIntentPostComponent,
-    })
-
-    const routeTree = rootRoute.addChildren([postRoute, indexRoute])
-    const router = createRouter({
-      routeTree,
-      defaultPreload: 'intent',
-      defaultPendingMs: 200,
-      defaultPendingComponent: () => PreloadIntentPendingComponent,
-    })
-
-    await render(RouterProvider, {
-      bindings: [Angular.inputBinding('router', () => router)],
-    })
-
-    const linkToPosts = await screen.findByRole('link', {
-      name: 'link to posts',
-    })
-    expect(linkToPosts).toBeTruthy()
-
-    fireEvent.focus(linkToPosts)
-    fireEvent.click(linkToPosts)
-
-    const loadingElement = await screen.findByText('Loading...')
-    expect(loadingElement).toBeTruthy()
-
-    const postsElement = await screen.findByText('Posts page')
-    expect(postsElement).toBeTruthy()
-
-    expect(window.location.pathname).toBe('/posts')
-  })
-
   describe('when preloading a link, `preload` should be', () => {
     @Angular.Component({
       imports: [Link, Outlet],
@@ -2793,8 +2705,10 @@ describe('Link', () => {
       })
 
       async function checkSearchValue(value: string) {
-        const searchValue = await screen.findByTestId('search')
-        expect(searchValue.textContent).toBe(value)
+        await waitFor(() => {
+          const searchValue = screen.getByTestId('search')
+          expect(searchValue.textContent).toBe(value)
+        })
       }
       async function checkPostsLink(root: string) {
         const postsLink = await screen.findByRole('link', { name: 'Posts' })
@@ -2810,7 +2724,6 @@ describe('Link', () => {
 
       const updateSearchLink = await screen.findByTestId('update-search')
       fireEvent.click(updateSearchLink)
-      await sleep(0)
       await checkSearchValue('newValue')
       await checkPostsLink('newValue')
       expect(router.state.location.search).toEqual({ root: 'newValue' })

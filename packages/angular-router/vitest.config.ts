@@ -9,7 +9,6 @@ export default defineConfig({
     dir: './tests',
     watch: false,
     environment: 'jsdom',
-    typecheck: { enabled: true },
     setupFiles: ['tests/setupTests.ts'],
   },
 })

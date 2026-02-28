@@ -21,8 +21,6 @@ afterEach(() => {
 function setup(opts?: {
   beforeLoad?: () => any
   loader?: () => any
-  defaultPendingMs?: number
-  defaultPendingMinMs?: number
   staleTime?: number
 }) {
   const selectSpy = vi.fn()
@@ -50,12 +48,14 @@ function setup(opts?: {
   })
 
   @Angular.Component({
+    selector: 'store-updates-index',
     template: '<h1>Index</h1>',
     standalone: true,
   })
   class IndexComponent {}
 
   @Angular.Component({
+    selector: 'store-updates-posts',
     template: '<h1>Posts Title</h1>',
     standalone: true,
   })
@@ -83,8 +83,6 @@ function setup(opts?: {
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, postsRoute, otherRoute]),
-    defaultPendingMs: opts?.defaultPendingMs,
-    defaultPendingMinMs: opts?.defaultPendingMinMs,
     defaultPreload: 'intent',
     defaultStaleTime: opts?.staleTime,
     defaultGcTime: opts?.staleTime,
@@ -111,8 +109,6 @@ describe('store update sanity during navigation', () => {
         await sleep(30)
         return { ok: true }
       },
-      defaultPendingMs: 0,
-      defaultPendingMinMs: 0,
     })
 
     await render(RouterProvider, {
@@ -171,8 +167,6 @@ describe('store update sanity during navigation', () => {
   test('sync beforeLoad keeps updates bounded', async () => {
     const { router, selectSpy } = setup({
       beforeLoad: () => ({ ok: true }),
-      defaultPendingMs: 0,
-      defaultPendingMinMs: 0,
     })
 
     await render(RouterProvider, {
@@ -189,8 +183,6 @@ describe('store update sanity during navigation', () => {
 
   test('navigating without async work has low update churn', async () => {
     const { router, selectSpy } = setup({
-      defaultPendingMs: 0,
-      defaultPendingMinMs: 0,
     })
 
     await render(RouterProvider, {
@@ -210,8 +202,6 @@ describe('store update sanity during navigation', () => {
       beforeLoad: () => {
         throw notFound()
       },
-      defaultPendingMs: 0,
-      defaultPendingMinMs: 0,
     })
 
     await render(RouterProvider, {
@@ -232,8 +222,6 @@ describe('store update sanity during navigation', () => {
         await sleep(30)
         return { ok: true }
       },
-      defaultPendingMs: 0,
-      defaultPendingMinMs: 0,
     })
 
     await render(RouterProvider, {

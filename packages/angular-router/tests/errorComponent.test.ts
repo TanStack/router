@@ -1,5 +1,5 @@
 import * as Angular from '@angular/core'
-import { fireEvent, render, screen } from '@testing-library/angular'
+import { fireEvent, render, screen, waitFor } from '@testing-library/angular'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   Link,
@@ -13,6 +13,7 @@ import {
 import type { RouterHistory } from '@tanstack/history'
 
 @Angular.Component({
+  selector: 'error-component-host',
   template: '<div>Error: {{ errorState.error.message }}</div>',
   standalone: true,
 })
@@ -20,8 +21,12 @@ class MyErrorComponent {
   errorState = injectErrorState()
 }
 
+const ASYNC_THROW_DELAY_MS = 50
+const ERROR_RENDER_TIMEOUT_MS = 500
+const SHOULD_NOT_RENDER_TIMEOUT_MS = 200
+
 async function asyncToThrowFn() {
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, ASYNC_THROW_DELAY_MS))
   throw new Error('error thrown')
 }
 
@@ -43,22 +48,26 @@ afterEach(() => {
 })
 
 @Angular.Component({
+  selector: 'error-home',
   imports: [Link],
   template: `
     <div>
       <a [link]="{ to: '/about' }">link to about</a>
     </div>
   `,
+  standalone: true,
 })
 class HomeComponent { }
 
 @Angular.Component({
+  selector: 'error-about',
   template: '<div>About route content</div>',
   standalone: true,
 })
 class AboutComponent { }
 
 @Angular.Component({
+  selector: 'error-index',
   template: '<div>Index route content</div>',
   standalone: true,
 })
@@ -118,11 +127,14 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
           const errorComponent = await screen.findByText(
             `Error: error thrown`,
             undefined,
-            { timeout: 1500 },
+            { timeout: ERROR_RENDER_TIMEOUT_MS },
           )
-          await expect(
-            screen.findByText('About route content'),
-          ).rejects.toThrow()
+          await waitFor(
+            () => {
+              expect(screen.queryByText('About route content')).toBeNull()
+            },
+            { timeout: SHOULD_NOT_RENDER_TIMEOUT_MS },
+          )
           expect(errorComponent).toBeTruthy()
         },
       )
@@ -156,11 +168,14 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
           const errorComponent = await screen.findByText(
             `Error: error thrown`,
             undefined,
-            { timeout: 750 },
+            { timeout: ERROR_RENDER_TIMEOUT_MS },
           )
-          await expect(
-            screen.findByText('Index route content'),
-          ).rejects.toThrow()
+          await waitFor(
+            () => {
+              expect(screen.queryByText('Index route content')).toBeNull()
+            },
+            { timeout: SHOULD_NOT_RENDER_TIMEOUT_MS },
+          )
           expect(errorComponent).toBeTruthy()
         },
       )

@@ -33,12 +33,12 @@ test('RouterProvider merges router options context and input context/options', a
     bindings: [
       Angular.inputBinding('router', () => router),
       Angular.inputBinding('context', () => ({ feature: 'angular' })),
-      Angular.inputBinding('options', () => ({ defaultPendingMinMs: 123 })),
+      Angular.inputBinding('options', () => ({ defaultPreloadDelay: 123 })),
     ],
   })
 
   await waitFor(() => {
-    expect(router.options.defaultPendingMinMs).toBe(123)
+    expect(router.options.defaultPreloadDelay).toBe(123)
     expect(router.options.context).toMatchObject({
       appName: 'router',
       feature: 'angular',
@@ -59,7 +59,7 @@ test('RouterProvider reacts to context and options signal updates', async () => 
   })
 
   const contextSig = Angular.signal({ env: 'dev' })
-  const optionsSig = Angular.signal({ defaultPendingMinMs: 10 })
+  const optionsSig = Angular.signal({ defaultPreloadDelay: 10 })
 
   const rendered = await render(RouterProvider, {
     bindings: [
@@ -70,16 +70,16 @@ test('RouterProvider reacts to context and options signal updates', async () => 
   })
 
   await waitFor(() => {
-    expect(router.options.defaultPendingMinMs).toBe(10)
+    expect(router.options.defaultPreloadDelay).toBe(10)
     expect(router.options.context).toMatchObject({ env: 'dev' })
   })
 
   contextSig.set({ env: 'test' })
-  optionsSig.set({ defaultPendingMinMs: 250 })
+  optionsSig.set({ defaultPreloadDelay: 250 })
   rendered.fixture.detectChanges()
 
   await waitFor(() => {
-    expect(router.options.defaultPendingMinMs).toBe(250)
+    expect(router.options.defaultPreloadDelay).toBe(250)
     expect(router.options.context).toMatchObject({ env: 'test' })
   })
 })
