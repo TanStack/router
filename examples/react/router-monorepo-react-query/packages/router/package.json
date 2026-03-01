@@ -11,7 +11,7 @@
     "@tanstack/history": "^1.161.4",
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-router": "^1.163.3",
-    "@tanstack/router-plugin": "^1.163.5",
+    "@tanstack/router-plugin": "^1.164.0",
     "@router-mono-react-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
     "zod": "^3.24.2",
