@@ -103,12 +103,37 @@ function attachResponseHeaders<T>(
   event: H3Event,
 ): MaybePromise<T> {
   if (isPromiseLike(value)) {
-    return value.then((resolved) => {
-      if (resolved instanceof Response) {
-        mergeEventResponseHeaders(resolved, event)
-      }
-      return resolved
-    })
+    return value.then(
+      (resolved) => {
+        if (resolved instanceof Response) {
+          mergeEventResponseHeaders(resolved, event)
+        }
+        return resolved
+      },
+      (error) => {
+        const eventStatus = event.res.status
+        if (eventStatus) {
+          const eventStatusText = event.res.statusText
+          const response =
+            error instanceof Response
+              ? new Response(error.body, {
+                  status: eventStatus,
+                  statusText: eventStatusText || error.statusText,
+                  headers: error.headers,
+                })
+              : new Response(
+                  error instanceof Error ? error.message : String(error),
+                  {
+                    status: eventStatus,
+                    statusText: eventStatusText || '',
+                  },
+                )
+          mergeEventResponseHeaders(response, event)
+          return response as T
+        }
+        throw error
+      },
+    )
   }
 
   if (value instanceof Response) {
