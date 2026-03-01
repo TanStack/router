@@ -207,9 +207,23 @@ By default, this value is set to `false`.
 
 ### `addExtensions`
 
-This option adds file extensions to the route names in the generated route tree.
+- Type: `boolean | string`
+- Default: `false`
 
-By default, this value is set to `false`.
+This option controls file extensions on import paths in the generated route tree.
+
+- `false` — Extensions are stripped from import paths (e.g. `'./routes/posts'`)
+- `true` — The original file extensions are kept (e.g. `'./routes/posts.tsx'`)
+- `string` — The original extension is replaced with the provided one (e.g. `'js'` produces `'./routes/posts.js'`)
+
+Passing a string is useful when your project uses ESM, since Node.js ESM requires `.js` extensions for imports even when the source files are `.ts` or `.tsx`.
+
+```ts
+// Example: replace .tsx/.ts extensions with .js in generated imports
+TanStackRouterVite({
+  addExtensions: 'js',
+})
+```
 
 ### `disableLogging`
 

@@ -192,6 +192,9 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         config.virtualRouteConfig = virtualRouteConfig
       }
       break
+    case 'add-extensions-custom':
+      config.addExtensions = '.js'
+      break
     case 'virtual-nested-layouts-with-virtual-route':
       {
         // Test case for nested layouts with a virtual file-less route in between.

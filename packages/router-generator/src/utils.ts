@@ -531,8 +531,13 @@ export function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export function removeExt(d: string, keepExtension: boolean = false) {
-  return keepExtension ? d : d.substring(0, d.lastIndexOf('.')) || d
+export function removeExt(d: string, addExtensions: boolean | string = false) {
+  if (typeof addExtensions === 'string') {
+    const dotIndex = d.lastIndexOf('.')
+    if (dotIndex === -1) return d
+    return d.substring(0, dotIndex) + addExtensions
+  }
+  return addExtensions ? d : d.substring(0, d.lastIndexOf('.')) || d
 }
 
 /**
