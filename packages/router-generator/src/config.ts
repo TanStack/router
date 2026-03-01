@@ -69,6 +69,7 @@ export const configSchema = baseConfigSchema.extend({
     .object({
       routeTemplate: z.string().optional(),
       lazyRouteTemplate: z.string().optional(),
+      disableFormatting: z.boolean().optional(),
     })
     .optional(),
   experimental: z
