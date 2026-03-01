@@ -648,7 +648,8 @@ type RouteLike = {
   }
 } &
   // router tree
-  (| { fullPath: string; from?: never } // full path from the root
+  (
+    | { fullPath: string; from?: never } // full path from the root
     // flat route masks list
     | { fullPath?: never; from: string } // full path from the root
   )

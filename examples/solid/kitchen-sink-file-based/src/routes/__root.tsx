@@ -51,13 +51,11 @@ function RootComponent() {
                 <div>
                   <Link
                     to={to}
-                    activeOptions={
-                      {
-                        // If the route points to the root of it's parent,
-                        // make sure it's only active if it's exact
-                        // exact: to === '.',
-                      }
-                    }
+                    activeOptions={{
+                      // If the route points to the root of it's parent,
+                      // make sure it's only active if it's exact
+                      // exact: to === '.',
+                    }}
                     preload="intent"
                     class={`block py-2 px-3 text-blue-700`}
                     // Make "active" links bold

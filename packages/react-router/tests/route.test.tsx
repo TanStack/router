@@ -77,7 +77,7 @@ describe('createRoute has the same hooks as getRouteApi', () => {
   )
 })
 
-/* disabled until HMR bug is fixed 
+/* disabled until HMR bug is fixed
 describe('throws invariant exception when trying to access properties before `createRouter` completed', () => {
   function setup() {
     const rootRoute = createRootRoute()

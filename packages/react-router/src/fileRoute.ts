@@ -66,7 +66,7 @@ export function createFileRoute<
   }).createRoute
 }
 
-/** 
+/**
   @deprecated It's no longer recommended to use the `FileRoute` class directly.
   Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
 */
