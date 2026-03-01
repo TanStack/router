@@ -13,7 +13,7 @@
     "@auth/core": "^0.41.1",
     "@tanstack/react-router": "^1.163.3",
     "@tanstack/react-router-devtools": "^1.163.3",
-    "@tanstack/react-start": "^1.164.0",
+    "@tanstack/react-start": "^1.164.1",
     "start-authjs": "^1.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
