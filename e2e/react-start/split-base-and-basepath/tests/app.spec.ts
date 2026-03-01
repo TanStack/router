@@ -1,6 +1,13 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from '@tanstack/router-e2e-utils'
+
+const whitelistErrors = [
+  'Failed to load resource: net::ERR_NAME_NOT_RESOLVED',
+  'Failed to load resource: the server responded with a status of 504',
+]
 
 test.describe('split base and basepath', () => {
+  test.use({ whitelistErrors })
   test('page renders at root /', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByTestId('home-heading')).toHaveText('Welcome Home')
@@ -28,25 +35,15 @@ test.describe('split base and basepath', () => {
       )
     }
 
-    // Stylesheet links should reference /_ui/ prefix.
-    // In dev mode, the TanStack Start dev-styles endpoint uses a special
-    // /@tanstack-start/ prefix that is not base-prefixed. That's fine because
-    // the dev-base-rewrite middleware makes it accessible without the prefix.
-    // We only check non-dev-style stylesheets here.
-    const stylesheetMatches =
-      html.match(/href="([^"]+)"\s*(?:data-tanstack-router-dev-styles)?/g) || []
+    // All stylesheet links (including dev styles) should reference /_ui/ prefix.
+    // Dev styles default basepath is the Vite base, so they get /_ui/ too.
+    const stylesheetMatches = html.match(/href="([^"]+\.css[^"]*)"/g) || []
     for (const match of stylesheetMatches) {
-      // Skip dev-only style links (/@tanstack-start/styles.css)
-      if (match.includes('@tanstack-start/styles.css')) {
-        continue
-      }
-      const href = match.replace(/.*href="/, '').replace(/".*/, '')
-      if (href.endsWith('.css')) {
-        expect(
-          href,
-          `Stylesheet URL should be prefixed with /_ui/: ${href}`,
-        ).toMatch(/^\/_ui\//)
-      }
+      const href = match.replace(/^href="/, '').replace(/"$/, '')
+      expect(
+        href,
+        `Stylesheet URL should be prefixed with /_ui/: ${href}`,
+      ).toMatch(/^\/_ui\//)
     }
   })
 

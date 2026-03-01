@@ -309,6 +309,9 @@ export function TanStackStartVitePluginCore(
             ...defineReplaceEnv('TSS_ROUTER_BASEPATH', startConfig.router.basepath),
             ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
             ...defineReplaceEnv('TSS_DEV_SERVER', command === 'serve' ? 'true' : 'false'),
+            // Dev SSR styles: enabled flag and basepath (defaults to vite base for asset URL alignment)
+            ...defineReplaceEnv('TSS_DEV_SSR_STYLES_ENABLED', startConfig.dev.ssrStyles.enabled ? 'true' : 'false'),
+            ...defineReplaceEnv('TSS_DEV_SSR_STYLES_BASEPATH', startConfig.dev.ssrStyles.basepath ?? resolvedStartConfig.viteAppBase),
             // Replace NODE_ENV during build (unless opted out) for dead code elimination in server bundles
             ...(command === 'build' && startConfig.server.build.staticNodeEnv ? {
               'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || viteConfig.mode || 'production'),
@@ -417,7 +420,10 @@ export function TanStackStartVitePluginCore(
         })
       },
     },
-    devServerPlugin({ getConfig }),
+    devServerPlugin({
+      getConfig,
+      devSsrStylesEnabled: startPluginOpts?.dev?.ssrStyles?.enabled ?? true,
+    }),
     previewServerPlugin(),
     {
       name: 'tanstack-start:core:capture-bundle',

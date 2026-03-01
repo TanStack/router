@@ -13,6 +13,9 @@ export default defineConfig({
   workers: 1,
   reporter: [['line']],
 
+  globalSetup: './tests/setup/global.setup.ts',
+  globalTeardown: './tests/setup/global.teardown.ts',
+
   use: {
     baseURL,
   },
