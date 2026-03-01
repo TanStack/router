@@ -16,7 +16,7 @@
     "@radix-ui/themes": "^3.3.0",
     "@tanstack/react-router": "^1.163.3",
     "@tanstack/react-router-devtools": "^1.163.3",
-    "@tanstack/react-start": "^1.165.0",
+    "@tanstack/react-start": "^1.166.0",
     "@workos/authkit-tanstack-react-start": "^0.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
