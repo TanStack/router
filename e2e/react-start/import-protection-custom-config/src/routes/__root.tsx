@@ -12,7 +12,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Import Protection E2E Test' },
+      { title: 'Import Protection Custom Config E2E' },
     ],
   }),
   component: RootComponent,
@@ -20,16 +20,8 @@ export const Route = createRootRoute({
 
 const navLinks = linkOptions([
   { to: '/', label: 'Home' },
-  { to: '/leaky-server-import', label: 'Leaky Import' },
-  { to: '/alias-path-namespace-leak', label: 'Alias path namespace leak' },
-  { to: '/client-only-violations', label: 'Client-Only Violations' },
-  { to: '/client-only-jsx', label: 'Client-Only JSX' },
-  { to: '/beforeload-leak', label: 'Beforeload Leak' },
-  { to: '/component-server-leak', label: 'Component Server Leak' },
-  { to: '/barrel-false-positive', label: 'Barrel False Positive' },
-  { to: '/noexternal-client-pkg', label: 'noExternal Client Pkg' },
-  { to: '/alias-path-leak', label: 'Alias Path Leak' },
-  { to: '/non-alias-namespace-leak', label: 'Non-Alias Namespace Leak' },
+  { to: '/backend-leak', label: 'Backend Leak' },
+  { to: '/frontend-leak', label: 'Frontend Leak' },
 ])
 
 function RootComponent() {

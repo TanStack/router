@@ -67,29 +67,18 @@ async function killChild(child: ReturnType<typeof spawn>): Promise<void> {
       } catch {
         // ignore
       }
-      // Resolve after a grace period even if 'exit' never fires.
       setTimeout(done, 500)
     }, 3000)
   })
 }
 
-const routeDefinitions = [
-  ['/', 'heading'],
-  ['/leaky-server-import', 'leaky-heading'],
-  ['/client-only-violations', 'client-only-heading'],
-  ['/client-only-jsx', 'client-only-jsx-heading'],
-  ['/beforeload-leak', 'beforeload-leak-heading'],
-  ['/component-server-leak', 'component-leak-heading'],
-  ['/barrel-false-positive', 'barrel-heading'],
-  ['/alias-path-leak', 'alias-path-leak-heading'],
-  ['/alias-path-namespace-leak', 'alias-path-namespace-leak-heading'],
-  ['/non-alias-namespace-leak', 'non-alias-namespace-leak-heading'],
-] as const
+const routes = ['/', '/backend-leak', '/frontend-leak'] as const
 
-const routes = routeDefinitions.map(([route]) => route)
-
-const routeReadyTestIds: Record<string, string> =
-  Object.fromEntries(routeDefinitions)
+const routeReadyTestIds: Record<string, string> = {
+  '/': 'heading',
+  '/backend-leak': 'backend-leak-heading',
+  '/frontend-leak': 'frontend-leak-heading',
+}
 
 async function navigateAllRoutes(
   baseURL: string,
@@ -100,8 +89,6 @@ async function navigateAllRoutes(
 
   for (const route of routes) {
     try {
-      // Prefer 'networkidle' (ensures route chunks are actually fetched), but
-      // fall back if it hangs in certain CI environments.
       try {
         await page.goto(`${baseURL}${route}`, {
           waitUntil: 'networkidle',
@@ -121,7 +108,6 @@ async function navigateAllRoutes(
     } catch {
       // ignore navigation errors — we only care about server logs
     } finally {
-      // Allow deferred transforms/logging to flush even when navigation fails.
       await new Promise((r) => setTimeout(r, 750))
     }
   }
@@ -129,10 +115,6 @@ async function navigateAllRoutes(
   await context.close()
 }
 
-/**
- * Starts a dev server, navigates all routes, captures violations.
- * Returns the extracted violations array.
- */
 async function runDevPass(
   cwd: string,
   port: number,
@@ -163,12 +145,6 @@ async function runDevPass(
   return extractViolationsFromLog(text)
 }
 
-/**
- * Captures dev violations in two passes:
- *   1. Cold — fresh dev server, Vite compiles all modules from scratch.
- *   2. Warm — restart dev server (Vite's .vite cache persists on disk),
- *      modules are pre-transformed so resolveId/transform paths differ.
- */
 async function captureDevViolations(cwd: string): Promise<void> {
   const port = await getTestServerPort(`${packageJson.name}_dev`)
 
@@ -178,30 +154,16 @@ async function captureDevViolations(cwd: string): Promise<void> {
     path.resolve(cwd, 'violations.dev.json'),
     JSON.stringify(coldViolations, null, 2),
   )
-  fs.writeFileSync(
-    path.resolve(cwd, 'violations.dev.cold.json'),
-    JSON.stringify(coldViolations, null, 2),
-  )
-
-  // Warm pass: the .vite cache from the cold run is still on disk.
-  const warmViolations = await runDevPass(cwd, port)
-
-  fs.writeFileSync(
-    path.resolve(cwd, 'violations.dev.warm.json'),
-    JSON.stringify(warmViolations, null, 2),
-  )
 }
 
 export default async function globalSetup(config: FullConfig) {
   void config
-  // This file lives in ./tests; fixture root is one directory up.
   const cwd = path.resolve(import.meta.dirname, '..')
 
   // webServer.command writes build output to this file.
   const logFile = path.resolve(cwd, 'webserver-build.log')
 
   if (!fs.existsSync(logFile)) {
-    // If the log doesn't exist, leave an empty violations file.
     fs.writeFileSync(path.resolve(cwd, 'violations.build.json'), '[]')
     return
   }

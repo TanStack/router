@@ -3,6 +3,8 @@ import {
   MOCK_EDGE_PREFIX,
   MOCK_MODULE_ID,
   MOCK_RUNTIME_PREFIX,
+  generateDevSelfDenialModule,
+  generateSelfContainedMockModule,
   loadMarkerModule,
   loadMockEdgeModule,
   loadMockRuntimeModule,
@@ -33,7 +35,6 @@ describe('loadMarkerModule', () => {
 describe('loadMockEdgeModule', () => {
   test('generates named exports from payload', () => {
     const payload = JSON.stringify({
-      source: './secret.server',
       exports: ['getSecret', 'initDb'],
       runtimeId: MOCK_MODULE_ID,
     })
@@ -47,7 +48,6 @@ describe('loadMockEdgeModule', () => {
 
   test('handles empty exports array', () => {
     const payload = JSON.stringify({
-      source: './x',
       exports: [],
       runtimeId: MOCK_MODULE_ID,
     })
@@ -60,7 +60,6 @@ describe('loadMockEdgeModule', () => {
 
   test('handles string-keyed (non-identifier) export names via re-export', () => {
     const payload = JSON.stringify({
-      source: './x',
       exports: ['valid', 'default', '123invalid', 'also-invalid'],
       runtimeId: MOCK_MODULE_ID,
     })
@@ -84,7 +83,6 @@ describe('loadMockEdgeModule', () => {
 
   test('falls back to MOCK_MODULE_ID when runtimeId missing', () => {
     const payload = JSON.stringify({
-      source: './x',
       exports: ['a'],
     })
     const encoded = Buffer.from(payload, 'utf8').toString('base64url')
@@ -213,28 +211,101 @@ describe('mockRuntimeModuleIdFromViolation', () => {
 })
 
 describe('makeMockEdgeModuleId', () => {
-  test('encodes exports and source into module ID', () => {
-    const id = makeMockEdgeModuleId(
-      ['foo', 'bar'],
-      './secret.server',
-      MOCK_MODULE_ID,
-    )
+  test('encodes exports into module ID payload', () => {
+    const id = makeMockEdgeModuleId(['foo', 'bar'], MOCK_MODULE_ID)
     expect(id.startsWith(MOCK_EDGE_PREFIX)).toBe(true)
     const encoded = id.slice(MOCK_EDGE_PREFIX.length)
     const payload = JSON.parse(
       Buffer.from(encoded, 'base64url').toString('utf8'),
     )
-    expect(payload.source).toBe('./secret.server')
     expect(payload.exports).toEqual(['foo', 'bar'])
     expect(payload.runtimeId).toBe(MOCK_MODULE_ID)
   })
 
   test('handles empty exports', () => {
-    const id = makeMockEdgeModuleId([], './x', MOCK_MODULE_ID)
+    const id = makeMockEdgeModuleId([], MOCK_MODULE_ID)
     const encoded = id.slice(MOCK_EDGE_PREFIX.length)
     const payload = JSON.parse(
       Buffer.from(encoded, 'base64url').toString('utf8'),
     )
     expect(payload.exports).toEqual([])
+  })
+})
+
+describe('generateSelfContainedMockModule', () => {
+  test('generates module with named exports', () => {
+    const result = generateSelfContainedMockModule(['getSecret', 'initDb'])
+    expect(result.code).toContain('export const getSecret = mock.getSecret;')
+    expect(result.code).toContain('export const initDb = mock.initDb;')
+    expect(result.code).toContain('export default mock')
+    expect(result.code).toContain('createMock')
+    expect(result.code).toContain('Proxy')
+  })
+
+  test('handles empty exports', () => {
+    const result = generateSelfContainedMockModule([])
+    expect(result.code).toContain('export default mock')
+    expect(result.code).not.toContain('export const')
+  })
+
+  test('filters out default export', () => {
+    const result = generateSelfContainedMockModule(['default', 'foo'])
+    expect(result.code).toContain('export const foo = mock.foo;')
+    expect(result.code).not.toContain('export const default')
+  })
+
+  test('handles string-keyed (non-identifier) export names via re-export', () => {
+    const result = generateSelfContainedMockModule([
+      'valid',
+      '123invalid',
+      'also-invalid',
+    ])
+    expect(result.code).toContain('export const valid = mock.valid;')
+    expect(result.code).toContain('__tss_str_')
+    expect(result.code).toContain('"123invalid"')
+    expect(result.code).toContain('"also-invalid"')
+  })
+
+  test('is self-contained (no imports)', () => {
+    const result = generateSelfContainedMockModule(['foo'])
+    // Should not import from any other module
+    expect(result.code).not.toMatch(/\bimport\b/)
+  })
+})
+
+describe('generateDevSelfDenialModule', () => {
+  test('generates module with named exports and mock-runtime import', () => {
+    const runtimeId = 'tanstack-start-import-protection:mock-runtime:abc'
+    const result = generateDevSelfDenialModule(
+      ['getSecret', 'initDb'],
+      runtimeId,
+    )
+    expect(result.code).toContain(`import mock from "${runtimeId}"`)
+    expect(result.code).toContain('export const getSecret = mock.getSecret;')
+    expect(result.code).toContain('export const initDb = mock.initDb;')
+    expect(result.code).toContain('export default mock;')
+  })
+
+  test('handles empty exports', () => {
+    const runtimeId = MOCK_MODULE_ID
+    const result = generateDevSelfDenialModule([], runtimeId)
+    expect(result.code).toContain(`import mock from "${runtimeId}"`)
+    expect(result.code).toContain('export default mock;')
+    expect(result.code).not.toContain('export const')
+  })
+
+  test('filters out default export', () => {
+    const result = generateDevSelfDenialModule(['default', 'foo'], 'mock-rt:x')
+    expect(result.code).toContain('export const foo = mock.foo;')
+    expect(result.code).not.toContain('export const default')
+    expect(result.code).toContain('export default mock;')
+  })
+
+  test('imports mock-runtime (not self-contained)', () => {
+    const result = generateDevSelfDenialModule(['foo'], 'mock-rt:xyz')
+    expect(result.code).toMatch(/\bimport\b/)
+    // Should NOT contain inline createMock/Proxy (that's the build-mode mock)
+    expect(result.code).not.toContain('createMock')
+    expect(result.code).not.toContain('Proxy')
   })
 })
