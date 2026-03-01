@@ -864,3 +864,52 @@ test('createServerFn respects TsrSerializable', () => {
     Promise<{ nested: { custom: MyCustomTypeSerializable } }>
   >()
 })
+
+test('createServerFn POST with FormData union validator', () => {
+  const validator = createServerFn({ method: 'POST' }).inputValidator<
+    (input: FormData | { id: string }) => { id: 'string' }
+  >
+
+  expectTypeOf(validator)
+    .parameter(0)
+    .parameter(0)
+    .toEqualTypeOf<FormData | { id: string }>()
+})
+
+test('createServerFn GET cannot use FormData union validator', () => {
+  const validator = createServerFn({ method: 'GET' }).inputValidator<
+    (input: FormData | { id: string }) => { output: 'string' }
+  >
+
+  expectTypeOf(validator).parameter(0).parameter(0).toEqualTypeOf<
+    | {
+        append: 'Function is not serializable'
+        delete: 'Function is not serializable'
+        get: 'Function is not serializable'
+        getAll: 'Function is not serializable'
+        has: 'Function is not serializable'
+        set: 'Function is not serializable'
+        forEach: 'Function is not serializable'
+        entries: 'Function is not serializable'
+        keys: 'Function is not serializable'
+        values: 'Function is not serializable'
+        [Symbol.iterator]: 'Function is not serializable'
+      }
+    | {
+        id: string
+      }
+  >()
+})
+
+test('createServerFn POST rejects FormData union with non-serializable', () => {
+  const validator = createServerFn({ method: 'POST' }).inputValidator<
+    (input: FormData | { func: () => void }) => { output: 'string' }
+  >
+
+  expectTypeOf(validator).parameter(0).parameter(0).toEqualTypeOf<
+    | FormData
+    | {
+        func: 'Function is not serializable'
+      }
+  >()
+})
