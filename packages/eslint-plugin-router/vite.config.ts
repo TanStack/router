@@ -10,6 +10,7 @@ const config = defineConfig({
     globals: true,
     typecheck: { enabled: true },
     restoreMocks: true,
+    coverage: { enabled: true },
   },
 })
 

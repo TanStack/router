@@ -72,7 +72,8 @@
     "typescript57": "npm:typescript@5.7",
     "typescript58": "npm:typescript@5.8",
     "vite": "^7.3.1",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.17"
   },
   "pnpm": {
     "overrides": {
