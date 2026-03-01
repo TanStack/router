@@ -1,5 +1,5 @@
 import { Component, computed } from '@angular/core'
-import { Outlet, Link, createLazyRoute } from '@tanstack/angular-router'
+import { Outlet, Link, createLazyRoute } from '@tanstack/angular-router-experimental'
 
 export const Route = createLazyRoute('/posts')({
   component: () => PostsComponent,

@@ -5,7 +5,7 @@ import {
   injectNavigate,
   injectRouterState,
   Link,
-} from '@tanstack/angular-router';
+} from '@tanstack/angular-router-experimental';
 import { TanStackRouterDevtools } from '@tanstack/angular-router-devtools';
 
 @Component({

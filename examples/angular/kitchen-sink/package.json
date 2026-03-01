@@ -28,7 +28,7 @@
     "@angular/core": "21.0.4",
     "@angular/forms": "21.0.4",
     "@angular/platform-browser": "21.0.4",
-    "@tanstack/angular-router": "workspace:^",
+    "@tanstack/angular-router-experimental": "workspace:^",
     "@tanstack/angular-router-devtools": "workspace:^",
     "immer": "^10.1.1",
     "redaxios": "^0.5.1",

@@ -68,7 +68,7 @@
   },
   "peerDependencies": {
     "@angular/core": "21.0.4",
-    "@tanstack/angular-router": "workspace:^",
+    "@tanstack/angular-router-experimental": "workspace:^",
     "@tanstack/router-core": "workspace:^"
   },
   "peerDependenciesMeta": {

@@ -11,7 +11,7 @@ import {
   DestroyRef,
 } from '@angular/core'
 import { TanStackRouterDevtoolsPanelCore } from '@tanstack/router-devtools-core'
-import { injectRouter, injectRouterState } from '@tanstack/angular-router'
+import { injectRouter, injectRouterState } from '@tanstack/angular-router-experimental'
 import type { AnyRouter } from '@tanstack/router-core'
 import { injectLazyRouterState } from './utils'
 

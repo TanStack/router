@@ -4,5 +4,8 @@
 
 🤖 Type-safe router w/ built-in caching & URL state management for Angular!
 
-## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!
+> ⚠️ Warning:
+> This Angular Router is experimental!
+> It is subject to breaking changes.
 
+## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!

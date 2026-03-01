@@ -1,4 +1,4 @@
-import { createRouter } from '@tanstack/angular-router'
+import { createRouter } from '@tanstack/angular-router-experimental'
 import { Route as HomeRoute } from './routes/home.route'
 import { Route as AboutRoute } from './routes/about.route'
 import { Route as AboutAngularRoute } from './routes/about.angular.route'
@@ -14,7 +14,7 @@ export const routeTree = RootRoute.addChildren([
 
 export const router = createRouter({ routeTree, defaultPreload: 'render' })
 
-declare module '@tanstack/angular-router' {
+declare module '@tanstack/angular-router-experimental' {
   interface Register {
     router: typeof router
   }

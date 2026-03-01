@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "angular-router": {
+    "angular-router-experimental": {
       "projectType": "library",
       "root": ".",
       "sourceRoot": "src",

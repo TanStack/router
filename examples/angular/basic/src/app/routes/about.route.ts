@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
-import { createRoute, Link } from '@tanstack/angular-router';
+import { createRoute, Link } from '@tanstack/angular-router-experimental';
 import { Route as RootRoute } from './root.route';
-import { Outlet, injectNavigate, injectRouterState } from '@tanstack/angular-router';
+import { Outlet, injectNavigate, injectRouterState } from '@tanstack/angular-router-experimental';
 
 @Component({
   selector: 'app-about',

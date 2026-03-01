@@ -1,7 +1,7 @@
 import { Component, computed } from '@angular/core';
-import { createRoute, Outlet, Link } from '@tanstack/angular-router';
+import { createRoute, Outlet, Link } from '@tanstack/angular-router-experimental';
 import { Route as RootRoute } from './root.route';
-import { injectSearch, injectNavigate } from '@tanstack/angular-router';
+import { injectSearch, injectNavigate } from '@tanstack/angular-router-experimental';
 import { z } from 'zod';
 
 // Mock data

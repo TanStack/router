@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { createRoute } from '@tanstack/angular-router';
+import { createRoute } from '@tanstack/angular-router-experimental';
 import { Route as PostsRoute } from './posts.route';
 
 // Mock data

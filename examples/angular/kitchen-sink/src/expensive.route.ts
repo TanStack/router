@@ -1,6 +1,6 @@
 import { Component } from '@angular/core'
-import { createLazyRoute, injectErrorState } from '@tanstack/angular-router'
-import { injectRouteErrorHandler } from '@tanstack/angular-router/experimental'
+import { createLazyRoute, injectErrorState } from '@tanstack/angular-router-experimental'
+import { injectRouteErrorHandler } from '@tanstack/angular-router-experimental/experimental'
 
 @Component({
   selector: 'app-expensive',
