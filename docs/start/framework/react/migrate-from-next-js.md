@@ -47,7 +47,7 @@ First, uninstall Next.js and remove related configuration files:
 
 ```sh
 npm uninstall @tailwindcss/postcss next
-rm postcss.config.* next.config.*
+rm postcss.config.* next.config.* next-env.d.ts proxy.ts middleware.ts
 ```
 
 ### 2. Install Required Dependencies
