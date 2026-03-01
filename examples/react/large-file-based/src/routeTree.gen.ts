@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ValidateLinkOptionsRouteImport } from './routes/validateLinkOptions'
 import { Route as RelativeRouteImport } from './routes/relative'
 import { Route as LinkPropsRouteImport } from './routes/linkProps'
 import { Route as AbsoluteRouteImport } from './routes/absolute'
@@ -18,6 +19,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SearchSearchPlaceholderRouteImport } from './routes/search/searchPlaceholder'
 import { Route as ParamsParamsPlaceholderRouteImport } from './routes/params/$paramsPlaceholder'
 
+const ValidateLinkOptionsRoute = ValidateLinkOptionsRouteImport.update({
+  id: '/validateLinkOptions',
+  path: '/validateLinkOptions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RelativeRoute = RelativeRouteImport.update({
   id: '/relative',
   path: '/relative',
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/absolute': typeof AbsoluteRoute
   '/linkProps': typeof LinkPropsRoute
   '/relative': typeof RelativeRoute
+  '/validateLinkOptions': typeof ValidateLinkOptionsRoute
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/absolute': typeof AbsoluteRoute
   '/linkProps': typeof LinkPropsRoute
   '/relative': typeof RelativeRoute
+  '/validateLinkOptions': typeof ValidateLinkOptionsRoute
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/absolute': typeof AbsoluteRoute
   '/linkProps': typeof LinkPropsRoute
   '/relative': typeof RelativeRoute
+  '/validateLinkOptions': typeof ValidateLinkOptionsRoute
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/absolute'
     | '/linkProps'
     | '/relative'
+    | '/validateLinkOptions'
     | '/params/$paramsPlaceholder'
     | '/search/searchPlaceholder'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/absolute'
     | '/linkProps'
     | '/relative'
+    | '/validateLinkOptions'
     | '/params/$paramsPlaceholder'
     | '/search/searchPlaceholder'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/absolute'
     | '/linkProps'
     | '/relative'
+    | '/validateLinkOptions'
     | '/params/$paramsPlaceholder'
     | '/search/searchPlaceholder'
   fileRoutesById: FileRoutesById
@@ -130,10 +142,18 @@ export interface RootRouteChildren {
   AbsoluteRoute: typeof AbsoluteRoute
   LinkPropsRoute: typeof LinkPropsRoute
   RelativeRoute: typeof RelativeRoute
+  ValidateLinkOptionsRoute: typeof ValidateLinkOptionsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/validateLinkOptions': {
+      id: '/validateLinkOptions'
+      path: '/validateLinkOptions'
+      fullPath: '/validateLinkOptions'
+      preLoaderRoute: typeof ValidateLinkOptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/relative': {
       id: '/relative'
       path: '/relative'
@@ -224,6 +244,7 @@ const rootRouteChildren: RootRouteChildren = {
   AbsoluteRoute: AbsoluteRoute,
   LinkPropsRoute: LinkPropsRoute,
   RelativeRoute: RelativeRoute,
+  ValidateLinkOptionsRoute: ValidateLinkOptionsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
