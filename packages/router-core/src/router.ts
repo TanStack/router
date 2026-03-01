@@ -153,6 +153,8 @@ export interface RouterOptionsExtensions extends DefaultRouterOptionsExtensions 
 
 export type SSROption = boolean | 'data-only'
 
+export type HydrateOption = boolean
+
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
@@ -404,6 +406,13 @@ export interface RouterOptions<
    */
   defaultSsr?: SSROption
 
+  /**
+   * The default `hydrate` a route should use if no `hydrate` is provided.
+   *
+   * @default true
+   */
+  defaultHydrate?: HydrateOption
+
   search?: {
     /**
      * Configures how unknown search params (= not returned by any `validateSearch`) are treated.
@@ -636,7 +645,7 @@ export type RouterConstructorOptions<
     TRouterHistory,
     TDehydrated
   >,
-  'context' | 'serializationAdapters' | 'defaultSsr'
+  'context' | 'serializationAdapters' | 'defaultSsr' | 'defaultHydrate'
 > &
   RouterContextOptions<TRouteTree>
 

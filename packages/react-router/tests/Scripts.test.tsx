@@ -680,3 +680,113 @@ describe('data script rendering', () => {
     expect(scriptEl!.textContent).toBe('console.log("empty type")')
   })
 })
+
+describe('selective hydration scripts', () => {
+  test('hydrate: false strips client entry import but keeps injected prelude', async () => {
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        {
+          type: 'module',
+          children:
+            'window.__tsr_refresh_setup = true;\nimport("virtual:tanstack-start-client-entry")',
+        },
+      ],
+      component: () => {
+        return (
+          <div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+    ;(rootRoute.options as any).hydrate = false
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => {
+        return <div>index</div>
+      },
+    })
+
+    document.head.innerHTML = ''
+    document.querySelectorAll('body script').forEach((s) => s.remove())
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: false,
+    })
+
+    await router.load()
+    await act(() => render(<RouterProvider router={router} />))
+
+    const headScripts = document.head.textContent || ''
+
+    expect(headScripts).toContain('window.__tsr_refresh_setup = true')
+    expect(headScripts).not.toContain('virtual:tanstack-start-client-entry')
+  })
+
+  test('hydrate: false strips marked client entry scripts from manifest assets', async () => {
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
+      },
+    })
+    ;(rootRoute.options as any).hydrate = false
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => {
+        return <div>index</div>
+      },
+    })
+
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
+    })
+
+    ;(router as any).ssr = {
+      manifest: {
+        routes: {
+          [rootRoute.id]: {
+            assets: [
+              {
+                tag: 'script',
+                attrs: {
+                  type: 'module',
+                  async: true,
+                  'data-tsr-client-entry': 'true',
+                },
+                children:
+                  'window.__tsr_refresh_setup = true;import("/assets/client.js")',
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    await router.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
+    )
+
+    expect(html).toContain('window.__tsr_refresh_setup = true')
+    expect(html).not.toContain('import(&quot;/assets/client.js&quot;)')
+  })
+})
