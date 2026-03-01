@@ -16,7 +16,7 @@
     "@prisma/client": "^7.0.0",
     "@tanstack/react-router": "^1.163.3",
     "@tanstack/react-router-devtools": "^1.163.3",
-    "@tanstack/react-start": "^1.163.4",
+    "@tanstack/react-start": "^1.163.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
