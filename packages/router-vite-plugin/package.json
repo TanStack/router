@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-vite-plugin",
-  "version": "1.158.0",
+  "version": "1.164.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -61,9 +61,12 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=20.19"
   },
   "dependencies": {
     "@tanstack/router-plugin": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "*"
   }
 }

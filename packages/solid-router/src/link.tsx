@@ -10,16 +10,18 @@ import {
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
+
+import { isServer } from '@tanstack/router-core/isServer'
 import { Dynamic } from 'solid-js/web'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
+import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
-  LinkCurrentTargetElement,
   LinkOptions,
   RegisteredRouter,
   RoutePaths,
@@ -28,6 +30,8 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
+
+const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -40,6 +44,9 @@ export function useLinkProps<
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
+  const shouldHydrateHash = !isServer && !!router.options.ssr
+  const hasHydrated = useHydrated()
+
   let hasRenderFetched = false
 
   const [local, rest] = Solid.splitProps(
@@ -67,6 +74,7 @@ export function useLinkProps<
       'style',
       'class',
       'onClick',
+      'onBlur',
       'onFocus',
       'onMouseEnter',
       'onMouseLeave',
@@ -115,6 +123,10 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
+  const currentLocation = useRouterState({
+    select: (s) => s.location,
+  })
+
   const currentSearch = useRouterState({
     select: (s) => s.location.searchStr,
   })
@@ -157,7 +169,7 @@ export function useLinkProps<
     const _href = hrefOption()
     if (_href?.external) {
       // Block dangerous protocols for external links
-      if (isDangerousProtocol(_href.href)) {
+      if (isDangerousProtocol(_href.href, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
         }
@@ -173,8 +185,8 @@ export function useLinkProps<
     if (isSafeInternal) return undefined
     try {
       new URL(to as any)
-      // Block dangerous protocols like javascript:, data:, vbscript:
-      if (isDangerousProtocol(to as string)) {
+      // Block dangerous protocols like javascript:, blob:, data:
+      if (isDangerousProtocol(to as string, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
@@ -194,51 +206,51 @@ export function useLinkProps<
   const preloadDelay = () =>
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  const isActive = useRouterState({
-    select: (s) => {
-      if (externalLink()) return false
-      if (local.activeOptions?.exact) {
-        const testExact = exactPathTest(
-          s.location.pathname,
-          next().pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          s.location.pathname,
-          router.basepath,
-        ).split('/')
-        const nextPathSplit = removeTrailingSlash(
-          next()?.pathname,
-          router.basepath,
-        )?.split('/')
-
-        const pathIsFuzzyEqual = nextPathSplit?.every(
-          (d, i) => d === currentPathSplit[i],
-        )
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
+  const isActive = Solid.createMemo(() => {
+    if (externalLink()) return false
+    if (local.activeOptions?.exact) {
+      const testExact = exactPathTest(
+        currentLocation().pathname,
+        next().pathname,
+        router.basepath,
+      )
+      if (!testExact) {
+        return false
       }
+    } else {
+      const currentPathSplit = removeTrailingSlash(
+        currentLocation().pathname,
+        router.basepath,
+      ).split('/')
+      const nextPathSplit = removeTrailingSlash(
+        next()?.pathname,
+        router.basepath,
+      )?.split('/')
 
-      if (local.activeOptions?.includeSearch ?? true) {
-        const searchTest = deepEqual(s.location.search, next().search, {
-          partial: !local.activeOptions?.exact,
-          ignoreUndefined: !local.activeOptions?.explicitUndefined,
-        })
-        if (!searchTest) {
-          return false
-        }
+      const pathIsFuzzyEqual = nextPathSplit?.every(
+        (d, i) => d === currentPathSplit[i],
+      )
+      if (!pathIsFuzzyEqual) {
+        return false
       }
+    }
 
-      if (local.activeOptions?.includeHash) {
-        return s.location.hash === next().hash
+    if (local.activeOptions?.includeSearch ?? true) {
+      const searchTest = deepEqual(currentLocation().search, next().search, {
+        partial: !local.activeOptions?.exact,
+        ignoreUndefined: !local.activeOptions?.explicitUndefined,
+      })
+      if (!searchTest) {
+        return false
       }
-      return true
-    },
+    }
+
+    if (local.activeOptions?.includeHash) {
+      const currentHash =
+        shouldHydrateHash && !hasHydrated() ? '' : currentLocation().hash
+      return currentHash === next().hash
+    }
+    return true
   })
 
   const doPreload = () =>
@@ -287,6 +299,7 @@ export function useLinkProps<
         'style',
         'class',
         'onClick',
+        'onBlur',
         'onFocus',
         'onMouseEnter',
         'onMouseLeave',
@@ -336,39 +349,40 @@ export function useLinkProps<
     }
   }
 
-  // The click handler
-  const handleFocus = (_: MouseEvent) => {
-    if (local.disabled) return
-    if (preload()) {
+  const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
+    if (local.disabled || preload() !== 'intent') return
+
+    if (!preloadDelay()) {
       doPreload()
+      return
     }
-  }
 
-  const handleTouchStart = handleFocus
+    const eventTarget = e.currentTarget || e.target
 
-  const handleEnter = (e: MouseEvent) => {
-    if (local.disabled) return
-    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
+    if (!eventTarget || timeoutMap.has(eventTarget)) return
 
-    if (preload()) {
-      if (eventTarget.preloadTimeout) {
-        return
-      }
-
-      eventTarget.preloadTimeout = setTimeout(() => {
-        eventTarget.preloadTimeout = null
+    timeoutMap.set(
+      eventTarget,
+      setTimeout(() => {
+        timeoutMap.delete(eventTarget)
         doPreload()
-      }, preloadDelay())
-    }
+      }, preloadDelay()),
+    )
   }
 
-  const handleLeave = (e: MouseEvent) => {
-    if (local.disabled) return
-    const eventTarget = (e.currentTarget || {}) as LinkCurrentTargetElement
+  const handleTouchStart = (_: TouchEvent) => {
+    if (local.disabled || preload() !== 'intent') return
+    doPreload()
+  }
 
-    if (eventTarget.preloadTimeout) {
-      clearTimeout(eventTarget.preloadTimeout)
-      eventTarget.preloadTimeout = null
+  const handleLeave = (e: MouseEvent | FocusEvent) => {
+    if (local.disabled) return
+    const eventTarget = e.currentTarget || e.target
+
+    if (eventTarget) {
+      const id = timeoutMap.get(eventTarget)
+      clearTimeout(id)
+      timeoutMap.delete(eventTarget)
     }
   }
 
@@ -431,9 +445,16 @@ export function useLinkProps<
         href: hrefOption()?.href,
         ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
-        onFocus: composeEventHandlers([local.onFocus, handleFocus]),
-        onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
-        onMouseOver: composeEventHandlers([local.onMouseOver, handleEnter]),
+        onBlur: composeEventHandlers([local.onBlur, handleLeave]),
+        onFocus: composeEventHandlers([local.onFocus, enqueueIntentPreload]),
+        onMouseEnter: composeEventHandlers([
+          local.onMouseEnter,
+          enqueueIntentPreload,
+        ]),
+        onMouseOver: composeEventHandlers([
+          local.onMouseOver,
+          enqueueIntentPreload,
+        ]),
         onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
         onMouseOut: composeEventHandlers([local.onMouseOut, handleLeave]),
         onTouchStart: composeEventHandlers([

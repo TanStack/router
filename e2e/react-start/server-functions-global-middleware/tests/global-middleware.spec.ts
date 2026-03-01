@@ -129,3 +129,27 @@ test.describe('Global middleware deduplication (issue #5239)', () => {
     })
   })
 })
+
+test.describe('Request middleware pathname (issue #6647)', () => {
+  test('pathname should be the page path on SSR', async ({ page }) => {
+    await page.goto('/pathname-middleware')
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('request-middleware-pathname')).toHaveText(
+      '/pathname-middleware',
+    )
+  })
+
+  test('pathname should be the server function path on client-side navigation', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+    await page.getByTestId('link-pathname').click()
+    await page.waitForLoadState('networkidle')
+    const pathnameText = await page
+      .getByTestId('request-middleware-pathname')
+      .textContent()
+    expect(pathnameText).toBeTruthy()
+    expect(pathnameText!.startsWith('/_serverFn/')).toBe(true)
+  })
+})

@@ -1,6 +1,16 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('Escaped special strings routing', () => {
+  test('home index route renders at / path', async ({ page }) => {
+    await page.goto('/')
+
+    await expect(page.getByTestId('page-title')).toContainText('Home Page')
+    await expect(page.getByTestId('page-path')).toContainText('/')
+    await expect(page.getByTestId('page-description')).toContainText(
+      'home/index route at /',
+    )
+  })
+
   test('escaped [index] route renders at /index path', async ({ page }) => {
     await page.goto('/index')
 
@@ -59,6 +69,14 @@ test.describe('Escaped special strings routing', () => {
     await expect(page.getByTestId('page-description')).toContainText(
       'escape the trailing underscore',
     )
+  })
+
+  test('client-side navigation to home / route', async ({ page }) => {
+    await page.goto('/index')
+    await page.getByTestId('link-home').click()
+    await page.waitForURL('/')
+
+    await expect(page.getByTestId('page-title')).toContainText('Home Page')
   })
 
   test('client-side navigation to escaped /index route', async ({ page }) => {

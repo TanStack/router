@@ -11,8 +11,8 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.158.0",
-    "@tanstack/router-plugin": "^1.158.0",
+    "@tanstack/solid-router": "^1.163.3",
+    "@tanstack/router-plugin": "^1.164.0",
     "compression": "^1.8.0",
     "express": "^4.21.2",
     "get-port": "^7.1.0",
@@ -20,7 +20,7 @@
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "@tanstack/solid-router-devtools": "^1.158.0",
+    "@tanstack/solid-router-devtools": "^1.163.3",
     "@types/express": "^4.17.23",
     "vite-plugin-solid": "^2.11.10",
     "typescript": "^5.8.3",

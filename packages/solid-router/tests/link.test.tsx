@@ -775,7 +775,7 @@ describe('Link', () => {
       '/posts?page=2&filter=inactive',
     )
 
-    await fireEvent.click(updateSearchLink)
+    fireEvent.click(updateSearchLink)
 
     // Wait for navigation to complete and search params to update
     await waitFor(() => {
@@ -786,8 +786,11 @@ describe('Link', () => {
     const updatedFilter = await screen.findByTestId('current-filter')
 
     // Verify search was updated
-    expect(window.location.pathname).toBe('/posts')
-    expect(window.location.search).toBe('?page=2&filter=inactive')
+    // Wait for navigation to complete and search params to update
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/posts')
+      expect(window.location.search).toBe('?page=2&filter=inactive')
+    })
 
     expect(updatedPage).toHaveTextContent('Page: 2')
     expect(updatedFilter).toHaveTextContent('Filter: inactive')
@@ -1487,7 +1490,11 @@ describe('Link', () => {
         return (
           <>
             <h1>Index</h1>
-            <Link to="/posts/$postId" params={{ postId: 'id1' }}>
+            <Link
+              to="/posts/$postId"
+              params={{ postId: 'id1' }}
+              preloadDelay={0}
+            >
               To first post
             </Link>
           </>
@@ -1541,6 +1548,118 @@ describe('Link', () => {
 
     const paramText = await screen.findByText('Params: id1')
     expect(paramText).toBeInTheDocument()
+  })
+
+  test('keeps a relative link active when changing inherited params (issue #5655)', async () => {
+    const rootRoute = createRootRoute()
+
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/post/$postId',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = () => params().postId
+
+        return (
+          <>
+            <Link
+              data-testid="step1-link"
+              from="/post/$postId"
+              to="step1"
+              activeProps={{ class: 'active' }}
+            >
+              Step 1
+            </Link>
+            <Link
+              data-testid="step2-link"
+              from="/post/$postId"
+              to="step2"
+              params={{ postId: postId() }}
+              activeProps={{ class: 'active' }}
+            >
+              Step 2
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const step1Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step1',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = () => params().postId
+        const otherPostId = () => (postId() === '1' ? '2' : '1')
+
+        return (
+          <>
+            <span>{`Post ${postId()} step1`}</span>
+            <Link
+              data-testid="switch-post-link"
+              from="/post/$postId/step1"
+              to="."
+              params={{ postId: otherPostId() }}
+            >{`Go to post ${otherPostId()}`}</Link>
+          </>
+        )
+      },
+    })
+
+    const step2Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step2',
+      component: () => {
+        const params = useParams({ strict: false })
+        const postId = () => params().postId
+        const otherPostId = () => (postId() === '1' ? '2' : '1')
+
+        return (
+          <>
+            <span>{`Post ${postId()} step2`}</span>
+            <Link
+              data-testid="switch-post-link"
+              from="/post/$postId/step2"
+              to="."
+              params={{ postId: otherPostId() }}
+            >{`Go to post ${otherPostId()}`}</Link>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        postRoute.addChildren([step1Route, step2Route]),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/post/1/step1'],
+      }),
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    expect(await screen.findByText('Post 1 step1')).toBeInTheDocument()
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('switch-post-link'))
+
+    expect(await screen.findByText('Post 2 step1')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step1')
+    expect(screen.getByTestId('step1-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('step2-link'))
+
+    expect(await screen.findByText('Post 2 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/2/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
+
+    fireEvent.click(screen.getByTestId('switch-post-link'))
+
+    expect(await screen.findByText('Post 1 step2')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/post/1/step2')
+    expect(screen.getByTestId('step2-link')).toHaveClass('active')
   })
 
   test('when navigating from /posts to ./$postId', async () => {
@@ -4364,6 +4483,114 @@ describe('Link', () => {
     expect(aboutLink).toBeInTheDocument()
 
     expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  test.each([undefined, false, 'render', 'viewport'] as const)(
+    'Link.preload="%s" should not preload on focus, hover, or touchstart',
+    async (preloadMode) => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <>
+            <h1>Index Heading</h1>
+            <Link
+              to="/about"
+              {...(preloadMode === undefined ? {} : { preload: preloadMode })}
+            >
+              About Link
+            </Link>
+          </>
+        ),
+      })
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+        component: () => <h1>About Heading</h1>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([aboutRoute, indexRoute]),
+        defaultPreload: false,
+        defaultPreloadDelay: 0,
+        history,
+      })
+
+      const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+      render(() => <RouterProvider router={router} />)
+
+      const aboutLink = await screen.findByRole('link', { name: 'About Link' })
+      expect(aboutLink).toBeInTheDocument()
+
+      if (preloadMode === 'render') {
+        await waitFor(() =>
+          expect(preloadRouteSpy.mock.calls.length).toBeGreaterThan(0),
+        )
+      }
+
+      const baselineCalls = preloadRouteSpy.mock.calls.length
+
+      fireEvent.focus(aboutLink)
+      fireEvent.mouseOver(aboutLink)
+      fireEvent.touchStart(aboutLink)
+
+      await sleep(100)
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls)
+    },
+  )
+
+  test('Link.preload="intent" should preload on focus, hover, and touchstart', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/about" preload="intent">
+            About Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <h1>About Heading</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([aboutRoute, indexRoute]),
+      defaultPreload: false,
+      defaultPreloadDelay: 0,
+      history,
+    })
+
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(() => <RouterProvider router={router} />)
+
+    const aboutLink = await screen.findByRole('link', { name: 'About Link' })
+    expect(aboutLink).toBeInTheDocument()
+
+    const baselineCalls = preloadRouteSpy.mock.calls.length
+
+    fireEvent.focus(aboutLink)
+    await waitFor(() =>
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 1),
+    )
+
+    fireEvent.mouseOver(aboutLink)
+    await waitFor(() =>
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 2),
+    )
+
+    fireEvent.touchStart(aboutLink)
+    await waitFor(() =>
+      expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 3),
+    )
   })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {

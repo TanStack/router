@@ -20,7 +20,7 @@
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "srvx": "^0.10.1",
+    "srvx": "^0.11.7",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.10",
     "vite-tsconfig-paths": "^5.1.4"

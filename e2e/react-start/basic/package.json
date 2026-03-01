@@ -41,7 +41,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "combinate": "^1.1.11",
-    "srvx": "^0.10.1",
+    "srvx": "^0.11.7",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",

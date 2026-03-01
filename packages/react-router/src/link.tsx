@@ -76,6 +76,7 @@ export function useLinkProps<
     style,
     className,
     onClick,
+    onBlur,
     onFocus,
     onMouseEnter,
     onMouseLeave,
@@ -118,7 +119,7 @@ export function useLinkProps<
     ) {
       try {
         new URL(to)
-        if (isDangerousProtocol(to)) {
+        if (isDangerousProtocol(to, router.protocolAllowlist)) {
           if (process.env.NODE_ENV !== 'production') {
             console.warn(`Blocked Link with dangerous protocol: ${to}`)
           }
@@ -170,7 +171,7 @@ export function useLinkProps<
 
     const externalLink = (() => {
       if (hrefOption?.external) {
-        if (isDangerousProtocol(hrefOption.href)) {
+        if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
           if (process.env.NODE_ENV !== 'production') {
             console.warn(
               `Blocked Link with dangerous protocol: ${hrefOption.href}`,
@@ -187,7 +188,7 @@ export function useLinkProps<
       if (typeof to === 'string' && to.indexOf(':') > -1) {
         try {
           new URL(to)
-          if (isDangerousProtocol(to)) {
+          if (isDangerousProtocol(to, router.protocolAllowlist)) {
             if (process.env.NODE_ENV !== 'production') {
               console.warn(`Blocked Link with dangerous protocol: ${to}`)
             }
@@ -376,10 +377,17 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
 
-  // subscribe to search params to re-build location if it changes
+  // subscribe to path/search/hash/params to re-build location when they change
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentSearch = useRouterState({
-    select: (s) => s.location.search,
+  const currentLocationState = useRouterState({
+    select: (s) => {
+      const leaf = s.matches[s.matches.length - 1]
+      return {
+        search: leaf?.search,
+        hash: s.location.hash,
+        path: leaf?.pathname, // path + params
+      }
+    },
     structuralSharing: true as any,
   })
 
@@ -393,7 +401,7 @@ export function useLinkProps<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      currentSearch,
+      currentLocationState,
       from,
       options._fromLocation,
       options.hash,
@@ -438,7 +446,7 @@ export function useLinkProps<
   const externalLink = React.useMemo(() => {
     if (hrefOption?.external) {
       // Block dangerous protocols for external links
-      if (isDangerousProtocol(hrefOption.href)) {
+      if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(
             `Blocked Link with dangerous protocol: ${hrefOption.href}`,
@@ -453,8 +461,8 @@ export function useLinkProps<
     if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
     try {
       new URL(to as any)
-      // Block dangerous protocols like javascript:, data:, vbscript:
-      if (isDangerousProtocol(to)) {
+      // Block dangerous protocols like javascript:, blob:, data:
+      if (isDangerousProtocol(to, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
@@ -463,7 +471,7 @@ export function useLinkProps<
       return to
     } catch {}
     return undefined
-  }, [to, hrefOption])
+  }, [to, hrefOption, router.protocolAllowlist])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isActive = useRouterState({
@@ -556,11 +564,13 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const doPreload = React.useCallback(() => {
-    router.preloadRoute({ ..._options } as any).catch((err) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
-  }, [router, _options])
+    router
+      .preloadRoute({ ..._options, _builtLocation: next } as any)
+      .catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+  }, [router, _options, next])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const preloadViewportIoCallback = React.useCallback(
@@ -642,6 +652,7 @@ export function useLinkProps<
       ...(style && { style }),
       ...(className && { className }),
       ...(onClick && { onClick }),
+      ...(onBlur && { onBlur }),
       ...(onFocus && { onFocus }),
       ...(onMouseEnter && { onMouseEnter }),
       ...(onMouseLeave && { onMouseLeave }),
@@ -649,36 +660,35 @@ export function useLinkProps<
     }
   }
 
-  const handleFocus = (_: React.MouseEvent) => {
-    if (disabled) return
-    if (preload) {
-      doPreload()
-    }
-  }
-
-  const handleTouchStart = handleFocus
-
-  const handleEnter = (e: React.MouseEvent) => {
-    if (disabled || !preload) return
+  const enqueueIntentPreload = (e: React.MouseEvent | React.FocusEvent) => {
+    if (disabled || preload !== 'intent') return
 
     if (!preloadDelay) {
       doPreload()
-    } else {
-      const eventTarget = e.target
-      if (timeoutMap.has(eventTarget)) {
-        return
-      }
-      const id = setTimeout(() => {
-        timeoutMap.delete(eventTarget)
-        doPreload()
-      }, preloadDelay)
-      timeoutMap.set(eventTarget, id)
+      return
     }
+
+    const eventTarget = e.currentTarget
+
+    if (timeoutMap.has(eventTarget)) {
+      return
+    }
+
+    const id = setTimeout(() => {
+      timeoutMap.delete(eventTarget)
+      doPreload()
+    }, preloadDelay)
+    timeoutMap.set(eventTarget, id)
   }
 
-  const handleLeave = (e: React.MouseEvent) => {
+  const handleTouchStart = (_: React.TouchEvent) => {
+    if (disabled || preload !== 'intent') return
+    doPreload()
+  }
+
+  const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
     if (disabled || !preload || !preloadDelay) return
-    const eventTarget = e.target
+    const eventTarget = e.currentTarget
     const id = timeoutMap.get(eventTarget)
     if (id) {
       clearTimeout(id)
@@ -693,8 +703,9 @@ export function useLinkProps<
     href: hrefOption?.href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
-    onFocus: composeHandlers([onFocus, handleFocus]),
-    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+    onBlur: composeHandlers([onBlur, handleLeave]),
+    onFocus: composeHandlers([onFocus, enqueueIntentPreload]),
+    onMouseEnter: composeHandlers([onMouseEnter, enqueueIntentPreload]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,

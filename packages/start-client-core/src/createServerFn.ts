@@ -25,7 +25,6 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AssignAllServerFnContext,
-  FunctionMiddlewareClientFnResult,
   FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
@@ -65,7 +64,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
   }
 
   const res: ServerFnBuilder<Register, Method> = {
-    options: resolvedOptions as any,
+    options: resolvedOptions,
     middleware: (middleware) => {
       // multiple calls to `middleware()` merge the middlewares with the previously supplied ones
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
@@ -140,7 +139,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: async (opts: any, signal: AbortSignal) => {
+          __executeServer: async (opts: any) => {
             const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
               startContext.contextAfterGlobalMiddlewares
@@ -157,7 +156,6 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
                 serverContextAfterGlobalMiddlewares,
                 opts.context,
               ),
-              signal,
               request: startContext.request,
             }
 
@@ -281,8 +279,8 @@ export async function executeMiddleware(
         // Execute the middleware
         const result = await middlewareFn({
           ...ctx,
-          next: userNext as any,
-        } as any)
+          next: userNext,
+        })
 
         // If result is NOT a ctx object, we need to return it as
         // the { result }
@@ -350,7 +348,6 @@ export interface FetcherBase {
     data: unknown
     headers?: HeadersInit
     context?: any
-    signal: AbortSignal
   }) => Promise<unknown>
 }
 
@@ -429,7 +426,6 @@ export interface ServerFnCtx<
   serverFnMeta: ServerFnMeta
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
   method: TMethod
-  signal: AbortSignal
 }
 
 export type CompiledFetcherFn<TRegister, TResponse> = {
@@ -785,11 +781,7 @@ function serverFnBaseToMiddleware(
         // but not before serializing the context
         const res = await options.extractedFn?.(payload)
 
-        return next(res) as unknown as FunctionMiddlewareClientFnResult<
-          any,
-          any,
-          any
-        >
+        return next(res)
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function

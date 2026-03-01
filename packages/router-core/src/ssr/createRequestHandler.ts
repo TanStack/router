@@ -35,7 +35,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       })
 
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
-      const url = getNormalizedURL(request.url, 'http://localhost')
+      const { url } = getNormalizedURL(request.url, 'http://localhost')
       const origin = getOrigin(request)
       const href = url.href.replace(url.origin, '')
 
@@ -64,7 +64,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
         request,
         router,
         responseHeaders,
-      } as any)
+      })
     } finally {
       if (!cbWillCleanup) {
         // Clean up router SSR state if the callback won't handle it

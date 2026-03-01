@@ -1,6 +1,6 @@
 ---
 id: error-boundaries
-$title: Error Boundaries
+title: Error Boundaries
 ---
 
 ## Error Boundaries (React Start)

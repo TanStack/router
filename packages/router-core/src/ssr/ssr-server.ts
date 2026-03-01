@@ -4,6 +4,7 @@ import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
+import { dehydrateSsrMatchId } from './ssr-match-id'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
 import type { LRUCache } from '../lru-cache'
@@ -36,7 +37,7 @@ const P_SUFFIX = ')'
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   const dehydratedMatch: DehydratedMatch = {
-    i: match.id,
+    i: dehydrateSsrMatchId(match.id),
     u: match.updatedAt,
     s: match.status,
   }
@@ -254,7 +255,7 @@ export function attachRouterServerSsrUtils({
       }
       const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
       if (lastMatchId) {
-        dehydratedRouter.lastMatchId = lastMatchId
+        dehydratedRouter.lastMatchId = dehydrateSsrMatchId(lastMatchId)
       }
       const dehydratedData = await router.options.dehydrate?.()
       if (dehydratedData) {
@@ -398,7 +399,9 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
   if (typeof url === 'string') url = url.replace('\\', '%5C')
 
   const rawUrl = new URL(url, base)
-  const decodedPathname = decodePath(rawUrl.pathname)
+  const { path: decodedPathname, handledProtocolRelativeURL } = decodePath(
+    rawUrl.pathname,
+  )
   const searchParams = new URLSearchParams(rawUrl.search)
   const normalizedHref =
     decodedPathname +
@@ -406,5 +409,8 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
     searchParams.toString() +
     rawUrl.hash
 
-  return new URL(normalizedHref, rawUrl.origin)
+  return {
+    url: new URL(normalizedHref, rawUrl.origin),
+    handledProtocolRelativeURL,
+  }
 }

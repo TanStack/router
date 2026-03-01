@@ -56,6 +56,10 @@ type DirectCallSetup = {
 }
 type JSXSetup = { type: 'jsx'; componentName: string }
 
+function isLookupKind(kind: Kind): kind is LookupKind {
+  return kind in LookupSetup
+}
+
 const LookupSetup: Record<
   LookupKind,
   MethodChainSetup | DirectCallSetup | JSXSetup
@@ -944,11 +948,22 @@ export class StartCompiler {
 
     deadCodeElimination(ast, refIdents)
 
-    return generateFromAst(ast, {
+    const result = generateFromAst(ast, {
       sourceMaps: true,
       sourceFileName: id,
       filename: id,
     })
+
+    // @babel/generator does not populate sourcesContent because it only has
+    // the AST, not the original text.  Without this, Vite's composed
+    // sourcemap omits the original source, causing downstream consumers
+    // (e.g. import-protection snippet display) to fall back to the shorter
+    // compiled output and fail to resolve original line numbers.
+    if (result.map) {
+      result.map.sourcesContent = [code]
+    }
+
+    return result
   }
 
   private async resolveIdentifierKind(
@@ -1120,30 +1135,23 @@ export class StartCompiler {
       fileId,
       visited,
     )
+    // When a var binding's init is a call to a directCall factory
+    // (e.g., `const myFn = createServerOnlyFn(() => ...)`), the binding holds
+    // the RESULT of the factory, not the factory itself. Clear the kind so
+    // `myFn()` isn't incorrectly matched as a directCall candidate.
+    // We only clear when the init is a CallExpression — an alias like
+    // `const createSO = createServerOnlyFn` should still propagate the kind.
+    if (
+      isLookupKind(resolvedKind) &&
+      LookupSetup[resolvedKind].type === 'directCall' &&
+      binding.init &&
+      t.isCallExpression(binding.init)
+    ) {
+      binding.resolvedKind = 'None'
+      return 'None'
+    }
     binding.resolvedKind = resolvedKind
     return resolvedKind
-  }
-
-  /**
-   * Checks if an identifier is a direct import from a known factory library.
-   * Returns true for imports like `import { createServerOnlyFn } from '@tanstack/react-start'`
-   * or renamed imports like `import { createServerOnlyFn as myFn } from '...'`.
-   * Returns false for local variables that hold the result of calling a factory.
-   */
-  private async isKnownFactoryImport(
-    identName: string,
-    fileId: string,
-  ): Promise<boolean> {
-    const info = await this.getModuleInfo(fileId)
-    const binding = info.bindings.get(identName)
-
-    if (!binding || binding.type !== 'import') {
-      return false
-    }
-
-    // Check if it's imported from a known library
-    const knownExports = this.knownRootImports.get(binding.source)
-    return knownExports !== undefined && knownExports.has(binding.importedName)
   }
 
   private async resolveExprKind(
@@ -1185,19 +1193,14 @@ export class StartCompiler {
           return calleeKind
         }
       }
-      // For direct calls (callee is Identifier), only return the kind if the
-      // callee is a direct import from a known library (e.g., createServerOnlyFn).
-      // Calling a local variable that holds an already-built function (e.g., myServerOnlyFn())
-      // should NOT be treated as a transformation candidate.
+      // For direct calls (callee is Identifier like createServerOnlyFn()),
+      // trust calleeKind if it resolved to a valid LookupKind. This means
+      // resolveBindingKind successfully traced the import back to
+      // @tanstack/start-fn-stubs (via fast path or slow path through re-exports).
+      // This handles both direct imports from @tanstack/react-start and imports
+      // from intermediate packages that re-export from @tanstack/start-client-core.
       if (t.isIdentifier(expr.callee)) {
-        const isFactoryImport = await this.isKnownFactoryImport(
-          expr.callee.name,
-          fileId,
-        )
-        if (
-          isFactoryImport &&
-          this.validLookupKinds.has(calleeKind as LookupKind)
-        ) {
+        if (this.validLookupKinds.has(calleeKind as LookupKind)) {
           return calleeKind
         }
       }
