@@ -26,12 +26,6 @@ export default defineConfig({
       },
     }),
   ],
-  // Keep the unused import from being tree-shaken in older TS configs
-  define: {
-    __IMPORT_PROTECTION_FIXTURE_ROOT__: JSON.stringify(
-      path.resolve(import.meta.dirname),
-    ),
-  },
   // react-tweet's package.json exports resolve to `index.client.js` which
   // matches the default **/*.client.* deny pattern.  Bundling it via
   // noExternal must NOT trigger a false-positive import-protection violation.
