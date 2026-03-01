@@ -1,0 +1,34 @@
+name: CodSpeed
+
+on:
+  # disable for now
+  # pull_request:
+  # push:
+  #   branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  client-nav:
+    name: Client Nav Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.1
+
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+
+      - name: Run Client Navigation Benchmarks
+        uses: CodSpeedHQ/action@v4
+        with:
+          mode: simulation
+          run: |
+            CI=1 NX_DAEMON=false pnpm nx run tanstack-router-benchmark-client-nav:bench --outputStyle=stream --skipNxCache --skipRemoteCache

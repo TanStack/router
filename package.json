@@ -20,6 +20,7 @@
     "test:types": "nx affected --target=test:types --exclude=examples/**",
     "test:e2e": "nx run-many --target=test:e2e",
     "benchmark:bundle-size": "pnpm nx run tanstack-router-e2e-bundle-size:build",
+    "benchmark:client-nav": "pnpm nx run tanstack-router-benchmark-client-nav:bench",
     "build": "nx affected --target=build --exclude=e2e/** --exclude=examples/**",
     "build:all": "nx run-many --target=build --exclude=examples/** --exclude=e2e/**",
     "watch": "pnpm run build:all && nx watch --all -- pnpm run build:all",

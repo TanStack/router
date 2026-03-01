@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "esModuleInterop": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "preserve",
+    "skipLibCheck": true,
+    "types": ["vite/client", "vitest/globals"]
+  },
+  "exclude": ["node_modules", "dist"]
+}

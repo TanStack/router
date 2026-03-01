@@ -1,0 +1,39 @@
+{
+  "name": "tanstack-router-benchmark-client-nav",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "pnpm run bench:react && pnpm run bench:solid && pnpm run bench:vue",
+    "bench:react": "NODE_ENV=production vitest bench --run --config react/vitest.config.ts react/client-nav.bench.tsx",
+    "bench:solid": "NODE_ENV=production vitest bench --run --config solid/vitest.config.ts solid/client-nav.bench.tsx",
+    "bench:vue": "NODE_ENV=production vitest bench --run --config vue/vitest.config.ts vue/client-nav.bench.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/vue-router": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "solid-js": "^1.9.10",
+    "vue": "^3.5.25"
+  },
+  "devDependencies": {
+    "@codspeed/vitest-plugin": "^5.0.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vite-plugin-solid": "^2.11.10",
+    "vitest": "^4.0.17"
+  },
+  "nx": {
+    "targets": {
+      "bench": {
+        "dependsOn": [
+          "^build"
+        ],
+        "cache": false
+      }
+    }
+  }
+}
