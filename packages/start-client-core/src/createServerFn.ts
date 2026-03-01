@@ -117,9 +117,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       // so the manifest-exported symbol (resolved by getServerFnById)
       // carries `method`, enabling the server handler to reject
       // mismatched HTTP methods before parsing request payloads.
-      if (extractedFn) {
-        ;(extractedFn as any).method = resolvedOptions.method
-      }
+      ;(extractedFn as any).method = resolvedOptions.method
 
       return Object.assign(
         async (opts?: CompiledFetcherFnOptions) => {
