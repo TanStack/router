@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772408895389,
+  "lastUpdate": 1772409139289,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -2545,6 +2545,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/816d0d1a08cd1602a7942493629c612c132626a6"
         },
         "date": 1772408894221,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88656,
+            "unit": "bytes",
+            "extra": "raw=278986; brotli=77021"
+          },
+          {
+            "name": "react-router.full",
+            "value": 91758,
+            "unit": "bytes",
+            "extra": "raw=289568; brotli=79771"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36742,
+            "unit": "bytes",
+            "extra": "raw=110142; brotli=33034"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41179,
+            "unit": "bytes",
+            "extra": "raw=123506; brotli=37002"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 52996,
+            "unit": "bytes",
+            "extra": "raw=151077; brotli=47618"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 57904,
+            "unit": "bytes",
+            "extra": "raw=167039; brotli=52081"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101492,
+            "unit": "bytes",
+            "extra": "raw=319062; brotli=87740"
+          },
+          {
+            "name": "react-start.full",
+            "value": 104961,
+            "unit": "bytes",
+            "extra": "raw=329104; brotli=90760"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49349,
+            "unit": "bytes",
+            "extra": "raw=148616; brotli=43689"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 54967,
+            "unit": "bytes",
+            "extra": "raw=164945; brotli=48506"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "manuel.schiller@caligano.de",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "545c721c0de5c23c75d655363749efe6179c0249",
+          "message": "fix: skip missing CSS modules in cache during style collection (#6798)",
+          "timestamp": "2026-03-02T00:49:50+01:00",
+          "tree_id": "2d90b80243a8873ca131f40101496d4be05298b5",
+          "url": "https://github.com/TanStack/router/commit/545c721c0de5c23c75d655363749efe6179c0249"
+        },
+        "date": 1772409137603,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
