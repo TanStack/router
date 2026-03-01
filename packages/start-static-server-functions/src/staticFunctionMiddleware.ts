@@ -116,7 +116,9 @@ const fetchItem = async ({
 
   let result: any = staticClientCache?.get(url)
 
-  result = await fetch(url, {
+  const basePath = process.env.TSS_ROUTER_BASEPATH!
+  const prefixedUrl = path.join(basePath, url)
+  result = await fetch(prefixedUrl, {
     method: 'GET',
   })
     .then((r) => r.json())
