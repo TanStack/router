@@ -45,6 +45,11 @@ async function compile(opts: {
         rootExport: 'createServerFn',
         kind: 'Root',
       },
+      {
+        libName: `@tanstack/react-start`,
+        rootExport: 'createStart',
+        kind: 'Root',
+      },
     ],
     resolveId: async (id) => {
       return id
