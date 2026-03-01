@@ -26,7 +26,7 @@ npx gitpick TanStack/router/tree/main/examples/react/start-bun start-bun
 This project was created with TanStack Start:
 
 ```bash
-bunx create-start-app@latest
+bunx @tanstack/cli create
 ```
 
 Install dependencies:

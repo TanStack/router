@@ -10,7 +10,7 @@ title: How to Set Up Server-Side Rendering (SSR)
 ## Quick Start with TanStack Start
 
 ```bash
-npx create-tsrouter-app@latest my-app --template start
+npx @tanstack/cli create my-app
 cd my-app
 npm run dev
 ```

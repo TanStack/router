@@ -27,7 +27,7 @@ This guide covers setting up Shadcn/ui with TanStack Router, including solutions
 **Option 1: New project with TanStack Router template**
 
 ```bash
-npx create-tsrouter-app@latest my-app --template file-router --tailwind --add-ons shadcn
+npx @tanstack/cli create my-app --add-ons shadcn
 ```
 
 **Option 2: Add to existing TanStack Router project**
