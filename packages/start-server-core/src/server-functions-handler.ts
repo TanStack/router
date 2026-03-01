@@ -35,15 +35,6 @@ const FORM_DATA_CONTENT_TYPES = [
 // Maximum payload size for GET requests (1MB)
 const MAX_PAYLOAD_SIZE = 1_000_000
 
-const methodNotAllowed = (expectedMethod: string, actualMethod: string) => {
-  throw new Response(`expected ${expectedMethod} method. Got ${actualMethod}`, {
-    status: 405,
-    headers: {
-      Allow: expectedMethod,
-    },
-  })
-}
-
 export const handleServerAction = async ({
   request,
   context,
@@ -55,10 +46,23 @@ export const handleServerAction = async ({
 }) => {
   const method = request.method
   const methodUpper = method.toUpperCase()
-  const methodLower = method.toLowerCase()
   const url = new URL(request.url)
 
   const action = await getServerFnById(serverFnId, { fromClient: true })
+
+  // Early method check: reject mismatched HTTP methods before parsing
+  // the request payload (FormData, JSON, query string, etc.)
+  if (action.method && methodUpper !== action.method) {
+    return new Response(
+      `expected ${action.method} method. Got ${methodUpper}`,
+      {
+        status: 405,
+        headers: {
+          Allow: action.method,
+        },
+      },
+    )
+  }
 
   const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'
 
@@ -85,7 +89,7 @@ export const handleServerAction = async ({
         ) {
           // We don't support GET requests with FormData payloads... that seems impossible
           invariant(
-            methodLower !== 'get',
+            methodUpper !== 'GET',
             'GET requests with FormData payloads are not supported',
           )
           const formData = await request.formData()
@@ -124,7 +128,7 @@ export const handleServerAction = async ({
         }
 
         // Get requests use the query string
-        if (methodLower === 'get') {
+        if (methodUpper === 'GET') {
           // Get payload directly from searchParams
           const payloadParam = url.searchParams.get('payload')
           // Reject oversized payloads to prevent DoS
@@ -139,10 +143,6 @@ export const handleServerAction = async ({
           payload.method = methodUpper
           // Send it through!
           return await action(payload)
-        }
-
-        if (methodLower !== 'post') {
-          throw methodNotAllowed('POST', method)
         }
 
         let jsonPayload
