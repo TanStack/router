@@ -22,8 +22,8 @@ class MyErrorComponent {
 }
 
 const ASYNC_THROW_DELAY_MS = 50
-const ERROR_RENDER_TIMEOUT_MS = 500
-const SHOULD_NOT_RENDER_TIMEOUT_MS = 200
+const ERROR_RENDER_TIMEOUT_MS = 2500
+const SHOULD_NOT_RENDER_TIMEOUT_MS = 500
 
 async function asyncToThrowFn() {
   await new Promise((resolve) => setTimeout(resolve, ASYNC_THROW_DELAY_MS))

@@ -26,7 +26,6 @@ import {
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
-  sleep,
 } from './utils'
 import type { RouterHistory } from '../src'
 

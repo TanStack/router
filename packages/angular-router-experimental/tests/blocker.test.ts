@@ -1,6 +1,6 @@
 import * as Angular from '@angular/core'
 import { fireEvent, render, screen, waitFor } from '@testing-library/angular'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import combinate from 'combinate'
 import {
   Link,
@@ -14,14 +14,9 @@ import {
 } from '../src'
 import type { InjectBlockerOpts, ShouldBlockFn } from '../src'
 
-beforeEach(() => {
-  vi.useFakeTimers({ shouldAdvanceTime: true })
-})
-
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
-  vi.useRealTimers()
 })
 
 interface BlockerTestOpts {
