@@ -996,13 +996,20 @@ export async function loadMatches(arg: {
 export async function loadRouteChunk(route: AnyRoute) {
   if (!route._lazyLoaded && route._lazyPromise === undefined) {
     if (route.lazyFn) {
-      route._lazyPromise = route.lazyFn().then((lazyRoute) => {
-        // explicitly don't copy over the lazy route's id
-        const { id: _id, ...options } = lazyRoute.options
-        Object.assign(route.options, options)
-        route._lazyLoaded = true
-        route._lazyPromise = undefined // gc promise, we won't need it anymore
-      })
+      route._lazyPromise = route
+        .lazyFn()
+        .then((lazyRoute) => {
+          // explicitly don't copy over the lazy route's id
+          const { id: _id, ...options } = lazyRoute.options
+          Object.assign(route.options, options)
+          route._lazyLoaded = true
+          route._lazyPromise = undefined // gc promise, we won't need it anymore
+        })
+        .catch(() => {
+          // Handle the rejection to prevent `unhandledrejection`.
+          // Clear `_lazyPromise` so the route can be retried on next navigation.
+          route._lazyPromise = undefined
+        })
     } else {
       route._lazyLoaded = true
     }
@@ -1028,7 +1035,13 @@ export async function loadRouteChunk(route: AnyRoute) {
       return
     }
     route._componentsPromise = route._lazyPromise
-      ? route._lazyPromise.then(loadComponents)
+      ? route._lazyPromise.then(() => {
+          if (route._lazyLoaded) return loadComponents()
+          // Lazy load failed; don't mark components as loaded.
+          // Clear _componentsPromise so both blocks can retry on next navigation.
+          route._componentsPromise = undefined
+          return undefined
+        })
       : loadComponents()
   }
   return route._componentsPromise
