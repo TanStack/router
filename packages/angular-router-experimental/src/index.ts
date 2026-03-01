@@ -129,7 +129,7 @@ export type {
   HistoryState,
 } from '@tanstack/history'
 
-// Re-export types from router-core that are commonly used
+// Re-export types from router-core that are commonly used (FileRoutesByPath augmented by routeTree.gen.ts via declare module '@tanstack/router-core')
 export type {
   AnyRouter,
   RegisteredRouter,
@@ -140,4 +140,7 @@ export type {
   RootRouteOptions,
   Register,
   RouterContextOptions,
+  FileRoutesByPath,
+  CreateFileRoute,
+  CreateLazyFileRoute,
 } from '@tanstack/router-core'

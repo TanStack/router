@@ -171,7 +171,10 @@ export async function transform({
     banned: [],
   }
 
-  const targetModule = `@tanstack/${ctx.target}-router`
+  const targetModule =
+    ctx.target === 'angular'
+      ? '@tanstack/angular-router-experimental'
+      : `@tanstack/${ctx.target}-router`
   if (ctx.verboseFileRoutes === false) {
     imports.banned = [
       {

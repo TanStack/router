@@ -11,7 +11,12 @@ export type ParseAstOptions = ParserOptions & {
 export type ParseAstResult = ParseResult<_babel_types.File>
 export function parseAst({ code, ...opts }: ParseAstOptions): ParseAstResult {
   return parse(code, {
-    plugins: ['jsx', 'typescript', 'explicitResourceManagement'],
+    plugins: [
+      'jsx',
+      'typescript',
+      'explicitResourceManagement',
+      'decorators', // required for Angular and other decorator-based code
+    ],
     sourceType: 'module',
     ...opts,
   })

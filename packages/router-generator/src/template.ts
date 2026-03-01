@@ -171,6 +171,69 @@ export function getTargetTemplate(config: Config): TargetTemplate {
           },
         },
       }
+    case 'angular':
+      return {
+        fullPkg: '@tanstack/angular-router-experimental',
+        subPkg: 'angular-router-experimental',
+        rootRoute: {
+          template: () =>
+            [
+              "import { Component } from '@angular/core'\n",
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: () => RootComponent\n }%%tsrExportEnd%%\n\n',
+              "@Component({\n  selector: 'root-route',\n  standalone: true,\n  template: `<div>Hello \"%%tsrPath%%\"!</div><outlet />`,\n  imports: [Outlet],\n})\nclass RootComponent {}\n",
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              "import { Outlet, createRootRoute } from '@tanstack/angular-router-experimental';",
+            tsrExportStart: () => 'export const Route = createRootRoute(',
+            tsrExportEnd: () => ');',
+          },
+        },
+        route: {
+          template: () =>
+            [
+              "import { Component } from '@angular/core'\n",
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: () => RouteComponent\n }%%tsrExportEnd%%\n\n',
+              "@Component({\n  selector: 'route-component',\n  standalone: true,\n  template: `<div>Hello \"%%tsrPath%%\"!</div>`,\n})\nclass RouteComponent {}\n",
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createFileRoute } from '@tanstack/angular-router-experimental';",
+            tsrExportStart: (routePath) =>
+              config.verboseFileRoutes === false
+                ? 'export const Route = createFileRoute('
+                : `export const Route = createFileRoute('${routePath}')(`,
+            tsrExportEnd: () => ');',
+          },
+        },
+        lazyRoute: {
+          template: () =>
+            [
+              "import { Component } from '@angular/core'\n",
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: () => RouteComponent\n }%%tsrExportEnd%%\n\n',
+              "@Component({\n  selector: 'route-component',\n  standalone: true,\n  template: `<div>Hello \"%%tsrPath%%\"!</div>`,\n})\nclass RouteComponent {}\n",
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createLazyFileRoute } from '@tanstack/angular-router-experimental';",
+            tsrExportStart: (routePath) =>
+              config.verboseFileRoutes === false
+                ? 'export const Route = createLazyFileRoute('
+                : `export const Route = createLazyFileRoute('${routePath}')(`,
+            tsrExportEnd: () => ');',
+          },
+        },
+      }
     case 'vue':
       return {
         fullPkg: '@tanstack/vue-router',

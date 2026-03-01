@@ -343,7 +343,13 @@ export class Generator {
     if (rootRouteNode === undefined) {
       let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
       if (!this.config.virtualRouteConfig) {
-        errorMessage += `\nMake sure that you add a "${rootPathId}.${this.config.disableTypes ? 'js' : 'tsx'}" file to your routes directory.\nAdd the file in: "${this.config.routesDirectory}/${rootPathId}.${this.config.disableTypes ? 'js' : 'tsx'}"`
+        const ext =
+          this.config.target === 'angular'
+            ? 'ts'
+            : this.config.disableTypes
+              ? 'js'
+              : 'tsx'
+        errorMessage += `\nMake sure that you add a "${rootPathId}.${ext}" file to your routes directory.\nAdd the file in: "${this.config.routesDirectory}/${rootPathId}.${ext}"`
       }
       throw new Error(errorMessage)
     }

@@ -45,7 +45,10 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
           return null
         }
 
-        const routerImportPath = `@tanstack/${userConfig.target}-router`
+        const routerImportPath =
+          userConfig.target === 'angular'
+            ? '@tanstack/angular-router-experimental'
+            : `@tanstack/${userConfig.target}-router`
 
         const ast = parseAst({ code })
 
