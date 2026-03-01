@@ -16,7 +16,13 @@ import type {
   RouteMatch,
 } from './Matches'
 import type { RootRouteId } from './root'
-import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
+import type {
+  ParseRoute,
+  RouteById,
+  RouteIds,
+  RoutePaths,
+  RoutesById,
+} from './routeInfo'
 import type { AnyRouter, Register, RegisteredRouter, SSROption } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
@@ -693,7 +699,8 @@ export interface Route<
       TLoaderDeps,
       TRouterContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      TRegister
     >,
   ) => this
   lazy: RouteLazyFn<
@@ -854,7 +861,8 @@ export type RouteOptions<
     NoInfer<TLoaderDeps>,
     NoInfer<TRouterContext>,
     NoInfer<TRouteContextFn>,
-    NoInfer<TBeforeLoadFn>
+    NoInfer<TBeforeLoadFn>,
+    NoInfer<TRegister>
   >
 
 export type RouteContextFn<
@@ -1140,6 +1148,7 @@ export interface BeforeLoadContextOptions<
 }
 
 type AssetFnContextOptions<
+  in out TRegister,
   in out TRouteId,
   in out TFullPath,
   in out TParentRoute extends AnyRoute,
@@ -1154,22 +1163,7 @@ type AssetFnContextOptions<
   ssr?: {
     nonce?: string
   }
-  matches: Array<
-    RouteMatch<
-      TRouteId,
-      TFullPath,
-      ResolveAllParamsFromParent<TParentRoute, TParams>,
-      ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
-      ResolveLoaderData<TLoaderFn>,
-      ResolveAllContext<
-        TParentRoute,
-        TRouterContext,
-        TRouteContextFn,
-        TBeforeLoadFn
-      >,
-      TLoaderDeps
-    >
-  >
+  matches: InferAssetFnMatches<TRegister, TRouteId>
   match: RouteMatch<
     TRouteId,
     TFullPath,
@@ -1187,6 +1181,144 @@ type AssetFnContextOptions<
   params: ResolveAllParamsFromParent<TParentRoute, TParams>
   loaderData?: ResolveLoaderData<TLoaderFn>
 }
+
+type RegisteredRouterRouteTree<TRegister> =
+  RegisteredRouter<TRegister> extends {
+    routeTree: infer TRouteTree
+  }
+    ? TRouteTree extends AnyRoute
+      ? TRouteTree
+      : AnyRoute
+    : AnyRoute
+
+/**
+ * Extract the ancestor ID tuple from a route ID string by splitting on '/'.
+ *
+ * For '/foo/bar/baz' → ['__root__', '/foo', '/foo/bar', '/foo/bar/baz']
+ * For '__root__'     → ['__root__']
+ *
+ * This is O(D) string-only manipulation — no union operations.
+ */
+type AncestorIdTuple<TRouteId extends string> = TRouteId extends RootRouteId
+  ? [RootRouteId]
+  : [RootRouteId, ...BuildIdTupleFromSegments<StripLeadingSlash<TRouteId>>]
+
+type StripLeadingSlash<T extends string> = T extends `/${infer R}` ? R : T
+
+/**
+ * Given 'foo/bar/baz' and prefix '', build ['/foo', '/foo/bar', '/foo/bar/baz'].
+ * Recursion depth = number of path segments (typically ≤ 8).
+ */
+type BuildIdTupleFromSegments<
+  TSegments extends string,
+  TPrefix extends string = '',
+> = TSegments extends `${infer THead}/${infer TRest}`
+  ? [
+      `${TPrefix}/${THead}`,
+      ...BuildIdTupleFromSegments<TRest, `${TPrefix}/${THead}`>,
+    ]
+  : TSegments extends ''
+    ? []
+    : [`${TPrefix}/${TSegments}`]
+
+type RoutesByIdFor<TRouteTree extends AnyRoute> = RoutesById<TRouteTree>
+
+type RouteIdsFor<TRouteTree extends AnyRoute> = RouteIds<TRouteTree>
+
+type RouteByIdFrom<TRoutesById, TId> = Extract<
+  TRoutesById[TId & keyof TRoutesById],
+  AnyRoute
+>
+
+type RouteMatchByIdFor<TRoutesById> = {
+  [K in keyof TRoutesById]: MakeRouteMatchFromRoute<
+    RouteByIdFrom<TRoutesById, K>
+  >
+}
+
+/**
+ * Map a tuple of route IDs to a tuple of route matches.
+ * Uses RoutesById for O(1) cached lookups per ID.
+ */
+type MapIdTupleToMatches<
+  TRouteMatchById,
+  TIds extends Array<string>,
+> = TIds extends [
+  infer TFirst extends string,
+  ...infer TRest extends Array<string>,
+]
+  ? [
+      TRouteMatchById[TFirst & keyof TRouteMatchById],
+      ...MapIdTupleToMatches<TRouteMatchById, TRest>,
+    ]
+  : []
+
+/**
+ * Compute descendant route IDs from the route ID union.
+ *
+ * This distributes over a string union (RouteIds) instead of a route-object union,
+ * which is typically cheaper for the type checker.
+ */
+type DescendantRouteIds<
+  TAllRouteIds,
+  TRouteId extends string,
+> = TRouteId extends RootRouteId
+  ? Exclude<TAllRouteIds, RootRouteId>
+  : Extract<TAllRouteIds, `${TRouteId}/${string}`>
+
+type DescendantMatchesById<TRoutesById, TIds> = TIds extends string
+  ? RouteMatchByIdFor<TRoutesById>[TIds & keyof RouteMatchByIdFor<TRoutesById>]
+  : never
+
+type DescendantIdsByRouteId<TRouteTree extends AnyRoute, TAllRouteIds> = {
+  [K in RouteIdsFor<TRouteTree>]: DescendantRouteIds<TAllRouteIds, K & string>
+}
+
+type AncestorIdTupleByRouteId<TRouteTree extends AnyRoute> = {
+  [K in RouteIdsFor<TRouteTree>]: AncestorIdTuple<K & string>
+}
+
+/**
+ * Infer the concrete matches tuple for a route's head/scripts/headers callbacks.
+ *
+ * Produces: [...AncestorMatches, SelfMatch, ...DescendantMatch[]]
+ *
+ * Performance: Ancestor tuple is built by string-splitting the route ID (O(D))
+ * then looking up each ancestor via RouteById (O(1) cached mapped-type access).
+ * Descendants distribute over RouteIds (string union) and map IDs to matches via
+ * RouteById (cached mapped-type access).
+ * Total cost per route: O(D + Nd), where D = nesting depth, Nd = number of
+ * descendant IDs in the route tree.
+ *
+ * Note on lazy evaluation: UpdatableRouteOptions uses `in out` variance on
+ * TRegister, which forces TypeScript to fully evaluate InferAssetFnMatches
+ * for every route — even those without head/scripts/headers. True lazy
+ * evaluation would require removing TRegister from the variance contract
+ * or restructuring the API, which is out of scope for this change.
+ */
+export type InferAssetFnMatches<TRegister, TRouteId> =
+  RegisteredRouterRouteTree<TRegister> extends infer TTree extends AnyRoute
+    ? TRouteId extends string
+      ? RoutesByIdFor<TTree> extends infer TRoutesById
+        ? RouteIdsFor<TTree> extends infer TAllRouteIds
+          ? [
+              ...MapIdTupleToMatches<
+                RouteMatchByIdFor<TRoutesById>,
+                AncestorIdTupleByRouteId<TTree>[TRouteId &
+                  keyof AncestorIdTupleByRouteId<TTree>]
+              >,
+              ...Array<
+                DescendantMatchesById<
+                  TRoutesById,
+                  DescendantIdsByRouteId<TTree, TAllRouteIds>[TRouteId &
+                    keyof DescendantIdsByRouteId<TTree, TAllRouteIds>]
+                >
+              >,
+            ]
+          : never
+        : never
+      : never
+    : never
 
 export interface DefaultUpdatableRouteOptionsExtensions {
   component?: unknown
@@ -1208,6 +1340,7 @@ export interface UpdatableRouteOptions<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TBeforeLoadFn,
+  in out TRegister = Register,
 >
   extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
   /**
@@ -1333,6 +1466,7 @@ export interface UpdatableRouteOptions<
   ) => void
   headers?: (
     ctx: AssetFnContextOptions<
+      TRegister,
       TRouteId,
       TFullPath,
       TParentRoute,
@@ -1347,6 +1481,7 @@ export interface UpdatableRouteOptions<
   ) => Awaitable<Record<string, string> | undefined>
   head?: (
     ctx: AssetFnContextOptions<
+      TRegister,
       TRouteId,
       TFullPath,
       TParentRoute,
@@ -1366,6 +1501,7 @@ export interface UpdatableRouteOptions<
   }>
   scripts?: (
     ctx: AssetFnContextOptions<
+      TRegister,
       TRouteId,
       TFullPath,
       TParentRoute,
@@ -1894,7 +2030,8 @@ export class BaseRoute<
       TLoaderDeps,
       TRouterContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      TRegister
     >,
   ): this => {
     Object.assign(this.options, options)
