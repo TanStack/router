@@ -134,6 +134,8 @@ The build process replaces server function implementations with RPC stubs in cli
 
 Server functions accept a single `data` parameter. Since they cross the network boundary, validation ensures type safety and runtime correctness.
 
+> Input validation is one of the security measures you configure per your application's needs. See the [Security FAQ](./security) for what's automatic vs what you configure.
+
 ### Basic Parameters
 
 ```tsx
