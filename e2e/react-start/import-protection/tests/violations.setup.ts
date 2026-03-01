@@ -5,9 +5,53 @@ import { chromium } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 
-import { extractViolationsFromLog } from './violations.utils'
+import { extractViolationsFromLog, stripAnsi } from './violations.utils'
 import type { FullConfig } from '@playwright/test'
 import type { Violation } from './violations.utils'
+
+const VIOLATION_MARKER = '[import-protection] Import denied in'
+
+/**
+ * Counts the number of violation markers currently present in the log chunks.
+ */
+function countViolations(logChunks: Array<string>): number {
+  let count = 0
+  for (const chunk of logChunks) {
+    const cleaned = stripAnsi(chunk)
+    let idx = 0
+    while ((idx = cleaned.indexOf(VIOLATION_MARKER, idx)) !== -1) {
+      count++
+      idx += VIOLATION_MARKER.length
+    }
+  }
+  return count
+}
+
+/**
+ * Polls the log output and waits until the violation count stops changing
+ * for `stableMs` milliseconds, or until `hardTimeoutMs` is reached.
+ * This avoids fixed-delay race conditions in slow CI environments where
+ * deferred violation processing may take longer than expected.
+ */
+async function waitForViolationStabilization(
+  logChunks: Array<string>,
+  { stableMs = 2_000, hardTimeoutMs = 30_000, pollMs = 250 } = {},
+): Promise<void> {
+  const start = Date.now()
+  let lastCount = countViolations(logChunks)
+  let lastChangeAt = Date.now()
+
+  while (Date.now() - start < hardTimeoutMs) {
+    await new Promise((r) => setTimeout(r, pollMs))
+    const currentCount = countViolations(logChunks)
+    if (currentCount !== lastCount) {
+      lastCount = currentCount
+      lastChangeAt = Date.now()
+    } else if (Date.now() - lastChangeAt >= stableMs) {
+      return
+    }
+  }
+}
 
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()
@@ -154,7 +198,9 @@ async function runDevPass(
       await browser.close()
     }
 
-    await new Promise((r) => setTimeout(r, 750))
+    // Wait until the violation count in the server log stabilizes.
+    // This replaces a fixed delay and is more robust in slow CI.
+    await waitForViolationStabilization(logChunks)
   } finally {
     await killChild(child)
   }
