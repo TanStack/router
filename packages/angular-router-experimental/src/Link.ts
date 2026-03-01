@@ -32,6 +32,8 @@ import { injectIntersectionObserver } from './injectIntersectionObserver'
     '[attr.aria-current]': 'isActive() ? "page" : undefined',
     '[attr.data-transitioning]':
       'isTransitioning() ? "transitioning" : undefined',
+    '[class]': 'isActiveProps()?.class',
+    '[style]': 'isActiveProps()?.style',
   },
 })
 export class Link<
@@ -131,6 +133,15 @@ export class Link<
 
   protected location = injectRouterState({
     select: (s) => s.location,
+  })
+
+
+  protected isActiveProps = Angular.computed(() => {
+    const opts = this.options()
+    const isActive = this.isActive()
+    const props = isActive ? opts.activeProps : opts.inactiveProps
+    if (!props || typeof props !== 'object') return undefined
+    return props
   })
 
   protected isActive = Angular.computed(() => {
@@ -286,13 +297,24 @@ export class Link<
   }
 }
 
+interface ActiveLinkProps {
+  class?: string
+  style?: string
+}
+
+interface ActiveLinkOptionProps {
+  activeProps?: ActiveLinkProps
+  inactiveProps?: ActiveLinkProps
+}
+
 export type LinkOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TTo extends string | undefined = '.',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
   TMaskTo extends string = '.',
-> = CoreLinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {}
+> = CoreLinkOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> &
+  ActiveLinkOptionProps
 
 function isCtrlEvent(e: MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)

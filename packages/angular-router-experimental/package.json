@@ -53,8 +53,8 @@
       "default": "./dist/fesm2022/tanstack-angular-router-experimental.mjs"
     },
     "./experimental": {
-      "types": "./dist/types/tanstack-angular-router-experimental.d.ts",
-      "default": "./dist/fesm2022/tanstack-angular-router-experimental.mjs"
+      "types": "./dist/types/tanstack-angular-router-experimental-experimental.d.ts",
+      "default": "./dist/fesm2022/tanstack-angular-router-experimental-experimental.mjs"
     }
   },
   "files": [
