@@ -47,9 +47,9 @@ TanStack Start has a load of examples to get you started. Pick one of the exampl
 - [WorkOS](https://github.com/TanStack/router/tree/main/examples/react/start-workos) (start-workos)
 - [Material UI](https://github.com/TanStack/router/tree/main/examples/react/start-material-ui) (start-material-ui)
 
-### Stackblitz
+### StackBlitz
 
-Each example above has an embedded stackblitz preview to find the one that feels like a good starting point
+Each example above has an embedded StackBlitz preview to find the one that feels like a good starting point.
 
 ### Quick Deploy
 
