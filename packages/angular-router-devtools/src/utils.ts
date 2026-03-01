@@ -1,5 +1,6 @@
-import { computed, effect, signal, Signal } from '@angular/core'
-import { AnyRouter, RouterState } from '@tanstack/router-core'
+import { computed, effect, signal } from '@angular/core'
+import type { Signal } from '@angular/core';
+import type { AnyRouter, RouterState } from '@tanstack/router-core'
 
 /**
  * Subscribe to a signal state where the router is a

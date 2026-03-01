@@ -1,5 +1,5 @@
 {
-  "name": "angular-kitchen-sink",
+  "name": "tanstack-router-angular-example-kitchen-sink",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",

@@ -1,20 +1,19 @@
 import {
   Component,
-  effect,
-  input,
-  ElementRef,
-  computed,
-  OnInit,
-  inject,
-  EnvironmentInjector,
-  afterNextRender,
   DestroyRef,
+  ElementRef,
+  EnvironmentInjector,
+  OnInit,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  input, runInInjectionContext 
 } from '@angular/core'
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
-import { injectRouter, injectRouterState } from '@tanstack/angular-router-experimental'
-import type { AnyRouter } from '@tanstack/router-core'
-import { runInInjectionContext } from '@angular/core'
+import { injectRouter } from '@tanstack/angular-router-experimental'
 import { injectLazyRouterState } from './utils'
+import type { AnyRouter } from '@tanstack/router-core'
 
 export interface TanStackRouterDevtoolsOptions {
   /**

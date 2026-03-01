@@ -1,6 +1,6 @@
+import { Component } from '@angular/core'
 import * as Devtools from './tanstack-router-devtools'
 import * as DevtoolsPanel from './tanstack-router-devtools-panel'
-import { Component } from '@angular/core'
 
 // No-op component for production
 @Component({

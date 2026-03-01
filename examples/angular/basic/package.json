@@ -1,5 +1,5 @@
 {
-  "name": "angular",
+  "name": "tanstack-router-angular-example-basic",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
