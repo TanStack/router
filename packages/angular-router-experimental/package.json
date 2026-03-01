@@ -42,19 +42,24 @@
   },
   "type": "module",
   "sideEffects": false,
-  "module": "./dist/fesm2022/tanstack-angular-router-experimental.mjs",
-  "typings": "./dist/types/tanstack-angular-router-experimental.d.ts",
+  "types": "./dist/types/tanstack-angular-router-experimental.d.ts",
   "exports": {
     "./package.json": {
       "default": "./package.json"
     },
     ".": {
-      "types": "./dist/types/tanstack-angular-router-experimental.d.ts",
-      "default": "./dist/fesm2022/tanstack-angular-router-experimental.mjs"
+      "import": {
+        "types": "./dist/types/tanstack-angular-router-experimental.d.ts",
+        "default": "./dist/fesm2022/tanstack-angular-router-experimental.mjs"
+      },
+      "require": null
     },
     "./experimental": {
-      "types": "./dist/types/tanstack-angular-router-experimental-experimental.d.ts",
-      "default": "./dist/fesm2022/tanstack-angular-router-experimental-experimental.mjs"
+      "import": {
+        "types": "./dist/types/tanstack-angular-router-experimental-experimental.d.ts",
+        "default": "./dist/fesm2022/tanstack-angular-router-experimental-experimental.mjs"
+      },
+      "require": null
     }
   },
   "files": [

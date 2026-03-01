@@ -36,16 +36,19 @@
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json"
   },
+  "type": "module",
   "sideEffects": false,
-  "module": "./dist/fesm2022/tanstack-angular-router-devtools.mjs",
-  "typings": "./dist/types/tanstack-angular-router-devtools.d.ts",
+  "types": "./dist/types/tanstack-angular-router-devtools.d.ts",
   "exports": {
     "./package.json": {
       "default": "./package.json"
     },
     ".": {
-      "types": "./dist/types/tanstack-angular-router-devtools.d.ts",
-      "default": "./dist/fesm2022/tanstack-angular-router-devtools.mjs"
+      "import": {
+        "types": "./dist/types/tanstack-angular-router-devtools.d.ts",
+        "default": "./dist/fesm2022/tanstack-angular-router-devtools.mjs"
+      },
+      "require": null
     }
   },
   "files": [

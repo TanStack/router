@@ -15,6 +15,7 @@ packages:
   - 'e2e/react-router/*'
   - 'e2e/solid-router/*'
   - 'e2e/vue-router/*'
+  - 'e2e/angular-router-experimental/*'
   - 'e2e/react-start/*'
   - 'e2e/solid-start/*'
   - 'e2e/vue-start/*'
