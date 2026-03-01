@@ -10,6 +10,7 @@ test.describe('split base and basepath', () => {
     request,
   }) => {
     const response = await request.get('/')
+    expect(response.ok()).toBeTruthy()
     const html = await response.text()
 
     // Script tags should reference /_ui/ prefix

@@ -1687,8 +1687,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-start
       express:
-        specifier: ^4.21.2
-        version: 4.21.2
+        specifier: ^5.1.0
+        version: 5.1.0
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -2490,8 +2490,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-start
       express:
-        specifier: ^4.21.2
-        version: 4.21.2
+        specifier: ^5.1.0
+        version: 5.1.0
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -2505,9 +2505,6 @@ importers:
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
-      '@types/express':
-        specifier: ^5.0.3
-        version: 5.0.3
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -3824,8 +3821,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       express:
-        specifier: ^4.21.2
-        version: 4.21.2
+        specifier: ^5.1.0
+        version: 5.1.0
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -5615,8 +5612,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-start
       express:
-        specifier: ^4.21.2
-        version: 4.21.2
+        specifier: ^5.1.0
+        version: 5.1.0
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1

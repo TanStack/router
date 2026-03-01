@@ -408,10 +408,10 @@ export function TanStackStartVitePluginCore(
         if (!needsDevBaseRewrite) {
           return
         }
-        const base = resolvedStartConfig.viteAppBase
+        const basePrefix = resolvedStartConfig.viteAppBase.replace(/\/$/, '')
         server.middlewares.use((req, _res, next) => {
-          if (req.url && !req.url.startsWith(base)) {
-            req.url = base.replace(/\/$/, '') + req.url
+          if (req.url && !req.url.startsWith(basePrefix)) {
+            req.url = basePrefix + req.url
           }
           next()
         })
