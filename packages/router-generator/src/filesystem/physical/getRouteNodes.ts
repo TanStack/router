@@ -132,6 +132,11 @@ export async function getRouteNodes(
           node.originalRoutePath = `/${dir}${node.originalRoutePath}`
         }
         node.filePath = filePath
+        // Virtual subtree nodes (from __virtual.ts) are embedded in a
+        // physical directory tree. They should use path-based parent
+        // inference, not the explicit virtual parent tracking. Clear any
+        // _virtualParentRoutePath that was set at construction time.
+        delete node._virtualParentRoutePath
       })
 
       routeNodes.push(...virtualRouteNodes)
