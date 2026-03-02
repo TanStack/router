@@ -1,5 +1,11 @@
 import { createStart } from '@tanstack/solid-start'
-import { carAdapter, fooAdapter, nestedOuterAdapter } from './data'
+import {
+  asyncCarAdapter,
+  asyncFooAdapter,
+  carAdapter,
+  fooAdapter,
+  nestedOuterAdapter,
+} from './data'
 import { customErrorAdapter } from './CustomError'
 
 export const startInstance = createStart(() => {
@@ -11,6 +17,8 @@ export const startInstance = createStart(() => {
       customErrorAdapter,
       // only register nestedOuterAdapter here, nestedInnerAdapter is registered as an "extends" of nestedOuterAdapter
       nestedOuterAdapter,
+      asyncFooAdapter,
+      asyncCarAdapter,
     ],
   }
 })

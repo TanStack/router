@@ -17,8 +17,19 @@ async function checkData(page: Page, id: string) {
     expectedData!,
   )
 
+  const expectedAsyncData = await page
+    .getByTestId(`${id}-async-car-expected`)
+    .textContent()
+  expect(expectedAsyncData).not.toBeNull()
+  await expect(page.getByTestId(`${id}-async-car-actual`)).toContainText(
+    expectedAsyncData!,
+  )
+
   await expect(page.getByTestId(`${id}-foo`)).toContainText(
     '{"value":"server"}',
+  )
+  await expect(page.getByTestId(`${id}-async-foo`)).toContainText(
+    '{"value":"server-async"}',
   )
 }
 
@@ -60,6 +71,14 @@ test.describe('SSR serialization adapters', () => {
     await expect(page.getByTestId('honk-actual-state')).toContainText(
       expectedHonkData!,
     )
+
+    const asyncExpectedHonkData = await page
+      .getByTestId('async-honk-expected-state')
+      .textContent()
+    expect(asyncExpectedHonkData).not.toBeNull()
+    await expect(page.getByTestId('async-honk-actual-state')).toContainText(
+      asyncExpectedHonkData!,
+    )
   })
 
   test('stream', async ({ page }) => {
@@ -77,6 +96,27 @@ test.describe('SSR serialization adapters', () => {
 })
 
 test.describe('server functions serialization adapters', () => {
+  test('class instance', async ({ page }) => {
+    await page.goto('/server-function/class-instance', {
+      waitUntil: 'networkidle',
+    })
+    await awaitPageLoaded(page)
+
+    await expect(page.getByTestId('server-function-foo-response')).toBeEmpty()
+    await expect(
+      page.getByTestId('server-function-async-foo-response'),
+    ).toBeEmpty()
+
+    await page.getByTestId('server-function-btn').click()
+
+    await expect(
+      page.getByTestId('server-function-foo-response'),
+    ).toContainText('server')
+    await expect(
+      page.getByTestId('server-function-async-foo-response'),
+    ).toContainText('{"message":"echo","value":"server-async-serverFn"}')
+  })
+
   test('custom error', async ({ page }) => {
     await page.goto('/server-function/custom-error')
     await awaitPageLoaded(page)

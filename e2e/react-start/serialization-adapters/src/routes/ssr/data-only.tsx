@@ -18,15 +18,20 @@ export const Route = createFileRoute('/ssr/data-only')({
 
     const honkState = loaderData.car.singleInstance.honk()
 
+    const expectedAsyncHonkState = localData.asyncCar.singleInstance.honk()
+    const asyncHonkState = loaderData.asyncCar.singleInstance.honk()
+
     return (
       <div data-testid="data-only-container">
         <h2 data-testid="data-only-heading">data-only</h2>
         <div>
           context: <RenderData id="context" data={context} />
         </div>
+        <hr />
         <div>
           loader: <RenderData id="loader" data={loaderData} />
         </div>
+        <hr />
         <div data-testid="honk-container">
           <h3>honk</h3>
           <div>
@@ -43,6 +48,21 @@ export const Route = createFileRoute('/ssr/data-only')({
           </div>
         </div>
         <hr />
+        <div data-testid="async-honk-container">
+          <h3>async car honk</h3>
+          <div>
+            expected:{' '}
+            <div data-testid="async-honk-expected-state">
+              {JSON.stringify(expectedAsyncHonkState)}
+            </div>
+          </div>
+          <div>
+            actual:{' '}
+            <div data-testid="async-honk-actual-state">
+              {JSON.stringify(asyncHonkState)}
+            </div>
+          </div>
+        </div>
         <Outlet />
       </div>
     )
