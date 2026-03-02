@@ -7,7 +7,7 @@ import type * as App from './app'
 const appModulePath = './dist/app.js'
 const { createTestRouter } = (await import(appModulePath)) as typeof App
 
-describe('speed', () => {
+describe('client-nav', () => {
   let id = 0
   const { router, component } = createTestRouter()
   let unsub = () => {}
@@ -57,7 +57,7 @@ describe('speed', () => {
   beforeAll(setup)
   afterAll(teardown)
 
-  bench('navigate', () => act(next), {
+  bench('client-side navigation loop (react)', () => act(next), {
     warmupIterations: 1000,
     time: 10_000,
     setup,
