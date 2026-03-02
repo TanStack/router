@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-router-e2e-bundle-size",
+  "name": "@benchmarks/bundle-size",
   "private": true,
   "type": "module",
   "scripts": {

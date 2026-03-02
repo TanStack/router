@@ -1,13 +1,15 @@
 import { defineConfig } from 'vitest/config'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+import codspeedPlugin from '@codspeed/vitest-plugin'
 
 export default defineConfig({
-  plugins: [vueJsx()],
-  ...(process.env.VITEST && {
-    resolve: {
-      conditions: ['development'],
-    },
-  }),
+  plugins: [
+    !!process.env.WITH_INSTRUMENTATION && codspeedPlugin(),
+    vueJsx()
+  ],
+  resolve: {
+    conditions: ['development'],
+  },
   test: {
     name: '@benchmarks/client-nav (vue)',
     watch: false,

@@ -3,6 +3,7 @@ import { bench, describe } from 'vitest'
 import * as Vue from 'vue'
 import { rootRouteId } from '@tanstack/router-core'
 import {
+  Link,
   Outlet,
   RouterProvider,
   createMemoryHistory,
@@ -30,7 +31,7 @@ function createTestRouter() {
   const Params = Vue.defineComponent({
     setup() {
       const params = useParams({
-        from: rootRouteId,
+        strict: false,
         select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
       })
 
@@ -44,7 +45,7 @@ function createTestRouter() {
   const Search = Vue.defineComponent({
     setup() {
       const search = useSearch({
-        from: rootRouteId,
+        strict: false,
         select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
       })
 
@@ -52,6 +53,20 @@ function createTestRouter() {
         void search.value
         return null
       }
+    },
+  })
+
+  const Links = Vue.defineComponent({
+    setup() {
+      return () => (
+        <Link
+          to="/$id"
+          params={{ id: '0' }}
+          search={{ id: '0' }}
+        >
+          Link
+        </Link>
+      )
     },
   })
 
@@ -64,6 +79,9 @@ function createTestRouter() {
           ))}
           {selectors.map((selector) => (
             <Search key={`search-${selector}`} />
+          ))}
+          {selectors.map((selector) => (
+            <Links key={`link-${selector}`} />
           ))}
           <Outlet />
         </>

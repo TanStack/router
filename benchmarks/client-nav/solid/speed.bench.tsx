@@ -2,6 +2,7 @@ import { cleanup, render } from '@solidjs/testing-library'
 import { createEffect } from 'solid-js'
 import { afterAll, beforeAll, bench, describe } from 'vitest'
 import {
+  Link,
   Outlet,
   RouterProvider,
   createMemoryHistory,
@@ -52,6 +53,14 @@ function createTestRouter() {
     return null
   }
 
+  function Links() {
+    return (
+      <Link to="/$id" params={{ id: '0' }} search={{ id: '0' }}>
+        Link
+      </Link>
+    )
+  }
+
   function Root() {
     return (
       <>
@@ -60,6 +69,9 @@ function createTestRouter() {
         ))}
         {selectors.map(() => (
           <Search />
+        ))}
+        {selectors.map(() => (
+          <Links />
         ))}
         <Outlet />
       </>

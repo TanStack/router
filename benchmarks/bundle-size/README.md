@@ -26,13 +26,13 @@ Each package has two scenarios:
 ## Local Run
 
 ```bash
-pnpm nx run tanstack-router-e2e-bundle-size:build
+pnpm nx run @benchmarks/bundle-size:build
 ```
 
 This writes:
 
-- `e2e/bundle-size/results/current.json`
-- `e2e/bundle-size/results/benchmark-action.json`
+- `benchmarks/bundle-size/results/current.json`
+- `benchmarks/bundle-size/results/benchmark-action.json`
 
 ## CI Reporting
 

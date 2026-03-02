@@ -3,6 +3,7 @@ import { act } from 'react'
 import { bench, describe } from 'vitest'
 import { rootRouteId } from '@tanstack/router-core'
 import {
+  Link,
   Outlet,
   RouterProvider,
   createMemoryHistory,
@@ -29,7 +30,7 @@ function createTestRouter() {
 
   function Params() {
     const params = useParams({
-      from: rootRouteId,
+      strict: false,
       select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
     })
     void params
@@ -38,11 +39,23 @@ function createTestRouter() {
 
   function Search() {
     const search = useSearch({
-      from: rootRouteId,
+      strict: false,
       select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
     })
     void search
     return null
+  }
+
+  function Links() {
+    return (
+      <Link
+        to="/$id"
+        params={{ id: '0' }}
+        search={{ id: '0' }}
+      >
+        Link
+      </Link>
+    )
   }
 
   function Root() {
@@ -53,6 +66,9 @@ function createTestRouter() {
         ))}
         {selectors.map((selector) => (
           <Search key={selector} />
+        ))}
+        {selectors.map((selector) => (
+          <Links key={selector} />
         ))}
         <Outlet />
       </>

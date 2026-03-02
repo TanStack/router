@@ -23,6 +23,7 @@
     "vue": "^3.5.16"
   },
   "devDependencies": {
+    "@codspeed/vitest-plugin": "^5.0.1",
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/react": "^16.2.0",
     "@testing-library/vue": "^8.1.0",
