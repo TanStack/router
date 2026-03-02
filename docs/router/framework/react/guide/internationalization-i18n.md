@@ -61,7 +61,7 @@ This single route definition supports:
 
 The `{-$param}` syntax marks the parameter as optional. When the locale segment is omitted, applications typically fall back to a default language.
 
-### Complex i18n Patterns
+### Modeling More Complex i18n URLs
 
 Combine optional parameters for more sophisticated i18n routing:
 
