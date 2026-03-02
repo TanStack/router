@@ -19,9 +19,9 @@ The base of this guide is built with TanStack Router. Check out the guide on int
 
 If you have already set up TanStack Router with i18n, this guide will be suitable when:
 
-- You use TanStack Start
-- You need SSR or streaming
-- You want locale-aware redirects and metadata
+- You are using TanStack Start
+- You need SSR or streaming support
+- You need locale-aware redirects or metadata
 
 ## Library Integration Examples
 
