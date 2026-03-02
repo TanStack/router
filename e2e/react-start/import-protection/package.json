@@ -8,8 +8,8 @@
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "test:e2e:mockMode": "rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e:errorMode": "rm -rf port*.txt; BEHAVIOR=error playwright test --project=chromium",
+    "test:e2e:mockMode": "rm -rf node_modules/.vite; rm -rf port*.txt; playwright test --project=chromium",
+    "test:e2e:errorMode": "rm -rf node_modules/.vite; rm -rf port*.txt; BEHAVIOR=error playwright test --project=chromium",
     "test:e2e": "pnpm run test:e2e:mockMode && pnpm run test:e2e:errorMode"
   },
   "dependencies": {
@@ -17,7 +17,9 @@
     "@tanstack/react-start": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vite": "^7.3.1"
+    "react-tweet": "^3.3.0",
+    "vite": "^7.3.1",
+    "vite-tsconfig-paths": "^6.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",

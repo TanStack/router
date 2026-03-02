@@ -701,8 +701,4 @@ export type LinkOptions<
   TMaskTo extends string = '.',
 > = NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & LinkOptionsProps
 
-export type LinkCurrentTargetElement = {
-  preloadTimeout?: null | ReturnType<typeof setTimeout>
-}
-
 export const preloadWarning = 'Error preloading route! ☝️'

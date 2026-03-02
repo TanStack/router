@@ -73,15 +73,23 @@ async function killChild(child: ReturnType<typeof spawn>): Promise<void> {
   })
 }
 
-const routes = [
-  '/',
-  '/leaky-server-import',
-  '/client-only-violations',
-  '/client-only-jsx',
-  '/beforeload-leak',
-  '/component-server-leak',
-  '/barrel-false-positive',
-]
+const routeDefinitions = [
+  ['/', 'heading'],
+  ['/leaky-server-import', 'leaky-heading'],
+  ['/client-only-violations', 'client-only-heading'],
+  ['/client-only-jsx', 'client-only-jsx-heading'],
+  ['/beforeload-leak', 'beforeload-leak-heading'],
+  ['/component-server-leak', 'component-leak-heading'],
+  ['/barrel-false-positive', 'barrel-heading'],
+  ['/alias-path-leak', 'alias-path-leak-heading'],
+  ['/alias-path-namespace-leak', 'alias-path-namespace-leak-heading'],
+  ['/non-alias-namespace-leak', 'non-alias-namespace-leak-heading'],
+] as const
+
+const routes = routeDefinitions.map(([route]) => route)
+
+const routeReadyTestIds: Record<string, string> =
+  Object.fromEntries(routeDefinitions)
 
 async function navigateAllRoutes(
   baseURL: string,
@@ -92,12 +100,29 @@ async function navigateAllRoutes(
 
   for (const route of routes) {
     try {
-      await page.goto(`${baseURL}${route}`, {
-        waitUntil: 'networkidle',
-        timeout: 15_000,
-      })
+      // Prefer 'networkidle' (ensures route chunks are actually fetched), but
+      // fall back if it hangs in certain CI environments.
+      try {
+        await page.goto(`${baseURL}${route}`, {
+          waitUntil: 'networkidle',
+          timeout: 15_000,
+        })
+      } catch {
+        await page.goto(`${baseURL}${route}`, {
+          waitUntil: 'load',
+          timeout: 30_000,
+        })
+      }
+
+      const testId = routeReadyTestIds[route]
+      if (testId) {
+        await page.getByTestId(testId).waitFor({ timeout: 10_000 })
+      }
     } catch {
       // ignore navigation errors — we only care about server logs
+    } finally {
+      // Allow deferred transforms/logging to flush even when navigation fails.
+      await new Promise((r) => setTimeout(r, 750))
     }
   }
 

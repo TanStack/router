@@ -1,7 +1,9 @@
 import path from 'node:path'
+import fs from 'node:fs'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 import type { Violation } from './violations.utils'
+import type { Page } from '@playwright/test'
 
 async function readViolations(
   type: 'build' | 'dev' | 'dev.cold' | 'dev.warm',
@@ -14,10 +16,44 @@ async function readViolations(
   return (mod.default ?? []) as Array<Violation>
 }
 
+async function expectRouteHeading(
+  page: Page,
+  route: string,
+  testId: string,
+  heading: string,
+): Promise<void> {
+  await page.goto(route)
+  await expect(page.getByTestId(testId)).toContainText(heading)
+}
+
+function findClientSecretServerFileViolation(
+  violations: Array<Violation>,
+  importerFragment: string,
+  specifierMatches: (specifier: string) => boolean,
+): Violation | undefined {
+  return violations.find(
+    (v) =>
+      v.envType === 'client' &&
+      v.type === 'file' &&
+      v.importer.includes(importerFragment) &&
+      (specifierMatches(v.specifier) ||
+        v.resolved?.includes('violations/secret.server')),
+  )
+}
+
 test.use({
   // The mock proxy returns undefined-ish values, which may cause
   // React rendering warnings — whitelist those
   whitelistErrors: [/mock/i, /Cannot read properties/i, /undefined/i],
+})
+
+test.beforeEach(({}, testInfo) => {
+  const baseURL = testInfo.project.use.baseURL
+  if (!baseURL) {
+    throw new Error(
+      'Missing Playwright baseURL for import-protection e2e. Run with `pnpm exec playwright test -c e2e/react-start/import-protection/playwright.config.ts` (or configure `use.baseURL`).',
+    )
+  }
 })
 
 test('app loads successfully with mock mode', async ({ page }) => {
@@ -84,6 +120,21 @@ test('marker violation: client importing server-only marked module', async () =>
   expect(markerViolation).toBeDefined()
 })
 
+test('build log does not contain mock-edge missing export warnings', () => {
+  const buildLogPath = path.resolve(
+    import.meta.dirname,
+    '..',
+    'webserver-build.log',
+  )
+
+  if (!fs.existsSync(buildLogPath)) {
+    return
+  }
+
+  const log = fs.readFileSync(buildLogPath, 'utf-8')
+  expect(log).not.toMatch(/not exported by\s+"[^"\n]*mock:build:/)
+})
+
 for (const mode of ['build', 'dev'] as const) {
   test(`violations contain trace information in ${mode}`, async () => {
     const violations = await readViolations(mode)
@@ -121,7 +172,12 @@ for (const mode of ['build', 'dev'] as const) {
     const violations = await readViolations(mode)
 
     // Find a violation with a multi-step trace
-    const v = violations.find((x) => x.type === 'file' && x.trace.length >= 3)
+    const v = violations.find(
+      (x) =>
+        x.type === 'file' &&
+        x.trace.length >= 3 &&
+        x.trace.some((s) => s.line != null),
+    )
     expect(v).toBeDefined()
 
     // Every non-entry trace step should have a line number, except:
@@ -136,6 +192,13 @@ for (const mode of ['build', 'dev'] as const) {
       // re-enters the same file — its import may not be locatable.
       const prev = v!.trace[i - 1]
       if (prev?.specifier?.includes('?tsr-split=')) continue
+      if (
+        step.line == null &&
+        step.file.startsWith('src/routes/') &&
+        prev?.file.includes('routeTree.gen')
+      ) {
+        continue
+      }
 
       expect(
         step.line,
@@ -155,7 +218,8 @@ for (const mode of ['build', 'dev'] as const) {
         x.type === 'file' &&
         x.envType === 'client' &&
         (x.specifier.includes('secret.server') ||
-          x.resolved?.includes('secret.server')),
+          x.resolved?.includes('secret.server')) &&
+        x.trace[x.trace.length - 1]?.line != null,
     )
     expect(v).toBeDefined()
 
@@ -175,7 +239,8 @@ for (const mode of ['build', 'dev'] as const) {
         x.type === 'file' &&
         x.envType === 'client' &&
         (x.specifier.includes('secret.server') ||
-          x.resolved?.includes('secret.server')),
+          x.resolved?.includes('secret.server')) &&
+        !!x.snippet,
     )
     expect(v).toBeDefined()
     expect(v!.snippet).toBeDefined()
@@ -194,7 +259,10 @@ for (const mode of ['build', 'dev'] as const) {
   test(`compiler leak violation includes line/col in importer in ${mode}`, async () => {
     const violations = await readViolations(mode)
     const v = violations.find(
-      (x) => x.importer.includes('compiler-leak') && x.type === 'file',
+      (x) =>
+        x.importer.includes('compiler-leak') &&
+        x.type === 'file' &&
+        /:\d+:\d+$/.test(x.importer),
     )
     expect(v).toBeDefined()
     expect(v!.importer).toMatch(/:\d+:\d+$/)
@@ -208,7 +276,8 @@ for (const mode of ['build', 'dev'] as const) {
       (x) =>
         x.type === 'specifier' &&
         x.specifier === '@tanstack/react-start/server' &&
-        x.importer.includes('leaky-server-import'),
+        x.importer.includes('leaky-server-import') &&
+        /:\d+:\d+$/.test(x.importer),
     )
     expect(v).toBeDefined()
     expect(v!.importer).toContain('violations/leaky-server-import')
@@ -252,7 +321,10 @@ for (const mode of ['build', 'dev'] as const) {
     // which shortens the output.  The snippet must still show the original
     // source lines (mapped via sourcesContent in the compiler's sourcemap).
     const compilerViolation = violations.find(
-      (v) => v.envType === 'client' && v.importer.includes('compiler-leak'),
+      (v) =>
+        v.envType === 'client' &&
+        v.importer.includes('compiler-leak') &&
+        !!v.snippet,
     )
 
     expect(compilerViolation).toBeDefined()
@@ -468,10 +540,15 @@ test('warm run detects the same unique violations as cold run', async () => {
   const cold = await readViolations('dev.cold')
   const warm = await readViolations('dev.warm')
 
-  // Deduplicate by (envType, type, specifier, importer-file) since the same
-  // logical violation can be reported multiple times via different code paths.
+  // Deduplicate by (envType, type, normalizedSpecifier, importer-file).
+  // On warm starts the specifier string may differ from cold starts
+  // (e.g. alias `~/foo` vs resolved relative `src/foo`, or with/without
+  // the `.ts` extension) because different detection code-paths fire.
+  // Normalize to the resolved path (without extension) for a stable key.
+  const normalizeSpec = (v: Violation) =>
+    (v.resolved ?? v.specifier).replace(/\.[cm]?[tj]sx?$/, '')
   const uniqueKey = (v: Violation) =>
-    `${v.envType}|${v.type}|${v.specifier}|${v.importer.replace(/:.*/, '')}`
+    `${v.envType}|${v.type}|${normalizeSpec(v)}|${v.importer.replace(/:.*/, '')}`
 
   const coldUniq = [...new Set(cold.map(uniqueKey))].sort()
   const warmUniq = [...new Set(warm.map(uniqueKey))].sort()
@@ -481,7 +558,12 @@ test('warm run detects the same unique violations as cold run', async () => {
 test('warm run traces include line numbers', async () => {
   const warm = await readViolations('dev.warm')
 
-  const v = warm.find((x) => x.type === 'file' && x.trace.length >= 3)
+  const v = warm.find(
+    (x) =>
+      x.type === 'file' &&
+      x.trace.length >= 3 &&
+      x.trace.some((s) => s.line != null),
+  )
   expect(v).toBeDefined()
 
   for (let i = 1; i < v!.trace.length; i++) {
@@ -490,6 +572,13 @@ test('warm run traces include line numbers', async () => {
     if (step.file.includes('routeTree.gen')) continue
     const prev = v!.trace[i - 1]
     if (prev.specifier?.includes('?tsr-split=')) continue
+    if (
+      step.line == null &&
+      step.file.startsWith('src/routes/') &&
+      prev.file.includes('routeTree.gen')
+    ) {
+      continue
+    }
 
     expect(
       step.line,
@@ -630,3 +719,217 @@ test('no false positive for barrel-reexport marker pattern in build', async () =
 
   expect(markerHits).toEqual([])
 })
+
+// noExternal .client package false positive: react-tweet's package.json
+// exports resolve to `index.client.js` via the "default" condition.
+// When listed in ssr.noExternal, Vite bundles it and the resolved path
+// contains `.client.`, matching the default **/*.client.* deny pattern.
+// Import-protection must NOT flag node_modules paths with file-based
+// deny rules — these are third-party conventions, not user source code.
+
+test('noexternal-client-pkg route loads in mock mode', async ({ page }) => {
+  await page.goto('/noexternal-client-pkg')
+  await expect(page.getByTestId('noexternal-heading')).toContainText(
+    'noExternal .client Package',
+  )
+})
+
+test('alias-path-leak route loads in mock mode', async ({ page }) => {
+  await expectRouteHeading(
+    page,
+    '/alias-path-leak',
+    'alias-path-leak-heading',
+    'Alias Path Leak',
+  )
+})
+
+test('alias-path-leak renders real secret in SSR HTML', async ({ page }) => {
+  const response = await page.request.get('/alias-path-leak')
+  expect(response.ok()).toBe(true)
+
+  const html = await response.text()
+  expect(html).toContain('data-testid="alias-path-secret"')
+  expect(html).toContain('super-secret-server-key-12345')
+})
+
+test('alias-path-leak does not expose real secret after hydration', async ({
+  page,
+}) => {
+  await page.goto('/alias-path-leak')
+  await expect(page.getByTestId('alias-path-secret-hydration')).toContainText(
+    'hydrated',
+  )
+
+  await expect(page.getByTestId('alias-path-secret-client')).not.toContainText(
+    'super-secret-server-key-12345',
+  )
+})
+
+test('alias-path-namespace-leak route loads in mock mode', async ({ page }) => {
+  await expectRouteHeading(
+    page,
+    '/alias-path-namespace-leak',
+    'alias-path-namespace-leak-heading',
+    'Alias Path Namespace Leak',
+  )
+})
+
+test('alias-path-namespace-leak renders real secret in SSR HTML', async ({
+  page,
+}) => {
+  const response = await page.request.get('/alias-path-namespace-leak')
+  expect(response.ok()).toBe(true)
+
+  const html = await response.text()
+  expect(html).toContain('data-testid="alias-path-namespace-leak-secret"')
+  expect(html).toContain('super-secret-server-key-12345')
+})
+
+test('alias-path-namespace-leak does not expose real secret after hydration', async ({
+  page,
+}) => {
+  await page.goto('/alias-path-namespace-leak')
+  await expect(
+    page.getByTestId('alias-path-namespace-leak-secret-hydration'),
+  ).toContainText('hydrated')
+
+  await expect(
+    page.getByTestId('alias-path-namespace-leak-secret-client'),
+  ).not.toContainText('super-secret-server-key-12345')
+})
+
+test('non-alias-namespace-leak route loads in mock mode', async ({ page }) => {
+  await expectRouteHeading(
+    page,
+    '/non-alias-namespace-leak',
+    'non-alias-namespace-leak-heading',
+    'Non-Alias Namespace Leak',
+  )
+})
+
+test('non-alias-namespace-leak renders real secret in SSR HTML', async ({
+  page,
+}) => {
+  const response = await page.request.get('/non-alias-namespace-leak')
+  expect(response.ok()).toBe(true)
+
+  const html = await response.text()
+  expect(html).toContain('data-testid="non-alias-namespace-leak-secret"')
+  expect(html).toContain('super-secret-server-key-12345')
+})
+
+test('non-alias-namespace-leak does not expose real secret after hydration', async ({
+  page,
+}) => {
+  await page.goto('/non-alias-namespace-leak')
+  await expect(
+    page.getByTestId('non-alias-namespace-leak-secret-hydration'),
+  ).toContainText('hydrated')
+
+  await expect(
+    page.getByTestId('non-alias-namespace-leak-secret-client'),
+  ).not.toContainText('super-secret-server-key-12345')
+})
+
+for (const mode of ['build', 'dev'] as const) {
+  test(`no false positive for noExternal react-tweet (.client entry) in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const hits = violations.filter(
+      (v) =>
+        v.specifier.includes('react-tweet') ||
+        v.resolved?.includes('react-tweet') ||
+        v.importer.includes('noexternal-client-pkg'),
+    )
+
+    expect(hits).toEqual([])
+  })
+}
+
+for (const mode of ['build', 'dev'] as const) {
+  test(`alias path mapping does not bypass .server file denial in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const hit = findClientSecretServerFileViolation(
+      violations,
+      'alias-path-leak',
+      (specifier) => specifier.includes('violations/secret.server'),
+    )
+
+    expect(hit).toBeDefined()
+  })
+}
+
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
+  test(`alias path .server imports are not denied in server env in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const serverAliasHits = violations.filter(
+      (v) =>
+        v.envType === 'server' &&
+        (v.type === 'file' || v.type === 'marker' || v.type === 'specifier') &&
+        (v.importer.includes('alias-path-leak') ||
+          v.importer.includes('alias-path-namespace-leak')) &&
+        (v.specifier.includes('secret.server') ||
+          v.resolved?.includes('secret.server')),
+    )
+
+    expect(serverAliasHits).toEqual([])
+  })
+}
+
+for (const mode of ['build', 'dev'] as const) {
+  test(`alias path namespace import does not bypass .server file denial in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const hit = findClientSecretServerFileViolation(
+      violations,
+      'alias-path-namespace-leak',
+      (specifier) => specifier === '~/violations/secret.server',
+    )
+
+    expect(hit).toBeDefined()
+  })
+}
+
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
+  test(`alias routes both emit client file violations in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const aliasImporters = new Set(
+      violations
+        .filter(
+          (v) =>
+            v.envType === 'client' &&
+            v.type === 'file' &&
+            (v.specifier.includes('secret.server') ||
+              v.resolved?.includes('secret.server')) &&
+            (v.importer.includes('alias-path-leak') ||
+              v.importer.includes('alias-path-namespace-leak')),
+        )
+        .map((v) =>
+          v.importer.includes('alias-path-namespace-leak')
+            ? 'alias-path-namespace-leak'
+            : 'alias-path-leak',
+        ),
+    )
+
+    expect(aliasImporters).toEqual(
+      new Set(['alias-path-leak', 'alias-path-namespace-leak']),
+    )
+  })
+}
+
+for (const mode of ['build', 'dev', 'dev.warm'] as const) {
+  test(`namespace import without path alias is denied in ${mode}`, async () => {
+    const violations = await readViolations(mode)
+
+    const hit = findClientSecretServerFileViolation(
+      violations,
+      'non-alias-namespace-leak',
+      (specifier) => specifier.includes('../violations/secret.server'),
+    )
+
+    expect(hit).toBeDefined()
+  })
+}

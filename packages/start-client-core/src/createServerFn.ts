@@ -113,6 +113,12 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       // We want to make sure the new function has the same
       // properties as the original function
 
+      // Propagate the declared HTTP method onto the extracted handler
+      // so the manifest-exported symbol (resolved by getServerFnById)
+      // carries `method`, enabling the server handler to reject
+      // mismatched HTTP methods before parsing request payloads.
+      ;(extractedFn as any).method = resolvedOptions.method
+
       return Object.assign(
         async (opts?: CompiledFetcherFnOptions) => {
           // Start by executing the client-side middleware chain
@@ -137,6 +143,9 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
         {
           // This copies over the URL, function ID
           ...extractedFn,
+          // Expose the declared HTTP method so the server handler
+          // can reject mismatched methods before parsing payloads
+          method: resolvedOptions.method,
           // The extracted function on the server-side calls
           // this function
           __executeServer: async (opts: any) => {
@@ -343,6 +352,7 @@ export type Fetcher<TMiddlewares, TInputValidator, TResponse> =
 export interface FetcherBase {
   [TSS_SERVER_FUNCTION]: true
   url: string
+  method: Method
   __executeServer: (opts: {
     method: Method
     data: unknown
