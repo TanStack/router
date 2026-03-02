@@ -27,21 +27,21 @@ jobs:
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
 
-      - name: Run Benchmarks with CodSpeed
+      - name: Run CodSpeed benchmark for React
         continue-on-error: true
         uses: CodSpeedHQ/action@v4
         with:
           mode: simulation
           run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf:react
 
-      - name: Run Benchmarks with CodSpeed
+      - name: Run CodSpeed benchmark for Solid
         continue-on-error: true
         uses: CodSpeedHQ/action@v4
         with:
           mode: simulation
           run: WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/client-nav:test:perf:solid
 
-      - name: Run Benchmarks with CodSpeed
+      - name: Run CodSpeed benchmark for Vue
         continue-on-error: true
         uses: CodSpeedHQ/action@v4
         with:
