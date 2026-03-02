@@ -15,7 +15,7 @@ This guide covers:
 
 ## i18n with Optional Path Parameters
 
-Optional path parameters are excellent for implementing internationalization (i18n) routing patterns. You can use prefix patterns to handle multiple languages while maintaining clean, SEO-friendly URLs.
+Optional path parameters are commonly used to implement internationalized routing. Prefix patterns allow a locale to appear in the URL when explicitly provided while still supporting clean, SEO-friendly URLs.
 
 ### Prefix-based i18n
 
