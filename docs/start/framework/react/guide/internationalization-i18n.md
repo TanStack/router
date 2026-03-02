@@ -15,7 +15,7 @@ This guide covers:
 
 # Integration with TanStack Router
 
-The base of this guide is built with TanStack Router. Check out the guide on integrating [i18n in TanStack Router](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n).
+This guide assumes you are using TanStack Start, which builds on TanStack Router. For Router-specific i18n patterns, see the [TanStack Router i18n guide](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n).
 
 This guide is most relevant when:
 
