@@ -23,7 +23,7 @@ If you have already set up TanStack Router with i18n, this guide will be suitabl
 - You need SSR or streaming
 - You want locale-aware redirects and metadata
 
-## Library integrations
+## Library Integration Examples
 
 ### TanStack Start + Paraglide
 
