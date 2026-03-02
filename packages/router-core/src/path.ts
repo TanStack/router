@@ -434,3 +434,29 @@ function encodePathParam(
   const encoded = encodeURIComponent(value)
   return decoder?.(encoded) ?? encoded
 }
+
+/**
+ * Checks if a pathname is within a basepath scope.
+ * Used to determine if a router should process a location change.
+ * This enables MFE architectures where multiple routers coexist.
+ *
+ * Mirrors React Router's stripBasename behavior where paths outside
+ * the basename are silently ignored.
+ *
+ * @param pathname - The current pathname to check
+ * @param basepath - The router's configured basepath
+ * @returns true if pathname is within basepath scope, false otherwise
+ */
+export function isPathInScope(pathname: string, basepath: string): boolean {
+  if (basepath === '/') return true
+
+  // Case-insensitive comparison (same as React Router)
+  if (!pathname.toLowerCase().startsWith(basepath.toLowerCase())) {
+    return false
+  }
+
+  // Ensure basepath is followed by / or end of string
+  // This prevents /app from matching /application
+  const nextChar = pathname.charAt(basepath.length)
+  return !nextChar || nextChar === '/'
+}

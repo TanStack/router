@@ -25,6 +25,7 @@ import {
   cleanPath,
   compileDecodeCharMap,
   interpolatePath,
+  isPathInScope,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -2361,6 +2362,28 @@ export class RouterCore<
   }
 
   load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
+    // If this router has a basepath, only respond to paths within scope.
+    // This enables MFE architectures where multiple routers coexist.
+    if (this.basepath && this.basepath !== '/') {
+      // Get the current path from history
+      let pathToCheck = this.history.location.pathname
+
+      // For hash history, extract path from the hash portion
+      const href = this.history.location.href
+      if (href.includes('#')) {
+        const hashPart = href.split('#')[1]
+        if (hashPart) {
+          // Remove query string and nested hash from path
+          pathToCheck = hashPart.split('?')[0]?.split('#')[0] || '/'
+        }
+      }
+
+      // If path is outside this router's scope, silently ignore
+      if (!isPathInScope(pathToCheck, this.basepath)) {
+        return
+      }
+    }
+
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
     let loadPromise: Promise<void>
