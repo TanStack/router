@@ -91,13 +91,13 @@ function createTestRouter() {
 describe('speed', () => {
   let id = 0
   let router: ReturnType<typeof createTestRouter>
-  let unsub = () => { }
+  let unsub = () => {}
   let next: () => Promise<void> = () => Promise.reject()
 
   beforeAll(async () => {
     id = 0
     router = createTestRouter()
-    let resolveRendered: () => void = () => { }
+    let resolveRendered: () => void = () => {}
     unsub = router.subscribe('onRendered', () => {
       resolveRendered()
     })

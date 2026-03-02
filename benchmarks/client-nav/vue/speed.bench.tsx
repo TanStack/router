@@ -93,7 +93,7 @@ function createTestRouter() {
 describe('speed', () => {
   let id = 0
   const router = createTestRouter()
-  let unsub = () => { }
+  let unsub = () => {}
   let next: () => Promise<void> = () => Promise.reject()
 
   bench('navigate', () => next(), {
@@ -101,7 +101,7 @@ describe('speed', () => {
     time: 10_000,
     setup: async () => {
       id = 0
-      let resolve: () => void = () => { }
+      let resolve: () => void = () => {}
       unsub = router.subscribe('onRendered', () => resolve())
 
       const navigate = (opts: NavigateOptions) =>
