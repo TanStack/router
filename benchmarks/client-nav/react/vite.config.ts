@@ -11,6 +11,7 @@ export default defineConfig({
   build: {
     outDir: './react/dist',
     emptyOutDir: true,
+    minify: 'esbuild',
     lib: {
       entry: './react/app.tsx',
       formats: ['es'],
@@ -19,6 +20,9 @@ export default defineConfig({
     rollupOptions: {
       external: ['react', 'react-dom', 'react/jsx-runtime'],
     },
+  },
+  esbuild: {
+    keepNames: true,
   },
   test: {
     name: '@benchmarks/client-nav (react)',
