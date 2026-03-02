@@ -62,7 +62,7 @@ The `{-$param}` syntax marks the parameter as optional. When the locale segment 
 
 ### Modeling More Complex i18n URLs
 
-Combine optional parameters for more sophisticated i18n routing:
+Optional parameters can be combined to support more complex routing structures:
 
 ```tsx title="/{-$locale}/blog/{-$category}/$slug"
 export const Route = createFileRoute('/{-$locale}/blog/{-$category}/$slug')({
