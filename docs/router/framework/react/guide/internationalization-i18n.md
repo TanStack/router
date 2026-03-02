@@ -103,12 +103,14 @@ function BlogPostComponent() {
 }
 ```
 
-This supports URLs like:
+This pattern supports flexible combinations such as:
 
-- `/blog/tech/my-post` (default locale, tech category)
-- `/fr/blog/my-post` (French, no category)
-- `/en/blog/tech/my-post` (explicit English, tech category)
-- `/es/blog/tecnologia/mi-post` (Spanish, Spanish category)
+- `/blog/tech/my-post` - default locale, English category
+- `/fr/blog/my-post` - French, no category
+- `/en/blog/tech/my-post` - explicit English, English category
+- `/es/blog/tecnologia/mi-post` - Spanish, Spanish category
+
+Validating locale values during route loading ensures downstream logic can safely rely on them.
 
 ### Language Navigation
 
