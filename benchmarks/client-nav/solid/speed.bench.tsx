@@ -49,7 +49,11 @@ describe('client-nav', () => {
     unsub()
   })
 
-  bench('client-side navigation loop (solid)', () => next(), {
+  bench('client-side navigation loop (solid)', async () => {
+    for (let i = 0; i < 10; i++) {
+      await next()
+    }
+  }, {
     warmupIterations: 1,
     iterations: 100,
   })

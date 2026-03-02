@@ -56,7 +56,11 @@ describe('client-nav', () => {
   beforeAll(setup)
   afterAll(teardown)
 
-  bench('client-side navigation loop (vue)', () => next(), {
+  bench('client-side navigation loop (vue)', async () => {
+    for (let i = 0; i < 10; i++) {
+      await next()
+    }
+  }, {
     warmupIterations: 1000,
     time: 10_000,
     setup,
