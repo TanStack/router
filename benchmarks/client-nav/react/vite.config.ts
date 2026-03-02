@@ -5,7 +5,7 @@ import codspeedPlugin from '@codspeed/vitest-plugin'
 export default defineConfig({
   plugins: [
     !!(process.env.VITEST && process.env.WITH_INSTRUMENTATION) &&
-    codspeedPlugin(),
+      codspeedPlugin(),
     react(),
   ],
   build: {
