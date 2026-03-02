@@ -115,3 +115,61 @@ test('scroll to top when not scrolled, regression test for #4782', async ({
   const restoredScrollPosition = await page.evaluate(() => window.scrollY)
   expect(restoredScrollPosition).toBe(0)
 })
+
+test('resetScroll=false saves scroll position for back navigation without scroll event, regression test for #6595', async ({
+  page,
+}) => {
+  const targetScrollPosition = 1500
+  const elementTargetScrollPosition = 600
+
+  await page.goto('/')
+  await page.waitForURL('/')
+  await expect(page.locator('#greeting')).toContainText('Welcome Home!');
+
+  await page.evaluate(
+    (scrollPos: number) => window.scrollTo(0, scrollPos),
+    targetScrollPosition,
+  );
+  await page.evaluate(
+    (scrollPos: number) => document.querySelector('#sidebar')?.scrollTo(0, scrollPos),
+    elementTargetScrollPosition,
+  );
+  await page.waitForTimeout(1000);
+
+  await checkScrollPositions();
+
+  async function checkScrollPositions() {
+    const scrollPosition = await page.evaluate(() => window.scrollY)
+    expect(scrollPosition).toBe(targetScrollPosition);
+
+    const sidebarScrollPosition = await page.evaluate(() => document.querySelector('#sidebar')?.scrollTop)
+    expect(sidebarScrollPosition).toBe(elementTargetScrollPosition);
+  }
+  await page.getByRole('link', { name: 'About (No Reset)', exact: true }).click()
+  await page.waitForURL('/about');
+  await expect(page.locator('#greeting')).toContainText('Hello from About!')
+
+  await checkScrollPositions();
+
+  await page.getByRole('link', { name: 'Bar (No Reset)', exact: true }).click()
+  await page.waitForURL('/bar');
+  await expect(page.locator('#greeting')).toContainText('Hello from Bar!')
+
+  await checkScrollPositions();
+
+  await page.goBack();
+  await page.waitForTimeout(1000)
+
+  await page.waitForURL('/about');
+  await expect(page.locator('#greeting')).toContainText('Hello from About!')
+
+  await checkScrollPositions();
+
+  await page.goBack();
+  await page.waitForTimeout(1000)
+
+  await page.waitForURL('/');
+  await expect(page.locator('#greeting')).toContainText('Welcome Home!');
+
+  await checkScrollPositions();
+});
