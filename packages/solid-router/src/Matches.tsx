@@ -51,8 +51,8 @@ export function Matches() {
   // prevents errors from propagating to an external Errored boundary.
   const ResolvedSuspense =
     router.options.disableGlobalCatchBoundary ||
-    (isServer ?? router.isServer) ||
-    (typeof document !== 'undefined' && router.ssr)
+      (isServer ?? router.isServer) ||
+      (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : Solid.Loading
 
@@ -172,13 +172,13 @@ export type MakeMatchRouteOptions<
 > = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | ((
-        params?: RouteByPath<
-          TRouter['routeTree'],
-          ResolveRelativePath<TFrom, NoInfer<TTo>>
-        >['types']['allParams'],
-      ) => Solid.JSX.Element)
-    | Solid.JSX.Element
+  | ((
+    params?: RouteByPath<
+      TRouter['routeTree'],
+      ResolveRelativePath<TFrom, NoInfer<TTo>>
+    >['types']['allParams'],
+  ) => Solid.JSX.Element)
+  | Solid.JSX.Element
 }
 
 export function MatchRoute<

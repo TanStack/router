@@ -67,8 +67,8 @@
     "tiny-invariant": "^1.3.3"
   },
   "devDependencies": {
-    "@solidjs/web": "^2.0.0-experimental.14",
-    "solid-js": "^2.0.0-experimental.14",
+    "@solidjs/web": "^2.0.0-experimental.16",
+    "solid-js": "^2.0.0-experimental.16",
     "vite": "*",
     "vite-plugin-solid": "^2.11.10"
   },

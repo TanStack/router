@@ -1,6 +1,6 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
 import { RawStream } from '@tanstack/solid-start'
-import { Loading, createEffect, createSignal } from 'solid-js'
+import { Loading, createEffect, createMemo, createSignal } from 'solid-js'
 import {
   createDelayedStream,
   createStreamConsumer,
@@ -12,6 +12,7 @@ function SSRMixedTest() {
   const [streamContent, setStreamContent] = createSignal('')
   const [isConsuming, setIsConsuming] = createSignal(true)
   const [error, setError] = createSignal<string | null>(null)
+  const deferred = createMemo(() => loaderData().deferred)
 
   createEffect(loaderData, (loaderDataValue) => {
     const rawData = loaderDataValue.rawData
@@ -47,10 +48,7 @@ function SSRMixedTest() {
         <div data-testid="ssr-mixed-deferred">
           Deferred:
           <Loading fallback={<span>Loading deferred...</span>}>
-            <Await
-              promise={loaderData().deferred}
-              children={(value: string) => <span>{value}</span>}
-            />
+            <span>{deferred()}</span>
           </Loading>
         </div>
         <div data-testid="ssr-mixed-stream">

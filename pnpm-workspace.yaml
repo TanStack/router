@@ -3,6 +3,7 @@ linkWorkspacePackages: true
 preferWorkspacePackages: true
 
 packages:
+  - '../solid/packages/*'
   - 'packages/*'
   - 'examples/react/*'
   - 'examples/solid/*'

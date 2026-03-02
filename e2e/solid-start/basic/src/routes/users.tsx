@@ -1,3 +1,4 @@
+import { For } from 'solid-js'
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import { getRouterInstance } from '@tanstack/solid-start'
 import axios from 'redaxios'
@@ -23,25 +24,22 @@ function UsersComponent() {
   return (
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
-        {[
-          ...users(),
-          { id: 'i-do-not-exist', name: 'Non-existent User', email: '' },
-        ].map((user) => {
-          return (
+        <For each={users()}>
+          {(user) => (
             <li class="whitespace-nowrap">
               <Link
                 to="/users/$userId"
                 params={{
-                  userId: String(user.id),
+                  userId: String(user().id),
                 }}
                 class="block py-1 text-blue-800 hover:text-blue-600"
                 activeProps={{ class: 'text-black font-bold' }}
               >
-                <div>{user.name}</div>
+                <div>{user().name}</div>
               </Link>
             </li>
-          )
-        })}
+          )}
+        </For>
       </ul>
       <hr />
       <Outlet />
