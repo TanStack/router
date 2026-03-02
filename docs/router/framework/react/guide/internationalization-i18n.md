@@ -52,12 +52,14 @@ function AboutComponent() {
 }
 ```
 
-This pattern matches:
+This single route definition supports:
 
-- `/about` (default locale)
-- `/en/about` (explicit English)
-- `/fr/about` (French)
-- `/es/about` (Spanish)
+- `/about` — default language
+- `/en/about`
+- `/fr/about`
+- `/es/about`
+
+The `{-$param}` syntax marks the parameter as optional. When the locale segment is omitted, applications typically fall back to a default language.
 
 ### Complex i18n Patterns
 
