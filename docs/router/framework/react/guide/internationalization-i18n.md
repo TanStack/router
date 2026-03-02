@@ -13,7 +13,7 @@ This guide covers:
 - Type safety
 - Integration patterns with i18n libraries (e.g. Paraglide)
 
-## Internationalization (i18n) with Optional Path Parameters
+## i18n with Optional Path Parameters
 
 Optional path parameters are excellent for implementing internationalization (i18n) routing patterns. You can use prefix patterns to handle multiple languages while maintaining clean, SEO-friendly URLs.
 
