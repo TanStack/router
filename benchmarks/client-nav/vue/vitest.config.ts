@@ -3,10 +3,7 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 
 export default defineConfig({
-  plugins: [
-    !!process.env.WITH_INSTRUMENTATION && codspeedPlugin(),
-    vueJsx()
-  ],
+  plugins: [!!process.env.WITH_INSTRUMENTATION && codspeedPlugin(), vueJsx()],
   resolve: {
     conditions: ['development'],
   },

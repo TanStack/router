@@ -1,5 +1,5 @@
 import { cleanup, render } from '@solidjs/testing-library'
-import { createEffect } from 'solid-js'
+import { For, createEffect } from 'solid-js'
 import { afterAll, beforeAll, bench, describe } from 'vitest'
 import {
   Link,
@@ -64,15 +64,9 @@ function createTestRouter() {
   function Root() {
     return (
       <>
-        {selectors.map(() => (
-          <Params />
-        ))}
-        {selectors.map(() => (
-          <Search />
-        ))}
-        {selectors.map(() => (
-          <Links />
-        ))}
+        <For each={selectors}>{() => <Params />}</For>
+        <For each={selectors}>{() => <Search />}</For>
+        <For each={selectors}>{() => <Links />}</For>
         <Outlet />
       </>
     )
@@ -86,7 +80,6 @@ function createTestRouter() {
     getParentRoute: () => root,
     path: '/$id',
     component: () => {
-      console.time('render')
       return <div />
     },
   })

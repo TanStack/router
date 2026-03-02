@@ -5,7 +5,7 @@ import codspeedPlugin from '@codspeed/vitest-plugin'
 export default defineConfig({
   plugins: [
     !!process.env.WITH_INSTRUMENTATION && codspeedPlugin(),
-    solid({ hot: false, dev: false })
+    solid({ hot: false, dev: false }),
   ],
   resolve: {
     conditions: ['solid', 'browser'],

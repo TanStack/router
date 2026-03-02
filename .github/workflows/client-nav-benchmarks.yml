@@ -4,13 +4,17 @@ name: Client Nav Benchmarks
 on:
   push:
     branches:
-      - "main"
+      - 'main'
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read # required for actions/checkout
   id-token: write # required for OIDC authentication with CodSpeed
+
+env:
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+  SERVER_PRESET: 'node-server'
 
 jobs:
   client-nav-benchmarks:

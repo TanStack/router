@@ -1,7 +1,6 @@
 import { cleanup, render } from '@testing-library/react'
 import { act } from 'react'
-import { bench, describe } from 'vitest'
-import { rootRouteId } from '@tanstack/router-core'
+import { bench, describe, beforeAll, afterAll } from 'vitest'
 import {
   Link,
   Outlet,
@@ -48,11 +47,7 @@ function createTestRouter() {
 
   function Links() {
     return (
-      <Link
-        to="/$id"
-        params={{ id: '0' }}
-        search={{ id: '0' }}
-      >
+      <Link to="/$id" params={{ id: '0' }} search={{ id: '0' }}>
         Link
       </Link>
     )
@@ -97,40 +92,47 @@ function createTestRouter() {
 describe('speed', () => {
   let id = 0
   const router = createTestRouter()
-  let unsub = () => {}
-  let next: () => Promise<void> = () => Promise.reject()
+  let unsub = () => { }
+  let next: () => Promise<void> = () => Promise.reject('Test not initialized')
+
+  async function setup() {
+    id = 0
+    let resolve: () => void = () => { }
+    unsub = router.subscribe('onRendered', () => resolve())
+
+    const navigate = (opts: NavigateOptions) =>
+      new Promise<void>((resolveNext) => {
+        resolve = resolveNext
+        router.navigate(opts)
+      })
+
+    next = () => {
+      const nextId = id++
+
+      return navigate({
+        to: '/$id',
+        params: { id: nextId },
+        search: { id: nextId },
+        replace: true,
+      })
+    }
+
+    render(<RouterProvider router={router} />)
+    await act(() => router.load())
+  }
+
+  function teardown() {
+    cleanup()
+    unsub()
+  }
+
+  beforeAll(setup)
+  afterAll(teardown)
 
   bench('navigate', () => act(next), {
     warmupIterations: 1000,
     time: 10_000,
-    setup: async () => {
-      id = 0
-      let resolve: () => void = () => {}
-      unsub = router.subscribe('onRendered', () => resolve())
-
-      const navigate = (opts: NavigateOptions) =>
-        new Promise<void>((resolveNext) => {
-          resolve = resolveNext
-          router.navigate(opts)
-        })
-
-      next = () => {
-        const nextId = id++
-
-        return navigate({
-          to: '/$id',
-          params: { id: nextId },
-          search: { id: nextId },
-          replace: true,
-        })
-      }
-
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
-    },
-    teardown: () => {
-      cleanup()
-      unsub()
-    },
+    setup,
+    teardown,
   })
 })
