@@ -21,24 +21,39 @@ export const renderRouterToStream = async ({
   children: ReactNode
 }) => {
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
-    const stream = await ReactDOMServer.renderToReadableStream(children, {
-      signal: request.signal,
-      nonce: router.options.ssr?.nonce,
-      progressiveChunkSize: Number.POSITIVE_INFINITY,
-    })
+    try {
+      const stream = await ReactDOMServer.renderToReadableStream(children, {
+        signal: request.signal,
+        nonce: router.options.ssr?.nonce,
+        progressiveChunkSize: Number.POSITIVE_INFINITY,
+        onError: (error) => {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            return
+          }
 
-    if (isbot(request.headers.get('User-Agent'))) {
-      await stream.allReady
+          console.error('onError in renderToReadableStream:', error)
+        },
+      })
+
+      if (isbot(request.headers.get('User-Agent'))) {
+        await stream.allReady
+      }
+
+      const responseStream = transformReadableStreamWithRouter(
+        router,
+        stream as unknown as ReadableStream,
+      )
+      return new Response(responseStream as any, {
+        status: router.state.statusCode,
+        headers: responseHeaders,
+      })
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        return new Response(null, { status: 499, headers: responseHeaders })
+      }
+      console.error('Error in renderToReadableStream:', e)
+      return new Response(null, { status: 500, headers: responseHeaders })
     }
-
-    const responseStream = transformReadableStreamWithRouter(
-      router,
-      stream as unknown as ReadableStream,
-    )
-    return new Response(responseStream as any, {
-      status: router.state.statusCode,
-      headers: responseHeaders,
-    })
   }
 
   if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
