@@ -197,7 +197,7 @@ function AdvancedLanguageSwitcher() {
 
 ### Advanced i18n with Optional Parameters
 
-Organize i18n routes using optional parameters for flexible locale handling:
+A common organization pattern places routes beneath an optional locale segment:
 
 ```tsx
 // Route structure:
