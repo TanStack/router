@@ -35,13 +35,13 @@ jobs:
         uses: tanstack/config/.github/setup@main
 
       - name: Measure Bundle Size
-        run: pnpm nx run tanstack-router-e2e-bundle-size:build --outputStyle=stream --skipRemoteCache
+        run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
 
       - name: Capture Benchmark Outputs
         id: capture
         run: |
           {
-            echo "current_json_b64=$(base64 -w 0 < e2e/bundle-size/results/current.json)"
+            echo "current_json_b64=$(base64 -w 0 < benchmarks/bundle-size/results/current.json)"
           } >> "$GITHUB_OUTPUT"
 
   comment-pr:
@@ -63,17 +63,17 @@ jobs:
         env:
           CURRENT_JSON_B64: ${{ needs.benchmark-pr.outputs.current_json_b64 }}
         run: |
-          mkdir -p e2e/bundle-size/results
-          node -e "const fs=require('node:fs'); fs.writeFileSync('e2e/bundle-size/results/current.json', Buffer.from(process.env.CURRENT_JSON_B64 || '', 'base64'))"
+          mkdir -p benchmarks/bundle-size/results
+          node -e "const fs=require('node:fs'); fs.writeFileSync('benchmarks/bundle-size/results/current.json', Buffer.from(process.env.CURRENT_JSON_B64 || '', 'base64'))"
 
       - name: Read Historical Data (if available)
         run: |
-          mkdir -p e2e/bundle-size/results
+          mkdir -p benchmarks/bundle-size/results
           if git fetch --depth=1 origin gh-pages; then
-            if git show origin/gh-pages:benchmarks/bundle-size/data.js > e2e/bundle-size/results/history-data.js 2>/dev/null; then
+            if git show origin/gh-pages:benchmarks/bundle-size/data.js > benchmarks/bundle-size/results/history-data.js 2>/dev/null; then
               echo "Loaded bundle-size history from gh-pages."
             else
-              rm -f e2e/bundle-size/results/history-data.js
+              rm -f benchmarks/bundle-size/results/history-data.js
               echo "No bundle-size history found on gh-pages yet."
             fi
           fi
@@ -81,9 +81,9 @@ jobs:
       - name: Build PR Report
         run: |
           node scripts/benchmarks/bundle-size/pr-report.mjs \
-            --current e2e/bundle-size/results/current.json \
-            --history e2e/bundle-size/results/history-data.js \
-            --output e2e/bundle-size/results/pr-comment.md \
+            --current benchmarks/bundle-size/results/current.json \
+            --history benchmarks/bundle-size/results/history-data.js \
+            --output benchmarks/bundle-size/results/pr-comment.md \
             --base-sha "${{ github.event.pull_request.base.sha }}" \
             --dashboard-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/benchmarks/bundle-size/"
 
@@ -93,7 +93,7 @@ jobs:
         run: |
           node scripts/benchmarks/common/upsert-pr-comment.mjs \
             --pr "${{ github.event.pull_request.number }}" \
-            --body-file e2e/bundle-size/results/pr-comment.md
+            --body-file benchmarks/bundle-size/results/pr-comment.md
 
   benchmark-main:
     name: Publish Bundle Size History
@@ -111,14 +111,14 @@ jobs:
         uses: tanstack/config/.github/setup@main
 
       - name: Measure Bundle Size
-        run: pnpm nx run tanstack-router-e2e-bundle-size:build --outputStyle=stream --skipRemoteCache
+        run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
 
       - name: Publish Benchmark Dashboard
         uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b # v1.20.7
         with:
           tool: customSmallerIsBetter
           name: Bundle Size (gzip)
-          output-file-path: e2e/bundle-size/results/benchmark-action.json
+          output-file-path: benchmarks/bundle-size/results/benchmark-action.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           gh-pages-branch: gh-pages
