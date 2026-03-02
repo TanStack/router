@@ -56,14 +56,18 @@ describe('client-nav', () => {
   beforeAll(setup)
   afterAll(teardown)
 
-  bench('client-side navigation loop (vue)', async () => {
-    for (let i = 0; i < 10; i++) {
-      await next()
-    }
-  }, {
-    warmupIterations: 100,
-    time: 10_000,
-    setup,
-    teardown,
-  })
+  bench(
+    'client-side navigation loop (vue)',
+    async () => {
+      for (let i = 0; i < 10; i++) {
+        await next()
+      }
+    },
+    {
+      warmupIterations: 100,
+      time: 10_000,
+      setup,
+      teardown,
+    },
+  )
 })
