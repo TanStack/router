@@ -11,7 +11,7 @@ export default defineConfig({
   build: {
     outDir: './solid/dist',
     emptyOutDir: true,
-    minify: 'esbuild',
+    minify: false,
     lib: {
       entry: './solid/app.tsx',
       formats: ['es'],
@@ -23,9 +23,6 @@ export default defineConfig({
   },
   resolve: {
     conditions: ['solid', 'browser'],
-  },
-  esbuild: {
-    keepNames: true,
   },
   test: {
     name: '@benchmarks/client-nav (solid)',

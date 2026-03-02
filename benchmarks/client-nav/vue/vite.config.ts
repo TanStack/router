@@ -11,7 +11,7 @@ export default defineConfig({
   build: {
     outDir: './vue/dist',
     emptyOutDir: true,
-    minify: 'esbuild',
+    minify: false,
     lib: {
       entry: './vue/app.tsx',
       formats: ['es'],
@@ -20,9 +20,6 @@ export default defineConfig({
     rollupOptions: {
       external: ['vue', 'vue/jsx-runtime'],
     },
-  },
-  esbuild: {
-    keepNames: true,
   },
   test: {
     name: '@benchmarks/client-nav (vue)',
