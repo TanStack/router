@@ -397,13 +397,13 @@ async function main() {
 
   const scriptDir = path.dirname(fileURLToPath(import.meta.url))
   const repoRoot = path.resolve(scriptDir, '../../../')
-  const scenariosRoot = path.join(repoRoot, 'e2e/bundle-size/scenarios')
+  const scenariosRoot = path.join(repoRoot, 'benchmarks/bundle-size/scenarios')
   const resultsDir = args.resultsDir
     ? path.resolve(args.resultsDir)
-    : path.join(repoRoot, 'e2e/bundle-size/results')
+    : path.join(repoRoot, 'benchmarks/bundle-size/results')
   const distDir = args.distDir
     ? path.resolve(args.distDir)
-    : path.join(repoRoot, 'e2e/bundle-size/dist')
+    : path.join(repoRoot, 'benchmarks/bundle-size/dist')
 
   const measuredAtIso = args.measuredAt
     ? toIsoDate(args.measuredAt)
