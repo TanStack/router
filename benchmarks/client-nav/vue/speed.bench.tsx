@@ -61,7 +61,7 @@ describe('client-nav', () => {
       await next()
     }
   }, {
-    warmupIterations: 1000,
+    warmupIterations: 100,
     time: 10_000,
     setup,
     teardown,
