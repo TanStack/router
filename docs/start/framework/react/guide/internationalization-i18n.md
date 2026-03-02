@@ -46,7 +46,7 @@ export default {
 
 #### HTML Language Attribute
 
-Set the lang attribute in html at \_\_root.tsx:
+Set the lang attribute in `__root.tsx` so the document reflects the active locale:
 
 ```tsx
 import { getLocale } from '../paraglide/runtime'
