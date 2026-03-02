@@ -106,12 +106,12 @@ function createTestRouter() {
 describe('speed', () => {
   let id = 0
   const router = createTestRouter()
-  let unsub = () => { }
+  let unsub = () => {}
   let next: () => Promise<void> = () => Promise.reject('Test not initialized')
 
   async function setup() {
     id = 0
-    let resolve: () => void = () => { }
+    let resolve: () => void = () => {}
     unsub = router.subscribe('onRendered', () => resolve())
 
     const navigate = (opts: NavigateOptions) =>
