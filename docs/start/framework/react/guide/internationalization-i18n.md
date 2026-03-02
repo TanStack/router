@@ -30,7 +30,7 @@ If you have already set up TanStack Router with i18n, this guide will be suitabl
 **GitHub example:**
 [https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide)
 
-First, check out [TanStack Router + Paraglide integration guide](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n#tanstack-router-paraglide)
+Refer to the [TanStack Router + Paraglide integration guide](https://tanstack.com/start/latest/docs/framework/react/guide/internationalization-i18n#tanstack-router-paraglide) for Router-level configuration details.
 
 #### Server Middleware (SSR)
 
