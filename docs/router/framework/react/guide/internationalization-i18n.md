@@ -21,8 +21,7 @@ Optional path parameters are excellent for implementing internationalization (i1
 
 Use optional language prefixes to support URLs like `/en/about`, `/fr/about`, or just `/about` (default language):
 
-```tsx
-// Route: /{-$locale}/about
+```tsx title="/{-$locale}/about"
 export const Route = createFileRoute('/{-$locale}/about')({
   component: AboutComponent,
 })
