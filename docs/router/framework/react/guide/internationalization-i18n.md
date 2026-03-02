@@ -337,7 +337,7 @@ function ShopComponent() {
 }
 ```
 
-Optional path parameters provide a powerful and flexible foundation for implementing internationalization in your TanStack Router applications. Whether you prefer prefix-based or combined approaches, you can create clean, SEO-friendly URLs while maintaining excellent developer experience and type safety.
+Optional path parameters provide a flexible foundation for internationalization in TanStack Router applications, allowing localized URLs while preserving consistent routing behavior and type safety.
 
 ## i18n Library Integration Patterns
 
