@@ -285,7 +285,7 @@ export const Route = createFileRoute('/{-$locale}/products/$id')({
 
 ### Type Safety for i18n
 
-Ensure type safety for your i18n implementations:
+Locale validation can be performed early so downstream logic operates on trusted values:
 
 ```tsx
 // Define supported locales
