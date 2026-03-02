@@ -4,9 +4,9 @@ export default defineConfig({
   test: {
     watch: false,
     projects: [
-      './react/vitest.config.ts',
-      './solid/vitest.config.ts',
-      './vue/vitest.config.ts',
+      './react/vite.config.ts',
+      './solid/vite.config.ts',
+      './vue/vite.config.ts',
     ],
   },
 })

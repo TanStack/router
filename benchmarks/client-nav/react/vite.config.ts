@@ -1,0 +1,29 @@
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+import codspeedPlugin from '@codspeed/vitest-plugin'
+
+export default defineConfig({
+  plugins: [
+    !!(process.env.VITEST && process.env.WITH_INSTRUMENTATION) &&
+    codspeedPlugin(),
+    react(),
+  ],
+  build: {
+    outDir: './react/dist',
+    emptyOutDir: true,
+    lib: {
+      entry: './react/app.tsx',
+      formats: ['es'],
+      fileName: 'app',
+    },
+    rollupOptions: {
+      external: ['react', 'react-dom', 'react/jsx-runtime'],
+    },
+  },
+  test: {
+    name: '@benchmarks/client-nav (react)',
+    watch: false,
+    environment: 'jsdom',
+    setupFiles: ['./vitest.setup.ts'],
+  },
+})

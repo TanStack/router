@@ -4,9 +4,22 @@ import codspeedPlugin from '@codspeed/vitest-plugin'
 
 export default defineConfig({
   plugins: [
-    !!process.env.WITH_INSTRUMENTATION && codspeedPlugin(),
+    !!(process.env.VITEST && process.env.WITH_INSTRUMENTATION) &&
+      codspeedPlugin(),
     solid({ hot: false, dev: false }),
   ],
+  build: {
+    outDir: './solid/dist',
+    emptyOutDir: true,
+    lib: {
+      entry: './solid/app.tsx',
+      formats: ['es'],
+      fileName: 'app',
+    },
+    rollupOptions: {
+      external: [/^solid-js($|\/)/],
+    },
+  },
   resolve: {
     conditions: ['solid', 'browser'],
   },

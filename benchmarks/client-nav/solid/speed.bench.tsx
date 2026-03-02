@@ -1,107 +1,23 @@
 import { cleanup, render } from '@solidjs/testing-library'
-import { For, createEffect } from 'solid-js'
 import { afterAll, beforeAll, bench, describe } from 'vitest'
-import {
-  Link,
-  Outlet,
-  RouterProvider,
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-  useParams,
-  useSearch,
-} from '@tanstack/solid-router'
 import type { NavigateOptions } from '@tanstack/router-core'
+import type * as App from './app'
 
-function createTestRouter() {
-  function runPerfSelectorComputation(seed: number) {
-    let value = Math.trunc(seed) | 0
-
-    for (let index = 0; index < 100; index++) {
-      value = (value * 1664525 + 1013904223 + index) >>> 0
-    }
-
-    return value
-  }
-
-  const selectors = Array.from({ length: 20 }, (_, index) => index)
-
-  function Params() {
-    const params = useParams({
-      strict: false,
-      select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
-    })
-
-    createEffect(() => {
-      void params()
-    })
-
-    return null
-  }
-
-  function Search() {
-    const search = useSearch({
-      strict: false,
-      select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
-    })
-
-    createEffect(() => {
-      void search()
-    })
-
-    return null
-  }
-
-  function Links() {
-    return (
-      <Link to="/$id" params={{ id: '0' }} search={{ id: '0' }}>
-        Link
-      </Link>
-    )
-  }
-
-  function Root() {
-    return (
-      <>
-        <For each={selectors}>{() => <Params />}</For>
-        <For each={selectors}>{() => <Search />}</For>
-        <For each={selectors}>{() => <Links />}</For>
-        <Outlet />
-      </>
-    )
-  }
-
-  const root = createRootRoute({
-    component: Root,
-  })
-
-  const route = createRoute({
-    getParentRoute: () => root,
-    path: '/$id',
-    component: () => {
-      return <div />
-    },
-  })
-
-  return createRouter({
-    history: createMemoryHistory({
-      initialEntries: ['/0'],
-    }),
-    scrollRestoration: true,
-    routeTree: root.addChildren([route]),
-  })
-}
+const appModulePath = './dist/app.js'
+const { createTestRouter } = (await import(appModulePath)) as typeof App
 
 describe('speed', () => {
   let id = 0
-  let router: ReturnType<typeof createTestRouter>
+  let router: ReturnType<typeof createTestRouter>['router']
+  let component: ReturnType<typeof createTestRouter>['component']
   let unsub = () => {}
   let next: () => Promise<void> = () => Promise.reject()
 
   beforeAll(async () => {
     id = 0
-    router = createTestRouter()
+    const testRouter = createTestRouter()
+    router = testRouter.router
+    component = testRouter.component
     let resolveRendered: () => void = () => {}
     unsub = router.subscribe('onRendered', () => {
       resolveRendered()
@@ -124,7 +40,7 @@ describe('speed', () => {
       })
     }
 
-    render(() => <RouterProvider router={router} />)
+    render(component)
     await router.load()
   })
 

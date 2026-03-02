@@ -3,10 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:react": "vite build --config ./react/vite.config.ts",
+    "build:solid": "vite build --config ./solid/vite.config.ts",
+    "build:vue": "vite build --config ./vue/vite.config.ts",
     "test:perf": "vitest bench",
-    "test:perf:react": "vitest bench --config ./react/vitest.config.ts ./react/speed.bench.tsx",
-    "test:perf:solid": "vitest bench --config ./solid/vitest.config.ts ./solid/speed.bench.tsx",
-    "test:perf:vue": "vitest bench --config ./vue/vitest.config.ts ./vue/speed.bench.tsx",
+    "test:perf:react": "vitest bench --config ./react/vite.config.ts ./react/speed.bench.tsx",
+    "test:perf:solid": "vitest bench --config ./solid/vite.config.ts ./solid/speed.bench.tsx",
+    "test:perf:vue": "vitest bench --config ./vue/vite.config.ts ./vue/speed.bench.tsx",
     "test:types": "pnpm run test:types:react && pnpm run test:types:solid && pnpm run test:types:vue",
     "test:types:react": "tsc -p ./react/tsconfig.json --noEmit",
     "test:types:solid": "tsc -p ./solid/tsconfig.json --noEmit",
@@ -37,28 +40,49 @@
   },
   "nx": {
     "targets": {
-      "test:perf": {
+      "build:react": {
         "cache": false,
         "dependsOn": [
           "^build"
+        ]
+      },
+      "build:solid": {
+        "cache": false,
+        "dependsOn": [
+          "^build"
+        ]
+      },
+      "build:vue": {
+        "cache": false,
+        "dependsOn": [
+          "^build"
+        ]
+      },
+      "test:perf": {
+        "cache": false,
+        "dependsOn": [
+          "^build",
+          "build:react",
+          "build:solid",
+          "build:vue"
         ]
       },
       "test:perf:react": {
         "cache": false,
         "dependsOn": [
-          "^build"
+          "build:react"
         ]
       },
       "test:perf:solid": {
         "cache": false,
         "dependsOn": [
-          "^build"
+          "build:solid"
         ]
       },
       "test:perf:vue": {
         "cache": false,
         "dependsOn": [
-          "^build"
+          "build:vue"
         ]
       },
       "test:types": {

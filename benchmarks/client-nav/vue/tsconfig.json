@@ -3,7 +3,15 @@
   "compilerOptions": {
     "jsx": "preserve",
     "jsxImportSource": "vue",
-    "types": ["node", "vite/client", "vitest/globals"]
+    "types": [
+      "node",
+      "vite/client",
+      "vitest/globals"
+    ]
   },
-  "include": ["speed.bench.tsx", "vitest.config.ts", "../vitest.setup.ts"]
+  "include": [
+    "speed.bench.tsx",
+    "vite.config.ts",
+    "../vitest.setup.ts"
+  ]
 }
