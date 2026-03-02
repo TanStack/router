@@ -64,8 +64,7 @@ The `{-$param}` syntax marks the parameter as optional. When the locale segment 
 
 Combine optional parameters for more sophisticated i18n routing:
 
-```tsx
-// Route: /{-$locale}/blog/{-$category}/$slug
+```tsx title="/{-$locale}/blog/{-$category}/$slug"
 export const Route = createFileRoute('/{-$locale}/blog/{-$category}/$slug')({
   beforeLoad: async ({ params }) => {
     const locale = params.locale || 'en'
