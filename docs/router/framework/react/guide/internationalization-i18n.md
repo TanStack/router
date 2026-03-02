@@ -234,7 +234,7 @@ export const Route = createFileRoute('/{-$locale}/about')({
 
 ### SEO and Canonical URLs
 
-Handle SEO for i18n routes properly:
+Internationalized routes should expose canonical and alternate URLs so search engines can understand language variants:
 
 ```tsx
 export const Route = createFileRoute('/{-$locale}/products/$id')({
