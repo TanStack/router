@@ -114,7 +114,7 @@ Validating locale values during route loading ensures downstream logic can safel
 
 ### Language Navigation
 
-Create language switchers using optional i18n parameters with function-style params:
+Language switchers typically update only the locale parameter while preserving the rest of the route state:
 
 ```tsx
 function LanguageSwitcher() {
