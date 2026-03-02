@@ -1,6 +1,6 @@
-import { cleanup, render } from '@testing-library/react'
-import { act } from 'react'
+import { cleanup, render } from '@testing-library/vue'
 import { bench, describe } from 'vitest'
+import * as Vue from 'vue'
 import { rootRouteId } from '@tanstack/router-core'
 import {
   Outlet,
@@ -11,7 +11,7 @@ import {
   createRouter,
   useParams,
   useSearch,
-} from '../src'
+} from '@tanstack/vue-router'
 import type { NavigateOptions } from '@tanstack/router-core'
 
 function createTestRouter() {
@@ -27,40 +27,52 @@ function createTestRouter() {
 
   const selectors = Array.from({ length: 20 }, (_, index) => index)
 
-  function Params() {
-    const params = useParams({
-      from: rootRouteId,
-      select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
-    })
-    void params
-    return null
-  }
+  const Params = Vue.defineComponent({
+    setup() {
+      const params = useParams({
+        from: rootRouteId,
+        select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
+      })
 
-  function Search() {
-    const search = useSearch({
-      from: rootRouteId,
-      select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
-    })
-    void search
-    return null
-  }
+      return () => {
+        void params.value
+        return null
+      }
+    },
+  })
 
-  function Root() {
-    return (
-      <>
-        {selectors.map((selector) => (
-          <Params key={selector} />
-        ))}
-        {selectors.map((selector) => (
-          <Search key={selector} />
-        ))}
-        <Outlet />
-      </>
-    )
-  }
+  const Search = Vue.defineComponent({
+    setup() {
+      const search = useSearch({
+        from: rootRouteId,
+        select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
+      })
+
+      return () => {
+        void search.value
+        return null
+      }
+    },
+  })
+
+  const Root = Vue.defineComponent({
+    setup() {
+      return () => (
+        <>
+          {selectors.map((selector) => (
+            <Params key={`params-${selector}`} />
+          ))}
+          {selectors.map((selector) => (
+            <Search key={`search-${selector}`} />
+          ))}
+          <Outlet />
+        </>
+      )
+    },
+  })
 
   const root = createRootRoute({
-    component: Root,
+    component: Root as any,
   })
 
   const route = createRoute({
@@ -81,21 +93,21 @@ function createTestRouter() {
 describe('speed', () => {
   let id = 0
   const router = createTestRouter()
-  let unsub = () => {}
-  let next: () => Promise<void>
+  let unsub = () => { }
+  let next: () => Promise<void> = () => Promise.reject()
 
-  bench('navigate', () => act(next), {
+  bench('navigate', () => next(), {
     warmupIterations: 1000,
     time: 10_000,
     setup: async () => {
       id = 0
-      let resolve = () => {}
+      let resolve: () => void = () => { }
       unsub = router.subscribe('onRendered', () => resolve())
 
       const navigate = (opts: NavigateOptions) =>
-        new Promise<void>((resolveNext, rejectNext) => {
+        new Promise<void>((resolveNext) => {
           resolve = resolveNext
-          router.navigate(opts).catch(rejectNext)
+          router.navigate(opts)
         })
 
       next = () => {
@@ -110,7 +122,7 @@ describe('speed', () => {
       }
 
       render(<RouterProvider router={router} />)
-      await act(() => router.load())
+      await router.load()
     },
     teardown: () => {
       cleanup()

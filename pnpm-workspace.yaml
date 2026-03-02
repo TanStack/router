@@ -4,6 +4,7 @@ preferWorkspacePackages: true
 
 packages:
   - 'packages/*'
+  - 'benchmarks/*'
   - 'examples/react/*'
   - 'examples/solid/*'
   - 'examples/vue/*'
