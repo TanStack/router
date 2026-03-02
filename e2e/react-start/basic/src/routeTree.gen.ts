@@ -24,6 +24,7 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SpecialCharsRouteRouteImport } from './routes/specialChars/route'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
+import { Route as CanonicalRouteRouteImport } from './routes/canonical/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
@@ -53,6 +54,7 @@ import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-co
 import { Route as ApiUsersRouteImport } from './routes/api.users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as SpecialCharsMalformedRouteRouteImport } from './routes/specialChars/malformed/route'
+import { Route as CanonicalDeepRouteRouteImport } from './routes/canonical/deep/route'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
 import { Route as SpecialCharsMalformedSearchRouteImport } from './routes/specialChars/malformed/search'
 import { Route as SpecialCharsMalformedParamRouteImport } from './routes/specialChars/malformed/$param'
@@ -141,6 +143,11 @@ const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
 const NotFoundRouteRoute = NotFoundRouteRouteImport.update({
   id: '/not-found',
   path: '/not-found',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CanonicalRouteRoute = CanonicalRouteRouteImport.update({
+  id: '/canonical',
+  path: '/canonical',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -292,6 +299,11 @@ const SpecialCharsMalformedRouteRoute =
     path: '/malformed',
     getParentRoute: () => SpecialCharsRouteRoute,
   } as any)
+const CanonicalDeepRouteRoute = CanonicalDeepRouteRouteImport.update({
+  id: '/deep',
+  path: '/deep',
+  getParentRoute: () => CanonicalRouteRoute,
+} as any)
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -377,6 +389,7 @@ const FooBarQuxHereIndexRoute = FooBarQuxHereIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/canonical': typeof CanonicalRouteRouteWithChildren
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
@@ -391,6 +404,7 @@ export interface FileRoutesByFullPath {
   '/stream': typeof StreamRoute
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
+  '/canonical/deep': typeof CanonicalDeepRouteRoute
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
@@ -436,6 +450,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/canonical': typeof CanonicalRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/async-scripts': typeof AsyncScriptsRoute
   '/client-only': typeof ClientOnlyRoute
@@ -445,6 +460,7 @@ export interface FileRoutesByTo {
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
   '/type-only-reexport': typeof TypeOnlyReexportRoute
+  '/canonical/deep': typeof CanonicalDeepRouteRoute
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
@@ -489,6 +505,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/canonical': typeof CanonicalRouteRouteWithChildren
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
@@ -504,6 +521,7 @@ export interface FileRoutesById {
   '/stream': typeof StreamRoute
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/users': typeof UsersRouteWithChildren
+  '/canonical/deep': typeof CanonicalDeepRouteRoute
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
@@ -552,6 +570,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/canonical'
     | '/not-found'
     | '/search-params'
     | '/specialChars'
@@ -566,6 +585,7 @@ export interface FileRouteTypes {
     | '/stream'
     | '/type-only-reexport'
     | '/users'
+    | '/canonical/deep'
     | '/specialChars/malformed'
     | '/api/users'
     | '/multi-cookie-redirect/target'
@@ -611,6 +631,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/canonical'
     | '/specialChars'
     | '/async-scripts'
     | '/client-only'
@@ -620,6 +641,7 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/stream'
     | '/type-only-reexport'
+    | '/canonical/deep'
     | '/specialChars/malformed'
     | '/api/users'
     | '/multi-cookie-redirect/target'
@@ -663,6 +685,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/canonical'
     | '/not-found'
     | '/search-params'
     | '/specialChars'
@@ -678,6 +701,7 @@ export interface FileRouteTypes {
     | '/stream'
     | '/type-only-reexport'
     | '/users'
+    | '/canonical/deep'
     | '/specialChars/malformed'
     | '/_layout/_layout-2'
     | '/api/users'
@@ -725,6 +749,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CanonicalRouteRoute: typeof CanonicalRouteRouteWithChildren
   NotFoundRouteRoute: typeof NotFoundRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   SpecialCharsRouteRoute: typeof SpecialCharsRouteRouteWithChildren
@@ -854,6 +879,13 @@ declare module '@tanstack/react-router' {
       path: '/not-found'
       fullPath: '/not-found'
       preLoaderRoute: typeof NotFoundRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/canonical': {
+      id: '/canonical'
+      path: '/canonical'
+      fullPath: '/canonical'
+      preLoaderRoute: typeof CanonicalRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -1059,6 +1091,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SpecialCharsMalformedRouteRouteImport
       parentRoute: typeof SpecialCharsRouteRoute
     }
+    '/canonical/deep': {
+      id: '/canonical/deep'
+      path: '/deep'
+      fullPath: '/canonical/deep'
+      preLoaderRoute: typeof CanonicalDeepRouteRouteImport
+      parentRoute: typeof CanonicalRouteRoute
+    }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
@@ -1166,6 +1205,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface CanonicalRouteRouteChildren {
+  CanonicalDeepRouteRoute: typeof CanonicalDeepRouteRoute
+}
+
+const CanonicalRouteRouteChildren: CanonicalRouteRouteChildren = {
+  CanonicalDeepRouteRoute: CanonicalDeepRouteRoute,
+}
+
+const CanonicalRouteRouteWithChildren = CanonicalRouteRoute._addFileChildren(
+  CanonicalRouteRouteChildren,
+)
 
 interface NotFoundRouteRouteChildren {
   NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
@@ -1359,6 +1410,7 @@ const FooBarQuxHereRouteWithChildren = FooBarQuxHereRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CanonicalRouteRoute: CanonicalRouteRouteWithChildren,
   NotFoundRouteRoute: NotFoundRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   SpecialCharsRouteRoute: SpecialCharsRouteRouteWithChildren,
