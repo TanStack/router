@@ -43,7 +43,7 @@ function randomRequestUrl(random: () => number) {
 
 export async function runSsrRequestLoop(
   handler: StartRequestHandler,
-  { seed, iterations = 5 }: RunSsrRequestLoopOptions,
+  { seed, iterations = 10 }: RunSsrRequestLoopOptions,
 ) {
   const random = createDeterministicRandom(seed)
   const pendingBodyReads: Array<Promise<void>> = []
