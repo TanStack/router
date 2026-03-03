@@ -29,13 +29,12 @@ type InnerLoadContext = {
   firstBadMatchIndex?: number
   /** mutable state, scoped to a `loadMatches` call */
   rendered?: boolean
+  serialError?: unknown
   updateMatch: UpdateMatchFn
   matches: Array<AnyRouteMatch>
   preload?: boolean
   onReady?: () => Promise<void>
   sync?: boolean
-  /** mutable state, scoped to a `loadMatches` call */
-  matchPromises: Array<Promise<AnyRouteMatch>>
 }
 
 const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
@@ -74,64 +73,45 @@ const buildMatchContext = (
   return context
 }
 
-const _handleNotFound = (
+const getNotFoundBoundaryIndex = (
   inner: InnerLoadContext,
   err: NotFoundError,
-  routerCode?: string,
-) => {
-  // Find the route that should handle the not found error
-  // First check if a specific route is requested to show the error
-  const routeCursor =
-    inner.router.routesById[err.routeId ?? ''] ?? inner.router.routeTree
-
-  // Ensure a NotFoundComponent exists on the route
-  if (
-    !routeCursor.options.notFoundComponent &&
-    (inner.router.options as any)?.defaultNotFoundComponent
-  ) {
-    routeCursor.options.notFoundComponent = (
-      inner.router.options as any
-    ).defaultNotFoundComponent
+): number | undefined => {
+  if (!inner.matches.length) {
+    return undefined
   }
 
-  // For BEFORE_LOAD errors that will walk up to a parent route,
-  // don't require notFoundComponent on the current (child) route —
-  // an ancestor will handle it. Only enforce the invariant when
-  // we've reached a route that won't walk up further.
-  const willWalkUp = routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute
+  const requestedRouteId = err.routeId ? String(err.routeId) : undefined
+  const matchedRootIndex = inner.matches.findIndex(
+    (m) => m.routeId === inner.router.routeTree.id,
+  )
+  const rootIndex = matchedRootIndex >= 0 ? matchedRootIndex : 0
 
-  if (!willWalkUp) {
-    // Ensure we have a notFoundComponent
-    invariant(
-      routeCursor.options.notFoundComponent,
-      'No notFoundComponent found. Please set a notFoundComponent on your route or provide a defaultNotFoundComponent to the router.',
-    )
+  let startIndex = requestedRouteId
+    ? inner.matches.findIndex((match) => match.routeId === requestedRouteId)
+    : (inner.firstBadMatchIndex ?? inner.matches.length - 1)
+
+  if (startIndex < 0) {
+    startIndex = rootIndex
   }
 
-  // Find the match for this route
-  const matchForRoute = inner.matches.find((m) => m.routeId === routeCursor.id)
-
-  invariant(matchForRoute, 'Could not find match for route: ' + routeCursor.id)
-
-  // Assign the error to the match - using non-null assertion since we've checked with invariant
-  inner.updateMatch(matchForRoute.id, (prev) => ({
-    ...prev,
-    status: 'notFound',
-    error: err,
-    isFetching: false,
-  }))
-
-  if (willWalkUp) {
-    err.routeId = routeCursor.parentRoute!.id
-    _handleNotFound(inner, err, routerCode)
+  for (let i = startIndex; i >= 0; i--) {
+    const match = inner.matches[i]!
+    const route = inner.router.looseRoutesById[match.routeId]!
+    if (route.options.notFoundComponent) {
+      return i
+    }
   }
+
+  // If no boundary component is found, preserve explicit routeId targeting behavior,
+  // otherwise default to root for untargeted notFounds.
+  return requestedRouteId ? startIndex : rootIndex
 }
 
 const handleRedirectAndNotFound = (
   inner: InnerLoadContext,
   match: AnyRouteMatch | undefined,
   err: unknown,
-  routerCode?: string,
 ): void => {
   if (!isRedirect(err) && !isNotFound(err)) return
 
@@ -146,19 +126,26 @@ const handleRedirectAndNotFound = (
     match._nonReactive.beforeLoadPromise = undefined
     match._nonReactive.loaderPromise = undefined
 
-    const status = isRedirect(err) ? 'redirected' : 'notFound'
-
     match._nonReactive.error = err
 
     inner.updateMatch(match.id, (prev) => ({
       ...prev,
-      status,
+      status: isRedirect(err)
+        ? 'redirected'
+        : prev.status === 'pending'
+          ? 'success'
+          : prev.status,
       context: buildMatchContext(inner, match.index),
       isFetching: false,
       error: err,
     }))
 
     if (isNotFound(err) && !err.routeId) {
+      // Stamp the throwing match's routeId so that the finalization step in
+      // loadMatches knows where the notFound originated.  The actual boundary
+      // resolution (walking up to the nearest notFoundComponent) is deferred to
+      // the finalization step, where firstBadMatchIndex is stable and
+      // headMaxIndex can be capped correctly.
       err.routeId = match.routeId
     }
 
@@ -170,11 +157,9 @@ const handleRedirectAndNotFound = (
     err.options._fromLocation = inner.location
     err.redirectHandled = true
     err = inner.router.resolveRedirect(err)
-    throw err
-  } else {
-    _handleNotFound(inner, err, routerCode)
-    throw err
   }
+
+  throw err
 }
 
 const shouldSkipLoader = (
@@ -212,23 +197,13 @@ const handleSerialError = (
 
   err.routerCode = routerCode
   inner.firstBadMatchIndex ??= index
-  handleRedirectAndNotFound(
-    inner,
-    inner.router.getMatch(matchId),
-    err,
-    routerCode,
-  )
+  handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), err)
 
   try {
     route.options.onError?.(err)
   } catch (errorHandlerErr) {
     err = errorHandlerErr
-    handleRedirectAndNotFound(
-      inner,
-      inner.router.getMatch(matchId),
-      err,
-      routerCode,
-    )
+    handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), err)
   }
 
   inner.updateMatch(matchId, (prev) => {
@@ -245,6 +220,10 @@ const handleSerialError = (
       abortController: new AbortController(),
     }
   })
+
+  if (!inner.preload && !isRedirect(err) && !isNotFound(err)) {
+    inner.serialError ??= err
+  }
 }
 
 const isBeforeLoadSsr = (
@@ -606,11 +585,12 @@ const executeHead = (
 
 const getLoaderContext = (
   inner: InnerLoadContext,
+  matchPromises: Array<Promise<AnyRouteMatch>>,
   matchId: string,
   index: number,
   route: AnyRoute,
 ): LoaderFnContext => {
-  const parentMatchPromise = inner.matchPromises[index - 1] as any
+  const parentMatchPromise = matchPromises[index - 1] as any
   const { params, loaderDeps, abortController, cause } =
     inner.router.getMatch(matchId)!
 
@@ -639,6 +619,7 @@ const getLoaderContext = (
 
 const runLoader = async (
   inner: InnerLoadContext,
+  matchPromises: Array<Promise<AnyRouteMatch>>,
   matchId: string,
   index: number,
   route: AnyRoute,
@@ -660,7 +641,7 @@ const runLoader = async (
 
       // Kick off the loader!
       const loaderResult = route.options.loader?.(
-        getLoaderContext(inner, matchId, index, route),
+        getLoaderContext(inner, matchPromises, matchId, index, route),
       )
       const loaderResultIsPromise =
         route.options.loader && isPromise(loaderResult)
@@ -775,6 +756,7 @@ const runLoader = async (
 
 const loadRouteMatch = async (
   inner: InnerLoadContext,
+  matchPromises: Array<Promise<AnyRouteMatch>>,
   index: number,
 ): Promise<AnyRouteMatch> => {
   async function handleLoader(
@@ -798,7 +780,9 @@ const loadRouteMatch = async (
     // if provided.
     const shouldReload =
       typeof shouldReloadOption === 'function'
-        ? shouldReloadOption(getLoaderContext(inner, matchId, index, route))
+        ? shouldReloadOption(
+            getLoaderContext(inner, matchPromises, matchId, index, route),
+          )
         : shouldReloadOption
 
     // If the route is successful and still fresh, just resolve
@@ -811,7 +795,7 @@ const loadRouteMatch = async (
       loaderIsRunningAsync = true
       ;(async () => {
         try {
-          await runLoader(inner, matchId, index, route)
+          await runLoader(inner, matchPromises, matchId, index, route)
           const match = inner.router.getMatch(matchId)!
           match._nonReactive.loaderPromise?.resolve()
           match._nonReactive.loadPromise?.resolve()
@@ -823,7 +807,7 @@ const loadRouteMatch = async (
         }
       })()
     } else if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
-      await runLoader(inner, matchId, index, route)
+      await runLoader(inner, matchPromises, matchId, index, route)
     }
   }
 
@@ -906,9 +890,8 @@ export async function loadMatches(arg: {
   updateMatch: UpdateMatchFn
   sync?: boolean
 }): Promise<Array<MakeRouteMatch>> {
-  const inner: InnerLoadContext = Object.assign(arg, {
-    matchPromises: [],
-  })
+  const inner: InnerLoadContext = Object.assign(arg)
+  const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
   // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
   // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
@@ -919,77 +902,159 @@ export async function loadMatches(arg: {
     triggerOnReady(inner)
   }
 
-  try {
-    // Execute all beforeLoads one by one
-    for (let i = 0; i < inner.matches.length; i++) {
+  let beforeLoadNotFound: NotFoundError | undefined
+
+  // Execute all beforeLoads one by one
+  for (let i = 0; i < inner.matches.length; i++) {
+    try {
       const beforeLoad = handleBeforeLoad(inner, i)
       if (isPromise(beforeLoad)) await beforeLoad
-    }
-
-    // Execute all loaders in parallel
-    const max = inner.firstBadMatchIndex ?? inner.matches.length
-    for (let i = 0; i < max; i++) {
-      inner.matchPromises.push(loadRouteMatch(inner, i))
-    }
-    // Use allSettled to ensure all loaders complete regardless of success/failure
-    const results = await Promise.allSettled(inner.matchPromises)
-
-    const failures = results
-      // TODO when we drop support for TS 5.4, we can use the built-in type guard for PromiseRejectedResult
-      .filter(
-        (result): result is PromiseRejectedResult =>
-          result.status === 'rejected',
-      )
-      .map((result) => result.reason)
-
-    // Find first redirect (throw immediately) or notFound (throw after head execution)
-    let firstNotFound: unknown
-    for (const err of failures) {
+    } catch (err) {
       if (isRedirect(err)) {
         throw err
       }
-      if (!firstNotFound && isNotFound(err)) {
-        firstNotFound = err
+      if (isNotFound(err)) {
+        beforeLoadNotFound = err
+      } else {
+        if (!inner.preload) throw err
       }
+      break
     }
 
-    // serially execute head functions after all loaders have completed (successfully or not)
-    // Each head execution is wrapped in try-catch to ensure all heads run even if one fails
-    for (const match of inner.matches) {
-      const { id: matchId, routeId } = match
-      const route = inner.router.looseRoutesById[routeId]!
-      try {
-        const headResult = executeHead(inner, matchId, route)
-        if (headResult) {
-          const head = await headResult
-          inner.updateMatch(matchId, (prev) => ({
-            ...prev,
-            ...head,
-          }))
-        }
-      } catch (err) {
-        // Log error but continue executing other head functions
-        console.error(`Error executing head for route ${routeId}:`, err)
-      }
-    }
-
-    // Throw notFound after head execution
-    if (firstNotFound) {
-      throw firstNotFound
-    }
-
-    const readyPromise = triggerOnReady(inner)
-    if (isPromise(readyPromise)) await readyPromise
-  } catch (err) {
-    if (isNotFound(err) && !inner.preload) {
-      const readyPromise = triggerOnReady(inner)
-      if (isPromise(readyPromise)) await readyPromise
-      throw err
-    }
-    if (isRedirect(err)) {
-      throw err
+    if (inner.serialError) {
+      break
     }
   }
+
+  // Execute loaders once, with max index adapted for beforeLoad notFound handling.
+  const baseMaxIndexExclusive = inner.firstBadMatchIndex ?? inner.matches.length
+
+  const boundaryIndex =
+    beforeLoadNotFound && !inner.preload
+      ? getNotFoundBoundaryIndex(inner, beforeLoadNotFound)
+      : undefined
+
+  const maxIndexExclusive =
+    inner.serialError || (beforeLoadNotFound && inner.preload)
+      ? 0
+      : boundaryIndex !== undefined
+        ? Math.min(boundaryIndex + 1, baseMaxIndexExclusive)
+        : baseMaxIndexExclusive
+
+  let firstRedirect: unknown
+  let firstNotFound: NotFoundError | undefined
+
+  for (let i = 0; i < maxIndexExclusive; i++) {
+    matchPromises.push(loadRouteMatch(inner, matchPromises, i))
+  }
+
+  try {
+    await Promise.all(matchPromises)
+  } catch {
+    const settled = await Promise.allSettled(matchPromises)
+
+    for (const result of settled) {
+      if (result.status !== 'rejected') continue
+
+      const reason = result.reason
+      if (!firstRedirect && isRedirect(reason)) {
+        firstRedirect = reason
+      }
+      if (!firstNotFound && isNotFound(reason)) {
+        firstNotFound = reason
+      }
+    }
+  }
+
+  if (firstRedirect) {
+    throw firstRedirect
+  }
+
+  const notFoundToThrow =
+    firstNotFound ??
+    (beforeLoadNotFound && !inner.preload ? beforeLoadNotFound : undefined)
+
+  let headMaxIndex = inner.serialError ? -1 : inner.matches.length - 1
+
+  if (!notFoundToThrow && beforeLoadNotFound && inner.preload) {
+    return inner.matches
+  }
+
+  if (notFoundToThrow) {
+    // Determine once which matched route will actually render the
+    // notFoundComponent, then pass this precomputed index through the remaining
+    // finalization steps.
+    // This can differ from the throwing route when routeId targets an ancestor
+    // boundary (or when bubbling resolves to a parent/root boundary).
+    const renderedBoundaryIndex = getNotFoundBoundaryIndex(
+      inner,
+      notFoundToThrow,
+    )
+
+    invariant(
+      renderedBoundaryIndex !== undefined,
+      'Could not find match for notFound boundary',
+    )
+    const boundaryMatch = inner.matches[renderedBoundaryIndex]!
+
+    const boundaryRoute = inner.router.looseRoutesById[boundaryMatch.routeId]!
+    const defaultNotFoundComponent = (inner.router.options as any)
+      ?.defaultNotFoundComponent
+
+    // Ensure a notFoundComponent exists on the boundary route
+    if (!boundaryRoute.options.notFoundComponent && defaultNotFoundComponent) {
+      boundaryRoute.options.notFoundComponent = defaultNotFoundComponent
+    }
+
+    notFoundToThrow.routeId = boundaryMatch.routeId
+
+    inner.updateMatch(boundaryMatch.id, (prev) => ({
+      ...prev,
+      status: 'notFound',
+      error: notFoundToThrow,
+      isFetching: false,
+    }))
+
+    headMaxIndex = renderedBoundaryIndex
+
+    // Ensure the rendering boundary route chunk (and its lazy components, including
+    // lazy notFoundComponent) is loaded before we continue to head execution/render.
+    await loadRouteChunk(boundaryRoute)
+  }
+
+  // serially execute heads once after loaders/notFound handling, ensuring
+  // all head functions get a chance even if one throws.
+  for (let i = 0; i <= headMaxIndex; i++) {
+    const match = inner.matches[i]!
+    const { id: matchId, routeId } = match
+    const route = inner.router.looseRoutesById[routeId]!
+    try {
+      const headResult = executeHead(inner, matchId, route)
+      if (headResult) {
+        const head = await headResult
+        inner.updateMatch(matchId, (prev) => ({
+          ...prev,
+          ...head,
+        }))
+      }
+    } catch (err) {
+      console.error(`Error executing head for route ${routeId}:`, err)
+    }
+  }
+
+  const readyPromise = triggerOnReady(inner)
+  if (isPromise(readyPromise)) {
+    await readyPromise
+  }
+
+  if (notFoundToThrow) {
+    throw notFoundToThrow
+  }
+
+  if (inner.serialError && !inner.preload && !inner.onReady) {
+    throw inner.serialError
+  }
+
   return inner.matches
 }
 
