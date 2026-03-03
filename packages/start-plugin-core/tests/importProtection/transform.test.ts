@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest'
 import { rewriteDeniedImports } from '../../src/import-protection-plugin/rewriteDeniedImports'
-import { RESOLVED_MOCK_MODULE_ID } from '../../src/import-protection-plugin/virtualModules'
 
 const MOCK_SUBSTR = 'tanstack-start-import-protection:mock'
 

@@ -21,6 +21,14 @@ describe('getDefaultImportProtectionRules', () => {
     )
   })
 
+  test('returns client excludeFiles defaulting to node_modules', () => {
+    const rules = getDefaultImportProtectionRules()
+
+    expect(rules.client.excludeFiles).toEqual(
+      expect.arrayContaining(['**/node_modules/**']),
+    )
+  })
+
   test('returns server rules', () => {
     const rules = getDefaultImportProtectionRules()
 
@@ -28,6 +36,14 @@ describe('getDefaultImportProtectionRules', () => {
 
     expect(rules.server.files).toEqual(
       expect.arrayContaining(['**/*.client.*']),
+    )
+  })
+
+  test('returns server excludeFiles defaulting to node_modules', () => {
+    const rules = getDefaultImportProtectionRules()
+
+    expect(rules.server.excludeFiles).toEqual(
+      expect.arrayContaining(['**/node_modules/**']),
     )
   })
 })

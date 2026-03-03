@@ -14,7 +14,6 @@ export type {
   ResolveCurrentPath,
   ResolveParentPath,
   ResolveRelativePath,
-  LinkCurrentTargetElement,
   FindDescendantToPaths,
   InferDescendantToPaths,
   RelativeToPath,
