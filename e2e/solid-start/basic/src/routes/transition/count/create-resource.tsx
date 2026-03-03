@@ -38,8 +38,8 @@ function Result() {
   return (
     <div class="mt-2">
       <Loading fallback="Loading...">
-        <div data-testid="n-value">n: {searchQuery().n}</div>
-        <div data-testid="double-value">double: {doubleQuery()}</div>
+        <div data-testid="n-value">n: {String(searchQuery().n)}</div>
+        <div data-testid="double-value">double: {String(doubleQuery())}</div>
       </Loading>
     </div>
   )
