@@ -7,6 +7,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useMatch,
   useParams,
   useSearch,
 } from '@tanstack/vue-router'
@@ -14,7 +15,7 @@ import {
 function runPerfSelectorComputation(seed: number) {
   let value = Math.trunc(seed) | 0
 
-  for (let index = 0; index < 100; index++) {
+  for (let index = 0; index < 50; index++) {
     value = (value * 1664525 + 1013904223 + index) >>> 0
   }
 
@@ -25,29 +26,35 @@ const selectors = Array.from({ length: 20 }, (_, index) => index)
 
 const Params = Vue.defineComponent({
   setup() {
-    const params = useParams({
+    const number = useParams({
       strict: false,
       select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
     })
 
-    return () => {
-      void params.value
-      return null
-    }
+    return () => runPerfSelectorComputation(number.value)
   },
 })
 
 const Search = Vue.defineComponent({
   setup() {
-    const search = useSearch({
+    const number = useSearch({
       strict: false,
       select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
     })
 
-    return () => {
-      void search.value
-      return null
-    }
+    return () => runPerfSelectorComputation(number.value)
+  },
+})
+
+const Match = Vue.defineComponent({
+  setup() {
+    const number = useMatch({
+      strict: false,
+      select: (match) =>
+        runPerfSelectorComputation(Number(match.params.id ?? 0)),
+    })
+
+    return () => runPerfSelectorComputation(number.value)
   },
 })
 
@@ -74,6 +81,9 @@ const Root = Vue.defineComponent({
         {selectors.map((selector) => (
           <Links key={`link-${selector}`} />
         ))}
+        {selectors.map((selector) => (
+          <Match key={`match-${selector}`} />
+        ))}
         <Outlet />
       </>
     )
@@ -87,7 +97,11 @@ const root = createRootRoute({
 const route = createRoute({
   getParentRoute: () => root,
   path: '/$id',
+  validateSearch: (search) => ({ id: search.id }),
   component: () => <div />,
+  beforeLoad: () => Promise.resolve(),
+  loaderDeps: ({ search }) => ({ id: search.id }),
+  loader: () => Promise.resolve(),
 })
 
 export function createTestRouter() {

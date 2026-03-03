@@ -26,10 +26,13 @@ describe('client-nav', () => {
     next = () => {
       const nextId = id++
 
+      // update param every 2 navigations,
+      // update search every other navigation,
+      // this way we can test the impact of both params and search updates,
+      // and still observe improvements on granular re-rendering
       return navigate({
         to: '/$id',
-        params: { id: nextId },
-        // update search every 2 navigations, to still test them, but also measure the impact of granular re-rendering
+        params: { id: Math.floor((nextId + 1) / 2) },
         search: { id: Math.floor(nextId / 2) },
         replace: true,
       })
