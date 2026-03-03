@@ -36,6 +36,8 @@ jobs:
 
       - name: Measure Bundle Size
         run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
+        env:
+          NX_NO_CLOUD: true
 
       - name: Capture Benchmark Outputs
         id: capture
