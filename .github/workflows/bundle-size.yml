@@ -113,7 +113,8 @@ jobs:
 
       - name: Measure Bundle Size
         run: pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache
-
+        env:
+          NX_NO_CLOUD: true
       - name: Publish Benchmark Dashboard
         uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b # v1.20.7
         with:
