@@ -769,22 +769,22 @@ This middleware validates the session and injects it into `context` for downstre
 
 ```tsx
 // middleware.ts
-import { createMiddleware } from '@tanstack/react-start';
-import { auth } from './my-auth';
+import { createMiddleware } from '@tanstack/react-start'
+import { auth } from './my-auth'
 
 export const authMiddleware = createMiddleware().server(
   async ({ next, request }) => {
-    const session = await auth.getSession({ headers: request.headers });
+    const session = await auth.getSession({ headers: request.headers })
 
     if (!session) {
-      throw new Error('Unauthorized');
+      throw new Error('Unauthorized')
     }
 
     return await next({
       context: { session },
-    });
+    })
   },
-);
+)
 ```
 
 **Authorization (Middleware Factory) Example:**
@@ -793,27 +793,28 @@ The middleware validates access based on the dynamic `permissions` parameter, co
 
 ```tsx
 // middleware.ts
-import { createMiddleware } from '@tanstack/react-start';
-import { auth } from './my-auth';
+import { createMiddleware } from '@tanstack/react-start'
+import { auth } from './my-auth'
 
-export const authMiddleware = createMiddleware().server(
+export const authMiddleware = createMiddleware()
+  .server
   //...
-);
+  ()
 
-type Permissions = Record<string, string[]>;
+type Permissions = Record<string, string[]>
 
 export function authorizationMiddleware(permissions: Permissions) {
   return createMiddleware({ type: 'function' })
     .middleware([authMiddleware])
     .server(async ({ next, context }) => {
-      const granted = await auth.hasPermission(context.session, permissions);
+      const granted = await auth.hasPermission(context.session, permissions)
 
       if (!granted) {
-        throw new Error('Forbidden');
+        throw new Error('Forbidden')
       }
 
-      return await next();
-    });
+      return await next()
+    })
 }
 ```
 
@@ -822,8 +823,8 @@ export function authorizationMiddleware(permissions: Permissions) {
 Access requirements are defined per server function, without duplicating any middleware logic.
 
 ```tsx
-import { createServerFn } from '@tanstack/react-start';
-import { authorizationMiddleware } from './middleware';
+import { createServerFn } from '@tanstack/react-start'
+import { authorizationMiddleware } from './middleware'
 
 export const getClients = createServerFn()
   .middleware([
@@ -832,6 +833,6 @@ export const getClients = createServerFn()
     }),
   ])
   .handler(async ({ context }) => {
-    return { message: 'The user can read clients.' };
-  });
+    return { message: 'The user can read clients.' }
+  })
 ```
