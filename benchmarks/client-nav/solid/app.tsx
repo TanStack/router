@@ -29,7 +29,7 @@ function Params() {
     strict: false,
     select: (params) => runPerfSelectorComputation(Number(params.id ?? 0)),
   })
-  return runPerfSelectorComputation(number())
+  return <>{runPerfSelectorComputation(number())}</>
 }
 
 function Search() {
@@ -37,7 +37,7 @@ function Search() {
     strict: false,
     select: (search) => runPerfSelectorComputation(Number(search.id ?? 0)),
   })
-  return runPerfSelectorComputation(number())
+  return <>{runPerfSelectorComputation(number())}</>
 }
 
 function Match() {
@@ -45,7 +45,7 @@ function Match() {
     strict: false,
     select: (match) => runPerfSelectorComputation(Number(match.params.id ?? 0)),
   })
-  return runPerfSelectorComputation(number())
+  return <>{runPerfSelectorComputation(number())}</>
 }
 
 function Links() {
