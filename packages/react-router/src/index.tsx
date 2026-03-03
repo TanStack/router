@@ -271,7 +271,7 @@ export type {
 
 export { createRouter, Router } from './router'
 
-export { lazyFn, SearchParamError } from '@tanstack/router-core'
+export { lazyFn, PathParamError, SearchParamError } from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type { RouterProps } from './RouterProvider'
