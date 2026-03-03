@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1772483189748,
+  "lastUpdate": 1772531255575,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -2713,6 +2713,90 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/1acc8eaf3a07cbe1c19ffcf2d4dcecdef34ffc1f"
         },
         "date": 1772483187903,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 88656,
+            "unit": "bytes",
+            "extra": "raw=278986; brotli=77021"
+          },
+          {
+            "name": "react-router.full",
+            "value": 91758,
+            "unit": "bytes",
+            "extra": "raw=289568; brotli=79771"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36742,
+            "unit": "bytes",
+            "extra": "raw=110142; brotli=33034"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41179,
+            "unit": "bytes",
+            "extra": "raw=123506; brotli=37002"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 52996,
+            "unit": "bytes",
+            "extra": "raw=151077; brotli=47618"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 57904,
+            "unit": "bytes",
+            "extra": "raw=167039; brotli=52081"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 101492,
+            "unit": "bytes",
+            "extra": "raw=319062; brotli=87740"
+          },
+          {
+            "name": "react-start.full",
+            "value": 104961,
+            "unit": "bytes",
+            "extra": "raw=329104; brotli=90760"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49349,
+            "unit": "bytes",
+            "extra": "raw=148616; brotli=43689"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 54967,
+            "unit": "bytes",
+            "extra": "raw=164945; brotli=48506"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "fpellet@ensc.fr",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "33188782e179c87bebc9b8aec96fbd14509a8cce",
+          "message": "test: add cross-framework SSR request-loop benchmarks (#6803)",
+          "timestamp": "2026-03-03T10:45:15+01:00",
+          "tree_id": "9f0a8860930ee0c641d5ef8162b8079810eec8f7",
+          "url": "https://github.com/TanStack/router/commit/33188782e179c87bebc9b8aec96fbd14509a8cce"
+        },
+        "date": 1772531254582,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
