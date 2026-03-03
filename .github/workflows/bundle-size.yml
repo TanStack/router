@@ -27,7 +27,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.1
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
           fetch-depth: 0
           persist-credentials: false
 
