@@ -797,9 +797,9 @@ import { createMiddleware } from '@tanstack/react-start'
 import { auth } from './my-auth'
 
 export const authMiddleware = createMiddleware()
-  .server
-  //...
-  ()
+  .server(async ({ next, request }) => {
+    // ... (implementation from authentication example above)
+  })
 
 type Permissions = Record<string, string[]>
 
